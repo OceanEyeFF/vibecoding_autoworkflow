@@ -65,6 +65,13 @@ To maintain the cleanliness and consistency of the repository, please follow the
 
 This repository uses Git for version management, with important updates marked through tags. Users are recommended to follow the latest version to obtain feature improvements and bug fixes.
 
+## Recommended Resources
+
+In addition to the Agent prompt templates provided in this repository, you can also refer to the following high-quality resources for more inspiration and templates:
+
+- **Claude Code Templates** - Offers a rich collection of AI specialist agent templates, including frontend development, code review, backend architecture, and other professional domains
+  Visit link: [https://www.aitmpl.com/agents](https://www.aitmpl.com/agents)
+
 ## License
 
 All content in this repository is open-sourced under the MIT License. You are free to use, modify, and distribute it, but please retain the original author information.
