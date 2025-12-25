@@ -1,0 +1,7 @@
+# Local automation artifacts
+.autoworkflow/
+.spec-workflow/
+
+# Python
+**/__pycache__/
+*.pyc

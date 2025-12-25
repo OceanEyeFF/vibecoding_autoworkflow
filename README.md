@@ -1,81 +1,136 @@
-# Trae-Agents-Prompt
+# Trae-Agents-Prompt (Claude Code + Codex Baseline)
 
-## 仓库简介
+这个仓库当前的主线目标：沉淀一套 **可闭环交付** 的中枢 Agent + repo-local 工具链，用于 Claude Code / Codex（可选兼容其他宿主）。
 
-Trae-Agents-Prompt 是一个精心设计的 AI Agent 提示词模板仓库，致力于为开发者提供高质量、可复用的智能代理工作流模板。本仓库收集了多个专业领域的 Agent 指令集，帮助您快速构建和定制适合特定任务的 AI 助手。
+核心原则：**任何需求输入（对话/文档/链接）先打磨成可验证 DoD，再进入实现；以“测试全绿”为唯一门禁。**
 
-## 仓库内容概览
+## 目录结构
 
-本仓库目前包含以下专业 Agent 提示词模板：
+- Claude Code Agents：`.claude/agents/`
+  - 中枢：`.claude/agents/feature-shipper.md`
+  - 专项：`code-analyzer` / `code-debug-expert` / `requirement-refiner` 等
+- Codex Skills：`codex-skills/`
+  - 中枢：`codex-skills/feature-shipper/`
+  - 可选日志：`codex-skills/feedback-logger/`
+- 归档（非主线维护）：`archive/`
 
-- **CodeAnalyzer.md** - 代码架构拓扑分析专家，专注于从纯粹工程视角分析代码结构特征与模块边界关系，生成客观、语言无关的架构文档
-- **Bugfixer.md** - 智能调试助手，快速识别代码中的错误类型，定位问题根源，还原开发者意图并提供精确的修复方案
-- **Requirement Refiner.md** - 需求精炼专家，将模糊的用户需求系统地拆解、收缩范围并转化为可执行的最小可行迭代方案
+更详细的映射见：`INDEX.md`。
 
-## Agent 模板结构规范
+## 使用教程（普通 Repo / 全局）
 
-每个 Agent 提示词模板遵循统一的结构设计，确保模板的一致性和易用性：
+### A) 普通 Repo 使用（推荐：repo-local）
 
-- **角色定义**：明确 Agent 的专业身份、职责范围和核心能力
-- **核心原则**：Agent 执行任务时必须遵循的基本准则和工作约束
-- **工作流程**：详细的工作步骤、方法论和决策路径
-- **输出规范**：明确的输出格式要求、质量标准和示例
-- **交互规则**：与用户或系统交互时的具体规范和注意事项
+目标：在任意项目根目录生成 `.autoworkflow/`，并始终用 `.autoworkflow/tools/*` 作为统一入口（Windows/WSL/Ubuntu 都能跑）。
 
-## 使用指南
+#### 1) 初始化 `.autoworkflow/`
 
-### 基本使用方法
+两种方式任选其一：
 
-1. 浏览仓库中的 Agent 模板文件，选择最适合您需求的模板
-2. 将模板内容复制到支持 AI 对话的平台或工具中
-3. 根据具体场景调整模板参数和上下文信息
-4. 向 AI 提供任务相关的具体输入，启动智能代理工作流
+- 方式 1（最常用）：进入目标项目根目录再执行
+  - Windows：`python <path-to>/codex-skills/feature-shipper/scripts/autoworkflow.py init`
+  - WSL/Ubuntu：同上
+- 方式 2（不切目录）：显式指定 `--root`
+  - Windows：`python <path-to>/codex-skills/feature-shipper/scripts/autoworkflow.py --root <repo-root> init`
+  - WSL/Ubuntu：同上
 
-### 高级定制建议
+初始化会生成：
 
-- 根据特定领域需求，调整模板中的角色定义和专业术语
-- 为 Agent 提供更多上下文信息，以获得更精准的输出
-- 结合多个 Agent 模板的优势，构建复杂的工作流解决方案
+- `.autoworkflow/tools/aw.ps1` / `.autoworkflow/tools/aw.sh`（统一入口）
+- `.autoworkflow/tools/gate.ps1` / `.autoworkflow/tools/gate.sh`（本地门禁）
+- `.autoworkflow/state.md` / `.autoworkflow/spec.md`（默认不提交）
+- `.autoworkflow/model-policy.json`（默认不提交，用于模型推荐）
 
-## 贡献指南
+如果你更新了本仓库里的脚本/模板，想把目标项目里的 `.autoworkflow/tools/*` 同步刷新，可以重新跑 init 并加 `--force` 覆盖：
 
-我们非常欢迎社区贡献，包括新的 Agent 模板和对现有模板的改进：
+- Windows：`python <path-to>/codex-skills/feature-shipper/scripts/autoworkflow.py --root <repo-root> init --force`
 
-1. **Fork** 本仓库到您的个人账号
-2. **创建新分支**（建议使用 `Agent-<名称>` 或 `Improve-<模板名>` 格式）
-3. **编写或修改** Agent 提示词模板，确保符合仓库的结构规范
-4. **提交 Pull Request**，并在描述中说明您的改动内容和目的
-5. 等待仓库维护者的审核和反馈
+#### 2) 先跑 doctor（把“跑不起来”尽早暴露）
 
-## 命名规范
+（在目标项目根目录执行）
 
-为了保持仓库的整洁和一致性，请遵循以下命名规范：
+- Windows：`powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/aw.ps1 doctor --write --update-state`
+- WSL/Ubuntu：`bash .autoworkflow/tools/aw.sh doctor --write --update-state`
 
-- 新的 Agent 模板文件使用 **PascalCase** 命名（例如 `CodeAnalyzer.md`）
-- 文件名应简洁明了，直接反映 Agent 的主要功能或专业领域
-- 多语言版本使用文件后缀区分（例如 `README.en.md` 表示英文版）
+#### 3) 配置 gate（定义“测试全绿”）
 
-## 语言支持
+- Windows：`powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/aw.ps1 set-gate --create --build "..." --test "..."`
+- WSL/Ubuntu：`bash .autoworkflow/tools/aw.sh set-gate --create --build "..." --test "..."`
 
-- 主要文档和 Agent 模板使用中文编写，确保国内用户的易用性
-- 英文版本的文档和模板以 `.en.md` 后缀区分，便于国际用户使用
-- 欢迎社区贡献其他语言版本的翻译
+如果命令包含复杂引号/分号（PowerShell 很常见），建议直接编辑 `.autoworkflow/gate.env`，避免转义地狱。
 
-## 版本控制
+#### 4) 打磨 spec → 跑 gate
 
-本仓库使用 Git 进行版本管理，重要更新会通过标签（tags）进行版本标记。推荐用户关注最新版本，以获取功能改进和错误修复。
+- 先打磨：填 `.autoworkflow/spec.md`（范围/非目标/验收标准/gate 命令）
+- 再门禁：
+  - Windows：`powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/aw.ps1 gate`
+  - WSL/Ubuntu：`bash .autoworkflow/tools/aw.sh gate`
 
-## 推荐资源
+`gate` 会把最近一次结果追加到 `.autoworkflow/state.md`（失败时附带 highlights + tail）。
 
-除了本仓库提供的 Agent 提示词模板外，您还可以参考以下优质资源获取更多灵感和模板：
+#### 5) 智能选模型（推荐 + 需要时升级）
 
-- **Claude Code Templates** - 提供丰富的 AI 专家代理模板，包括前端开发、代码审查、后端架构等多个专业领域
-  访问链接：[https://www.aitmpl.com/agents](https://www.aitmpl.com/agents)
+- Windows：`powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/aw.ps1 recommend-model --intent doctor|debug`
+- WSL/Ubuntu：`bash .autoworkflow/tools/aw.sh recommend-model --intent doctor|debug`
 
-## 许可证
+注意：是否能“自动切换模型”取决于宿主工具；这里提供的是可落地的“推荐+升级”策略（默认中等，遇到复杂 gate 失败再升级）。
 
-本仓库中的所有内容采用 MIT 许可证开源，您可以自由使用、修改和分发，但请保留原始作者信息。
+#### 6) 保持 repo 干净（可选）
 
----
+默认 `.autoworkflow/*` 都建议不提交。若你不希望它出现在 `git status` 里，可把目录加入本地 exclude（不会影响团队、不会提交）：
+
+- Windows：`Add-Content .git/info/exclude ".autoworkflow/"`
+- WSL/Ubuntu：`echo ".autoworkflow/" >> .git/info/exclude`
+
+### B) 全局使用（可选：安装到 Codex Skills）
+
+如果你希望在任何地方都能直接使用 `<CODEX_HOME>/skills/...` 的路径（不需要手动写 `<path-to>`），可以把本仓库的 `codex-skills/*` 安装到 `$CODEX_HOME/skills/`（复制或软链接均可）。
+
+安装后，你可以在任意 repo 里执行（示例）：
+
+- Windows：`python (Join-Path $env:CODEX_HOME 'skills/feature-shipper/scripts/autoworkflow.py') --root <repo-root> init`
+- WSL/Ubuntu：`python "$CODEX_HOME/skills/feature-shipper/scripts/autoworkflow.py" --root <repo-root> init`
+
+初始化完成后仍然推荐用 repo-local 的 `.autoworkflow/tools/aw.*` 作为日常入口。
+
+## Claude Code 接入（在目标项目里使用中枢 Agent）
+
+Claude Code 的 agent 发现通常依赖项目内的 `.claude/agents/`。推荐做法是把中枢 agent 复制/软链到目标项目：
+
+- 复制：把本仓库的 `.claude/agents/feature-shipper.md` 放到目标项目的 `.claude/agents/feature-shipper.md`
+- 可选：按需把 `code-debug-expert` / `requirement-refiner` 等专项 agent 一起复制过去
+
+然后在 Claude Code 里选择 `feature-shipper`，它会强制先打磨 spec/DoD，再按 gate（测试全绿）闭环推进。
+
+## 可选：后台轻量日志（改进测试时很有用）
+
+在目标项目里初始化 feedback logger 后，可后台 watch `.autoworkflow/*` 的变化并写入 `.autoworkflow/logs/feedback.jsonl`：
+
+（在目标项目根目录执行，或用 `--root <repo-root>`）
+
+- Windows：`python <path-to>/codex-skills/feedback-logger/scripts/feedback.py init`
+- WSL/Ubuntu：同上
+
+启动后台 watch：
+
+- Windows：`powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/fb.ps1 start`
+- WSL/Ubuntu：`bash .autoworkflow/tools/fb.sh start`
+
+停止后台 watch：
+
+- Windows：`powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/fb.ps1 stop`
+- WSL/Ubuntu：`bash .autoworkflow/tools/fb.sh stop`
+
+手工记录关键想法（假设/结论/TODO）：
+
+- Windows：`powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/fb.ps1 log --message "..." --tag hypothesis`
+
+包裹某条命令并记录失败高亮 + tail（很适合收集 flaky / 编译失败关键信息）：
+
+- Windows：`powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/fb.ps1 wrap --tag gate powershell -Command "..."` 
+
+## 归档说明
+
+- 历史 Trae 模板已归档到：`archive/Trae-agents/`
+- 游戏叙事相关 Claude agent 归档到：`archive/claude-agents/`
 
 感谢您使用 Trae-Agents-Prompt 仓库！如有任何问题或建议，请随时提交 Issue 或 Pull Request。
