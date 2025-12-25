@@ -1,0 +1,318 @@
+{
+  "generated_at": "2025-12-26T01:02:28Z",
+  "project_summary": "这是一个自动化Agent工作流项目",
+  "scan_version": "1.0.0",
+  "repository": {
+    "root_path": "e:\\gitee\\trae-agents-prompt",
+    "git_branch": "master",
+    "git_status": "modified"
+  },
+  "statistics": {
+    "total_files_estimated": 150,
+    "scanned_files": 45,
+    "coverage_percentage": 30,
+    "ignored_files": 105,
+    "modules_identified": 4
+  },
+  "ignore_rules": {
+    "from_gitignore": [
+      ".autoworkflow/",
+      ".spec-workflow/",
+      "**/__pycache__/",
+      "*.pyc"
+    ],
+    "defaults": [
+      "node_modules/**",
+      ".git/**",
+      ".github/**",
+      "dist/**",
+      "build/**",
+      ".next/**",
+      "__pycache__/**",
+      "*.lock",
+      "*.log",
+      "*.bin",
+      "*.pdf",
+      "*.png",
+      "*.jpg",
+      "*.jpeg",
+      "*.gif",
+      "*.mp4",
+      "*.zip",
+      "*.tar",
+      "*.gz"
+    ]
+  },
+  "modules": [
+    {
+      "name": "claude-agents",
+      "path": ".claude/agents",
+      "type": "claude-code-agents",
+      "language": "markdown",
+      "description": "Claude Code 专业化 Agent 定义集合",
+      "entry_points": [
+        ".claude/agents/feature-shipper.md",
+        ".claude/agents/code-analyzer.md",
+        ".claude/agents/requirement-refiner.md",
+        ".claude/agents/code-debug-expert.md",
+        ".claude/agents/system-log-analyzer.md",
+        ".claude/agents/code-project-cleaner.md",
+        ".claude/agents/stage-development-executor.md"
+      ],
+      "interfaces": {
+        "feature-shipper": {
+          "description": "闭环交付中枢",
+          "input": "需求/spec/tasks 文档",
+          "output": ".autoworkflow/spec.md, .autoworkflow/state.md, 代码变更",
+          "constraints": ["先明确验收标准", "小步改动", "测试全绿"]
+        },
+        "code-analyzer": {
+          "description": "语言无关代码结构分析",
+          "input": "代码库路径",
+          "output": "CodeStructure.md, CodesAnalysis.md, CodeApis.md",
+          "constraints": ["不假设编程语言", "基于结构推断"]
+        },
+        "requirement-refiner": {
+          "description": "需求收敛与范围控制",
+          "input": "模糊需求",
+          "output": "需求精炼文档, 交互记录文档",
+          "constraints": ["五阶段强制流程", "默认收缩范围"]
+        }
+      },
+      "test_info": {
+        "has_tests": false,
+        "test_strategy": "通过实际使用验证（行为符合约束、产物符合规范）"
+      },
+      "documentation": ".claude/agents/CLAUDE.md",
+      "coverage": {
+        "scanned": true,
+        "completeness": "high",
+        "missing": []
+      }
+    },
+    {
+      "name": "feature-shipper-skill",
+      "path": "codex-skills/feature-shipper",
+      "type": "codex-skill",
+      "language": "python",
+      "description": "Codex 闭环交付工具链（init/doctor/gate/recommend-model）",
+      "entry_points": [
+        "codex-skills/feature-shipper/scripts/autoworkflow.py",
+        "codex-skills/feature-shipper/scripts/project_survey.py"
+      ],
+      "interfaces": {
+        "init": {
+          "description": "初始化 .autoworkflow/ 工具链",
+          "input": "--root <repo-root>",
+          "output": ".autoworkflow/tools/*, .autoworkflow/spec.md, state.md"
+        },
+        "doctor": {
+          "description": "项目健康检查",
+          "input": "项目根目录",
+          "output": "doctor.md, state.md（可选）"
+        },
+        "set-gate": {
+          "description": "配置 gate 命令",
+          "input": "--build/--test/--lint/--format-check",
+          "output": ".autoworkflow/gate.env"
+        },
+        "gate": {
+          "description": "执行测试全绿验证",
+          "input": "gate.env",
+          "output": "控制台输出, state.md（追加结果）"
+        },
+        "recommend-model": {
+          "description": "智能模型推荐",
+          "input": "--intent <doctor|debug|implement|refactor>",
+          "output": "推荐模型与理由"
+        }
+      },
+      "dependencies": {
+        "external": [],
+        "stdlib": ["argparse", "json", "os", "pathlib", "subprocess", "dataclasses", "datetime"]
+      },
+      "test_info": {
+        "has_tests": false,
+        "test_strategy": "跨平台真实项目验证（Windows/WSL/Ubuntu）"
+      },
+      "documentation": "codex-skills/feature-shipper/CLAUDE.md",
+      "coverage": {
+        "scanned": true,
+        "completeness": "high",
+        "missing": []
+      }
+    },
+    {
+      "name": "feedback-logger-skill",
+      "path": "codex-skills/feedback-logger",
+      "type": "codex-skill",
+      "language": "python",
+      "description": "轻量级后台日志记录器（可选）",
+      "entry_points": [
+        "codex-skills/feedback-logger/scripts/feedback.py"
+      ],
+      "interfaces": {
+        "init": {
+          "description": "初始化日志工具链",
+          "input": "--root <repo-root>",
+          "output": ".autoworkflow/tools/feedback.py, fb.ps1, fb.sh"
+        },
+        "start": {
+          "description": "启动后台 watch",
+          "input": "无",
+          "output": "后台进程 PID"
+        },
+        "stop": {
+          "description": "停止后台 watch",
+          "input": "无",
+          "output": "停止确认"
+        },
+        "log": {
+          "description": "手工记录日志",
+          "input": "--message <text> --tag <tag>",
+          "output": "feedback.jsonl（追加事件）"
+        },
+        "wrap": {
+          "description": "包裹命令并记录失败",
+          "input": "--tag <tag> <command>",
+          "output": "feedback.jsonl（失败时含 highlights+tail）"
+        }
+      },
+      "dependencies": {
+        "external": [],
+        "stdlib": ["argparse", "json", "os", "pathlib", "subprocess", "time", "dataclasses", "datetime"]
+      },
+      "test_info": {
+        "has_tests": false,
+        "test_strategy": "后台进程稳定性 + 文件监控准确性验证"
+      },
+      "documentation": "codex-skills/feedback-logger/CLAUDE.md",
+      "coverage": {
+        "scanned": true,
+        "completeness": "high",
+        "missing": []
+      }
+    },
+    {
+      "name": "spec-workflow-templates",
+      "path": ".spec-workflow/templates",
+      "type": "documentation-templates",
+      "language": "markdown",
+      "description": "文档驱动开发标准化模板集合",
+      "entry_points": [
+        ".spec-workflow/templates/requirements-template.md",
+        ".spec-workflow/templates/design-template.md",
+        ".spec-workflow/templates/tasks-template.md",
+        ".spec-workflow/templates/product-template.md",
+        ".spec-workflow/templates/tech-template.md",
+        ".spec-workflow/templates/structure-template.md"
+      ],
+      "interfaces": {
+        "requirements-template": {
+          "description": "需求文档模板",
+          "sections": ["Introduction", "Requirements", "Acceptance Criteria", "Non-Functional Requirements"]
+        },
+        "design-template": {
+          "description": "设计文档模板",
+          "sections": ["Architecture", "Components", "Data Models", "Error Handling", "Testing Strategy"]
+        },
+        "tasks-template": {
+          "description": "任务拆解模板",
+          "sections": ["Task list with File/Purpose/Leverage/Requirements/Prompt"]
+        }
+      },
+      "test_info": {
+        "has_tests": false,
+        "test_strategy": "模板填充完整性 + 格式验证"
+      },
+      "documentation": ".spec-workflow/templates/CLAUDE.md",
+      "coverage": {
+        "scanned": true,
+        "completeness": "medium",
+        "missing": ["user-templates/README.md 未详细扫描"]
+      }
+    }
+  ],
+  "archived_modules": [
+    {
+      "name": "trae-agents-archive",
+      "path": "archive/Trae-agents",
+      "description": "历史 Trae 模板（非主线维护）",
+      "files": [
+        "Bugfixer.md",
+        "CodeAnalyzer.md",
+        "DocumentRefiner.md",
+        "ArchitectureDesigner.md",
+        "MVPCodeDeliverer.md",
+        "PromptEngineer.md",
+        "RefactoringAgent.md",
+        "RequirementRefiner.md",
+        "SystemAnalyst.md"
+      ]
+    },
+    {
+      "name": "claude-agents-archive",
+      "path": "archive/claude-agents",
+      "description": "游戏叙事相关 Agent（非软件交付主线）",
+      "files": [
+        "game-narrative-architect.md"
+      ]
+    }
+  ],
+  "key_files": {
+    "root_documentation": "CLAUDE.md",
+    "readme": "README.md",
+    "index": "INDEX.md",
+    "ai_guide": "AI高效使用指南.md"
+  },
+  "coverage_report": {
+    "summary": "已完成核心模块扫描（4个主线模块），覆盖率约 30%",
+    "scanned_areas": [
+      "Claude Code Agents 定义（7个 Agent）",
+      "Codex Skills 核心脚本（feature-shipper + feedback-logger）",
+      "Spec Workflow 模板（6个模板）",
+      "根级文档（README, INDEX, AI指南）"
+    ],
+    "skipped_areas": [
+      ".git/**（版本控制内部）",
+      "archive/**（归档内容，非主线）",
+      "codex-skills/**/assets/**（模板资源，已通过主脚本理解）",
+      "__pycache__/**（Python 编译缓存）"
+    ],
+    "gaps": [
+      {
+        "area": ".spec-workflow/user-templates/",
+        "reason": "用户自定义模板，内容不确定",
+        "priority": "low"
+      },
+      {
+        "area": "codex-skills/feature-shipper/scripts/project_survey.py",
+        "reason": "辅助脚本，优先级低于主脚本",
+        "priority": "low"
+      }
+    ],
+    "truncated": false,
+    "next_steps": [
+      "深度扫描 project_survey.py（如需了解项目扫描逻辑）",
+      "扫描 .spec-workflow/user-templates/（如需了解用户定制模板）",
+      "补充 archive/ 内容的简要摘要（如需历史追溯）"
+    ]
+  },
+  "recommendations": {
+    "for_new_users": [
+      "阅读 README.md 了解快速开始步骤",
+      "在目标项目中运行 feature-shipper 的 init + doctor",
+      "根据需要复制 Claude Agents 到目标项目的 .claude/agents/"
+    ],
+    "for_ai_agents": [
+      "优先读取根 CLAUDE.md 获取全局架构",
+      "根据任务类型选择对应 Agent（需求收敛 → requirement-refiner，闭环交付 → feature-shipper）",
+      "使用 .spec-workflow/templates/ 标准化文档格式"
+    ],
+    "for_contributors": [
+      "主线维护内容：.claude/agents/, codex-skills/, .spec-workflow/templates/",
+      "归档内容（archive/）不再主动维护",
+      "新增 Agent/Skill 应遵循现有命名与结构规范"
+    ]
+  }
+}
