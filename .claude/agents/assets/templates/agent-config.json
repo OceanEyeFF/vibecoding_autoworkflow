@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0",
+  "tool_name": "claude-code",
+  "auto_init": true,
+  "auto_doctor": true,
+  "auto_gate": true,
+  "ownership": {
+    "ttl_minutes": 30,
+    "on_conflict": "prompt"
+  },
+  "model_policy": {
+    "default": "sonnet",
+    "intents": {
+      "doctor": "sonnet",
+      "implement": "sonnet",
+      "debug": "opus",
+      "refactor": "opus"
+    }
+  },
+  "paths": {
+    "shared": ".autoworkflow",
+    "logs": ".autoworkflow/logs/claude-code"
+  }
+}
