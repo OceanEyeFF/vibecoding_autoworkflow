@@ -90,7 +90,7 @@ def tools_dir(root: Path) -> Path:
 
 
 def logs_dir(root: Path) -> Path:
-    return autoworkflow_dir(root) / "logs"
+    return autoworkflow_dir(root) / "logs" / "codex"
 
 
 def log_path(root: Path) -> Path:
@@ -200,7 +200,7 @@ def init(root: Path, force: bool) -> None:
     # Ensure .autoworkflow/.gitignore ignores logs/pid by default (without touching parent repo ignores).
     gitignore_path = aw / ".gitignore"
     existing = gitignore_path.read_text(encoding="utf-8", errors="replace") if gitignore_path.exists() else ""
-    needed = ["logs/", "logs/feedback.jsonl", "logs/feedback-watch.pid"]
+    needed = ["logs/", "logs/codex/", "logs/codex/feedback.jsonl", "logs/codex/feedback-watch.pid"]
     lines = [ln.rstrip("\n") for ln in existing.splitlines()] if existing else []
     for entry in needed:
         if entry not in lines:

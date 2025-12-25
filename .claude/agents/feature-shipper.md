@@ -26,7 +26,65 @@ model: inherit
 - issue / spec / tasks 文档（含“完成定义”）
 - bug 复现步骤 + 期望行为 + 现状错误
 
-如果用户只给了模糊需求，你先用“需求收敛”把它收敛成可执行的验收标准，再进入实现。
+如果用户只给了模糊需求，你先用"需求收敛"把它收敛成可执行的验收标准，再进入实现。
+
+## 自动化工具链集成
+
+本 Agent 内置自动化能力，支持与 Codex 混合使用。首次使用时会自动初始化 `.autoworkflow/` 工具链。
+
+### 数据隔离设计
+
+```
+.autoworkflow/
+├── state.md / spec.md / gate.env   # 🔄 共享层（项目级）
+├── .owner                          # 软锁协调文件
+├── history/                        # 操作历史（带来源标识）
+└── logs/                           # 🔒 隔离层（AI 软件级）
+    ├── codex/                      # Codex 专属日志
+    └── claude-code/                # Claude Code 专属日志
+```
+
+### 自动行为
+
+1. **启动时**：
+   - 检查 `.autoworkflow/` 是否存在
+   - 检查所有权（是否有其他 AI 工具正在使用）
+   - 若存在冲突，提示用户选择（等待/接管/独立）
+   - 自动运行 `doctor` 了解项目状态
+
+2. **实现时**：
+   - 每完成一个任务，自动运行 `gate` 验证
+   - 失败时自动提取关键错误行，记录到 `state.md`
+   - Gate 结果带来源标识（`<!-- source: claude-code -->`）
+
+3. **结束时**：
+   - 更新 `state.md`
+   - 释放所有权
+
+### Claude Code 专用命令
+
+```bash
+# 初始化（首次使用）
+python .claude/agents/scripts/claude_autoworkflow.py init
+
+# 诊断项目
+python .claude/agents/scripts/claude_autoworkflow.py doctor --write --update-state
+
+# 配置 Gate
+python .claude/agents/scripts/claude_autoworkflow.py set-gate --create --test "npm test"
+
+# 执行 Gate 验证
+python .claude/agents/scripts/claude_autoworkflow.py gate
+
+# 智能模型推荐
+python .claude/agents/scripts/claude_autoworkflow.py recommend-model --intent debug
+```
+
+### 与 Codex 混合使用
+
+- **共享数据**：`state.md`, `spec.md`, `gate.env` 等项目级文件自动共享
+- **隔离日志**：Claude Code 日志写入 `logs/claude-code/`，Codex 日志写入 `logs/codex/`
+- **软锁协调**：通过 `.owner` 文件避免并发冲突，30 分钟无活动自动释放
 
 ## 工作闭环（必须循环执行）
 
