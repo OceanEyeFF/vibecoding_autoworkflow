@@ -77,6 +77,14 @@
   - 选项：`--force` 无确认删除；`--dry-run` 仅查看；`--no-profile` 不改 profile。
   - 作用：移除 `$CODEX_HOME/skills/feature-shipper`、`feedback-logger`，并删除 profile 中的 `# codex autoworkflow aliases` 段（若存在）。
 
+## 官方推荐模式（MCP + Agents Orchestrator）
+
+- 轻量 orchestrator：`agents_workflow.py`（本仓库根目录）调用 `.autoworkflow` 工具串行跑 plan review → gate，并在 `.autoworkflow/trace/` 生成 trace。
+- CI 一键模板：`python .autoworkflow/tools/autoworkflow.py plan ci-template --provider github|gitlab`  
+  - GitHub 生成 `.github/workflows/aw-plan-gate.yml`：plan review → gate(dry-run) → agents_workflow(trace) → 上传 trace artifact。  
+  - GitLab 生成 `.gitlab-ci.yml`：同上并上传 trace。
+- 对话/Claude 可直接运行 `agents_workflow.py --root .`（或用现有 `aw-*`/`plan` 命令）。
+
 ## Claude Code 接入（在目标项目里使用中枢 Agent）
 
 推荐将 `.claude/agents/feature-shipper.md` 复制/软链到目标项目的 `.claude/agents/`，按需附带 `code-debug-expert` / `requirement-refiner` 等。然后在 Claude Code 里选择 `feature-shipper`，它会强制先打磨 spec / DoD，再坚持 gate（测试全绿）闭环推进。

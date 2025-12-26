@@ -35,6 +35,6 @@ run_step "plan gen" python "$TOOL" --root "$ROOT_PATH" plan gen
 run_step "plan review" python "$TOOL" --root "$ROOT_PATH" plan review
 ALLOW=()
 [[ "$ALLOW_UNREVIEWED" == "1" ]] && ALLOW=(--allow-unreviewed)
-run_step "gate (dry-run)" python "$TOOL" --root "$ROOT_PATH" gate "${ALLOW[@]}" --test "" --build "" --lint "" --format-check ""
+run_step "gate (dry-run)" python "$TOOL" --root "$ROOT_PATH" gate "${ALLOW[@]}"
 
 echo "Done."

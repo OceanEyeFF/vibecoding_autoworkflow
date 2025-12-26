@@ -29,6 +29,6 @@ Run-Step "auto-gate" "python `"$tool`" --root `"$rootPath`" auto-gate"
 Run-Step "plan gen" "python `"$tool`" --root `"$rootPath`" plan gen"
 Run-Step "plan review" "python `"$tool`" --root `"$rootPath`" plan review"
 $allow = $AllowUnreviewed.IsPresent ? "--allow-unreviewed" : ""
-Run-Step "gate (dry-run)" "python `"$tool`" --root `"$rootPath`" gate $allow --test '''' --build '''' --lint '''' --format-check ''''"
+Run-Step "gate (dry-run)" "python `"$tool`" --root `"$rootPath`" gate $allow"
 
 Write-Host "Done."

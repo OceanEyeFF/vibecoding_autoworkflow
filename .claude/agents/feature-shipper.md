@@ -85,6 +85,11 @@ bash .claude/agents/scripts/claude_aw.sh --root .
 
 > 脚本参数：`--root` 目标仓库；`--allow-unreviewed` 跳过 plan 审核（谨慎）；`--dry-run` 仅演示。
 
+### 官方推荐集成（MCP/CI）
+- CI 模板：`python .autoworkflow/tools/autoworkflow.py plan ci-template --provider github|gitlab`，生成流水线（plan review → gate → agents_workflow(trace) → 上传 trace）。
+- 一键 orchestrator：`python agents_workflow.py --root .`（串行 plan review → gate，产出 `.autoworkflow/trace/*.jsonl`）。
+- 对话与 CI 桥接：对话里更新 goal/plan 后，可触发 CI；CI 失败时查看 trace，再在对话中继续修复。
+
 ### Claude Code 专用命令
 
 ```bash
