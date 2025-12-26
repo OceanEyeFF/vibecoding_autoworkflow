@@ -1348,7 +1348,7 @@ jobs:
       - name: Gate (dry-run)
         run: python .autoworkflow/tools/autoworkflow.py gate --root . --allow-unreviewed
       - name: Agents workflow (trace)
-        run: python agents_workflow.py --root . --allow-unreviewed
+        run: python agents_runner.py --root . --allow-unreviewed
       - name: Upload trace
         uses: actions/upload-artifact@v4
         with:
@@ -1363,7 +1363,7 @@ jobs:
   script:
     - python .autoworkflow/tools/autoworkflow.py plan review --root .
     - python .autoworkflow/tools/autoworkflow.py gate --root . --allow-unreviewed
-    - python agents_workflow.py --root . --allow-unreviewed
+    - python agents_runner.py --root . --allow-unreviewed
   artifacts:
     paths:
       - .autoworkflow/trace/*.jsonl
