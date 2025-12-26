@@ -44,22 +44,46 @@ model: inherit
     └── claude-code/                # Claude Code 专属日志
 ```
 
+### 推荐自动流程（懒人一键）
+
+顺序（Claude 中提示用户直接执行或复制到终端）：
+1) `aw-init`
+2) `aw-auto`
+3) `autoworkflow plan gen`
+4) `autoworkflow plan review`（score≥85 才通过）
+5) `aw-gate`（如需跳过审核可加 `--allow-unreviewed`，不推荐）
+
+> 随附脚本：`.claude/agents/scripts/claude_aw.ps1` / `.sh` 一键执行 1→5，失败会将 highlights/tail 追加到 `.autoworkflow/state.md`。
+
 ### 自动行为
 
 1. **启动时**：
-   - 检查 `.autoworkflow/` 是否存在
+   - 检查 `.autoworkflow/` 是否存在；若缺失提示 init
    - 检查所有权（是否有其他 AI 工具正在使用）
    - 若存在冲突，提示用户选择（等待/接管/独立）
-   - 自动运行 `doctor` 了解项目状态
+   - 可选自动运行 `doctor` 了解项目状态
 
-2. **实现时**：
-   - 每完成一个任务，自动运行 `gate` 验证
-   - 失败时自动提取关键错误行，记录到 `state.md`
+2. **规划/实现时**：
+   - 每轮迭代前先 `plan review`；未批准默认阻断继续（可显式 `--allow-unreviewed` 覆盖）
+   - 每完成一小步，运行 `gate` 验证；失败提取关键错误行记录到 `state.md`
    - Gate 结果带来源标识（`<!-- source: claude-code -->`）
 
 3. **结束时**：
    - 更新 `state.md`
    - 释放所有权
+
+### Claude Code 快捷命令（示例）
+
+```powershell
+# Windows / WSL (PowerShell)
+powershell -ExecutionPolicy Bypass -File .claude/agents/scripts/claude_aw.ps1 --root . --dry-run
+```
+```bash
+# Linux/WSL (Bash)
+bash .claude/agents/scripts/claude_aw.sh --root .
+```
+
+> 脚本参数：`--root` 目标仓库；`--allow-unreviewed` 跳过 plan 审核（谨慎）；`--dry-run` 仅演示。
 
 ### Claude Code 专用命令
 

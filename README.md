@@ -44,6 +44,12 @@
    - `powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/aw.ps1 recommend-model --intent doctor|debug`  
    - `bash .autoworkflow/tools/aw.sh recommend-model --intent doctor|debug`
 
+（可选）规划/审核：  
+- 生成计划：`python .autoworkflow/tools/autoworkflow.py plan gen`  
+- 审核计划：`python .autoworkflow/tools/autoworkflow.py plan review`（score>=85 自动批准，否则打回）  
+- 查看计划状态：`python .autoworkflow/tools/autoworkflow.py plan status`  
+- gate 默认检查 plan.review=approve；需跳过可加 `--allow-unreviewed`（不推荐）。
+
 6) 保持 repo 干净（可选）  
    - 将 `.autoworkflow/` 加入本地 exclude（不影响团队，不提交）：  
      - Windows：`Add-Content .git/info/exclude ".autoworkflow/"`  

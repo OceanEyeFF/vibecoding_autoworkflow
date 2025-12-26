@@ -11,9 +11,12 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 
 ALLOWED_ENV_KEYS = ("BUILD_CMD", "TEST_CMD", "LINT_CMD", "FORMAT_CHECK_CMD")
+PLAN_FILE_NAME = "plan.yaml"
+PLAN_REVIEW_FILE = "plan-review.md"
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -303,6 +306,45 @@ DEFAULT_MODEL_POLICY = {
     ],
 }
 
+# Default plan template (JSON, valid YAML subset)
+DEFAULT_PLAN_TEMPLATE = {
+    "meta": {"version": 1},
+    "goal_ref": "goal.json",
+    "modules": [
+        {
+            "id": "default-module",
+            "purpose": "TBD",
+            "scope_in": [],
+            "scope_out": [],
+            "risks": [],
+        }
+    ],
+    "milestones": [
+        {
+            "id": "m1",
+            "module": "default-module",
+            "title": "First milestone",
+            "target_date": "",
+            "deps": [],
+            "success_criteria": ["All gates green"],
+        }
+    ],
+    "tasks": [
+        {
+            "id": "t1",
+            "milestone": "m1",
+            "title": "Build & Test",
+            "size_days": 0.5,
+            "deps": [],
+            "gate_cmds": ["build", "test"],
+            "risk": "med",
+            "blocking": False,
+        }
+    ],
+    "data_specs": [],
+    "review": {"decision": "pending", "score": 0, "reasons": [], "actions": []},
+}
+
 
 @dataclass(frozen=True)
 class HostInfo:
@@ -341,6 +383,10 @@ def assets_autoworkflow_dir() -> Path:
 
 def repo_autoworkflow_dir(repo_root: Path) -> Path:
     return repo_root / ".autoworkflow"
+
+
+def plan_path(repo_root: Path) -> Path:
+    return repo_autoworkflow_dir(repo_root) / PLAN_FILE_NAME
 
 
 def safe_write_text(path: Path, content: str, force: bool) -> None:
@@ -973,7 +1019,15 @@ def _append_gate_to_state(repo_root: Path, gate_cmd: str, exit_code: int, output
             f.write("\n".join(section).lstrip("\n"))
 
 
-def run_gate(repo_root: Path, build: str | None, test: str | None, lint: str | None, fmt: str | None) -> int:
+def run_gate(
+    repo_root: Path,
+    build: str | None,
+    test: str | None,
+    lint: str | None,
+    fmt: str | None,
+    allow_unreviewed: bool,
+) -> int:
+    guard_plan_review(repo_root, allow_unreviewed=allow_unreviewed)
     aw = repo_autoworkflow_dir(repo_root)
     env_path = aw / "gate.env"
     env_values = parse_gate_env(env_path)
@@ -1017,6 +1071,300 @@ def run_gate(repo_root: Path, build: str | None, test: str | None, lint: str | N
     code, output = _run_and_tee(cmd, cwd=repo_root)
     _append_gate_to_state(repo_root, gate_cmd=" ".join(cmd), exit_code=code, output=output)
     return code
+
+
+def _load_plan(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        raise FileNotFoundError("Missing plan.yaml (run `autoworkflow plan init`)")
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise RuntimeError(f"plan.yaml 解析失败: {exc}")
+
+
+def _dump_plan(path: Path, data: dict[str, Any]) -> None:
+    text = json.dumps(data, ensure_ascii=False, indent=2)
+    safe_write_text(path, text + "\n", force=True)
+
+
+def plan_init(repo_root: Path, force: bool) -> None:
+    target = plan_path(repo_root)
+    if target.exists() and not force:
+        print(f"plan.yaml already exists, use --force to overwrite ({target})")
+        return
+    _dump_plan(target, DEFAULT_PLAN_TEMPLATE)
+    print(f"Initialized plan: {target}")
+
+
+def _detect_gate_ids(repo_root: Path) -> dict[str, str]:
+    env = parse_gate_env(repo_autoworkflow_dir(repo_root) / "gate.env")
+    mapping: dict[str, str] = {}
+    if env.get("BUILD_CMD"):
+        mapping["build"] = env["BUILD_CMD"]
+    if env.get("TEST_CMD"):
+        mapping["test"] = env["TEST_CMD"]
+    if env.get("LINT_CMD"):
+        mapping["lint"] = env["LINT_CMD"]
+    if env.get("FORMAT_CHECK_CMD"):
+        mapping["format"] = env["FORMAT_CHECK_CMD"]
+    return mapping
+
+
+def plan_gen(repo_root: Path) -> None:
+    aw = repo_autoworkflow_dir(repo_root)
+    aw.mkdir(parents=True, exist_ok=True)
+
+    gates = _detect_gate_ids(repo_root)
+    module_id = "default-module"
+    tasks: list[dict[str, Any]] = []
+    idx = 1
+    for key in ("build", "test", "lint", "format"):
+        if key in gates:
+            tasks.append(
+                {
+                    "id": f"t{idx}",
+                    "milestone": "m1",
+                    "title": f"Run {key}",
+                    "size_days": 0.25,
+                    "deps": [],
+                    "gate_cmds": [key],
+                    "risk": "low",
+                    "blocking": False,
+                }
+            )
+            idx += 1
+    if not tasks:
+        tasks = [
+            {
+                "id": "t1",
+                "milestone": "m1",
+                "title": "Define gate commands",
+                "size_days": 0.5,
+                "deps": [],
+                "gate_cmds": [],
+                "risk": "med",
+                "blocking": True,
+            }
+        ]
+
+    plan = {
+        "meta": {"version": 1},
+        "goal_ref": "goal.json",
+        "modules": [
+            {
+                "id": module_id,
+                "purpose": "Auto-generated plan (edit as needed)",
+                "scope_in": [],
+                "scope_out": [],
+                "risks": [],
+            }
+        ],
+        "milestones": [
+            {
+                "id": "m1",
+                "module": module_id,
+                "title": "Initial delivery",
+                "target_date": "",
+                "deps": [],
+                "success_criteria": ["Gate green"],
+            }
+        ],
+        "tasks": tasks,
+        "data_specs": [],
+        "review": {"decision": "pending", "score": 0, "reasons": [], "actions": []},
+    }
+    _dump_plan(plan_path(repo_root), plan)
+    print(f"Generated plan: {plan_path(repo_root)}")
+
+
+def _penalize(condition: bool, penalty: int, reasons: list[str], msg: str) -> int:
+    if condition:
+        reasons.append(msg)
+        return penalty
+    return 0
+
+
+def plan_review(repo_root: Path, min_score: int = 85) -> int:
+    path = plan_path(repo_root)
+    plan = _load_plan(path)
+    reasons: list[str] = []
+    actions: list[str] = []
+    score = 100
+
+    tasks = plan.get("tasks", [])
+    milestones = {m.get("id"): m for m in plan.get("milestones", [])}
+    data_specs = plan.get("data_specs", [])
+
+    if not tasks:
+        reasons.append("没有 tasks")
+        score = 0
+
+    for t in tasks:
+        size = t.get("size_days", 0)
+        score -= _penalize(size and size > 1.0, 10, reasons, f"Task {t.get('id')} size_days>1")
+        g = t.get("gate_cmds") or []
+        score -= _penalize(len(g) == 0, 12, reasons, f"Task {t.get('id')} 缺少 gate_cmds")
+        mid = t.get("milestone")
+        if mid and mid not in milestones:
+            score -= _penalize(True, 8, reasons, f"Task {t.get('id')} 关联未知 milestone {mid}")
+
+    for spec in data_specs:
+        if spec.get("breaking_change"):
+            mod = spec.get("module", "")
+            related = [t for t in tasks if mod and mod in t.get("title", "").lower()]
+            score -= _penalize(len(related) == 0, 12, reasons, f"{mod} 标记 breaking_change 但无迁移/兼容任务")
+
+    decision = "approve" if score >= min_score else "reject"
+    if decision == "reject":
+        actions.append("调整 plan 后重跑 plan review（score>=85 才可通过 gate）")
+
+    plan["review"] = {
+        "decision": decision,
+        "score": max(0, score),
+        "reasons": reasons,
+        "actions": actions,
+        "reviewed_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ"),
+    }
+    _dump_plan(path, plan)
+
+    review_md = []
+    review_md.append("# Plan Review")
+    review_md.append(f"- decision: {decision}")
+    review_md.append(f"- score: {max(0, score)}")
+    if reasons:
+        review_md.append("## Reasons")
+        review_md.extend([f"- {r}" for r in reasons])
+    if actions:
+        review_md.append("## Actions")
+        review_md.extend([f"- {a}" for a in actions])
+    safe_write_text(repo_autoworkflow_dir(repo_root) / PLAN_REVIEW_FILE, "\n".join(review_md) + "\n", force=True)
+
+    # append to state
+    state_path = repo_autoworkflow_dir(repo_root) / "state.md"
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+    section = "\n".join(
+        [
+            "",
+            "## Plan Review (latest)",
+            f"- Time (UTC): {stamp}",
+            f"- decision: {decision}",
+            f"- score: {max(0, score)}",
+            f"- reasons: {', '.join(reasons) if reasons else '(none)'}",
+            "",
+        ]
+    )
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    with state_path.open("a", encoding="utf-8", newline="\n") as f:
+        f.write(section)
+
+    print(f"Plan review: {decision} (score={max(0, score)})")
+    return 0 if decision == "approve" else 1
+
+
+def plan_status(repo_root: Path) -> int:
+    try:
+        plan = _load_plan(plan_path(repo_root))
+    except Exception as exc:
+        print(f"plan status: {exc}")
+        return 1
+    tasks = plan.get("tasks", [])
+    total = len(tasks)
+    blocking = len([t for t in tasks if t.get("blocking")])
+    no_gate = len([t for t in tasks if not t.get("gate_cmds")])
+    review = plan.get("review", {})
+    summary = "\n".join(
+        [
+            "# Plan Status",
+            f"- tasks: {total}",
+            f"- blocking tasks: {blocking}",
+            f"- tasks missing gate_cmds: {no_gate}",
+            f"- last review: {review.get('decision','pending')} (score={review.get('score',0)})",
+        ]
+    )
+    print(summary)
+    # append to state
+    state_path = repo_autoworkflow_dir(repo_root) / "state.md"
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+    section = "\n".join(
+        [
+            "",
+            "## Plan Status (latest)",
+            f"- Time (UTC): {stamp}",
+            f"- tasks: {total}",
+            f"- blocking: {blocking}",
+            f"- missing gate_cmds: {no_gate}",
+            f"- review decision: {review.get('decision','pending')} (score={review.get('score',0)})",
+            "",
+        ]
+    )
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    with state_path.open("a", encoding="utf-8", newline="\n") as f:
+        f.write(section)
+    return 0
+
+
+def guard_plan_review(repo_root: Path, allow_unreviewed: bool) -> None:
+    path = plan_path(repo_root)
+    if not path.exists():
+        return
+    try:
+        plan = _load_plan(path)
+    except Exception as exc:
+        if allow_unreviewed:
+            print(f"plan guard warning: {exc}")
+            return
+        raise RuntimeError(f"plan guard: {exc}")
+    review = plan.get("review", {})
+    decision = review.get("decision", "pending")
+    if decision != "approve" and not allow_unreviewed:
+        raise RuntimeError("plan guard: plan review 未批准（decision!=approve），使用 --allow-unreviewed 可跳过（不推荐）。")
+
+
+def plan_ci_template(repo_root: Path, provider: str) -> int:
+    aw = repo_autoworkflow_dir(repo_root)
+    aw.mkdir(parents=True, exist_ok=True)
+    if provider == "github":
+        path = repo_root / ".github" / "workflows"
+        path.mkdir(parents=True, exist_ok=True)
+        content = """name: aw-plan-gate
+
+on:
+  push:
+    branches: [ "*" ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  plan-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Plan review
+        run: python .autoworkflow/tools/autoworkflow.py plan review --root .
+      - name: Gate (dry-run)
+        run: python .autoworkflow/tools/autoworkflow.py gate --root . --test \"\" --build \"\" --lint \"\" --format-check \"\"
+"""
+    else:
+        path = repo_root / ".gitlab-ci.yml"
+        content = """plan_gate:
+  image: python:3.11
+  stage: test
+  script:
+    - python .autoworkflow/tools/autoworkflow.py plan review --root .
+    - python .autoworkflow/tools/autoworkflow.py gate --root . --test "" --build "" --lint "" --format-check ""
+"""
+    if provider == "github":
+        target = path / "aw-plan-gate.yml"
+    else:
+        target = path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    safe_write_text(target, content, force=True)
+    print(f"Generated CI template: {target}")
+    return 0
 
 
 def auto_gate(repo_root: Path, overwrite: bool, dry_run: bool) -> int:
@@ -1084,6 +1432,18 @@ def main(argv: list[str]) -> int:
     p_gate.add_argument("--test", default=None, help="Override TEST_CMD")
     p_gate.add_argument("--lint", default=None, help="Override LINT_CMD")
     p_gate.add_argument("--format-check", dest="format_check", default=None, help="Override FORMAT_CHECK_CMD")
+    p_gate.add_argument("--allow-unreviewed", action="store_true", help="Skip plan review guard (not recommended)")
+
+    p_plan = sub.add_parser("plan", help="Plan lifecycle (init/gen/review/status)")
+    plan_sub = p_plan.add_subparsers(dest="plan_cmd", required=True)
+    p_plan_init = plan_sub.add_parser("init", help="Create default plan.yaml")
+    p_plan_init.add_argument("--force", action="store_true", help="Overwrite existing plan.yaml")
+    plan_sub.add_parser("gen", help="Generate plan.yaml from gate/env heuristics")
+    p_plan_review = plan_sub.add_parser("review", help="Review plan.yaml and write plan-review.md/state")
+    p_plan_review.add_argument("--min-score", type=int, default=85, help="Minimum score to approve (default 85)")
+    plan_sub.add_parser("status", help="Summarize plan status and append to state.md")
+    p_plan_ci = plan_sub.add_parser("ci-template", help="Generate CI template for plan review + gate dry-run")
+    p_plan_ci.add_argument("--provider", choices=["github", "gitlab"], default="github", help="CI provider")
 
     p_rec = sub.add_parser("recommend-model", help="Recommend model profile (light/medium/heavy) for Claude/Codex")
     p_rec.add_argument("--intent", default=None, help="Optional intent hint (e.g., doctor, workshop, debug)")
@@ -1124,6 +1484,7 @@ def main(argv: list[str]) -> int:
             test=args.test,
             lint=args.lint,
             fmt=args.format_check,
+            allow_unreviewed=bool(args.allow_unreviewed),
         )
 
     if args.cmd == "recommend-model":
@@ -1133,6 +1494,21 @@ def main(argv: list[str]) -> int:
         print(f"- claude: {claude}")
         print(f"- codex: {codex}")
         return 0
+
+    if args.cmd == "plan":
+        if args.plan_cmd == "init":
+            plan_init(repo_root=repo_root, force=bool(args.force))
+            return 0
+        if args.plan_cmd == "gen":
+            plan_gen(repo_root=repo_root)
+            return 0
+        if args.plan_cmd == "review":
+            return plan_review(repo_root=repo_root, min_score=int(args.min_score))
+        if args.plan_cmd == "status":
+            return plan_status(repo_root=repo_root)
+        if args.plan_cmd == "ci-template":
+            return plan_ci_template(repo_root=repo_root, provider=str(args.provider))
+        raise AssertionError("unknown plan subcommand")
 
     raise AssertionError("unreachable")
 
