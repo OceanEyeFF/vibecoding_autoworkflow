@@ -440,6 +440,205 @@ def parse_gate_env(env_path: Path) -> dict[str, str]:
     return values
 
 
+def _read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return ""
+
+
+def _read_package_json_scripts(repo_root: Path) -> tuple[str, dict[str, str]]:
+    package_json = repo_root / "package.json"
+    if not package_json.exists():
+        return "npm", {}
+    pm = "npm"
+    if (repo_root / "pnpm-lock.yaml").exists():
+        pm = "pnpm"
+    elif (repo_root / "yarn.lock").exists():
+        pm = "yarn"
+
+    try:
+        data = json.loads(package_json.read_text(encoding="utf-8"))
+        scripts = data.get("scripts") if isinstance(data, dict) else {}
+        if isinstance(scripts, dict):
+            return pm, {str(k): str(v) for k, v in scripts.items()}
+    except Exception:
+        pass
+    return pm, {}
+
+
+def _pm_cmd(pm: str, script: str, kind: str) -> str:
+    # keep commands simple and reproducible
+    if pm == "npm":
+        if kind == "test":
+            return "npm test"
+        return f"npm run {script}"
+    if pm == "pnpm":
+        return f"pnpm {script if kind == 'test' else f'run {script}'}"
+    if pm == "yarn":
+        return f"yarn {script}"
+    return f"{pm} {script}"
+
+
+def detect_node_gate(repo_root: Path) -> dict[str, str]:
+    pm, scripts = _read_package_json_scripts(repo_root)
+    if not scripts and not (repo_root / "package.json").exists():
+        return {}
+    def pick(keys: list[str]) -> str | None:
+        for k in keys:
+            if k in scripts:
+                return k
+        return None
+
+    build_script = pick(["build", "compile", "bundle"])
+    test_script = pick(["test", "test:unit", "test:e2e", "ci:test"])
+    lint_script = pick(["lint", "lint:fix", "check"])
+    fmt_script = pick(["format", "fmt", "format:check"])
+
+    result: dict[str, str] = {}
+    if build_script:
+        result["BUILD_CMD"] = _pm_cmd(pm, build_script, "build")
+    if test_script:
+        result["TEST_CMD"] = _pm_cmd(pm, test_script, "test")
+    if lint_script:
+        result["LINT_CMD"] = _pm_cmd(pm, lint_script, "lint")
+    if fmt_script:
+        result["FORMAT_CHECK_CMD"] = _pm_cmd(pm, fmt_script, "format")
+    return result
+
+
+def detect_python_gate(repo_root: Path) -> dict[str, str]:
+    if not ((repo_root / "pyproject.toml").exists() or (repo_root / "requirements.txt").exists() or (repo_root / "poetry.lock").exists()):
+        return {}
+    uses_poetry = (repo_root / "poetry.lock").exists()
+    test_cmd = "poetry run pytest" if uses_poetry else "pytest"
+    lint_cmd = "poetry run ruff check ." if uses_poetry else "ruff check ."
+    fmt_cmd = "poetry run ruff format --check ." if uses_poetry else "ruff format --check ."
+    return {
+        "BUILD_CMD": "",
+        "TEST_CMD": test_cmd,
+        "LINT_CMD": lint_cmd,
+        "FORMAT_CHECK_CMD": fmt_cmd,
+    }
+
+
+def detect_rust_gate(repo_root: Path) -> dict[str, str]:
+    if not (repo_root / "Cargo.toml").exists():
+        return {}
+    return {
+        "BUILD_CMD": "cargo build",
+        "TEST_CMD": "cargo test",
+        "LINT_CMD": "cargo clippy -- -D warnings",
+        "FORMAT_CHECK_CMD": "cargo fmt -- --check",
+    }
+
+
+def detect_go_gate(repo_root: Path) -> dict[str, str]:
+    if not (repo_root / "go.mod").exists():
+        return {}
+    return {
+        "BUILD_CMD": "go build ./...",
+        "TEST_CMD": "go test ./...",
+        "LINT_CMD": "go vet ./...",
+        "FORMAT_CHECK_CMD": "",
+    }
+
+
+def detect_java_gate(repo_root: Path) -> dict[str, str]:
+    # Maven / Gradle heuristics
+    if (repo_root / "pom.xml").exists():
+        return {
+            "BUILD_CMD": "mvn -B -DskipTests package",
+            "TEST_CMD": "mvn -B test",
+            "LINT_CMD": "",
+            "FORMAT_CHECK_CMD": "",
+        }
+    gradlew = repo_root / "gradlew"
+    if gradlew.exists():
+        gradle_bin = "./gradlew"
+    elif (repo_root / "gradlew.bat").exists():
+        gradle_bin = "gradlew.bat"
+    elif (repo_root / "build.gradle").exists() or (repo_root / "build.gradle.kts").exists():
+        gradle_bin = "gradle"
+    else:
+        return {}
+    return {
+        "BUILD_CMD": f"{gradle_bin} build -x test",
+        "TEST_CMD": f"{gradle_bin} test",
+        "LINT_CMD": "",
+        "FORMAT_CHECK_CMD": "",
+    }
+
+
+def detect_dotnet_gate(repo_root: Path) -> dict[str, str]:
+    has_sln = bool(list(repo_root.glob("*.sln")))
+    has_csproj = bool(list(repo_root.rglob("*.csproj")))
+    if not (has_sln or has_csproj):
+        return {}
+    return {
+        "BUILD_CMD": "dotnet build",
+        "TEST_CMD": "dotnet test",
+        "LINT_CMD": "",
+        "FORMAT_CHECK_CMD": "",
+    }
+
+
+def detect_claude_gate(repo_root: Path) -> dict[str, str]:
+    path = repo_root / "CLAUDE.md"
+    if not path.exists():
+        return {}
+    text = _read_text(path)
+    result: dict[str, str] = {}
+    rx = re.compile(r"(?im)^(build|test|lint|format)[^:：]{0,15}[:：]\s*`?(.+?)`?\s*$")
+    for m in rx.finditer(text):
+        key = m.group(1).lower()
+        cmd = m.group(2).strip()
+        if not cmd:
+            continue
+        if key == "build":
+            result["BUILD_CMD"] = cmd
+        elif key == "test":
+            result["TEST_CMD"] = cmd
+        elif key == "lint":
+            result["LINT_CMD"] = cmd
+        elif key == "format":
+            result["FORMAT_CHECK_CMD"] = cmd
+    return result
+
+
+def detect_gate(repo_root: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """
+    Returns (suggested, sources) where sources maps key->hint origin.
+    Priority: CLAUDE.md overrides structural heuristics.
+    """
+    sources: dict[str, str] = {}
+    suggested: dict[str, str] = {}
+
+    claude = detect_claude_gate(repo_root)
+    for k, v in claude.items():
+        if v:
+            suggested[k] = v
+            sources[k] = "CLAUDE.md"
+
+    detectors = [
+        ("Node.js", detect_node_gate),
+        ("Python", detect_python_gate),
+        ("Rust", detect_rust_gate),
+        ("Go", detect_go_gate),
+        ("Java", detect_java_gate),
+        (".NET", detect_dotnet_gate),
+    ]
+    for origin, fn in detectors:
+        found = fn(repo_root)
+        for k, v in found.items():
+            if k in suggested:
+                continue
+            if v:
+                suggested[k] = v
+                sources[k] = origin
+    return suggested, sources
+
+
 def load_model_policy(repo_root: Path) -> dict:
     policy_path = repo_autoworkflow_dir(repo_root) / "model-policy.json"
     if not policy_path.exists():
@@ -820,6 +1019,43 @@ def run_gate(repo_root: Path, build: str | None, test: str | None, lint: str | N
     return code
 
 
+def auto_gate(repo_root: Path, overwrite: bool, dry_run: bool) -> int:
+    aw = repo_autoworkflow_dir(repo_root)
+    if not aw.exists():
+        init_autoworkflow(repo_root=repo_root, force=False)
+
+    env_path = aw / "gate.env"
+    existing = parse_gate_env(env_path)
+
+    detected, sources = detect_gate(repo_root)
+    final: dict[str, str] = dict(existing)
+    for key in ALLOWED_ENV_KEYS:
+        val = detected.get(key, "")
+        if overwrite or not final.get(key):
+            if val:
+                final[key] = val
+
+    if not final.get("TEST_CMD"):
+        print("auto-gate: 未能自动推导 TEST_CMD，请手动设置 `autoworkflow set-gate --test ...` 或编辑 .autoworkflow/gate.env")
+        return 2
+
+    lines: list[str] = []
+    lines.append("Auto-detected gate commands:")
+    for key in ALLOWED_ENV_KEYS:
+        val = final.get(key, "")
+        src = sources.get(key, "existing" if key in existing else "heuristic")
+        lines.append(f"- {key}: {val or '(empty)'}  [source: {src}]")
+    print("\n".join(lines))
+
+    if dry_run:
+        print("dry-run: 未写入 .autoworkflow/gate.env")
+        return 0
+
+    write_gate_env(env_path, updates=final, force_create=True)
+    print("Updated: .autoworkflow/gate.env (auto-gate)")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="autoworkflow")
     parser.add_argument("--root", default=".", help="Target repo root (default: current directory)")
@@ -838,6 +1074,10 @@ def main(argv: list[str]) -> int:
     p_set.add_argument("--lint", default=None, help="LINT_CMD")
     p_set.add_argument("--format-check", dest="format_check", default=None, help="FORMAT_CHECK_CMD")
     p_set.add_argument("--create", action="store_true", help="Create gate.env if missing")
+
+    p_auto = sub.add_parser("auto-gate", help="Auto-detect gate commands and write .autoworkflow/gate.env")
+    p_auto.add_argument("--overwrite", action="store_true", help="Overwrite non-empty existing values")
+    p_auto.add_argument("--dry-run", action="store_true", help="Only print detected commands")
 
     p_gate = sub.add_parser("gate", help="Run the platform-appropriate gate script")
     p_gate.add_argument("--build", default=None, help="Override BUILD_CMD")
@@ -873,6 +1113,9 @@ def main(argv: list[str]) -> int:
         )
         print("Updated: .autoworkflow/gate.env")
         return 0
+
+    if args.cmd == "auto-gate":
+        return auto_gate(repo_root=repo_root, overwrite=bool(args.overwrite), dry_run=bool(args.dry_run))
 
     if args.cmd == "gate":
         return run_gate(
