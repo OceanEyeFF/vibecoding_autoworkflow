@@ -19,13 +19,12 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
 AW = ROOT / "codex-skills" / "feature-shipper" / "scripts" / "autoworkflow.py"
-TRACE_DIR = ROOT / ".autoworkflow" / "trace"
 
 
 def run(cmd: list[str], cwd: Path, title: str) -> tuple[int, str]:
@@ -51,9 +50,10 @@ def ensure_aw_exists(repo: Path) -> Path:
 def orchestrate(repo: Path, allow_unreviewed: bool) -> int:
     aw = ensure_aw_exists(repo)
     log: list[dict] = []
-    ts = datetime.utcnow().isoformat()
-    trace_path = TRACE_DIR / f"trace-{ts}.jsonl"
-    TRACE_DIR.mkdir(parents=True, exist_ok=True)
+    trace_dir = repo / ".autoworkflow" / "trace"
+    trace_dir.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    trace_path = trace_dir / f"trace-{ts}.jsonl"
 
     def step(name: str, cmd: list[str]) -> int:
         code, out = run(cmd, cwd=repo, title=name)

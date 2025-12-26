@@ -1348,10 +1348,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
+      - name: Init autoworkflow
+        run: python codex-skills/feature-shipper/scripts/autoworkflow.py --root . init --force
       - name: Plan review
-        run: python .autoworkflow/tools/autoworkflow.py plan review --root .
+        run: python .autoworkflow/tools/autoworkflow.py --root . plan review
       - name: Gate (dry-run)
-        run: python .autoworkflow/tools/autoworkflow.py gate --root . --allow-unreviewed
+        run: python .autoworkflow/tools/autoworkflow.py --root . gate --allow-unreviewed
       - name: Agents workflow (trace)
         run: python agents_runner.py --root . --allow-unreviewed
       - name: Agents SDK runner (optional)
@@ -1369,8 +1371,9 @@ jobs:
   image: python:3.11
   stage: test
   script:
-    - python .autoworkflow/tools/autoworkflow.py plan review --root .
-    - python .autoworkflow/tools/autoworkflow.py gate --root . --allow-unreviewed
+    - python codex-skills/feature-shipper/scripts/autoworkflow.py --root . init --force
+    - python .autoworkflow/tools/autoworkflow.py --root . plan review
+    - python .autoworkflow/tools/autoworkflow.py --root . gate --allow-unreviewed
     - python agents_runner.py --root . --allow-unreviewed
     - python agents_sdk_runner.py --root . --allow-unreviewed || true
   artifacts:
