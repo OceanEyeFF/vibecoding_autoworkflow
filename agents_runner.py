@@ -56,7 +56,7 @@ def orchestrate(repo: Path, allow_unreviewed: bool) -> int:
     aw = ensure_aw(repo)
     TRACE_DIR.mkdir(parents=True, exist_ok=True)
     log: List[Dict[str, Any]] = []
-    ts = datetime.utcnow().isoformat()
+    ts = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
     trace_path = TRACE_DIR / f"runner-trace-{ts}.jsonl"
 
     # Plan review (must approve unless allow_unreviewed)
