@@ -1333,10 +1333,15 @@ on:
     branches: [ "*" ]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"  # set ENABLE_SCHEDULE=true to activate
 
 jobs:
   plan-gate:
     runs-on: ubuntu-latest
+    env:
+      ENABLE_SCHEDULE: "false"
+    if: github.event_name != 'schedule' || env.ENABLE_SCHEDULE == 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -1349,6 +1354,9 @@ jobs:
         run: python .autoworkflow/tools/autoworkflow.py gate --root . --allow-unreviewed
       - name: Agents workflow (trace)
         run: python agents_runner.py --root . --allow-unreviewed
+      - name: Agents SDK runner (optional)
+        run: python agents_sdk_runner.py --root . --allow-unreviewed
+        continue-on-error: true
       - name: Upload trace
         uses: actions/upload-artifact@v4
         with:
@@ -1364,6 +1372,7 @@ jobs:
     - python .autoworkflow/tools/autoworkflow.py plan review --root .
     - python .autoworkflow/tools/autoworkflow.py gate --root . --allow-unreviewed
     - python agents_runner.py --root . --allow-unreviewed
+    - python agents_sdk_runner.py --root . --allow-unreviewed || true
   artifacts:
     paths:
       - .autoworkflow/trace/*.jsonl
