@@ -5,6 +5,7 @@
 
 ## 核心组成
 - Claude Agents：`.claude/agents/feature-shipper.md`（中枢）及若干专用 agent。
+- Claude Skills：`.claude/skills/`（Claude Code 官方形态的可复用能力包；供 subagents 通过 `skills:` 加载，如 `autoworkflow` / `git-workflow`）。
 - Codex Skills：`codex-skills/feature-shipper`（核心工具链）与 `codex-skills/feedback-logger`（可选后台日志）。
 - Repo-local 工作目录：`.autoworkflow/`（init / doctor / gate / state / spec / model-policy）。
 
@@ -29,11 +30,13 @@
 5) 执行 gate：`aw.ps1 gate` / `aw.sh gate`
 
 ## Claude Code 集成指引
-- 在目标项目放置 `.claude/agents/feature-shipper.md`（可加 code-analyzer / code-debug-expert / requirement-refiner 等），在 Claude Code 中选择对应 agent。  
-- Agent 会强制先打磨 spec/DoD，再坚持 gate（测试全绿）闭环推进。
+- 在目标项目放置 `.claude/agents/feature-shipper.md`（可加 code-analyzer / code-debug-expert / requirement-refiner 等），在 Claude Code 中选择对应 subagent。  
+- 同步本仓库的 `.claude/skills/` 到目标项目（至少 `autoworkflow` 与 `git-workflow`），并确保 subagent YAML 已通过 `skills:` 显式声明（子代理默认不继承 skills）。  
+- subagent 会强制先打磨 spec/DoD，再坚持 gate（测试全绿）闭环推进。
 
 ## 目录速览
 - `.claude/agents/`：Claude Agents 定义文件
+- `.claude/skills/`：Claude Skills（官方技能目录）
 - `codex-skills/feature-shipper/`：核心 skill，含 `scripts/autoworkflow.py`、aw/gate 模板
 - `codex-skills/feedback-logger/`：可选后台日志
 - `.spec-workflow/`：规范/任务模板（非主线）

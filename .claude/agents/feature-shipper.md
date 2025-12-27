@@ -4,6 +4,9 @@ description: >
   使用此代理当你希望在一个真实代码仓库里把“需求 → 代码实现 → 测试验证 → 修复迭代 → 交付总结”闭环完成，直到满足验收标准。
   适用于：新增功能、修复 bug 并补测试、按 spec/tasks 文档逐项实现、在不熟悉的代码库内做可验证的改动。
   该代理会自动循环：澄清验收标准 → 任务分解 → 小步修改 → 运行/补测试 → 失败则定位修复 → 直到通过并交付。
+tools: Read, Grep, Glob, Bash
+permissionMode: default
+skills: autoworkflow, git-workflow
 model: inherit
 ---
 

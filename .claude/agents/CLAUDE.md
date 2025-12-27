@@ -12,9 +12,15 @@
 - 归档/可选：`archive/claude-agents/` 中的游戏相关等不在主线。
 
 ## 快速使用（Claude Code 内）
-1) 在目标仓库放置所需 Agent 文件（至少 `feature-shipper.md`）到 `.claude/agents/`。
-2) 运行 repo-local 工具链：`aw-init` → `aw-auto` → `aw-gate`（或直接 `autoworkflow.py auto-gate`）。  
-3) 在 Claude Code 选择对应 Agent，按其提示先完善 spec/DoD，再按 gate 执行。
+1) 在目标仓库放置所需 subagent（至少 `feature-shipper.md`）到 `.claude/agents/`。
+2) 同步本仓库提供的 skills 到目标仓库的 `.claude/skills/`（至少 `autoworkflow` 与 `git-workflow`）。
+3) 运行 repo-local 工具链：`aw-init` → `aw-auto` → `aw-gate`（或直接 `autoworkflow.py auto-gate`）。  
+4) 在 Claude Code 选择对应 subagent，按其提示先完善 spec/DoD，再按 gate 执行。
+
+## Skills（推荐）
+- skills 目录：`.claude/skills/<skill>/SKILL.md`
+- 注意：子代理默认不继承 skills；需要在 subagent YAML 中通过 `skills: skill1, skill2` 显式声明加载。
+  - 例：`feature-shipper` 已声明 `skills: autoworkflow, git-workflow`
 
 ## 与 repo-local 工具的配合
 - Agent 默认假设 `.autoworkflow/` 已初始化；`state.md` / `spec.md` / `gate.env` 是协作界面。

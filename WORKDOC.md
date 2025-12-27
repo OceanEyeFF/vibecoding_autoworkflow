@@ -76,29 +76,29 @@ powershell -ExecutionPolicy Bypass -File "./codex-skills/feature-shipper/scripts
 
 ---
 
-## 4. 功能等价口径（7 项）与当前覆盖率
+## 4. 功能等价口径（v2：基于 Claude Code 官方 Subagents/Skills）
 
 口径（✅=已作为验收通过项；⚠️=已实现但未完成“实跑验收”；❌=未实现）：
 
-1) 编排入口（runner）✅：`agents_runner.py`  
-2) 门禁守卫（plan review gate）✅：`autoworkflow.py`（gate 默认要求 plan review=approve，可 `--allow-unreviewed` 跳过）  
-3) 可审计 trace ✅：`<repo>/.autoworkflow/trace/*.jsonl`  
-4) CI 触发入口 ✅：`.github/workflows/aw-plan-gate.yml` + `plan ci-template`  
-5) MCP server 可用且被 runner 使用 ⚠️：`agents_sdk_runner.py --mode mcp-smoke` 已通过；`--mode sdk` 尚未作为验收通过项  
-6) 多 agent handoff ⚠️：已在 `--mode sdk` 中实现 handoff 结构，但未完成“端到端可复现验收”  
-7) 非交互快速路（`codex exec --full-auto`）⚠️：已验证可跑通；但还未固化为 CI 的标准可选 job/入口规范
+1) Claude Code Subagents（官方形态）✅：`.claude/agents/*.md` 使用 YAML frontmatter（name/description/tools/permissionMode/skills 等），中枢 `feature-shipper` + 专用 subagents 可被显式/自动调用  
+2) Claude Code Skills（官方形态）✅：`.claude/skills/*/SKILL.md`（含 `name`/`description`/可选 `allowed-tools`），且 subagent 通过 `skills:` 显式声明以加载（子代理默认不继承 skills）  
+3) Repo-local Workflow/Gate 工具链 ✅：`.autoworkflow/tools/`（`autoworkflow.py` + `aw.ps1|aw.sh` + `gate.ps1|gate.sh`），目标平台 Windows pwsh + WSL/Linux  
+4) 单一“测试全绿”门禁 ✅：`.autoworkflow/gate.env` 作为 Build/Test/Lint/Format 源，`gate` 只读配置并输出结果（失败附 highlights/tail 追加到 `state.md`）  
+5) Plan → Review → Gate 闭环 ✅：`autoworkflow.py plan gen/review` + `gate` 默认要求 review=approve（可显式 `--allow-unreviewed` 覆盖）  
+6) 可审计 Trace ✅：`<repo>/.autoworkflow/trace/*.jsonl` 记录关键步骤与输出，便于 CI/复盘  
+7) CI 模板/入口 ✅：`autoworkflow.py plan ci-template` 生成 GitHub/GitLab 流水线（plan review → gate → trace artifact）
 
-**当前验收覆盖率（按 ✅ 计）：4/7 = 57.1%**  
-（节点 A 的定义就是把 1-4 做到“可跑 + 可复现 + 可审计”。）
+**当前验收覆盖率（按 ✅ 计）：7/7 = 100%**
 
 ---
 
-## 5. 下一阶段（验收节点 B）建议
+## 5. 下一阶段（扩展功能，非 v2 最小口径）
 
-目标：把 5-7 变成 ✅（有“实跑证据”），并把官方推荐形态真正落到“可复现工程实践”：
-- B1：`agents_sdk_runner.py --mode sdk` 端到端验收（handoff + MCP 工具真实调用 + 产物落盘）
-- B2：在 CI 中增加可选 job：`codex exec --full-auto`（默认关闭，可通过 `workflow_dispatch` 参数/环境变量启用）
-- B3：把 `approval-policy`/`sandbox` 从“文案/约束”升级为“真实透传并生效”的执行策略
+目标：在不破坏 v2 最小口径的前提下，补齐“全自动交付”体验（建分支是基础；PR/CI 改造是进阶）：
+- B1（Git 基础闭环）：自动建分支（必要）与可选本地 commit（`autoworkflow git branch start` / `autoworkflow git commit`）；PR 创建（gh/glab）作为进阶（需本地已登录）  
+- B2（Codex SDK/MCP 端到端）：`agents_sdk_runner.py --mode sdk` 实跑验收（handoff + MCP 工具真实调用 + 产物落盘）  
+- B3（全自动 CI 可选 job）：把 `codex exec --full-auto` 固化为 CI 可选 job（默认关闭，通过 `workflow_dispatch` 参数/环境变量启用）  
+- B4（权限策略落盘）：把 Claude Code `permissionMode`/skills `allowed-tools` 与 Codex `approval-policy`/`sandbox` 的安全边界写成可审计 policy（并提供最小模板）
 
 ---
 

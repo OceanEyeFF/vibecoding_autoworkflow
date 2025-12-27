@@ -1,14 +1,21 @@
 # Agents / Skills Index (Claude Code + Codex)
 
-这个仓库的目标：提供 **Claude Code Agents** 与 **Codex Skills** 两套可复用“自动化交付”能力。Trae 相关内容先不作为主线维护。
+这个仓库的目标：提供 **Claude Code Subagents/Skills** 与 **Codex Skills** 三套可复用“自动化交付”能力。Trae 相关内容先不作为主线维护。
 
 ## 中枢（闭环交付）
 
 - Claude Code Agent：`.claude/agents/feature-shipper.md`
+- Claude Code Skill：`.claude/skills/autoworkflow/SKILL.md`
+- Claude Code Skill：`.claude/skills/git-workflow/SKILL.md`
 - Codex Skill：`codex-skills/feature-shipper/SKILL.md`
 
 定位：把“需求 → 计划 → 实现 → 测试 → 修复迭代 → 交付”跑成闭环，直到满足验收标准。
 建议在目标项目中使用统一目录 `.autoworkflow/tools/` 存放跨平台 gate 脚本（Windows/WSL/Ubuntu 分别运行对应脚本），作为“测试全绿”的本地门禁入口。
+
+## Claude Code Skills（可复用能力包）
+
+- `autoworkflow`：`.claude/skills/autoworkflow/SKILL.md`（围绕 `.autoworkflow/` 的 plan/review/gate 标准化闭环）
+- `git-workflow`：`.claude/skills/git-workflow/SKILL.md`（建分支/可选本地 commit 的安全闭环）
 
 ## 可选：反馈日志（后台轻量记录）
 

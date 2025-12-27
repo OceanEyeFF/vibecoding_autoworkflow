@@ -17,6 +17,8 @@ from typing import Any
 ALLOWED_ENV_KEYS = ("BUILD_CMD", "TEST_CMD", "LINT_CMD", "FORMAT_CHECK_CMD")
 PLAN_FILE_NAME = "plan.yaml"
 PLAN_REVIEW_FILE = "plan-review.md"
+DEFAULT_PROTECTED_BRANCHES = ("main", "master")
+DEFAULT_BRANCH_PREFIX = "aw/"
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -424,8 +426,9 @@ def init_autoworkflow(repo_root: Path, force: bool) -> None:
         state_template = DEFAULT_STATE_TEMPLATE
         spec_template = DEFAULT_SPEC_TEMPLATE
 
-    # Make the tool self-contained in the target repo so it can be used from any environment (Claude/Codex/terminal)
-    copy_file(Path(__file__).resolve(), tools_dir / "autoworkflow.py", force=force)
+    # Make the tool self-contained in the target repo so it can be used from any environment (Claude/Codex/terminal).
+    # Keep the tool implementation up to date even when users re-run `init` without `--force`.
+    copy_file(Path(__file__).resolve(), tools_dir / "autoworkflow.py", force=True)
 
     safe_write_text(target / "state.md", state_template, force=force)
     safe_write_text(target / "spec.md", spec_template, force=force)
@@ -1184,6 +1187,169 @@ def _append_gate_to_state(repo_root: Path, gate_cmd: str, exit_code: int, output
             f.write("\n".join(section).lstrip("\n"))
 
 
+def _git_is_repo(repo_root: Path) -> bool:
+    if shutil.which("git") is None:
+        return False
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(repo_root), "rev-parse", "--is-inside-work-tree"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        return proc.returncode == 0 and proc.stdout.strip().lower() == "true"
+    except Exception:
+        return False
+
+
+def _run_git(repo_root: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(repo_root), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+
+
+def _git_current_branch(repo_root: Path) -> str | None:
+    proc = _run_git(repo_root, ["rev-parse", "--abbrev-ref", "HEAD"])
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip() or None
+
+
+def _git_branch_exists(repo_root: Path, name: str) -> bool:
+    proc = _run_git(repo_root, ["show-ref", "--verify", "--quiet", f"refs/heads/{name}"])
+    return proc.returncode == 0
+
+
+def _git_check_branch_name(repo_root: Path, name: str) -> bool:
+    proc = _run_git(repo_root, ["check-ref-format", "--branch", name])
+    return proc.returncode == 0
+
+
+def _default_branch_name(prefix: str) -> str:
+    normalized = prefix.strip()
+    if normalized and not normalized.endswith("/"):
+        normalized += "/"
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%SZ")
+    return f"{normalized}{ts}" if normalized else ts
+
+
+def _unique_branch_name(repo_root: Path, base: str) -> str:
+    if not _git_branch_exists(repo_root, base):
+        return base
+    for i in range(2, 100):
+        cand = f"{base}-{i}"
+        if not _git_branch_exists(repo_root, cand):
+            return cand
+    # last resort: time suffix
+    ts = datetime.now(timezone.utc).strftime("%H%M%S")
+    return f"{base}-{ts}"
+
+
+def git_branch_start(
+    repo_root: Path,
+    name: str | None,
+    prefix: str,
+    base_ref: str | None,
+    protected_branches: list[str],
+    dry_run: bool,
+    require_git: bool,
+) -> int:
+    if not _git_is_repo(repo_root):
+        msg = "git: not a git worktree (skip)"
+        if require_git:
+            print(f"{msg}; use --require-git=false to allow skipping")
+            return 2
+        print(msg)
+        return 0
+
+    current = _git_current_branch(repo_root)
+    if not current:
+        print("git: failed to detect current branch")
+        return 2
+
+    triggers = set([b for b in protected_branches if b])
+    should_create = current == "HEAD" or current in triggers
+    if not should_create:
+        print(f"git: already on branch '{current}' (skip)")
+        return 0
+
+    desired = name.strip() if name else _default_branch_name(prefix=prefix or DEFAULT_BRANCH_PREFIX)
+    desired = desired.strip()
+    if not desired:
+        desired = _default_branch_name(prefix=DEFAULT_BRANCH_PREFIX)
+
+    if not _git_check_branch_name(repo_root, desired):
+        fallback = _default_branch_name(prefix=DEFAULT_BRANCH_PREFIX)
+        print(f"git: invalid branch name '{desired}', fallback to '{fallback}'")
+        desired = fallback
+
+    desired = _unique_branch_name(repo_root, desired)
+
+    args = ["checkout", "-b", desired]
+    if base_ref:
+        args.append(base_ref)
+
+    printable = "git " + " ".join(args)
+    if dry_run:
+        print(f"[dry-run] {printable}")
+        return 0
+
+    code, out = _run_and_tee(["git", *args], cwd=repo_root)
+    if code != 0:
+        return int(code)
+    print(f"git: switched to '{desired}'")
+    return 0
+
+
+def git_commit(
+    repo_root: Path,
+    message: str,
+    stage_all: bool,
+    dry_run: bool,
+    require_git: bool,
+) -> int:
+    if not _git_is_repo(repo_root):
+        msg = "git: not a git worktree (skip)"
+        if require_git:
+            print(f"{msg}; use --require-git=false to allow skipping")
+            return 2
+        print(msg)
+        return 0
+
+    msg = message.strip()
+    if not msg:
+        print("git: missing --message")
+        return 2
+
+    if stage_all:
+        if dry_run:
+            print("[dry-run] git add -A")
+        else:
+            code, _out = _run_and_tee(["git", "add", "-A"], cwd=repo_root)
+            if code != 0:
+                return int(code)
+
+    proc = _run_git(repo_root, ["diff", "--cached", "--name-only"])
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr)
+        return int(proc.returncode)
+    if not proc.stdout.strip():
+        print("git: nothing staged to commit (skip)")
+        return 0
+
+    if dry_run:
+        print(f"[dry-run] git commit -m {json.dumps(msg)}")
+        return 0
+
+    code, _out = _run_and_tee(["git", "commit", "-m", msg], cwd=repo_root)
+    return int(code)
+
+
 def run_gate(
     repo_root: Path,
     build: str | None,
@@ -1667,6 +1833,32 @@ def main(argv: list[str]) -> int:
     p_plan_ci = plan_sub.add_parser("ci-template", help="Generate CI template for plan review + gate dry-run")
     p_plan_ci.add_argument("--provider", choices=["github", "gitlab"], default="github", help="CI provider")
 
+    p_git = sub.add_parser("git", help="Git helpers (branch/commit)")
+    git_sub = p_git.add_subparsers(dest="git_cmd", required=True)
+
+    p_git_branch = git_sub.add_parser("branch", help="Branch operations")
+    branch_sub = p_git_branch.add_subparsers(dest="branch_cmd", required=True)
+    p_git_branch_start = branch_sub.add_parser(
+        "start",
+        help="Create a new branch when on protected branch (main/master) or detached HEAD",
+    )
+    p_git_branch_start.add_argument("--name", default=None, help="Branch name (optional)")
+    p_git_branch_start.add_argument("--prefix", default=DEFAULT_BRANCH_PREFIX, help=f"Auto branch prefix (default {DEFAULT_BRANCH_PREFIX})")
+    p_git_branch_start.add_argument("--base", default=None, help="Base ref (optional, e.g. origin/main)")
+    p_git_branch_start.add_argument(
+        "--protected",
+        default=",".join(DEFAULT_PROTECTED_BRANCHES),
+        help=f"Comma-separated protected branches (default: {','.join(DEFAULT_PROTECTED_BRANCHES)})",
+    )
+    p_git_branch_start.add_argument("--dry-run", action="store_true", help="Only print actions")
+    p_git_branch_start.add_argument("--require-git", action="store_true", help="Fail if not a git repo")
+
+    p_git_commit = git_sub.add_parser("commit", help="Create a local commit (optional)")
+    p_git_commit.add_argument("-m", "--message", required=True, help="Commit message")
+    p_git_commit.add_argument("--all", action="store_true", help="Stage all changes before commit (git add -A)")
+    p_git_commit.add_argument("--dry-run", action="store_true", help="Only print actions")
+    p_git_commit.add_argument("--require-git", action="store_true", help="Fail if not a git repo")
+
     p_rec = sub.add_parser("recommend-model", help="Recommend model profile (light/medium/heavy) for Claude/Codex")
     p_rec.add_argument("--intent", default=None, help="Optional intent hint (e.g., doctor, workshop, debug)")
 
@@ -1725,6 +1917,30 @@ def main(argv: list[str]) -> int:
         print(f"- claude: {claude}")
         print(f"- codex: {codex}")
         return 0
+
+    if args.cmd == "git":
+        if args.git_cmd == "branch":
+            if args.branch_cmd == "start":
+                protected = [p.strip() for p in str(args.protected or "").split(",") if p.strip()]
+                return git_branch_start(
+                    repo_root=repo_root,
+                    name=args.name,
+                    prefix=str(args.prefix or DEFAULT_BRANCH_PREFIX),
+                    base_ref=args.base,
+                    protected_branches=protected or list(DEFAULT_PROTECTED_BRANCHES),
+                    dry_run=bool(args.dry_run),
+                    require_git=bool(args.require_git),
+                )
+            raise AssertionError("unknown git branch subcommand")
+        if args.git_cmd == "commit":
+            return git_commit(
+                repo_root=repo_root,
+                message=str(args.message),
+                stage_all=bool(args.all),
+                dry_run=bool(args.dry_run),
+                require_git=bool(args.require_git),
+            )
+        raise AssertionError("unknown git subcommand")
 
     if args.cmd == "plan":
         if args.plan_cmd == "init":
