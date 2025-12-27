@@ -554,17 +554,59 @@ def detect_node_gate(repo_root: Path) -> dict[str, str]:
 
 
 def detect_python_gate(repo_root: Path) -> dict[str, str]:
-    if not ((repo_root / "pyproject.toml").exists() or (repo_root / "requirements.txt").exists() or (repo_root / "poetry.lock").exists()):
+    strong_project = any(
+        [
+            (repo_root / "pyproject.toml").exists(),
+            (repo_root / "requirements.txt").exists(),
+            (repo_root / "poetry.lock").exists(),
+            (repo_root / "setup.py").exists(),
+            (repo_root / "setup.cfg").exists(),
+        ]
+    )
+    if strong_project:
+        uses_poetry = (repo_root / "poetry.lock").exists()
+        test_cmd = "poetry run pytest" if uses_poetry else "pytest"
+        lint_cmd = "poetry run ruff check ." if uses_poetry else "ruff check ."
+        fmt_cmd = "poetry run ruff format --check ." if uses_poetry else "ruff format --check ."
+        return {
+            "BUILD_CMD": "",
+            "TEST_CMD": test_cmd,
+            "LINT_CMD": lint_cmd,
+            "FORMAT_CHECK_CMD": fmt_cmd,
+        }
+
+    # Fallback for "Python scripts" repos (no pyproject/requirements.txt):
+    # prefer a deterministic syntax check over guessing pytest/ruff.
+    weak_signal = any(
+        [
+            bool(list(repo_root.glob("requirements*.txt"))),
+            bool(list(repo_root.glob("*.py"))),
+            bool(list((repo_root / "scripts").glob("*.py"))),
+            bool(list((repo_root / "tools").glob("*.py"))),
+        ]
+    )
+    if not weak_signal:
         return {}
-    uses_poetry = (repo_root / "poetry.lock").exists()
-    test_cmd = "poetry run pytest" if uses_poetry else "pytest"
-    lint_cmd = "poetry run ruff check ." if uses_poetry else "ruff check ."
-    fmt_cmd = "poetry run ruff format --check ." if uses_poetry else "ruff format --check ."
+
+    # Avoid misclassifying obvious non-Python projects.
+    other_markers = [
+        repo_root / "package.json",
+        repo_root / "Cargo.toml",
+        repo_root / "go.mod",
+        repo_root / "pom.xml",
+        repo_root / "gradlew",
+        repo_root / "gradlew.bat",
+        repo_root / "build.gradle",
+        repo_root / "build.gradle.kts",
+    ]
+    if any(p.exists() for p in other_markers) or bool(list(repo_root.glob("*.sln"))):
+        return {}
+
     return {
         "BUILD_CMD": "",
-        "TEST_CMD": test_cmd,
-        "LINT_CMD": lint_cmd,
-        "FORMAT_CHECK_CMD": fmt_cmd,
+        "TEST_CMD": "python -m compileall -q .",
+        "LINT_CMD": "",
+        "FORMAT_CHECK_CMD": "",
     }
 
 
@@ -683,6 +725,129 @@ def detect_gate(repo_root: Path) -> tuple[dict[str, str], dict[str, str]]:
                 suggested[k] = v
                 sources[k] = origin
     return suggested, sources
+
+
+def _normalize_gate_value(raw: str) -> str:
+    val = raw.strip()
+    if len(val) >= 2 and ((val[0] == val[-1] == '"') or (val[0] == val[-1] == "'")):
+        val = val[1:-1].strip()
+    val = val.strip("`").strip()
+    return val
+
+
+def parse_gate_kv_from_text(text: str) -> dict[str, str]:
+    """
+    Extracts BUILD_CMD/TEST_CMD/LINT_CMD/FORMAT_CHECK_CMD from arbitrary text.
+    Accepts:
+      - KEY=value
+      - - KEY=value
+      - `KEY=value`
+    """
+    found: dict[str, str] = {}
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        line = line.strip().strip("`")
+        if line.startswith(("-", "*")):
+            line = line[1:].lstrip().strip("`")
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if key not in ALLOWED_ENV_KEYS:
+            continue
+        found[key] = _normalize_gate_value(value)
+    return found
+
+
+def codex_detect_gate(
+    repo_root: Path,
+    *,
+    oss: bool,
+    local_provider: str | None,
+    model: str | None,
+    timeout_seconds: int,
+) -> tuple[dict[str, str], str]:
+    codex_bin = shutil.which("codex")
+    if not codex_bin and os.name == "nt":
+        appdata = os.environ.get("APPDATA", "")
+        if appdata:
+            candidate = Path(appdata) / "npm" / "codex.cmd"
+            if candidate.exists():
+                codex_bin = str(candidate)
+    if not codex_bin:
+        raise RuntimeError("codex CLI not found in PATH (install codex-cli or disable --codex).")
+
+    prompt = "\n".join(
+        [
+            "You are in a project repository root.",
+            "",
+            "Goal: infer gate commands for the repo.",
+            "",
+            "Hard rules:",
+            "- Do NOT run any commands/tests.",
+            "- Do NOT modify any files.",
+            "- You may read repo files.",
+            "- Output exactly 4 lines (allow empty values). No markdown/code blocks/explanations:",
+            "BUILD_CMD=",
+            "TEST_CMD=",
+            "LINT_CMD=",
+            "FORMAT_CHECK_CMD=",
+            "",
+            "Hint: if you cannot infer a real test entrypoint, set TEST_CMD to: python -m compileall -q .",
+        ]
+    )
+
+    cmd: list[str] = [
+        codex_bin,
+        "--sandbox",
+        "read-only",
+        "--ask-for-approval",
+        "untrusted",
+    ]
+    if oss:
+        cmd.append("--oss")
+        if local_provider:
+            cmd.extend(["--local-provider", local_provider])
+    if model:
+        cmd.extend(["--model", model])
+    cmd.extend(["exec", "--skip-git-repo-check", "-C", str(repo_root), "-"])
+
+    proc = subprocess.Popen(
+        cmd,
+        cwd=str(repo_root),
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    try:
+        output, _ = proc.communicate(input=prompt, timeout=timeout_seconds)
+    except subprocess.TimeoutExpired:
+        try:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
+            else:
+                proc.kill()
+        except Exception:
+            pass
+        raise RuntimeError(f"codex exec timed out after {timeout_seconds}s")
+    output = output or ""
+    code = int(proc.returncode or 0)
+    parsed = parse_gate_kv_from_text(output)
+    if parsed:
+        return parsed, output
+    preview = output[:4000]
+    suffix = "" if len(output) <= 4000 else "\n...(truncated)..."
+    raise RuntimeError(f"codex exec failed (exit {code}) or produced no KEY=value output.\n{preview}{suffix}")
 
 
 def load_model_policy(repo_root: Path) -> dict:
@@ -1390,7 +1555,17 @@ jobs:
     return 0
 
 
-def auto_gate(repo_root: Path, overwrite: bool, dry_run: bool) -> int:
+def auto_gate(
+    repo_root: Path,
+    overwrite: bool,
+    dry_run: bool,
+    *,
+    use_codex: bool,
+    codex_oss: bool,
+    codex_local_provider: str | None,
+    codex_model: str | None,
+    codex_timeout_seconds: int,
+) -> int:
     aw = repo_autoworkflow_dir(repo_root)
     if not aw.exists():
         init_autoworkflow(repo_root=repo_root, force=False)
@@ -1405,6 +1580,25 @@ def auto_gate(repo_root: Path, overwrite: bool, dry_run: bool) -> int:
         if overwrite or not final.get(key):
             if val:
                 final[key] = val
+
+    if use_codex and (overwrite or not final.get("TEST_CMD")):
+        try:
+            codex_detected, _raw = codex_detect_gate(
+                repo_root,
+                oss=codex_oss,
+                local_provider=codex_local_provider,
+                model=codex_model,
+                timeout_seconds=codex_timeout_seconds,
+            )
+            for key in ALLOWED_ENV_KEYS:
+                val = codex_detected.get(key, "")
+                if not val:
+                    continue
+                if overwrite or not final.get(key):
+                    final[key] = val
+                    sources[key] = "codex"
+        except Exception as exc:
+            print(f"auto-gate: codex fallback failed: {exc}")
 
     if not final.get("TEST_CMD"):
         print("auto-gate: 未能自动推导 TEST_CMD，请手动设置 `autoworkflow set-gate --test ...` 或编辑 .autoworkflow/gate.env")
@@ -1449,6 +1643,11 @@ def main(argv: list[str]) -> int:
     p_auto = sub.add_parser("auto-gate", help="Auto-detect gate commands and write .autoworkflow/gate.env")
     p_auto.add_argument("--overwrite", action="store_true", help="Overwrite non-empty existing values")
     p_auto.add_argument("--dry-run", action="store_true", help="Only print detected commands")
+    p_auto.add_argument("--codex", action="store_true", help="Also ask Codex CLI to infer gate commands (read-only)")
+    p_auto.add_argument("--codex-oss", action="store_true", help="Use local OSS provider for Codex (--oss)")
+    p_auto.add_argument("--codex-local-provider", choices=["ollama", "lmstudio"], default=None, help="Codex local provider")
+    p_auto.add_argument("--codex-model", default=None, help="Codex model name (optional)")
+    p_auto.add_argument("--codex-timeout", type=int, default=180, help="Codex exec timeout seconds (default 180)")
 
     p_gate = sub.add_parser("gate", help="Run the platform-appropriate gate script")
     p_gate.add_argument("--build", default=None, help="Override BUILD_CMD")
@@ -1498,7 +1697,16 @@ def main(argv: list[str]) -> int:
         return 0
 
     if args.cmd == "auto-gate":
-        return auto_gate(repo_root=repo_root, overwrite=bool(args.overwrite), dry_run=bool(args.dry_run))
+        return auto_gate(
+            repo_root=repo_root,
+            overwrite=bool(args.overwrite),
+            dry_run=bool(args.dry_run),
+            use_codex=bool(args.codex),
+            codex_oss=bool(args.codex_oss),
+            codex_local_provider=args.codex_local_provider,
+            codex_model=args.codex_model,
+            codex_timeout_seconds=int(args.codex_timeout),
+        )
 
     if args.cmd == "gate":
         return run_gate(

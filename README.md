@@ -41,6 +41,7 @@
 
 3) 生成 gate（推荐：自动推导）
 - 仓库根执行：`python .autoworkflow/tools/autoworkflow.py auto-gate`
+- （可选）让 Codex CLI 辅助推导：`python .autoworkflow/tools/autoworkflow.py auto-gate --codex`
 - 或全局安装后：`aw-auto`
 - 说明：优先解析 `CLAUDE.md` 的 Build/Test/Lint/Format；再按常见项目类型推导；写入 `.autoworkflow/gate.env`（默认保留已有值，除非 `--overwrite`）。
 
