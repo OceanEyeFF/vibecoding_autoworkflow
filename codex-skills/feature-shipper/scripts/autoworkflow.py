@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import os
 import platform
@@ -8,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tokenize
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
@@ -622,7 +624,7 @@ def detect_python_gate(repo_root: Path) -> dict[str, str]:
 
     return {
         "BUILD_CMD": "",
-        "TEST_CMD": "python -m compileall -q .",
+        "TEST_CMD": "python .autoworkflow/tools/autoworkflow.py --root . py-syntax",
         "LINT_CMD": "",
         "FORMAT_CHECK_CMD": "",
     }
@@ -1087,12 +1089,13 @@ def _stdout_write(text: str) -> None:
             sys.stdout.flush()
 
 
-def _run_and_tee(cmd: list[str], cwd: Path) -> tuple[int, str]:
+def _run_and_tee(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> tuple[int, str]:
     proc = subprocess.Popen(
         cmd,
         cwd=str(cwd),
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
+        env=env,
         text=True,
         encoding="utf-8",
         errors="replace",
@@ -1226,6 +1229,57 @@ def _run_git(repo_root: Path, args: list[str]) -> subprocess.CompletedProcess[st
         encoding="utf-8",
         errors="replace",
     )
+
+
+def _git_ls_files(repo_root: Path, pattern: str) -> list[Path]:
+    if not _git_is_repo(repo_root):
+        return []
+    proc = _run_git(repo_root, ["ls-files", pattern])
+    if proc.returncode != 0:
+        return []
+    paths: list[Path] = []
+    for raw in proc.stdout.splitlines():
+        rel = raw.strip()
+        if not rel:
+            continue
+        paths.append(repo_root / rel)
+    return paths
+
+
+def py_syntax_check(repo_root: Path) -> int:
+    files = _git_ls_files(repo_root, "*.py")
+    if not files:
+        excluded = {".git", ".autoworkflow", ".spec-workflow", ".venv", "node_modules", "__pycache__"}
+        for p in repo_root.rglob("*.py"):
+            rel = p.relative_to(repo_root)
+            if any(part in excluded for part in rel.parts):
+                continue
+            files.append(p)
+
+    if not files:
+        print("py-syntax: no python files found (skip)")
+        return 0
+
+    failures = 0
+    for path in files:
+        try:
+            src = tokenize.open(str(path)).read()
+            ast.parse(src, filename=str(path))
+        except SyntaxError as e:
+            failures += 1
+            loc = f"{path}:{e.lineno or 0}:{e.offset or 0}"
+            msg = e.msg or "SyntaxError"
+            print(f"py-syntax: {loc}: {msg}")
+        except Exception as e:
+            failures += 1
+            print(f"py-syntax: {path}: {e}")
+
+    if failures:
+        print(f"py-syntax: failed ({failures}/{len(files)})")
+        return 1
+
+    print(f"py-syntax: OK ({len(files)} files)")
+    return 0
 
 
 def _git_current_branch(repo_root: Path) -> str | None:
@@ -1634,6 +1688,99 @@ def _git_remote_has_branch(repo_root: Path, remote: str, branch: str) -> bool:
     return proc.returncode == 0 and bool(proc.stdout.strip())
 
 
+def _git_is_https_remote(url: str) -> bool:
+    u = (url or "").strip().lower()
+    return u.startswith("http://") or u.startswith("https://")
+
+
+def _ensure_git_askpass_script(repo_root: Path) -> Path:
+    aw = repo_autoworkflow_dir(repo_root)
+    trace_dir = aw / "trace"
+    trace_dir.mkdir(parents=True, exist_ok=True)
+
+    if os.name == "nt":
+        path = trace_dir / "git-askpass.cmd"
+        content = "\n".join(
+            [
+                "@echo off",
+                "set prompt=%*",
+                "echo %prompt% | findstr /i \"Username for\" >nul",
+                "if %errorlevel%==0 (",
+                "  echo %AUTOWORKFLOW_ASKPASS_USER%",
+                "  exit /b 0",
+                ")",
+                "echo %prompt% | findstr /i \"Password for\" >nul",
+                "if %errorlevel%==0 (",
+                "  echo %AUTOWORKFLOW_ASKPASS_TOKEN%",
+                "  exit /b 0",
+                ")",
+                "echo %AUTOWORKFLOW_ASKPASS_TOKEN%",
+                "exit /b 0",
+                "",
+            ]
+        )
+        safe_write_text(path, content, force=True)
+        return path
+
+    path = trace_dir / "git-askpass.sh"
+    content = "\n".join(
+        [
+            "#!/usr/bin/env sh",
+            "p=\"$1\"",
+            "case \"$p\" in",
+            "  *Username*) printf '%s\\n' \"${AUTOWORKFLOW_ASKPASS_USER}\" ;;",
+            "  *Password*) printf '%s\\n' \"${AUTOWORKFLOW_ASKPASS_TOKEN}\" ;;",
+            "  *) printf '%s\\n' \"${AUTOWORKFLOW_ASKPASS_TOKEN}\" ;;",
+            "esac",
+            "",
+        ]
+    )
+    safe_write_text(path, content, force=True)
+    try:
+        os.chmod(path, 0o755)
+    except Exception:
+        pass
+    return path
+
+
+def _git_auth_env_for_remote(repo_root: Path, remote: str, provider_hint: str | None = None) -> dict[str, str] | None:
+    url = _git_remote_url(repo_root, remote)
+    if not url:
+        return None
+    if not _git_is_https_remote(url):
+        return None
+
+    info = _parse_remote_repo(url)
+    if not info:
+        return None
+
+    provider = provider_hint if provider_hint and provider_hint != "auto" else info.provider
+
+    username: str | None = None
+    token: str | None = None
+    if provider == "gitee":
+        token = (os.environ.get("GITEE_TOKEN") or "").strip()
+        if not token:
+            return None
+        username = (os.environ.get("GITEE_USERNAME") or info.owner).strip() or info.owner
+    elif provider == "github":
+        token = (os.environ.get("GITHUB_TOKEN") or "").strip()
+        if not token:
+            return None
+        username = "x-access-token"
+    else:
+        return None
+
+    askpass = _ensure_git_askpass_script(repo_root)
+    env = dict(os.environ)
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GIT_ASKPASS"] = str(askpass)
+    env["AUTOWORKFLOW_ASKPASS_USER"] = username
+    env["AUTOWORKFLOW_ASKPASS_TOKEN"] = token
+    env["GCM_INTERACTIVE"] = "Never"
+    return env
+
+
 def git_push(
     repo_root: Path,
     remote: str,
@@ -1666,7 +1813,19 @@ def git_push(
         print(f"[dry-run] {printable}")
         return 0
 
-    code, _out = _run_and_tee(["git", *args], cwd=repo_root)
+    auth_env = _git_auth_env_for_remote(repo_root, remote=remote)
+    if auth_env is None:
+        remote_url = _git_remote_url(repo_root, remote)
+        info = _parse_remote_repo(remote_url or "") if remote_url else None
+        if remote_url and _git_is_https_remote(remote_url) and info:
+            if info.provider == "gitee":
+                print("git: missing GITEE_TOKEN for https push (or switch remote to ssh)")
+                return 2
+            if info.provider == "github":
+                print("git: missing GITHUB_TOKEN for https push (or switch remote to ssh)")
+                return 2
+
+    code, _out = _run_and_tee(["git", *args], cwd=repo_root, env=auth_env)
     return int(code)
 
 
@@ -1825,6 +1984,20 @@ def git_pr_create(
         print(f"git: unsupported provider '{chosen}' (use --provider gitee|github)")
         return 2
 
+    auth_env = _git_auth_env_for_remote(repo_root, remote=remote, provider_hint=chosen)
+    if _git_is_https_remote(remote_url) and chosen == "gitee" and not dry_run:
+        # Gitee PR creation always needs token (API), and https pushes need non-interactive auth for automation.
+        if not (os.environ.get("GITEE_TOKEN") or "").strip():
+            print("git: missing GITEE_TOKEN env var")
+            return 2
+        if auth_env is None:
+            print("git: missing GITEE_TOKEN for https git auth (or switch remote to ssh)")
+            return 2
+    if _git_is_https_remote(remote_url) and chosen == "github" and (push or bootstrap_base_from) and not dry_run:
+        if auth_env is None:
+            print("git: missing GITHUB_TOKEN for https git auth (or switch remote to ssh)")
+            return 2
+
     base = (base or "develop").strip()
     if not base:
         base = "develop"
@@ -1839,7 +2012,7 @@ def git_pr_create(
             if dry_run:
                 print(f"[dry-run] git {' '.join(push_args)}")
             else:
-                code, _out = _run_and_tee(["git", *push_args], cwd=repo_root)
+                code, _out = _run_and_tee(["git", *push_args], cwd=repo_root, env=auth_env)
                 if code != 0:
                     return int(code)
         else:
@@ -2443,6 +2616,8 @@ def main(argv: list[str]) -> int:
     p_gate.add_argument("--format-check", dest="format_check", default=None, help="Override FORMAT_CHECK_CMD")
     p_gate.add_argument("--allow-unreviewed", action="store_true", help="Skip plan review guard (not recommended)")
 
+    sub.add_parser("py-syntax", help="Check Python syntax without writing .pyc files")
+
     p_plan = sub.add_parser("plan", help="Plan lifecycle (init/gen/review/status)")
     plan_sub = p_plan.add_subparsers(dest="plan_cmd", required=True)
     p_plan_init = plan_sub.add_parser("init", help="Create default plan.yaml")
@@ -2567,6 +2742,9 @@ def main(argv: list[str]) -> int:
             fmt=args.format_check,
             allow_unreviewed=bool(args.allow_unreviewed),
         )
+
+    if args.cmd == "py-syntax":
+        return py_syntax_check(repo_root=repo_root)
 
     if args.cmd == "recommend-model":
         profile, claude, codex = recommend_model(repo_root=repo_root, intent=args.intent)
