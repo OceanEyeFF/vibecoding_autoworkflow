@@ -3,6 +3,12 @@ set -euo pipefail
 
 ROOT="."
 BRANCH_NAME=""
+BASE="develop"
+BOOTSTRAP_BASE_FROM=""
+COMMIT=0
+PUSH=0
+PR=0
+DRAFT=0
 ALLOW_UNREVIEWED=0
 DRY_RUN=0
 
@@ -10,6 +16,12 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --root) ROOT="$2"; shift ;;
     --branch|--branch-name) BRANCH_NAME="$2"; shift ;;
+    --base) BASE="$2"; shift ;;
+    --bootstrap-base-from) BOOTSTRAP_BASE_FROM="$2"; shift ;;
+    --commit) COMMIT=1 ;;
+    --push) PUSH=1 ;;
+    --pr) PR=1 ;;
+    --draft) DRAFT=1 ;;
     --allow-unreviewed) ALLOW_UNREVIEWED=1 ;;
     --dry-run) DRY_RUN=1 ;;
     *) echo "Unknown arg: $1" >&2; exit 1 ;;
@@ -54,5 +66,18 @@ run_step "plan review" python "$TOOL" --root "$ROOT_PATH" plan review
 ALLOW=()
 [[ "$ALLOW_UNREVIEWED" == "1" ]] && ALLOW=(--allow-unreviewed)
 run_step "gate" python "$TOOL" --root "$ROOT_PATH" gate "${ALLOW[@]}"
+
+if [[ "$COMMIT" == "1" ]]; then
+  run_step "git commit" python "$TOOL" --root "$ROOT_PATH" git commit --all --auto-message
+fi
+
+if [[ "$PR" == "1" ]]; then
+  PR_ARGS=(--base "$BASE" --push -u)
+  [[ "$DRAFT" == "1" ]] && PR_ARGS+=(--draft)
+  [[ -n "$BOOTSTRAP_BASE_FROM" ]] && PR_ARGS+=(--bootstrap-base-from "$BOOTSTRAP_BASE_FROM")
+  run_step "git pr create" python "$TOOL" --root "$ROOT_PATH" git pr create "${PR_ARGS[@]}"
+elif [[ "$PUSH" == "1" ]]; then
+  run_step "git push" python "$TOOL" --root "$ROOT_PATH" git push -u
+fi
 
 echo "Done."

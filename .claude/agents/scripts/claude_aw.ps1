@@ -2,6 +2,13 @@ param(
   [string]$Root = ".",
   [Alias("branch","branch-name")]
   [string]$BranchName = "",
+  [string]$Base = "develop",
+  [Alias("bootstrap-base-from")]
+  [string]$BootstrapBaseFrom = "",
+  [switch]$Commit,
+  [switch]$Push,
+  [switch]$PR,
+  [switch]$Draft,
   [Alias("allow-unreviewed")]
   [switch]$AllowUnreviewed,
   [Alias("dry-run")]
@@ -54,5 +61,19 @@ Run-Step "plan review" "python `"$tool`" --root `"$rootPath`" plan review"
 $allow = ""
 if ($AllowUnreviewed.IsPresent) { $allow = "--allow-unreviewed" }
 Run-Step "gate" "python `"$tool`" --root `"$rootPath`" gate $allow"
+
+if ($Commit.IsPresent) {
+  Run-Step "git commit" "python `"$tool`" --root `"$rootPath`" git commit --all --auto-message"
+}
+
+if ($PR.IsPresent) {
+  $draftArg = ""
+  if ($Draft.IsPresent) { $draftArg = "--draft" }
+  $bootstrapArg = ""
+  if ($BootstrapBaseFrom -and $BootstrapBaseFrom.Trim().Length -gt 0) { $bootstrapArg = "--bootstrap-base-from `"$BootstrapBaseFrom`"" }
+  Run-Step "git pr create" "python `"$tool`" --root `"$rootPath`" git pr create --base `"$Base`" --push -u $draftArg $bootstrapArg"
+} elseif ($Push.IsPresent) {
+  Run-Step "git push" "python `"$tool`" --root `"$rootPath`" git push -u"
+}
 
 Write-Host "Done."

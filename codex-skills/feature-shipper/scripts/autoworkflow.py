@@ -8,6 +8,8 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,6 +21,19 @@ PLAN_FILE_NAME = "plan.yaml"
 PLAN_REVIEW_FILE = "plan-review.md"
 DEFAULT_PROTECTED_BRANCHES = ("main", "master")
 DEFAULT_BRANCH_PREFIX = "aw/"
+CONVENTIONAL_COMMIT_TYPES = (
+    "feat",
+    "fix",
+    "docs",
+    "style",
+    "refactor",
+    "perf",
+    "test",
+    "build",
+    "ci",
+    "chore",
+    "revert",
+)
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -1308,8 +1323,13 @@ def git_branch_start(
 
 def git_commit(
     repo_root: Path,
-    message: str,
+    message: str | None,
     stage_all: bool,
+    auto_message: bool,
+    lang: str,
+    conventional: bool,
+    commit_type: str | None,
+    scope: str | None,
     dry_run: bool,
     require_git: bool,
 ) -> int:
@@ -1321,10 +1341,7 @@ def git_commit(
         print(msg)
         return 0
 
-    msg = message.strip()
-    if not msg:
-        print("git: missing --message")
-        return 2
+    msg = (message or "").strip()
 
     if stage_all:
         if dry_run:
@@ -1342,12 +1359,616 @@ def git_commit(
         print("git: nothing staged to commit (skip)")
         return 0
 
+    staged_paths = [p for p in proc.stdout.splitlines() if p.strip()]
+
+    subject: str | None = None
+    body: str | None = None
+
+    if auto_message:
+        subject, body = _generate_commit_message(
+            repo_root=repo_root,
+            staged_paths=staged_paths,
+            lang=lang,
+            commit_type=commit_type,
+            scope=scope,
+        )
+    else:
+        if not msg:
+            print("git: missing --message (or use --auto-message)")
+            return 2
+        lines = msg.splitlines()
+        subject = lines[0].strip() if lines else ""
+        body = "\n".join(lines[1:]).strip() if len(lines) > 1 else None
+        if body == "":
+            body = None
+
+    assert subject is not None
+    subject = subject.strip()
+    if not subject:
+        print("git: empty commit subject")
+        return 2
+
+    if conventional and not _is_conventional_subject(subject):
+        print("git: commit subject must follow Conventional Commits")
+        print(f"git: got: {json.dumps(subject)}")
+        print('git: expected: "feat(scope): 简短说明" (scope optional)')
+        return 2
+
+    args = ["git", "commit", "-m", subject]
+    if body:
+        args.extend(["-m", body])
+
+    printable = " ".join(args[:3]) + f" {json.dumps(subject)}"
+    if body:
+        printable += " -m <body>"
+
     if dry_run:
-        print(f"[dry-run] git commit -m {json.dumps(msg)}")
+        print(f"[dry-run] {printable}")
         return 0
 
-    code, _out = _run_and_tee(["git", "commit", "-m", msg], cwd=repo_root)
+    code, _out = _run_and_tee(args, cwd=repo_root)
     return int(code)
+
+
+def _is_conventional_subject(subject: str) -> bool:
+    # https://www.conventionalcommits.org/en/v1.0.0/
+    types = "|".join(re.escape(t) for t in CONVENTIONAL_COMMIT_TYPES)
+    rx = re.compile(rf"^(?:{types})(?:\([^)]+\))?: .+")
+    return bool(rx.match(subject.strip()))
+
+
+def _generate_commit_message(
+    repo_root: Path,
+    staged_paths: list[str],
+    lang: str,
+    commit_type: str | None,
+    scope: str | None,
+) -> tuple[str, str | None]:
+    if lang not in ("zh", "en"):
+        lang = "zh"
+
+    guessed_type, guessed_scope = _guess_conventional_type_and_scope(staged_paths)
+    ctype = (commit_type or guessed_type).strip()
+    if ctype not in CONVENTIONAL_COMMIT_TYPES:
+        ctype = guessed_type
+
+    cscope = (scope or guessed_scope or "").strip() or None
+
+    subject_text = _auto_subject_text(lang=lang, commit_type=ctype, scope=cscope)
+    subject = f"{ctype}{f'({cscope})' if cscope else ''}: {subject_text}"
+
+    body = _auto_body_text(lang=lang, staged_paths=staged_paths)
+    return subject, body
+
+
+def _guess_conventional_type_and_scope(staged_paths: list[str]) -> tuple[str, str | None]:
+    if not staged_paths:
+        return "chore", None
+
+    def is_docs(path: str) -> bool:
+        p = path.lower()
+        if p.endswith((".md", ".rst", ".txt")):
+            return True
+        return p in ("readme.md", "claude.md", "workdoc.md", "index.md")
+
+    def is_ci(path: str) -> bool:
+        p = path.lower().replace("\\", "/")
+        return p.startswith(".github/") or p.startswith(".gitee/") or p.startswith(".gitlab/") or p.startswith(".circleci/")
+
+    def is_build(path: str) -> bool:
+        p = path.lower()
+        return p in ("pyproject.toml", "package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock") or p.endswith(
+            (".csproj", ".sln")
+        )
+
+    def is_test(path: str) -> bool:
+        p = path.lower().replace("\\", "/")
+        return "/test" in p or "/tests" in p or p.startswith("test") or p.endswith(("_test.py", ".spec.ts", ".test.ts"))
+
+    docs_only = all(is_docs(p) for p in staged_paths)
+    if docs_only:
+        ctype = "docs"
+    elif any(is_ci(p) for p in staged_paths):
+        ctype = "ci"
+    elif any(is_build(p) for p in staged_paths):
+        ctype = "build"
+    elif any(is_test(p) for p in staged_paths):
+        ctype = "test"
+    elif any(p.replace("\\", "/").startswith((".claude/", ".autoworkflow/")) for p in staged_paths):
+        ctype = "chore"
+    else:
+        ctype = "feat"
+
+    scope: str | None = None
+    if any(p.replace("\\", "/").startswith(".claude/") for p in staged_paths):
+        scope = "claude"
+    elif any(p.replace("\\", "/").startswith(".autoworkflow/") for p in staged_paths):
+        scope = "autoworkflow"
+    elif any(p.replace("\\", "/").startswith("codex-skills/") for p in staged_paths):
+        scope = "skills"
+
+    return ctype, scope
+
+
+def _auto_subject_text(lang: str, commit_type: str, scope: str | None) -> str:
+    if lang == "en":
+        base = {
+            "feat": "update features",
+            "fix": "fix issues",
+            "docs": "update docs",
+            "style": "update code style",
+            "refactor": "refactor code",
+            "perf": "improve performance",
+            "test": "update tests",
+            "build": "update build config",
+            "ci": "update CI config",
+            "chore": "update workflow",
+            "revert": "revert changes",
+        }.get(commit_type, "update")
+        if scope:
+            return f"{base} ({scope})"
+        return base
+
+    # zh
+    base = {
+        "feat": "更新功能",
+        "fix": "修复问题",
+        "docs": "更新文档",
+        "style": "调整代码风格",
+        "refactor": "重构代码",
+        "perf": "性能优化",
+        "test": "更新测试",
+        "build": "更新构建配置",
+        "ci": "更新 CI 配置",
+        "chore": "更新工作流",
+        "revert": "回滚变更",
+    }.get(commit_type, "更新")
+
+    if scope == "claude":
+        if commit_type == "docs":
+            return "更新 Claude Code 文档"
+        return "更新 Claude Code 工作流"
+    if scope == "autoworkflow":
+        return "更新 autoworkflow 工具链"
+
+    return base
+
+
+def _auto_body_text(lang: str, staged_paths: list[str], max_items: int = 12) -> str | None:
+    if not staged_paths:
+        return None
+
+    norm = [p.replace("\\", "/") for p in staged_paths]
+    areas: list[str] = []
+    for p in norm:
+        if "/" in p:
+            areas.append(p.split("/", 1)[0])
+        else:
+            areas.append(p)
+
+    uniq_areas: list[str] = []
+    for a in areas:
+        if a not in uniq_areas:
+            uniq_areas.append(a)
+        if len(uniq_areas) >= 6:
+            break
+
+    if lang == "en":
+        lines = [
+            f"- Files changed: {len(staged_paths)}",
+            f"- Areas: {', '.join(uniq_areas)}" if uniq_areas else None,
+        ]
+    else:
+        lines = [
+            f"- 变更文件：{len(staged_paths)} 个",
+            f"- 涉及范围：{'、'.join(uniq_areas)}" if uniq_areas else None,
+        ]
+
+    for p in norm[:max_items]:
+        lines.append(f"- {p}")
+    if len(norm) > max_items:
+        lines.append(
+            f"- ...（其余 {len(norm) - max_items} 个文件略）"
+            if lang != "en"
+            else f"- ... ({len(norm) - max_items} more files)"
+        )
+
+    filtered = [l for l in lines if l]
+    return "\n".join(filtered).rstrip() if filtered else None
+
+
+@dataclass(frozen=True)
+class RemoteRepo:
+    provider: str  # "gitee" | "github" | "unknown"
+    host: str
+    owner: str
+    repo: str
+
+
+def _git_remote_url(repo_root: Path, remote: str) -> str | None:
+    proc = _run_git(repo_root, ["remote", "get-url", remote])
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr)
+        return None
+    return proc.stdout.strip() or None
+
+
+def _parse_remote_repo(url: str) -> RemoteRepo | None:
+    raw = (url or "").strip()
+    if not raw:
+        return None
+
+    host = ""
+    path = ""
+
+    # scp-like: git@host:owner/repo.git
+    scp_like = re.match(r"^[^@]+@([^:]+):(.+)$", raw)
+    if scp_like:
+        host = scp_like.group(1)
+        path = scp_like.group(2)
+    else:
+        parsed = urllib.parse.urlparse(raw)
+        host = parsed.hostname or ""
+        path = (parsed.path or "").lstrip("/")
+
+    path = path.removesuffix(".git")
+    parts = [p for p in path.split("/") if p]
+    if len(parts) < 2 or not host:
+        return None
+
+    owner = parts[-2]
+    repo = parts[-1]
+
+    provider = "unknown"
+    host_l = host.lower()
+    if host_l.endswith("gitee.com"):
+        provider = "gitee"
+    elif host_l.endswith("github.com"):
+        provider = "github"
+
+    return RemoteRepo(provider=provider, host=host, owner=owner, repo=repo)
+
+
+def _git_remote_has_branch(repo_root: Path, remote: str, branch: str) -> bool:
+    proc = _run_git(repo_root, ["ls-remote", "--heads", remote, branch])
+    return proc.returncode == 0 and bool(proc.stdout.strip())
+
+
+def git_push(
+    repo_root: Path,
+    remote: str,
+    branch: str | None,
+    set_upstream: bool,
+    dry_run: bool,
+    require_git: bool,
+) -> int:
+    if not _git_is_repo(repo_root):
+        msg = "git: not a git worktree (skip)"
+        if require_git:
+            print(f"{msg}; use --require-git=false to allow skipping")
+            return 2
+        print(msg)
+        return 0
+
+    current = _git_current_branch(repo_root)
+    head = (branch or current or "").strip()
+    if not head or head == "HEAD":
+        print("git: missing --branch (detached HEAD)")
+        return 2
+
+    args = ["push"]
+    if set_upstream:
+        args.append("-u")
+    args.extend([remote, head])
+
+    printable = "git " + " ".join(args)
+    if dry_run:
+        print(f"[dry-run] {printable}")
+        return 0
+
+    code, _out = _run_and_tee(["git", *args], cwd=repo_root)
+    return int(code)
+
+
+def _read_gate_env_summary(repo_root: Path) -> list[str]:
+    env_path = repo_autoworkflow_dir(repo_root) / "gate.env"
+    if not env_path.exists():
+        return []
+    env_values = parse_gate_env(env_path)
+    keys = ("BUILD_CMD", "TEST_CMD", "LINT_CMD", "FORMAT_CHECK_CMD")
+    lines: list[str] = []
+    for k in keys:
+        v = (env_values.get(k) or "").strip()
+        if v:
+            lines.append(f"- {k}: `{v}`")
+    return lines
+
+
+def _default_pr_title(repo_root: Path) -> str | None:
+    proc = _run_git(repo_root, ["log", "-1", "--format=%s"])
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip() or None
+
+
+def _infer_pr_title(repo_root: Path, remote: str, base: str | None) -> str | None:
+    last = _default_pr_title(repo_root)
+    if last and _is_conventional_subject(last):
+        return last
+
+    if base:
+        proc = _run_git(repo_root, ["diff", "--name-only", f"{remote}/{base}..HEAD"])
+        if proc.returncode == 0:
+            paths = [p.strip() for p in proc.stdout.splitlines() if p.strip()]
+            if paths:
+                subject, _body = _generate_commit_message(
+                    repo_root=repo_root,
+                    staged_paths=paths,
+                    lang="zh",
+                    commit_type=None,
+                    scope=None,
+                )
+                if subject:
+                    return subject
+
+    return last
+
+
+def _default_pr_body(repo_root: Path, remote: str, base: str | None = None, lang: str = "zh") -> str:
+    if lang not in ("zh", "en"):
+        lang = "zh"
+
+    lines: list[str] = []
+    lines.append("## Summary" if lang == "en" else "## 变更说明")
+
+    subjects: list[str] = []
+    if base:
+        range_ref = f"{remote}/{base}..HEAD"
+        proc = _run_git(repo_root, ["log", "--format=%s", "--no-decorate", range_ref])
+        if proc.returncode == 0:
+            subjects = [s.strip() for s in proc.stdout.splitlines() if s.strip()]
+
+    if not subjects:
+        title = _default_pr_title(repo_root)
+        if title:
+            subjects = [title]
+
+    for s in subjects[:20]:
+        lines.append(f"- {s}")
+    if len(subjects) > 20:
+        lines.append(f"- ...（其余 {len(subjects) - 20} 条略）" if lang == "zh" else f"- ... ({len(subjects) - 20} more)")
+
+    gate_lines = _read_gate_env_summary(repo_root)
+    if gate_lines:
+        lines.append("")
+        lines.append("## Verification" if lang == "en" else "## 验证")
+        lines.extend(gate_lines)
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _http_post_form(url: str, form: dict[str, str], headers: dict[str, str]) -> tuple[int, str]:
+    data = urllib.parse.urlencode(form).encode("utf-8")
+    req = urllib.request.Request(url, data=data, method="POST")
+    for k, v in headers.items():
+        req.add_header(k, v)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            return int(getattr(resp, "status", 200)), body
+    except Exception as e:
+        if hasattr(e, "code") and hasattr(e, "read"):
+            status = int(getattr(e, "code", 0) or 0)
+            body = e.read().decode("utf-8", errors="replace")
+            return status, body
+        raise
+
+
+def _http_post_json(url: str, payload: dict[str, Any], headers: dict[str, str]) -> tuple[int, str]:
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(url, data=data, method="POST")
+    for k, v in headers.items():
+        req.add_header(k, v)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            return int(getattr(resp, "status", 200)), body
+    except Exception as e:
+        if hasattr(e, "code") and hasattr(e, "read"):
+            status = int(getattr(e, "code", 0) or 0)
+            body = e.read().decode("utf-8", errors="replace")
+            return status, body
+        raise
+
+
+def git_pr_create(
+    repo_root: Path,
+    remote: str,
+    provider: str,
+    base: str,
+    head: str | None,
+    title: str | None,
+    body: str | None,
+    draft: bool,
+    push: bool,
+    set_upstream: bool,
+    bootstrap_base_from: str | None,
+    dry_run: bool,
+    require_git: bool,
+) -> int:
+    if not _git_is_repo(repo_root):
+        msg = "git: not a git worktree (skip)"
+        if require_git:
+            print(f"{msg}; use --require-git=false to allow skipping")
+            return 2
+        print(msg)
+        return 0
+
+    current = _git_current_branch(repo_root)
+    head_branch = (head or current or "").strip()
+    if not head_branch or head_branch == "HEAD":
+        print("git: missing --head (detached HEAD)")
+        return 2
+
+    remote_url = _git_remote_url(repo_root, remote)
+    if not remote_url:
+        print(f"git: failed to read remote url for '{remote}'")
+        return 2
+
+    info = _parse_remote_repo(remote_url)
+    if not info:
+        print(f"git: unsupported remote url: {remote_url}")
+        return 2
+
+    chosen = provider if provider != "auto" else info.provider
+    if chosen not in ("gitee", "github"):
+        print(f"git: unsupported provider '{chosen}' (use --provider gitee|github)")
+        return 2
+
+    base = (base or "develop").strip()
+    if not base:
+        base = "develop"
+
+    if not _git_remote_has_branch(repo_root, remote, base):
+        if bootstrap_base_from:
+            src = bootstrap_base_from.strip()
+            if not src:
+                print("git: empty --bootstrap-base-from")
+                return 2
+            push_args = ["push", remote, f"{src}:refs/heads/{base}"]
+            if dry_run:
+                print(f"[dry-run] git {' '.join(push_args)}")
+            else:
+                code, _out = _run_and_tee(["git", *push_args], cwd=repo_root)
+                if code != 0:
+                    return int(code)
+        else:
+            print(f"git: base branch '{base}' not found on remote '{remote}'")
+            print("git: either:")
+            print("  - pass --base master (or another existing branch)")
+            print("  - or rerun with --bootstrap-base-from origin/master")
+            print("  - or rerun with --bootstrap-base-from HEAD (not recommended)")
+            return 2
+
+    if push:
+        code = git_push(
+            repo_root=repo_root,
+            remote=remote,
+            branch=head_branch,
+            set_upstream=set_upstream,
+            dry_run=dry_run,
+            require_git=True,
+        )
+        if code != 0:
+            return code
+
+    pr_title = (title or _infer_pr_title(repo_root, remote=remote, base=base) or "").strip()
+    if not pr_title:
+        print("git: missing PR title (--title) and unable to infer a Conventional title")
+        return 2
+    if not _is_conventional_subject(pr_title):
+        print("git: PR title must follow Conventional Commits")
+        print(f"git: got: {json.dumps(pr_title)}")
+        return 2
+
+    pr_body = body if body is not None else _default_pr_body(repo_root, remote=remote, base=base, lang="zh")
+
+    if dry_run:
+        print("[dry-run] pr create")
+        print(f"- provider: {chosen}")
+        print(f"- remote: {remote} ({info.host})")
+        print(f"- repo: {info.owner}/{info.repo}")
+        print(f"- base: {base}")
+        print(f"- head: {head_branch}")
+        print(f"- title: {pr_title}")
+        print("- body: <omitted>")
+        print(f"- draft: {draft}")
+        return 0
+
+    if chosen == "gitee":
+        token = (os.environ.get("GITEE_TOKEN") or "").strip()
+        if not token:
+            print("git: missing GITEE_TOKEN env var")
+            return 2
+        url = f"https://gitee.com/api/v5/repos/{info.owner}/{info.repo}/pulls"
+        form: dict[str, str] = {
+            "access_token": token,
+            "title": pr_title,
+            "head": head_branch,
+            "base": base,
+            "body": pr_body,
+            "draft": "true" if draft else "false",
+        }
+        status, text = _http_post_form(
+            url,
+            form=form,
+            headers={
+                "User-Agent": "autoworkflow",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        )
+        if status != 201:
+            sys.stderr.write(_redact(text) + "\n")
+            return 2
+        try:
+            data = json.loads(text)
+            html = data.get("html_url") or data.get("url")
+            print(f"PR created: {html}" if html else "PR created.")
+        except Exception:
+            print("PR created.")
+        return 0
+
+    # github
+    token = (os.environ.get("GITHUB_TOKEN") or "").strip()
+    if not token and shutil.which("gh"):
+        cmd = [
+            "gh",
+            "pr",
+            "create",
+            "--base",
+            base,
+            "--head",
+            head_branch,
+            "--title",
+            pr_title,
+            "--body",
+            pr_body,
+        ]
+        if draft:
+            cmd.append("--draft")
+        code, _out = _run_and_tee(cmd, cwd=repo_root)
+        return int(code)
+
+    if not token:
+        print("git: missing GITHUB_TOKEN env var (or install/auth gh)")
+        return 2
+
+    url = f"https://api.github.com/repos/{info.owner}/{info.repo}/pulls"
+    status, text = _http_post_json(
+        url,
+        payload={
+            "title": pr_title,
+            "head": head_branch,
+            "base": base,
+            "body": pr_body,
+            "draft": bool(draft),
+        },
+        headers={
+            "User-Agent": "autoworkflow",
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    if status != 201:
+        sys.stderr.write(_redact(text) + "\n")
+        return 2
+    try:
+        data = json.loads(text)
+        html = data.get("html_url")
+        print(f"PR created: {html}" if html else "PR created.")
+    except Exception:
+        print("PR created.")
+    return 0
 
 
 def run_gate(
@@ -1833,7 +2454,7 @@ def main(argv: list[str]) -> int:
     p_plan_ci = plan_sub.add_parser("ci-template", help="Generate CI template for plan review + gate dry-run")
     p_plan_ci.add_argument("--provider", choices=["github", "gitlab"], default="github", help="CI provider")
 
-    p_git = sub.add_parser("git", help="Git helpers (branch/commit)")
+    p_git = sub.add_parser("git", help="Git helpers (branch/commit/push/pr)")
     git_sub = p_git.add_subparsers(dest="git_cmd", required=True)
 
     p_git_branch = git_sub.add_parser("branch", help="Branch operations")
@@ -1854,10 +2475,47 @@ def main(argv: list[str]) -> int:
     p_git_branch_start.add_argument("--require-git", action="store_true", help="Fail if not a git repo")
 
     p_git_commit = git_sub.add_parser("commit", help="Create a local commit (optional)")
-    p_git_commit.add_argument("-m", "--message", required=True, help="Commit message")
+    p_git_commit.add_argument("-m", "--message", default=None, help="Commit message (optional if --auto-message)")
+    p_git_commit.add_argument(
+        "--auto-message",
+        action="store_true",
+        help="Generate a Conventional Commit message from staged changes (default zh)",
+    )
+    p_git_commit.add_argument("--lang", choices=["zh", "en"], default="zh", help="Auto message language (default zh)")
+    p_git_commit.add_argument("--type", dest="commit_type", choices=list(CONVENTIONAL_COMMIT_TYPES), default=None, help="Override Conventional Commit type")
+    p_git_commit.add_argument("--scope", default=None, help="Optional Conventional Commit scope")
+    p_git_commit.add_argument("--no-conventional", dest="conventional", action="store_false", help="Disable Conventional Commits validation")
+    p_git_commit.set_defaults(conventional=True)
     p_git_commit.add_argument("--all", action="store_true", help="Stage all changes before commit (git add -A)")
     p_git_commit.add_argument("--dry-run", action="store_true", help="Only print actions")
     p_git_commit.add_argument("--require-git", action="store_true", help="Fail if not a git repo")
+
+    p_git_push = git_sub.add_parser("push", help="Push current branch to a remote")
+    p_git_push.add_argument("--remote", default="origin", help="Remote name (default origin)")
+    p_git_push.add_argument("--branch", default=None, help="Branch name (default current branch)")
+    p_git_push.add_argument("-u", "--set-upstream", action="store_true", help="Set upstream (-u)")
+    p_git_push.add_argument("--dry-run", action="store_true", help="Only print actions")
+    p_git_push.add_argument("--require-git", action="store_true", help="Fail if not a git repo")
+
+    p_git_pr = git_sub.add_parser("pr", help="Pull request helpers (GitHub/Gitee)")
+    pr_sub = p_git_pr.add_subparsers(dest="pr_cmd", required=True)
+    p_git_pr_create = pr_sub.add_parser("create", help="Create a pull request for the current branch")
+    p_git_pr_create.add_argument("--remote", default="origin", help="Remote name (default origin)")
+    p_git_pr_create.add_argument("--provider", choices=["auto", "gitee", "github"], default="auto", help="Remote provider (default auto)")
+    p_git_pr_create.add_argument("--base", default="develop", help="Base branch (default develop)")
+    p_git_pr_create.add_argument("--head", default=None, help="Head branch (default current branch)")
+    p_git_pr_create.add_argument("--title", default=None, help="PR title (default last commit subject)")
+    p_git_pr_create.add_argument("--body", default=None, help="PR body (default auto-generated)")
+    p_git_pr_create.add_argument("--draft", action="store_true", help="Create as draft")
+    p_git_pr_create.add_argument("--push", action="store_true", help="Push head branch before creating PR")
+    p_git_pr_create.add_argument("-u", "--set-upstream", action="store_true", help="Set upstream when pushing (-u)")
+    p_git_pr_create.add_argument(
+        "--bootstrap-base-from",
+        default=None,
+        help="If base missing on remote, create it from this ref (e.g. origin/master or HEAD)",
+    )
+    p_git_pr_create.add_argument("--dry-run", action="store_true", help="Only print actions")
+    p_git_pr_create.add_argument("--require-git", action="store_true", help="Fail if not a git repo")
 
     p_rec = sub.add_parser("recommend-model", help="Recommend model profile (light/medium/heavy) for Claude/Codex")
     p_rec.add_argument("--intent", default=None, help="Optional intent hint (e.g., doctor, workshop, debug)")
@@ -1935,11 +2593,43 @@ def main(argv: list[str]) -> int:
         if args.git_cmd == "commit":
             return git_commit(
                 repo_root=repo_root,
-                message=str(args.message),
+                message=str(args.message) if args.message is not None else None,
                 stage_all=bool(args.all),
+                auto_message=bool(args.auto_message),
+                lang=str(args.lang),
+                conventional=bool(getattr(args, "conventional", True)),
+                commit_type=getattr(args, "commit_type", None),
+                scope=getattr(args, "scope", None),
                 dry_run=bool(args.dry_run),
                 require_git=bool(args.require_git),
             )
+        if args.git_cmd == "push":
+            return git_push(
+                repo_root=repo_root,
+                remote=str(args.remote),
+                branch=args.branch,
+                set_upstream=bool(args.set_upstream),
+                dry_run=bool(args.dry_run),
+                require_git=bool(args.require_git),
+            )
+        if args.git_cmd == "pr":
+            if args.pr_cmd == "create":
+                return git_pr_create(
+                    repo_root=repo_root,
+                    remote=str(args.remote),
+                    provider=str(args.provider),
+                    base=str(args.base),
+                    head=args.head,
+                    title=args.title,
+                    body=args.body,
+                    draft=bool(args.draft),
+                    push=bool(args.push),
+                    set_upstream=bool(args.set_upstream),
+                    bootstrap_base_from=args.bootstrap_base_from,
+                    dry_run=bool(args.dry_run),
+                    require_git=bool(args.require_git),
+                )
+            raise AssertionError("unknown git pr subcommand")
         raise AssertionError("unknown git subcommand")
 
     if args.cmd == "plan":
