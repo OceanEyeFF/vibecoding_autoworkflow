@@ -3,11 +3,17 @@ set -euo pipefail
 
 ROOT="${1:-$(pwd)}"
 USE_CODEX="false"
+USE_OSS="false"
+LOCAL_PROVIDER="ollama"
+MODEL=""
 KEEP_TEMP="false"
 
 for arg in "$@"; do
   case "$arg" in
     --use-codex) USE_CODEX="true" ;;
+    --oss) USE_OSS="true" ;;
+    --local-provider=*) LOCAL_PROVIDER="${arg#*=}" ;;
+    --model=*) MODEL="${arg#*=}" ;;
     --keep-temp) KEEP_TEMP="true" ;;
   esac
 done
@@ -63,8 +69,19 @@ python "${aw}" --root "${temp_repo}" gate
 python "${ROOT}/agents_runner.py" --root "${temp_repo}"
 
 if [[ "${USE_CODEX}" == "true" ]]; then
-  cat <<'PROMPT' | codex exec --full-auto -C "${temp_repo}" -c 'model_reasoning_effort="low"' -c 'mcp_servers={}' -
-You are in a Git repository root on Windows.
+  codex_cmd=(codex exec --full-auto --skip-git-repo-check -C "${temp_repo}" -c 'model_reasoning_effort="low"' -c 'mcp_servers={}')
+  if [[ "${USE_OSS}" == "true" ]]; then
+    codex_cmd+=(--oss)
+    if [[ -n "${LOCAL_PROVIDER}" ]]; then
+      codex_cmd+=(--local-provider "${LOCAL_PROVIDER}")
+    fi
+    if [[ -n "${MODEL}" ]]; then
+      codex_cmd+=(-m "${MODEL}")
+    fi
+  fi
+
+  cat <<'PROMPT' | "${codex_cmd[@]}" -
+You are in a project directory.
 
 Goal: run an end-to-end automation smoke test in the real Codex CLI runtime.
 

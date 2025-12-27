@@ -38,14 +38,23 @@ class RunnerConfig:
     approval_policy: str
     sandbox: str
     mode: str
+    model: str
+    max_turns: int
 
 
-def _import_agents_sdk() -> tuple[Any, Any, Any, Any]:
+def _import_agents_sdk() -> tuple[Any, Any, Any, Any, str]:
     try:
         from agents import Agent, Runner, set_default_openai_api  # type: ignore
         from agents.mcp import MCPServerStdio  # type: ignore
 
-        return Agent, Runner, set_default_openai_api, MCPServerStdio
+        try:
+            from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX  # type: ignore
+
+            handoff_prefix = str(RECOMMENDED_PROMPT_PREFIX)
+        except Exception:
+            handoff_prefix = ""
+
+        return Agent, Runner, set_default_openai_api, MCPServerStdio, handoff_prefix
     except Exception as exc:  # pragma: no cover
         msg = "\n".join(
             [
@@ -115,7 +124,7 @@ async def orchestrate_local(cfg: RunnerConfig) -> int:
 
 
 async def orchestrate_sdk(cfg: RunnerConfig) -> int:
-    Agent, Runner, set_default_openai_api, MCPServerStdio = _import_agents_sdk()
+    Agent, Runner, set_default_openai_api, MCPServerStdio, handoff_prefix = _import_agents_sdk()
 
     # optional .env support (keep non-fatal)
     try:
@@ -140,40 +149,46 @@ async def orchestrate_sdk(cfg: RunnerConfig) -> int:
             "command": "npx",
             "args": ["-y", "codex", "mcp-server"],
         },
-        client_session_timeout_seconds=3600,
+        client_session_timeout_seconds=360000,
     ) as codex_mcp_server:
         log.append({"step": "mcp start", "cmd": ["npx", "-y", "codex", "mcp-server"], "exit": 0})
 
         # 2) Multi-agent handoff (Manager -> Executor)
+        handoff_line = handoff_prefix.strip()
+        executor_instructions = [
+            "你是一个执行型工程助手，只做两件事：plan review -> gate。",
+            "你必须通过 MCP 工具 `codex` 来运行命令，不要直接假设命令结果。",
+            "当调用 `codex` 工具时，务必显式传入：",
+            f'- "approval-policy": "{cfg.approval_policy}"',
+            f'- "sandbox": "{cfg.sandbox}"',
+            f'- "cwd": "{str(cfg.repo)}"',
+            "运行的命令为：",
+            "1) python .autoworkflow/tools/autoworkflow.py --root . plan review",
+            "2) python .autoworkflow/tools/autoworkflow.py --root . gate (若允许跳过审查则加 --allow-unreviewed)",
+            "除非明确被要求，否则不要编辑任何文件。",
+        ]
+        if handoff_line:
+            executor_instructions.insert(0, handoff_line)
+
         executor = Agent(
             name="Workflow Executor",
-            instructions="\n".join(
-                [
-                    "你是一个执行型工程助手，只做两件事：plan review -> gate。",
-                    "你必须通过 MCP 工具 `codex` 来运行命令，不要直接假设命令结果。",
-                    "当调用 `codex` 工具时，务必显式传入：",
-                    f'- "approval-policy": "{cfg.approval_policy}"',
-                    f'- "sandbox": "{cfg.sandbox}"',
-                    f'- "cwd": "{str(cfg.repo)}"',
-                    "运行的命令为：",
-                    "1) python .autoworkflow/tools/autoworkflow.py --root . plan review",
-                    "2) python .autoworkflow/tools/autoworkflow.py --root . gate (若允许跳过审查则加 --allow-unreviewed)",
-                    "除非明确被要求，否则不要编辑任何文件。",
-                ]
-            ),
+            instructions="\n".join(executor_instructions),
+            model=cfg.model,
             mcp_servers=[codex_mcp_server],
         )
 
+        manager_instructions = [
+            "你负责把任务交接给执行者。",
+            "输出一段非常短的执行指令（不超过 8 行），然后 handoff 给 Workflow Executor。",
+            "不要自己调用 codex 工具。",
+        ]
+        if handoff_line:
+            manager_instructions.insert(0, handoff_line)
+
         manager = Agent(
             name="Workflow Manager",
-            instructions="\n".join(
-                [
-                    "你负责把任务交接给执行者。",
-                    "输出一段非常短的执行指令（不超过 8 行），然后 handoff 给 Workflow Executor。",
-                    "不要自己调用 codex 工具。",
-                ]
-            ),
-            model="gpt-5",
+            instructions="\n".join(manager_instructions),
+            model=cfg.model,
             handoffs=[executor],
         )
 
@@ -189,8 +204,13 @@ async def orchestrate_sdk(cfg: RunnerConfig) -> int:
         )
 
         try:
-            result = await Runner.run(manager, prompt)
-            log.append({"step": "sdk run", "exit": 0, "result": str(result)})
+            try:
+                result = await Runner.run(manager, prompt, max_turns=cfg.max_turns)
+            except TypeError:
+                result = await Runner.run(manager, prompt)
+
+            final_output = getattr(result, "final_output", None)
+            log.append({"step": "sdk run", "exit": 0, "result": final_output if final_output is not None else str(result)})
         except Exception as exc:
             log.append({"step": "sdk run", "exit": 1, "error": str(exc)})
             trace_path.write_text("\n".join(json.dumps(i, ensure_ascii=False) for i in log), encoding="utf-8")
@@ -203,7 +223,7 @@ async def orchestrate_sdk(cfg: RunnerConfig) -> int:
 
 
 async def orchestrate_mcp_smoke(cfg: RunnerConfig) -> int:
-    _Agent, _Runner, _set_default_openai_api, MCPServerStdio = _import_agents_sdk()
+    _Agent, _Runner, _set_default_openai_api, MCPServerStdio, _handoff_prefix = _import_agents_sdk()
 
     trace_path = _new_trace_path(cfg.repo)
     log: list[dict[str, Any]] = []
@@ -251,6 +271,8 @@ def main() -> int:
     )
     parser.add_argument("--approval-policy", default="never", help="Codex MCP tool approval-policy")
     parser.add_argument("--sandbox", default="workspace-write", help="Codex MCP tool sandbox")
+    parser.add_argument("--model", default="gpt-5", help="Agents SDK model name")
+    parser.add_argument("--max-turns", type=int, default=30, help="Max turns for Agents SDK Runner.run")
     args = parser.parse_args()
 
     cfg = RunnerConfig(
@@ -259,6 +281,8 @@ def main() -> int:
         approval_policy=str(args.approval_policy),
         sandbox=str(args.sandbox),
         mode=str(args.mode),
+        model=str(args.model),
+        max_turns=int(args.max_turns),
     )
     try:
         return asyncio.run(async_main(cfg))

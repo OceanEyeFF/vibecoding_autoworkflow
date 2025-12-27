@@ -1,6 +1,10 @@
 param(
   [string]$Root = (Get-Location).Path,
   [switch]$UseCodex,
+  [switch]$UseOss,
+  [ValidateSet("ollama", "lmstudio")]
+  [string]$LocalProvider = "ollama",
+  [string]$OssModel = "",
   [switch]$KeepTemp
 )
 
@@ -45,7 +49,7 @@ try {
 
   if ($UseCodex) {
     $prompt = @"
-You are in a Git repository root on Windows.
+You are in a project directory on Windows.
 
 Goal: run an end-to-end automation smoke test in the real Codex CLI runtime.
 
@@ -66,7 +70,22 @@ Commands:
 Finish with a 3-line summary and list any .autoworkflow/trace/*.jsonl files created.
 "@
 
-    $prompt | codex exec --full-auto -C "$tempRepo" -c 'model_reasoning_effort="low"' -c 'mcp_servers={}' -
+    $codexArgs = @(
+      "exec",
+      "--full-auto",
+      "--skip-git-repo-check",
+      "-C", "$tempRepo",
+      "-c", 'model_reasoning_effort="low"',
+      "-c", 'mcp_servers={}'
+    )
+    if ($UseOss) {
+      $codexArgs += "--oss"
+      if ($LocalProvider) { $codexArgs += @("--local-provider", "$LocalProvider") }
+      if ($OssModel) { $codexArgs += @("-m", "$OssModel") }
+    }
+    $codexArgs += "-"
+
+    $prompt | codex @codexArgs
   }
 
   Write-Step "OK (cold start + gate + runner)"
