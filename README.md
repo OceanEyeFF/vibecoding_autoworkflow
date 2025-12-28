@@ -50,8 +50,8 @@
 - WSL/Ubuntu：`bash .autoworkflow/tools/aw.sh set-gate --create --build "..." --test "..."`
 - 复杂引号建议直接编辑：`.autoworkflow/gate.env`
 
-4) 跑 gate（“测试全绿”为默认门禁）
-- Windows：`powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/aw.ps1 gate`
+4) 跑 gate("测试全绿"为默认门禁)
+- Windows：`powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/aw.ps1 gate`（如需强制用 WSL，附 `--prefer-wsl`；WSL 失败将直接失败，不再降级）
 - WSL/Ubuntu：`bash .autoworkflow/tools/aw.sh gate`
 
 （可选）模型推荐（诊断/调试时用）

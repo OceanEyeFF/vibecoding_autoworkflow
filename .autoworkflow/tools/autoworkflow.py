@@ -1,0 +1,3425 @@
+from __future__ import annotations
+
+import argparse
+import ast
+import json
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
+import tokenize
+import urllib.parse
+import urllib.request
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+import shlex
+
+
+ALLOWED_ENV_KEYS = ("BUILD_CMD", "TEST_CMD", "LINT_CMD", "FORMAT_CHECK_CMD")
+ALLOWED_SECRET_KEYS = ("GITEE_TOKEN", "GITEE_USERNAME", "GITHUB_TOKEN")
+PLAN_FILE_NAME = "plan.yaml"
+PLAN_REVIEW_FILE = "plan-review.md"
+DEFAULT_PROTECTED_BRANCHES = ("main", "master")
+DEFAULT_BRANCH_PREFIX = "aw/"
+CONVENTIONAL_COMMIT_TYPES = (
+    "feat",
+    "fix",
+    "docs",
+    "style",
+    "refactor",
+    "perf",
+    "test",
+    "build",
+    "ci",
+    "chore",
+    "revert",
+)
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(errors="replace")
+    except Exception:
+        pass
+
+
+DEFAULT_GATE_PS1 = """param(
+  [string]$BuildCmd = "",
+  [string]$TestCmd = "",
+  [string]$LintCmd = "",
+  [string]$FormatCheckCmd = ""
+)
+
+$ErrorActionPreference = "Stop"
+
+function Read-GateEnv([string]$Path) {
+  if (-not (Test-Path -LiteralPath $Path)) { return @{} }
+  $map = @{}
+  Get-Content -LiteralPath $Path | ForEach-Object {
+    $line = $_.Trim()
+    if ($line.Length -eq 0) { return }
+    if ($line.StartsWith("#")) { return }
+    $idx = $line.IndexOf("=")
+    if ($idx -lt 1) { return }
+    $key = $line.Substring(0, $idx).Trim()
+    $val = $line.Substring($idx + 1).Trim()
+    if ($key -in @("BUILD_CMD","TEST_CMD","LINT_CMD","FORMAT_CHECK_CMD")) {
+      $map[$key] = $val
+    }
+  }
+  return $map
+}
+
+function Run-Step([string]$Name, [string]$Cmd) {
+  if ([string]::IsNullOrWhiteSpace($Cmd)) { return }
+  Write-Host "==> $Name"
+  Write-Host $Cmd
+  $global:LASTEXITCODE = 0
+  Invoke-Expression $Cmd
+  if ($LASTEXITCODE -ne 0) {
+    throw "$Name failed (exit $LASTEXITCODE)."
+  }
+}
+
+Write-Host "Gate start: $(Get-Date -Format o)"
+
+if (([string]::IsNullOrWhiteSpace($BuildCmd)) -or ([string]::IsNullOrWhiteSpace($TestCmd)) -or ([string]::IsNullOrWhiteSpace($LintCmd)) -or ([string]::IsNullOrWhiteSpace($FormatCheckCmd))) {
+  $envPath = Join-Path (Get-Location) ".autoworkflow\\gate.env"
+  $envMap = Read-GateEnv $envPath
+  if ([string]::IsNullOrWhiteSpace($BuildCmd) -and $envMap.ContainsKey("BUILD_CMD")) { $BuildCmd = $envMap["BUILD_CMD"] }
+  if ([string]::IsNullOrWhiteSpace($TestCmd) -and $envMap.ContainsKey("TEST_CMD")) { $TestCmd = $envMap["TEST_CMD"] }
+  if ([string]::IsNullOrWhiteSpace($LintCmd) -and $envMap.ContainsKey("LINT_CMD")) { $LintCmd = $envMap["LINT_CMD"] }
+  if ([string]::IsNullOrWhiteSpace($FormatCheckCmd) -and $envMap.ContainsKey("FORMAT_CHECK_CMD")) { $FormatCheckCmd = $envMap["FORMAT_CHECK_CMD"] }
+}
+
+Run-Step "Build" $BuildCmd
+if ([string]::IsNullOrWhiteSpace($TestCmd)) {
+  throw "Missing TestCmd (set TEST_CMD in .autoworkflow\\gate.env or pass -TestCmd)."
+}
+Run-Step "Test" $TestCmd
+Run-Step "Lint" $LintCmd
+Run-Step "FormatCheck" $FormatCheckCmd
+
+Write-Host "Gate done (green)."
+"""
+
+
+DEFAULT_GATE_SH = """#!/usr/bin/env bash
+set -euo pipefail
+
+AUTOWORKFLOW_DIR="${AUTOWORKFLOW_DIR:-.autoworkflow}"
+GATE_ENV_FILE="${GATE_ENV_FILE:-${AUTOWORKFLOW_DIR}/gate.env}"
+
+BUILD_CMD="${BUILD_CMD:-}"
+TEST_CMD="${TEST_CMD:-}"
+LINT_CMD="${LINT_CMD:-}"
+FORMAT_CHECK_CMD="${FORMAT_CHECK_CMD:-}"
+
+read_gate_env() {
+  local file="$1"
+  [[ -f "${file}" ]] || return 0
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    [[ -z "${line}" ]] && continue
+    [[ "${line}" == \\#* ]] && continue
+    [[ "${line}" != *"="* ]] && continue
+    local key="${line%%=*}"
+    local val="${line#*=}"
+    key="${key%"${key##*[![:space:]]}"}"
+    val="${val#"${val%%[![:space:]]*}"}"
+    case "${key}" in
+      BUILD_CMD) [[ -z "${BUILD_CMD}" ]] && BUILD_CMD="${val}" ;;
+      TEST_CMD) [[ -z "${TEST_CMD}" ]] && TEST_CMD="${val}" ;;
+      LINT_CMD) [[ -z "${LINT_CMD}" ]] && LINT_CMD="${val}" ;;
+      FORMAT_CHECK_CMD) [[ -z "${FORMAT_CHECK_CMD}" ]] && FORMAT_CHECK_CMD="${val}" ;;
+    esac
+  done < "${file}"
+}
+
+read_gate_env "${GATE_ENV_FILE}"
+
+run_step() {
+  local name="$1"
+  local cmd="$2"
+  if [[ -z "${cmd}" ]]; then
+    return 0
+  fi
+  echo "==> ${name}"
+  echo "${cmd}"
+  eval "${cmd}"
+}
+
+echo "Gate start: $(date -Iseconds)"
+
+run_step "Build" "${BUILD_CMD}"
+if [[ -z "${TEST_CMD}" ]]; then
+  echo "Missing TEST_CMD (set it in ${GATE_ENV_FILE} or pass env var TEST_CMD)." >&2
+  exit 2
+fi
+run_step "Test" "${TEST_CMD}"
+run_step "Lint" "${LINT_CMD}"
+run_step "FormatCheck" "${FORMAT_CHECK_CMD}"
+
+echo "Gate done (green)."
+"""
+
+
+DEFAULT_AW_PS1 = """$ErrorActionPreference = "Stop"
+
+$toolDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$script = Join-Path $toolDir "autoworkflow.py"
+
+if (-not (Test-Path -LiteralPath $script)) {
+  throw "Missing $script (run autoworkflow init first)."
+}
+
+python $script @args
+"""
+
+
+DEFAULT_AW_SH = """#!/usr/bin/env bash
+set -euo pipefail
+
+TOOL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT="${TOOL_DIR}/autoworkflow.py"
+
+if [[ ! -f "${SCRIPT}" ]]; then
+  echo "Missing ${SCRIPT} (run autoworkflow init first)." >&2
+  exit 2
+fi
+
+PYTHON_BIN="python"
+if ! command -v "${PYTHON_BIN}" >/dev/null 2>&1; then
+  PYTHON_BIN="python3"
+fi
+if ! command -v "${PYTHON_BIN}" >/dev/null 2>&1; then
+  echo "Missing python/python3 in PATH." >&2
+  exit 127
+fi
+
+"${PYTHON_BIN}" "${SCRIPT}" "$@"
+"""
+
+
+DEFAULT_STATE_TEMPLATE = """# Feature Shipper State
+
+## Definition of Done (tests must be green)
+- [ ] Command(s) to run: `...`
+- [ ] What "green" means (suites/configs): ...
+
+## Source docs (spec/tasks)
+- ...
+
+## Task list
+1. [ ] ...
+2. [ ] ...
+
+## Chosen commands
+- Install/setup: `...`
+- Build: `...`
+- Test: `...`
+- Lint/format (if CI-gated): `...`
+
+## Last run
+- When: ...
+- Command: `...`
+- Result: pass/fail
+- Failure summary (paste key lines): ...
+
+## Next step
+- ...
+"""
+
+
+DEFAULT_SPEC_TEMPLATE = """# Spec (Idea -> DoD)
+
+## 1) One-liner
+- ...
+
+## 2) Problem & user
+- Target user: ...
+- Problem: ...
+- Why now: ...
+
+## 3) Scope
+**In scope**
+- ...
+
+**Out of scope (explicit non-goals)**
+- ...
+
+## 4) Constraints
+- Platforms: Windows / WSL / Ubuntu (which ones must work?)
+- Languages/engine: ...
+- Time/effort budget: ...
+- No new dependencies? (yes/no)
+
+## 5) Requirements (doc-driven list)
+1. ...
+2. ...
+
+## 6) Acceptance criteria (verifiable)
+- [ ] ...
+- [ ] ...
+
+## 7) Test-green definition (the gate)
+This is the source of truth for "green":
+- Build command: `...`
+- Test command: `...`
+- Optional: lint/format commands: `...` (only if repo-gated)
+
+## 8) Local gate script location
+- Windows: `.autoworkflow/tools/gate.ps1`
+- WSL/Ubuntu: `.autoworkflow/tools/gate.sh`
+
+## 9) Open questions (max 3 to unblock)
+- ...
+"""
+
+DEFAULT_MODEL_POLICY = {
+    "profiles": {
+        "light": {
+            "when": [
+                "doctor / init / project survey",
+                "formatting, renames, trivial doc edits",
+            ],
+            "claude": "haiku",
+            "codex": "gpt-5-medium",
+        },
+        "medium": {
+            "when": [
+                "most feature work in a known codebase",
+                "implementing from a spec with limited ambiguity",
+                "adding a small number of tests",
+            ],
+            "claude": "sonnet",
+            "codex": "gpt-5.2",
+        },
+        "heavy": {
+            "when": [
+                "gate/tests failing with unclear root cause",
+                "cross-module refactors or high risk changes",
+                "large diffs or complex debugging",
+            ],
+            "claude": "opus",
+            "codex": "gpt-5.2-extra-high",
+        },
+    },
+    "rules": [
+        {
+            "if": "gate_failed",
+            "then": "heavy",
+            "reason": "tests are failing; prioritize fast convergence and deeper debugging",
+        },
+        {
+            "if": "no_gate_configured",
+            "then": "medium",
+            "reason": "need workshop + define DoD/gate first",
+        },
+        {
+            "if": "doctor_only",
+            "then": "light",
+            "reason": "tooling/status checks are deterministic; keep it cheap",
+        },
+    ],
+}
+
+# Default plan template (JSON, valid YAML subset)
+DEFAULT_PLAN_TEMPLATE = {
+    "meta": {"version": 1},
+    "goal_ref": "goal.json",
+    "modules": [
+        {
+            "id": "default-module",
+            "purpose": "TBD",
+            "scope_in": [],
+            "scope_out": [],
+            "risks": [],
+        }
+    ],
+    "milestones": [
+        {
+            "id": "m1",
+            "module": "default-module",
+            "title": "First milestone",
+            "target_date": "",
+            "deps": [],
+            "success_criteria": ["All gates green"],
+        }
+    ],
+    "tasks": [
+        {
+            "id": "t1",
+            "milestone": "m1",
+            "title": "Build & Test",
+            "size_days": 0.5,
+            "deps": [],
+            "gate_cmds": ["build", "test"],
+            "risk": "med",
+            "blocking": False,
+        }
+    ],
+    "data_specs": [],
+    "review": {"decision": "pending", "score": 0, "reasons": [], "actions": []},
+}
+
+
+@dataclass(frozen=True)
+class HostInfo:
+    os_name: str
+    platform: str
+    python: str
+    is_wsl: bool
+
+
+def is_wsl() -> bool:
+    if sys.platform != "linux":
+        return False
+    try:
+        return "microsoft" in Path("/proc/version").read_text(encoding="utf-8").lower()
+    except Exception:
+        return False
+
+
+def host_info() -> HostInfo:
+    return HostInfo(
+        os_name=os.name,
+        platform=sys.platform,
+        python=sys.version.split()[0],
+        is_wsl=is_wsl(),
+    )
+
+
+def _wsl_available() -> bool:
+    return shutil.which("wsl.exe") is not None
+
+
+def _windows_path_to_wsl(path: Path) -> str:
+    p = Path(path).resolve()
+    drive = p.drive.rstrip(":").lower()
+    tail = "/".join(part for part in p.parts if part not in (p.anchor,))
+    if tail.startswith("/"):
+        tail = tail.lstrip("/")
+    return f"/mnt/{drive}/{tail}".rstrip("/")
+
+
+def skill_root() -> Path:
+    # .../feature-shipper/scripts/autoworkflow.py -> .../feature-shipper
+    return Path(__file__).resolve().parents[1]
+
+
+def assets_autoworkflow_dir() -> Path:
+    return skill_root() / "assets" / "autoworkflow"
+
+
+def repo_autoworkflow_dir(repo_root: Path) -> Path:
+    return repo_root / ".autoworkflow"
+
+
+def plan_path(repo_root: Path) -> Path:
+    return repo_autoworkflow_dir(repo_root) / PLAN_FILE_NAME
+
+
+def safe_write_text(path: Path, content: str, force: bool) -> None:
+    if path.exists() and not force:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(content)
+
+
+def copy_file(src: Path, dst: Path, force: bool) -> None:
+    if dst.exists() and not force:
+        return
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(src, dst)
+
+
+def init_autoworkflow(repo_root: Path, force: bool) -> None:
+    assets_dir = assets_autoworkflow_dir()
+    target = repo_autoworkflow_dir(repo_root)
+    tools_dir = target / "tools"
+
+    if assets_dir.exists():
+        copy_file(assets_dir / "tools" / "gate.ps1", tools_dir / "gate.ps1", force=force)
+        copy_file(assets_dir / "tools" / "gate.sh", tools_dir / "gate.sh", force=force)
+        copy_file(assets_dir / "tools" / "aw.ps1", tools_dir / "aw.ps1", force=force)
+        copy_file(assets_dir / "tools" / "aw.sh", tools_dir / "aw.sh", force=force)
+        state_template = (assets_dir / "state-template.md").read_text(encoding="utf-8")
+        spec_template = (assets_dir / "spec-template.md").read_text(encoding="utf-8")
+    else:
+        safe_write_text(tools_dir / "gate.ps1", DEFAULT_GATE_PS1, force=force)
+        safe_write_text(tools_dir / "gate.sh", DEFAULT_GATE_SH, force=force)
+        safe_write_text(tools_dir / "aw.ps1", DEFAULT_AW_PS1, force=force)
+        safe_write_text(tools_dir / "aw.sh", DEFAULT_AW_SH, force=force)
+        state_template = DEFAULT_STATE_TEMPLATE
+        spec_template = DEFAULT_SPEC_TEMPLATE
+
+    # Make the tool self-contained in the target repo so it can be used from any environment (Claude/Codex/terminal).
+    # Keep the tool implementation up to date even when users re-run `init` without `--force`.
+    copy_file(Path(__file__).resolve(), tools_dir / "autoworkflow.py", force=True)
+
+    safe_write_text(target / "state.md", state_template, force=force)
+    safe_write_text(target / "spec.md", spec_template, force=force)
+
+    gitignore = "\n".join(
+        [
+            "# local workflow state (keep untracked by default)",
+            "state.md",
+            "spec.md",
+            "model-policy.json",
+            "gate.env",
+            "doctor.md",
+            "logs/",
+            "",
+        ]
+    )
+    safe_write_text(target / ".gitignore", gitignore, force=force)
+
+    env_stub = "\n".join(
+        [
+            "# Autoworkflow gate config (untracked by default).",
+            "# Allowed keys: BUILD_CMD, TEST_CMD, LINT_CMD, FORMAT_CHECK_CMD",
+            "BUILD_CMD=",
+            "TEST_CMD=",
+            "LINT_CMD=",
+            "FORMAT_CHECK_CMD=",
+            "",
+        ]
+    )
+    safe_write_text(target / "gate.env", env_stub, force=force)
+
+    policy_path = target / "model-policy.json"
+    if not policy_path.exists() or force:
+        policy_path.parent.mkdir(parents=True, exist_ok=True)
+        with policy_path.open("w", encoding="utf-8", newline="\n") as f:
+            f.write(json.dumps(DEFAULT_MODEL_POLICY, ensure_ascii=False, indent=2))
+            f.write("\n")
+
+
+def parse_gate_env(env_path: Path) -> dict[str, str]:
+    if not env_path.exists():
+        return {}
+    values: dict[str, str] = {}
+    for raw in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if key not in ALLOWED_ENV_KEYS:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and ((value[0] == value[-1] == '"') or (value[0] == value[-1] == "'")):
+            value = value[1:-1]
+        values[key] = value
+    return values
+
+
+def parse_secret_env(env_path: Path) -> dict[str, str]:
+    if not env_path.exists():
+        return {}
+    values: dict[str, str] = {}
+    for raw in env_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if key not in ALLOWED_SECRET_KEYS:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and ((value[0] == value[-1] == '"') or (value[0] == value[-1] == "'")):
+            value = value[1:-1]
+        values[key] = value
+    return values
+
+
+def _read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return ""
+
+
+def _read_package_json_scripts(repo_root: Path) -> tuple[str, dict[str, str]]:
+    package_json = repo_root / "package.json"
+    if not package_json.exists():
+        return "npm", {}
+    pm = "npm"
+    if (repo_root / "pnpm-lock.yaml").exists():
+        pm = "pnpm"
+    elif (repo_root / "yarn.lock").exists():
+        pm = "yarn"
+
+    try:
+        data = json.loads(package_json.read_text(encoding="utf-8"))
+        scripts = data.get("scripts") if isinstance(data, dict) else {}
+        if isinstance(scripts, dict):
+            return pm, {str(k): str(v) for k, v in scripts.items()}
+    except Exception:
+        pass
+    return pm, {}
+
+
+def _pm_cmd(pm: str, script: str, kind: str) -> str:
+    # keep commands simple and reproducible
+    if pm == "npm":
+        if kind == "test":
+            return "npm test"
+        return f"npm run {script}"
+    if pm == "pnpm":
+        return f"pnpm {script if kind == 'test' else f'run {script}'}"
+    if pm == "yarn":
+        return f"yarn {script}"
+    return f"{pm} {script}"
+
+
+def detect_node_gate(repo_root: Path) -> dict[str, str]:
+    pm, scripts = _read_package_json_scripts(repo_root)
+    if not scripts and not (repo_root / "package.json").exists():
+        return {}
+    def pick(keys: list[str]) -> str | None:
+        for k in keys:
+            if k in scripts:
+                return k
+        return None
+
+    build_script = pick(["build", "compile", "bundle"])
+    test_script = pick(["test", "test:unit", "test:e2e", "ci:test"])
+    lint_script = pick(["lint", "lint:fix", "check"])
+    fmt_script = pick(["format", "fmt", "format:check"])
+
+    result: dict[str, str] = {}
+    if build_script:
+        result["BUILD_CMD"] = _pm_cmd(pm, build_script, "build")
+    if test_script:
+        result["TEST_CMD"] = _pm_cmd(pm, test_script, "test")
+    if lint_script:
+        result["LINT_CMD"] = _pm_cmd(pm, lint_script, "lint")
+    if fmt_script:
+        result["FORMAT_CHECK_CMD"] = _pm_cmd(pm, fmt_script, "format")
+    return result
+
+
+def detect_python_gate(repo_root: Path) -> dict[str, str]:
+    strong_project = any(
+        [
+            (repo_root / "pyproject.toml").exists(),
+            (repo_root / "requirements.txt").exists(),
+            (repo_root / "poetry.lock").exists(),
+            (repo_root / "setup.py").exists(),
+            (repo_root / "setup.cfg").exists(),
+        ]
+    )
+    if strong_project:
+        uses_poetry = (repo_root / "poetry.lock").exists()
+        test_cmd = "poetry run pytest" if uses_poetry else "pytest"
+        lint_cmd = "poetry run ruff check ." if uses_poetry else "ruff check ."
+        fmt_cmd = "poetry run ruff format --check ." if uses_poetry else "ruff format --check ."
+        return {
+            "BUILD_CMD": "",
+            "TEST_CMD": test_cmd,
+            "LINT_CMD": lint_cmd,
+            "FORMAT_CHECK_CMD": fmt_cmd,
+        }
+
+    # Fallback for "Python scripts" repos (no pyproject/requirements.txt):
+    # prefer a deterministic syntax check over guessing pytest/ruff.
+    weak_signal = any(
+        [
+            bool(list(repo_root.glob("requirements*.txt"))),
+            bool(list(repo_root.glob("*.py"))),
+            bool(list((repo_root / "scripts").glob("*.py"))),
+            bool(list((repo_root / "tools").glob("*.py"))),
+        ]
+    )
+    if not weak_signal:
+        return {}
+
+    # Avoid misclassifying obvious non-Python projects.
+    other_markers = [
+        repo_root / "package.json",
+        repo_root / "Cargo.toml",
+        repo_root / "go.mod",
+        repo_root / "pom.xml",
+        repo_root / "gradlew",
+        repo_root / "gradlew.bat",
+        repo_root / "build.gradle",
+        repo_root / "build.gradle.kts",
+    ]
+    if any(p.exists() for p in other_markers) or bool(list(repo_root.glob("*.sln"))):
+        return {}
+
+    return {
+        "BUILD_CMD": "",
+        "TEST_CMD": "python .autoworkflow/tools/autoworkflow.py --root . py-syntax",
+        "LINT_CMD": "",
+        "FORMAT_CHECK_CMD": "",
+    }
+
+
+def detect_rust_gate(repo_root: Path) -> dict[str, str]:
+    if not (repo_root / "Cargo.toml").exists():
+        return {}
+    return {
+        "BUILD_CMD": "cargo build",
+        "TEST_CMD": "cargo test",
+        "LINT_CMD": "cargo clippy -- -D warnings",
+        "FORMAT_CHECK_CMD": "cargo fmt -- --check",
+    }
+
+
+def detect_go_gate(repo_root: Path) -> dict[str, str]:
+    if not (repo_root / "go.mod").exists():
+        return {}
+    return {
+        "BUILD_CMD": "go build ./...",
+        "TEST_CMD": "go test ./...",
+        "LINT_CMD": "go vet ./...",
+        "FORMAT_CHECK_CMD": "",
+    }
+
+
+def detect_java_gate(repo_root: Path) -> dict[str, str]:
+    # Maven / Gradle heuristics
+    if (repo_root / "pom.xml").exists():
+        return {
+            "BUILD_CMD": "mvn -B -DskipTests package",
+            "TEST_CMD": "mvn -B test",
+            "LINT_CMD": "",
+            "FORMAT_CHECK_CMD": "",
+        }
+    gradlew = repo_root / "gradlew"
+    if gradlew.exists():
+        gradle_bin = "./gradlew"
+    elif (repo_root / "gradlew.bat").exists():
+        gradle_bin = "gradlew.bat"
+    elif (repo_root / "build.gradle").exists() or (repo_root / "build.gradle.kts").exists():
+        gradle_bin = "gradle"
+    else:
+        return {}
+    return {
+        "BUILD_CMD": f"{gradle_bin} build -x test",
+        "TEST_CMD": f"{gradle_bin} test",
+        "LINT_CMD": "",
+        "FORMAT_CHECK_CMD": "",
+    }
+
+
+def detect_dotnet_gate(repo_root: Path) -> dict[str, str]:
+    has_sln = bool(list(repo_root.glob("*.sln")))
+    has_csproj = bool(list(repo_root.rglob("*.csproj")))
+    if not (has_sln or has_csproj):
+        return {}
+    return {
+        "BUILD_CMD": "dotnet build",
+        "TEST_CMD": "dotnet test",
+        "LINT_CMD": "",
+        "FORMAT_CHECK_CMD": "",
+    }
+
+
+def detect_claude_gate(repo_root: Path) -> dict[str, str]:
+    path = repo_root / "CLAUDE.md"
+    if not path.exists():
+        return {}
+    text = _read_text(path)
+    result: dict[str, str] = {}
+    rx = re.compile(r"(?im)^(build|test|lint|format)[^:：]{0,15}[:：]\s*`?(.+?)`?\s*$")
+    for m in rx.finditer(text):
+        key = m.group(1).lower()
+        cmd = m.group(2).strip()
+        if not cmd:
+            continue
+        if key == "build":
+            result["BUILD_CMD"] = cmd
+        elif key == "test":
+            result["TEST_CMD"] = cmd
+        elif key == "lint":
+            result["LINT_CMD"] = cmd
+        elif key == "format":
+            result["FORMAT_CHECK_CMD"] = cmd
+    return result
+
+
+def detect_gate(repo_root: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """
+    Returns (suggested, sources) where sources maps key->hint origin.
+    Priority: CLAUDE.md overrides structural heuristics.
+    """
+    sources: dict[str, str] = {}
+    suggested: dict[str, str] = {}
+
+    claude = detect_claude_gate(repo_root)
+    for k, v in claude.items():
+        if v:
+            suggested[k] = v
+            sources[k] = "CLAUDE.md"
+
+    detectors = [
+        ("Node.js", detect_node_gate),
+        ("Python", detect_python_gate),
+        ("Rust", detect_rust_gate),
+        ("Go", detect_go_gate),
+        ("Java", detect_java_gate),
+        (".NET", detect_dotnet_gate),
+    ]
+    for origin, fn in detectors:
+        found = fn(repo_root)
+        for k, v in found.items():
+            if k in suggested:
+                continue
+            if v:
+                suggested[k] = v
+                sources[k] = origin
+    return suggested, sources
+
+
+def _normalize_gate_value(raw: str) -> str:
+    val = raw.strip()
+    if len(val) >= 2 and ((val[0] == val[-1] == '"') or (val[0] == val[-1] == "'")):
+        val = val[1:-1].strip()
+    val = val.strip("`").strip()
+    return val
+
+
+def parse_gate_kv_from_text(text: str) -> dict[str, str]:
+    """
+    Extracts BUILD_CMD/TEST_CMD/LINT_CMD/FORMAT_CHECK_CMD from arbitrary text.
+    Accepts:
+      - KEY=value
+      - - KEY=value
+      - `KEY=value`
+    """
+    found: dict[str, str] = {}
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        line = line.strip().strip("`")
+        if line.startswith(("-", "*")):
+            line = line[1:].lstrip().strip("`")
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if key not in ALLOWED_ENV_KEYS:
+            continue
+        found[key] = _normalize_gate_value(value)
+    return found
+
+
+def codex_detect_gate(
+    repo_root: Path,
+    *,
+    oss: bool,
+    local_provider: str | None,
+    model: str | None,
+    timeout_seconds: int,
+) -> tuple[dict[str, str], str]:
+    codex_bin = shutil.which("codex")
+    if not codex_bin and os.name == "nt":
+        appdata = os.environ.get("APPDATA", "")
+        if appdata:
+            candidate = Path(appdata) / "npm" / "codex.cmd"
+            if candidate.exists():
+                codex_bin = str(candidate)
+    if not codex_bin:
+        raise RuntimeError("codex CLI not found in PATH (install codex-cli or disable --codex).")
+
+    prompt = "\n".join(
+        [
+            "You are in a project repository root.",
+            "",
+            "Goal: infer gate commands for the repo.",
+            "",
+            "Hard rules:",
+            "- Do NOT run any commands/tests.",
+            "- Do NOT modify any files.",
+            "- You may read repo files.",
+            "- Output exactly 4 lines (allow empty values). No markdown/code blocks/explanations:",
+            "BUILD_CMD=",
+            "TEST_CMD=",
+            "LINT_CMD=",
+            "FORMAT_CHECK_CMD=",
+            "",
+            "Hint: if you cannot infer a real test entrypoint, set TEST_CMD to: python -m compileall -q .",
+        ]
+    )
+
+    cmd: list[str] = [
+        codex_bin,
+        "--sandbox",
+        "read-only",
+        "--ask-for-approval",
+        "untrusted",
+    ]
+    if oss:
+        cmd.append("--oss")
+        if local_provider:
+            cmd.extend(["--local-provider", local_provider])
+    if model:
+        cmd.extend(["--model", model])
+    cmd.extend(["exec", "--skip-git-repo-check", "-C", str(repo_root), "-"])
+
+    proc = subprocess.Popen(
+        cmd,
+        cwd=str(repo_root),
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    try:
+        output, _ = proc.communicate(input=prompt, timeout=timeout_seconds)
+    except subprocess.TimeoutExpired:
+        try:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
+            else:
+                proc.kill()
+        except Exception:
+            pass
+        raise RuntimeError(f"codex exec timed out after {timeout_seconds}s")
+    output = output or ""
+    code = int(proc.returncode or 0)
+    parsed = parse_gate_kv_from_text(output)
+    if parsed:
+        return parsed, output
+    preview = output[:4000]
+    suffix = "" if len(output) <= 4000 else "\n...(truncated)..."
+    raise RuntimeError(f"codex exec failed (exit {code}) or produced no KEY=value output.\n{preview}{suffix}")
+
+
+def load_model_policy(repo_root: Path) -> dict:
+    policy_path = repo_autoworkflow_dir(repo_root) / "model-policy.json"
+    if not policy_path.exists():
+        return DEFAULT_MODEL_POLICY
+    try:
+        return json.loads(policy_path.read_text(encoding="utf-8"))
+    except Exception:
+        return DEFAULT_MODEL_POLICY
+
+
+def detect_signals_for_model(repo_root: Path) -> set[str]:
+    signals: set[str] = set()
+    aw = repo_autoworkflow_dir(repo_root)
+    env_path = aw / "gate.env"
+    env_values = parse_gate_env(env_path)
+    if not env_values.get("TEST_CMD"):
+        signals.add("no_gate_configured")
+
+    state_path = aw / "state.md"
+    if state_path.exists():
+        text = state_path.read_text(encoding="utf-8", errors="replace")
+        # Heuristic: only consider the latest gate section (the last "## Gate (latest)").
+        last = text.rfind("## Gate (latest)")
+        if last != -1:
+            tail = text[last:]
+            m = re.search(r"^\\- Result:\\s*(.+)$", tail, re.MULTILINE)
+            if m and m.group(1).strip().startswith("failed"):
+                signals.add("gate_failed")
+    return signals
+
+
+def recommend_model(repo_root: Path, intent: str | None) -> tuple[str, str, str]:
+    policy = load_model_policy(repo_root)
+    profiles = policy.get("profiles", {})
+    rules = policy.get("rules", [])
+
+    signals = detect_signals_for_model(repo_root)
+    intent_norm = (intent or "").strip().lower()
+    if intent_norm in ("doctor", "init", "survey"):
+        # Deterministic, tool-like actions: always keep it cheap.
+        chosen = "light"
+        prof = profiles.get(chosen, {})
+        claude = str(prof.get("claude", "haiku"))
+        codex = str(prof.get("codex", "gpt-5-medium"))
+        return chosen, claude, codex + " (reason: deterministic tooling)"
+    if intent_norm in ("debug", "fix", "refactor"):
+        # These intents benefit from stronger models; still allow rules to override if needed.
+        signals.add("gate_failed")
+
+    chosen = "medium"
+    reason = "default"
+    for rule in rules:
+        cond = rule.get("if")
+        if isinstance(cond, str) and cond in signals:
+            chosen = str(rule.get("then", chosen))
+            reason = str(rule.get("reason", reason))
+            break
+
+    prof = profiles.get(chosen, {})
+    claude = str(prof.get("claude", "sonnet"))
+    codex = str(prof.get("codex", "gpt-5.2"))
+    return chosen, claude, codex + f" (reason: {reason})"
+
+
+def write_gate_env(env_path: Path, updates: dict[str, str], force_create: bool) -> None:
+    current = parse_gate_env(env_path)
+    current.update({k: v for k, v in updates.items() if v is not None})
+
+    env_path.parent.mkdir(parents=True, exist_ok=True)
+    if env_path.exists() or force_create:
+        lines: list[str] = [
+            "# Autoworkflow gate config (untracked by default).",
+            "# Allowed keys: BUILD_CMD, TEST_CMD, LINT_CMD, FORMAT_CHECK_CMD",
+        ]
+        for key in ALLOWED_ENV_KEYS:
+            value = current.get(key, "")
+            # Keep plain values; gate scripts treat the remainder as raw string.
+            lines.append(f"{key}={value}")
+        lines.append("")
+        with env_path.open("w", encoding="utf-8", newline="\n") as f:
+            f.write("\n".join(lines))
+
+
+def which(cmd: str) -> str | None:
+    return shutil.which(cmd)
+
+
+def detect_markers(repo_root: Path) -> list[str]:
+    markers: list[str] = []
+    for rel in (
+        "package.json",
+        "pyproject.toml",
+        "requirements.txt",
+        "poetry.lock",
+        "Cargo.toml",
+        "go.mod",
+        "pom.xml",
+        "build.gradle",
+        "build.gradle.kts",
+        "CMakeLists.txt",
+        ".gitmodules",
+        ".gitignore",
+    ):
+        if (repo_root / rel).exists():
+            markers.append(rel)
+    if (repo_root / ".github" / "workflows").exists():
+        markers.append(".github/workflows/")
+    if list(repo_root.glob("*.uproject")):
+        markers.append("*.uproject")
+    if (repo_root / "ProjectSettings" / "ProjectVersion.txt").exists():
+        markers.append("Unity ProjectSettings/ProjectVersion.txt")
+    if list(repo_root.glob("*.sln")) or list(repo_root.rglob("*.csproj")):
+        markers.append(".NET solution/project files")
+    return markers
+
+
+def doctor_report(repo_root: Path) -> str:
+    host = host_info()
+    aw = repo_autoworkflow_dir(repo_root)
+    env_path = aw / "gate.env"
+    env_values = parse_gate_env(env_path)
+    markers = detect_markers(repo_root)
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+
+    lines: list[str] = []
+    lines.append("# Autoworkflow Doctor Report")
+    lines.append("")
+    lines.append(f"- Time (UTC): {now}")
+    lines.append(f"- Platform: {platform.platform()}")
+    lines.append(f"- Python: {host.python}")
+    lines.append(f"- WSL: {'yes' if host.is_wsl else 'no'}")
+    lines.append("")
+    lines.append("## Repo signals")
+    if markers:
+        for m in markers:
+            lines.append(f"- {m}")
+    else:
+        lines.append("- (no common markers detected)")
+    lines.append("")
+    lines.append("## .autoworkflow status")
+    lines.append(f"- Exists: {'yes' if aw.exists() else 'no'}")
+    lines.append(f"- Gate env: {'yes' if env_path.exists() else 'no'}")
+    lines.append(f"- Gate (Windows): {'yes' if (aw / 'tools' / 'gate.ps1').exists() else 'no'}")
+    lines.append(f"- Gate (WSL/Ubuntu): {'yes' if (aw / 'tools' / 'gate.sh').exists() else 'no'}")
+    lines.append("")
+    lines.append("## Gate config (from gate.env)")
+    if not env_values:
+        lines.append("- (empty / not configured)")
+    else:
+        for key in ALLOWED_ENV_KEYS:
+            value = env_values.get(key, "")
+            lines.append(f"- {key}: `{value}`")
+    lines.append("")
+    lines.append("## Tooling availability (PATH)")
+    for cmd in ("git", "python", "cmake", "ctest", "dotnet", "node", "npm", "pnpm", "yarn", "mvn", "gradle"):
+        found = which(cmd)
+        lines.append(f"- {cmd}: {'OK' if found else 'missing'}")
+    lines.append("")
+    lines.append("## Next actions (tests must be green)")
+    if not aw.exists():
+        lines.append("- Run: `autoworkflow init` (see usage below)")
+        lines.append("- Then set gate commands: `autoworkflow set-gate --build ... --test ...`")
+    else:
+        if not env_values.get("TEST_CMD"):
+            lines.append("- Set `TEST_CMD` in `.autoworkflow/gate.env` (or via `autoworkflow set-gate`).")
+        lines.append("- Run gate: `autoworkflow gate` (or run the platform script directly).")
+    lines.append("")
+    lines.append("## Usage")
+    lines.append("- init:   `python autoworkflow.py init`")
+    lines.append("- doctor: `python autoworkflow.py doctor`")
+    lines.append("- set:    `python autoworkflow.py set-gate --build \"...\" --test \"...\"`")
+    lines.append("- gate:   `python autoworkflow.py gate`")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_doctor(repo_root: Path, write: bool, update_state: bool) -> str:
+    report = doctor_report(repo_root)
+    aw = repo_autoworkflow_dir(repo_root)
+    if write:
+        safe_write_text(aw / "doctor.md", report, force=True)
+    if update_state:
+        state_path = aw / "state.md"
+        stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+        appendix = "\n".join(
+            [
+                "",
+                "## Doctor (latest)",
+                f"- Time (UTC): {stamp}",
+                "- See `.autoworkflow/doctor.md` for full report.",
+                "",
+            ]
+        )
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        if state_path.exists():
+            with state_path.open("w", encoding="utf-8", newline="\n") as f:
+                f.write(state_path.read_text(encoding="utf-8") + appendix)
+        else:
+            safe_write_text(state_path, appendix.lstrip("\n"), force=True)
+    return report
+
+
+def _stdout_write(text: str) -> None:
+    try:
+        sys.stdout.write(text)
+        sys.stdout.flush()
+    except UnicodeEncodeError:
+        encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+        buffer = getattr(sys.stdout, "buffer", None)
+        if buffer is not None:
+            buffer.write(text.encode(encoding, errors="replace"))
+            buffer.flush()
+        else:
+            # Last resort: drop unencodable characters.
+            sys.stdout.write(text.encode(encoding, errors="replace").decode(encoding, errors="ignore"))
+            sys.stdout.flush()
+
+
+def _run_and_tee(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> tuple[int, str]:
+    proc = subprocess.Popen(
+        cmd,
+        cwd=str(cwd),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=env,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        bufsize=1,
+        universal_newlines=True,
+    )
+    assert proc.stdout is not None
+    out_lines: list[str] = []
+    for line in proc.stdout:
+        _stdout_write(line)
+        out_lines.append(line)
+    proc.wait()
+    return int(proc.returncode), "".join(out_lines)
+
+
+def _redact(text: str) -> str:
+    # Best-effort redaction to avoid leaking secrets into local state logs.
+    out = text
+
+    rx_kv = re.compile(
+        r"(?i)\b(password|passwd|token|secret|api[_-]?key|access[_-]?key)\b(\s*[:=]\s*)([^\s\"']+)"
+    )
+    out = rx_kv.sub(lambda m: f"{m.group(1)}{m.group(2)}***REDACTED***", out)
+
+    rx_bearer = re.compile(r"(?i)\b(bearer)(\s+)([a-z0-9\-\._~\+/]+=*)")
+    out = rx_bearer.sub(lambda m: f"{m.group(1)}{m.group(2)}***REDACTED***", out)
+
+    rx_jwt = re.compile(r"\beyJ[a-zA-Z0-9_\-]{10,}\.[a-zA-Z0-9_\-]{10,}\.[a-zA-Z0-9_\-]{10,}\b")
+    out = rx_jwt.sub("***REDACTED***", out)
+
+    return out
+
+
+def _extract_failure_highlights(output: str, max_tail_lines: int = 40, max_highlight_lines: int = 25) -> str:
+    output = _redact(output)
+    lines = output.splitlines()
+    tail = lines[-max_tail_lines:] if len(lines) > max_tail_lines else lines
+
+    patterns = [
+        r"\berror\b",
+        r"\bfatal\b",
+        r"\bfailed\b",
+        r"\bexception\b",
+        r"\btraceback\b",
+        r"\bassert\b",
+        r"cmake error",
+        r"msb\d{4}",
+        r"\blnk\d+\b",
+        r"undefined reference",
+        r"segmentation fault",
+    ]
+    rx = re.compile("|".join(f"(?:{p})" for p in patterns), re.IGNORECASE)
+
+    highlights: list[str] = []
+    seen: set[str] = set()
+    for line in lines:
+        if rx.search(line):
+            key = line.strip()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            highlights.append(line)
+            if len(highlights) >= max_highlight_lines:
+                break
+
+    buf: list[str] = []
+    if highlights:
+        buf.append("### Highlights")
+        buf.extend([f"- {h.strip()}" for h in highlights])
+        buf.append("")
+    buf.append("### Tail")
+    buf.extend(tail)
+    return "\n".join(buf).rstrip() + "\n"
+
+
+def _append_gate_to_state(repo_root: Path, gate_cmd: str, exit_code: int, output: str) -> None:
+    aw = repo_autoworkflow_dir(repo_root)
+    state_path = aw / "state.md"
+
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+    status = "green" if exit_code == 0 else f"failed (exit {exit_code})"
+
+    gate_cmd = _redact(gate_cmd)
+
+    section: list[str] = []
+    section.append("")
+    section.append("## Gate (latest)")
+    section.append(f"- Time (UTC): {stamp}")
+    section.append(f"- Command: `{gate_cmd}`")
+    section.append(f"- Result: {status}")
+    section.append("")
+
+    if exit_code != 0:
+        section.append(_extract_failure_highlights(output))
+    else:
+        # Keep success logs minimal to avoid bloating the state file.
+        section.append("### Output (success)")
+        section.append("- (omitted)")
+        section.append("")
+
+    aw.mkdir(parents=True, exist_ok=True)
+    if state_path.exists():
+        with state_path.open("a", encoding="utf-8", newline="\n") as f:
+            f.write("\n".join(section))
+    else:
+        with state_path.open("w", encoding="utf-8", newline="\n") as f:
+            f.write("\n".join(section).lstrip("\n"))
+
+
+def _git_is_repo(repo_root: Path) -> bool:
+    if shutil.which("git") is None:
+        return False
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(repo_root), "rev-parse", "--is-inside-work-tree"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        return proc.returncode == 0 and proc.stdout.strip().lower() == "true"
+    except Exception:
+        return False
+
+
+def _run_git(repo_root: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(repo_root), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+
+
+def _git_ls_files(repo_root: Path, pattern: str) -> list[Path]:
+    if not _git_is_repo(repo_root):
+        return []
+    proc = _run_git(repo_root, ["ls-files", pattern])
+    if proc.returncode != 0:
+        return []
+    paths: list[Path] = []
+    for raw in proc.stdout.splitlines():
+        rel = raw.strip()
+        if not rel:
+            continue
+        paths.append(repo_root / rel)
+    return paths
+
+
+def py_syntax_check(repo_root: Path) -> int:
+    files = _git_ls_files(repo_root, "*.py")
+    if not files:
+        excluded = {".git", ".autoworkflow", ".spec-workflow", ".venv", "node_modules", "__pycache__"}
+        for p in repo_root.rglob("*.py"):
+            rel = p.relative_to(repo_root)
+            if any(part in excluded for part in rel.parts):
+                continue
+            files.append(p)
+
+    if not files:
+        print("py-syntax: no python files found (skip)")
+        return 0
+
+    failures = 0
+    for path in files:
+        try:
+            src = tokenize.open(str(path)).read()
+            ast.parse(src, filename=str(path))
+        except SyntaxError as e:
+            failures += 1
+            loc = f"{path}:{e.lineno or 0}:{e.offset or 0}"
+            msg = e.msg or "SyntaxError"
+            print(f"py-syntax: {loc}: {msg}")
+        except Exception as e:
+            failures += 1
+            print(f"py-syntax: {path}: {e}")
+
+    if failures:
+        print(f"py-syntax: failed ({failures}/{len(files)})")
+        return 1
+
+    print(f"py-syntax: OK ({len(files)} files)")
+    return 0
+
+
+def _git_current_branch(repo_root: Path) -> str | None:
+    proc = _run_git(repo_root, ["rev-parse", "--abbrev-ref", "HEAD"])
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip() or None
+
+
+def _git_branch_exists(repo_root: Path, name: str) -> bool:
+    proc = _run_git(repo_root, ["show-ref", "--verify", "--quiet", f"refs/heads/{name}"])
+    return proc.returncode == 0
+
+
+def _git_check_branch_name(repo_root: Path, name: str) -> bool:
+    proc = _run_git(repo_root, ["check-ref-format", "--branch", name])
+    return proc.returncode == 0
+
+
+def _default_branch_name(prefix: str) -> str:
+    normalized = prefix.strip()
+    if normalized and not normalized.endswith("/"):
+        normalized += "/"
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%SZ")
+    return f"{normalized}{ts}" if normalized else ts
+
+
+def _unique_branch_name(repo_root: Path, base: str) -> str:
+    if not _git_branch_exists(repo_root, base):
+        return base
+    for i in range(2, 100):
+        cand = f"{base}-{i}"
+        if not _git_branch_exists(repo_root, cand):
+            return cand
+    # last resort: time suffix
+    ts = datetime.now(timezone.utc).strftime("%H%M%S")
+    return f"{base}-{ts}"
+
+
+def git_branch_start(
+    repo_root: Path,
+    name: str | None,
+    prefix: str,
+    base_ref: str | None,
+    protected_branches: list[str],
+    dry_run: bool,
+    require_git: bool,
+) -> int:
+    if not _git_is_repo(repo_root):
+        msg = "git: not a git worktree (skip)"
+        if require_git:
+            print(f"{msg}; use --require-git=false to allow skipping")
+            return 2
+        print(msg)
+        return 0
+
+    current = _git_current_branch(repo_root)
+    if not current:
+        print("git: failed to detect current branch")
+        return 2
+
+    triggers = set([b for b in protected_branches if b])
+    should_create = current == "HEAD" or current in triggers
+    if not should_create:
+        print(f"git: already on branch '{current}' (skip)")
+        return 0
+
+    desired = name.strip() if name else _default_branch_name(prefix=prefix or DEFAULT_BRANCH_PREFIX)
+    desired = desired.strip()
+    if not desired:
+        desired = _default_branch_name(prefix=DEFAULT_BRANCH_PREFIX)
+
+    if not _git_check_branch_name(repo_root, desired):
+        fallback = _default_branch_name(prefix=DEFAULT_BRANCH_PREFIX)
+        print(f"git: invalid branch name '{desired}', fallback to '{fallback}'")
+        desired = fallback
+
+    desired = _unique_branch_name(repo_root, desired)
+
+    args = ["checkout", "-b", desired]
+    if base_ref:
+        args.append(base_ref)
+
+    printable = "git " + " ".join(args)
+    if dry_run:
+        print(f"[dry-run] {printable}")
+        return 0
+
+    code, out = _run_and_tee(["git", *args], cwd=repo_root)
+    if code != 0:
+        return int(code)
+    print(f"git: switched to '{desired}'")
+    return 0
+
+
+def git_branch_cleanup(
+    repo_root: Path,
+    remote: str,
+    base: str,
+    delete_remote: bool,
+    force_delete: bool,
+    dry_run: bool,
+) -> int:
+    if not _git_is_repo(repo_root):
+        print("git: not a git worktree (skip)")
+        return 0
+    base = (base or "develop").strip() or "develop"
+    if not _git_branch_exists(repo_root, base):
+        if _git_remote_has_branch(repo_root, remote, base):
+            print(f"git: local base '{base}' missing, fetching from {remote}/{base}")
+            code, _out = _run_and_tee(["git", "fetch", remote, f"{base}:{base}"], cwd=repo_root)
+            if code != 0:
+                return int(code)
+        else:
+            print(f"git: base '{base}' not found locally or on {remote}; abort cleanup")
+            return 2
+    proc = _run_git(repo_root, ["branch", "--merged", base])
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr)
+        return int(proc.returncode)
+    branches: list[str] = []
+    current = _git_current_branch(repo_root) or ""
+    for raw in proc.stdout.splitlines():
+        b = raw.strip().lstrip("* ").strip()
+        if not b:
+            continue
+        if b in DEFAULT_PROTECTED_BRANCHES or b == base or b == current:
+            continue
+        branches.append(b)
+    if not branches:
+        print(f"git: no merged branches to clean (base={base})")
+        return 0
+
+    print("git: merged branches eligible for cleanup:")
+    for b in branches:
+        print(f"- {b}")
+    if dry_run:
+        print("dry-run: no deletions performed (use --execute to delete)")
+        return 0
+
+    for b in branches:
+        cmd = ["git", "branch", "-d" if not force_delete else "-D", b]
+        code, _out = _run_and_tee(cmd, cwd=repo_root)
+        if code != 0:
+            return int(code)
+        if delete_remote and _git_remote_has_branch(repo_root, remote, b):
+            code, _out = _run_and_tee(["git", "push", remote, f":{b}"], cwd=repo_root)
+            if code != 0:
+                return int(code)
+    return 0
+
+
+def git_commit(
+    repo_root: Path,
+    message: str | None,
+    stage_all: bool,
+    auto_message: bool,
+    lang: str,
+    conventional: bool,
+    commit_type: str | None,
+    scope: str | None,
+    dry_run: bool,
+    require_git: bool,
+) -> int:
+    if not _git_is_repo(repo_root):
+        msg = "git: not a git worktree (skip)"
+        if require_git:
+            print(f"{msg}; use --require-git=false to allow skipping")
+            return 2
+        print(msg)
+        return 0
+
+    msg = (message or "").strip()
+
+    if stage_all:
+        if dry_run:
+            print("[dry-run] git add -A")
+        else:
+            code, _out = _run_and_tee(["git", "add", "-A"], cwd=repo_root)
+            if code != 0:
+                return int(code)
+
+    proc = _run_git(repo_root, ["diff", "--cached", "--name-only"])
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr)
+        return int(proc.returncode)
+    if not proc.stdout.strip():
+        print("git: nothing staged to commit (skip)")
+        return 0
+
+    staged_paths = [p for p in proc.stdout.splitlines() if p.strip()]
+
+    subject: str | None = None
+    body: str | None = None
+
+    if auto_message:
+        subject, body = _generate_commit_message(
+            repo_root=repo_root,
+            staged_paths=staged_paths,
+            lang=lang,
+            commit_type=commit_type,
+            scope=scope,
+        )
+    else:
+        if not msg:
+            print("git: missing --message (or use --auto-message)")
+            return 2
+        lines = msg.splitlines()
+        subject = lines[0].strip() if lines else ""
+        body = "\n".join(lines[1:]).strip() if len(lines) > 1 else None
+        if body == "":
+            body = None
+
+    assert subject is not None
+    subject = subject.strip()
+    if not subject:
+        print("git: empty commit subject")
+        return 2
+
+    if conventional and not _is_conventional_subject(subject):
+        print("git: commit subject must follow Conventional Commits")
+        print(f"git: got: {json.dumps(subject)}")
+        print('git: expected: "feat(scope): 简短说明" (scope optional)')
+        return 2
+
+    args = ["git", "commit", "-m", subject]
+    if body:
+        args.extend(["-m", body])
+
+    printable = " ".join(args[:3]) + f" {json.dumps(subject)}"
+    if body:
+        printable += " -m <body>"
+
+    if dry_run:
+        print(f"[dry-run] {printable}")
+        return 0
+
+    code, _out = _run_and_tee(args, cwd=repo_root)
+    return int(code)
+
+
+def _is_conventional_subject(subject: str) -> bool:
+    # https://www.conventionalcommits.org/en/v1.0.0/
+    types = "|".join(re.escape(t) for t in CONVENTIONAL_COMMIT_TYPES)
+    rx = re.compile(rf"^(?:{types})(?:\([^)]+\))?: .+")
+    return bool(rx.match(subject.strip()))
+
+
+def _generate_commit_message(
+    repo_root: Path,
+    staged_paths: list[str],
+    lang: str,
+    commit_type: str | None,
+    scope: str | None,
+) -> tuple[str, str | None]:
+    if lang not in ("zh", "en"):
+        lang = "zh"
+
+    guessed_type, guessed_scope = _guess_conventional_type_and_scope(staged_paths)
+    ctype = (commit_type or guessed_type).strip()
+    if ctype not in CONVENTIONAL_COMMIT_TYPES:
+        ctype = guessed_type
+
+    cscope = (scope or guessed_scope or "").strip() or None
+
+    subject_text = _auto_subject_text(lang=lang, commit_type=ctype, scope=cscope)
+    subject = f"{ctype}{f'({cscope})' if cscope else ''}: {subject_text}"
+
+    body = _auto_body_text(lang=lang, staged_paths=staged_paths)
+    return subject, body
+
+
+def _guess_conventional_type_and_scope(staged_paths: list[str]) -> tuple[str, str | None]:
+    if not staged_paths:
+        return "chore", None
+
+    def is_docs(path: str) -> bool:
+        p = path.lower()
+        if p.endswith((".md", ".rst", ".txt")):
+            return True
+        return p in ("readme.md", "claude.md", "workdoc.md", "index.md")
+
+    def is_ci(path: str) -> bool:
+        p = path.lower().replace("\\", "/")
+        return p.startswith(".github/") or p.startswith(".gitee/") or p.startswith(".gitlab/") or p.startswith(".circleci/")
+
+    def is_build(path: str) -> bool:
+        p = path.lower()
+        return p in ("pyproject.toml", "package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock") or p.endswith(
+            (".csproj", ".sln")
+        )
+
+    def is_test(path: str) -> bool:
+        p = path.lower().replace("\\", "/")
+        return "/test" in p or "/tests" in p or p.startswith("test") or p.endswith(("_test.py", ".spec.ts", ".test.ts"))
+
+    docs_only = all(is_docs(p) for p in staged_paths)
+    if docs_only:
+        ctype = "docs"
+    elif any(is_ci(p) for p in staged_paths):
+        ctype = "ci"
+    elif any(is_build(p) for p in staged_paths):
+        ctype = "build"
+    elif any(is_test(p) for p in staged_paths):
+        ctype = "test"
+    elif any(p.replace("\\", "/").startswith((".claude/", ".autoworkflow/")) for p in staged_paths):
+        ctype = "chore"
+    else:
+        ctype = "feat"
+
+    scope: str | None = None
+    if any(p.replace("\\", "/").startswith(".claude/") for p in staged_paths):
+        scope = "claude"
+    elif any(p.replace("\\", "/").startswith(".autoworkflow/") for p in staged_paths):
+        scope = "autoworkflow"
+    elif any(p.replace("\\", "/").startswith("codex-skills/") for p in staged_paths):
+        scope = "skills"
+
+    return ctype, scope
+
+
+def _auto_subject_text(lang: str, commit_type: str, scope: str | None) -> str:
+    if lang == "en":
+        base = {
+            "feat": "update features",
+            "fix": "fix issues",
+            "docs": "update docs",
+            "style": "update code style",
+            "refactor": "refactor code",
+            "perf": "improve performance",
+            "test": "update tests",
+            "build": "update build config",
+            "ci": "update CI config",
+            "chore": "update workflow",
+            "revert": "revert changes",
+        }.get(commit_type, "update")
+        if scope:
+            return f"{base} ({scope})"
+        return base
+
+    # zh
+    base = {
+        "feat": "更新功能",
+        "fix": "修复问题",
+        "docs": "更新文档",
+        "style": "调整代码风格",
+        "refactor": "重构代码",
+        "perf": "性能优化",
+        "test": "更新测试",
+        "build": "更新构建配置",
+        "ci": "更新 CI 配置",
+        "chore": "更新工作流",
+        "revert": "回滚变更",
+    }.get(commit_type, "更新")
+
+    if scope == "claude":
+        if commit_type == "docs":
+            return "更新 Claude Code 文档"
+        return "更新 Claude Code 工作流"
+    if scope == "autoworkflow":
+        return "更新 autoworkflow 工具链"
+
+    return base
+
+
+def _auto_body_text(lang: str, staged_paths: list[str], max_items: int = 12) -> str | None:
+    if not staged_paths:
+        return None
+
+    norm = [p.replace("\\", "/") for p in staged_paths]
+    areas: list[str] = []
+    for p in norm:
+        if "/" in p:
+            areas.append(p.split("/", 1)[0])
+        else:
+            areas.append(p)
+
+    uniq_areas: list[str] = []
+    for a in areas:
+        if a not in uniq_areas:
+            uniq_areas.append(a)
+        if len(uniq_areas) >= 6:
+            break
+
+    if lang == "en":
+        lines = [
+            f"- Files changed: {len(staged_paths)}",
+            f"- Areas: {', '.join(uniq_areas)}" if uniq_areas else None,
+        ]
+    else:
+        lines = [
+            f"- 变更文件：{len(staged_paths)} 个",
+            f"- 涉及范围：{'、'.join(uniq_areas)}" if uniq_areas else None,
+        ]
+
+    for p in norm[:max_items]:
+        lines.append(f"- {p}")
+    if len(norm) > max_items:
+        lines.append(
+            f"- ...（其余 {len(norm) - max_items} 个文件略）"
+            if lang != "en"
+            else f"- ... ({len(norm) - max_items} more files)"
+        )
+
+    filtered = [l for l in lines if l]
+    return "\n".join(filtered).rstrip() if filtered else None
+
+
+@dataclass(frozen=True)
+class RemoteRepo:
+    provider: str  # "gitee" | "github" | "unknown"
+    host: str
+    owner: str
+    repo: str
+
+
+def _git_remote_url(repo_root: Path, remote: str) -> str | None:
+    proc = _run_git(repo_root, ["remote", "get-url", remote])
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr)
+        return None
+    return proc.stdout.strip() or None
+
+
+def _parse_remote_repo(url: str) -> RemoteRepo | None:
+    raw = (url or "").strip()
+    if not raw:
+        return None
+
+    host = ""
+    path = ""
+
+    # scp-like: git@host:owner/repo.git
+    scp_like = re.match(r"^[^@]+@([^:]+):(.+)$", raw)
+    if scp_like:
+        host = scp_like.group(1)
+        path = scp_like.group(2)
+    else:
+        parsed = urllib.parse.urlparse(raw)
+        host = parsed.hostname or ""
+        path = (parsed.path or "").lstrip("/")
+
+    path = path.removesuffix(".git")
+    parts = [p for p in path.split("/") if p]
+    if len(parts) < 2 or not host:
+        return None
+
+    owner = parts[-2]
+    repo = parts[-1]
+
+    provider = "unknown"
+    host_l = host.lower()
+    if host_l.endswith("gitee.com"):
+        provider = "gitee"
+    elif host_l.endswith("github.com"):
+        provider = "github"
+
+    return RemoteRepo(provider=provider, host=host, owner=owner, repo=repo)
+
+
+def _git_is_https_remote(url: str) -> bool:
+    return url.lower().startswith("https://")
+
+
+def _git_credential_fill(repo_root: Path, url: str) -> dict[str, str] | None:
+    """
+    Best-effort retrieval from the configured git credential helper.
+    Returns a dict with keys like 'username' / 'password'.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "credential", "fill"],
+            input=f"url={url}\n\n",
+            cwd=str(repo_root),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if proc.returncode != 0:
+            return None
+    except Exception:
+        return None
+
+    creds: dict[str, str] = {}
+    for raw in (proc.stdout or "").splitlines():
+        if "=" not in raw:
+            continue
+        key, val = raw.split("=", 1)
+        creds[key.strip()] = val.strip()
+    return creds or None
+
+
+def _git_config_global_get(repo_root: Path, key: str) -> str | None:
+    proc = subprocess.run(
+        ["git", "config", "--global", "--get", key],
+        cwd=str(repo_root),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if proc.returncode != 0:
+        return None
+    val = (proc.stdout or "").strip()
+    if not val:
+        return None
+    if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+        val = val[1:-1].strip()
+    return val or None
+
+
+def _resolve_provider_credentials(
+    repo_root: Path, remote_url: str, provider: str, fallback_user: str
+) -> tuple[str, str] | None:
+    secrets = parse_secret_env(repo_autoworkflow_dir(repo_root) / "secret.env")
+
+    if provider == "gitee":
+        token = (os.environ.get("GITEE_TOKEN") or secrets.get("GITEE_TOKEN") or "").strip()
+        if token:
+            username = (os.environ.get("GITEE_USERNAME") or secrets.get("GITEE_USERNAME") or fallback_user).strip() or fallback_user
+            return username, token
+        if _git_is_https_remote(remote_url):
+            creds = _git_credential_fill(repo_root, remote_url)
+            if creds:
+                token = (creds.get("password") or "").strip()
+                username = (
+                    (
+                        os.environ.get("GITEE_USERNAME")
+                        or secrets.get("GITEE_USERNAME")
+                        or creds.get("username")
+                        or fallback_user
+                    ).strip()
+                    or fallback_user
+                )
+                if token:
+                    return username, token
+            token = _git_config_global_get(repo_root, "user.https://gitee.com.password") or ""
+            token = token.strip()
+            if token:
+                username = (
+                    os.environ.get("GITEE_USERNAME")
+                    or secrets.get("GITEE_USERNAME")
+                    or _git_config_global_get(repo_root, "user.https://gitee.com.name")
+                    or fallback_user
+                )
+                username = (username or fallback_user).strip() or fallback_user
+                return username, token
+        return None
+
+    if provider == "github":
+        token = (os.environ.get("GITHUB_TOKEN") or secrets.get("GITHUB_TOKEN") or "").strip()
+        if token:
+            return "x-access-token", token
+        if _git_is_https_remote(remote_url):
+            creds = _git_credential_fill(repo_root, remote_url)
+            if creds:
+                token = (creds.get("password") or "").strip()
+                username = (creds.get("username") or "x-access-token").strip() or "x-access-token"
+                if token:
+                    return username, token
+            token = _git_config_global_get(repo_root, "user.https://github.com.password") or ""
+            token = token.strip()
+            if token:
+                username = _git_config_global_get(repo_root, "user.https://github.com.name") or "x-access-token"
+                username = (username or "x-access-token").strip() or "x-access-token"
+                return username, token
+        return None
+
+    return None
+
+
+def _resolve_provider_token(repo_root: Path, remote_url: str, provider: str) -> str | None:
+    secrets = parse_secret_env(repo_autoworkflow_dir(repo_root) / "secret.env")
+
+    if provider == "gitee":
+        token = (os.environ.get("GITEE_TOKEN") or secrets.get("GITEE_TOKEN") or "").strip()
+        if token:
+            return token
+        if _git_is_https_remote(remote_url):
+            creds = _git_credential_fill(repo_root, remote_url)
+            token = (creds or {}).get("password") or ""
+            token = token.strip()
+            if token:
+                return token
+            token = _git_config_global_get(repo_root, "user.https://gitee.com.password") or ""
+            token = token.strip()
+            return token or None
+        return None
+
+    if provider == "github":
+        token = (os.environ.get("GITHUB_TOKEN") or secrets.get("GITHUB_TOKEN") or "").strip()
+        if token:
+            return token
+        if _git_is_https_remote(remote_url):
+            creds = _git_credential_fill(repo_root, remote_url)
+            token = (creds or {}).get("password") or ""
+            token = token.strip()
+            if token:
+                return token
+            token = _git_config_global_get(repo_root, "user.https://github.com.password") or ""
+            token = token.strip()
+            return token or None
+        return None
+
+    return None
+
+
+def _ensure_git_askpass_script(repo_root: Path) -> Path:
+    aw = repo_autoworkflow_dir(repo_root)
+    trace_dir = aw / "trace"
+    trace_dir.mkdir(parents=True, exist_ok=True)
+
+    if os.name == "nt":
+        path = trace_dir / "git-askpass.cmd"
+        content = "\n".join(
+            [
+                "@echo off",
+                "set prompt=%*",
+                "echo %prompt% | findstr /i \"Username for\" >nul",
+                "if %errorlevel%==0 (",
+                "  echo %AUTOWORKFLOW_ASKPASS_USER%",
+                "  exit /b 0",
+                ")",
+                "echo %prompt% | findstr /i \"Password for\" >nul",
+                "if %errorlevel%==0 (",
+                "  echo %AUTOWORKFLOW_ASKPASS_TOKEN%",
+                "  exit /b 0",
+                ")",
+                "echo %AUTOWORKFLOW_ASKPASS_TOKEN%",
+                "exit /b 0",
+                "",
+            ]
+        )
+        safe_write_text(path, content, force=True)
+        return path
+
+    path = trace_dir / "git-askpass.sh"
+    content = "\n".join(
+        [
+            "#!/usr/bin/env sh",
+            "p=\"$1\"",
+            "case \"$p\" in",
+            "  *Username*) printf '%s\\n' \"${AUTOWORKFLOW_ASKPASS_USER}\" ;;",
+            "  *Password*) printf '%s\\n' \"${AUTOWORKFLOW_ASKPASS_TOKEN}\" ;;",
+            "  *) printf '%s\\n' \"${AUTOWORKFLOW_ASKPASS_TOKEN}\" ;;",
+            "esac",
+            "",
+        ]
+    )
+    safe_write_text(path, content, force=True)
+    try:
+        os.chmod(path, 0o755)
+    except Exception:
+        pass
+    return path
+
+
+def _git_auth_env_for_remote(repo_root: Path, remote: str, provider_hint: str | None = None) -> dict[str, str] | None:
+    url = _git_remote_url(repo_root, remote)
+    if not url:
+        return None
+    if not _git_is_https_remote(url):
+        return None
+
+    info = _parse_remote_repo(url)
+    if not info:
+        return None
+
+    provider = provider_hint if provider_hint and provider_hint != "auto" else info.provider
+
+    resolved = _resolve_provider_credentials(repo_root, remote_url=url, provider=provider, fallback_user=info.owner)
+    if not resolved:
+        return None
+    username, token = resolved
+
+    askpass = _ensure_git_askpass_script(repo_root)
+    env = dict(os.environ)
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GIT_ASKPASS"] = str(askpass)
+    env["AUTOWORKFLOW_ASKPASS_USER"] = username
+    env["AUTOWORKFLOW_ASKPASS_TOKEN"] = token
+    env["GCM_INTERACTIVE"] = "Never"
+    return env
+
+
+def _git_remote_has_branch(repo_root: Path, remote: str, branch: str) -> bool:
+    proc = _run_git(repo_root, ["ls-remote", "--heads", remote, branch])
+    return proc.returncode == 0 and bool(proc.stdout.strip())
+
+
+@dataclass(frozen=True)
+class WorktreeStatus:
+    dirty: bool
+    untracked: bool
+    conflicted: bool
+
+
+def _git_worktree_status(repo_root: Path) -> WorktreeStatus:
+    proc = _run_git(repo_root, ["status", "--porcelain", "-uall"])
+    dirty = False
+    untracked = False
+    conflicted = False
+    for raw in proc.stdout.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("??"):
+            untracked = True
+            continue
+        if line.startswith("UU") or line.startswith("AA") or line.startswith("DD") or line.startswith("AU") or line.startswith("UA"):
+            conflicted = True
+            continue
+        dirty = True
+    return WorktreeStatus(dirty=dirty, untracked=untracked, conflicted=conflicted)
+
+
+def _git_branch_ahead_behind(repo_root: Path, remote: str, branch: str) -> tuple[int, int] | None:
+    if not _git_remote_has_branch(repo_root, remote, branch):
+        return None
+    _run_git(repo_root, ["fetch", "--prune", remote, branch])
+    proc = _run_git(repo_root, ["rev-list", "--left-right", "--count", f"{remote}/{branch}...{branch}"])
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return None
+    parts = proc.stdout.strip().split()
+    if len(parts) != 2:
+        return None
+    behind = int(parts[0])
+    ahead = int(parts[1])
+    return ahead, behind
+
+
+def _auto_update_branch_if_behind(repo_root: Path, remote: str, branch: str) -> int:
+    ahead_behind = _git_branch_ahead_behind(repo_root, remote, branch)
+    if ahead_behind is None:
+        return 0
+    ahead, behind = ahead_behind
+    if behind <= 0:
+        return 0
+    print(f"git: branch '{branch}' is behind {remote}/{branch} by {behind} commit(s); attempting rebase")
+    code, _out = _run_and_tee(["git", "pull", "--rebase", "--autostash", remote, branch], cwd=repo_root)
+    return int(code)
+
+
+def _guard_worktree(repo_root: Path, auto_stash: bool) -> tuple[bool, str | None]:
+    status = _git_worktree_status(repo_root)
+    if status.conflicted:
+        print("git: worktree has merge conflicts; aborting (resolve conflicts first).")
+        return False, None
+    if not status.dirty and not status.untracked:
+        return True, None
+    if not auto_stash:
+        print("git: worktree dirty/untracked; set --auto-stash or clean manually.")
+        return False, None
+    msg = f"autoworkflow-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+    code, out = _run_and_tee(["git", "stash", "push", "--include-untracked", "-m", msg], cwd=repo_root)
+    if code != 0:
+        return False, None
+    stash_ref = None
+    for line in out.splitlines():
+        if "stash@{" in line:
+            m = re.search(r"stash@{\\d+}", line)
+            if m:
+                stash_ref = m.group(0)
+                break
+    print(f"git: worktree stashed ({stash_ref or 'latest'}) for a clean run")
+    return True, stash_ref
+
+
+def _restore_stash(repo_root: Path, stash_ref: str | None) -> None:
+    if not stash_ref:
+        return
+    code, _out = _run_and_tee(["git", "stash", "pop", stash_ref], cwd=repo_root)
+    if code != 0:
+        print(f"git: failed to reapply stash {stash_ref}; please restore manually (stash kept).")
+    else:
+        print(f"git: restored stash {stash_ref}.")
+
+
+def git_push(
+    repo_root: Path,
+    remote: str,
+    branch: str | None,
+    set_upstream: bool,
+    dry_run: bool,
+    require_git: bool,
+) -> int:
+    if not _git_is_repo(repo_root):
+        msg = "git: not a git worktree (skip)"
+        if require_git:
+            print(f"{msg}; use --require-git=false to allow skipping")
+            return 2
+        print(msg)
+        return 0
+
+    current = _git_current_branch(repo_root)
+    head = (branch or current or "").strip()
+    if not head or head == "HEAD":
+        print("git: missing --branch (detached HEAD)")
+        return 2
+
+    args = ["push"]
+    if set_upstream:
+        args.append("-u")
+    args.extend([remote, head])
+
+    printable = "git " + " ".join(args)
+    if dry_run:
+        print(f"[dry-run] {printable}")
+        return 0
+
+    ok, stash_ref = _guard_worktree(repo_root, auto_stash=True)
+    if not ok:
+        return 3
+
+    try:
+        # Keep branch up-to-date before pushing (safe auto rebase if behind).
+        update_code = _auto_update_branch_if_behind(repo_root, remote=remote, branch=head)
+        if update_code != 0:
+            return int(update_code)
+
+        auth_env = _git_auth_env_for_remote(repo_root, remote=remote)
+        if auth_env is None:
+            env = dict(os.environ)
+            env["GIT_TERMINAL_PROMPT"] = "0"
+            env["GCM_INTERACTIVE"] = "Never"
+            env.pop("GIT_ASKPASS", None)
+            auth_env = env
+
+        cmd = ["git"]
+        if auth_env.get("GIT_ASKPASS") and (auth_env.get("AUTOWORKFLOW_ASKPASS_TOKEN") or "").strip():
+            # Avoid invoking user-configured credential helpers (can be interactive/broken).
+            cmd.extend(["-c", "credential.helper="])
+        cmd.extend(args)
+        code, _out = _run_and_tee(cmd, cwd=repo_root, env=auth_env)
+        return int(code)
+    finally:
+        _restore_stash(repo_root, stash_ref)
+
+
+def _read_gate_env_summary(repo_root: Path) -> list[str]:
+    env_path = repo_autoworkflow_dir(repo_root) / "gate.env"
+    if not env_path.exists():
+        return []
+    env_values = parse_gate_env(env_path)
+    keys = ("BUILD_CMD", "TEST_CMD", "LINT_CMD", "FORMAT_CHECK_CMD")
+    lines: list[str] = []
+    for k in keys:
+        v = (env_values.get(k) or "").strip()
+        if v:
+            lines.append(f"- {k}: `{v}`")
+    return lines
+
+
+def _default_pr_title(repo_root: Path) -> str | None:
+    proc = _run_git(repo_root, ["log", "-1", "--format=%s"])
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip() or None
+
+
+def _infer_pr_title(repo_root: Path, remote: str, base: str | None) -> str | None:
+    last = _default_pr_title(repo_root)
+    if last and _is_conventional_subject(last):
+        return last
+
+    if base:
+        proc = _run_git(repo_root, ["diff", "--name-only", f"{remote}/{base}..HEAD"])
+        if proc.returncode == 0:
+            paths = [p.strip() for p in proc.stdout.splitlines() if p.strip()]
+            if paths:
+                subject, _body = _generate_commit_message(
+                    repo_root=repo_root,
+                    staged_paths=paths,
+                    lang="zh",
+                    commit_type=None,
+                    scope=None,
+                )
+                if subject:
+                    return subject
+
+    return last
+
+
+def _default_pr_body(repo_root: Path, remote: str, base: str | None = None, lang: str = "zh") -> str:
+    if lang not in ("zh", "en"):
+        lang = "zh"
+
+    lines: list[str] = []
+    lines.append("## Summary" if lang == "en" else "## 变更说明")
+
+    subjects: list[str] = []
+    if base:
+        range_ref = f"{remote}/{base}..HEAD"
+        proc = _run_git(repo_root, ["log", "--format=%s", "--no-decorate", range_ref])
+        if proc.returncode == 0:
+            subjects = [s.strip() for s in proc.stdout.splitlines() if s.strip()]
+
+    if not subjects:
+        title = _default_pr_title(repo_root)
+        if title:
+            subjects = [title]
+
+    for s in subjects[:20]:
+        lines.append(f"- {s}")
+    if len(subjects) > 20:
+        lines.append(f"- ...（其余 {len(subjects) - 20} 条略）" if lang == "zh" else f"- ... ({len(subjects) - 20} more)")
+
+    gate_lines = _read_gate_env_summary(repo_root)
+    if gate_lines:
+        lines.append("")
+        lines.append("## Verification" if lang == "en" else "## 验证")
+        lines.extend(gate_lines)
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _http_post_form(url: str, form: dict[str, str], headers: dict[str, str]) -> tuple[int, str]:
+    data = urllib.parse.urlencode(form).encode("utf-8")
+    req = urllib.request.Request(url, data=data, method="POST")
+    for k, v in headers.items():
+        req.add_header(k, v)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            return int(getattr(resp, "status", 200)), body
+    except Exception as e:
+        if hasattr(e, "code") and hasattr(e, "read"):
+            status = int(getattr(e, "code", 0) or 0)
+            body = e.read().decode("utf-8", errors="replace")
+            return status, body
+        raise
+
+
+def _http_post_json(url: str, payload: dict[str, Any], headers: dict[str, str]) -> tuple[int, str]:
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(url, data=data, method="POST")
+    for k, v in headers.items():
+        req.add_header(k, v)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            return int(getattr(resp, "status", 200)), body
+    except Exception as e:
+        if hasattr(e, "code") and hasattr(e, "read"):
+            status = int(getattr(e, "code", 0) or 0)
+            body = e.read().decode("utf-8", errors="replace")
+            return status, body
+        raise
+
+
+def _http_get(url: str, headers: dict[str, str]) -> tuple[int, str]:
+    req = urllib.request.Request(url, method="GET")
+    for k, v in headers.items():
+        req.add_header(k, v)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            return int(getattr(resp, "status", 200)), body
+    except Exception as e:
+        if hasattr(e, "code") and hasattr(e, "read"):
+            status = int(getattr(e, "code", 0) or 0)
+            body = e.read().decode("utf-8", errors="replace")
+            return status, body
+        raise
+
+
+def _git_head_sha(repo_root: Path) -> str | None:
+    proc = _run_git(repo_root, ["rev-parse", "HEAD"])
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip() or None
+
+
+def git_pr_create(
+    repo_root: Path,
+    remote: str,
+    provider: str,
+    base: str,
+    head: str | None,
+    title: str | None,
+    body: str | None,
+    draft: bool,
+    labels: list[str] | None,
+    assignees: list[str] | None,
+    reviewers: list[str] | None,
+    wait_ci: bool,
+    push: bool,
+    set_upstream: bool,
+    bootstrap_base_from: str | None,
+    dry_run: bool,
+    require_git: bool,
+) -> int:
+    if not _git_is_repo(repo_root):
+        msg = "git: not a git worktree (skip)"
+        if require_git:
+            print(f"{msg}; use --require-git=false to allow skipping")
+            return 2
+        print(msg)
+        return 0
+
+    current = _git_current_branch(repo_root)
+    head_branch = (head or current or "").strip()
+    if not head_branch or head_branch == "HEAD":
+        print("git: missing --head (detached HEAD)")
+        return 2
+
+    remote_url = _git_remote_url(repo_root, remote)
+    if not remote_url:
+        print(f"git: failed to read remote url for '{remote}'")
+        return 2
+
+    info = _parse_remote_repo(remote_url)
+    if not info:
+        print(f"git: unsupported remote url: {remote_url}")
+        return 2
+
+    chosen = provider if provider != "auto" else info.provider
+    if chosen not in ("gitee", "github"):
+        print(f"git: unsupported provider '{chosen}' (use --provider gitee|github)")
+        return 2
+
+    base = (base or "develop").strip()
+    if not base:
+        base = "develop"
+
+    if not _git_remote_has_branch(repo_root, remote, base):
+        if bootstrap_base_from:
+            src = bootstrap_base_from.strip()
+            if not src:
+                print("git: empty --bootstrap-base-from")
+                return 2
+            push_args = ["push", remote, f"{src}:refs/heads/{base}"]
+            if dry_run:
+                print(f"[dry-run] git {' '.join(push_args)}")
+            else:
+                code, _out = _run_and_tee(["git", *push_args], cwd=repo_root)
+                if code != 0:
+                    return int(code)
+        else:
+            print(f"git: base branch '{base}' not found on remote '{remote}'")
+            print("git: either:")
+            print("  - pass --base master (or another existing branch)")
+            print("  - or rerun with --bootstrap-base-from origin/master")
+            print("  - or rerun with --bootstrap-base-from HEAD (not recommended)")
+            return 2
+
+    if push:
+        code = git_push(
+            repo_root=repo_root,
+            remote=remote,
+            branch=head_branch,
+            set_upstream=set_upstream,
+            dry_run=dry_run,
+            require_git=True,
+        )
+        if code != 0:
+            return code
+
+    pr_title = (title or _infer_pr_title(repo_root, remote=remote, base=base) or "").strip()
+    if not pr_title:
+        print("git: missing PR title (--title) and unable to infer a Conventional title")
+        return 2
+    if not _is_conventional_subject(pr_title):
+        print("git: PR title must follow Conventional Commits")
+        print(f"git: got: {json.dumps(pr_title)}")
+        return 2
+
+    pr_body = body if body is not None else _default_pr_body(repo_root, remote=remote, base=base, lang="zh")
+
+    if dry_run:
+        print("[dry-run] pr create")
+        print(f"- provider: {chosen}")
+        print(f"- remote: {remote} ({info.host})")
+        print(f"- repo: {info.owner}/{info.repo}")
+        print(f"- base: {base}")
+        print(f"- head: {head_branch}")
+        print(f"- title: {pr_title}")
+        print("- body: <omitted>")
+        print(f"- draft: {draft}")
+        if labels:
+            print(f"- labels: {', '.join(labels)}")
+        if assignees:
+            print(f"- assignees: {', '.join(assignees)}")
+        if reviewers:
+            print(f"- reviewers: {', '.join(reviewers)}")
+        if wait_ci:
+            print("- wait-ci: yes")
+        return 0
+
+    if chosen == "gitee":
+        token = _resolve_provider_token(repo_root, remote_url=remote_url, provider="gitee") or ""
+        if not token:
+            print("git: missing GITEE_TOKEN (env or .autoworkflow/secret.env)")
+            return 2
+        url = f"https://gitee.com/api/v5/repos/{info.owner}/{info.repo}/pulls"
+        form: dict[str, str] = {
+            "access_token": token,
+            "title": pr_title,
+            "head": head_branch,
+            "base": base,
+            "body": pr_body,
+            "draft": "true" if draft else "false",
+        }
+        # Gitee labels/assignees APIs differ; avoid sending unknown fields to keep request stable.
+        status, text = _http_post_form(
+            url,
+            form=form,
+            headers={
+                "User-Agent": "autoworkflow",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        )
+        if status != 201:
+            sys.stderr.write(_redact(text) + "\n")
+            return 2
+        try:
+            data = json.loads(text)
+            html = data.get("html_url") or data.get("url")
+            print(f"PR created: {html}" if html else "PR created.")
+            pr_number = data.get("number")
+            head_sha = (data.get("head") or {}).get("sha") or _git_head_sha(repo_root)
+            if labels:
+                _gitee_set_labels(info.owner, info.repo, pr_number, labels, token)
+            if assignees:
+                _gitee_set_assignees(info.owner, info.repo, pr_number, assignees, token)
+            if wait_ci and head_sha:
+                _gitee_report_ci_status(info.owner, info.repo, head_sha, token)
+            elif wait_ci:
+                print("CI status: missing head sha, skipping.")
+        except Exception:
+            print("PR created.")
+        return 0
+
+    # github
+    token = _resolve_provider_token(repo_root, remote_url=remote_url, provider="github") or ""
+    if not token and shutil.which("gh"):
+        cmd = [
+            "gh",
+            "pr",
+            "create",
+            "--base",
+            base,
+            "--head",
+            head_branch,
+            "--title",
+            pr_title,
+            "--body",
+            pr_body,
+        ]
+        if draft:
+            cmd.append("--draft")
+        code, _out = _run_and_tee(cmd, cwd=repo_root)
+        return int(code)
+
+    if not token:
+        print("git: missing GITHUB_TOKEN (env or .autoworkflow/secret.env) and gh not available")
+        return 2
+
+    url = f"https://api.github.com/repos/{info.owner}/{info.repo}/pulls"
+    status, text = _http_post_json(
+        url,
+        payload={
+            "title": pr_title,
+            "head": head_branch,
+            "base": base,
+            "body": pr_body,
+            "draft": bool(draft),
+        },
+        headers={
+            "User-Agent": "autoworkflow",
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    if status != 201:
+        sys.stderr.write(_redact(text) + "\n")
+        return 2
+    try:
+        data = json.loads(text)
+        html = data.get("html_url")
+        pr_number = data.get("number")
+        head_sha = ((data.get("head") or {}) or {}).get("sha")
+        print(f"PR created: {html}" if html else "PR created.")
+        if labels:
+            _github_set_labels(info.owner, info.repo, pr_number, labels, token)
+        if assignees:
+            _github_set_assignees(info.owner, info.repo, pr_number, assignees, token)
+        if reviewers:
+            _github_set_reviewers(info.owner, info.repo, pr_number, reviewers, token)
+        if wait_ci and head_sha:
+            _github_report_ci_status(info.owner, info.repo, head_sha, token)
+        elif wait_ci:
+            print("CI status: missing head sha, skipping.")
+    except Exception:
+        print("PR created.")
+    return 0
+
+
+def _github_set_labels(owner: str, repo: str, number: int | None, labels: list[str], token: str) -> None:
+    if not number or not labels:
+        return
+    url = f"https://api.github.com/repos/{owner}/{repo}/issues/{number}/labels"
+    status, text = _http_post_json(
+        url,
+        payload={"labels": labels},
+        headers={
+            "User-Agent": "autoworkflow",
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    if status not in (200, 201):
+        print("github: failed to set labels:", _redact(text))
+
+
+def _github_set_assignees(owner: str, repo: str, number: int | None, assignees: list[str], token: str) -> None:
+    if not number or not assignees:
+        return
+    url = f"https://api.github.com/repos/{owner}/{repo}/issues/{number}/assignees"
+    status, text = _http_post_json(
+        url,
+        payload={"assignees": assignees},
+        headers={
+            "User-Agent": "autoworkflow",
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    if status not in (200, 201):
+        print("github: failed to set assignees:", _redact(text))
+
+
+def _github_set_reviewers(owner: str, repo: str, number: int | None, reviewers: list[str], token: str) -> None:
+    if not number or not reviewers:
+        return
+    url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{number}/requested_reviewers"
+    status, text = _http_post_json(
+        url,
+        payload={"reviewers": reviewers},
+        headers={
+            "User-Agent": "autoworkflow",
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    if status not in (200, 201):
+        print("github: failed to request reviewers:", _redact(text))
+
+
+def _github_report_ci_status(owner: str, repo: str, sha: str, token: str) -> None:
+    url = f"https://api.github.com/repos/{owner}/{repo}/commits/{sha}/status"
+    status, text = _http_get(
+        url,
+        headers={
+            "User-Agent": "autoworkflow",
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    if status != 200:
+        print("CI status: failed to fetch:", _redact(text))
+        return
+    try:
+        data = json.loads(text)
+    except Exception:
+        print("CI status: failed to parse response")
+        return
+    state = data.get("state") or "unknown"
+    statuses = data.get("statuses") or []
+    failed = [s for s in statuses if (s.get("state") or "").lower() not in ("success", "skipped", "neutral")]
+    print(f"CI status ({state}): total {len(statuses)} checks, failed {len(failed)}")
+    for s in failed[:5]:
+        ctx = s.get("context") or s.get("name") or ""
+        desc = s.get("description") or ""
+        print(f"- {ctx}: {desc}")
+    if len(failed) > 5:
+        print(f"- ... {len(failed) - 5} more failing checks")
+
+
+def _gitee_statuses_url(owner: str, repo: str, sha: str, token: str) -> str:
+    base = f"https://gitee.com/api/v5/repos/{owner}/{repo}/statuses/{sha}"
+    if token:
+        return base + "?access_token=" + urllib.parse.quote(token)
+    return base
+
+
+def _gitee_report_ci_status(owner: str, repo: str, sha: str, token: str) -> None:
+    url = _gitee_statuses_url(owner, repo, sha, token)
+    status, text = _http_get(
+        url,
+        headers={
+            "User-Agent": "autoworkflow",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"token {token}",
+        },
+    )
+    if status != 200:
+        print("CI status: failed to fetch from Gitee:", _redact(text))
+        return
+    try:
+        data = json.loads(text)
+    except Exception:
+        print("CI status: failed to parse Gitee response")
+        return
+
+    # Gitee returns list of statuses
+    if isinstance(data, list):
+        statuses = data
+    else:
+        statuses = data.get("statuses") or []
+    state = "unknown"
+    failed: list[dict[str, Any]] = []
+    for s in statuses:
+        st = (s.get("state") or "").lower()
+        if st and state == "unknown":
+            state = st
+        if st not in ("success", "skipped", "neutral", "pending", "running"):
+            failed.append(s)
+    print(f"CI status ({state}): total {len(statuses)} checks, failed {len(failed)}")
+    for s in failed[:5]:
+        ctx = s.get("context") or s.get("target_url") or ""
+        desc = s.get("description") or ""
+        print(f"- {ctx}: {desc}")
+    if len(failed) > 5:
+        print(f"- ... {len(failed) - 5} more failing checks")
+
+
+def _gitee_set_labels(owner: str, repo: str, number: int | None, labels: list[str], token: str) -> None:
+    if not number or not labels:
+        return
+    # Try pull labels endpoint; fall back to issues labels if unsupported.
+    endpoints = [
+        f"https://gitee.com/api/v5/repos/{owner}/{repo}/pulls/{number}/labels",
+        f"https://gitee.com/api/v5/repos/{owner}/{repo}/issues/{number}/labels",
+    ]
+    payload = {"labels": labels, "access_token": token}
+    for url in endpoints:
+        status, text = _http_post_json(
+            url,
+            payload=payload,
+            headers={
+                "User-Agent": "autoworkflow",
+                "Accept": "application/json",
+                "Authorization": f"token {token}",
+            },
+        )
+        if status in (200, 201):
+            return
+    print("gitee: failed to set labels:", _redact(text))
+
+
+def _gitee_set_assignees(owner: str, repo: str, number: int | None, assignees: list[str], token: str) -> None:
+    if not number or not assignees:
+        return
+    endpoints = [
+        f"https://gitee.com/api/v5/repos/{owner}/{repo}/pulls/{number}/assignees",
+        f"https://gitee.com/api/v5/repos/{owner}/{repo}/issues/{number}/assignees",
+    ]
+    payload = {"assignees": assignees, "access_token": token}
+    for url in endpoints:
+        status, text = _http_post_json(
+            url,
+            payload=payload,
+            headers={
+                "User-Agent": "autoworkflow",
+                "Accept": "application/json",
+                "Authorization": f"token {token}",
+            },
+        )
+        if status in (200, 201):
+            return
+    print("gitee: failed to set assignees:", _redact(text))
+
+
+def run_gate(
+    repo_root: Path,
+    build: str | None,
+    test: str | None,
+    lint: str | None,
+    fmt: str | None,
+    allow_unreviewed: bool,
+    prefer_wsl: bool,
+) -> int:
+    guard_plan_review(repo_root, allow_unreviewed=allow_unreviewed)
+    aw = repo_autoworkflow_dir(repo_root)
+    env_path = aw / "gate.env"
+    env_values = parse_gate_env(env_path)
+    if build is not None:
+        env_values["BUILD_CMD"] = build
+    if test is not None:
+        env_values["TEST_CMD"] = test
+    if lint is not None:
+        env_values["LINT_CMD"] = lint
+    if fmt is not None:
+        env_values["FORMAT_CHECK_CMD"] = fmt
+
+    host = host_info()
+    if os.name == "nt" and not host.is_wsl:
+        if prefer_wsl:
+            if not _wsl_available():
+                print("gate: prefer-wsl enabled but WSL is unavailable; aborting.")
+                return 3
+            gate_sh = aw / "tools" / "gate.sh"
+            if not gate_sh.exists():
+                print("gate: prefer-wsl enabled but `.autoworkflow/tools/gate.sh` missing; aborting.")
+                return 3
+            wsl_root = _windows_path_to_wsl(repo_root)
+            wsl_gate = _windows_path_to_wsl(gate_sh)
+            quoted_root = shlex.quote(wsl_root)
+            quoted_gate = shlex.quote(wsl_gate)
+            wsl_cmd = ["wsl", "bash", "-lc", f"cd {quoted_root} && bash {quoted_gate}"]
+            code, output = _run_and_tee(wsl_cmd, cwd=repo_root)
+            _append_gate_to_state(repo_root, gate_cmd=" ".join(wsl_cmd), exit_code=code, output=output)
+            return code
+        gate_ps1 = aw / "tools" / "gate.ps1"
+        if not gate_ps1.exists():
+            raise RuntimeError("Missing `.autoworkflow/tools/gate.ps1` (run init first).")
+        cmd = [
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(gate_ps1),
+        ]
+        if env_values.get("BUILD_CMD"):
+            cmd += ["-BuildCmd", env_values["BUILD_CMD"]]
+        if env_values.get("TEST_CMD"):
+            cmd += ["-TestCmd", env_values["TEST_CMD"]]
+        if env_values.get("LINT_CMD"):
+            cmd += ["-LintCmd", env_values["LINT_CMD"]]
+        if env_values.get("FORMAT_CHECK_CMD"):
+            cmd += ["-FormatCheckCmd", env_values["FORMAT_CHECK_CMD"]]
+        code, output = _run_and_tee(cmd, cwd=repo_root)
+        _append_gate_to_state(repo_root, gate_cmd=" ".join(cmd), exit_code=code, output=output)
+        return code
+
+    gate_sh = aw / "tools" / "gate.sh"
+    if not gate_sh.exists():
+        raise RuntimeError("Missing `.autoworkflow/tools/gate.sh` (run init first).")
+    cmd = ["bash", str(gate_sh)]
+    code, output = _run_and_tee(cmd, cwd=repo_root)
+    _append_gate_to_state(repo_root, gate_cmd=" ".join(cmd), exit_code=code, output=output)
+    return code
+
+
+def _load_plan(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        raise FileNotFoundError("Missing plan.yaml (run `autoworkflow plan init`)")
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise RuntimeError(f"plan.yaml 解析失败: {exc}")
+
+
+def _dump_plan(path: Path, data: dict[str, Any]) -> None:
+    text = json.dumps(data, ensure_ascii=False, indent=2)
+    safe_write_text(path, text + "\n", force=True)
+
+
+def plan_init(repo_root: Path, force: bool) -> None:
+    target = plan_path(repo_root)
+    if target.exists() and not force:
+        print(f"plan.yaml already exists, use --force to overwrite ({target})")
+        return
+    _dump_plan(target, DEFAULT_PLAN_TEMPLATE)
+    print(f"Initialized plan: {target}")
+
+
+def _detect_gate_ids(repo_root: Path) -> dict[str, str]:
+    env = parse_gate_env(repo_autoworkflow_dir(repo_root) / "gate.env")
+    mapping: dict[str, str] = {}
+    if env.get("BUILD_CMD"):
+        mapping["build"] = env["BUILD_CMD"]
+    if env.get("TEST_CMD"):
+        mapping["test"] = env["TEST_CMD"]
+    if env.get("LINT_CMD"):
+        mapping["lint"] = env["LINT_CMD"]
+    if env.get("FORMAT_CHECK_CMD"):
+        mapping["format"] = env["FORMAT_CHECK_CMD"]
+    return mapping
+
+
+def plan_gen(repo_root: Path) -> None:
+    aw = repo_autoworkflow_dir(repo_root)
+    aw.mkdir(parents=True, exist_ok=True)
+
+    gates = _detect_gate_ids(repo_root)
+    module_id = "default-module"
+    tasks: list[dict[str, Any]] = []
+    idx = 1
+    for key in ("build", "test", "lint", "format"):
+        if key in gates:
+            tasks.append(
+                {
+                    "id": f"t{idx}",
+                    "milestone": "m1",
+                    "title": f"Run {key}",
+                    "size_days": 0.25,
+                    "deps": [],
+                    "gate_cmds": [key],
+                    "risk": "low",
+                    "blocking": False,
+                }
+            )
+            idx += 1
+    if not tasks:
+        tasks = [
+            {
+                "id": "t1",
+                "milestone": "m1",
+                "title": "Define gate commands",
+                "size_days": 0.5,
+                "deps": [],
+                "gate_cmds": [],
+                "risk": "med",
+                "blocking": True,
+            }
+        ]
+
+    plan = {
+        "meta": {"version": 1},
+        "goal_ref": "goal.json",
+        "modules": [
+            {
+                "id": module_id,
+                "purpose": "Auto-generated plan (edit as needed)",
+                "scope_in": [],
+                "scope_out": [],
+                "risks": [],
+            }
+        ],
+        "milestones": [
+            {
+                "id": "m1",
+                "module": module_id,
+                "title": "Initial delivery",
+                "target_date": "",
+                "deps": [],
+                "success_criteria": ["Gate green"],
+            }
+        ],
+        "tasks": tasks,
+        "data_specs": [],
+        "review": {"decision": "pending", "score": 0, "reasons": [], "actions": []},
+    }
+    _dump_plan(plan_path(repo_root), plan)
+    print(f"Generated plan: {plan_path(repo_root)}")
+
+
+def _penalize(condition: bool, penalty: int, reasons: list[str], msg: str) -> int:
+    if condition:
+        reasons.append(msg)
+        return penalty
+    return 0
+
+
+def plan_review(repo_root: Path, min_score: int = 85) -> int:
+    path = plan_path(repo_root)
+    plan = _load_plan(path)
+    reasons: list[str] = []
+    actions: list[str] = []
+    score = 100
+
+    tasks = plan.get("tasks", [])
+    milestones = {m.get("id"): m for m in plan.get("milestones", [])}
+    data_specs = plan.get("data_specs", [])
+
+    if not tasks:
+        reasons.append("没有 tasks")
+        score = 0
+
+    for t in tasks:
+        size = t.get("size_days", 0)
+        score -= _penalize(size and size > 1.0, 10, reasons, f"Task {t.get('id')} size_days>1")
+        g = t.get("gate_cmds") or []
+        score -= _penalize(len(g) == 0, 12, reasons, f"Task {t.get('id')} 缺少 gate_cmds")
+        mid = t.get("milestone")
+        if mid and mid not in milestones:
+            score -= _penalize(True, 8, reasons, f"Task {t.get('id')} 关联未知 milestone {mid}")
+
+    for spec in data_specs:
+        if spec.get("breaking_change"):
+            mod = spec.get("module", "")
+            related = [t for t in tasks if mod and mod in t.get("title", "").lower()]
+            score -= _penalize(len(related) == 0, 12, reasons, f"{mod} 标记 breaking_change 但无迁移/兼容任务")
+
+    decision = "approve" if score >= min_score else "reject"
+    if decision == "reject":
+        actions.append("调整 plan 后重跑 plan review（score>=85 才可通过 gate）")
+
+    plan["review"] = {
+        "decision": decision,
+        "score": max(0, score),
+        "reasons": reasons,
+        "actions": actions,
+        "reviewed_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ"),
+    }
+    _dump_plan(path, plan)
+
+    review_md = []
+    review_md.append("# Plan Review")
+    review_md.append(f"- decision: {decision}")
+    review_md.append(f"- score: {max(0, score)}")
+    if reasons:
+        review_md.append("## Reasons")
+        review_md.extend([f"- {r}" for r in reasons])
+    if actions:
+        review_md.append("## Actions")
+        review_md.extend([f"- {a}" for a in actions])
+    safe_write_text(repo_autoworkflow_dir(repo_root) / PLAN_REVIEW_FILE, "\n".join(review_md) + "\n", force=True)
+
+    # append to state
+    state_path = repo_autoworkflow_dir(repo_root) / "state.md"
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+    section = "\n".join(
+        [
+            "",
+            "## Plan Review (latest)",
+            f"- Time (UTC): {stamp}",
+            f"- decision: {decision}",
+            f"- score: {max(0, score)}",
+            f"- reasons: {', '.join(reasons) if reasons else '(none)'}",
+            "",
+        ]
+    )
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    with state_path.open("a", encoding="utf-8", newline="\n") as f:
+        f.write(section)
+
+    print(f"Plan review: {decision} (score={max(0, score)})")
+    return 0 if decision == "approve" else 1
+
+
+def plan_status(repo_root: Path) -> int:
+    try:
+        plan = _load_plan(plan_path(repo_root))
+    except Exception as exc:
+        print(f"plan status: {exc}")
+        return 1
+    tasks = plan.get("tasks", [])
+    total = len(tasks)
+    blocking = len([t for t in tasks if t.get("blocking")])
+    no_gate = len([t for t in tasks if not t.get("gate_cmds")])
+    review = plan.get("review", {})
+    summary = "\n".join(
+        [
+            "# Plan Status",
+            f"- tasks: {total}",
+            f"- blocking tasks: {blocking}",
+            f"- tasks missing gate_cmds: {no_gate}",
+            f"- last review: {review.get('decision','pending')} (score={review.get('score',0)})",
+        ]
+    )
+    print(summary)
+    # append to state
+    state_path = repo_autoworkflow_dir(repo_root) / "state.md"
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+    section = "\n".join(
+        [
+            "",
+            "## Plan Status (latest)",
+            f"- Time (UTC): {stamp}",
+            f"- tasks: {total}",
+            f"- blocking: {blocking}",
+            f"- missing gate_cmds: {no_gate}",
+            f"- review decision: {review.get('decision','pending')} (score={review.get('score',0)})",
+            "",
+        ]
+    )
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    with state_path.open("a", encoding="utf-8", newline="\n") as f:
+        f.write(section)
+    return 0
+
+
+def guard_plan_review(repo_root: Path, allow_unreviewed: bool) -> None:
+    path = plan_path(repo_root)
+    if not path.exists():
+        return
+    try:
+        plan = _load_plan(path)
+    except Exception as exc:
+        if allow_unreviewed:
+            print(f"plan guard warning: {exc}")
+            return
+        raise RuntimeError(f"plan guard: {exc}")
+    review = plan.get("review", {})
+    decision = review.get("decision", "pending")
+    if decision != "approve" and not allow_unreviewed:
+        raise RuntimeError("plan guard: plan review 未批准（decision!=approve），使用 --allow-unreviewed 可跳过（不推荐）。")
+
+
+def plan_ci_template(repo_root: Path, provider: str) -> int:
+    aw = repo_autoworkflow_dir(repo_root)
+    aw.mkdir(parents=True, exist_ok=True)
+    if provider == "github":
+        path = repo_root / ".github" / "workflows"
+        path.mkdir(parents=True, exist_ok=True)
+        content = """name: aw-plan-gate
+
+on:
+  push:
+    branches: [ "*" ]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"  # set ENABLE_SCHEDULE=true to activate
+
+jobs:
+  plan-gate:
+    runs-on: ubuntu-latest
+    env:
+      ENABLE_SCHEDULE: "false"
+    if: github.event_name != 'schedule' || env.ENABLE_SCHEDULE == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Init autoworkflow
+        run: python codex-skills/feature-shipper/scripts/autoworkflow.py --root . init --force
+      - name: Plan review
+        run: python .autoworkflow/tools/autoworkflow.py --root . plan review
+      - name: Gate (dry-run)
+        run: python .autoworkflow/tools/autoworkflow.py --root . gate --allow-unreviewed
+      - name: Agents workflow (trace)
+        run: python agents_runner.py --root . --allow-unreviewed
+      - name: Agents SDK runner (optional)
+        run: python agents_sdk_runner.py --root . --allow-unreviewed
+        continue-on-error: true
+      - name: Upload trace
+        uses: actions/upload-artifact@v4
+        with:
+          name: aw-trace
+          path: .autoworkflow/trace/*.jsonl
+"""
+    else:
+        path = repo_root / ".gitlab-ci.yml"
+        content = """plan_gate:
+  image: python:3.11
+  stage: test
+  script:
+    - python codex-skills/feature-shipper/scripts/autoworkflow.py --root . init --force
+    - python .autoworkflow/tools/autoworkflow.py --root . plan review
+    - python .autoworkflow/tools/autoworkflow.py --root . gate --allow-unreviewed
+    - python agents_runner.py --root . --allow-unreviewed
+    - python agents_sdk_runner.py --root . --allow-unreviewed || true
+  artifacts:
+    paths:
+      - .autoworkflow/trace/*.jsonl
+"""
+    if provider == "github":
+        target = path / "aw-plan-gate.yml"
+    else:
+        target = path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    safe_write_text(target, content, force=True)
+    print(f"Generated CI template: {target}")
+    return 0
+
+
+def auto_gate(
+    repo_root: Path,
+    overwrite: bool,
+    dry_run: bool,
+    *,
+    use_codex: bool,
+    codex_oss: bool,
+    codex_local_provider: str | None,
+    codex_model: str | None,
+    codex_timeout_seconds: int,
+) -> int:
+    aw = repo_autoworkflow_dir(repo_root)
+    if not aw.exists():
+        init_autoworkflow(repo_root=repo_root, force=False)
+
+    env_path = aw / "gate.env"
+    existing = parse_gate_env(env_path)
+
+    detected, sources = detect_gate(repo_root)
+    final: dict[str, str] = dict(existing)
+    for key in ALLOWED_ENV_KEYS:
+        val = detected.get(key, "")
+        if overwrite or not final.get(key):
+            if val:
+                final[key] = val
+
+    if use_codex and (overwrite or not final.get("TEST_CMD")):
+        try:
+            codex_detected, _raw = codex_detect_gate(
+                repo_root,
+                oss=codex_oss,
+                local_provider=codex_local_provider,
+                model=codex_model,
+                timeout_seconds=codex_timeout_seconds,
+            )
+            for key in ALLOWED_ENV_KEYS:
+                val = codex_detected.get(key, "")
+                if not val:
+                    continue
+                if overwrite or not final.get(key):
+                    final[key] = val
+                    sources[key] = "codex"
+        except Exception as exc:
+            print(f"auto-gate: codex fallback failed: {exc}")
+
+    if not final.get("TEST_CMD"):
+        print("auto-gate: 未能自动推导 TEST_CMD，请手动设置 `autoworkflow set-gate --test ...` 或编辑 .autoworkflow/gate.env")
+        return 2
+
+    lines: list[str] = []
+    lines.append("Auto-detected gate commands:")
+    for key in ALLOWED_ENV_KEYS:
+        val = final.get(key, "")
+        src = sources.get(key, "existing" if key in existing else "heuristic")
+        lines.append(f"- {key}: {val or '(empty)'}  [source: {src}]")
+    print("\n".join(lines))
+
+    if dry_run:
+        print("dry-run: 未写入 .autoworkflow/gate.env")
+        return 0
+
+    write_gate_env(env_path, updates=final, force_create=True)
+    print("Updated: .autoworkflow/gate.env (auto-gate)")
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="autoworkflow")
+    parser.add_argument("--root", default=".", help="Target repo root (default: current directory)")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p_init = sub.add_parser("init", help="Initialize .autoworkflow in the target repo")
+    p_init.add_argument("--force", action="store_true", help="Overwrite existing files")
+
+    p_doctor = sub.add_parser("doctor", help="Print a repo+host diagnostics report")
+    p_doctor.add_argument("--write", action="store_true", help="Write report to .autoworkflow/doctor.md")
+    p_doctor.add_argument("--update-state", action="store_true", help="Append a short marker to .autoworkflow/state.md")
+
+    p_set = sub.add_parser("set-gate", help="Set gate commands in .autoworkflow/gate.env")
+    p_set.add_argument("--build", default=None, help="BUILD_CMD")
+    p_set.add_argument("--test", default=None, help="TEST_CMD")
+    p_set.add_argument("--lint", default=None, help="LINT_CMD")
+    p_set.add_argument("--format-check", dest="format_check", default=None, help="FORMAT_CHECK_CMD")
+    p_set.add_argument("--create", action="store_true", help="Create gate.env if missing")
+
+    p_auto = sub.add_parser("auto-gate", help="Auto-detect gate commands and write .autoworkflow/gate.env")
+    p_auto.add_argument("--overwrite", action="store_true", help="Overwrite non-empty existing values")
+    p_auto.add_argument("--dry-run", action="store_true", help="Only print detected commands")
+    p_auto.add_argument("--codex", action="store_true", help="Also ask Codex CLI to infer gate commands (read-only)")
+    p_auto.add_argument("--codex-oss", action="store_true", help="Use local OSS provider for Codex (--oss)")
+    p_auto.add_argument("--codex-local-provider", choices=["ollama", "lmstudio"], default=None, help="Codex local provider")
+    p_auto.add_argument("--codex-model", default=None, help="Codex model name (optional)")
+    p_auto.add_argument("--codex-timeout", type=int, default=180, help="Codex exec timeout seconds (default 180)")
+
+    p_gate = sub.add_parser("gate", help="Run the platform-appropriate gate script")
+    p_gate.add_argument("--build", default=None, help="Override BUILD_CMD")
+    p_gate.add_argument("--test", default=None, help="Override TEST_CMD")
+    p_gate.add_argument("--lint", default=None, help="Override LINT_CMD")
+    p_gate.add_argument("--format-check", dest="format_check", default=None, help="Override FORMAT_CHECK_CMD")
+    p_gate.add_argument("--allow-unreviewed", action="store_true", help="Skip plan review guard (not recommended)")
+    p_gate.add_argument("--prefer-wsl", action="store_true", help="On Windows, prefer running gate.sh via WSL; auto-fallback to Windows if unavailable")
+
+    sub.add_parser("py-syntax", help="Check Python syntax without writing .pyc files")
+
+    p_plan = sub.add_parser("plan", help="Plan lifecycle (init/gen/review/status)")
+    plan_sub = p_plan.add_subparsers(dest="plan_cmd", required=True)
+    p_plan_init = plan_sub.add_parser("init", help="Create default plan.yaml")
+    p_plan_init.add_argument("--force", action="store_true", help="Overwrite existing plan.yaml")
+    plan_sub.add_parser("gen", help="Generate plan.yaml from gate/env heuristics")
+    p_plan_review = plan_sub.add_parser("review", help="Review plan.yaml and write plan-review.md/state")
+    p_plan_review.add_argument("--min-score", type=int, default=85, help="Minimum score to approve (default 85)")
+    plan_sub.add_parser("status", help="Summarize plan status and append to state.md")
+    p_plan_ci = plan_sub.add_parser("ci-template", help="Generate CI template for plan review + gate dry-run")
+    p_plan_ci.add_argument("--provider", choices=["github", "gitlab"], default="github", help="CI provider")
+
+    p_git = sub.add_parser("git", help="Git helpers (branch/commit/push/pr)")
+    git_sub = p_git.add_subparsers(dest="git_cmd", required=True)
+
+    p_git_branch = git_sub.add_parser("branch", help="Branch operations")
+    branch_sub = p_git_branch.add_subparsers(dest="branch_cmd", required=True)
+    p_git_branch_start = branch_sub.add_parser(
+        "start",
+        help="Create a new branch when on protected branch (main/master) or detached HEAD",
+    )
+    p_git_branch_start.add_argument("--name", default=None, help="Branch name (optional)")
+    p_git_branch_start.add_argument("--prefix", default=DEFAULT_BRANCH_PREFIX, help=f"Auto branch prefix (default {DEFAULT_BRANCH_PREFIX})")
+    p_git_branch_start.add_argument("--base", default=None, help="Base ref (optional, e.g. origin/main)")
+    p_git_branch_start.add_argument(
+        "--protected",
+        default=",".join(DEFAULT_PROTECTED_BRANCHES),
+        help=f"Comma-separated protected branches (default: {','.join(DEFAULT_PROTECTED_BRANCHES)})",
+    )
+    p_git_branch_start.add_argument("--dry-run", action="store_true", help="Only print actions")
+    p_git_branch_start.add_argument("--require-git", action="store_true", help="Fail if not a git repo")
+
+    p_git_branch_cleanup = branch_sub.add_parser("cleanup", help="Delete merged branches (dry-run by default)")
+    p_git_branch_cleanup.add_argument("--remote", default="origin", help="Remote name (default origin)")
+    p_git_branch_cleanup.add_argument("--base", default="develop", help="Base branch to compare merged state (default develop)")
+    p_git_branch_cleanup.add_argument("--delete-remote", action="store_true", help="Also delete remote branches if present")
+    p_git_branch_cleanup.add_argument("--force", action="store_true", help="Force delete (-D) instead of -d")
+    p_git_branch_cleanup.add_argument("--execute", action="store_true", help="Perform deletions (omit = dry-run)")
+
+    p_git_commit = git_sub.add_parser("commit", help="Create a local commit (optional)")
+    p_git_commit.add_argument("-m", "--message", default=None, help="Commit message (optional if --auto-message)")
+    p_git_commit.add_argument(
+        "--auto-message",
+        action="store_true",
+        help="Generate a Conventional Commit message from staged changes (default zh)",
+    )
+    p_git_commit.add_argument("--lang", choices=["zh", "en"], default="zh", help="Auto message language (default zh)")
+    p_git_commit.add_argument("--type", dest="commit_type", choices=list(CONVENTIONAL_COMMIT_TYPES), default=None, help="Override Conventional Commit type")
+    p_git_commit.add_argument("--scope", default=None, help="Optional Conventional Commit scope")
+    p_git_commit.add_argument("--no-conventional", dest="conventional", action="store_false", help="Disable Conventional Commits validation")
+    p_git_commit.set_defaults(conventional=True)
+    p_git_commit.add_argument("--all", action="store_true", help="Stage all changes before commit (git add -A)")
+    p_git_commit.add_argument("--dry-run", action="store_true", help="Only print actions")
+    p_git_commit.add_argument("--require-git", action="store_true", help="Fail if not a git repo")
+
+    p_git_push = git_sub.add_parser("push", help="Push current branch to a remote")
+    p_git_push.add_argument("--remote", default="origin", help="Remote name (default origin)")
+    p_git_push.add_argument("--branch", default=None, help="Branch name (default current branch)")
+    p_git_push.add_argument("-u", "--set-upstream", action="store_true", help="Set upstream (-u)")
+    p_git_push.add_argument("--dry-run", action="store_true", help="Only print actions")
+    p_git_push.add_argument("--require-git", action="store_true", help="Fail if not a git repo")
+
+    p_git_pr = git_sub.add_parser("pr", help="Pull request helpers (GitHub/Gitee)")
+    pr_sub = p_git_pr.add_subparsers(dest="pr_cmd", required=True)
+    p_git_pr_create = pr_sub.add_parser("create", help="Create a pull request for the current branch")
+    p_git_pr_create.add_argument("--remote", default="origin", help="Remote name (default origin)")
+    p_git_pr_create.add_argument("--provider", choices=["auto", "gitee", "github"], default="auto", help="Remote provider (default auto)")
+    p_git_pr_create.add_argument("--base", default="develop", help="Base branch (default develop)")
+    p_git_pr_create.add_argument("--head", default=None, help="Head branch (default current branch)")
+    p_git_pr_create.add_argument("--title", default=None, help="PR title (default last commit subject)")
+    p_git_pr_create.add_argument("--body", default=None, help="PR body (default auto-generated)")
+    p_git_pr_create.add_argument("--draft", action="store_true", help="Create as draft")
+    p_git_pr_create.add_argument("--labels", default=None, help="Comma-separated labels to set on the PR (GitHub)")
+    p_git_pr_create.add_argument("--assignees", default=None, help="Comma-separated assignees (GitHub)")
+    p_git_pr_create.add_argument("--reviewers", default=None, help="Comma-separated reviewers (GitHub)")
+    p_git_pr_create.add_argument("--wait-ci", action="store_true", help="After creating PR, poll CI status once")
+    p_git_pr_create.add_argument("--push", action="store_true", help="Push head branch before creating PR")
+    p_git_pr_create.add_argument("-u", "--set-upstream", action="store_true", help="Set upstream when pushing (-u)")
+    p_git_pr_create.add_argument(
+        "--bootstrap-base-from",
+        default=None,
+        help="If base missing on remote, create it from this ref (e.g. origin/master or HEAD)",
+    )
+    p_git_pr_create.add_argument("--dry-run", action="store_true", help="Only print actions")
+    p_git_pr_create.add_argument("--require-git", action="store_true", help="Fail if not a git repo")
+
+    p_rec = sub.add_parser("recommend-model", help="Recommend model profile (light/medium/heavy) for Claude/Codex")
+    p_rec.add_argument("--intent", default=None, help="Optional intent hint (e.g., doctor, workshop, debug)")
+
+    args = parser.parse_args(argv)
+    repo_root = Path(args.root).resolve()
+
+    if args.cmd == "init":
+        init_autoworkflow(repo_root=repo_root, force=bool(args.force))
+        print(f"Initialized: {repo_autoworkflow_dir(repo_root)}")
+        return 0
+
+    if args.cmd == "doctor":
+        print(write_doctor(repo_root, write=bool(args.write), update_state=bool(args.update_state)))
+        return 0
+
+    if args.cmd == "set-gate":
+        write_gate_env(
+            repo_autoworkflow_dir(repo_root) / "gate.env",
+            updates={
+                "BUILD_CMD": args.build,
+                "TEST_CMD": args.test,
+                "LINT_CMD": args.lint,
+                "FORMAT_CHECK_CMD": args.format_check,
+            },
+            force_create=bool(args.create),
+        )
+        print("Updated: .autoworkflow/gate.env")
+        return 0
+
+    if args.cmd == "auto-gate":
+        return auto_gate(
+            repo_root=repo_root,
+            overwrite=bool(args.overwrite),
+            dry_run=bool(args.dry_run),
+            use_codex=bool(args.codex),
+            codex_oss=bool(args.codex_oss),
+            codex_local_provider=args.codex_local_provider,
+            codex_model=args.codex_model,
+            codex_timeout_seconds=int(args.codex_timeout),
+        )
+
+    if args.cmd == "gate":
+        return run_gate(
+            repo_root=repo_root,
+            build=args.build,
+            test=args.test,
+            lint=args.lint,
+            fmt=args.format_check,
+            allow_unreviewed=bool(args.allow_unreviewed),
+            prefer_wsl=bool(getattr(args, "prefer_wsl", False)),
+        )
+
+    if args.cmd == "py-syntax":
+        return py_syntax_check(repo_root=repo_root)
+
+    if args.cmd == "recommend-model":
+        profile, claude, codex = recommend_model(repo_root=repo_root, intent=args.intent)
+        print("# Model Recommendation")
+        print(f"- profile: {profile}")
+        print(f"- claude: {claude}")
+        print(f"- codex: {codex}")
+        return 0
+
+    if args.cmd == "git":
+        if args.git_cmd == "branch":
+            if args.branch_cmd == "start":
+                protected = [p.strip() for p in str(args.protected or "").split(",") if p.strip()]
+                return git_branch_start(
+                    repo_root=repo_root,
+                    name=args.name,
+                    prefix=str(args.prefix or DEFAULT_BRANCH_PREFIX),
+                    base_ref=args.base,
+                    protected_branches=protected or list(DEFAULT_PROTECTED_BRANCHES),
+                    dry_run=bool(args.dry_run),
+                    require_git=bool(args.require_git),
+                )
+            if args.branch_cmd == "cleanup":
+                return git_branch_cleanup(
+                    repo_root=repo_root,
+                    remote=str(args.remote),
+                    base=str(args.base),
+                    delete_remote=bool(args.delete_remote),
+                    force_delete=bool(args.force),
+                    dry_run=not bool(args.execute),
+                )
+            raise AssertionError("unknown git branch subcommand")
+        if args.git_cmd == "commit":
+            return git_commit(
+                repo_root=repo_root,
+                message=str(args.message) if args.message is not None else None,
+                stage_all=bool(args.all),
+                auto_message=bool(args.auto_message),
+                lang=str(args.lang),
+                conventional=bool(getattr(args, "conventional", True)),
+                commit_type=getattr(args, "commit_type", None),
+                scope=getattr(args, "scope", None),
+                dry_run=bool(args.dry_run),
+                require_git=bool(args.require_git),
+            )
+        if args.git_cmd == "push":
+            return git_push(
+                repo_root=repo_root,
+                remote=str(args.remote),
+                branch=args.branch,
+                set_upstream=bool(args.set_upstream),
+                dry_run=bool(args.dry_run),
+                require_git=bool(args.require_git),
+            )
+        if args.git_cmd == "pr":
+            if args.pr_cmd == "create":
+                return git_pr_create(
+                    repo_root=repo_root,
+                    remote=str(args.remote),
+                    provider=str(args.provider),
+                    base=str(args.base),
+                    head=args.head,
+                    title=args.title,
+                    body=args.body,
+                    draft=bool(args.draft),
+                    labels=[s for s in (args.labels or "").split(",") if s.strip()] if args.labels is not None else [],
+                    assignees=[s for s in (args.assignees or "").split(",") if s.strip()] if args.assignees is not None else [],
+                    reviewers=[s for s in (args.reviewers or "").split(",") if s.strip()] if args.reviewers is not None else [],
+                    wait_ci=bool(args.wait_ci),
+                    push=bool(args.push),
+                    set_upstream=bool(args.set_upstream),
+                    bootstrap_base_from=args.bootstrap_base_from,
+                    dry_run=bool(args.dry_run),
+                    require_git=bool(args.require_git),
+                )
+            raise AssertionError("unknown git pr subcommand")
+        raise AssertionError("unknown git subcommand")
+
+    if args.cmd == "plan":
+        if args.plan_cmd == "init":
+            plan_init(repo_root=repo_root, force=bool(args.force))
+            return 0
+        if args.plan_cmd == "gen":
+            plan_gen(repo_root=repo_root)
+            return 0
+        if args.plan_cmd == "review":
+            return plan_review(repo_root=repo_root, min_score=int(args.min_score))
+        if args.plan_cmd == "status":
+            return plan_status(repo_root=repo_root)
+        if args.plan_cmd == "ci-template":
+            return plan_ci_template(repo_root=repo_root, provider=str(args.provider))
+        raise AssertionError("unknown plan subcommand")
+
+    raise AssertionError("unreachable")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
