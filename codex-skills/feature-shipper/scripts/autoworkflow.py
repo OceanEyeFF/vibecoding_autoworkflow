@@ -19,6 +19,7 @@ from typing import Any
 
 
 ALLOWED_ENV_KEYS = ("BUILD_CMD", "TEST_CMD", "LINT_CMD", "FORMAT_CHECK_CMD")
+ALLOWED_SECRET_KEYS = ("GITEE_TOKEN", "GITEE_USERNAME", "GITHUB_TOKEN")
 PLAN_FILE_NAME = "plan.yaml"
 PLAN_REVIEW_FILE = "plan-review.md"
 DEFAULT_PROTECTED_BRANCHES = ("main", "master")
@@ -457,6 +458,7 @@ def init_autoworkflow(repo_root: Path, force: bool) -> None:
             "spec.md",
             "model-policy.json",
             "gate.env",
+            "secret.env",
             "doctor.md",
             "logs/",
             "",
@@ -476,6 +478,18 @@ def init_autoworkflow(repo_root: Path, force: bool) -> None:
         ]
     )
     safe_write_text(target / "gate.env", env_stub, force=force)
+
+    secret_stub = "\n".join(
+        [
+            "# Autoworkflow secrets (keep untracked).",
+            "# Prefer Git Credential Manager or environment variables when possible.",
+            "GITEE_TOKEN=",
+            "GITEE_USERNAME=",
+            "GITHUB_TOKEN=",
+            "",
+        ]
+    )
+    safe_write_text(target / "secret.env", secret_stub, force=False)
 
     policy_path = target / "model-policy.json"
     if not policy_path.exists() or force:
@@ -498,6 +512,27 @@ def parse_gate_env(env_path: Path) -> dict[str, str]:
         key, value = line.split("=", 1)
         key = key.strip()
         if key not in ALLOWED_ENV_KEYS:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and ((value[0] == value[-1] == '"') or (value[0] == value[-1] == "'")):
+            value = value[1:-1]
+        values[key] = value
+    return values
+
+
+def parse_secret_env(env_path: Path) -> dict[str, str]:
+    if not env_path.exists():
+        return {}
+    values: dict[str, str] = {}
+    for raw in env_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if key not in ALLOWED_SECRET_KEYS:
             continue
         value = value.strip()
         if len(value) >= 2 and ((value[0] == value[-1] == '"') or (value[0] == value[-1] == "'")):
@@ -1693,6 +1728,173 @@ def _git_is_https_remote(url: str) -> bool:
     return u.startswith("http://") or u.startswith("https://")
 
 
+def _git_credential_fill(repo_root: Path, url: str) -> dict[str, str] | None:
+    """
+    Best-effort retrieval from the configured git credential helper.
+
+    This avoids prompting and does not print secrets.
+    """
+    raw = (url or "").strip()
+    if not raw:
+        return None
+    parsed = urllib.parse.urlparse(raw)
+    protocol = (parsed.scheme or "").strip() or "https"
+    host = (parsed.hostname or "").strip()
+    if not host:
+        return None
+    path = (parsed.path or "").lstrip("/")
+
+    lines = [f"protocol={protocol}", f"host={host}"]
+    if path:
+        lines.append(f"path={path}")
+    inp = "\n".join(lines) + "\n\n"
+
+    env = dict(os.environ)
+    env["GCM_INTERACTIVE"] = "Never"
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    proc = subprocess.run(
+        ["git", "credential", "fill"],
+        cwd=str(repo_root),
+        input=inp,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+    if proc.returncode != 0:
+        return None
+
+    creds: dict[str, str] = {}
+    for line in (proc.stdout or "").splitlines():
+        if "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        creds[k.strip()] = v.strip()
+
+    if not (creds.get("password") or "").strip():
+        return None
+    return creds
+
+
+def _git_config_global_get(repo_root: Path, key: str) -> str | None:
+    proc = subprocess.run(
+        ["git", "config", "--global", "--get", key],
+        cwd=str(repo_root),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if proc.returncode != 0:
+        return None
+    val = (proc.stdout or "").strip()
+    if not val:
+        return None
+    if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+        val = val[1:-1].strip()
+    return val or None
+
+
+def _resolve_provider_credentials(
+    repo_root: Path, remote_url: str, provider: str, fallback_user: str
+) -> tuple[str, str] | None:
+    secrets = parse_secret_env(repo_autoworkflow_dir(repo_root) / "secret.env")
+
+    if provider == "gitee":
+        token = (os.environ.get("GITEE_TOKEN") or secrets.get("GITEE_TOKEN") or "").strip()
+        if token:
+            username = (os.environ.get("GITEE_USERNAME") or secrets.get("GITEE_USERNAME") or fallback_user).strip() or fallback_user
+            return username, token
+        if _git_is_https_remote(remote_url):
+            creds = _git_credential_fill(repo_root, remote_url)
+            if creds:
+                token = (creds.get("password") or "").strip()
+                username = (
+                    (
+                        os.environ.get("GITEE_USERNAME")
+                        or secrets.get("GITEE_USERNAME")
+                        or creds.get("username")
+                        or fallback_user
+                    ).strip()
+                    or fallback_user
+                )
+                if token:
+                    return username, token
+            # Last-resort fallback: some users store PAT in ~/.gitconfig (not recommended).
+            token = _git_config_global_get(repo_root, "user.https://gitee.com.password") or ""
+            token = token.strip()
+            if token:
+                username = (
+                    os.environ.get("GITEE_USERNAME")
+                    or secrets.get("GITEE_USERNAME")
+                    or _git_config_global_get(repo_root, "user.https://gitee.com.name")
+                    or fallback_user
+                )
+                username = (username or fallback_user).strip() or fallback_user
+                return username, token
+        return None
+
+    if provider == "github":
+        token = (os.environ.get("GITHUB_TOKEN") or secrets.get("GITHUB_TOKEN") or "").strip()
+        if token:
+            return "x-access-token", token
+        if _git_is_https_remote(remote_url):
+            creds = _git_credential_fill(repo_root, remote_url)
+            if creds:
+                token = (creds.get("password") or "").strip()
+                username = (creds.get("username") or "x-access-token").strip() or "x-access-token"
+                if token:
+                    return username, token
+            token = _git_config_global_get(repo_root, "user.https://github.com.password") or ""
+            token = token.strip()
+            if token:
+                username = _git_config_global_get(repo_root, "user.https://github.com.name") or "x-access-token"
+                username = (username or "x-access-token").strip() or "x-access-token"
+                return username, token
+        return None
+
+    return None
+
+
+def _resolve_provider_token(repo_root: Path, remote_url: str, provider: str) -> str | None:
+    secrets = parse_secret_env(repo_autoworkflow_dir(repo_root) / "secret.env")
+
+    if provider == "gitee":
+        token = (os.environ.get("GITEE_TOKEN") or secrets.get("GITEE_TOKEN") or "").strip()
+        if token:
+            return token
+        if _git_is_https_remote(remote_url):
+            creds = _git_credential_fill(repo_root, remote_url)
+            token = (creds or {}).get("password") or ""
+            token = token.strip()
+            if token:
+                return token
+            token = _git_config_global_get(repo_root, "user.https://gitee.com.password") or ""
+            token = token.strip()
+            return token or None
+        return None
+
+    if provider == "github":
+        token = (os.environ.get("GITHUB_TOKEN") or secrets.get("GITHUB_TOKEN") or "").strip()
+        if token:
+            return token
+        if _git_is_https_remote(remote_url):
+            creds = _git_credential_fill(repo_root, remote_url)
+            token = (creds or {}).get("password") or ""
+            token = token.strip()
+            if token:
+                return token
+            token = _git_config_global_get(repo_root, "user.https://github.com.password") or ""
+            token = token.strip()
+            return token or None
+        return None
+
+    return None
+
+
 def _ensure_git_askpass_script(repo_root: Path) -> Path:
     aw = repo_autoworkflow_dir(repo_root)
     trace_dir = aw / "trace"
@@ -1756,20 +1958,10 @@ def _git_auth_env_for_remote(repo_root: Path, remote: str, provider_hint: str | 
 
     provider = provider_hint if provider_hint and provider_hint != "auto" else info.provider
 
-    username: str | None = None
-    token: str | None = None
-    if provider == "gitee":
-        token = (os.environ.get("GITEE_TOKEN") or "").strip()
-        if not token:
-            return None
-        username = (os.environ.get("GITEE_USERNAME") or info.owner).strip() or info.owner
-    elif provider == "github":
-        token = (os.environ.get("GITHUB_TOKEN") or "").strip()
-        if not token:
-            return None
-        username = "x-access-token"
-    else:
+    resolved = _resolve_provider_credentials(repo_root, remote_url=url, provider=provider, fallback_user=info.owner)
+    if not resolved:
         return None
+    username, token = resolved
 
     askpass = _ensure_git_askpass_script(repo_root)
     env = dict(os.environ)
@@ -1815,17 +2007,19 @@ def git_push(
 
     auth_env = _git_auth_env_for_remote(repo_root, remote=remote)
     if auth_env is None:
-        remote_url = _git_remote_url(repo_root, remote)
-        info = _parse_remote_repo(remote_url or "") if remote_url else None
-        if remote_url and _git_is_https_remote(remote_url) and info:
-            if info.provider == "gitee":
-                print("git: missing GITEE_TOKEN for https push (or switch remote to ssh)")
-                return 2
-            if info.provider == "github":
-                print("git: missing GITHUB_TOKEN for https push (or switch remote to ssh)")
-                return 2
+        # Fall back to whatever git credential helper is configured, but do not prompt.
+        env = dict(os.environ)
+        env["GIT_TERMINAL_PROMPT"] = "0"
+        env["GCM_INTERACTIVE"] = "Never"
+        env.pop("GIT_ASKPASS", None)
+        auth_env = env
 
-    code, _out = _run_and_tee(["git", *args], cwd=repo_root, env=auth_env)
+    cmd = ["git"]
+    if auth_env and auth_env.get("GIT_ASKPASS") and (auth_env.get("AUTOWORKFLOW_ASKPASS_TOKEN") or "").strip():
+        # Avoid invoking user-configured credential helpers (can be broken / interactive).
+        cmd.extend(["-c", "credential.helper="])
+    cmd.extend(args)
+    code, _out = _run_and_tee(cmd, cwd=repo_root, env=auth_env)
     return int(code)
 
 
@@ -1985,17 +2179,20 @@ def git_pr_create(
         return 2
 
     auth_env = _git_auth_env_for_remote(repo_root, remote=remote, provider_hint=chosen)
-    if _git_is_https_remote(remote_url) and chosen == "gitee" and not dry_run:
-        # Gitee PR creation always needs token (API), and https pushes need non-interactive auth for automation.
-        if not (os.environ.get("GITEE_TOKEN") or "").strip():
-            print("git: missing GITEE_TOKEN env var")
-            return 2
-        if auth_env is None:
-            print("git: missing GITEE_TOKEN for https git auth (or switch remote to ssh)")
-            return 2
-    if _git_is_https_remote(remote_url) and chosen == "github" and (push or bootstrap_base_from) and not dry_run:
-        if auth_env is None:
-            print("git: missing GITHUB_TOKEN for https git auth (or switch remote to ssh)")
+    if auth_env is None and _git_is_https_remote(remote_url):
+        # Best-effort: avoid prompting and avoid inheriting a broken askpass from the host.
+        env = dict(os.environ)
+        env["GIT_TERMINAL_PROMPT"] = "0"
+        env["GCM_INTERACTIVE"] = "Never"
+        env.pop("GIT_ASKPASS", None)
+        auth_env = env
+
+    token_for_api: str | None = None
+    if chosen in ("gitee", "github") and not dry_run:
+        token_for_api = _resolve_provider_token(repo_root, remote_url=remote_url, provider=chosen)
+        if chosen == "gitee" and not token_for_api:
+            print("git: missing GITEE_TOKEN (env var) and no matching stored credential for this https remote")
+            print("git: tip: set GITEE_TOKEN in your shell, or put it in .autoworkflow/secret.env (untracked)")
             return 2
 
     base = (base or "develop").strip()
@@ -2012,7 +2209,11 @@ def git_pr_create(
             if dry_run:
                 print(f"[dry-run] git {' '.join(push_args)}")
             else:
-                code, _out = _run_and_tee(["git", *push_args], cwd=repo_root, env=auth_env)
+                cmd = ["git"]
+                if auth_env and auth_env.get("GIT_ASKPASS") and (auth_env.get("AUTOWORKFLOW_ASKPASS_TOKEN") or "").strip():
+                    cmd.extend(["-c", "credential.helper="])
+                cmd.extend(push_args)
+                code, _out = _run_and_tee(cmd, cwd=repo_root, env=auth_env)
                 if code != 0:
                     return int(code)
         else:
@@ -2059,9 +2260,10 @@ def git_pr_create(
         return 0
 
     if chosen == "gitee":
-        token = (os.environ.get("GITEE_TOKEN") or "").strip()
+        token = token_for_api or ""
         if not token:
-            print("git: missing GITEE_TOKEN env var")
+            print("git: missing GITEE_TOKEN (env var) and no matching stored credential for this https remote")
+            print("git: tip: set GITEE_TOKEN in your shell, or put it in .autoworkflow/secret.env (untracked)")
             return 2
         url = f"https://gitee.com/api/v5/repos/{info.owner}/{info.repo}/pulls"
         form: dict[str, str] = {
@@ -2092,7 +2294,7 @@ def git_pr_create(
         return 0
 
     # github
-    token = (os.environ.get("GITHUB_TOKEN") or "").strip()
+    token = (token_for_api or "").strip()
     if not token and shutil.which("gh"):
         cmd = [
             "gh",
