@@ -499,6 +499,60 @@ def init_autoworkflow(repo_root: Path, force: bool) -> None:
             f.write("\n")
 
 
+def remove_git_exclude_entries(repo_root: Path, *, entries: list[str]) -> bool:
+    exclude_path = repo_root / ".git" / "info" / "exclude"
+    if not exclude_path.exists():
+        return False
+
+    original = exclude_path.read_text(encoding="utf-8")
+    lines = original.splitlines()
+    targets = {e.strip() for e in entries if e.strip()}
+    new_lines = [line for line in lines if line.strip() not in targets]
+    if new_lines == lines:
+        return False
+
+    exclude_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8", newline="\n")
+    return True
+
+
+def uninstall_autoworkflow(repo_root: Path, *, yes: bool, remove_exclude: bool) -> int:
+    aw = repo_autoworkflow_dir(repo_root)
+    if not aw.exists():
+        print(f"uninstall: skip missing {aw}")
+        if remove_exclude:
+            changed = remove_git_exclude_entries(repo_root, entries=[".autoworkflow/", ".autoworkflow"])
+            print("uninstall: removed .git/info/exclude entry" if changed else "uninstall: no .git/info/exclude entry to remove")
+        return 0
+
+    if not aw.is_dir():
+        print(f"uninstall: expected directory, found file: {aw}")
+        return 2
+
+    if not yes:
+        try:
+            reply = input(f"About to remove {aw} (local-only workflow state). Continue? [y/N] ").strip().lower()
+        except EOFError:
+            print("uninstall: aborted (no input)")
+            return 1
+        if reply not in {"y", "yes"}:
+            print("uninstall: aborted")
+            return 1
+
+    try:
+        shutil.rmtree(aw)
+    except PermissionError as exc:
+        print(f"uninstall: failed to remove {aw}: {exc}")
+        print("hint: On Windows, run uninstall from the global skill (CODEX_HOME) or from codex-skills/feature-shipper, not from inside .autoworkflow/tools.")
+        return 2
+
+    if remove_exclude:
+        changed = remove_git_exclude_entries(repo_root, entries=[".autoworkflow/", ".autoworkflow"])
+        print("uninstall: removed .git/info/exclude entry" if changed else "uninstall: no .git/info/exclude entry to remove")
+
+    print(f"Removed: {aw}")
+    return 0
+
+
 def parse_gate_env(env_path: Path) -> dict[str, str]:
     if not env_path.exists():
         return {}
@@ -621,8 +675,12 @@ def detect_python_gate(repo_root: Path) -> dict[str, str]:
     if strong_project:
         uses_poetry = (repo_root / "poetry.lock").exists()
         test_cmd = "poetry run pytest" if uses_poetry else "pytest"
-        lint_cmd = "poetry run ruff check ." if uses_poetry else "ruff check ."
-        fmt_cmd = "poetry run ruff format --check ." if uses_poetry else "ruff format --check ."
+        lint_cmd = "poetry run ruff check . --exclude .autoworkflow" if uses_poetry else "ruff check . --exclude .autoworkflow"
+        fmt_cmd = (
+            "poetry run ruff format --check . --exclude .autoworkflow"
+            if uses_poetry
+            else "ruff format --check . --exclude .autoworkflow"
+        )
         return {
             "BUILD_CMD": "",
             "TEST_CMD": test_cmd,
@@ -1662,7 +1720,7 @@ def _auto_body_text(lang: str, staged_paths: list[str], max_items: int = 12) -> 
             else f"- ... ({len(norm) - max_items} more files)"
         )
 
-    filtered = [l for l in lines if l]
+    filtered = [line for line in lines if line]
     return "\n".join(filtered).rstrip() if filtered else None
 
 
@@ -2791,6 +2849,10 @@ def main(argv: list[str]) -> int:
     p_init = sub.add_parser("init", help="Initialize .autoworkflow in the target repo")
     p_init.add_argument("--force", action="store_true", help="Overwrite existing files")
 
+    p_uninstall = sub.add_parser("uninstall", help="Remove .autoworkflow from the target repo")
+    p_uninstall.add_argument("--yes", action="store_true", help="Skip confirmation prompt")
+    p_uninstall.add_argument("--remove-exclude", action="store_true", help="Also remove .autoworkflow entries from .git/info/exclude")
+
     p_doctor = sub.add_parser("doctor", help="Print a repo+host diagnostics report")
     p_doctor.add_argument("--write", action="store_true", help="Write report to .autoworkflow/doctor.md")
     p_doctor.add_argument("--update-state", action="store_true", help="Append a short marker to .autoworkflow/state.md")
@@ -2904,6 +2966,9 @@ def main(argv: list[str]) -> int:
         init_autoworkflow(repo_root=repo_root, force=bool(args.force))
         print(f"Initialized: {repo_autoworkflow_dir(repo_root)}")
         return 0
+
+    if args.cmd == "uninstall":
+        return uninstall_autoworkflow(repo_root=repo_root, yes=bool(args.yes), remove_exclude=bool(args.remove_exclude))
 
     if args.cmd == "doctor":
         print(write_doctor(repo_root, write=bool(args.write), update_state=bool(args.update_state)))

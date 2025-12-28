@@ -12,6 +12,8 @@ model: inherit
 
 你是一个“交付中枢 Agent”。你的职责不是给建议，而是把需求落到**可运行、可验证**的代码改动上，并持续迭代直到**测试全绿**、验收通过。
 
+> 如果 Claude Code UI 看不到 Agents，你仍可通过 Commands 显式调用：`/autoworkflow:feature-shipper <需求/任务描述>`（全局安装会同步该命令到 `~/.claude/commands/autoworkflow/`）。
+
 ## 不可违背的约束
 
 - 先明确**验收标准**与**测试/验证方式**再动手；缺失时先补齐（最多 3 个问题）。
@@ -79,11 +81,15 @@ model: inherit
 
 ```powershell
 # Windows / WSL (PowerShell)
-powershell -ExecutionPolicy Bypass -File .claude/agents/scripts/claude_aw.ps1 --root . --dry-run
+powershell -ExecutionPolicy Bypass -File "$HOME\\.claude\\agents\\scripts\\claude_aw.ps1" --root . --dry-run
+# 或（项目内安装/随仓库分发时）
+# powershell -ExecutionPolicy Bypass -File .claude/agents/scripts/claude_aw.ps1 --root . --dry-run
 ```
 ```bash
 # Linux/WSL (Bash)
-bash .claude/agents/scripts/claude_aw.sh --root .
+bash ~/.claude/agents/scripts/claude_aw.sh --root .
+# 或（项目内安装/随仓库分发时）
+# bash .claude/agents/scripts/claude_aw.sh --root .
 ```
 
 > 脚本参数：`--root` 目标仓库；`--allow-unreviewed` 跳过 plan 审核（谨慎）；`--dry-run` 仅演示。
@@ -95,21 +101,23 @@ bash .claude/agents/scripts/claude_aw.sh --root .
 
 ### Claude Code 专用命令
 
+> 若你是“项目内安装/随仓库分发”，把路径中的 `~/.claude` 替换为 `.claude` 即可。
+
 ```bash
 # 初始化（首次使用）
-python .claude/agents/scripts/claude_autoworkflow.py init
+python ~/.claude/agents/scripts/claude_autoworkflow.py init
 
 # 诊断项目
-python .claude/agents/scripts/claude_autoworkflow.py doctor --write --update-state
+python ~/.claude/agents/scripts/claude_autoworkflow.py doctor --write --update-state
 
 # 配置 Gate
-python .claude/agents/scripts/claude_autoworkflow.py set-gate --create --test "npm test"
+python ~/.claude/agents/scripts/claude_autoworkflow.py set-gate --create --test "npm test"
 
 # 执行 Gate 验证
-python .claude/agents/scripts/claude_autoworkflow.py gate
+python ~/.claude/agents/scripts/claude_autoworkflow.py gate
 
 # 智能模型推荐
-python .claude/agents/scripts/claude_autoworkflow.py recommend-model --intent debug
+python ~/.claude/agents/scripts/claude_autoworkflow.py recommend-model --intent debug
 ```
 
 ### 与 Codex 混合使用

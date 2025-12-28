@@ -12,10 +12,16 @@
 - 归档/可选：`archive/claude-agents/` 中的游戏相关等不在主线。
 
 ## 快速使用（Claude Code 内）
-1) 在目标仓库放置所需 subagent（至少 `feature-shipper.md`）到 `.claude/agents/`。
-2) 同步本仓库提供的 skills 到目标仓库的 `.claude/skills/`（至少 `autoworkflow` 与 `git-workflow`）。
-3) 运行 repo-local 工具链：`aw-init` → `aw-auto` → `aw-gate`（或直接 `autoworkflow.py auto-gate`）。  
-4) 在 Claude Code 选择对应 subagent，按其提示先完善 spec/DoD，再按 gate 执行。
+推荐（全局安装，不污染目标仓库）：
+1) 运行本仓库 `install-global` 脚本（会安装到 `~/.claude/agents`、`~/.claude/skills`）。
+2) 在任意目标仓库根目录先跑：`aw-init` → `aw-auto` → `aw-gate`（或用绝对路径执行 `autoworkflow.py auto-gate`）。
+3) 在目标仓库根目录启动 Claude Code：`claude`，并选择 Agent `feature-shipper` 开始对话闭环。
+
+如果 Claude Code UI 看不到 Agents，可用 Commands 显式调用（全局安装会同步到 `~/.claude/commands/autoworkflow/`）：
+- 在对话里输入：`/autoworkflow:feature-shipper <需求/任务描述>`
+
+备选（项目内安装/随仓库分发）：
+- 若 Claude Code 未读取全局 agents/skills，或你希望“随仓库分发”，再把 `~/.claude/agents`、`~/.claude/skills` 复制/软链到目标仓库的 `.claude/agents/`、`.claude/skills/`。
 
 ## Skills（推荐）
 - skills 目录：`.claude/skills/<skill>/SKILL.md`

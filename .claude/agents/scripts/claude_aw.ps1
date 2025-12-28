@@ -31,10 +31,12 @@ $candidateTools = @()
 $repoTool = Join-Path $rootPath "codex-skills/feature-shipper/scripts/autoworkflow.py"
 $candidateTools += $repoTool
 
-if ($env:CODEX_HOME -and $env:CODEX_HOME.Trim().Length -gt 0) {
-  $codexHomeTool = Join-Path (Join-Path $env:CODEX_HOME "skills/feature-shipper/scripts") "autoworkflow.py"
-  $candidateTools += $codexHomeTool
+$codexHome = $env:CODEX_HOME
+if (-not $codexHome -or $codexHome.Trim().Length -eq 0) {
+  $codexHome = Join-Path $HOME ".codex"
 }
+$codexHomeTool = Join-Path (Join-Path $codexHome "skills/feature-shipper/scripts") "autoworkflow.py"
+$candidateTools += $codexHomeTool
 
 $localTool = Join-Path $rootPath ".autoworkflow/tools/autoworkflow.py"
 $candidateTools += $localTool

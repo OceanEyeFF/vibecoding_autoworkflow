@@ -30,10 +30,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 ROOT_PATH="$(cd "$ROOT" && pwd)"
+CODEX_HOME_RESOLVED="${CODEX_HOME:-$HOME/.codex}"
+if [[ "${CODEX_HOME_RESOLVED}" == "~" || "${CODEX_HOME_RESOLVED}" == "~/"* ]]; then
+  CODEX_HOME_RESOLVED="${HOME}${CODEX_HOME_RESOLVED#\~}"
+fi
 TOOL=""
 for cand in \
   "$ROOT_PATH/codex-skills/feature-shipper/scripts/autoworkflow.py" \
-  "${CODEX_HOME:-}/skills/feature-shipper/scripts/autoworkflow.py" \
+  "${CODEX_HOME_RESOLVED}/skills/feature-shipper/scripts/autoworkflow.py" \
   "$ROOT_PATH/.autoworkflow/tools/autoworkflow.py"; do
   if [[ -n "$cand" && -f "$cand" ]]; then
     TOOL="$cand"
@@ -43,7 +47,7 @@ done
 if [[ -z "$TOOL" ]]; then
   echo "Missing autoworkflow.py. Expected one of:" >&2
   echo "  - $ROOT_PATH/.autoworkflow/tools/autoworkflow.py" >&2
-  echo "  - ${CODEX_HOME:-\$CODEX_HOME}/skills/feature-shipper/scripts/autoworkflow.py" >&2
+  echo "  - ${CODEX_HOME_RESOLVED}/skills/feature-shipper/scripts/autoworkflow.py" >&2
   echo "  - $ROOT_PATH/codex-skills/feature-shipper/scripts/autoworkflow.py" >&2
   exit 2
 fi

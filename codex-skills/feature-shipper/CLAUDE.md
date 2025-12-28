@@ -2,6 +2,7 @@
 
 ## 能力概述
 - 初始化 `.autoworkflow/`（工具入口、模板、model-policy）
+- 卸载 `.autoworkflow/`（项目级清理）
 - doctor：诊断环境与项目信号（写入 `doctor.md` / `state.md`）
 - auto-gate：自动推导 Build/Test/Lint/Format，写入 `gate.env`
 - gate：跨平台本地门禁（测试全绿）
@@ -12,6 +13,7 @@
 
 子命令：
 - `init [--force]`
+- `uninstall [--yes] [--remove-exclude]`
 - `doctor [--write] [--update-state]`
 - `set-gate --build ... --test ... [--lint ...] [--format-check ...] [--create]`
 - `auto-gate [--overwrite] [--dry-run]`（新增）
@@ -24,8 +26,8 @@ PowerShell / Bash 包装：`.autoworkflow/tools/aw.ps1`、`aw.sh`
 一键安装并注入别名：
 - Windows：`powershell -ExecutionPolicy Bypass -File codex-skills/feature-shipper/scripts/install-global.ps1`
 - WSL/Ubuntu/Mac：`bash codex-skills/feature-shipper/scripts/install-global.sh`
-  - 选项：`--force` 覆盖；`--dry-run` 仅查看；`--no-profile` 不写 profile。
-  - 追加别名：`aw-init` / `aw-auto` / `aw-gate` / `aw-doctor`
+  - 选项：`--force` 覆盖；`--dry-run` 仅查看；`--no-profile` 不写 profile；`--no-claude` 跳过安装到 `~/.claude`；`--claude-home <path>` 自定义 Claude 目录。
+  - 追加别名：`aw-init` / `aw-auto` / `aw-gate` / `aw-doctor` / `aw-uninstall`
 
 最少步骤（全局）：
 1) `aw-init`
