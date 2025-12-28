@@ -12,6 +12,7 @@
 - [Claude Code 接入](#claude-code)
 - [反馈采集（可选）](#feedback-logger)
 - [致谢](#thanks)
+- [WSL 使用指南](WSL.md)
 
 <a id="nav"></a>
 ## 导航
