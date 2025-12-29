@@ -99,6 +99,7 @@ powershell -ExecutionPolicy Bypass -File "./codex-skills/feature-shipper/scripts
 - B2（Codex SDK/MCP 端到端）：`agents_sdk_runner.py --mode sdk` 实跑验收（handoff + MCP 工具真实调用 + 产物落盘）  
 - B3（全自动 CI 可选 job）：把 `codex exec --full-auto` 固化为 CI 可选 job（默认关闭，通过 `workflow_dispatch` 参数/环境变量启用）  
 - B4（权限策略落盘）：把 Claude Code `permissionMode`/skills `allowed-tools` 与 Codex `approval-policy`/`sandbox` 的安全边界写成可审计 policy（并提供最小模板）
+- B5（Codex CLI SubAgent）：暂缓。原因：当前 Codex CLI 的 SubAgent 支持不稳定/能力不足，等待能力完善后再开启对应开发与验收；目前仅维护“单 Agent 交互闭环 + 工具链”。
 
 ---
 
@@ -113,4 +114,3 @@ powershell -ExecutionPolicy Bypass -File "./codex-skills/feature-shipper/scripts
 - 修改：`codex-skills/feature-shipper/scripts/autoworkflow.py`（CI 模板生成内容对齐并修正命令顺序）
 - 修改：`agents_runner.py` / `agents_sdk_runner.py` / `agents_workflow.py`（trace 位置指向目标 repo；Windows 文件名安全）
 - 修改：`.gitignore`（忽略 `.venv*`）
-

@@ -33,11 +33,19 @@
 - 目标项目只会新增 `.autoworkflow/`（以及你若使用 Claude Code，新增 `.claude/agents`/`.claude/skills`），不会把本仓库根部的 runner 脚本复制进去
 - 全局一次安装，多项目复用，升级/回滚也更简单
 
-安装（复制到 `$CODEX_HOME/skills/`，并可选追加别名 `aw-init/aw-auto/aw-gate/aw-doctor/aw-uninstall`；同时安装 Claude Code 的 agents/skills/commands 到 `$CLAUDE_HOME`，默认 `~/.claude`）：
-- Windows：`powershell -ExecutionPolicy Bypass -File codex-skills/feature-shipper/scripts/install-global.ps1`
-- WSL/Ubuntu/Mac：`bash codex-skills/feature-shipper/scripts/install-global.sh`
-  - 选项：`--force` 覆盖；`--dry-run` 只看不写；`--no-profile` 不改 profile；`--no-claude` 跳过安装到 `~/.claude`；`--claude-home <path>` 指定 Claude 目录。
-  - 默认目标：`$CODEX_HOME/skills/`（若未设置 `$CODEX_HOME`，一般为 `~/.codex/skills`）
+安装（推荐分开安装，互不影响）：
+- 仅安装 Codex skills（复制到 `$CODEX_HOME/skills/`，并可选写入 `aw-init/aw-auto/aw-gate/aw-doctor/aw-uninstall` 到 `~/.bashrc`/`~/.zshrc`）：
+  - Windows：`powershell -ExecutionPolicy Bypass -File codex-skills/feature-shipper/scripts/install-codex-global.ps1`
+  - WSL/Ubuntu/Mac：`bash codex-skills/feature-shipper/scripts/install-codex-global.sh`
+    - 选项：`--force` 覆盖；`--dry-run` 只看不写；`--no-profile` 不改 profile；`--codex-home <path>` 指定 Codex 目录。
+- 仅安装 Claude Code assets（复制 `.claude/agents|skills|commands` 到 `$CLAUDE_HOME`，默认 `~/.claude`）：
+  - Windows：`powershell -ExecutionPolicy Bypass -File codex-skills/feature-shipper/scripts/install-claude-global.ps1`
+  - WSL/Ubuntu/Mac：`bash codex-skills/feature-shipper/scripts/install-claude-global.sh`
+    - 选项：`--force` 覆盖；`--dry-run` 只看不写；`--claude-home <path>` 指定 Claude 目录。
+- 同时安装（兼容旧入口）：
+  - Windows：`powershell -ExecutionPolicy Bypass -File codex-skills/feature-shipper/scripts/install-global.ps1`
+  - WSL/Ubuntu/Mac：`bash codex-skills/feature-shipper/scripts/install-global.sh`
+    - 选项：`--force` 覆盖；`--dry-run` 只看不写；`--no-profile` 不改 profile；`--no-claude` 跳过安装到 `~/.claude`；`--codex-home <path>`/`--claude-home <path>` 指定目录。
 
 使用（全局开箱 3 步）：
 1) `aw-init`
@@ -49,10 +57,19 @@
 项目卸载（全局安装后，卸载某个目标项目里的 `.autoworkflow/`）：
 - 在目标项目根执行：`aw-uninstall`
 
-卸载/回滚（对称清理）：
-- Windows：`powershell -ExecutionPolicy Bypass -File codex-skills/feature-shipper/scripts/uninstall-global.ps1`
-- WSL/Ubuntu/Mac：`bash codex-skills/feature-shipper/scripts/uninstall-global.sh`
-  - 默认会同时清理 `~/.bashrc` 的别名块、以及安装到 `$CLAUDE_HOME` 的 Claude assets（基于 manifest：`$CLAUDE_HOME/.autoworkflow-installed.txt`；可用 `--no-claude` 跳过）
+卸载/回滚（对称清理；支持 `--purge` 做深度清理）：
+- 仅卸载 Codex skills：
+  - Windows：`powershell -ExecutionPolicy Bypass -File codex-skills/feature-shipper/scripts/uninstall-codex-global.ps1`
+  - WSL/Ubuntu/Mac：`bash codex-skills/feature-shipper/scripts/uninstall-codex-global.sh`
+  - 基于 manifest：`$CODEX_HOME/.autoworkflow-codex-installed.txt`
+- 仅卸载 Claude Code assets：
+  - Windows：`powershell -ExecutionPolicy Bypass -File codex-skills/feature-shipper/scripts/uninstall-claude-global.ps1`
+  - WSL/Ubuntu/Mac：`bash codex-skills/feature-shipper/scripts/uninstall-claude-global.sh`
+  - 基于 manifest：`$CLAUDE_HOME/.autoworkflow-claude-installed.txt`（兼容旧文件：`$CLAUDE_HOME/.autoworkflow-installed.txt`）
+- 同时卸载（兼容旧入口）：
+  - Windows：`powershell -ExecutionPolicy Bypass -File codex-skills/feature-shipper/scripts/uninstall-global.ps1`
+  - WSL/Ubuntu/Mac：`bash codex-skills/feature-shipper/scripts/uninstall-global.sh`
+  - 默认会清理 `~/.bashrc`/`~/.zshrc` 的别名块；可用 `--no-claude` 跳过 Claude 清理。
 
 <a id="quickstart"></a>
 ## 项目安装（repo-local，可选）
@@ -127,6 +144,8 @@ CI 一键模板：
 ## Codex 交互模式（对话闭环）
 
 Codex CLI 支持交互式对话，把模型当成“执行型工程助手”在真实仓库内闭环推进（明确 DoD → 计划 → 改代码 → 跑 gate → 迭代直到通过）。
+
+> 状态说明：由于 Codex CLI 当前对 SubAgent/多 Agent 编排能力仍在演进，本仓库在 Codex 侧的进一步 SubAgent 化开发暂缓；多 Agent 场景优先走 Claude Code Subagents（`.claude/agents`）/官方 SDK 路线。
 
 1) 启动交互会话
 - 默认（使用你已配置/登录的模型提供方）：`codex --full-auto -C .`

@@ -11,9 +11,16 @@
 
 ## 最快上手（全局懒人 3 步）
 1) 全局一键安装（可选）：  
-   - Windows：`powershell -ExecutionPolicy Bypass -File codex-skills/feature-shipper/scripts/install-global.ps1`  
-   - WSL/Ubuntu/Mac：`bash codex-skills/feature-shipper/scripts/install-global.sh`  
-   （默认复制 skills → `$CODEX_HOME/skills/`，并注入别名 `aw-init/aw-auto/aw-gate/aw-doctor`）
+   - 仅安装 Codex skills：  
+     - Windows：`powershell -ExecutionPolicy Bypass -File codex-skills/feature-shipper/scripts/install-codex-global.ps1`  
+     - WSL/Ubuntu/Mac：`bash codex-skills/feature-shipper/scripts/install-codex-global.sh`  
+     （复制 skills → `$CODEX_HOME/skills/`，并注入别名 `aw-init/aw-auto/aw-gate/aw-doctor`）
+   - 仅安装 Claude Code assets：  
+     - Windows：`powershell -ExecutionPolicy Bypass -File codex-skills/feature-shipper/scripts/install-claude-global.ps1`  
+     - WSL/Ubuntu/Mac：`bash codex-skills/feature-shipper/scripts/install-claude-global.sh`
+   - 兼容旧入口（同时安装）：  
+     - Windows：`powershell -ExecutionPolicy Bypass -File codex-skills/feature-shipper/scripts/install-global.ps1`  
+     - WSL/Ubuntu/Mac：`bash codex-skills/feature-shipper/scripts/install-global.sh`
 2) 在目标仓库根：`aw-init`（生成 `.autoworkflow/*`）
 3) 自动生成 gate 并跑：`aw-auto` → `aw-gate`
 

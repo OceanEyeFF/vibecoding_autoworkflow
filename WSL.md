@@ -9,16 +9,21 @@
 
 ## 1. 推荐：全局安装（一次即可，多项目复用）
 
-在 **WSL** 终端（任意目录）执行全局安装脚本，会把 skills 安装到 `$CODEX_HOME/skills`，并可选写入别名 `aw-init/aw-auto/aw-doctor/aw-gate/aw-uninstall`：
+在 **WSL** 终端（任意目录）执行全局安装脚本（推荐分开安装，互不影响）：
 
 ```bash
-# 在本工具仓库执行（或替换为你的实际路径）
-bash codex-skills/feature-shipper/scripts/install-global.sh
+# 仅安装 Codex skills（aw-* 别名写入 ~/.bashrc 或 ~/.zshrc）
+bash codex-skills/feature-shipper/scripts/install-codex-global.sh
+
+# 仅安装 Claude Code assets（agents/skills/commands -> ~/.claude）
+bash codex-skills/feature-shipper/scripts/install-claude-global.sh
+
+# 兼容旧入口：同时安装
+# bash codex-skills/feature-shipper/scripts/install-global.sh
 ```
 
-> 提示：如果不想改 `~/.bashrc`，加 `--no-profile`；想先预览加 `--dry-run`。
-> 默认也会把 Claude Code 的 agents/skills/commands 安装到 `$CLAUDE_HOME`（默认 `~/.claude`），因此你应能在 `~/.claude/agents/` 看到 `feature-shipper.md`，并在 `~/.claude/commands/autoworkflow/` 看到命令入口。
-> 如果你不想安装到 `~/.claude`，加 `--no-claude`。
+> 提示：如果不想改 profile，加 `--no-profile`；想先预览加 `--dry-run`。
+> Claude assets 默认安装到 `$CLAUDE_HOME`（默认 `~/.claude`），因此你应能在 `~/.claude/agents/` 看到 `feature-shipper.md`，并在 `~/.claude/commands/autoworkflow/` 看到命令入口。
 > 安装后请重开终端，或执行 `source ~/.bashrc` 让别名生效。
 
 ## 2. 在目标项目初始化（WSL）
@@ -70,12 +75,18 @@ aw-uninstall --yes    # 无人值守
 aw-uninstall --remove-exclude
 ```
 
-卸载全局安装（移除 `$CODEX_HOME/skills/*` 并清理 profile 别名块）：
+卸载全局安装（支持 `--purge` 深度清理）：
 
 ```bash
-bash codex-skills/feature-shipper/scripts/uninstall-global.sh
+# 仅卸载 Codex skills（并清理 ~/.bashrc / ~/.zshrc 的别名块）
+bash codex-skills/feature-shipper/scripts/uninstall-codex-global.sh
+
+# 仅卸载 Claude Code assets（基于 manifest：$CLAUDE_HOME/.autoworkflow-claude-installed.txt；兼容旧文件：.autoworkflow-installed.txt）
+bash codex-skills/feature-shipper/scripts/uninstall-claude-global.sh
+
+# 兼容旧入口：同时卸载（可加 --no-claude 跳过 Claude 清理）
+# bash codex-skills/feature-shipper/scripts/uninstall-global.sh
 ```
-> 默认也会清理安装到 `$CLAUDE_HOME` 的 Claude assets（基于 manifest：`$CLAUDE_HOME/.autoworkflow-installed.txt`）；如需跳过，加 `--no-claude`。
 
 ## 5. 配置远端鉴权（push/PR）
 - 在 WSL Shell 设置环境变量，或写入不入库的 `.autoworkflow/secret.env`：
