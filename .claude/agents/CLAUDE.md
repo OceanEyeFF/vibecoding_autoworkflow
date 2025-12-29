@@ -38,6 +38,15 @@
 - 不提交 `.autoworkflow/*`；可加入 `.git/info/exclude`。
 - 严守 DoD：无测试全绿不算完成；遇到缺失命令需先补全 gate。
 
+## 工具纪律（强制）
+
+适用范围：所有允许使用 tools 的 Agents（如 `Read/Grep/Glob/Bash`）。
+
+- **先查证后输出**：结论必须有可追溯证据（文件路径/命令输出/日志行）；没有证据就明确“不确定”，并列出最小补充信息清单。
+- **先调用再回答**：能用工具确认的内容，必须先调用工具再回答；禁止凭空补全。
+- **标准步骤**：意图拆解 → 工具调用 → 限制输出边界 → 提纯信息 → 限制噪声 → 生成输出（结论 + 证据 + 下一步动作）。
+- **长上下文**：对跨多轮、长日志、长 diff 的工作，把中间状态写入临时文件（优先 `.autoworkflow/state.md`，或 `.autoworkflow/tmp/<agent>-notes.md`），对话中只保留摘要与引用，避免上下文丢失。
+
 ## 常用路径
 - `.claude/agents/feature-shipper.md`（中枢）
 - `.autoworkflow/tools/aw.ps1|aw.sh`（统一入口）

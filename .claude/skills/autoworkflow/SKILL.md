@@ -8,6 +8,12 @@ allowed-tools: Read, Grep, Glob, Bash
 
 # Autoworkflow (repo-local gate)
 
+## Tool discipline (mandatory)
+
+- **Verify-before-output / call-tools-before-answer**: anything about gate/plan/state must be verified by running the toolchain or reading the artifacts; never guess.
+- **Workflow**: intent decomposition → tool calls → output boundary → distill → reduce noise → output (conclusion + evidence + next action).
+- **Long context**: persist intermediate state to `.autoworkflow/state.md` or `.autoworkflow/tmp/<agent>-notes.md` and keep chat output to highlights + file references.
+
 This skill standardizes how to run the repo-local workflow:
 
 1) Ensure `.autoworkflow/` exists (init if missing)
@@ -28,4 +34,3 @@ Notes:
 - Treat `gate` as the single source of truth for “tests all green”.
 - Prefer editing `.autoworkflow/gate.env` directly for complex shell quoting.
 - Optional: `autoworkflow git branch start` can create a work branch when you are on `main/master`.
-
