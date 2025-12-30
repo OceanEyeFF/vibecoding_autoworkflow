@@ -24,8 +24,8 @@ PowerShell / Bash 包装：`.autoworkflow/tools/aw.ps1`、`aw.sh`
 
 ## 全局懒人模式
 一键安装并注入别名：
-- Windows：`powershell -ExecutionPolicy Bypass -File codex-skills/feature-shipper/scripts/install-codex-global.ps1`
-- WSL/Ubuntu/Mac：`bash codex-skills/feature-shipper/scripts/install-codex-global.sh`
+- Windows：`powershell -ExecutionPolicy Bypass -File CodeX/codex-skills/feature-shipper/scripts/install-codex-global.ps1`
+- WSL/Ubuntu/Mac：`bash CodeX/codex-skills/feature-shipper/scripts/install-codex-global.sh`
   - 选项：`--force` 覆盖；`--dry-run` 仅查看；`--no-profile` 不写 profile；`--codex-home <path>` 自定义 Codex 目录。
 （如需同步 Claude Code assets：运行 `install-claude-global.ps1/.sh`；或用兼容旧入口 `install-global.ps1/.sh` 同时安装。）
   - 追加别名：`aw-init` / `aw-auto` / `aw-gate` / `aw-doctor` / `aw-uninstall`

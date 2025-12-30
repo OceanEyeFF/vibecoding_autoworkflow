@@ -14,14 +14,14 @@ $ClaudeHome = [IO.Path]::GetFullPath($ClaudeHome)
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $featureShipperDir = Split-Path -Parent $scriptDir
 $skillsRoot = Split-Path -Parent $featureShipperDir
-$repoRoot = Split-Path -Parent $skillsRoot
+$repoRoot = Split-Path -Parent (Split-Path -Parent $skillsRoot)
 
 $manifest = Join-Path $ClaudeHome ".autoworkflow-claude-installed.txt"
 $manifestLegacy = Join-Path $ClaudeHome ".autoworkflow-installed.txt"
 
 function Write-Step([string]$Msg) { Write-Host "[install-claude-global] $Msg" }
 
-Write-Step "Source claude: $(Join-Path $repoRoot '.claude')"
+Write-Step "Source claude: $(Join-Path $repoRoot 'Claude')"
 Write-Step "Target claude: $ClaudeHome"
 Write-Step "Claude manifest: $manifest"
 Write-Step "Claude legacy manifest: $manifestLegacy"
@@ -67,9 +67,9 @@ function Copy-ClaudeTree([string]$Src, [string]$Dst, [System.Collections.Generic
 }
 
 $installed = New-Object 'System.Collections.Generic.List[string]'
-Copy-ClaudeTree -Src (Join-Path $repoRoot ".claude\\agents") -Dst (Join-Path $ClaudeHome "agents") -Installed $installed
-Copy-ClaudeTree -Src (Join-Path $repoRoot ".claude\\skills") -Dst (Join-Path $ClaudeHome "skills") -Installed $installed
-Copy-ClaudeTree -Src (Join-Path $repoRoot ".claude\\commands") -Dst (Join-Path $ClaudeHome "commands") -Installed $installed
+Copy-ClaudeTree -Src (Join-Path $repoRoot "Claude\\agents") -Dst (Join-Path $ClaudeHome "agents") -Installed $installed
+Copy-ClaudeTree -Src (Join-Path $repoRoot "Claude\\skills") -Dst (Join-Path $ClaudeHome "skills") -Installed $installed
+Copy-ClaudeTree -Src (Join-Path $repoRoot "Claude\\commands") -Dst (Join-Path $ClaudeHome "commands") -Installed $installed
 
 if ($DryRun) {
   Write-Step "Would write manifest $manifest"
@@ -93,4 +93,3 @@ if ($DryRun) {
 }
 
 Write-Step "Done."
-

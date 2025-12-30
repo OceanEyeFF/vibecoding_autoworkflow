@@ -36,7 +36,7 @@ if [[ "${CODEX_HOME_RESOLVED}" == "~" || "${CODEX_HOME_RESOLVED}" == "~/"* ]]; t
 fi
 TOOL=""
 for cand in \
-  "$ROOT_PATH/codex-skills/feature-shipper/scripts/autoworkflow.py" \
+  "$ROOT_PATH/CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py" \
   "${CODEX_HOME_RESOLVED}/skills/feature-shipper/scripts/autoworkflow.py" \
   "$ROOT_PATH/.autoworkflow/tools/autoworkflow.py"; do
   if [[ -n "$cand" && -f "$cand" ]]; then
@@ -48,7 +48,7 @@ if [[ -z "$TOOL" ]]; then
   echo "Missing autoworkflow.py. Expected one of:" >&2
   echo "  - $ROOT_PATH/.autoworkflow/tools/autoworkflow.py" >&2
   echo "  - ${CODEX_HOME_RESOLVED}/skills/feature-shipper/scripts/autoworkflow.py" >&2
-  echo "  - $ROOT_PATH/codex-skills/feature-shipper/scripts/autoworkflow.py" >&2
+  echo "  - $ROOT_PATH/CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py" >&2
   exit 2
 fi
 

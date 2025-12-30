@@ -24,7 +24,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
-AW = ROOT / "codex-skills" / "feature-shipper" / "scripts" / "autoworkflow.py"
+AW = ROOT / "CodeX" / "codex-skills" / "feature-shipper" / "scripts" / "autoworkflow.py"
 
 
 def run(cmd: list[str], cwd: Path, title: str) -> tuple[int, str]:

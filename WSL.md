@@ -13,13 +13,13 @@
 
 ```bash
 # 仅安装 Codex skills（aw-* 别名写入 ~/.bashrc 或 ~/.zshrc）
-bash codex-skills/feature-shipper/scripts/install-codex-global.sh
+bash CodeX/codex-skills/feature-shipper/scripts/install-codex-global.sh
 
 # 仅安装 Claude Code assets（agents/skills/commands -> ~/.claude）
-bash codex-skills/feature-shipper/scripts/install-claude-global.sh
+bash CodeX/codex-skills/feature-shipper/scripts/install-claude-global.sh
 
 # 兼容旧入口：同时安装
-# bash codex-skills/feature-shipper/scripts/install-global.sh
+# bash CodeX/codex-skills/feature-shipper/scripts/install-global.sh
 ```
 
 > 提示：如果不想改 profile，加 `--no-profile`；想先预览加 `--dry-run`。
@@ -48,13 +48,13 @@ aw-gate
 
 在 **WSL** 终端进入目标项目根目录，复制/同步本仓库中的工作流资源：
 - `.autoworkflow/`（含 `tools/aw.sh`、`gate.sh`、模板、state/spec 等）
-- `codex-skills/feature-shipper/`（工具脚本与 SKILL）
-- （可选）`.claude/agents/` 与 `.claude/skills/`（用于 Claude Code Agent）
+- `CodeX/codex-skills/feature-shipper/`（工具脚本与 SKILL）
+- （可选）`Claude/agents/` 与 `Claude/skills/`（用于 Claude Code Agent）
 
 然后初始化并运行：
 
 ```bash
-python codex-skills/feature-shipper/scripts/autoworkflow.py --root . init
+python CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py --root . init
 python .autoworkflow/tools/autoworkflow.py --root . auto-gate   # 或 set-gate --test "<你的测试命令>"
 bash .autoworkflow/tools/aw.sh doctor --write --update-state
 bash .autoworkflow/tools/aw.sh gate
@@ -79,13 +79,13 @@ aw-uninstall --remove-exclude
 
 ```bash
 # 仅卸载 Codex skills（并清理 ~/.bashrc / ~/.zshrc 的别名块）
-bash codex-skills/feature-shipper/scripts/uninstall-codex-global.sh
+bash CodeX/codex-skills/feature-shipper/scripts/uninstall-codex-global.sh
 
 # 仅卸载 Claude Code assets（基于 manifest：$CLAUDE_HOME/.autoworkflow-claude-installed.txt；兼容旧文件：.autoworkflow-installed.txt）
-bash codex-skills/feature-shipper/scripts/uninstall-claude-global.sh
+bash CodeX/codex-skills/feature-shipper/scripts/uninstall-claude-global.sh
 
 # 兼容旧入口：同时卸载（可加 --no-claude 跳过 Claude 清理）
-# bash codex-skills/feature-shipper/scripts/uninstall-global.sh
+# bash CodeX/codex-skills/feature-shipper/scripts/uninstall-global.sh
 ```
 
 ## 5. 配置远端鉴权（push/PR）
@@ -108,7 +108,7 @@ python .autoworkflow/tools/autoworkflow.py --root . \
 ```bash
 codex --full-auto -C .
 ```
-- 开场提示 Codex 先读 `codex-skills/feature-shipper/SKILL.md`。
+- 开场提示 Codex 先读 `CodeX/codex-skills/feature-shipper/SKILL.md`。
 - 它会按 spec/DoD → plan → gate → 修复 → 再 gate，直到绿。
 
 ## 8. 在 Claude Code 中全自动（无需手敲命令）

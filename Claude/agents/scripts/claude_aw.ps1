@@ -28,7 +28,7 @@ function Run-Step($name, $cmd) {
 $rootPath = Resolve-Path -LiteralPath $Root
 
 $candidateTools = @()
-$repoTool = Join-Path $rootPath "codex-skills/feature-shipper/scripts/autoworkflow.py"
+$repoTool = Join-Path $rootPath "CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py"
 $candidateTools += $repoTool
 
 $codexHome = $env:CODEX_HOME
@@ -46,7 +46,7 @@ foreach ($cand in $candidateTools) {
   if ($cand -and (Test-Path -LiteralPath $cand)) { $tool = $cand; break }
 }
 if (-not $tool) {
-  throw "autoworkflow.py not found. Expected one of: .autoworkflow/tools/autoworkflow.py, $env:CODEX_HOME/skills/feature-shipper/scripts/autoworkflow.py, or codex-skills/feature-shipper/scripts/autoworkflow.py"
+  throw "autoworkflow.py not found. Expected one of: .autoworkflow/tools/autoworkflow.py, $env:CODEX_HOME/skills/feature-shipper/scripts/autoworkflow.py, or CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py"
 }
 
 if ($DryRun) {

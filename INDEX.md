@@ -4,22 +4,22 @@
 
 ## 中枢（闭环交付）
 
-- Claude Code Agent：`.claude/agents/feature-shipper.md`
-- Claude Code Skill：`.claude/skills/autoworkflow/SKILL.md`
-- Claude Code Skill：`.claude/skills/git-workflow/SKILL.md`
-- Codex Skill：`codex-skills/feature-shipper/SKILL.md`
+- Claude Code Agent（源资产）：`Claude/agents/feature-shipper.md`（安装后：`.claude/agents/feature-shipper.md`）
+- Claude Code Skill（源资产）：`Claude/skills/autoworkflow/SKILL.md`（安装后：`.claude/skills/autoworkflow/SKILL.md`）
+- Claude Code Skill（源资产）：`Claude/skills/git-workflow/SKILL.md`（安装后：`.claude/skills/git-workflow/SKILL.md`）
+- Codex Skill：`CodeX/codex-skills/feature-shipper/SKILL.md`
 
 定位：把“需求 → 计划 → 实现 → 测试 → 修复迭代 → 交付”跑成闭环，直到满足验收标准。
 建议在目标项目中使用统一目录 `.autoworkflow/tools/` 存放跨平台 gate 脚本（Windows/WSL/Ubuntu 分别运行对应脚本），作为“测试全绿”的本地门禁入口。
 
 ## Claude Code Skills（可复用能力包）
 
-- `autoworkflow`：`.claude/skills/autoworkflow/SKILL.md`（围绕 `.autoworkflow/` 的 plan/review/gate 标准化闭环）
-- `git-workflow`：`.claude/skills/git-workflow/SKILL.md`（建分支/可选本地 commit 的安全闭环）
+- `autoworkflow`（源资产）：`Claude/skills/autoworkflow/SKILL.md`（围绕 `.autoworkflow/` 的 plan/review/gate 标准化闭环）
+- `git-workflow`（源资产）：`Claude/skills/git-workflow/SKILL.md`（建分支/可选本地 commit 的安全闭环）
 
 ## 可选：反馈日志（后台轻量记录）
 
-- Codex Skill：`codex-skills/feedback-logger/SKILL.md`
+- Codex Skill：`CodeX/codex-skills/feedback-logger/SKILL.md`
 
 用途：在改进测试/排障时，可后台记录关键中间信息（命令、失败高亮、state/doctor 变化、手工备注），避免返工。
 
@@ -27,12 +27,12 @@
 
 这些可以作为中枢的“专项模式/提示参考”继续保留：
 
-- 结构/架构分析：`.claude/agents/code-analyzer.md`
-- 调试/根因定位：`.claude/agents/code-debug-expert.md`
-- 需求收敛：`.claude/agents/requirement-refiner.md`
-- 日志/事故分析：`.claude/agents/system-log-analyzer.md`
-- 项目清理：`.claude/agents/code-project-cleaner.md`
-- 阶段文档驱动交付（偏重 Playwright）：`.claude/agents/stage-development-executor.md`
+- 结构/架构分析：`Claude/agents/code-analyzer.md`
+- 调试/根因定位：`Claude/agents/code-debug-expert.md`
+- 需求收敛：`Claude/agents/requirement-refiner.md`
+- 日志/事故分析：`Claude/agents/system-log-analyzer.md`
+- 项目清理：`Claude/agents/code-project-cleaner.md`
+- 阶段文档驱动交付（偏重 Playwright）：`Claude/agents/stage-development-executor.md`
 
 非软件交付主线，但保留以支持后续游戏开发场景（已归档，不参与 Claude Code agent 发现）：
 

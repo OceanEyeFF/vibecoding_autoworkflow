@@ -542,7 +542,9 @@ def uninstall_autoworkflow(repo_root: Path, *, yes: bool, remove_exclude: bool) 
         shutil.rmtree(aw)
     except PermissionError as exc:
         print(f"uninstall: failed to remove {aw}: {exc}")
-        print("hint: On Windows, run uninstall from the global skill (CODEX_HOME) or from codex-skills/feature-shipper, not from inside .autoworkflow/tools.")
+        print(
+            "hint: On Windows, run uninstall from the global skill (CODEX_HOME) or from CodeX/codex-skills/feature-shipper, not from inside .autoworkflow/tools."
+        )
         return 2
 
     if remove_exclude:
@@ -1621,17 +1623,17 @@ def _guess_conventional_type_and_scope(staged_paths: list[str]) -> tuple[str, st
         ctype = "build"
     elif any(is_test(p) for p in staged_paths):
         ctype = "test"
-    elif any(p.replace("\\", "/").startswith((".claude/", ".autoworkflow/")) for p in staged_paths):
+    elif any(p.replace("\\", "/").startswith((".claude/", "Claude/", ".autoworkflow/")) for p in staged_paths):
         ctype = "chore"
     else:
         ctype = "feat"
 
     scope: str | None = None
-    if any(p.replace("\\", "/").startswith(".claude/") for p in staged_paths):
+    if any(p.replace("\\", "/").startswith((".claude/", "Claude/")) for p in staged_paths):
         scope = "claude"
     elif any(p.replace("\\", "/").startswith(".autoworkflow/") for p in staged_paths):
         scope = "autoworkflow"
-    elif any(p.replace("\\", "/").startswith("codex-skills/") for p in staged_paths):
+    elif any(p.replace("\\", "/").startswith(("CodeX/codex-skills/", "codex-skills/")) for p in staged_paths):
         scope = "skills"
 
     return ctype, scope
@@ -2734,7 +2736,7 @@ jobs:
         with:
           python-version: '3.x'
       - name: Init autoworkflow
-        run: python codex-skills/feature-shipper/scripts/autoworkflow.py --root . init --force
+        run: python CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py --root . init --force
       - name: Plan review
         run: python .autoworkflow/tools/autoworkflow.py --root . plan review
       - name: Gate (dry-run)
@@ -2756,7 +2758,7 @@ jobs:
   image: python:3.11
   stage: test
   script:
-    - python codex-skills/feature-shipper/scripts/autoworkflow.py --root . init --force
+    - python CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py --root . init --force
     - python .autoworkflow/tools/autoworkflow.py --root . plan review
     - python .autoworkflow/tools/autoworkflow.py --root . gate --allow-unreviewed
     - python agents_runner.py --root . --allow-unreviewed

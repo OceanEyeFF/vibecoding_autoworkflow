@@ -51,7 +51,7 @@ else
     | (cd "${temp_repo}" && tar -xf -)
 fi
 
-aw="${ROOT}/codex-skills/feature-shipper/scripts/autoworkflow.py"
+aw="${ROOT}/CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py"
 if [[ ! -f "${aw}" ]]; then
   echo "[safe-smoke] Missing autoworkflow.py at ${aw}" >&2
   exit 2
@@ -59,7 +59,7 @@ fi
 
 python "${aw}" --root "${temp_repo}" init --force
 
-test_cmd="python -m py_compile ./agents_runner.py ./agents_sdk_runner.py ./agents_workflow.py ./codex-skills/feature-shipper/scripts/autoworkflow.py"
+test_cmd="python -m py_compile ./agents_runner.py ./agents_sdk_runner.py ./agents_workflow.py ./CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py"
 python "${aw}" --root "${temp_repo}" set-gate --create --build "echo skip" --test "${test_cmd}" --lint "echo skip" --format-check "echo skip"
 
 python "${aw}" --root "${temp_repo}" plan gen
@@ -94,7 +94,7 @@ Hard rules:
 - Do NOT run git commit/push/reset.
 
 Commands:
-1) python -m py_compile ./agents_runner.py ./agents_sdk_runner.py ./agents_workflow.py ./codex-skills/feature-shipper/scripts/autoworkflow.py
+1) python -m py_compile ./agents_runner.py ./agents_sdk_runner.py ./agents_workflow.py ./CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py
 2) python .autoworkflow/tools/autoworkflow.py --root . plan review
 3) python .autoworkflow/tools/autoworkflow.py --root . gate --allow-unreviewed
 4) python agents_runner.py --root . --allow-unreviewed
@@ -104,4 +104,3 @@ PROMPT
 fi
 
 echo "[safe-smoke] OK (cold start + gate + runner)"
-

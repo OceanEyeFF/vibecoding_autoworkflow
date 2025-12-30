@@ -48,10 +48,10 @@ CLAUDE_HOME="$(resolve_path "${CLAUDE_HOME}")"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FEATURE_SHIPPER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SKILLS_ROOT="$(cd "${FEATURE_SHIPPER_DIR}/.." && pwd)"
-REPO_ROOT="$(cd "${SKILLS_ROOT}/.." && pwd)"
+REPO_ROOT="$(cd "${SKILLS_ROOT}/../.." && pwd)"
 
 log() { echo "[install-claude-global] $*"; }
-log "Source claude: ${REPO_ROOT}/.claude"
+log "Source claude: ${REPO_ROOT}/Claude"
 log "Target claude: ${CLAUDE_HOME}"
 [[ "${DRY_RUN}" == "1" ]] && log "Dry-run mode (no changes will be written)"
 
@@ -116,16 +116,16 @@ CLAUDE_MANIFEST_LEGACY="${CLAUDE_HOME}/.autoworkflow-installed.txt"
 if [[ "${DRY_RUN}" == "1" ]]; then
   log "Would write manifest ${CLAUDE_MANIFEST}"
   log "Would also write legacy manifest ${CLAUDE_MANIFEST_LEGACY}"
-  print_copy_plan_claude "${REPO_ROOT}/.claude/agents" "${CLAUDE_HOME}/agents"
-  print_copy_plan_claude "${REPO_ROOT}/.claude/skills" "${CLAUDE_HOME}/skills"
-  print_copy_plan_claude "${REPO_ROOT}/.claude/commands" "${CLAUDE_HOME}/commands"
+  print_copy_plan_claude "${REPO_ROOT}/Claude/agents" "${CLAUDE_HOME}/agents"
+  print_copy_plan_claude "${REPO_ROOT}/Claude/skills" "${CLAUDE_HOME}/skills"
+  print_copy_plan_claude "${REPO_ROOT}/Claude/commands" "${CLAUDE_HOME}/commands"
 else
   mkdir -p "${CLAUDE_HOME}"
   MANIFEST_TMP="$(mktemp)"
   : > "${MANIFEST_TMP}"
-  copy_claude_tree "${REPO_ROOT}/.claude/agents" "${CLAUDE_HOME}/agents" "${MANIFEST_TMP}"
-  copy_claude_tree "${REPO_ROOT}/.claude/skills" "${CLAUDE_HOME}/skills" "${MANIFEST_TMP}"
-  copy_claude_tree "${REPO_ROOT}/.claude/commands" "${CLAUDE_HOME}/commands" "${MANIFEST_TMP}"
+  copy_claude_tree "${REPO_ROOT}/Claude/agents" "${CLAUDE_HOME}/agents" "${MANIFEST_TMP}"
+  copy_claude_tree "${REPO_ROOT}/Claude/skills" "${CLAUDE_HOME}/skills" "${MANIFEST_TMP}"
+  copy_claude_tree "${REPO_ROOT}/Claude/commands" "${CLAUDE_HOME}/commands" "${MANIFEST_TMP}"
   if [[ -s "${MANIFEST_TMP}" ]]; then
     if [[ -f "${CLAUDE_MANIFEST}" ]]; then
       cat "${CLAUDE_MANIFEST}" >> "${MANIFEST_TMP}" || true

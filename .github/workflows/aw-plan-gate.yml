@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: '3.x'
       - name: Init autoworkflow
-        run: python codex-skills/feature-shipper/scripts/autoworkflow.py --root . init --force
+        run: python CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py --root . init --force
       - name: Plan review
         run: python .autoworkflow/tools/autoworkflow.py --root . plan review
       - name: Gate (dry-run)

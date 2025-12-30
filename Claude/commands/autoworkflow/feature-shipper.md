@@ -25,7 +25,7 @@ git rev-parse --show-toplevel
 
 2) 确保已全局安装（否则先安装本仓库的 skills）：
 ```bash
-bash codex-skills/feature-shipper/scripts/install-global.sh
+bash CodeX/codex-skills/feature-shipper/scripts/install-global.sh
 ```
 
 3) 初始化 `.autoworkflow/`（若不存在）：

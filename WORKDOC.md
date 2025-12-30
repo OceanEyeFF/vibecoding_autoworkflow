@@ -18,7 +18,7 @@
 ## 2. 当前已落地产物（可用）
 
 **核心工具链（repo-local）**
-- `codex-skills/feature-shipper/scripts/autoworkflow.py`：`init / set-gate / auto-gate / gate / plan(gen|review|status) / plan ci-template / doctor`
+- `CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py`：`init / set-gate / auto-gate / gate / plan(gen|review|status) / plan ci-template / doctor`
 - `agents_runner.py`：串行编排 `plan review -> gate`，并写入 trace：`<repo>/.autoworkflow/trace/*.jsonl`
 
 **官方方向（SDK 化）**
@@ -32,8 +32,8 @@
 - `.github/workflows/aw-plan-gate.yml`：已与 `autoworkflow.py plan ci-template` 输出对齐（含 schedule 开关与 optional SDK step）
 
 **安全测试（不污染现有项目目录）**
-- `codex-skills/feature-shipper/scripts/safe-smoke.ps1`
-- `codex-skills/feature-shipper/scripts/safe-smoke.sh`
+- `CodeX/codex-skills/feature-shipper/scripts/safe-smoke.ps1`
+- `CodeX/codex-skills/feature-shipper/scripts/safe-smoke.sh`
 
 ---
 
@@ -61,17 +61,17 @@
 
 Windows：
 ```powershell
-powershell -ExecutionPolicy Bypass -File "./codex-skills/feature-shipper/scripts/safe-smoke.ps1" -Root "."
+powershell -ExecutionPolicy Bypass -File "./CodeX/codex-skills/feature-shipper/scripts/safe-smoke.ps1" -Root "."
 ```
 
 保留临时目录（便于复盘临时 trace/产物）：
 ```powershell
-powershell -ExecutionPolicy Bypass -File "./codex-skills/feature-shipper/scripts/safe-smoke.ps1" -Root "." -KeepTemp
+powershell -ExecutionPolicy Bypass -File "./CodeX/codex-skills/feature-shipper/scripts/safe-smoke.ps1" -Root "." -KeepTemp
 ```
 
 可选：在临时目录再跑一遍真实 Codex CLI（会联网/有费用）：
 ```powershell
-powershell -ExecutionPolicy Bypass -File "./codex-skills/feature-shipper/scripts/safe-smoke.ps1" -Root "." -UseCodex
+powershell -ExecutionPolicy Bypass -File "./CodeX/codex-skills/feature-shipper/scripts/safe-smoke.ps1" -Root "." -UseCodex
 ```
 
 ---
@@ -80,8 +80,8 @@ powershell -ExecutionPolicy Bypass -File "./codex-skills/feature-shipper/scripts
 
 口径（✅=已作为验收通过项；⚠️=已实现但未完成“实跑验收”；❌=未实现）：
 
-1) Claude Code Subagents（官方形态）✅：`.claude/agents/*.md` 使用 YAML frontmatter（name/description/tools/permissionMode/skills 等），中枢 `feature-shipper` + 专用 subagents 可被显式/自动调用  
-2) Claude Code Skills（官方形态）✅：`.claude/skills/*/SKILL.md`（含 `name`/`description`/可选 `allowed-tools`），且 subagent 通过 `skills:` 显式声明以加载（子代理默认不继承 skills）  
+1) Claude Code Subagents（官方形态）✅：源资产 `Claude/agents/*.md`；安装后落在目标仓库 `.claude/agents/*.md`，使用 YAML frontmatter（name/description/tools/permissionMode/skills 等），中枢 `feature-shipper` + 专用 subagents 可被显式/自动调用  
+2) Claude Code Skills（官方形态）✅：源资产 `Claude/skills/*/SKILL.md`；安装后落在目标仓库 `.claude/skills/*/SKILL.md`（含 `name`/`description`/可选 `allowed-tools`），且 subagent 通过 `skills:` 显式声明以加载（子代理默认不继承 skills）  
 3) Repo-local Workflow/Gate 工具链 ✅：`.autoworkflow/tools/`（`autoworkflow.py` + `aw.ps1|aw.sh` + `gate.ps1|gate.sh`），目标平台 Windows pwsh + WSL/Linux  
 4) 单一“测试全绿”门禁 ✅：`.autoworkflow/gate.env` 作为 Build/Test/Lint/Format 源，`gate` 只读配置并输出结果（失败附 highlights/tail 追加到 `state.md`）  
 5) Plan → Review → Gate 闭环 ✅：`autoworkflow.py plan gen/review` + `gate` 默认要求 review=approve（可显式 `--allow-unreviewed` 覆盖）  
@@ -108,9 +108,9 @@ powershell -ExecutionPolicy Bypass -File "./codex-skills/feature-shipper/scripts
 本轮新增/修改文件（便于 code review）：
 - 新增：`WORKDOC.md`
 - 新增：`requirements-agents-sdk.txt`
-- 新增：`codex-skills/feature-shipper/scripts/safe-smoke.ps1`
-- 新增：`codex-skills/feature-shipper/scripts/safe-smoke.sh`
+- 新增：`CodeX/codex-skills/feature-shipper/scripts/safe-smoke.ps1`
+- 新增：`CodeX/codex-skills/feature-shipper/scripts/safe-smoke.sh`
 - 修改：`.github/workflows/aw-plan-gate.yml`（修正 `--root` 参数顺序、对齐生成器、补 schedule/optional step）
-- 修改：`codex-skills/feature-shipper/scripts/autoworkflow.py`（CI 模板生成内容对齐并修正命令顺序）
+- 修改：`CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py`（CI 模板生成内容对齐并修正命令顺序）
 - 修改：`agents_runner.py` / `agents_sdk_runner.py` / `agents_workflow.py`（trace 位置指向目标 repo；Windows 文件名安全）
 - 修改：`.gitignore`（忽略 `.venv*`）

@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 
 ROOT = Path(__file__).resolve().parent
-AW = ROOT / "codex-skills" / "feature-shipper" / "scripts" / "autoworkflow.py"
+AW = ROOT / "CodeX" / "codex-skills" / "feature-shipper" / "scripts" / "autoworkflow.py"
 
 
 def run(cmd: List[str], cwd: Path, title: str) -> Dict[str, Any]:

@@ -1,6 +1,7 @@
 # Local automation artifacts
 .autoworkflow/
 .spec-workflow/
+.claude/
 
 # Python
 **/__pycache__/

@@ -31,13 +31,13 @@ try {
   $rc = $LASTEXITCODE
   if ($rc -gt 7) { throw "robocopy failed with exit code $rc" }
 
-  $aw = Join-Path $rootPath "codex-skills/feature-shipper/scripts/autoworkflow.py"
+  $aw = Join-Path $rootPath "CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py"
   if (-not (Test-Path -LiteralPath $aw)) { throw "Missing autoworkflow.py at $aw" }
 
   # Cold start: init -> set-gate -> plan gen/review -> gate -> runner
   & python "$aw" --root "$tempRepo" init --force
 
-  $testCmd = "python -m py_compile ./agents_runner.py ./agents_sdk_runner.py ./agents_workflow.py ./codex-skills/feature-shipper/scripts/autoworkflow.py"
+  $testCmd = "python -m py_compile ./agents_runner.py ./agents_sdk_runner.py ./agents_workflow.py ./CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py"
   & python "$aw" --root "$tempRepo" set-gate --create --build "echo skip" --test "$testCmd" --lint "echo skip" --format-check "echo skip"
 
   & python "$aw" --root "$tempRepo" plan gen
@@ -62,7 +62,7 @@ Hard rules:
 - Do NOT run git commit/push/reset.
 
 Commands:
-1) python -m py_compile ./agents_runner.py ./agents_sdk_runner.py ./agents_workflow.py ./codex-skills/feature-shipper/scripts/autoworkflow.py
+1) python -m py_compile ./agents_runner.py ./agents_sdk_runner.py ./agents_workflow.py ./CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py
 2) python .autoworkflow/tools/autoworkflow.py --root . plan review
 3) python .autoworkflow/tools/autoworkflow.py --root . gate --allow-unreviewed
 4) python agents_runner.py --root . --allow-unreviewed

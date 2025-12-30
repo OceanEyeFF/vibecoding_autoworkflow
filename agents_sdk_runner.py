@@ -28,7 +28,7 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parent
-AW = ROOT / "codex-skills" / "feature-shipper" / "scripts" / "autoworkflow.py"
+AW = ROOT / "CodeX" / "codex-skills" / "feature-shipper" / "scripts" / "autoworkflow.py"
 
 
 @dataclass(frozen=True)
