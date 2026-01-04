@@ -1,5 +1,18 @@
 # Claude Code Agent 设计基线：鉴权 Agent 设计
 
+> ⚠️ **归档原因**：本设计基于"运行时 Agent 调用"假设，与 ClaudeCode 实际工作流程不兼容
+>
+> **ClaudeCode 限制**：
+> - Agent 是独立会话，无法嵌套调用
+> - 无运行时 Orchestrator 解析 JSON 命令
+> - 无强制 Schema 验证机制
+>
+> **可行替代方案**：参见 [归档索引](./README.md)
+>
+> **归档时间**：2026-01-04
+
+---
+
 > 编号：IDEA-003
 > 优先级：P1
 > 关联问题：P03（缺少鉴权 Agent）
