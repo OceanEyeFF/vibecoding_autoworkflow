@@ -1,16 +1,17 @@
-# Claude Code Agent 设计基线：本地化文档缓存
+# Claude Code Skill 设计基线：指令模块化管理
 
 > 编号：IDEA-005
 > 优先级：P0
 > 关联问题：P05（核心 Agent 无本地化文档缓存）
+> 更新时间：2026-01-04（适配 Claude Code Skill 机制）
 
 ---
 
 ## 一、问题回顾
 
 当前问题：
-- feature-shipper 有 236 行 Prompt
-- 每次对话都要加载完整 Prompt
+- 复杂 Skill（如 autodev）指令长度达 700+ 行
+- 每次对话都要加载完整 Skill 文件
 - 长对话后，原始指令会被稀释
 - LLM 会"忘记"核心约束
 
@@ -18,89 +19,156 @@
 
 ## 二、设计目标
 
-1. 核心指令外置到文件系统
-2. Prompt 只保留"加载指令"的引用
-3. 在需要时可以"刷新"指令记忆
+1. 核心指令模块化到独立文件
+2. SKILL.md 只保留核心概念和导航
+3. 在需要时通过 Read 工具"刷新"指令记忆
 4. 避免上下文污染
+5. **适配 Claude Code Skill 机制**（不依赖不支持的元数据字段）
 
 ---
 
 ## 三、设计方案
 
-### 3.1 指令分层架构
+### 3.1 指令模块化架构（适配 Claude Code Skill）
+
+**重要前提**：Claude Code 的 Skill 系统**不支持** `instruction_files` 元数据字段，无法声明式自动加载外部文件。
+
+**替代方案**：在 Skill 目录中组织模块化文件，通过 SKILL.md 中的"启动协议"和"刷新机制"明确指导 Claude 在特定时机使用 Read 工具加载。
+
+#### 目录结构示例（以 autodev 为例）
 
 ```
-.autoworkflow/
-└── agent-instructions/
-    ├── _shared/
-    │   ├── tool-discipline.md      # 共享工具纪律
-    │   ├── output-format.md        # 共享输出格式
-    │   └── safety-rules.md         # 共享安全规则
-    │
-    ├── feature-shipper/
-    │   ├── core.md                 # 核心职责和约束
-    │   ├── workflow.md             # 工作流程
-    │   └── examples.md             # 示例
-    │
-    ├── requirement-refiner/
-    │   ├── core.md
-    │   ├── five-stages.md          # 五阶段流程
-    │   └── templates.md            # 输出模板
-    │
-    └── ...
+Claude/skills/autodev/
+├── SKILL.md                         # 核心 Skill（简化版，含启动协议和导航）
+├── phases/
+│   ├── phase-1-refinement.md        # Phase 1 详细指令
+│   ├── phase-2-planning.md          # Phase 2 详细指令
+│   ├── phase-3-iteration.md         # Phase 3 详细指令
+│   └── phase-4-delivery.md          # Phase 4 详细指令
+├── gates/
+│   ├── gate-1-completeness.md       # G1 检查清单
+│   ├── gate-2-executability.md      # G2 检查清单
+│   ├── gate-3-testing.md            # G3 检查清单
+│   └── gate-4-delivery.md           # G4 检查清单
+└── loops/
+    ├── loop-level-0-instant-fix.md  # Level 0 修复策略
+    ├── loop-level-1-task-refactor.md # Level 1 重构策略
+    ├── loop-level-2-replanning.md   # Level 2 重规划策略
+    └── loop-level-3-human.md        # Level 3 人工介入协议
 ```
 
-### 3.2 精简后的 Prompt
+#### 跨 Skill 共享指令（可选）
+
+```
+Claude/skills/_shared/
+├── tool-discipline.md               # 共享工具纪律（IDEA-006）
+├── output-format.md                 # 共享输出格式
+└── safety-rules.md                  # 共享安全规则
+```
+
+各 Skill 可以在启动协议中读取这些共享文件。
+
+### 3.2 精简后的 SKILL.md（手动 Read 机制）
+
+**注意**：由于 Claude Code 不支持 `instruction_files` 字段，需要在 Skill 正文中明确写出启动协议和刷新机制。
 
 ```yaml
 ---
-name: feature-shipper
-description: 交付中枢 Agent
-tools: Read, Grep, Glob, Bash
-subagents: requirement-refiner, code-debug-expert, code-analyzer
-instruction_files:
-  - .autoworkflow/agent-instructions/_shared/tool-discipline.md
-  - .autoworkflow/agent-instructions/_shared/output-format.md
-  - .autoworkflow/agent-instructions/feature-shipper/core.md
-  - .autoworkflow/agent-instructions/feature-shipper/workflow.md
+name: autodev
+description: >
+  自动化开发工作流 - 四阶段流程 + 多层回路机制
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, Task
 ---
 
-你是一个"交付中枢 Agent"。
+# AutoDev 自动化开发工作流
+
+## 快速导航
+
+详细指令已组织为模块化文档，按需读取：
+
+**执行阶段**：
+- Phase 1: `Claude/skills/autodev/phases/phase-1-refinement.md`
+- Phase 2: `Claude/skills/autodev/phases/phase-2-planning.md`
+- Phase 3: `Claude/skills/autodev/phases/phase-3-iteration.md`
+- Phase 4: `Claude/skills/autodev/phases/phase-4-delivery.md`
+
+**质量门禁**：
+- G1-G4: `Claude/skills/autodev/gates/gate-{1-4}-*.md`
+
+**多层回路**：
+- Level 0-3: `Claude/skills/autodev/loops/loop-level-{0-3}-*.md`
 
 ## 启动协议（必须执行）
 
-1. 首先读取你的核心指令文件：
-   - `Read(.autoworkflow/agent-instructions/feature-shipper/core.md)`
-   - `Read(.autoworkflow/agent-instructions/feature-shipper/workflow.md)`
-
-2. 理解并遵循这些指令。
-
-3. 如果指令文件不存在，输出：
-   ```json
-   {
-     "status": "BLOCKED",
-     "reason": "缺少指令文件，请先运行 aw-init"
-   }
+1. **首次启动**时读取核心指令：
+   ```
+   Read("Claude/skills/autodev/phases/phase-1-refinement.md")
    ```
 
-## 刷新指令（当你感觉"忘记"约束时）
+2. **检查状态文件**（如存在 `.autodev/state.json`）：
+   ```
+   Read(".autodev/state.json")
+   ```
+   根据 state.json 中的 `current_phase` 读取对应的 Phase 指令文件。
 
-在长对话中，如果你感觉对核心约束的记忆变得模糊：
-1. 主动读取 `core.md` 文件
-2. 在输出中声明：`[刷新指令记忆]`
-3. 按照刷新后的指令继续工作
+3. **输出状态报告**：当前处于哪个 Phase、哪个任务、重试次数等。
 
-## 输出格式
+## 指令刷新机制（主动触发）
 
-遵循 `.autoworkflow/agent-instructions/_shared/output-format.md` 中的规范。
+**必须主动刷新指令的情况**：
+
+| 触发条件 | 刷新操作 |
+|---------|---------|
+| **每 5 轮对话** | Read 当前 Phase 的指令文件 |
+| **Gate 失败** | Read 对应的 Gate 检查清单 + Loop 策略文件 |
+| **用户说"你忘了 XXX"** | Read 所有相关指令文件（Phase + Gate + Loop） |
+| **中断后恢复** | Read state.json + 当前 Phase + 当前 Loop Level 的指令文件 |
+
+刷新时输出：
+```
+[指令刷新] 已重新加载：phases/phase-2-planning.md
 ```
 
-### 3.3 核心指令文件示例
+## 核心原则（概览）
 
-#### `feature-shipper/core.md`
+1. **人类在环**：每个 Phase 结束请求确认
+2. **状态可见**：使用 TodoWrite 追踪进度
+3. **可恢复**：通过 state.json 恢复中断
+4. **小步迭代**：每次只做小步修改
+5. **测试验证**：每个任务完成后必须测试
+
+详细的 Phase 执行步骤、Gate 检查清单、Loop 策略请查阅对应的模块化文件。
+```
+
+### 3.3 模块化指令文件示例
+
+#### `phases/phase-1-refinement.md`
 
 ```markdown
-# Feature Shipper 核心指令
+# Phase 1: 需求理解与精炼
+
+## 目标
+把模糊的需求转化为清晰的验收标准（DoD）。
+
+## 执行步骤
+
+1. **分析用户输入**
+   - 识别需求类型（新功能 / Bug 修复 / 重构 / 优化）
+   - 提取关键信息
+
+2. **使用 AskUserQuestion 澄清**（最多 3 轮）
+   - 问题必须聚焦在阻塞实现的歧义点
+   - 避免过早讨论实现细节
+
+3. **输出需求摘要**
+   - 核心价值命题（一句话）
+   - 功能范围（做什么 / 不做什么）
+   - 验收标准（可测试的清单）
+
+4. **执行 G1 门禁检查**
+   - 详见 `gates/gate-1-completeness.md`
+   - 通过 → Phase 2
+   - 失败 → 回到步骤 2 补充信息
 
 ## 不可违背的约束
 
@@ -108,92 +176,144 @@ instruction_files:
    - 缺失时先补齐（最多问 3 个问题）
    - 没有明确 DoD 不开始编码
 
-2. **不擅自引入新依赖**
-   - 除非明确得到同意
-
-3. **小步改动**
-   - 每次只做小步改动
-   - 用测试验证
-
-4. **不自作主张**
+2. **不自作主张**
    - 遇到不确定的业务规则，停下来问
 
-5. **工具纪律**
+3. **工具纪律**（IDEA-006）
    - 先查证后输出
    - 先调用再回答
    - 结论必须有证据
-
-## 职责边界
-
-### 我做什么
-- 代码实现
-- 测试编写
-- Gate 验证
-- 交付总结
-
-### 我不做什么
-- 需求精炼（调用 requirement-refiner）
-- 深度调试（调用 code-debug-expert）
-- 架构分析（调用 code-analyzer）
 ```
 
-### 3.4 指令刷新机制
-
-在 Prompt 中添加：
+#### `gates/gate-1-completeness.md`
 
 ```markdown
-## 指令刷新触发条件
+# G1 门禁：需求完整性检查
 
-当以下情况发生时，你必须主动刷新指令：
+## 检查清单
 
-1. **对话超过 10 轮**
-   - 每 10 轮强制读取一次 core.md
+- [ ] 验收标准已明确（≥3 条，可测试）
+- [ ] 功能范围已界定（有"不做什么"）
+- [ ] 核心价值已清晰（能一句话解释）
+- [ ] 用户已确认需求理解
 
-2. **用户反馈你"忘记"了约束**
-   - 立即读取 core.md 并道歉
+## 通过标准
 
-3. **你发现自己在做"不该做的事"**
-   - 停止当前操作
-   - 读取 core.md
-   - 输出 BOUNDARY_VIOLATION
+**全部**检查项都为 ✅ 时才能进入 Phase 2。
 
-4. **Gate 连续失败 3 次**
-   - 读取 core.md 和 workflow.md
-   - 评估是否需要调用 SubAgent
+## 失败处理
+
+如果任一项为 ❌：
+1. Read("Claude/skills/autodev/phases/phase-1-refinement.md") 刷新指令
+2. 使用 AskUserQuestion 补充缺失信息
+3. 重新输出需求摘要
+4. 再次执行 G1 检查
+```
+
+#### `loops/loop-level-0-instant-fix.md`
+
+```markdown
+# Level 0 回路：即时修复
+
+## 触发条件
+
+G3 门禁（测试）失败，且 retry_count ≤ 3
+
+## 执行策略
+
+1. **分析错误信息**
+   - 读取完整的错误堆栈
+   - 定位失败的具体测试用例
+
+2. **定位问题原因**
+   - Read 相关代码文件
+   - 理解预期行为 vs 实际行为
+
+3. **修复代码**
+   - 使用 Edit 工具修改代码
+   - 保持小步修改（≤10 行）
+
+4. **重新测试**
+   - Bash("npm test")
+   - retry_count++
+
+5. **判断结果**
+   - ✅ 通过 → 标记任务 completed，进入下一任务
+   - ❌ 失败且 retry < 3 → 回到步骤 1
+   - ❌ 失败且 retry == 3 → 触发 **Level 1 回路**
+```
+
+### 3.4 指令刷新机制（手动触发）
+
+在 SKILL.md 中明确写出刷新触发条件和对应操作：
+
+```markdown
+## 指令刷新触发条件（必须遵守）
+
+当以下情况发生时，你**必须主动**使用 Read 工具刷新指令：
+
+1. **每 5 轮对话**
+   - 强制读取当前 Phase 的指令文件
+   - 例如：Read("Claude/skills/autodev/phases/phase-2-planning.md")
+
+2. **用户说"你忘了 XXX"**
+   - 立即读取所有相关指令文件（Phase + Gate + Loop）
+   - 在响应中道歉并说明已刷新
+
+3. **Gate 失败**
+   - 读取对应的 Gate 检查清单
+   - 读取对应的 Loop 策略文件
+   - 例如：Read("gates/gate-2-executability.md") + Read("loops/loop-level-1-task-refactor.md")
+
+4. **中断后恢复**
+   - 读取 state.json
+   - 根据 state.json 的 current_phase 和 failure_level 读取对应文件
 
 刷新时输出：
-​```json
-{
-  "action": "INSTRUCTION_REFRESH",
-  "files_read": ["core.md", "workflow.md"],
-  "memory_restored": true
-}
-​```
+```
+[指令刷新] 已重新加载：
+- phases/phase-2-planning.md
+- gates/gate-2-executability.md
+```
 ```
 
-### 3.5 初始化脚本更新
+**关键点**：Claude Code 不会自动执行这些 Read 操作，需要在 Skill 正文中明确写出"当 X 发生时，必须 Read Y 文件"。
 
-在 `autoworkflow.py init` 中添加：
+### 3.5 创建模块化指令文件
 
-```python
-def create_agent_instructions():
-    """创建 agent-instructions 目录结构"""
-    instructions_dir = project_root / ".autoworkflow" / "agent-instructions"
+**手动创建**或通过脚本生成模块化指令文件目录结构。
 
-    # 创建共享指令
-    shared_dir = instructions_dir / "_shared"
-    shared_dir.mkdir(parents=True, exist_ok=True)
+#### 示例脚本（可选）
 
-    copy_template("tool-discipline.md", shared_dir)
-    copy_template("output-format.md", shared_dir)
-    copy_template("safety-rules.md", shared_dir)
+```bash
+#!/bin/bash
+# 为 autodev Skill 创建模块化指令目录
 
-    # 创建各 Agent 指令目录
-    for agent in ["feature-shipper", "requirement-refiner", "code-debug-expert"]:
-        agent_dir = instructions_dir / agent
-        agent_dir.mkdir(exist_ok=True)
-        copy_template(f"{agent}/core.md", agent_dir)
+SKILL_DIR="Claude/skills/autodev"
+
+mkdir -p "$SKILL_DIR/phases"
+mkdir -p "$SKILL_DIR/gates"
+mkdir -p "$SKILL_DIR/loops"
+
+# 创建 Phase 文件模板
+for i in 1 2 3 4; do
+  touch "$SKILL_DIR/phases/phase-$i-placeholder.md"
+done
+
+# 创建 Gate 文件模板
+for i in 1 2 3 4; do
+  touch "$SKILL_DIR/gates/gate-$i-placeholder.md"
+done
+
+# 创建 Loop 文件模板
+for i in 0 1 2 3; do
+  touch "$SKILL_DIR/loops/loop-level-$i-placeholder.md"
+done
+
+echo "✅ 模块化指令目录结构已创建"
 ```
+
+**或者**使用 Claude Code 的 install-local 脚本集成这个功能。
 
 ---
 
@@ -201,29 +321,55 @@ def create_agent_instructions():
 
 | 指标 | 改进前 | 改进后 |
 |------|-------|-------|
-| Prompt 长度 | 236 行 | ~50 行 |
-| 指令稀释风险 | 高 | 低（可刷新） |
-| 共享逻辑 | 复制粘贴 | 集中管理 |
-| 可维护性 | 低 | 高 |
+| SKILL.md 主文件长度 | 700+ 行（autodev） | ~150 行（核心概念 + 导航） |
+| 详细指令文件数 | 0（全部内联） | 12-15 个模块化文件（phases + gates + loops） |
+| 指令稀释风险 | 高 | 低（手动刷新机制） |
+| 可维护性 | 低（单文件过大） | 高（模块化管理） |
+| 跨 Skill 共享 | 复制粘贴 | 可引用 `_shared/` 目录 |
+| 指令定位速度 | 慢（需在长文件中搜索） | 快（直接打开对应模块文件） |
 
 ---
 
 ## 五、验收标准
 
-- [ ] Prompt 精简到 50 行以内
-- [ ] 核心指令外置到 `.autoworkflow/agent-instructions/`
-- [ ] 有共享指令机制
-- [ ] 有指令刷新机制
-- [ ] init 脚本能自动创建指令目录
+- [ ] SKILL.md 主文件精简（核心概念 + 启动协议 + 刷新机制 + 导航）
+- [ ] 详细指令模块化到独立 Markdown 文件（phases/ gates/ loops/）
+- [ ] 有明确的启动协议（指导首次加载哪些文件）
+- [ ] 有手动指令刷新机制（明确写出触发条件和 Read 操作）
+- [ ] 可选：有跨 Skill 共享指令目录（`_shared/`）
+- [ ] 模块化文件组织符合直觉（易于查找和维护）
 
 ---
 
-## 六、相关文件
+## 六、实施建议
 
-- 待修改：`Claude/agents/feature-shipper.md`
-- 待创建：`Claude/agents/assets/templates/agent-instructions/`
-- 待修改：`Claude/agents/scripts/claude_autoworkflow.py`
+### 优先级 1（立即执行）
+- 对现有复杂 Skill（如 autodev）进行模块化拆分
+- 创建 phases/ gates/ loops/ 目录结构
+- 在 SKILL.md 中添加启动协议和刷新机制
+
+### 优先级 2（后续优化）
+- 创建 `Claude/skills/_shared/` 目录存放跨 Skill 共享指令
+- 编写脚本自动生成模块化目录结构
+- 为其他 Skill 应用相同的模块化策略
+
+### 优先级 3（长期维护）
+- 定期检查指令刷新机制是否被遵守
+- 根据实际使用情况调整模块粒度
+- 收集 LLM"遗忘"指令的案例，优化刷新触发条件
 
 ---
 
-> 核心思想：指令外置 + 按需加载 + 主动刷新 = 抗遗忘
+## 七、相关文件
+
+- 待修改：`Claude/skills/autodev/SKILL.md`（精简并添加启动协议）
+- 待创建：`Claude/skills/autodev/phases/*.md`（Phase 详细指令）
+- 待创建：`Claude/skills/autodev/gates/*.md`（Gate 检查清单）
+- 待创建：`Claude/skills/autodev/loops/*.md`（Loop 策略）
+- 可选创建：`Claude/skills/_shared/*.md`（跨 Skill 共享指令）
+
+---
+
+> **核心思想（更新）**：指令模块化 + 手动触发加载 + 主动刷新 = 抗遗忘
+>
+> **关键区别**：Claude Code Skill 不支持 `instruction_files` 元数据自动加载，需通过在 SKILL.md 中明确写出"当 X 发生时，Read Y 文件"来实现指令刷新。
