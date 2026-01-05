@@ -48,6 +48,139 @@
 - **标准步骤**：意图拆解 → 工具调用 → 限制输出边界 → 提纯信息 → 限制噪声 → 生成输出（结论 + 证据 + 下一步动作）。
 - **长上下文**：对跨多轮、长日志、长 diff 的工作，把中间状态写入临时文件（优先 `.autoworkflow/state.md`，或 `.autoworkflow/tmp/<agent>-notes.md`），对话中只保留摘要与引用，避免上下文丢失。
 
+## 状态管理双轨制
+
+本项目采用**双轨制状态管理**，明确区分会话内和跨会话的状态追踪职责：
+
+### 1. TodoWrite（Claude Code 原生工具）
+
+**用途**：**会话内**状态追踪
+
+**职责**：
+- 追踪当前对话中的任务进度（pending/in_progress/completed）
+- 实时反馈工作流阶段（Phase 1/2/3/4）
+- 展示当前正在执行的操作
+
+**特点**：
+- Claude Code UI 原生集成，用户可见
+- 状态存储在 Claude Code 内部，不持久化到文件系统
+- 会话结束后状态不保留
+
+**使用场景**：
+- `/autodev` Skill 的 Phase 流程追踪
+- Agent 内部任务拆解与进度管理
+- 实时向用户展示工作进度
+
+**示例**：
+```javascript
+TodoWrite({
+  todos: [
+    { content: "Phase 1: 分析需求", status: "completed", activeForm: "分析需求" },
+    { content: "Phase 2: 设计 DoD", status: "in_progress", activeForm: "正在设计 DoD" },
+    { content: "Phase 3: 实现任务", status: "pending", activeForm: "实现任务" }
+  ]
+})
+```
+
+---
+
+### 2. .autoworkflow/state.md（自定义文件）
+
+**用途**：**跨会话**状态持久化
+
+**职责**：
+- 记录 Gate 检查结果（通过/失败时间、错误摘要）
+- 保存 Phase 检查点（用于回路恢复）
+- 存储长上下文中间状态（避免对话上下文丢失）
+- 提供外部工具（Python 脚本）读取的接口
+
+**特点**：
+- 文件系统持久化，跨会话可访问
+- 可被外部脚本读取（如 `claude_autoworkflow.py`）
+- 需要手动维护（通过 Write/Edit 工具）
+
+**使用场景**：
+- 记录 G1/G2/G3 门禁检查历史
+- 保存 Phase 2 检查点标识（`PHASE2_CHECKPOINT`）
+- 长对话中的中间分析结果
+- 跨会话恢复工作进度
+
+**示例**（state.md 结构）：
+```markdown
+# AutoWorkflow State
+
+## 最近 Gate 结果
+- G1 (DoD 检查): ✅ 通过 (2026-01-05 14:30)
+- G2 (计划检查): ✅ 通过 (2026-01-05 14:45)
+- G3 (测试): ❌ 失败 (2026-01-05 15:10)
+  - 错误: TypeError: Cannot read property 'foo'
+  - 文件: src/index.js:42
+
+## 当前检查点
+- Phase 2 Checkpoint: stash@{0} (autodev-checkpoint-phase2)
+- Git 能力: 有历史
+```
+
+---
+
+### 3. 职责划分总结
+
+| 维度 | TodoWrite（会话内） | state.md（跨会话） |
+|------|--------------------|--------------------|
+| **存储位置** | Claude Code 内部 | 文件系统 `.autoworkflow/` |
+| **持久化** | ❌ 会话结束即清空 | ✅ 永久保存 |
+| **可见性** | 用户 UI 可见 | 文件可读 |
+| **外部访问** | ❌ 不可访问 | ✅ 脚本可读取 |
+| **用途** | 实时进度追踪 | 历史记录与恢复 |
+| **更新方式** | TodoWrite 工具 | Write/Edit 工具 |
+| **典型内容** | 任务列表、状态 | Gate 结果、检查点 |
+
+---
+
+### 4. 协同使用示例
+
+**场景：执行 /autodev 完整流程**
+
+1. **Phase 1**（需求分析）：
+   - TodoWrite: 标记 "Phase 1: 分析需求" 为 in_progress
+   - state.md: 记录 G1 门禁检查结果
+
+2. **Phase 2**（DoD 设计）：
+   - TodoWrite: 更新为 "Phase 2: 设计 DoD" in_progress
+   - state.md: 记录 G2 检查结果 + Phase 2 检查点标识
+
+3. **Phase 3**（实现任务）：
+   - TodoWrite: 实时追踪子任务进度（任务 A/B/C）
+   - state.md: 每次 G3 失败时记录错误信息
+
+4. **Level 1 回路**（任务回退）：
+   - TodoWrite: 标记 "Level 1 回路: 任务重构"
+   - state.md: 读取检查点标识，执行回退
+
+5. **会话结束后**：
+   - TodoWrite: 状态清空
+   - state.md: 保留完整历史，下次会话可恢复
+
+---
+
+### 5. 最佳实践
+
+**使用 TodoWrite 的时机**：
+- 启动新的 Phase 或任务时
+- 任务状态变更时（开始/完成/失败）
+- 需要向用户展示实时进度时
+
+**使用 state.md 的时机**：
+- Gate 检查完成后（无论通过/失败）
+- 创建 Phase 检查点后
+- 长对话中需要保存中间分析结果时
+- 需要为下次会话保留恢复信息时
+
+**避免混淆**：
+- ❌ 不要在 state.md 中写实时任务进度（用 TodoWrite）
+- ❌ 不要期望 TodoWrite 状态跨会话保留（用 state.md）
+- ✅ 两者互补，各司其职
+
 ## 常用路径
 - `.claude/agents/feature-shipper.md`（中枢）
 - `.autoworkflow/tools/aw.ps1|aw.sh`（统一入口）
