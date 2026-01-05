@@ -14,6 +14,7 @@ Claude/
 │   ├── requirement-refiner.md  # 需求澄清 Agent
 │   ├── system-log-analyzer.md  # 日志分析 Agent
 │   ├── CLAUDE.md               # Agent 全局配置
+│   ├── STANDARDS.md            # 失败处理规范
 │   ├── TOOLCHAIN.md            # 工具链说明
 │   └── RECHECK-REPORT.md       # 复查报告
 ├── skills/aw-kernel/           # Skills（命名空间隔离）
