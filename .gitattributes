@@ -1,0 +1,42 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Shell scripts must use LF (Unix)
+*.sh text eol=lf
+
+# PowerShell scripts use CRLF (Windows)
+*.ps1 text eol=crlf
+
+# Batch files use CRLF (Windows)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Markdown files
+*.md text eol=lf
+
+# JSON/YAML files
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# Config files
+*.toml text eol=lf
+*.ini text eol=lf
+*.conf text eol=lf
+
+# Source code
+*.js text eol=lf
+*.ts text eol=lf
+*.py text eol=lf
+*.rs text eol=lf
+*.go text eol=lf
+
+# Binary files (do not modify)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar.gz binary
