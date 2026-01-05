@@ -1,197 +1,192 @@
-# Trae-Agents-Prompt（Claude Code + Codex Baseline）
+# AutoWorkflow - Claude Code Agent 工具链
 
-本仓库提供一套 **可闭环交付** 的中枢 Agent + repo-local 工具链，覆盖：需求澄清 → 计划 → 实现 → 测试 → 交付。
+> **aw-kernel**: 一套专为 Claude Code 设计的 Agent + Skill 工具链，覆盖需求澄清 → 计划 → 实现 → 测试 → 交付的完整闭环。
 
-## TOC
+## 特性
 
-- [导航](#nav)
-- [全局安装 skills（推荐）](#global-install)
-- [项目安装（repo-local，可选）](#quickstart)
-- [Orchestrator / CI / SDK](#orchestrator)
-- [Codex 交互模式（对话闭环）](#codex-chat)
-- [Claude Code 接入](#claude-code)
-- [反馈采集（可选）](#feedback-logger)
-- [致谢](#thanks)
-- [WSL 使用指南](WSL.md)
+- **命名空间隔离**：`aw-kernel` 命名空间设计，支持多版本并存，避免冲突
+- **全局安装**：一次安装，所有项目复用
+- **专业 Agents**：代码分析、需求澄清、功能交付、日志分析等专业 Agent
+- **Skill 工作流**：autodev 开发流程、Git worktree 管理等
+- **跨平台支持**：Linux/macOS/WSL 和 Windows PowerShell
 
-<a id="nav"></a>
-## 导航
+## 快速开始
 
-- 目录映射：`INDEX.md`
-- Claude 资产（源）：`Claude/`（agents / skills / commands；安装后生成 `/.claude/`）
-- Codex Skills（源）：`CodeX/codex-skills/`（中枢：`feature-shipper/`，可选：`feedback-logger/`）
-- 归档（非主线维护）：`archive/`
-- Orchestrator / Runner：
-  - `agents_workflow.py`（串行跑 plan review → gate，并写 trace）
-  - `agents_runner.py`（无 Agents SDK 依赖的 runner：plan review → gate）
-  - `agents_sdk_runner.py`（Agents SDK + MCP 演示 runner）
+### 1. 全局安装（推荐）
 
-<a id="global-install"></a>
-## 全局安装 skills（推荐）
+将 Agents 和 Skills 安装到 `~/.claude/` 全局目录，所有项目可用：
 
-统一入口（推荐）：
-- WSL/Ubuntu/Mac：`bash install.sh --global --both`
-- Windows：`powershell -ExecutionPolicy Bypass -File install.ps1 -Mode global -Target both`
-- 卸载（可选 `--purge` 深度清理）：`bash uninstall.sh --global --both --purge`
+**Linux/macOS/WSL:**
+```bash
+bash Claude/scripts/install-global.sh
+```
 
-适合“经常在多个 repo 里启用工具链”的场景，也是 **最不污染目标项目根目录** 的用法：
-- 目标项目只会新增 `.autoworkflow/`（以及你若使用 Claude Code，新增 `.claude/agents`/`.claude/skills`），不会把本仓库根部的 runner 脚本复制进去
-- 全局一次安装，多项目复用，升级/回滚也更简单
+**Windows PowerShell:**
+```powershell
+powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
+```
 
-安装（推荐分开安装，互不影响）：
-- 仅安装 Codex skills（复制到 `$CODEX_HOME/skills/`，并可选写入 `aw-init/aw-auto/aw-gate/aw-doctor/aw-uninstall` 到 `~/.bashrc`/`~/.zshrc`）：
-  - Windows：`powershell -ExecutionPolicy Bypass -File CodeX/codex-skills/feature-shipper/scripts/install-codex-global.ps1`
-  - WSL/Ubuntu/Mac：`bash CodeX/codex-skills/feature-shipper/scripts/install-codex-global.sh`
-    - 选项：`--force` 覆盖；`--dry-run` 只看不写；`--no-profile` 不改 profile；`--codex-home <path>` 指定 Codex 目录。
-- 仅安装 Claude Code assets（复制 `Claude/agents|skills|commands` 到 `$CLAUDE_HOME`，默认 `~/.claude`）：
-  - Windows：`powershell -ExecutionPolicy Bypass -File CodeX/codex-skills/feature-shipper/scripts/install-claude-global.ps1`
-  - WSL/Ubuntu/Mac：`bash CodeX/codex-skills/feature-shipper/scripts/install-claude-global.sh`
-    - 选项：`--force` 覆盖；`--dry-run` 只看不写；`--claude-home <path>` 指定 Claude 目录。
-- 同时安装（兼容旧入口）：
-  - Windows：`powershell -ExecutionPolicy Bypass -File CodeX/codex-skills/feature-shipper/scripts/install-global.ps1`
-  - WSL/Ubuntu/Mac：`bash CodeX/codex-skills/feature-shipper/scripts/install-global.sh`
-    - 选项：`--force` 覆盖；`--dry-run` 只看不写；`--no-profile` 不改 profile；`--no-claude` 跳过安装到 `~/.claude`；`--codex-home <path>`/`--claude-home <path>` 指定目录。
+**安装结果：**
+```
+~/.claude/
+├── agents/aw-kernel/           # Agents
+│   ├── code-analyzer.md
+│   ├── feature-shipper.md
+│   ├── requirement-refiner.md
+│   └── ...
+├── skills/aw-kernel/           # Skills
+│   ├── autodev/
+│   └── autodev-worktree/
+└── commands/aw-kernel/         # Commands（如有）
+```
 
-使用（全局开箱 3 步）：
-1) `aw-init`
-2) `aw-auto`
-3) `aw-gate`
+### 2. 验证安装
 
-不想改 profile：使用绝对路径，例如 `python $CODEX_HOME/skills/feature-shipper/scripts/autoworkflow.py --root <repo> auto-gate`
+```bash
+# Linux/macOS
+ls -la ~/.claude/agents/aw-kernel/
 
-项目卸载（全局安装后，卸载某个目标项目里的 `.autoworkflow/`）：
-- 在目标项目根执行：`aw-uninstall`
+# Windows PowerShell
+Get-ChildItem $env:USERPROFILE\.claude\agents\aw-kernel\
+```
 
-卸载/回滚（对称清理；支持 `--purge` 做深度清理）：
-- 仅卸载 Codex skills：
-  - Windows：`powershell -ExecutionPolicy Bypass -File CodeX/codex-skills/feature-shipper/scripts/uninstall-codex-global.ps1`
-  - WSL/Ubuntu/Mac：`bash CodeX/codex-skills/feature-shipper/scripts/uninstall-codex-global.sh`
-  - 基于 manifest：`$CODEX_HOME/.autoworkflow-codex-installed.txt`
-- 仅卸载 Claude Code assets：
-  - Windows：`powershell -ExecutionPolicy Bypass -File CodeX/codex-skills/feature-shipper/scripts/uninstall-claude-global.ps1`
-  - WSL/Ubuntu/Mac：`bash CodeX/codex-skills/feature-shipper/scripts/uninstall-claude-global.sh`
-  - 基于 manifest：`$CLAUDE_HOME/.autoworkflow-claude-installed.txt`（兼容旧文件：`$CLAUDE_HOME/.autoworkflow-installed.txt`）
-- 同时卸载（兼容旧入口）：
-  - Windows：`powershell -ExecutionPolicy Bypass -File CodeX/codex-skills/feature-shipper/scripts/uninstall-global.ps1`
-  - WSL/Ubuntu/Mac：`bash CodeX/codex-skills/feature-shipper/scripts/uninstall-global.sh`
-  - 默认会清理 `~/.bashrc`/`~/.zshrc` 的别名块；可用 `--no-claude` 跳过 Claude 清理。
+### 3. 使用 Agent
 
-<a id="quickstart"></a>
-## 项目安装（repo-local，可选）
+在任意项目中启动 Claude Code，选择对应的 Agent：
 
-适用：你希望把工具链“随项目一起分发”（例如做成模板仓库/脚手架），或不方便做全局安装。
+- **feature-shipper**：功能交付闭环（spec → plan → implement → test → deliver）
+- **code-analyzer**：代码分析与架构洞察
+- **requirement-refiner**：需求澄清与 DoD 细化
+- **code-debug-expert**：调试专家
+- **system-log-analyzer**：系统日志分析
+- **code-project-cleaner**：代码清理与重构
 
-目标：在目标仓库根生成 `.autoworkflow/`，并用其中的 `tools/*` 作为统一入口（Windows / WSL / Ubuntu 均可）。
+## 安装选项
 
-1) 初始化 `.autoworkflow/`
-- 在目标 repo 根目录执行：`python <path-to>/CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py --root . init`
-- 如需同步新版模板：追加 `--force`
-- 如果你不在 repo 根目录执行，把 `--root .` 替换为 `--root <repo-root>`
+### 预览模式（不实际安装）
 
-2) Doctor（尽早暴露“跑不起来”问题）
-- Windows：`powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/aw.ps1 doctor --write --update-state`
-- WSL/Ubuntu：`bash .autoworkflow/tools/aw.sh doctor --write --update-state`
+```bash
+# Linux/macOS/WSL
+bash Claude/scripts/install-global.sh --dry-run
 
-3) 生成 gate（推荐：自动推导）
-- 仓库根执行：`python .autoworkflow/tools/autoworkflow.py auto-gate`
-- （可选）让 Codex CLI 辅助推导：`python .autoworkflow/tools/autoworkflow.py auto-gate --codex`
-- 或全局安装后：`aw-auto`
-- 说明：优先解析 `CLAUDE.md` 的 Build/Test/Lint/Format；再按常见项目类型推导；写入 `.autoworkflow/gate.env`（默认保留已有值，除非 `--overwrite`）。
+# Windows
+powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -DryRun
+```
 
-（可选）手动设定 gate（更可控，适合复杂项目）
-- Windows：`powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/aw.ps1 set-gate --create --build "..." --test "..."`
-- WSL/Ubuntu：`bash .autoworkflow/tools/aw.sh set-gate --create --build "..." --test "..."`
-- 复杂引号建议直接编辑：`.autoworkflow/gate.env`
+### 强制覆盖安装
 
-4) 跑 gate("测试全绿"为默认门禁)
-- Windows：`powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/aw.ps1 gate`（如需强制用 WSL，附 `--prefer-wsl`；WSL 失败将直接失败，不再降级）
-- WSL/Ubuntu：`bash .autoworkflow/tools/aw.sh gate`
+```bash
+# Linux/macOS/WSL
+bash Claude/scripts/install-global.sh --force
 
-（可选）模型推荐（诊断/调试时用）
-- Windows：`powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/aw.ps1 recommend-model --intent doctor|debug`
-- WSL/Ubuntu：`bash .autoworkflow/tools/aw.sh recommend-model --intent doctor|debug`
+# Windows
+powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Force
+```
 
-5) （可选）计划：gen / review / status
-- 生成计划：`python .autoworkflow/tools/autoworkflow.py plan gen`
-- 审核计划：`python .autoworkflow/tools/autoworkflow.py plan review`（score>=85 自动批准，否则打回）
-- 查看状态：`python .autoworkflow/tools/autoworkflow.py plan status`
-- 备注：gate 默认检查 `plan.review=approve`；需跳过可加 `--allow-unreviewed`（不推荐）。
+### 自定义命名空间
 
-6) （可选）保持工作区干净（不提交）
-- Windows：`Add-Content .git/info/exclude ".autoworkflow/"`
-- WSL/Ubuntu：`echo ".autoworkflow/" >> .git/info/exclude`
+```bash
+# Linux/macOS/WSL
+bash Claude/scripts/install-global.sh --namespace my-custom
 
-7) 卸载（项目级）
-- 推荐（有全局安装时）：在目标项目根执行 `aw-uninstall`（需要无人值守可加 `--yes`；清理 `.git/info/exclude` 可加 `--remove-exclude`）
-- 或直接执行：`python CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py --root . uninstall`
-- 兜底（手动）：删除 `.autoworkflow/` 目录；若你曾写入 `.git/info/exclude`，把其中的 `.autoworkflow/` 行删掉即可
+# Windows
+powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Namespace my-custom
+```
 
-<a id="orchestrator"></a>
-## Orchestrator / CI / SDK
+### 卸载
 
-- 轻量 orchestrator：`agents_workflow.py --root .`（plan review → gate，trace 写入 `.autoworkflow/trace/`）
-- Runner（无 Agents SDK 依赖）：`agents_runner.py --root .`
-- Agents SDK runner：`agents_sdk_runner.py`
-  - `--mode mcp-smoke`：仅验证 MCP server 可启动（不需要 `OPENAI_API_KEY`）
-  - `--mode local`：subprocess fallback（不需要 Agents SDK / `OPENAI_API_KEY`）
-  - `--mode sdk`：多 Agent handoff 演示（需要 `OPENAI_API_KEY` + `pip install -r requirements-agents-sdk.txt`）
+```bash
+# Linux/macOS/WSL
+bash Claude/scripts/install-global.sh --uninstall --namespace aw-kernel
 
-冷启动/端到端冒烟（不污染当前工作区）：
-- Windows：`powershell -ExecutionPolicy Bypass -File ./CodeX/codex-skills/feature-shipper/scripts/safe-smoke.ps1 -Root .`
-- WSL/Ubuntu：`bash ./CodeX/codex-skills/feature-shipper/scripts/safe-smoke.sh .`
+# Windows
+powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Uninstall -Namespace aw-kernel
+```
 
-CI 一键模板：
-- `python .autoworkflow/tools/autoworkflow.py plan ci-template --provider github|gitlab`
-  - GitHub：生成 `.github/workflows/aw-plan-gate.yml`（plan review → gate(dry-run) → agents_workflow(trace) → 上传 trace artifact）
-  - GitLab：生成 `.gitlab-ci.yml`（同上）
+## 目录结构
 
-<a id="codex-chat"></a>
-## Codex 交互模式（对话闭环）
+```
+AutoWorkflow/
+├── Claude/                         # Claude Code 源资产
+│   ├── agents/aw-kernel/           # Agents（命名空间隔离）
+│   │   ├── code-analyzer.md        # 代码分析 Agent
+│   │   ├── code-debug-expert.md    # 调试专家 Agent
+│   │   ├── code-project-cleaner.md # 代码清理 Agent
+│   │   ├── feature-shipper.md      # 功能交付 Agent
+│   │   ├── requirement-refiner.md  # 需求澄清 Agent
+│   │   ├── system-log-analyzer.md  # 日志分析 Agent
+│   │   ├── CLAUDE.md               # Agent 全局配置
+│   │   └── TOOLCHAIN.md            # 工具链说明
+│   ├── skills/aw-kernel/           # Skills（命名空间隔离）
+│   │   ├── autodev/                # 自动化开发流程
+│   │   └── autodev-worktree/       # Git worktree 管理
+│   ├── assets/                     # 通用资源
+│   │   └── templates/              # 配置模板
+│   └── scripts/                    # 脚本工具
+│       ├── install-global.sh       # 全局安装脚本（Linux/macOS）
+│       ├── install-global.ps1      # 全局安装脚本（Windows）
+│       └── README.md               # 脚本详细文档
+├── ClaudeCodeAgentDocuments/       # 设计文档（归档）
+└── README.md                       # 本文件
+```
 
-Codex CLI 支持交互式对话，把模型当成“执行型工程助手”在真实仓库内闭环推进（明确 DoD → 计划 → 改代码 → 跑 gate → 迭代直到通过）。
+## Agent 说明
 
-> 状态说明：由于 Codex CLI 当前对 SubAgent/多 Agent 编排能力仍在演进，本仓库在 Codex 侧的进一步 SubAgent 化开发暂缓；多 Agent 场景优先走 Claude Code Subagents（安装后落在 `.claude/agents`）/官方 SDK 路线。
+| Agent | 用途 | 核心能力 |
+|-------|------|----------|
+| **feature-shipper** | 功能交付闭环 | Spec 打磨 → Plan → Implement → Gate → Deliver |
+| **code-analyzer** | 代码分析 | 架构洞察、依赖分析、代码质量评估 |
+| **requirement-refiner** | 需求澄清 | DoD 细化、边界确认、验收标准 |
+| **code-debug-expert** | 调试专家 | 问题定位、根因分析、修复建议 |
+| **system-log-analyzer** | 日志分析 | 日志解读、异常检测、趋势分析 |
+| **code-project-cleaner** | 代码清理 | 死代码清理、重构建议、依赖优化 |
 
-1) 启动交互会话
-- 默认（使用你已配置/登录的模型提供方）：`codex --full-auto -C .`
-- 特殊情况：本地模型（Ollama / LM Studio）：`codex --oss --local-provider ollama -m "qwen2.5-coder:7b" --full-auto -C .`
+## Skill 说明
 
-2) 启动后第一句话（让它按本仓库交付标准工作）
-- 让 Codex 先读并遵守：`CodeX/codex-skills/feature-shipper/SKILL.md`
+| Skill | 用途 | 核心功能 |
+|-------|------|----------|
+| **autodev** | 自动化开发 | 需求分析 → 任务拆解 → 迭代开发 → 测试验证 |
+| **autodev-worktree** | Worktree 管理 | 并行开发分支、隔离工作区、智能合并 |
 
-3) 常用闭环入口
-- 初始化：`python CodeX/codex-skills/feature-shipper/scripts/autoworkflow.py --root . init`
-- 跑 gate：`python .autoworkflow/tools/autoworkflow.py --root . gate`
+## 命名空间设计
 
-> 备注：如果你在“非 git 目录/临时目录”里跑 `codex exec`，可能需要加 `--skip-git-repo-check`。
+采用命名空间隔离机制，支持多版本并存：
 
-<a id="claude-code"></a>
-## Claude Code 接入（在目标项目里使用中枢 Agent）
+```
+~/.claude/
+├── agents/
+│   ├── aw-kernel/     # 核心版本（本仓库默认）
+│   ├── aw-dev/        # 开发/实验版本
+│   └── my-custom/     # 自定义版本
+├── skills/
+│   ├── aw-kernel/
+│   ├── aw-dev/
+│   └── my-custom/
+└── commands/
+    └── ...
+```
 
-如果你已执行「全局安装」（上文），脚本默认会把 Claude Code 的 agents/skills 安装到 `~/.claude`，因此在任意目标仓库里直接启动 Claude Code 并选择 `feature-shipper` 即可（它会强制先打磨 spec / DoD，再坚持 gate 测试全绿闭环推进）。
+**命名空间优势**：
+- 不同来源的 Agents 不会冲突
+- 支持多版本并存（稳定版 + 开发版）
+- 便于团队协作（团队共享 + 个人定制）
+- 安装/卸载独立管理
 
-如果你希望“随仓库分发”，或 Claude Code 未读取全局 agents/skills：
-- 把 `~/.claude/agents/*.md`、`~/.claude/skills/*` 复制/软链到目标项目的 `.claude/agents/`、`.claude/skills/`（按需挑选；至少 `feature-shipper` + `autoworkflow/git-workflow`）。
+## 文档索引
 
-如果 Claude Code UI 看不到 Agents，你也可以用 **Commands 显式调用**（全局安装会同步命令到 `~/.claude/commands/autoworkflow/`）：
-- 在 Claude Code 对话里输入：`/autoworkflow:feature-shipper <需求/任务描述>`
+- [安装脚本详细文档](Claude/scripts/README.md)
+- [设计基线文档](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md)
 
-**仅用 Claude Code 界面（不想敲 Python 命令）**
-- 一次性准备：把本仓库的 `Claude/agents/`、`Claude/skills/`、`.autoworkflow/` 整目录复制到目标项目根（`gate.env` 里写上你的测试命令即可）。
-- 打开 Claude Code，选择 Agent `feature-shipper`，直接对话描述需求；它会按 spec/DoD → plan → gate 全自动执行、调试、验证。
-- 需要远端闭环时，只需在终端/系统里配置好 `GITEE_TOKEN`/`GITHUB_TOKEN`（或写入不入库的 `.autoworkflow/secret.env`），在对话里告知即可让它自动 push + PR + 等待 CI。
+## 兼容性
 
-<a id="feedback-logger"></a>
-## 可选：后台轻量日志（反馈采集）
+- **Claude Code**: 全版本支持
+- **操作系统**: Linux, macOS, Windows (PowerShell 5.1+), WSL/WSL2
+- **Shell**: Bash, Zsh, PowerShell
 
-在目标项目初始化 feedback logger 后，可监听 `.autoworkflow/*` 变化写入 `.autoworkflow/logs/feedback.jsonl`：
-- Windows：`python <path-to>/CodeX/codex-skills/feedback-logger/scripts/feedback.py init`
-- Start/Stop：`powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/fb.ps1 start|stop`
-
-手工记录关键想法：
-- `powershell -ExecutionPolicy Bypass -File .autoworkflow/tools/fb.ps1 log --message "..." --tag hypothesis`
-
-<a id="thanks"></a>
 ## 致谢
 
-感谢使用 Trae-Agents-Prompt！如有问题或建议，欢迎提交 Issue / PR。
+感谢使用 AutoWorkflow！如有问题或建议，欢迎提交 Issue / PR。
+
+---
+
+**aw-kernel** - AutoWorkflow Kernel | 专为 Claude Code 设计的专业工具链 ฅ'ω'ฅ

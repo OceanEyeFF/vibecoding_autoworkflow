@@ -1,43 +1,67 @@
-# Agents / Skills Index (Claude Code + Codex)
+# AutoWorkflow 资源索引
 
-这个仓库的目标：提供 **Claude Code Subagents/Skills** 与 **Codex Skills** 三套可复用“自动化交付”能力。Trae 相关内容先不作为主线维护。
+本仓库提供专为 Claude Code 设计的 Agent + Skill 工具链，采用 `aw-kernel` 命名空间隔离设计。
 
-## 中枢（闭环交付）
+## 核心资源
 
-- Claude Code Agent（源资产）：`Claude/agents/feature-shipper.md`（安装后：`.claude/agents/feature-shipper.md`）
-- Claude Code Skill（源资产）：`Claude/skills/autoworkflow/SKILL.md`（安装后：`.claude/skills/autoworkflow/SKILL.md`）
-- Claude Code Skill（源资产）：`Claude/skills/git-workflow/SKILL.md`（安装后：`.claude/skills/git-workflow/SKILL.md`）
-- Codex Skill：`CodeX/codex-skills/feature-shipper/SKILL.md`
+### Agents（`Claude/agents/aw-kernel/`）
 
-定位：把“需求 → 计划 → 实现 → 测试 → 修复迭代 → 交付”跑成闭环，直到满足验收标准。
-建议在目标项目中使用统一目录 `.autoworkflow/tools/` 存放跨平台 gate 脚本（Windows/WSL/Ubuntu 分别运行对应脚本），作为“测试全绿”的本地门禁入口。
+| Agent | 文件 | 用途 |
+|-------|------|------|
+| **feature-shipper** | `feature-shipper.md` | 功能交付闭环（spec → plan → implement → test → deliver） |
+| **code-analyzer** | `code-analyzer.md` | 代码分析与架构洞察 |
+| **requirement-refiner** | `requirement-refiner.md` | 需求澄清与 DoD 细化 |
+| **code-debug-expert** | `code-debug-expert.md` | 调试专家（问题定位、根因分析） |
+| **system-log-analyzer** | `system-log-analyzer.md` | 系统日志分析 |
+| **code-project-cleaner** | `code-project-cleaner.md` | 代码清理与重构 |
 
-## Claude Code Skills（可复用能力包）
+### Skills（`Claude/skills/aw-kernel/`）
 
-- `autoworkflow`（源资产）：`Claude/skills/autoworkflow/SKILL.md`（围绕 `.autoworkflow/` 的 plan/review/gate 标准化闭环）
-- `git-workflow`（源资产）：`Claude/skills/git-workflow/SKILL.md`（建分支/可选本地 commit 的安全闭环）
+| Skill | 目录 | 用途 |
+|-------|------|------|
+| **autodev** | `autodev/` | 自动化开发流程（需求分析 → 任务拆解 → 迭代开发） |
+| **autodev-worktree** | `autodev-worktree/` | Git worktree 并行开发管理 |
 
-## 可选：反馈日志（后台轻量记录）
+### 脚本工具（`Claude/scripts/`）
 
-- Codex Skill：`CodeX/codex-skills/feedback-logger/SKILL.md`
+| 脚本 | 用途 |
+|------|------|
+| `install-global.sh` | 全局安装（Linux/macOS/WSL） |
+| `install-global.ps1` | 全局安装（Windows） |
+| `claude_autoworkflow.py` | 工作流脚本 |
+| `claude_aw.sh` / `claude_aw.ps1` | 入口脚本 |
 
-用途：在改进测试/排障时，可后台记录关键中间信息（命令、失败高亮、state/doctor 变化、手工备注），避免返工。
+## 安装
 
-## 可复用的专项（Claude Code Agents）
+```bash
+# Linux/macOS/WSL
+bash Claude/scripts/install-global.sh
 
-这些可以作为中枢的“专项模式/提示参考”继续保留：
+# Windows PowerShell
+powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
+```
 
-- 结构/架构分析：`Claude/agents/code-analyzer.md`
-- 调试/根因定位：`Claude/agents/code-debug-expert.md`
-- 需求收敛：`Claude/agents/requirement-refiner.md`
-- 日志/事故分析：`Claude/agents/system-log-analyzer.md`
-- 项目清理：`Claude/agents/code-project-cleaner.md`
-- 阶段文档驱动交付（偏重 Playwright）：`Claude/agents/stage-development-executor.md`
+安装后资源位于 `~/.claude/agents/aw-kernel/` 和 `~/.claude/skills/aw-kernel/`。
 
-非软件交付主线，但保留以支持后续游戏开发场景（已归档，不参与 Claude Code agent 发现）：
+## 目录结构
 
-- `archive/claude-agents/game-narrative-architect.md`
+```
+AutoWorkflow/
+├── Claude/                         # 源资产
+│   ├── agents/aw-kernel/           # Agents
+│   ├── skills/aw-kernel/           # Skills
+│   ├── assets/                     # 通用资源
+│   └── scripts/                    # 脚本工具
+├── ClaudeCodeAgentDocuments/       # 设计文档
+│   └── 01_DesignBaseLines/         # 设计基线
+├── docs/                           # 附加文档
+├── README.md                       # 主文档
+└── INDEX.md                        # 本文件
+```
 
-## 归档：Trae 旧模板（非主线维护）
+## 相关链接
 
-- `archive/Trae-agents/`
+- [主 README](README.md)
+- [Claude/ 源资产说明](Claude/README.md)
+- [安装脚本文档](Claude/scripts/README.md)
+- [设计基线](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md)
