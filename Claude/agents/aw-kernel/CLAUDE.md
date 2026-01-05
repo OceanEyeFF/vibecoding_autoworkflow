@@ -4,11 +4,12 @@
 为 Claude Code 提供可闭环交付的中枢与专用 Agent，统一遵循：先打磨 DoD/spec，测试全绿为门禁，跨平台一致。
 
 ## Agent 列表
-- **feature-shipper（中枢）**：驱动“需求→DoD→实现→gate”全流程；强制先写 spec/state，再跑 gate。
+- **feature-shipper（中枢）**：驱动"需求→DoD→实现→gate"全流程；强制先写 spec/state，再跑 gate。
 - **code-analyzer**：快速梳理代码结构/架构，输出依赖与分层视图。
 - **requirement-refiner**：多轮收敛模糊需求，产出可验收的 DoD/任务列表。
 - **code-debug-expert**：系统化调试（假设→验证循环），提炼失败高亮。
 - **system-log-analyzer**：分析日志/事故，输出时间线与根因假设。
+- **code-project-cleaner**：清理代码项目中的冗余文件，释放空间，保持目录整洁。
 - 归档/可选：`archive/claude-agents/` 中的游戏相关等不在主线。
 
 ## 快速使用（Claude Code 内）
@@ -25,8 +26,8 @@
 
 ## Skills（推荐）
 - skills 目录：`.claude/skills/<skill>/SKILL.md`
-- 注意：子代理默认不继承 skills；需要在 subagent YAML 中通过 `skills: skill1, skill2` 显式声明加载。
-  - 例：`feature-shipper` 已声明 `skills: autoworkflow, git-workflow`
+- Skills 是用户可直接调用的入口（如 `/autodev`），Agents 是可被 Task 委派的专用处理器
+- 推荐使用 `/autodev` Skill 作为主入口，它会在需要时通过 Task 工具委派专用 Agent
 
 ## 与 repo-local 工具的配合
 - Agent 默认假设 `.autoworkflow/` 已初始化；`state.md` / `spec.md` / `gate.env` 是协作界面。

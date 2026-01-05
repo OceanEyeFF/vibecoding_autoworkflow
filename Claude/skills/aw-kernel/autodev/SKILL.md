@@ -703,6 +703,117 @@ git clean -fd
 
 ---
 
+## Agent 委派机制（Task 工具）
+
+### 设计理念
+
+AutoDev 作为**工作流编排者**，在特定场景下可以通过 Task 工具委派专用 Agent 处理复杂子任务。
+
+```
+┌─────────────────────────────────────────────────┐
+│                  /autodev Skill                  │
+│              （工作流编排 + 状态管理）              │
+├─────────────────────────────────────────────────┤
+│                                                  │
+│   Phase 1 ──委派──▶ requirement-refiner          │
+│   （需求特别模糊时）    （需求精炼专家）             │
+│                                                  │
+│   Phase 3 ──委派──▶ feature-shipper              │
+│   （独立子任务执行）    （代码交付专家）             │
+│                                                  │
+│   G3 失败 ──委派──▶ code-debug-expert            │
+│   （复杂调试场景）      （调试诊断专家）             │
+│                                                  │
+└─────────────────────────────────────────────────┘
+```
+
+### 委派触发条件
+
+| 场景 | 触发条件 | 委派目标 |
+|------|---------|---------|
+| 需求模糊 | Phase 1 问答超过 3 轮仍不清晰 | requirement-refiner |
+| 单任务执行 | Phase 3 中任务复杂度高、涉及多文件 | feature-shipper |
+| 调试困难 | G3 Level 0 失败 2 次后 | code-debug-expert |
+
+### 委派执行格式
+
+```javascript
+// 委派 requirement-refiner 精炼需求
+Task({
+  subagent_type: "general-purpose",
+  description: "精炼模糊需求",
+  prompt: `
+    使用 requirement-refiner Agent 的方法论，帮我精炼以下需求：
+    ${用户原始需求}
+
+    要求输出：
+    1. 核心价值命题
+    2. 验收标准列表（至少 2 条）
+    3. 明确的范围边界
+  `
+})
+
+// 委派 feature-shipper 执行单个任务
+Task({
+  subagent_type: "general-purpose",
+  description: "执行单任务",
+  prompt: `
+    使用 feature-shipper Agent 执行以下任务：
+
+    任务：${当前任务描述}
+    验收标准：${任务完成标准}
+    验证命令：${测试命令}
+
+    完成后返回：任务状态 + 变更摘要
+  `
+})
+
+// 委派 code-debug-expert 调试
+Task({
+  subagent_type: "general-purpose",
+  description: "诊断测试失败",
+  prompt: `
+    使用 code-debug-expert Agent 诊断以下测试失败：
+
+    错误信息：${测试错误输出}
+    相关文件：${涉及的文件路径}
+
+    要求：
+    1. 定位根因（必须有 Read/Bash 证据）
+    2. 提供修复方案
+    3. 评估修复风险
+  `
+})
+```
+
+### 委派决策流程
+
+```
+需求进入 Phase 1
+      │
+      ▼
+  需求清晰度检测
+      │
+      ├── 清晰 ──────────────▶ 自行处理
+      │
+      └── 模糊（问答 >3 轮）──▶ Task 委派 requirement-refiner
+                                    │
+                                    ▼
+                              接收精炼结果
+                                    │
+                                    ▼
+                              继续 Phase 2
+```
+
+### 委派注意事项
+
+1. **状态同步**：委派返回后，必须更新 TodoWrite 状态
+2. **结果验证**：委派结果需要通过 Gate 检查
+3. **不过度委派**：简单任务直接处理，不浪费 Token
+4. **上下文传递**：委派时提供足够的上下文信息
+
+---
+
 ## 使用示例
 
 ### 触发方式

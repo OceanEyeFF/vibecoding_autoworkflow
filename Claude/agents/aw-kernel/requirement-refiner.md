@@ -3,7 +3,7 @@ name: requirement-refiner
 description: >
   需求精炼 Agent - 将模糊需求转化为清晰、可执行的最小可行方案。
   适用于：需求模糊、范围过大、需要明确验收标准的场景。
-tools: Read, Grep, Glob, Bash, AskUserQuestion
+tools: Read, Grep, Glob, Bash, AskUserQuestion, TodoWrite
 model: sonnet
 ---
 

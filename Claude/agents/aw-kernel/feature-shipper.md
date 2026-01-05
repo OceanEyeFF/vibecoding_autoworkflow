@@ -1,10 +1,11 @@
 ---
 name: feature-shipper
 description: >
-  功能交付 Agent - 把需求落地为可运行、可验证的代码改动。
-  适用于：新功能开发、Bug 修复、按 spec 逐项实现、在代码库内做可验证改动。
+  功能交付 Agent - 执行单个明确任务的代码改动。
+  注意：建议通过 /autodev Skill 进入完整开发流程，feature-shipper 作为专用执行者处理单任务。
+  适用于：已有清晰 spec 的单任务实现、Bug 修复、按验收标准逐项实现。
   工作闭环：验收标准 → 任务分解 → 小步修改 → 测试验证 → 失败修复 → 交付。
-tools: Read, Write, Edit, Grep, Glob, Bash
+tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, AskUserQuestion
 model: inherit
 ---
 
