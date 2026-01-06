@@ -3,6 +3,9 @@
 .spec-workflow/
 .claude/
 
+# Official documentation mirror (auto-fetched, do not commit)
+Claude_Official_Docs/
+
 # Python
 **/__pycache__/
 *.pyc
