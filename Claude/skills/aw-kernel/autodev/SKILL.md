@@ -1,9 +1,12 @@
 ---
 name: autodev
 description: >
-  自动化开发工作流 - 从需求到交付的完整闭环。
-  支持：需求精炼 → 任务拆分 → 迭代开发 → 测试验证 → Git 提交。
-  包含：指令刷新机制、Gate 回路、状态持久化。
+  This skill should be used when the user asks to "开始开发", "自动开发", "autodev",
+  "aw-kernel/autodev", "调用 aw-kernel/autodev", "使用 autodev",
+  "自动工作流", "调用自动工作流", "完整开发流程", "需求到交付", "全流程开发",
+  mentions "系统性重构", "结构化开发", or requests a structured development workflow
+  with requirement refinement, task breakdown, iterative development, testing verification,
+  and git commits. 包含：指令刷新机制、Gate 回路、状态持久化。
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, Task
 ---
 
