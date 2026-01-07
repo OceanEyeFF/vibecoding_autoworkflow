@@ -747,9 +747,21 @@ history/
         if not dest_script.exists() or force:
             shutil.copy2(script_path, dest_script)
 
-        # Copy wrapper scripts from templates
-        template_dir = script_path.parent.parent / "assets" / "templates" / "tools"
-        if template_dir.exists():
+        # Copy wrapper scripts and timestamp utilities from templates
+        # Try multiple possible template locations (for flexibility)
+        template_dirs = [
+            script_path.parent.parent / "assets" / "templates" / "tools",  # Claude/assets/templates/tools/
+            script_path.parent.parent / "agents" / "aw-kernel" / "assets" / "templates" / "tools",  # Claude/agents/aw-kernel/assets/templates/tools/
+        ]
+
+        template_dir = None
+        for candidate in template_dirs:
+            if candidate.exists():
+                template_dir = candidate
+                break
+
+        if template_dir and template_dir.exists():
+            # Copy wrapper scripts
             for wrapper in ["cc-aw.ps1", "cc-aw.sh"]:
                 src_wrapper = template_dir / wrapper
                 dest_wrapper = self.tools_dir / wrapper
@@ -758,6 +770,22 @@ history/
                     # Make shell script executable on Unix
                     if wrapper.endswith(".sh") and sys.platform != "win32":
                         dest_wrapper.chmod(0o755)
+
+            # Copy timestamp utility scripts (for Agent logging)
+            for timestamp_script in ["get-timestamp.sh", "get-timestamp.ps1"]:
+                src_script = template_dir / timestamp_script
+                dest_script = self.tools_dir / timestamp_script
+                if src_script.exists() and (not dest_script.exists() or force):
+                    shutil.copy2(src_script, dest_script)
+                    # Make shell script executable on Unix
+                    if timestamp_script.endswith(".sh") and sys.platform != "win32":
+                        dest_script.chmod(0o755)
+
+            # Copy log query script (for Agent log analysis)
+            query_script = template_dir / "query-logs.py"
+            dest_query = self.tools_dir / "query-logs.py"
+            if query_script.exists() and (not dest_query.exists() or force):
+                shutil.copy2(query_script, dest_query)
 
     def cmd_doctor(self, write: bool = False, update_state: bool = False) -> int:
         """Run project diagnosis."""
