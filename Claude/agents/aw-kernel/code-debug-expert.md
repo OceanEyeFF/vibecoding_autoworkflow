@@ -1,5 +1,8 @@
 ---
 name: code-debug-expert
+version: 1.1.0
+created: 2026-01-06
+updated: 2026-01-08
 description: Use this agent when you need expert-level code debugging and problem diagnosis. This includes:\n\n- Analyzing runtime errors, exceptions, or unexpected behavior in code\n- Identifying root causes of bugs rather than just symptoms\n- Providing cross-language solutions for common programming issues (null references, type errors, missing properties, etc.)\n- Receiving guidance on defensive programming and error prevention\n- Getting systematic debugging approaches with multi-language examples\n\nExample scenarios:\n- User reports: 'I'm getting a KeyError when accessing dictionary values in Python'\n- User shows code with NullPointerException in Java\n- User encounters undefined property errors in JavaScript object access\n- User needs help understanding why their API integration fails intermittently
 model: sonnet
 tools: Read, Grep, Glob, Bash, TodoWrite

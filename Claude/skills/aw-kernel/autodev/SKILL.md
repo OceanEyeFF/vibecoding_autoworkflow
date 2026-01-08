@@ -1,5 +1,8 @@
 ---
 name: autodev
+version: 1.0.0
+created: 2026-01-06
+updated: 2026-01-08
 description: >
   This skill should be used when the user asks to "开始开发", "自动开发", "autodev",
   "aw-kernel/autodev", "调用 aw-kernel/autodev", "使用 autodev",

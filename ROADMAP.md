@@ -1,7 +1,7 @@
 # AW-Kernel 项目路线图
 
 > 创建时间：2026-01-06
-> 最后更新：2026-01-06
+> 最后更新：2026-01-08
 > 核心理念：构建可观测、可迭代、可扩展的 Agent 生态系统
 
 ---
@@ -24,13 +24,16 @@
 
 | 组件 | 状态 | 说明 |
 |------|------|------|
-| 核心 Agents (6个) | ✅ 完成 | code-analyzer, code-debug-expert, code-project-cleaner, feature-shipper, requirement-refiner, system-log-analyzer |
+| 核心 Agents (7个) | ✅ 完成 | code-analyzer, code-debug-expert, code-project-cleaner, feature-shipper, requirement-refiner, system-log-analyzer, **knowledge-researcher (新增)** |
 | Skills (2个) | ✅ 完成 | autodev, autodev-worktree |
 | 安装脚本 | ✅ 完成 | PowerShell (Windows) + Bash (Linux/macOS/WSL) |
 | 命名空间隔离 | ✅ 完成 | `aw-kernel` 命名空间 |
 | 文档体系 | ✅ 完成 | CLAUDE.md, TOOLCHAIN.md, STANDARDS.md |
+| **日志系统 (Phase 2)** | ✅ 完成 | 基于 Hooks 的零 Token 消耗方案 (LOGGING.md) |
+| **版本管理规范** | ✅ 完成 | VERSIONING.md + CHANGELOG.md |
+| **知识获取文档** | ✅ 完成 | Skills/Hooks/Subagents/MCP 指南 (Claude_Official_Docs/) |
 
-### 1.2 待开发（按新优先级排序）
+### 1.2 待开发（按新优先级排序 - 2026-01-08 更新）
 
 **优先级原则**：
 1. 重要 > 不重要
@@ -38,18 +41,27 @@
 3. 不用造轮子 > 需要造轮子
 4. 提升稳定性和体验 > 开发新功能
 
-| 优先级 | 组件 | 类型 | 说明 |
-|--------|------|------|------|
-| 🥇 P0 | **现有 Agents 测试与修复** | 稳定性 | 测试 6 个 Agents，修复已知问题，收集用户反馈 |
-| 🥈 P1 | **执行日志系统（简化版）** | 基础设施 | 基于 Hooks 的日志记录（不造轮子） |
-| 🥉 P2 | **AutoDev Skill v0.1** | 新功能 | 四阶段流程 + Level 0，仅用 TodoWrite（不造轮子） |
-| 🔹 P3 | Hooks 钩子系统 | 基础设施 | 需要编写 Python 脚本（造轮子） |
-| 🔹 P3 | Agent 版本管理 + CHANGELOG | 工程化 | 文档化管理，无需脚本 |
-| 🔸 P4 | AutoDev v0.2（Git 检查点） | 功能增强 | 需要 Git 管理脚本（造轮子） + 依赖 v0.1 验证 |
-| 🔸 P4 | 健康检查脚本 | 工程化 | 需要编写诊断脚本（造轮子） |
-| ⚪ P5 | AutoDev v0.3/v1.0 | 功能增强 | 依赖 v0.2 验证 + 大量脚本开发 |
-| ⚪ P5 | Agent 编排系统 | 高级特性 | 不紧急，未来规划 |
-| ⚪ P5 | 自动更新机制 | 高级特性 | 不紧急，未来规划 |
+**评估维度权重**：
+- 重要性 (30%)：对系统核心价值的影响程度
+- 紧急性 (25%)：时间敏感度和阻塞其他工作的程度
+- 可行性 (25%)：技术方案成熟度和实现难度
+- 成本 (20%)：开发和维护投入
+
+| 优先级 | 组件 | 类型 | 综合评分 | 说明 |
+|--------|------|------|----------|------|
+| 🥇 P0 | **现有 Agents 测试与修复** | 稳定性 | 4.75 | 测试 7 个 Agents，修复已知问题，收集用户反馈 |
+| 🥈 P1 | **SubAgent 优化** | 功能增强 | 4.00 | 改进 Agent 调度机制，优化上下文传递 |
+| 🥉 P2 | **AutoDev Skill 优化** | 功能增强 | 2.75 | 提升工作流体验和错误处理 |
+| 🔹 P3 | Hooks 钩子系统扩展 | 基础设施 | - | 需要编写 Python 脚本（造轮子） |
+| 🔸 P4 | AutoDev v0.2（Git 检查点） | 功能增强 | - | 需要 Git 管理脚本（造轮子） + 依赖 v0.1 验证 |
+| 🔸 P4 | 健康检查脚本 | 工程化 | - | 需要编写诊断脚本（造轮子） |
+| ⚪ P5 | AutoDev v0.3/v1.0 | 功能增强 | - | 依赖 v0.2 验证 + 大量脚本开发 |
+| ⚪ P5 | Agent 编排系统 | 高级特性 | - | 不紧急，未来规划 |
+| ⚪ P5 | 自动更新机制 | 高级特性 | - | 不紧急，未来规划 |
+
+**已完成任务**（从待开发移除）：
+- ~~执行日志系统（简化版）~~ ✅ 已完成（LOGGING.md - Hooks 方案）
+- ~~Agent 版本管理 + CHANGELOG~~ ✅ 已完成（VERSIONING.md + CHANGELOG.md）
 
 ---
 

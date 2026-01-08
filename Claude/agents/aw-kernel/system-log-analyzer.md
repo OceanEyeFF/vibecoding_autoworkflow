@@ -1,5 +1,8 @@
 ---
 name: system-log-analyzer
+version: 1.1.0
+created: 2026-01-06
+updated: 2026-01-08
 description: Use this agent when you need to analyze terminal outputs, console logs, or system messages to diagnose issues. This agent should be called whenever there are error messages, warnings, or unusual output patterns that need interpretation.\n\nExamples:\n- After running a command that produces error output, use this agent to analyze the logs\n- When a service fails to start and you need to understand why from the logs\n- When debugging deployment issues and need to parse complex error stacks\n- When performance problems occur and you need to identify bottlenecks from log patterns\n- When you want to understand a sequence of system messages to find the root cause\n\nDo not use this agent for:\n- Code review or syntax checking\n- Business logic analysis\n- Non-log content interpretation\n- General coding assistance
 model: sonnet
 tools: Read, Grep, Glob, Bash, TodoWrite

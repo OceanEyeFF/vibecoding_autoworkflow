@@ -1,5 +1,8 @@
 ---
 name: code-project-cleaner
+version: 1.1.0
+created: 2026-01-06
+updated: 2026-01-08
 description: 使用此代理当您需要清理代码项目中的冗余文件时。具体场景包括：\n- 项目存储空间不足,需要释放空间时\n- 项目目录混乱,临时文件过多时\n- 项目交付前,需要清理调试和构建产物时\n- 定期维护项目,保持目录结构整洁时\n- 项目迁移或备份前,优化文件结构时\n\n示例场景：\n- 用户："我的医疗数据标记工具项目占用空间太大了,帮我清理一下"\n- 助手："我将使用code-project-cleaner代理来分析项目结构并安全清理冗余文件"
 model: inherit
 tools: Read, Grep, Glob, Bash, TodoWrite

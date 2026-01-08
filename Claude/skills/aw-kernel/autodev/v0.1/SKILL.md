@@ -1,5 +1,8 @@
 ---
 name: autodev-v0.1
+version: 0.1.0
+created: 2026-01-06
+updated: 2026-01-08
 description: >
   AutoDev v0.1 基础版 - 验证核心工作流可行性。
   四阶段流程（需求精炼→任务规划→迭代开发→验收提交）+ Level 0 即时修复。

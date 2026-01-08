@@ -39,6 +39,49 @@
 - 不提交 `.autoworkflow/*`；可加入 `.git/info/exclude`。
 - 严守 DoD：无测试全绿不算完成；遇到缺失命令需先补全 gate。
 
+## 版本管理规范（强制）
+
+本项目所有 Agent、Skill 和基础设施文档必须遵循版本管理规范。
+
+详见：[VERSIONING.md](VERSIONING.md)
+
+### 核心要求
+
+| 要求 | 说明 |
+|------|------|
+| **版本号** | 遵循语义化版本 (SemVer): `MAJOR.MINOR.PATCH` |
+| **元数据** | 所有文件必须包含 `version`、`created`、`updated` 字段 |
+| **变更日志** | 所有变更必须记录在 [CHANGELOG.md](CHANGELOG.md) |
+
+### Agent/Skill 文件头部格式
+
+```yaml
+---
+name: agent-name
+version: 1.0.0
+created: 2026-01-06
+updated: 2026-01-08
+description: |
+  功能描述...
+model: sonnet
+tools: Read, Grep, Glob, Bash, TodoWrite
+---
+```
+
+### 版本号变更规则
+
+| 变更类型 | 版本变化 | 示例 |
+|---------|----------|------|
+| Bug 修复 | PATCH +1 | 1.0.0 → 1.0.1 |
+| 新增功能（兼容） | MINOR +1 | 1.0.1 → 1.1.0 |
+| 不兼容变更 | MAJOR +1 | 1.1.0 → 2.0.0 |
+
+### 修改文件时的检查清单
+
+- [ ] 更新 `updated` 日期
+- [ ] 根据变更类型决定是否更新 `version`
+- [ ] 更新 CHANGELOG.md 的 `[Unreleased]` 部分
+
 ## 工具纪律（强制）
 
 适用范围：所有允许使用 tools 的 Agents（如 `Read/Grep/Glob/Bash`）。

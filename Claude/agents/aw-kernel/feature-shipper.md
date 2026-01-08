@@ -1,5 +1,8 @@
 ---
 name: feature-shipper
+version: 1.1.0
+created: 2026-01-06
+updated: 2026-01-08
 description: >
   功能交付 Agent - 执行单个明确任务的代码改动。
   注意：建议通过 /autodev Skill 进入完整开发流程，feature-shipper 作为专用执行者处理单任务。

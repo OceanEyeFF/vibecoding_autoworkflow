@@ -1,5 +1,8 @@
 ---
 name: autodev-worktree
+version: 1.0.0
+created: 2026-01-06
+updated: 2026-01-08
 description: >
   Git Worktree 并行开发工作流 - 在独立工作树中进行功能开发或实验。
   支持：并行开发多个功能分支、隔离实验性改动、处理代码冲突。

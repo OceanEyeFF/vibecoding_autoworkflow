@@ -1,3 +1,17 @@
+---
+name: knowledge-researcher
+version: 1.0.0
+created: 2026-01-08
+updated: 2026-01-08
+description: |
+  Use this agent when you need to research and document technical knowledge from the internet.
+  This agent follows a structured workflow to gather, organize, and archive knowledge into
+  standardized documentation. Examples: researching library documentation, gathering best
+  practices, creating technical guides.
+model: sonnet
+tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, WebSearch, Task, TodoWrite, AskUserQuestion
+---
+
 # Knowledge Researcher Agent
 
 > 专业的知识获取和文档整理代理，用于从互联网获取、整理、归档技术知识
