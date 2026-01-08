@@ -1,8 +1,8 @@
 # AW-Kernel 日志系统文档
 
-> 版本：1.0.0
-> 最后更新：2026-01-07
-> 状态：✅ 已实施（Phase 1）
+> 版本：2.0.0
+> 最后更新：2026-01-08
+> 状态：✅ 已实施（Phase 2 - Hooks 方案）
 
 ---
 
@@ -29,42 +29,81 @@ AW-Kernel 日志系统是一个轻量级的 Agent 执行记录系统，旨在提
 | 原则 | 说明 |
 |------|------|
 | **不造轮子** | 复用 `.autoworkflow/` 现有日志层 |
-| **少调用** | 每个 Agent 只需 2-3 次 Bash 调用 |
-| **精准调用** | Agent 自己最清楚何时记录有意义的信息 |
+| **零 Token** | 使用 Hooks 自动记录，不占用 Agent 上下文 |
+| **100% 可靠** | 系统级触发，不依赖 LLM 自觉 |
 | **有序存储** | JSONL 格式天然按时间顺序追加 |
 
 ---
 
 ## 架构设计
 
-### Phase 1：单一文件方案（当前）
+### 实现方式：Claude Code Hooks
+
+日志系统通过 Claude Code 的 Hooks 机制实现，**无需在 Agent Prompt 中嵌入任何日志指令**。
 
 ```
 项目根目录/
+├── .claude/
+│   ├── settings.json              # Hook 配置
+│   └── hooks/
+│       └── agent-logger.py        # 日志记录 Hook 脚本
 └── .autoworkflow/
-    ├── logs/
-    │   └── claude-code/
-    │       └── feedback.jsonl    # 所有 Agent 日志追加到这里
-    └── tools/                      # 辅助工具
-        ├── get-timestamp.sh        # Linux/macOS/WSL 时间戳工具
-        └── get-timestamp.ps1       # Windows PowerShell 时间戳工具
+    └── logs/
+        └── claude-code/
+            └── feedback.jsonl     # 所有 Agent 日志
 ```
 
-**优势**：
-- 简单，无需管理多个文件
-- 符合 JSONL 设计哲学（单文件 + 查询过滤）
-- 快速实施，易于维护
+### Hook 事件
 
-### Phase 2：Session 归档方案（可选，未来）
+| 事件 | 触发时机 | 记录内容 |
+|------|---------|---------|
+| `PreToolUse` (Task) | Agent 启动前 | agent_start |
+| `SubagentStop` | Agent 结束后 | agent_end |
 
-如果需要"一个 Session 一个文件"，可使用归档脚本：
+### 优势对比
 
-```bash
-# .autoworkflow/tools/archive-sessions.sh
-cat .autoworkflow/logs/claude-code/feedback.jsonl | jq -r '.session' | sort -u | while read session; do
-    cat feedback.jsonl | jq "select(.session==\"$session\")" > "sessions/${session}.jsonl"
-done
+| 对比项 | 旧方案（Prompt 内嵌） | 新方案（Hooks） |
+|--------|---------------------|----------------|
+| Token 消耗 | ~80 行/Agent | **0** |
+| 上下文污染 | 有 | **无** |
+| 可靠性 | 依赖 LLM 自觉 | **系统级保证** |
+| 维护成本 | 每个 Agent 都要改 | **一处配置** |
+
+### 配置说明
+
+**1. Hook 配置文件：`.claude/settings.json`**
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/agent-logger.py\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/agent-logger.py\""
+          }
+        ]
+      }
+    ]
+  }
+}
 ```
+
+**2. Hook 脚本：`.claude/hooks/agent-logger.py`**
+
+脚本自动从 stdin 接收事件数据，解析 Agent 信息并写入日志文件。
 
 ---
 
