@@ -11,7 +11,10 @@
 Claude/scripts/
 ├── README.md                   # 本文档
 ├── install-global.sh           # 全局安装脚本 (Linux/macOS/WSL)
-└── install-global.ps1          # 全局安装脚本 (Windows PowerShell)
+├── install-global.ps1          # 全局安装脚本 (Windows PowerShell)
+├── claude_autoworkflow.py      # 工作流脚本
+├── claude_aw.sh                # 入口脚本（Bash）
+└── claude_aw.ps1               # 入口脚本（PowerShell）
 ```
 
 ---
@@ -175,7 +178,7 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 | code-debug-expert | code-debug-expert.md | 系统化调试 |
 | system-log-analyzer | system-log-analyzer.md | 日志分析 |
 | code-project-cleaner | code-project-cleaner.md | 项目清理 |
-| stage-development-executor | stage-development-executor.md | 阶段开发执行器 |
+| knowledge-researcher | knowledge-researcher.md | 知识研究与资料沉淀 |
 
 ### Skills（2 个）
 
@@ -359,8 +362,8 @@ bash Claude/scripts/install-global.sh
 
 ## 📚 相关文档
 
-- [CLAUDE.md](../agents/CLAUDE.md) - Agents 使用指南
-- [TOOLCHAIN.md](../agents/TOOLCHAIN.md) - 工具链详细文档
+- [CLAUDE.md](../agents/aw-kernel/CLAUDE.md) - Agents 使用指南
+- [TOOLCHAIN.md](../agents/aw-kernel/TOOLCHAIN.md) - 工具链详细文档
 - [../README.md](../README.md) - Claude 目录总说明
 
 ---

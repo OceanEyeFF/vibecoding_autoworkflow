@@ -2,6 +2,8 @@
 
 > 创建时间：2026-01-04
 > 版本状态：✅ 已完成
+>
+> 当前主线（SoT）：`AUTODEV_小需求更稳流程设计.md`（小需求更稳）。本文件仅描述 v0.1 既有实现基线，避免与主线设计混读。
 
 ---
 
@@ -395,7 +397,7 @@ v0.2 将增加：
 - ✅ Level 1 回路（Git 回退 + 任务重构）
 - ✅ 本地化状态管理（.autodev/state.json）
 
-详见：[autodev-iteration-plan.md](../../../ClaudeCodeAgentDocuments/00_tmpfiles/autodev-iteration-plan.md)
+详见：[autodev-iteration-plan.md](../../../../../ClaudeCodeAgentDocuments/01_DesignBaseLines/autodev-iteration-plan.md)
 
 ---
 
