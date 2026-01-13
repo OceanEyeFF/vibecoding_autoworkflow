@@ -12,15 +12,15 @@
 1. **原生优先**：优先使用 Claude Code 原生工具（Task、TodoWrite、Bash）
 2. **无需编排器**：不再需要 Central Orchestrator，用 Skill 直接驱动
 3. **人类在环**：每个里程碑结束时确认，不自动跳转
-4. **状态可见**：用 TodoWrite 追踪进度，用户随时可见
-5. **可恢复**：中断后可以通过描述当前状态继续
+4. **状态可见**：用 TodoWrite 追踪进度；必要时把长上下文落盘到 `.autoworkflow/state.md`
+5. **可恢复**：默认依赖 TodoWrite；跨会话/长上下文可选 `.autoworkflow/state.md` 辅助恢复
 
 ### 1.2 与旧架构对比
 
 | 项目 | 旧架构（Central Orchestrator） | 新架构（Skill-Driven） |
 |------|-------------------------------|----------------------|
 | 触发方式 | 需要手动启动 Agent | `/autodev` Skill 或自然语言 |
-| 状态管理 | `.autoworkflow/state.md` | TodoWrite（原生） |
+| 状态管理 | `.autoworkflow/state.md` | TodoWrite（默认）+ 可选 `.autoworkflow/state.md`（长上下文/跨会话） |
 | Agent 调度 | JSON 输出 → 用户手动执行 | Task 工具自动委派 |
 | 人类确认 | 需要特殊协议 | AskUserQuestion（原生） |
 | 复杂度 | 高（9个指令文件） | 低（1个 Skill + 精简 Agents） |
@@ -101,7 +101,7 @@
 ### 3.1 /autodev Skill
 
 ```yaml
-# Claude/skills/autodev.md
+# Claude/skills/aw-kernel/autodev/SKILL.md
 ---
 name: autodev
 description: 自动化开发工作流 - 从需求到交付的完整闭环
@@ -162,7 +162,7 @@ trigger: /autodev
 ### 3.2 /autodev-worktree Skill（后续实现）
 
 ```yaml
-# Claude/skills/autodev-worktree.md
+# Claude/skills/aw-kernel/autodev-worktree/SKILL.md
 ---
 name: autodev-worktree
 description: 在 Git Worktree 中并行开发
@@ -198,7 +198,7 @@ trigger: /autodev-worktree
 | Agent | 原因 |
 |-------|------|
 | central-orchestrator | 已删除 - 用 Skill 替代 |
-| stage-development-executor | 与 feature-shipper 功能重叠 |
+| stage-development-executor | 已删除 - 功能合并到 feature-shipper |
 | code-review-agent | 未实现 - 暂不需要 |
 | architecture-designer | 未实现 - 暂不需要 |
 | requirements-collector | 合并到 requirement-refiner |
@@ -219,18 +219,18 @@ trigger: /autodev-worktree
 
 ### Phase 1: Skill 实现（当前）
 
-- [ ] 创建 `Claude/skills/autodev.md`
-- [ ] 测试 Skill 触发和基本流程
+- [x] 创建 `Claude/skills/aw-kernel/autodev/SKILL.md`
+- [ ] 测试 Skill 触发和基本流程（待验证）
 
 ### Phase 2: Agent 精简
 
 - [ ] 重构 feature-shipper（移除 .autoworkflow 依赖）
 - [ ] 重构 requirement-refiner（简化输出）
-- [ ] 删除 stage-development-executor（功能合并）
+- [x] 删除 stage-development-executor（功能合并）
 
 ### Phase 3: Git Worktree 支持
 
-- [ ] 创建 `Claude/skills/autodev-worktree.md`
+- [x] 创建 `Claude/skills/aw-kernel/autodev-worktree/SKILL.md`
 - [ ] 实现 worktree 生命周期管理
 - [ ] 测试并行开发场景
 
@@ -252,7 +252,7 @@ trigger: /autodev-worktree
 
 ### Q4: 状态怎么管理？
 
-**答**：用 TodoWrite 原生工具。它在 UI 里可见，用户能看到进度。不需要自己维护 state.md。
+**答**：默认用 TodoWrite（UI 可见、可追踪进度）。当出现长上下文/跨会话需要时，可选把关键证据/检查点写入 `.autoworkflow/state.md`。
 
 ### Q5: 中断后怎么恢复？
 

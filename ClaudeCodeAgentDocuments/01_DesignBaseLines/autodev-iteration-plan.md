@@ -104,7 +104,7 @@ retry > 3?
 
 ### Skill 文件修改
 
-创建 `Claude/skills/autodev/v0.1/SKILL.md`（精简版）
+创建 `Claude/skills/aw-kernel/autodev/v0.1/SKILL.md`（精简版）
 
 ---
 
@@ -223,7 +223,7 @@ git clean -fd
 
 **目录结构**：
 ```
-Claude/skills/autodev/
+Claude/skills/aw-kernel/autodev/
 ├── SKILL.md                         # 核心 Skill（简化版，含启动协议）
 ├── phases/
 │   ├── phase-1-refinement.md        # Phase 1 详细指令
@@ -257,7 +257,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
 
 1. 首次启动时读取核心指令：
    ```bash
-   Read("Claude/skills/autodev/phases/phase-1-refinement.md")
+   Read("Claude/skills/aw-kernel/autodev/phases/phase-1-refinement.md")
    ```
 
 2. 读取 state.json 恢复状态（如存在）
@@ -510,7 +510,7 @@ retry_count=$(Bash("./autodev-helper.sh retry-inc"))
 ## 实施路线图
 
 ### Week 1: v0.1 基础版
-- [ ] 创建 `Claude/skills/autodev/v0.1/SKILL.md`
+- [ ] 创建 `Claude/skills/aw-kernel/autodev/v0.1/SKILL.md`
 - [ ] 实现 Phase 1-4 基础流程
 - [ ] 实现 Level 0 循环
 - [ ] 用户测试 + 收集反馈

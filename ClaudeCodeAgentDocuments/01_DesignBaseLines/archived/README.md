@@ -51,7 +51,7 @@
 - **可行替代方案**：
   1. 在 Prompt 中提供详细的 JSON 示例（Examples as Constraints）
   2. 对于 Agent 间协作，使用约定的文件格式（如 .agent-handoff/*.json）
-  3. 部分实现：已有 4 个 Agent（code-debug-expert, code-analyzer 等）采用 JSON 输出
+  3. 部分实现：部分 Agent（如 code-debug-expert, code-analyzer 等）采用 JSON 示例作为输出约束
 
 ---
 
@@ -86,8 +86,8 @@
 
 - [当前可行的协作方案](../README.md#clauecode-兼容的协作方案)
 - [IDEA-006: 强制数据访问机制](../IDEA-006-mandatory-data-access.md)（已成功实施）
-- [autodev Skill 实现](../../../Claude/skills/autodev/)
-- [feature-shipper Agent](../../../Claude/agents/feature-shipper.md)（5-Phase 闭环示例）
+- [autodev Skill 实现](../../../Claude/skills/aw-kernel/autodev/)
+- [feature-shipper Agent](../../../Claude/agents/aw-kernel/feature-shipper.md)（5-Phase 闭环示例）
 
 ---
 

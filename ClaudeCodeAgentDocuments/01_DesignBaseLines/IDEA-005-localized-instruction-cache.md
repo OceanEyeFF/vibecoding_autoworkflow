@@ -38,7 +38,7 @@
 #### 目录结构示例（以 autodev 为例）
 
 ```
-Claude/skills/autodev/
+Claude/skills/aw-kernel/autodev/
 ├── SKILL.md                         # 核心 Skill（简化版，含启动协议和导航）
 ├── phases/
 │   ├── phase-1-refinement.md        # Phase 1 详细指令
@@ -87,22 +87,22 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
 详细指令已组织为模块化文档，按需读取：
 
 **执行阶段**：
-- Phase 1: `Claude/skills/autodev/phases/phase-1-refinement.md`
-- Phase 2: `Claude/skills/autodev/phases/phase-2-planning.md`
-- Phase 3: `Claude/skills/autodev/phases/phase-3-iteration.md`
-- Phase 4: `Claude/skills/autodev/phases/phase-4-delivery.md`
+- Phase 1: `Claude/skills/aw-kernel/autodev/phases/phase-1-refinement.md`
+- Phase 2: `Claude/skills/aw-kernel/autodev/phases/phase-2-planning.md`
+- Phase 3: `Claude/skills/aw-kernel/autodev/phases/phase-3-iteration.md`
+- Phase 4: `Claude/skills/aw-kernel/autodev/phases/phase-4-delivery.md`
 
 **质量门禁**：
-- G1-G4: `Claude/skills/autodev/gates/gate-{1-4}-*.md`
+- G1-G4: `Claude/skills/aw-kernel/autodev/gates/gate-{1-4}-*.md`
 
 **多层回路**：
-- Level 0-3: `Claude/skills/autodev/loops/loop-level-{0-3}-*.md`
+- Level 0-3: `Claude/skills/aw-kernel/autodev/loops/loop-level-{0-3}-*.md`
 
 ## 启动协议（必须执行）
 
 1. **首次启动**时读取核心指令：
    ```
-   Read("Claude/skills/autodev/phases/phase-1-refinement.md")
+   Read("Claude/skills/aw-kernel/autodev/phases/phase-1-refinement.md")
    ```
 
 2. **检查状态文件**（如存在 `.autodev/state.json`）：
@@ -204,7 +204,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
 ## 失败处理
 
 如果任一项为 ❌：
-1. Read("Claude/skills/autodev/phases/phase-1-refinement.md") 刷新指令
+1. Read("Claude/skills/aw-kernel/autodev/phases/phase-1-refinement.md") 刷新指令
 2. 使用 AskUserQuestion 补充缺失信息
 3. 重新输出需求摘要
 4. 再次执行 G1 检查
@@ -254,7 +254,7 @@ G3 门禁（测试）失败，且 retry_count ≤ 3
 
 1. **每 5 轮对话**
    - 强制读取当前 Phase 的指令文件
-   - 例如：Read("Claude/skills/autodev/phases/phase-2-planning.md")
+   - 例如：Read("Claude/skills/aw-kernel/autodev/phases/phase-2-planning.md")
 
 2. **用户说"你忘了 XXX"**
    - 立即读取所有相关指令文件（Phase + Gate + Loop）
@@ -289,7 +289,7 @@ G3 门禁（测试）失败，且 retry_count ≤ 3
 #!/bin/bash
 # 为 autodev Skill 创建模块化指令目录
 
-SKILL_DIR="Claude/skills/autodev"
+SKILL_DIR="Claude/skills/aw-kernel/autodev"
 
 mkdir -p "$SKILL_DIR/phases"
 mkdir -p "$SKILL_DIR/gates"
@@ -362,10 +362,10 @@ echo "✅ 模块化指令目录结构已创建"
 
 ## 七、相关文件
 
-- 待修改：`Claude/skills/autodev/SKILL.md`（精简并添加启动协议）
-- 待创建：`Claude/skills/autodev/phases/*.md`（Phase 详细指令）
-- 待创建：`Claude/skills/autodev/gates/*.md`（Gate 检查清单）
-- 待创建：`Claude/skills/autodev/loops/*.md`（Loop 策略）
+- 待修改：`Claude/skills/aw-kernel/autodev/SKILL.md`（精简并添加启动协议）
+- 待创建：`Claude/skills/aw-kernel/autodev/phases/*.md`（Phase 详细指令）
+- 待创建：`Claude/skills/aw-kernel/autodev/gates/*.md`（Gate 检查清单）
+- 待创建：`Claude/skills/aw-kernel/autodev/loops/*.md`（Loop 策略）
 - 可选创建：`Claude/skills/_shared/*.md`（跨 Skill 共享指令）
 
 ---

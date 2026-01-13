@@ -1,10 +1,20 @@
 # Claude Code Agent 设计基线索引
 
 > 创建时间：2024-12-31
-> 最后更新：2026-01-04
+> 最后更新：2026-01-11
 > 状态：IDEA-006 已完成，IDEA-001~004 已归档
 
 ---
+
+## 🔗 当前主线（SoT）
+
+> 本目录是“设计基线/实现思想”的沉淀；与主线 SoT 冲突时，以根目录 SoT 为准。
+
+- 协作基线：[`ClaudeCode协作最小共识_基准文本.md`](../../ClaudeCode协作最小共识_基准文本.md)
+- 工作流结构与门禁：[`AUTODEV_小需求更稳流程设计.md`](../../AUTODEV_小需求更稳流程设计.md)
+- 角色职责与产物契约：[`AUTODEV_小需求更稳_Agent全量定义.md`](../../AUTODEV_小需求更稳_Agent全量定义.md)
+- 分析精华（失败模式与改进条目）：[`docs/analysis/autodev-insights.md`](../../docs/analysis/autodev-insights.md)
+- 当前路线图：[`ROADMAP.md`](../../ROADMAP.md)
 
 ## 📦 归档说明
 
@@ -44,8 +54,8 @@
 
 #### 1. **Skill 工作流编排**（已有实现）
 - **`autodev` Skill**：需求→任务→迭代→交付全流程
-- **`git-workflow` Skill**：标准化 Git 操作
-- **位置**：`Claude/skills/`
+- **`autodev-worktree` Skill**：Git Worktree 并行开发管理
+- **位置**：`Claude/skills/aw-kernel/`
 - **优点**：用户一个命令即可启动完整工作流
 - **实施状态**：✅ 生产可用
 
@@ -69,7 +79,7 @@
   - code-debug-expert
   - system-log-analyzer
   - code-project-cleaner
-  - stage-development-executor
+  - knowledge-researcher
 - **详见**：[IDEA-006-implementation/](./IDEA-006-implementation/)
 - **实施状态**：✅ 广泛应用
 
@@ -123,7 +133,7 @@
 
 ## 四、实际实施进展与后续计划
 
-### ✅ 已完成（2025-01-04）
+### ✅ 已完成（2026-01-04）
 - **IDEA-006**：强制数据访问机制（No Evidence, No Output）
   - 应用于全部 7 个生产 Agent
   - 包含 3 层防守架构：
@@ -133,7 +143,7 @@
   - 详见：[IDEA-006-implementation/](./IDEA-006-implementation/)
 
 ### 🔄 当前状态
-- **Agent 协作**：基于 Skill 编排（autodev, git-workflow）
+- **Agent 协作**：基于 Skill 编排（autodev, autodev-worktree）
 - **边界管理**：通过 Prompt 约束 + AskUserQuestion
 - **输出格式**：4 个新 Agent 已统一 JSON 输出（code-debug-expert, code-analyzer, code-project-cleaner, system-log-analyzer）
 - **安全控制**：Soft Lock 机制（.autoworkflow/.owner）
@@ -221,7 +231,7 @@ permission-guard Agent  →        Git Hooks + Prompt 提醒
 ## 七、相关文件
 
 ### 问题诊断
-- [问题诊断报告](../00_tmpfiles/claude-agents-issues-diagnosis.md)
+- [分析精华（失败模式与改进条目）](../../docs/analysis/autodev-insights.md)
 
 ### 归档文档
 - [归档索引](archived/README.md)
@@ -238,24 +248,24 @@ permission-guard Agent  →        Git Hooks + Prompt 提醒
 ### 源代码
 
 #### 已完成 IDEA-006 改进
-- ✅ `Claude/agents/feature-shipper.md` - 强制数据访问机制已实施
-- ✅ `Claude/agents/requirement-refiner.md` - 强制数据访问机制已实施
-- ✅ `Claude/agents/code-analyzer.md` - 强制数据访问机制已实施
-- ✅ `Claude/agents/code-debug-expert.md` - 强制数据访问机制已实施
-- ✅ `Claude/agents/system-log-analyzer.md` - 强制数据访问机制已实施
-- ✅ `Claude/agents/code-project-cleaner.md` - 强制数据访问机制已实施
-- ✅ `Claude/agents/stage-development-executor.md` - 强制数据访问机制已实施
+- ✅ `Claude/agents/aw-kernel/feature-shipper.md` - 强制数据访问机制已实施
+- ✅ `Claude/agents/aw-kernel/requirement-refiner.md` - 强制数据访问机制已实施
+- ✅ `Claude/agents/aw-kernel/code-analyzer.md` - 强制数据访问机制已实施
+- ✅ `Claude/agents/aw-kernel/code-debug-expert.md` - 强制数据访问机制已实施
+- ✅ `Claude/agents/aw-kernel/system-log-analyzer.md` - 强制数据访问机制已实施
+- ✅ `Claude/agents/aw-kernel/code-project-cleaner.md` - 强制数据访问机制已实施
+- ✅ `Claude/agents/aw-kernel/knowledge-researcher.md` - 强制数据访问机制已实施
 
 #### 可行的协作实现
-- ✅ `Claude/skills/autodev/` - Skill 工作流编排
-- ✅ `Claude/skills/git-workflow/` - Git 操作标准化
-- ✅ `Claude/agents/feature-shipper.md` - 5-Phase 闭环示例
+- ✅ `Claude/skills/aw-kernel/autodev/` - Skill 工作流编排
+- ✅ `Claude/skills/aw-kernel/autodev-worktree/` - Git Worktree 并行开发管理
+- ✅ `Claude/agents/aw-kernel/feature-shipper.md` - 5-Phase 闭环示例
 
 ---
 
 ## 八、实施进度总结
 
-### ✅ 已完成（2025-01-04）
+### ✅ 已完成（2026-01-04）
 - **IDEA-006（强制数据访问机制）**
   - 所有 7 个 Agents 已全面实施"No Evidence, No Output"原则
   - 包含完整的工具纪律、自检清单、禁止模式和示例约束
@@ -268,7 +278,7 @@ permission-guard Agent  →        Git Hooks + Prompt 提醒
 - **IDEA-004（结构化交互协议）** - 无法强制 Schema 验证
 
 ### 🔄 当前可行方案
-- **Skill 工作流编排**：autodev, git-workflow（已实现）
+- **Skill 工作流编排**：autodev, autodev-worktree（已实现）
 - **单 Agent 多阶段模式**：feature-shipper 5-Phase 闭环（已实现）
 - **基于文件的协作**：.agent-handoff/（可探索）
 - **AskUserQuestion 边界管理**：部分 Agent 已使用（可扩展）
