@@ -1,43 +1,35 @@
-# Claude Agents 指南（Trae-Agents-Prompt）
+# aw-kernel Agents 使用指南
 
 ## 目的
-为 Claude Code 提供可闭环交付的中枢与专用 Agent，统一遵循：先打磨 DoD/spec，测试全绿为门禁，跨平台一致。
+为 Claude Code 提供可闭环交付的专用 Agents（单任务专家）与配套规范（版本管理、工具纪律、证据化输出）。
 
-## Agent 列表
-- **feature-shipper（中枢）**：驱动"需求→DoD→实现→gate"全流程；强制先写 spec/state，再跑 gate。
-- **code-analyzer**：快速梳理代码结构/架构，输出依赖与分层视图。
-- **requirement-refiner**：多轮收敛模糊需求，产出可验收的 DoD/任务列表。
-- **code-debug-expert**：系统化调试（假设→验证循环），提炼失败高亮。
-- **system-log-analyzer**：分析日志/事故，输出时间线与根因假设。
-- **code-project-cleaner**：清理代码项目中的冗余文件，释放空间，保持目录整洁。
-- 归档/可选：`archive/claude-agents/` 中的游戏相关等不在主线。
+## Agent 列表（aw-kernel）
+- **feature-shipper**：功能交付闭环（实现与交付串联）
+- **code-analyzer**：结构/架构分析（输出可复核的结构化结论）
+- **code-debug-expert**：调试与修复（假设→验证循环）
+- **system-log-analyzer**：日志分析与诊断
+- **code-project-cleaner**：清理与重构建议
+- **requirement-refiner**：需求澄清与 DoD/验收细化
+- **knowledge-researcher**：资料检索与知识沉淀
 
-## 快速使用（Claude Code 内）
-推荐（全局安装，不污染目标仓库）：
-1) 运行本仓库 `install-global` 脚本（会安装到 `~/.claude/agents`、`~/.claude/skills`）。
-2) 在任意目标仓库根目录先跑：`aw-init` → `aw-auto` → `aw-gate`（或用绝对路径执行 `autoworkflow.py auto-gate`）。
-3) 在目标仓库根目录启动 Claude Code：`claude`，并选择 Agent `feature-shipper` 开始对话闭环。
+> 归档内容在仓库 `archive/` 目录，不属于主线。
 
-如果 Claude Code UI 看不到 Agents，可用 Commands 显式调用（全局安装会同步到 `~/.claude/commands/autoworkflow/`）：
-- 在对话里输入：`/autoworkflow:feature-shipper <需求/任务描述>`
+## 快速使用
+1) **全局安装**：运行本仓库 `Claude/scripts/install-global.(sh|ps1)` 安装到 `~/.claude/agents/aw-kernel/` 与 `~/.claude/skills/aw-kernel/`。
+2) **启动 Claude Code**：在目标仓库根目录启动 Claude Code，按任务选择 Agent 或 Skill（推荐以 `/autodev` 作为工作流入口）。
 
-备选（项目内安装/随仓库分发）：
-- 若 Claude Code 未读取全局 agents/skills，或你希望“随仓库分发”，再把 `~/.claude/agents`、`~/.claude/skills` 复制/软链到目标仓库的 `.claude/agents/`、`.claude/skills/`。
+## Skills（推荐入口）
+- Skill 目录：`~/.claude/skills/aw-kernel/<skill>/SKILL.md`（本仓库源目录为 `Claude/skills/aw-kernel/`）
+- `/autodev` 负责工作流编排；必要时才委派专用 Agent
 
-## Skills（推荐）
-- skills 目录：`.claude/skills/<skill>/SKILL.md`
-- Skills 是用户可直接调用的入口（如 `/autodev`），Agents 是可被 Task 委派的专用处理器
-- 推荐使用 `/autodev` Skill 作为主入口，它会在需要时通过 Task 工具委派专用 Agent
-
-## 与 repo-local 工具的配合
-- Agent 默认假设 `.autoworkflow/` 已初始化；`state.md` / `spec.md` / `gate.env` 是协作界面。
-- `feature-shipper` 会要求：若无 gate，则先调用 `auto-gate` 或手动设定；失败时附带 highlights 与 tail。
-- 推荐在 PR 前再次执行 `aw-gate`，保持 state 记录最新一次 gate 结果。
+## 可选：.autoworkflow 工具链
+- 若你需要“可复现的 Gate 命令 + 跨会话状态落盘 + 日志隔离”，参考 [TOOLCHAIN.md](TOOLCHAIN.md)
+- 若不启用工具链：仅使用 TodoWrite 追踪会话内状态（跨会话不持久）
 
 ## 约定
 - 输出语言：中文优先，必要时双语注释。
-- 不提交 `.autoworkflow/*`；可加入 `.git/info/exclude`。
-- 严守 DoD：无测试全绿不算完成；遇到缺失命令需先补全 gate。
+- No Evidence, No Output：无证据不得宣称“已通过/已验证”。
+- 不提交 `.autoworkflow/*`（如使用该目录）；可加入 `.git/info/exclude`。
 
 ## 版本管理规范（强制）
 
@@ -225,10 +217,11 @@ TodoWrite({
 - ✅ 两者互补，各司其职
 
 ## 常用路径
-- `.claude/agents/feature-shipper.md`（中枢）
-- `.autoworkflow/tools/aw.ps1|aw.sh`（统一入口）
-- `.autoworkflow/state.md`（进度与最近 gate 输出）
-- `.autoworkflow/gate.env`（Build/Test/Lint/Format 命令源）
+- `~/.claude/agents/aw-kernel/feature-shipper.md`（已安装：中枢 Agent）
+- `~/.claude/skills/aw-kernel/`（已安装：Skills）
+- `.autoworkflow/tools/cc-aw.ps1|cc-aw.sh`（可选工具链入口）
+- `.autoworkflow/state.md`（可选：进度与最近 gate 输出）
+- `.autoworkflow/gate.env`（可选：Build/Test/Lint/Format 命令源）
 
 ## 小贴士
 - 复杂 PowerShell 引号：直接编辑 `gate.env` 更稳。

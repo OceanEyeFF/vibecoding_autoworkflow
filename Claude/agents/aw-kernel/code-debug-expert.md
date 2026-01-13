@@ -362,7 +362,7 @@ FUNCTION process_data(input):
 
 ### 错误定位
 
-**错误位置**：[src/main.py:52](src/main.py#L52)
+**错误位置**：`src/main.py:52`
 
 **错误类型**：AttributeError (NullPointerError)
 
@@ -376,7 +376,7 @@ AttributeError: 'NoneType' object has no attribute 'value'
 
 在 `processData` 函数中,`data.get('key')` 可能返回 `None`,但代码直接调用了 `.value` 属性,未做检查。
 
-**问题代码**（[src/main.py:50-55](src/main.py#L50-L55)）：
+**问题代码**（`src/main.py:50-55`）：
 ```python
 def processData(data):
     result = data.get('key').value  # Line 52 - 未检查 None
@@ -385,9 +385,9 @@ def processData(data):
 
 **影响范围**：
 - 该函数在 3 处被调用：
-  - [src/api.py:12](src/api.py#L12)
-  - [src/handler.py:45](src/handler.py#L45)
-  - [src/test.py:23](src/test.py#L23)
+  - `src/api.py:12`
+  - `src/handler.py:45`
+  - `src/test.py:23`
 - 所有调用处都可能传入空字典或缺少 'key' 字段的字典
 
 ### 修复方案
@@ -606,7 +606,7 @@ def processData(data: DataSchema):
 
 ### 已发现的问题
 
-**错误位置**：[src/utils.py:42](src/utils.py#L42)
+**错误位置**：`src/utils.py:42`
 
 **错误类型**：LogicError（类型检查逻辑错误）
 

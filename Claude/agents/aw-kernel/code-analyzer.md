@@ -413,7 +413,7 @@ Must include:
 
 ✅ 扫描目录：全项目（排除 test/mock）
 ✅ 分析模块：23 个
-✅ 生成文档：3 个（[CodeStructure.md](CodeStructure.md), [CodesAnalysis.md](CodesAnalysis.md), [CodeApis.md](CodeApis.md)）
+✅ 生成文档：3 个（`CodeStructure.md`, `CodesAnalysis.md`, `CodeApis.md`）
 
 ### 识别的架构模式
 
@@ -442,7 +442,7 @@ Must include:
 
 #### ❌ 高优先级：循环依赖（2 个）
 
-**位置**：[src/domain/OrderService.ts](src/domain/OrderService.ts) ↔ [PaymentService.ts](src/domain/PaymentService.ts)
+**位置**：`src/domain/OrderService.ts` ↔ `src/domain/PaymentService.ts`
 
 **问题**：OrderService 导入 PaymentService，PaymentService 又导入 OrderService
 
@@ -458,7 +458,7 @@ Must include:
 
 #### ⚠️ 中优先级：跨层违规（3 个）
 
-**位置**：[src/adapter/OrderAPI.ts](src/adapter/OrderAPI.ts) → [PaymentAPI.ts](src/adapter/PaymentAPI.ts)
+**位置**：`src/adapter/OrderAPI.ts` → `src/adapter/PaymentAPI.ts`
 
 **问题**：adapter 层的模块直接调用同层其他模块（违反分层原则）
 
@@ -473,17 +473,17 @@ Must include:
 
 ### 生成的文档
 
-✅ **[CodeStructure.md](CodeStructure.md)** - 架构拓扑可视化
+✅ `CodeStructure.md` - 架构拓扑可视化
 - 物理结构目录树
 - 逻辑架构映射
 - 模块依赖关系图（Mermaid）
 
-✅ **[CodesAnalysis.md](CodesAnalysis.md)** - 架构健康诊断
+✅ `CodesAnalysis.md` - 架构健康诊断
 - 违规项详细分析
 - 技术债务清单
 - 架构演进建议
 
-✅ **[CodeApis.md](CodeApis.md)** - 接口契约手册
+✅ `CodeApis.md` - 接口契约手册
 - 12 个公开接口文档
 - 稳定性评级
 - 使用示例（语言无关）

@@ -350,7 +350,7 @@ Only submit final output after passing self-check.
 **发生时间**：2024-12-31 14:23:46
 **位置**：数据库连接模块
 
-**日志证据**（[logs/app.log:12-15](logs/app.log#L12-L15)）：
+**日志证据**（`logs/app.log:12-15`）：
 ```
 ConnectionRefusedError: connect ECONNREFUSED 127.0.0.1:5432
   at TCPConnectWrap.afterConnect
@@ -596,7 +596,7 @@ ConnectionRefusedError: connect ECONNREFUSED 127.0.0.1:5432
 **错误类型**：FileNotFoundError（重复 5 次）
 **错误消息**：No such file or directory: '/etc/app/config.json'
 
-**日志证据**（[logs/error.log:15-25](logs/error.log#L15-L25)）：
+**日志证据**（`logs/error.log:15-25`）：
 ```
 FileNotFoundError: [Errno 2] No such file or directory: '/etc/app/config.json'
 (重复 5 次)

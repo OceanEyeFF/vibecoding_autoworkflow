@@ -444,7 +444,7 @@ tar -czf logs-backup-$(date +%Y%m).tar.gz .autoworkflow/logs/claude-code/
 
 - [TOOLCHAIN.md](TOOLCHAIN.md) - 工具链说明
 - [STANDARDS.md](STANDARDS.md) - Agent 设计标准
-- [ROADMAP.md](../../ROADMAP.md) - 项目路线图
+- [ROADMAP.md](../../../ROADMAP.md) - 项目路线图
 
 ---
 

@@ -16,19 +16,21 @@
 ### 工具链源码（本仓库）
 
 ```
-.claude/agents/
+Claude/
 ├── scripts/
 │   └── claude_autoworkflow.py     # 核心脚本（~700 行）
 ├── assets/
 │   └── templates/
 │       ├── tools/
-│       │   ├── cc-aw.ps1          # Windows 包装脚本
-│       │   └── cc-aw.sh           # Linux/WSL 包装脚本
+│       │   ├── cc-aw.ps1          # Windows 包装脚本模板
+│       │   └── cc-aw.sh           # Linux/WSL 包装脚本模板
 │       ├── spec-template.md       # 需求规格模板
 │       ├── state-template.md      # 执行状态模板
-│       └── agent-config.json      # Agent 配置
-├── feature-shipper.md             # 中枢 Agent（已集成工具链）
-└── TOOLCHAIN.md                   # 本文档
+│       └── agent-config.json      # Agent 配置模板
+└── agents/
+    └── aw-kernel/
+        ├── feature-shipper.md     # 中枢 Agent（可与工具链配合）
+        └── TOOLCHAIN.md           # 本文档
 ```
 
 ### 目标项目（初始化后）
@@ -63,6 +65,9 @@
 ```bash
 python claude_autoworkflow.py init [--force]
 ```
+
+> 脚本位置：本仓库 `Claude/scripts/claude_autoworkflow.py`。  
+> 执行 init 后，会在目标项目生成 `.autoworkflow/tools/claude_autoworkflow.py`（后续可直接使用该副本）。
 
 **功能**：
 - 检测现有工具链（Codex/Claude Code/无）
@@ -420,4 +425,4 @@ rm .autoworkflow/.owner
 
 - [feature-shipper.md](./feature-shipper.md) - 中枢 Agent 定义
 - [CLAUDE.md](./CLAUDE.md) - 模块文档
-- [根文档](../../CLAUDE.md) - 项目级文档
+- [根文档](../../../CLAUDE.md) - 项目级文档

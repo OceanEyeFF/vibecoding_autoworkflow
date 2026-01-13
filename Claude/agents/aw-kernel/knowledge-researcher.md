@@ -221,7 +221,7 @@ Use the standard template structure:
 ## 🔗 Related Resources
 
 ### Official Resources
-- [Official Docs]({url})
+- Official Docs: `{url}`
 
 ---
 
