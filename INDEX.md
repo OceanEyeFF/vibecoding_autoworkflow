@@ -1,67 +1,303 @@
-# AutoWorkflow 资源索引
+# 文档路由中心
 
-本仓库提供专为 Claude Code 设计的 Agent + Skill 工具链，采用 `aw-kernel` 命名空间隔离设计。
+> **本文档是项目的「路由器」**，帮助您快速找到所需文档和资源。
 
-## 核心资源
+## 当前开发方向（小需求更稳）
 
-### Agents（`Claude/agents/aw-kernel/`）
+- 范围与非目标：以 `CLAUDE.md` 的“当前开发方向/非目标”为准；大任务必须先拆分后再进入流程。
+- 协作基线（单一事实源）：[`ClaudeCode协作最小共识_基准文本.md`](ClaudeCode协作最小共识_基准文本.md)
+- 设计文档（单一事实源）：
+  - [`AUTODEV_小需求更稳流程设计.md`](AUTODEV_小需求更稳流程设计.md)
+  - [`AUTODEV_小需求更稳_Agent全量定义.md`](AUTODEV_小需求更稳_Agent全量定义.md)
+- 资料萃取（背景材料）：[`AUTODEV_资料萃取_用于Agent重写与工作流实现.md`](AUTODEV_资料萃取_用于Agent重写与工作流实现.md)
 
-| Agent | 文件 | 用途 |
-|-------|------|------|
-| **feature-shipper** | `feature-shipper.md` | 功能交付闭环（spec → plan → implement → test → deliver） |
-| **code-analyzer** | `code-analyzer.md` | 代码分析与架构洞察 |
-| **requirement-refiner** | `requirement-refiner.md` | 需求澄清与 DoD 细化 |
-| **code-debug-expert** | `code-debug-expert.md` | 调试专家（问题定位、根因分析） |
-| **system-log-analyzer** | `system-log-analyzer.md` | 系统日志分析 |
-| **code-project-cleaner** | `code-project-cleaner.md` | 代码清理与重构 |
+## 🎯 快速导航
 
-### Skills（`Claude/skills/aw-kernel/`）
+### 按角色快速进入
 
-| Skill | 目录 | 用途 |
-|-------|------|------|
-| **autodev** | `autodev/` | 自动化开发流程（需求分析 → 任务拆解 → 迭代开发） |
-| **autodev-worktree** | `autodev-worktree/` | Git worktree 并行开发管理 |
+**👨‍💼 项目管理者**
+- [分析精华](docs/analysis/autodev-insights.md) - 理解失败模式与改进抓手
+- [路线图](ROADMAP.md) - 掌握优化优先级与里程碑
 
-### 脚本工具（`Claude/scripts/`）
+**👨‍💻 Claude Code 用户**
+- [快速开始](README.md#快速开始) - 5分钟上手
+- [Agent 列表](#agents) - 选择合适工具
+- [Skill 列表](#skills) - 了解工作流
 
-| 脚本 | 用途 |
-|------|------|
-| `install-global.sh` | 全局安装（Linux/macOS/WSL） |
-| `install-global.ps1` | 全局安装（Windows） |
-| `claude_autoworkflow.py` | 工作流脚本 |
-| `claude_aw.sh` / `claude_aw.ps1` | 入口脚本 |
+**🔧 开发者**
+- [源资产目录](Claude/README.md) - 了解目录结构
+- [安装脚本](Claude/scripts/README.md) - 详细安装选项
+- [设计基线](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md) - 理解设计理念
 
-## 安装
+### 按任务类型快速定位
 
+| 任务类型 | 首选工具 | 备选工具 |
+|---------|---------|---------|
+| **新功能开发** | [autodev Skill](Claude/skills/aw-kernel/autodev/SKILL.md) | [feature-shipper Agent](Claude/agents/aw-kernel/feature-shipper.md) |
+| **代码分析** | [code-analyzer Agent](Claude/agents/aw-kernel/code-analyzer.md) | - |
+| **调试问题** | [code-debug-expert Agent](Claude/agents/aw-kernel/code-debug-expert.md) | [system-log-analyzer Agent](Claude/agents/aw-kernel/system-log-analyzer.md) |
+| **清理重构** | [code-project-cleaner Agent](Claude/agents/aw-kernel/code-project-cleaner.md) | - |
+| **需求澄清** | [requirement-refiner Agent](Claude/agents/aw-kernel/requirement-refiner.md) | - |
+| **资料研究** | [knowledge-researcher Agent](Claude/agents/aw-kernel/knowledge-researcher.md) | - |
+
+---
+
+## 🤖 Agents
+
+> **用途**：单任务专家，每个Agent专注一个领域
+
+### 核心 Agents
+
+| Agent | 文件 | 何时使用 | 核心能力 |
+|-------|------|---------|----------|
+| **feature-shipper** | [feature-shipper.md](Claude/agents/aw-kernel/feature-shipper.md) | 完整功能开发闭环 | Spec → Plan → Implement → Test → Deliver |
+| **code-analyzer** | [code-analyzer.md](Claude/agents/aw-kernel/code-analyzer.md) | 代码结构分析 | 架构洞察、依赖分析、质量评估 |
+| **code-debug-expert** | [code-debug-expert.md](Claude/agents/aw-kernel/code-debug-expert.md) | 问题定位与修复 | 根因分析、调试建议、修复方案 |
+| **code-project-cleaner** | [code-project-cleaner.md](Claude/agents/aw-kernel/code-project-cleaner.md) | 代码清理重构 | 死代码清理、重构建议、依赖优化 |
+| **requirement-refiner** | [requirement-refiner.md](Claude/agents/aw-kernel/requirement-refiner.md) | 需求澄清细化 | DoD细化、边界确认、验收标准 |
+| **system-log-analyzer** | [system-log-analyzer.md](Claude/agents/aw-kernel/system-log-analyzer.md) | 日志分析诊断 | 日志解读、异常检测、趋势分析 |
+| **knowledge-researcher** | [knowledge-researcher.md](Claude/agents/aw-kernel/knowledge-researcher.md) | 技术资料研究与归档 | 官方文档检索、最佳实践整理、知识沉淀 |
+
+### 位置
+```
+Claude/agents/aw-kernel/
+├── feature-shipper.md           # 功能交付闭环
+├── code-analyzer.md             # 代码分析
+├── code-debug-expert.md         # 调试专家
+├── code-project-cleaner.md      # 代码清理
+├── requirement-refiner.md       # 需求澄清
+├── system-log-analyzer.md      # 日志分析
+└── knowledge-researcher.md     # 技术研究与资料归档
+```
+
+### Agent 使用提示
+- ✅ **每个Agent专注一个领域**（避免万能主义）
+- ✅ **输入明确，输出结构化**（JSON格式）
+- ✅ **No Evidence, No Output**（必须有证据支撑）
+- ❌ **不要串行调用多个Agent**（使用Skill工作流）
+
+---
+
+## ⚡ Skills
+
+> **用途**：多任务工作流编排，连接多个Agent完成复杂流程
+
+### 核心 Skills
+
+| Skill | 目录 | 何时使用 | 核心能力 |
+|-------|------|---------|----------|
+| **autodev** | [autodev/](Claude/skills/aw-kernel/autodev/SKILL.md) | 自动化开发流程 | 需求分析 → 任务拆解 → 迭代开发 → 交付 |
+| **autodev-worktree** | [autodev-worktree/](Claude/skills/aw-kernel/autodev-worktree/SKILL.md) | 并行开发管理 | Git worktree、隔离工作区、智能合并 |
+
+### 位置
+```
+Claude/skills/aw-kernel/
+├── autodev/                     # 自动化开发流程
+│   ├── SKILL.md
+│   └── v0.1/
+└── autodev-worktree/            # Worktree管理
+    └── SKILL.md
+```
+
+### Skill 使用提示
+- ✅ **适合复杂流程**（多阶段、多Agent协作）
+- ✅ **用户一个命令启动**（简化操作）
+- ✅ **可配置参数**（适应不同场景）
+- ❌ **不要用于单次任务**（用Agent即可）
+
+---
+
+## 📦 安装与配置
+
+### 安装位置
+```
+~/.claude/                    # 全局安装目录
+├── agents/aw-kernel/         # Agents（从 Claude/agents/aw-kernel/ 安装）
+├── skills/aw-kernel/          # Skills（从 Claude/skills/aw-kernel/ 安装）
+└── commands/aw-kernel/       # Commands（如有）
+```
+
+### 安装方式
+
+**Linux/macOS/WSL:**
 ```bash
-# Linux/macOS/WSL
 bash Claude/scripts/install-global.sh
+```
 
-# Windows PowerShell
+**Windows PowerShell:**
+```powershell
 powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 ```
 
-安装后资源位于 `~/.claude/agents/aw-kernel/` 和 `~/.claude/skills/aw-kernel/`。
+### 安装选项
 
-## 目录结构
+| 选项 | 说明 | 适用场景 |
+|------|------|---------|
+| `--dry-run` | 预览模式（不实际安装） | 了解安装内容 |
+| `--force` | 强制覆盖安装 | 强制更新 |
+| `--namespace <name>` | 自定义命名空间 | 多版本并存 |
+| `--uninstall` | 卸载 | 清理环境 |
+
+### 详细文档
+- [安装脚本详细文档](Claude/scripts/README.md)
+
+---
+
+## 📚 文档体系
+
+### 文档类型与职责
+
+| 类型 | 职责 | 示例 |
+|------|------|------|
+| **宪法文档** | 协作规则与禁区 | [CLAUDE.md](CLAUDE.md) |
+| **项目文档** | 项目介绍与快速开始 | [README.md](README.md) |
+| **索引文档** | 文档路由与快速导航 | [INDEX.md](INDEX.md)（本文件） |
+| **技术文档** | 详细技术说明 | Agent、Skill、脚本文档 |
+| **设计文档** | 设计理念与架构 | [设计基线](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md) |
+| **分析文档** | 问题分析与改进 | [分析精华](docs/analysis/autodev-insights.md) |
+
+### 按使用频率分类
+
+#### 🔥 常用（每天）
+- [CLAUDE.md](CLAUDE.md) - 协作规则
+- [INDEX.md](INDEX.md) - 文档路由（本文件）
+- Agent文档 - 工具使用
+
+#### 📖 常用（每周）
+- [README.md](README.md) - 项目介绍
+- Skill文档 - 工作流执行
+- [安装脚本](Claude/scripts/README.md) - 安装配置
+
+#### 📚 备用（每月）
+- [设计基线](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md) - 设计理解
+- [分析精华](docs/analysis/autodev-insights.md) - 失败模式与改进要点
+- [路线图](ROADMAP.md) - 改进排期与里程碑
+
+---
+
+## 📁 目录结构（完整地图）
 
 ```
 AutoWorkflow/
-├── Claude/                         # 源资产
-│   ├── agents/aw-kernel/           # Agents
-│   ├── skills/aw-kernel/           # Skills
-│   ├── assets/                     # 通用资源
-│   └── scripts/                    # 脚本工具
-├── ClaudeCodeAgentDocuments/       # 设计文档
-│   └── 01_DesignBaseLines/         # 设计基线
-├── docs/                           # 附加文档
-├── README.md                       # 主文档
-└── INDEX.md                        # 本文件
+├── 📄 CLAUDE.md                    # 【宪法】协作规则与禁区
+├── 📄 README.md                    # 【项目】项目介绍与快速开始
+├── 📄 INDEX.md                     # 【索引】文档路由中心（本文件）
+├── 📄 ROADMAP.md                   # 【项目】路线图
+├── 📄 ClaudeCode协作最小共识_基准文本.md  # 【SoT】协作基线（基准文本 v0.3）
+├── 📄 AUTODEV_小需求更稳流程设计.md        # 【SoT】工作流结构与门禁标准
+├── 📄 AUTODEV_小需求更稳_Agent全量定义.md  # 【SoT】角色职责与产物契约/放行标准
+├── 📄 AUTODEV_资料萃取_用于Agent重写与工作流实现.md # 【资料】背景材料（非规范）
+│
+├── 📁 Claude/                      # 【源资产】Claude Code 资源
+│   ├── 📁 agents/aw-kernel/       # 【技术】Agents
+│   │   ├── feature-shipper.md
+│   │   ├── code-analyzer.md
+│   │   ├── code-debug-expert.md
+│   │   ├── code-project-cleaner.md
+│   │   ├── requirement-refiner.md
+│   │   ├── system-log-analyzer.md
+│   │   ├── knowledge-researcher.md
+│   │   ├── CLAUDE.md              # Agent全局配置
+│   │   ├── STANDARDS.md           # 失败处理规范
+│   │   ├── LOGGING.md             # 日志系统
+│   │   ├── VERSIONING.md          # 版本管理
+│   │   └── TOOLCHAIN.md           # 工具链说明
+│   │
+│   ├── 📁 skills/aw-kernel/        # 【技术】Skills
+│   │   ├── autodev/
+│   │   └── autodev-worktree/
+│   │
+│   ├── 📁 assets/                  # 【通用】模板资源
+│   │   └── templates/
+│   │
+│   ├── 📁 scripts/                 # 【工具】脚本工具
+│   │   ├── install-global.sh
+│   │   ├── install-global.ps1
+│   │   ├── claude_autoworkflow.py
+│   │   ├── claude_aw.sh
+│   │   ├── claude_aw.ps1
+│   │   └── README.md              # 脚本说明
+│   │
+│   └── 📄 README.md                # 【技术】源资产说明
+│
+├── 📁 ClaudeCodeAgentDocuments/    # 【设计】设计文档
+│   ├── 📁 01_DesignBaseLines/      # 设计基线
+│   │   ├── README.md              # 设计基线索引
+│   │   ├── autodev-architecture-v2.md
+│   │   ├── autodev-iteration-plan.md
+│   │   ├── IDEA-005-localized-instruction-cache.md
+│   │   ├── IDEA-006-mandatory-data-access.md
+│   │   ├── 📁 IDEA-006-implementation/
+│   │   └── 📁 archived/           # 已归档设计
+│   │
+│   └── 📁 00_TempFiles/           # 临时文件
+│
+├── 📁 docs/                       # 【用户】附加文档
+│   ├── AI高效使用指南.md
+│   └── 📁 analysis/               # 【分析】精华沉淀
+│       ├── README.md
+│       └── autodev-insights.md
+│
+├── 📁 archive/                    # 【归档】历史文档
+│   ├── work-docs/                 # 【归档】工作留档（阶段性记录）
+│   │   ├── OPTIMIZATION_SUMMARY.md
+│   │   ├── DOCUMENTATION_OPTIMIZATION_REPORT.md
+│   │   └── ROADMAP_legacy_v0.2.md
+│   ├── claude-agents/
+│   └── Trae-agents/
+│
+└── 📁 Claude_Official_Docs/       # 【外部】官方文档映射
+    ├── README.md
+    ├── skills.md
+    ├── hooks-guide.md
+    └── ...
 ```
 
-## 相关链接
+### 图例说明
+- 📄 文档文件
+- 📁 目录
+- 【类型】文档分类
 
-- [主 README](README.md)
-- [Claude/ 源资产说明](Claude/README.md)
-- [安装脚本文档](Claude/scripts/README.md)
-- [设计基线](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md)
+---
+
+## 🔍 搜索指南
+
+### 文档内容搜索
+
+**已知文档名**：
+- 直接在对应目录查找
+- 使用 [INDEX.md](#) 导航
+
+**未知文档名**：
+- 搜索文档内容：`rg "关键词" -g "*.md" --type md`
+
+**代码搜索**：
+- 搜索Agent实现：`rg "agent_name" --type md`
+
+### 快速查找技巧
+
+1. **按角色**：管理者看 [docs/analysis/](docs/analysis/)，开发者看 [Claude/](Claude/)
+2. **按类型**：宪法看 [CLAUDE.md](CLAUDE.md)，索引看 [INDEX.md](INDEX.md)
+3. **按任务**：开发看 [autodev](Claude/skills/aw-kernel/autodev/SKILL.md)，分析看 [code-analyzer](Claude/agents/aw-kernel/code-analyzer.md)
+
+---
+
+## ⚠️ 重要提示
+
+### 文档使用规范
+- ✅ **首次使用项目**：先读 [CLAUDE.md](CLAUDE.md) 了解规则
+- ✅ **寻找资源**：使用 [INDEX.md](INDEX.md) 快速导航
+- ✅ **具体任务**：只读相关Agent/Skill文档
+- ❌ **不要同时读多个同类文档**（避免冲突）
+
+### 维护规范
+- ✅ **新增文档前检查重复**（避免信息冗余）
+- ✅ **明确「何时读我」**（标注使用场景）
+- ✅ **每月评估价值**（删除低价值文档）
+- ❌ **不要在多个地方写相同内容**（避免同步困难）
+
+---
+
+**版本**：v1.0
+**最后更新**：2026-01-11
+**维护者**：浮浮酱

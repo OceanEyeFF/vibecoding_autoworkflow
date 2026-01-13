@@ -2,190 +2,120 @@
 
 > **aw-kernel**: 一套专为 Claude Code 设计的 Agent + Skill 工具链，覆盖需求澄清 → 计划 → 实现 → 测试 → 交付的完整闭环。
 
-## 特性
+## 当前开发方向（小需求更稳）
 
-- **命名空间隔离**：`aw-kernel` 命名空间设计，支持多版本并存，避免冲突
-- **全局安装**：一次安装，所有项目复用
-- **专业 Agents**：代码分析、需求澄清、功能交付、日志分析等专业 Agent
-- **Skill 工作流**：autodev 开发流程、Git worktree 管理等
-- **跨平台支持**：Linux/macOS/WSL 和 Windows PowerShell
+- 方向：小功能自动化工作流（入口规模 Gate + 需求契约 + 2-3-1 角色编排 + 证据型交付）。
+- 范围与非目标：以 `CLAUDE.md` 的“当前开发方向/非目标”为准；大任务必须先拆分后再进入流程。
+- 设计文档：
+  - [`AUTODEV_小需求更稳流程设计.md`](AUTODEV_小需求更稳流程设计.md)
+  - [`AUTODEV_小需求更稳_Agent全量定义.md`](AUTODEV_小需求更稳_Agent全量定义.md)
+  - [`AUTODEV_资料萃取_用于Agent重写与工作流实现.md`](AUTODEV_资料萃取_用于Agent重写与工作流实现.md)（背景材料）
 
-## 快速开始
+## ✨ 核心特性
 
-### 1. 全局安装（推荐）
+- **🗂️ 命名空间隔离**：`aw-kernel` 命名空间设计，支持多版本并存，避免冲突
+- **🚀 专业 Agents**：7个专业Agent，覆盖代码分析、调试、开发、清理、研究等全流程
+- **⚡ Skill 工作流**：autodev 开发流程、Git worktree 管理等复杂工作流编排
+- **🔧 强制数据访问**：No Evidence, No Output - 杜绝幻觉输出
+- **🌍 跨平台支持**：Linux/macOS/WSL 和 Windows PowerShell
 
-将 Agents 和 Skills 安装到 `~/.claude/` 全局目录，所有项目可用：
+## 🚀 快速开始（5分钟上手）
 
-**Linux/macOS/WSL:**
+### 第1步：安装工具
+
 ```bash
+# Linux/macOS/WSL
 bash Claude/scripts/install-global.sh
-```
 
-**Windows PowerShell:**
-```powershell
+# Windows PowerShell
 powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 ```
 
-**安装结果：**
-```
-~/.claude/
-├── agents/aw-kernel/           # Agents
-│   ├── code-analyzer.md
-│   ├── feature-shipper.md
-│   ├── requirement-refiner.md
-│   └── ...
-├── skills/aw-kernel/           # Skills
-│   ├── autodev/
-│   └── autodev-worktree/
-└── commands/aw-kernel/         # Commands（如有）
-```
+> 详细安装选项请参考：[安装脚本详细文档](Claude/scripts/README.md)
 
-### 2. 验证安装
+### 第2步：选择合适的工具
 
-```bash
-# Linux/macOS
-ls -la ~/.claude/agents/aw-kernel/
+根据您的任务类型选择工具：
 
-# Windows PowerShell
-Get-ChildItem $env:USERPROFILE\.claude\agents\aw-kernel\
-```
+| 任务类型 | 推荐工具 | 说明 |
+|---------|---------|------|
+| **新功能开发** | [autodev Skill](Claude/skills/aw-kernel/autodev/SKILL.md) | 完整开发流程，需求→任务→实现→交付 |
+| **代码分析** | [code-analyzer Agent](Claude/agents/aw-kernel/code-analyzer.md) | 架构洞察、依赖分析、质量评估 |
+| **调试问题** | [code-debug-expert Agent](Claude/agents/aw-kernel/code-debug-expert.md) | 根因分析、调试建议、修复方案 |
+| **清理重构** | [code-project-cleaner Agent](Claude/agents/aw-kernel/code-project-cleaner.md) | 死代码清理、重构建议 |
+| **需求澄清** | [requirement-refiner Agent](Claude/agents/aw-kernel/requirement-refiner.md) | DoD细化、边界确认 |
+| **资料研究** | [knowledge-researcher Agent](Claude/agents/aw-kernel/knowledge-researcher.md) | 官方文档/最佳实践检索与整理 |
 
-### 3. 使用 Agent
+### 第3步：启动工具
 
-在任意项目中启动 Claude Code，选择对应的 Agent：
+在任意项目中启动 Claude Code，选择对应的 Agent 或 Skill 即可开始工作。
 
-- **feature-shipper**：功能交付闭环（spec → plan → implement → test → deliver）
-- **code-analyzer**：代码分析与架构洞察
-- **requirement-refiner**：需求澄清与 DoD 细化
-- **code-debug-expert**：调试专家
-- **system-log-analyzer**：系统日志分析
-- **code-project-cleaner**：代码清理与重构
+## 🛠️ 核心工具
 
-## 安装选项
+### Agents（单任务专家）
 
-### 预览模式（不实际安装）
+| Agent | 核心能力 | 适用场景 |
+|-------|---------|---------|
+| **feature-shipper** | 功能交付闭环 | 完整功能开发（Spec→Plan→Implement→Test→Deliver） |
+| **code-analyzer** | 代码结构分析 | 架构洞察、依赖分析、质量评估 |
+| **code-debug-expert** | 问题定位与修复 | 根因分析、调试建议、修复方案 |
+| **code-project-cleaner** | 代码清理重构 | 死代码清理、重构建议、依赖优化 |
+| **requirement-refiner** | 需求澄清细化 | DoD细化、边界确认、验收标准 |
+| **system-log-analyzer** | 日志分析诊断 | 日志解读、异常检测、趋势分析 |
+| **knowledge-researcher** | 知识研究与资料沉淀 | 官方文档/最佳实践检索与整理 |
 
-```bash
-# Linux/macOS/WSL
-bash Claude/scripts/install-global.sh --dry-run
+### Skills（工作流编排）
 
-# Windows
-powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -DryRun
-```
+| Skill | 核心能力 | 适用场景 |
+|-------|---------|---------|
+| **autodev** | 自动化开发流程 | 需求分析 → 任务拆解 → 迭代开发 → 交付 |
+| **autodev-worktree** | 并行开发管理 | Git worktree、隔离工作区、智能合并 |
 
-### 强制覆盖安装
+## 📊 核心成就
 
-```bash
-# Linux/macOS/WSL
-bash Claude/scripts/install-global.sh --force
+- ✅ 7 个 aw-kernel Agents：`Claude/agents/aw-kernel/`
+- ✅ 2 个核心 Skills：`autodev` / `autodev-worktree`（`Claude/skills/aw-kernel/`）
+- ✅ 可选 `.autoworkflow` 工具链：见 [TOOLCHAIN.md](Claude/agents/aw-kernel/TOOLCHAIN.md)
 
-# Windows
-powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Force
-```
+## 📚 文档导航
 
-### 自定义命名空间
+### 核心文档
+- **[CLAUDE.md](CLAUDE.md)** - 项目宪法，协作规则与禁区
+- **[INDEX.md](INDEX.md)** - 文档路由中心，快速找到所需资源
+- **[快速开始](#快速开始)** - 本章节，5分钟上手指南
 
-```bash
-# Linux/macOS/WSL
-bash Claude/scripts/install-global.sh --namespace my-custom
+### 技术文档
+- **[Agent文档](Claude/agents/aw-kernel/)** - 7个专业Agent详细说明
+- **[Skill文档](Claude/skills/aw-kernel/)** - 工作流编排详细说明
+- **[安装脚本](Claude/scripts/README.md)** - 详细安装选项
 
-# Windows
-powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Namespace my-custom
-```
+### 设计文档
+- **[设计基线](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md)** - 设计理念与架构
+- **[分析精华](docs/analysis/autodev-insights.md)** - 失败模式与改进要点（可落地清单）
+- **[路线图](ROADMAP.md)** - 改进优先级与里程碑
 
-### 卸载
+## 🎯 使用建议
 
-```bash
-# Linux/macOS/WSL
-bash Claude/scripts/install-global.sh --uninstall --namespace aw-kernel
+### 正确方式
+- ✅ **单次任务用Agent**（专注、高效）
+- ✅ **复杂流程用Skill**（编排、自动化）
+- ✅ **No Evidence, No Output**（必须有证据支撑）
+- ✅ **新任务用新对话**（避免上下文污染）
 
-# Windows
-powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Uninstall -Namespace aw-kernel
-```
+### 避免方式
+- ❌ **不要串行调用多个Agent**（用Skill工作流）
+- ❌ **不要超长对话**（复杂任务拆分为多个短对话）
+- ❌ **不要无证据输出**（必须引用文件或数据）
 
-## 目录结构
+## 🔄 持续优化
 
-```
-AutoWorkflow/
-├── Claude/                         # Claude Code 源资产
-│   ├── agents/aw-kernel/           # Agents（命名空间隔离）
-│   │   ├── code-analyzer.md        # 代码分析 Agent
-│   │   ├── code-debug-expert.md    # 调试专家 Agent
-│   │   ├── code-project-cleaner.md # 代码清理 Agent
-│   │   ├── feature-shipper.md      # 功能交付 Agent
-│   │   ├── requirement-refiner.md  # 需求澄清 Agent
-│   │   ├── system-log-analyzer.md  # 日志分析 Agent
-│   │   ├── CLAUDE.md               # Agent 全局配置
-│   │   └── TOOLCHAIN.md            # 工具链说明
-│   ├── skills/aw-kernel/           # Skills（命名空间隔离）
-│   │   ├── autodev/                # 自动化开发流程
-│   │   └── autodev-worktree/       # Git worktree 管理
-│   ├── assets/                     # 通用资源
-│   │   └── templates/              # 配置模板
-│   └── scripts/                    # 脚本工具
-│       ├── install-global.sh       # 全局安装脚本（Linux/macOS）
-│       ├── install-global.ps1      # 全局安装脚本（Windows）
-│       └── README.md               # 脚本详细文档
-├── ClaudeCodeAgentDocuments/       # 设计文档（归档）
-└── README.md                       # 本文件
-```
+- 参见：[ROADMAP.md](ROADMAP.md)
 
-## Agent 说明
+## 💡 更多信息
 
-| Agent | 用途 | 核心能力 |
-|-------|------|----------|
-| **feature-shipper** | 功能交付闭环 | Spec 打磨 → Plan → Implement → Gate → Deliver |
-| **code-analyzer** | 代码分析 | 架构洞察、依赖分析、代码质量评估 |
-| **requirement-refiner** | 需求澄清 | DoD 细化、边界确认、验收标准 |
-| **code-debug-expert** | 调试专家 | 问题定位、根因分析、修复建议 |
-| **system-log-analyzer** | 日志分析 | 日志解读、异常检测、趋势分析 |
-| **code-project-cleaner** | 代码清理 | 死代码清理、重构建议、依赖优化 |
-
-## Skill 说明
-
-| Skill | 用途 | 核心功能 |
-|-------|------|----------|
-| **autodev** | 自动化开发 | 需求分析 → 任务拆解 → 迭代开发 → 测试验证 |
-| **autodev-worktree** | Worktree 管理 | 并行开发分支、隔离工作区、智能合并 |
-
-## 命名空间设计
-
-采用命名空间隔离机制，支持多版本并存：
-
-```
-~/.claude/
-├── agents/
-│   ├── aw-kernel/     # 核心版本（本仓库默认）
-│   ├── aw-dev/        # 开发/实验版本
-│   └── my-custom/     # 自定义版本
-├── skills/
-│   ├── aw-kernel/
-│   ├── aw-dev/
-│   └── my-custom/
-└── commands/
-    └── ...
-```
-
-**命名空间优势**：
-- 不同来源的 Agents 不会冲突
-- 支持多版本并存（稳定版 + 开发版）
-- 便于团队协作（团队共享 + 个人定制）
-- 安装/卸载独立管理
-
-## 文档索引
-
-- [安装脚本详细文档](Claude/scripts/README.md)
-- [设计基线文档](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md)
-
-## 兼容性
-
-- **Claude Code**: 全版本支持
-- **操作系统**: Linux, macOS, Windows (PowerShell 5.1+), WSL/WSL2
-- **Shell**: Bash, Zsh, PowerShell
-
-## 致谢
-
-感谢使用 AutoWorkflow！如有问题或建议，欢迎提交 Issue / PR。
+- **完整目录结构** → [INDEX.md#目录结构](INDEX.md#目录结构)
+- **安装详细选项** → [Claude/scripts/README.md](Claude/scripts/README.md)
+- **设计理念** → [ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md)
 
 ---
 
