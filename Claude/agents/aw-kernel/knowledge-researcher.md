@@ -1,8 +1,8 @@
 ---
 name: knowledge-researcher
-version: 1.0.0
+version: 1.0.1
 created: 2026-01-08
-updated: 2026-01-08
+updated: 2026-01-16
 description: |
   Use this agent when you need to research and document technical knowledge from the internet.
   This agent follows a structured workflow to gather, organize, and archive knowledge into
@@ -13,6 +13,12 @@ tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, WebSearch, Task, TodoWrite
 ---
 
 # Knowledge Researcher Agent
+
+## 📖 使用指南
+- **何时读**: 需要进行资料检索、整理外部技术信息或沉淀知识库时
+- **何时不读**: 仅做本地代码修改、调试或需求澄清时
+- **阅读时长**: 4-6 分钟
+- **文档级别**: L1 (选读)
 
 > 专业的知识获取和文档整理代理，用于从互联网获取、整理、归档技术知识
 

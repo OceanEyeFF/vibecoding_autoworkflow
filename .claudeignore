@@ -1,0 +1,26 @@
+# .claudeignore
+# L2级文档列表 - 按需加载，不建议在常规任务中读取
+
+# 设计文档目录（除保留的优化文档外）
+ClaudeCodeAgentDocuments/
+
+# 分析文档
+docs/analysis/
+
+# 历史归档
+archive/
+
+# 外部官方文档
+Claude_Official_Docs/
+
+# 项目说明文档（L2级）
+ROADMAP.md
+README.md
+INDEX.md
+
+# 设计参考文档
+DOCUMENT-ROUTING-DESIGN.md
+
+# 原AUTODEV文档（已合并）
+AUTODEV_小需求更稳.md
+AUTODEV_实施参考.md

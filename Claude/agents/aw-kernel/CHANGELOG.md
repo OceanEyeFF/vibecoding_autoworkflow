@@ -10,10 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- 待发布的新功能
+- 新增路由入口别名：ship / review / clarify / logs / clean
 
 ### Changed
-- 待发布的变更
+- **code-analyzer**: 精简示例与通用规则，补充使用指南
+- **code-debug-expert**: 精简示例与通用规则，补充使用指南
+- **code-project-cleaner**: 精简示例与通用规则，补充使用指南
+- **system-log-analyzer**: 精简示例与通用规则，补充使用指南
+- **knowledge-researcher**: 补充使用指南
 
 ### Fixed
 - 待发布的修复
