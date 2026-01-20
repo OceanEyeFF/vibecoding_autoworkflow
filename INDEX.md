@@ -4,12 +4,8 @@
 
 ## 当前开发方向（小需求更稳）
 
-- 范围与非目标：以 `CLAUDE.md` 的“当前开发方向/非目标”为准；大任务必须先拆分后再进入流程。
-- 协作基线（单一事实源）：[`ClaudeCode协作最小共识_基准文本.md`](ClaudeCode协作最小共识_基准文本.md)
-- 设计文档（单一事实源）：
-  - [`AUTODEV_小需求更稳流程设计.md`](AUTODEV_小需求更稳流程设计.md)
-  - [`AUTODEV_小需求更稳_Agent全量定义.md`](AUTODEV_小需求更稳_Agent全量定义.md)
-- 资料萃取（背景材料）：[`AUTODEV_资料萃取_用于Agent重写与工作流实现.md`](AUTODEV_资料萃取_用于Agent重写与工作流实现.md)
+- 范围与非目标：以 `CLAUDE.md` 的"当前开发方向/非目标"为准；大任务必须先拆分后再进入流程。
+- 工作流文档（单一事实源）：[`AUTODEV_小任务工作流.md`](AUTODEV_小任务工作流.md) - 包含流程设计、角色定义、实施参考
 
 ## 🎯 快速导航
 
@@ -183,10 +179,7 @@ AutoWorkflow/
 ├── 📄 README.md                    # 【项目】项目介绍与快速开始
 ├── 📄 INDEX.md                     # 【索引】文档路由中心（本文件）
 ├── 📄 ROADMAP.md                   # 【项目】路线图
-├── 📄 ClaudeCode协作最小共识_基准文本.md  # 【SoT】协作基线（基准文本 v0.3）
-├── 📄 AUTODEV_小需求更稳流程设计.md        # 【SoT】工作流结构与门禁标准
-├── 📄 AUTODEV_小需求更稳_Agent全量定义.md  # 【SoT】角色职责与产物契约/放行标准
-├── 📄 AUTODEV_资料萃取_用于Agent重写与工作流实现.md # 【资料】背景材料（非规范）
+├── 📄 AUTODEV_小任务工作流.md      # 【SoT】工作流设计与实施参考（合并版）
 │
 ├── 📁 Claude/                      # 【源资产】Claude Code 资源
 │   ├── 📁 agents/aw-kernel/       # 【技术】Agents

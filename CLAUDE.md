@@ -52,7 +52,7 @@ AutoWorkflow 是面向小需求交付的 Claude Code Agent 工具链，目标是
 | CLAUDE.md Part 1 | L0 必读 | 首次进入项目、协作规则不确定 | 本文件 Part 1 | 不与其他文档并读 |
 | Agent 文档 | L1 选读 | 明确任务执行 | Claude/agents/aw-kernel/*.md | 不与其它 Agent 文档并读 |
 | Skill 文档 | L1 选读 | 需要工作流步骤/编排 | Claude/skills/**/SKILL.md | 不与同任务的多 Skill 并读 |
-| AUTODEV 规范文档 | L1 选读 | 小需求流程与门禁 | AUTODEV_小需求更稳流程设计.md / AUTODEV_小需求更稳_Agent全量定义.md | 不与背景/分析文档并读 |
+| AUTODEV 规范文档 | L1 选读 | 小需求流程与门禁 | AUTODEV_小任务工作流.md | 不与背景/分析文档并读 |
 | 项目介绍 | L2 按需 | 了解全局与上手 | README.md | 不在具体任务执行时读 |
 | 路线图与计划 | L2 按需 | 了解里程碑与方向 | ROADMAP.md | 不在问题诊断时读 |
 | 分析/设计/历史 | L2 按需 | 需要背景或复盘 | docs/analysis/ / ClaudeCodeAgentDocuments/ / archive/ | 不与任务执行并读 |
