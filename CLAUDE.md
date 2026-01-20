@@ -39,11 +39,11 @@ AutoWorkflow 是面向小需求交付的 Claude Code Agent 工具链，目标是
 ### 2.1 按任务类型路由表
 | 任务类型 | 首选文档 | 备选文档 |
 |---|---|---|
-| 新功能开发 | [autodev Skill](Claude/skills/aw-kernel/autodev/SKILL.md) | [feature-shipper Agent](Claude/agents/aw-kernel/feature-shipper.md) |
-| 代码分析 | [code-analyzer Agent](Claude/agents/aw-kernel/code-analyzer.md) | - |
-| 调试问题 | [code-debug-expert Agent](Claude/agents/aw-kernel/code-debug-expert.md) | [system-log-analyzer Agent](Claude/agents/aw-kernel/system-log-analyzer.md) |
-| 清理重构 | [code-project-cleaner Agent](Claude/agents/aw-kernel/code-project-cleaner.md) | - |
-| 需求澄清 | [requirement-refiner Agent](Claude/agents/aw-kernel/requirement-refiner.md) | - |
+| 新功能开发 | [autodev Skill](Claude/skills/aw-kernel/autodev/SKILL.md) | [ship Agent](Claude/agents/aw-kernel/ship.md) |
+| 代码分析 | [review Agent](Claude/agents/aw-kernel/review.md) | - |
+| 调试问题 | [code-debug-expert Agent](Claude/agents/aw-kernel/code-debug-expert.md) | [logs Agent](Claude/agents/aw-kernel/logs.md) |
+| 清理重构 | [clean Agent](Claude/agents/aw-kernel/clean.md) | - |
+| 需求澄清 | [clarify Agent](Claude/agents/aw-kernel/clarify.md) | - |
 | 资料研究 | [knowledge-researcher Agent](Claude/agents/aw-kernel/knowledge-researcher.md) | - |
 
 ### 2.2 按文档类型路由表
