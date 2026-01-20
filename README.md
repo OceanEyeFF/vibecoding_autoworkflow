@@ -75,7 +75,7 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 
 - ✅ 7 个 aw-kernel Agents：`Claude/agents/aw-kernel/`
 - ✅ 2 个核心 Skills：`autodev` / `autodev-worktree`（`Claude/skills/aw-kernel/`）
-- ✅ 可选 `.autoworkflow` 工具链：见 [TOOLCHAIN.md](Claude/agents/aw-kernel/TOOLCHAIN.md)
+- ✅ 可选 `.autoworkflow` 工具链：见 [TOOLCHAIN.md](Claude/docs/aw-kernel/TOOLCHAIN.md)
 
 ## 📚 文档导航
 

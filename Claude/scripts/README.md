@@ -362,8 +362,8 @@ bash Claude/scripts/install-global.sh
 
 ## 📚 相关文档
 
-- [CLAUDE.md](../agents/aw-kernel/CLAUDE.md) - Agents 使用指南
-- [TOOLCHAIN.md](../agents/aw-kernel/TOOLCHAIN.md) - 工具链详细文档
+- [CLAUDE.md](../docs/aw-kernel/CLAUDE.md) - Agents 使用指南
+- [TOOLCHAIN.md](../docs/aw-kernel/TOOLCHAIN.md) - 工具链详细文档
 - [../README.md](../README.md) - Claude 目录总说明
 
 ---
