@@ -31,7 +31,7 @@
 |---------|---------|---------|
 | **新功能开发** | [autodev Skill](Claude/skills/aw-kernel/autodev/SKILL.md) | [ship Agent](Claude/agents/aw-kernel/ship.md) |
 | **代码分析** | [review Agent](Claude/agents/aw-kernel/review.md) | - |
-| **调试问题** | [code-debug-expert Agent](Claude/agents/aw-kernel/code-debug-expert.md) | [logs Agent](Claude/agents/aw-kernel/logs.md) |
+| **日志分析** | [logs Agent](Claude/agents/aw-kernel/logs.md) | - |
 | **清理重构** | [clean Agent](Claude/agents/aw-kernel/clean.md) | - |
 | **需求澄清** | [clarify Agent](Claude/agents/aw-kernel/clarify.md) | - |
 | **资料研究** | [knowledge-researcher Agent](Claude/agents/aw-kernel/knowledge-researcher.md) | - |
@@ -46,24 +46,22 @@
 
 | Agent | 文件 | 何时使用 | 核心能力 |
 |-------|------|---------|----------|
-| **feature-shipper** | [feature-shipper.md](Claude/agents/aw-kernel/feature-shipper.md) | 完整功能开发闭环 | Spec → Plan → Implement → Test → Deliver |
-| **code-analyzer** | [code-analyzer.md](Claude/agents/aw-kernel/code-analyzer.md) | 代码结构分析 | 架构洞察、依赖分析、质量评估 |
-| **code-debug-expert** | [code-debug-expert.md](Claude/agents/aw-kernel/code-debug-expert.md) | 问题定位与修复 | 根因分析、调试建议、修复方案 |
-| **code-project-cleaner** | [code-project-cleaner.md](Claude/agents/aw-kernel/code-project-cleaner.md) | 代码清理重构 | 死代码清理、重构建议、依赖优化 |
-| **requirement-refiner** | [requirement-refiner.md](Claude/agents/aw-kernel/requirement-refiner.md) | 需求澄清细化 | DoD细化、边界确认、验收标准 |
-| **system-log-analyzer** | [system-log-analyzer.md](Claude/agents/aw-kernel/system-log-analyzer.md) | 日志分析诊断 | 日志解读、异常检测、趋势分析 |
+| **ship** | [ship.md](Claude/agents/aw-kernel/ship.md) | 功能开发闭环 | Spec → Plan → Implement → Test → Deliver |
+| **review** | [review.md](Claude/agents/aw-kernel/review.md) | 代码结构分析 | 架构洞察、依赖分析、质量评估 |
+| **logs** | [logs.md](Claude/agents/aw-kernel/logs.md) | 日志分析诊断 | 日志解读、异常检测、趋势分析 |
+| **clean** | [clean.md](Claude/agents/aw-kernel/clean.md) | 代码清理重构 | 死代码清理、重构建议、依赖优化 |
+| **clarify** | [clarify.md](Claude/agents/aw-kernel/clarify.md) | 需求澄清细化 | DoD细化、边界确认、验收标准 |
 | **knowledge-researcher** | [knowledge-researcher.md](Claude/agents/aw-kernel/knowledge-researcher.md) | 技术资料研究与归档 | 官方文档检索、最佳实践整理、知识沉淀 |
 
 ### 位置
 ```
 Claude/agents/aw-kernel/
-├── feature-shipper.md           # 功能交付闭环
-├── code-analyzer.md             # 代码分析
-├── code-debug-expert.md         # 调试专家
-├── code-project-cleaner.md      # 代码清理
-├── requirement-refiner.md       # 需求澄清
-├── system-log-analyzer.md      # 日志分析
-└── knowledge-researcher.md     # 技术研究与资料归档
+├── ship.md                      # 功能交付
+├── review.md                    # 代码分析
+├── logs.md                      # 日志分析
+├── clean.md                     # 代码清理
+├── clarify.md                   # 需求澄清
+└── knowledge-researcher.md      # 资料研究
 ```
 
 ### Agent 使用提示
@@ -183,18 +181,21 @@ AutoWorkflow/
 │
 ├── 📁 Claude/                      # 【源资产】Claude Code 资源
 │   ├── 📁 agents/aw-kernel/       # 【技术】Agents
-│   │   ├── feature-shipper.md
-│   │   ├── code-analyzer.md
-│   │   ├── code-debug-expert.md
-│   │   ├── code-project-cleaner.md
-│   │   ├── requirement-refiner.md
-│   │   ├── system-log-analyzer.md
-│   │   ├── knowledge-researcher.md
+│   │   ├── ship.md
+│   │   ├── review.md
+│   │   ├── logs.md
+│   │   ├── clean.md
+│   │   ├── clarify.md
+│   │   └── knowledge-researcher.md
+│   │
+│   ├── 📁 docs/aw-kernel/          # 【配置】Agent 全局配置与规范
 │   │   ├── CLAUDE.md              # Agent全局配置
 │   │   ├── STANDARDS.md           # 失败处理规范
 │   │   ├── LOGGING.md             # 日志系统
 │   │   ├── VERSIONING.md          # 版本管理
-│   │   └── TOOLCHAIN.md           # 工具链说明
+│   │   ├── CHANGELOG.md           # 变更日志
+│   │   ├── TOOLCHAIN.md           # 工具链说明
+│   │   └── reports/               # 报告目录
 │   │
 │   ├── 📁 skills/aw-kernel/        # 【技术】Skills
 │   │   ├── autodev/
@@ -271,7 +272,7 @@ AutoWorkflow/
 
 1. **按角色**：管理者看 [docs/analysis/](docs/analysis/)，开发者看 [Claude/](Claude/)
 2. **按类型**：宪法看 [CLAUDE.md](CLAUDE.md)，索引看 [INDEX.md](INDEX.md)
-3. **按任务**：开发看 [autodev](Claude/skills/aw-kernel/autodev/SKILL.md)，分析看 [code-analyzer](Claude/agents/aw-kernel/code-analyzer.md)
+3. **按任务**：开发看 [autodev](Claude/skills/aw-kernel/autodev/SKILL.md)，分析看 [review](Claude/agents/aw-kernel/review.md)
 
 ---
 

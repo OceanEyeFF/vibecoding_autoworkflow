@@ -40,10 +40,10 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 | 任务类型 | 推荐工具 | 说明 |
 |---------|---------|------|
 | **新功能开发** | [autodev Skill](Claude/skills/aw-kernel/autodev/SKILL.md) | 完整开发流程，需求→任务→实现→交付 |
-| **代码分析** | [code-analyzer Agent](Claude/agents/aw-kernel/code-analyzer.md) | 架构洞察、依赖分析、质量评估 |
-| **调试问题** | [code-debug-expert Agent](Claude/agents/aw-kernel/code-debug-expert.md) | 根因分析、调试建议、修复方案 |
-| **清理重构** | [code-project-cleaner Agent](Claude/agents/aw-kernel/code-project-cleaner.md) | 死代码清理、重构建议 |
-| **需求澄清** | [requirement-refiner Agent](Claude/agents/aw-kernel/requirement-refiner.md) | DoD细化、边界确认 |
+| **代码分析** | [review Agent](Claude/agents/aw-kernel/review.md) | 架构洞察、依赖分析、质量评估 |
+| **日志分析** | [logs Agent](Claude/agents/aw-kernel/logs.md) | 日志解读、异常检测 |
+| **清理重构** | [clean Agent](Claude/agents/aw-kernel/clean.md) | 死代码清理、重构建议 |
+| **需求澄清** | [clarify Agent](Claude/agents/aw-kernel/clarify.md) | DoD细化、边界确认 |
 | **资料研究** | [knowledge-researcher Agent](Claude/agents/aw-kernel/knowledge-researcher.md) | 官方文档/最佳实践检索与整理 |
 
 ### 第3步：启动工具
@@ -56,12 +56,11 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 
 | Agent | 核心能力 | 适用场景 |
 |-------|---------|---------|
-| **feature-shipper** | 功能交付闭环 | 完整功能开发（Spec→Plan→Implement→Test→Deliver） |
-| **code-analyzer** | 代码结构分析 | 架构洞察、依赖分析、质量评估 |
-| **code-debug-expert** | 问题定位与修复 | 根因分析、调试建议、修复方案 |
-| **code-project-cleaner** | 代码清理重构 | 死代码清理、重构建议、依赖优化 |
-| **requirement-refiner** | 需求澄清细化 | DoD细化、边界确认、验收标准 |
-| **system-log-analyzer** | 日志分析诊断 | 日志解读、异常检测、趋势分析 |
+| **ship** | 功能交付闭环 | 完整功能开发（Spec→Plan→Implement→Test→Deliver） |
+| **review** | 代码结构分析 | 架构洞察、依赖分析、质量评估 |
+| **logs** | 日志分析诊断 | 日志解读、异常检测、趋势分析 |
+| **clean** | 代码清理重构 | 死代码清理、重构建议、依赖优化 |
+| **clarify** | 需求澄清细化 | DoD细化、边界确认、验收标准 |
 | **knowledge-researcher** | 知识研究与资料沉淀 | 官方文档/最佳实践检索与整理 |
 
 ### Skills（工作流编排）

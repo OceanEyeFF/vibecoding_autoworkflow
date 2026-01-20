@@ -17,12 +17,11 @@ AutoWorkflow 是面向小需求交付的 Claude Code Agent 工具链，目标是
 ### Agent 快速清单
 | 任务/意图 | 首选 Agent | 入口文档 |
 |---|---|---|
-| 新功能开发 | feature-shipper | [Claude/agents/aw-kernel/feature-shipper.md](Claude/agents/aw-kernel/feature-shipper.md) |
-| 代码分析 | code-analyzer | [Claude/agents/aw-kernel/code-analyzer.md](Claude/agents/aw-kernel/code-analyzer.md) |
-| 调试问题 | code-debug-expert | [Claude/agents/aw-kernel/code-debug-expert.md](Claude/agents/aw-kernel/code-debug-expert.md) |
-| 日志/系统排查 | system-log-analyzer | [Claude/agents/aw-kernel/system-log-analyzer.md](Claude/agents/aw-kernel/system-log-analyzer.md) |
-| 清理重构 | code-project-cleaner | [Claude/agents/aw-kernel/code-project-cleaner.md](Claude/agents/aw-kernel/code-project-cleaner.md) |
-| 需求澄清 | requirement-refiner | [Claude/agents/aw-kernel/requirement-refiner.md](Claude/agents/aw-kernel/requirement-refiner.md) |
+| 新功能开发 | ship | [Claude/agents/aw-kernel/ship.md](Claude/agents/aw-kernel/ship.md) |
+| 代码分析 | review | [Claude/agents/aw-kernel/review.md](Claude/agents/aw-kernel/review.md) |
+| 日志分析 | logs | [Claude/agents/aw-kernel/logs.md](Claude/agents/aw-kernel/logs.md) |
+| 清理重构 | clean | [Claude/agents/aw-kernel/clean.md](Claude/agents/aw-kernel/clean.md) |
+| 需求澄清 | clarify | [Claude/agents/aw-kernel/clarify.md](Claude/agents/aw-kernel/clarify.md) |
 | 资料研究 | knowledge-researcher | [Claude/agents/aw-kernel/knowledge-researcher.md](Claude/agents/aw-kernel/knowledge-researcher.md) |
 
 ### 文档路由指南（decision tree）
@@ -41,7 +40,7 @@ AutoWorkflow 是面向小需求交付的 Claude Code Agent 工具链，目标是
 |---|---|---|
 | 新功能开发 | [autodev Skill](Claude/skills/aw-kernel/autodev/SKILL.md) | [ship Agent](Claude/agents/aw-kernel/ship.md) |
 | 代码分析 | [review Agent](Claude/agents/aw-kernel/review.md) | - |
-| 调试问题 | [code-debug-expert Agent](Claude/agents/aw-kernel/code-debug-expert.md) | [logs Agent](Claude/agents/aw-kernel/logs.md) |
+| 日志分析 | [logs Agent](Claude/agents/aw-kernel/logs.md) | - |
 | 清理重构 | [clean Agent](Claude/agents/aw-kernel/clean.md) | - |
 | 需求澄清 | [clarify Agent](Claude/agents/aw-kernel/clarify.md) | - |
 | 资料研究 | [knowledge-researcher Agent](Claude/agents/aw-kernel/knowledge-researcher.md) | - |
