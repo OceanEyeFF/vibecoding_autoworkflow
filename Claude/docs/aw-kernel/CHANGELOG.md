@@ -13,10 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 新增路由入口别名：ship / review / clarify / logs / clean
 
 ### Changed
-- **code-analyzer**: 精简示例与通用规则，补充使用指南
-- **code-debug-expert**: 精简示例与通用规则，补充使用指南
-- **code-project-cleaner**: 精简示例与通用规则，补充使用指南
-- **system-log-analyzer**: 精简示例与通用规则，补充使用指南
+- **review**: 精简示例与通用规则，补充使用指南
+- **debug (已删除)**: 精简示例与通用规则，补充使用指南
+- **clean**: 精简示例与通用规则，补充使用指南
+- **logs**: 精简示例与通用规则，补充使用指南
 - **knowledge-researcher**: 补充使用指南
 
 ### Fixed
@@ -34,12 +34,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **LOGGING.md**: 重构日志系统为 Phase 2 Hooks 方案（零 Token 消耗）
 - **所有 Agents**: 移除内嵌日志指令，改用 Hooks 自动记录
-- **code-analyzer**: 更新 frontmatter，添加版本信息
-- **code-debug-expert**: 更新 frontmatter，添加版本信息
-- **code-project-cleaner**: 更新 frontmatter，添加版本信息
-- **feature-shipper**: 更新 frontmatter，添加版本信息
-- **requirement-refiner**: 更新 frontmatter，添加版本信息
-- **system-log-analyzer**: 更新 frontmatter，添加版本信息
+- **review**: 更新 frontmatter，添加版本信息
+- **debug (已删除)**: 更新 frontmatter，添加版本信息
+- **clean**: 更新 frontmatter，添加版本信息
+- **ship**: 更新 frontmatter，添加版本信息
+- **clarify**: 更新 frontmatter，添加版本信息
+- **logs**: 更新 frontmatter，添加版本信息
 
 ### Documentation
 - 整理 Claude Code 官方文档知识库（Skills, Hooks, Subagents, MCP 完整指南）
@@ -50,12 +50,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **核心 Agents**（6 个）:
-  - `code-analyzer`: 代码结构和架构分析
-  - `code-debug-expert`: 调试诊断专家
-  - `code-project-cleaner`: 项目清理工具
-  - `feature-shipper`: 功能交付执行器
-  - `requirement-refiner`: 需求精炼器
-  - `system-log-analyzer`: 系统日志分析器
+  - `review`: 代码结构和架构分析
+  - `debug (已删除)`: 调试诊断专家
+  - `clean`: 项目清理工具
+  - `ship`: 功能交付执行器
+  - `clarify`: 需求精炼器
+  - `logs`: 系统日志分析器
 
 - **Skills**（2 个）:
   - `autodev`: 自动化开发工作流

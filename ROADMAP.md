@@ -1,7 +1,7 @@
 ﻿# AW-Kernel 项目路线图（v0.3）
 
-> 创建时间：2026-01-06  
-> 最后更新：2026-01-11  
+> 创建时间：2026-01-06
+> 最后更新：2026-01-20  
 > 范围：单个小需求/小任务（建议 0.5～2 小时闭环）  
 > 一句话总纲：用文档承载项目状态，用证据放行交付，用入口 Gate 把大任务挡在门外  
 > 规范来源：见「二、规范性引用」  
@@ -53,11 +53,12 @@
 
 ## 三、目标与非目标
 
-### 3.0 当前状态快照（2026-01-10）
+### 3.0 当前状态快照（2026-01-20）
 
-- 核心 Agents：`Claude/agents/aw-kernel/`（7 个：code-analyzer、code-debug-expert、code-project-cleaner、feature-shipper、requirement-refiner、system-log-analyzer、knowledge-researcher）
+- 核心 Agents：`Claude/agents/aw-kernel/`（6 个：ship、review、logs、clean、clarify、knowledge-researcher）
 - 核心 Skills：`Claude/skills/aw-kernel/`（`autodev/`、`autodev-worktree/`；其中 v0.1 在 `Claude/skills/aw-kernel/autodev/v0.1/`）
 - Hooks（已落地示例）：`.claude/hooks/agent-logger.py`（记录 Agent 执行日志）
+- 命名策略：高频任务用简短命名（ship/review/logs/clean/clarify），专业领域保留完整命名（knowledge-researcher）
 
 ### 3.1 目标（只做这些）
 
@@ -103,12 +104,12 @@
 
 ### 4.3 现有 aw-kernel Agent 的角色映射（渐进式）
 
-> 目标：先复用现有 Agent，再逐步把职责收敛到“段内单一职责”。
+> 目标：先复用现有 Agent，再逐步把职责收敛到"段内单一职责"。
 
-- `requirement-refiner` → Spec-Owner（需求契约产出）
+- `clarify` → Spec-Owner（需求契约产出）
 - （新增或从现有职责拆出）→ Spec-Gatekeeper（需求门禁放行）
-- `feature-shipper` → Implementer（实现，不宣称通过）
-- `code-analyzer` → Reviewer（对照契约挑错，输出问题清单）
+- `ship` → Implementer（实现，不宣称通过）
+- `review` → Reviewer（对照契约挑错，输出问题清单）
 - （新增/组合）→ Verifier（证据验证与最小证据集产出）
 - （可复用或新增）→ Finalizer（交付整合与证据索引）
 

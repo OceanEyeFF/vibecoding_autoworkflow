@@ -35,7 +35,7 @@
 
 | 类型 | 路径 | 示例 |
 |------|------|------|
-| **Agents** | `Claude/agents/aw-kernel/*.md` | code-analyzer.md |
+| **Agents** | `Claude/agents/aw-kernel/*.md` | review.md |
 | **Skills** | `Claude/skills/aw-kernel/*/SKILL.md` | autodev/SKILL.md |
 | **基础设施文档** | `Claude/agents/aw-kernel/*.md` | LOGGING.md, TOOLCHAIN.md |
 
@@ -80,7 +80,7 @@ v1.2.3
 
 ```yaml
 ---
-name: code-analyzer
+name: review
 version: 1.0.0
 created: 2026-01-06
 updated: 2026-01-08
@@ -95,7 +95,7 @@ tools: Read, Grep, Glob, Bash, TodoWrite
 
 | 字段 | 类型 | 说明 | 示例 |
 |------|------|------|------|
-| `name` | string | Agent 唯一标识符 | `code-analyzer` |
+| `name` | string | Agent 唯一标识符 | `review` |
 | `version` | string | 语义化版本号 | `1.0.0` |
 | `created` | date | 创建日期 | `2026-01-06` |
 | `updated` | date | 最后更新日期 | `2026-01-08` |
@@ -108,7 +108,7 @@ tools: Read, Grep, Glob, Bash, TodoWrite
 | 字段 | 类型 | 说明 | 示例 |
 |------|------|------|------|
 | `deprecated` | boolean | 是否已废弃 | `true` |
-| `superseded_by` | string | 被哪个版本替代 | `code-analyzer-v2` |
+| `superseded_by` | string | 被哪个版本替代 | `review-v2` |
 | `min_claude_version` | string | 最低 Claude Code 版本要求 | `1.0.0` |
 
 ### Skill 元数据
@@ -204,14 +204,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2026-01-15
 
 ### Added
-- code-analyzer: 支持 Rust 语言分析
+- review: 支持 Rust 语言分析
 - knowledge-researcher: 新增知识获取 Agent
 
 ### Changed
 - LOGGING.md: 重构为 Hooks 方案
 
 ### Fixed
-- feature-shipper: 修复 Git stash 操作失败问题
+- ship: 修复 Git stash 操作失败问题
 
 ---
 

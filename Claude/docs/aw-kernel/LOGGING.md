@@ -114,8 +114,8 @@ AW-Kernel 日志系统是一个轻量级的 Agent 执行记录系统，旨在提
 每条日志占一行，每行是一个独立的 JSON 对象：
 
 ```jsonl
-{"ts":"2026-01-07T10:30:22Z","tool":"claude-code","session":"session_20260107_103022_12345","kind":"agent_start","agent":"code-analyzer","task":"分析 src/ 目录的代码质量"}
-{"ts":"2026-01-07T10:31:02Z","tool":"claude-code","session":"session_20260107_103022_12345","kind":"agent_end","agent":"code-analyzer","status":"success","duration_ms":40000,"summary":"发现 3 个改进点"}
+{"ts":"2026-01-07T10:30:22Z","tool":"claude-code","session":"session_20260107_103022_12345","kind":"agent_start","agent":"review","task":"分析 src/ 目录的代码质量"}
+{"ts":"2026-01-07T10:31:02Z","tool":"claude-code","session":"session_20260107_103022_12345","kind":"agent_end","agent":"review","status":"success","duration_ms":40000,"summary":"发现 3 个改进点"}
 ```
 
 ### 字段规范
@@ -126,7 +126,7 @@ AW-Kernel 日志系统是一个轻量级的 Agent 执行记录系统，旨在提
 | `tool` | string | ✅ | 固定为 `"claude-code"` |
 | `session` | string | ✅ | Session ID（格式：`session_YYYYMMDD_HHMMSS_PID`） |
 | `kind` | string | ✅ | 事件类型：`agent_start` / `agent_end` / `error` |
-| `agent` | string | ✅ | Agent 名称（如 `code-analyzer`） |
+| `agent` | string | ✅ | Agent 名称（如 `review`） |
 | `task` | string | ⚪ | 任务描述（`kind=agent_start` 时） |
 | `status` | string | ⚪ | 执行状态（`kind=agent_end` 时）：`success` / `error` |
 | `duration_ms` | number | ⚪ | 执行耗时毫秒（`kind=agent_end` 时） |
@@ -168,7 +168,7 @@ tail -n 10 .autoworkflow/logs/claude-code/feedback.jsonl
 #### 2. 查询某个 Agent 的所有日志
 
 ```bash
-grep '"agent":"code-analyzer"' .autoworkflow/logs/claude-code/feedback.jsonl
+grep '"agent":"review"' .autoworkflow/logs/claude-code/feedback.jsonl
 ```
 
 #### 3. 查询所有错误日志
@@ -191,9 +191,9 @@ grep -o '"agent":"[^"]*"' .autoworkflow/logs/claude-code/feedback.jsonl | sort |
 
 **输出示例**：
 ```
-     15 "agent":"code-analyzer"
-      8 "agent":"code-debug-expert"
-     12 "agent":"feature-shipper"
+     15 "agent":"review"
+      8 "agent":"debug (已删除)"
+     12 "agent":"ship"
 ```
 
 #### 6. 统计成功/失败次数
@@ -230,7 +230,7 @@ ls -lh .autoworkflow/logs/claude-code/feedback.jsonl  # 文件大小
 python .autoworkflow/tools/query-logs.py --help
 
 # 查询某个 Agent 的日志
-python .autoworkflow/tools/query-logs.py --agent code-analyzer
+python .autoworkflow/tools/query-logs.py --agent review
 
 # 查询错误日志
 python .autoworkflow/tools/query-logs.py --kind error
@@ -245,8 +245,8 @@ python .autoworkflow/tools/query-logs.py --stats
 #### 组合查询
 
 ```bash
-# 查询 code-analyzer 的错误日志
-python .autoworkflow/tools/query-logs.py --agent code-analyzer --kind error
+# 查询 review 的错误日志
+python .autoworkflow/tools/query-logs.py --agent review --kind error
 
 # 查询今天的日志
 python .autoworkflow/tools/query-logs.py --date today
@@ -274,7 +274,7 @@ sudo apt install jq    # Ubuntu/Debian
 tail -n 10 .autoworkflow/logs/claude-code/feedback.jsonl | jq '.'
 
 # 查询某个 Agent
-cat .autoworkflow/logs/claude-code/feedback.jsonl | jq 'select(.agent=="code-analyzer")'
+cat .autoworkflow/logs/claude-code/feedback.jsonl | jq 'select(.agent=="review")'
 
 # 统计平均执行时间
 cat .autoworkflow/logs/claude-code/feedback.jsonl | \
@@ -354,7 +354,7 @@ touch .autoworkflow/logs/claude-code/feedback.jsonl
 **示例 Prompt**：
 ```
 请帮我分析 .autoworkflow/logs/claude-code/feedback.jsonl 中的日志，
-找出 code-analyzer 这个 Agent 的所有调用记录，并总结：
+找出 review 这个 Agent 的所有调用记录，并总结：
 1. 总调用次数
 2. 平均执行时间
 3. 是否有失败记录

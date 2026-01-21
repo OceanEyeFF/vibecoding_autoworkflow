@@ -29,7 +29,7 @@ Claude/
 │       └── agent-config.json      # Agent 配置模板
 └── agents/
     └── aw-kernel/
-        ├── feature-shipper.md     # 中枢 Agent（可与工具链配合）
+        ├── ship.md     # 中枢 Agent（可与工具链配合）
         └── TOOLCHAIN.md           # 本文档
 ```
 
@@ -423,6 +423,6 @@ rm .autoworkflow/.owner
 
 ## 相关文档
 
-- [feature-shipper.md](./feature-shipper.md) - 中枢 Agent 定义
+- [ship.md](./ship.md) - 中枢 Agent 定义
 - [CLAUDE.md](./CLAUDE.md) - 模块文档
 - [根文档](../../../CLAUDE.md) - 项目级文档

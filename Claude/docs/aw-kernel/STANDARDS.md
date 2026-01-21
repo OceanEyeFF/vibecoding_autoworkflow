@@ -56,7 +56,7 @@
 6. retry++
 
 **retry == 2（第三次）**：
-- 如果有 Agent 委派能力，委派 `code-debug-expert` 诊断
+- 如果有 Agent 委派能力，委派 `debug (已删除)` 诊断
 - 根据诊断结果修复
 - retry++
 - 如果仍失败，升级到 Tier 2
@@ -170,7 +170,7 @@
    - 等待用户提供指导
 
 3. **收到指导后**：
-   - 执行"调试恢复协议"（参见 feature-shipper.md）
+   - 执行"调试恢复协议"（参见 ship.md）
    - 根据用户指导更新理解
    - 决定代码状态（保留/回退）
    - 重置 retry 计数为 0
@@ -192,7 +192,7 @@
 - Level 2 对应 Tier 2+（Phase 级回退）
 - Level 3 对应 Tier 3（人工介入）
 
-### feature-shipper Agent
+### ship Agent
 
 **当前状态**：部分实现
 - Tier 1: ✅ 调试 3 次
@@ -203,7 +203,7 @@
 - Tier 1 第 3 次失败后，考虑是否需要任务拆分
 - 添加简化的 Tier 2（不需要多层回路，只需任务重构）
 
-### code-debug-expert Agent
+### debug (已删除) Agent
 
 **当前状态**：仅诊断，不执行修复
 - Tier 1: ❌ 不适用（diagnostic agent）
@@ -215,7 +215,7 @@
 - 不直接修复代码
 - 提供根因分析和修复建议
 
-### requirement-refiner Agent
+### clarify Agent
 
 **当前状态**：无失败处理（需求收敛为主）
 - Tier 1-3: 不适用
@@ -224,7 +224,7 @@
 - 需求澄清 Agent，无代码修复场景
 - 如果问答超过 10 轮仍不清晰，可以输出"需求过于模糊"并请求用户重新组织描述
 
-### code-analyzer Agent
+### review Agent
 
 **当前状态**：只读分析，无失败处理
 - Tier 1-3: 不适用
@@ -357,25 +357,25 @@ retry == ${current_retry}，即时修复中...
 
 ## 9. 跨组件失败处理
 
-### 场景：/autodev 委派 feature-shipper
+### 场景：/autodev 委派 ship
 
 **问题**：两层重试机制可能导致 3×3=9 次尝试
 
 **解决方案**：
 
 **方案 A：串行累计（推荐）**
-- /autodev 委派 feature-shipper 时，传递当前 retry 计数
-- feature-shipper 继承 retry 计数，继续累加
+- /autodev 委派 ship 时，传递当前 retry 计数
+- ship 继承 retry 计数，继续累加
 - 达到 3 次后返回失败给 /autodev
 - /autodev 执行 Tier 2 回退
 
 **方案 B：提前终止**
-- feature-shipper 在 Tier 1 失败 3 次后，立即返回失败
+- ship 在 Tier 1 失败 3 次后，立即返回失败
 - 不执行自己的 Tier 2
 - 由 /autodev 统一处理 Tier 2
 
 **方案 C：独立计数（当前默认）**
-- /autodev 和 feature-shipper 各自独立计数
+- /autodev 和 ship 各自独立计数
 - 可能导致总尝试次数较多
 - 适用于委派的任务确实需要独立的失败处理
 
@@ -387,7 +387,7 @@ retry == ${current_retry}，即时修复中...
 Task({
   subagent_type: "general-purpose",
   description: "委派复杂任务执行",
-  prompt: `使用 feature-shipper Agent 执行任务。
+  prompt: `使用 ship Agent 执行任务。
 
   **失败处理要求**：
   - 当前已尝试 ${current_retry} 次

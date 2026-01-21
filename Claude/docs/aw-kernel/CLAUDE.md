@@ -4,13 +4,14 @@
 为 Claude Code 提供可闭环交付的专用 Agents（单任务专家）与配套规范（版本管理、工具纪律、证据化输出）。
 
 ## Agent 列表（aw-kernel）
-- **feature-shipper**：功能交付闭环（实现与交付串联）
-- **code-analyzer**：结构/架构分析（输出可复核的结构化结论）
-- **code-debug-expert**：调试与修复（假设→验证循环）
-- **system-log-analyzer**：日志分析与诊断
-- **code-project-cleaner**：清理与重构建议
-- **requirement-refiner**：需求澄清与 DoD/验收细化
+- **ship**：功能交付闭环（实现与交付串联）
+- **review**：结构/架构分析（输出可复核的结构化结论）
+- **logs**：日志分析与诊断
+- **clean**：清理与重构建议
+- **clarify**：需求澄清与 DoD/验收细化
 - **knowledge-researcher**：资料检索与知识沉淀
+
+> 命名策略：高频任务用简短命名（ship/review/logs/clean/clarify），专业领域保留完整命名（knowledge-researcher）
 
 > 归档内容在仓库 `archive/` 目录，不属于主线。
 
@@ -217,7 +218,8 @@ TodoWrite({
 - ✅ 两者互补，各司其职
 
 ## 常用路径
-- `~/.claude/agents/aw-kernel/feature-shipper.md`（已安装：中枢 Agent）
+- `~/.claude/agents/aw-kernel/ship.md`（已安装：功能交付 Agent）
+- `~/.claude/agents/aw-kernel/review.md`（已安装：代码分析 Agent）
 - `~/.claude/skills/aw-kernel/`（已安装：Skills）
 - `.autoworkflow/tools/cc-aw.ps1|cc-aw.sh`（可选工具链入口）
 - `.autoworkflow/state.md`（可选：进度与最近 gate 输出）
