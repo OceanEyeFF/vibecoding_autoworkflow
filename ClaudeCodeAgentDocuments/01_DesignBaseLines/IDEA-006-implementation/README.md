@@ -88,11 +88,11 @@ IDEA-006-implementation/
 
 | 文件 | 修改内容 |
 |------|---------|
-| `Claude/agents/aw-kernel/feature-shipper.md` | 替换工具纪律部分，添加输出格式 |
-| `Claude/agents/aw-kernel/requirement-refiner.md` | 同上 |
-| `Claude/agents/aw-kernel/code-analyzer.md` | 同上 |
-| `Claude/agents/aw-kernel/code-debug-expert.md` | 同上 |
-| `Claude/agents/aw-kernel/system-log-analyzer.md` | 保持 JSON 输出，添加 evidence 字段 |
+| `Claude/agents/aw-kernel/ship.md` | 替换工具纪律部分，添加输出格式 |
+| `Claude/agents/aw-kernel/clarify.md` | 同上 |
+| `Claude/agents/aw-kernel/review.md` | 同上 |
+| `Claude/agents/aw-kernel/debug (已删除).md` | 同上 |
+| `Claude/agents/aw-kernel/logs.md` | 保持 JSON 输出，添加 evidence 字段 |
 
 ### 5.2 新增文件
 
@@ -137,7 +137,7 @@ IDEA-006-implementation/
 ## 八、下一步行动
 
 1. **今天**：Review 本方案，确认实施范围
-2. **明天**：修改第一个 Agent (feature-shipper) 作为试点
+2. **明天**：修改第一个 Agent (ship) 作为试点
 3. **本周**：推广到所有 Agent
 4. **下周**：部署 Hooks，观察效果
 

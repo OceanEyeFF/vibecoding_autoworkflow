@@ -189,19 +189,19 @@ trigger: /autodev-worktree
 
 | Agent | 用途 | 触发方式 |
 |-------|------|---------|
-| **feature-shipper** | 单个功能的完整交付 | Task 工具委派 |
-| **requirement-refiner** | 需求精炼和澄清 | Task 工具委派 |
-| **code-debug-expert** | 深度调试问题 | Task 工具委派 |
+| **ship** | 单个功能的完整交付 | Task 工具委派 |
+| **clarify** | 需求精炼和澄清 | Task 工具委派 |
+| **debug (已删除)** | 深度调试问题 | Task 工具委派 |
 
 ### 4.2 移除的 Agent
 
 | Agent | 原因 |
 |-------|------|
 | central-orchestrator | 已删除 - 用 Skill 替代 |
-| stage-development-executor | 已删除 - 功能合并到 feature-shipper |
+| stage-development-executor | 已删除 - 功能合并到 ship |
 | code-review-agent | 未实现 - 暂不需要 |
 | architecture-designer | 未实现 - 暂不需要 |
-| requirements-collector | 合并到 requirement-refiner |
+| requirements-collector | 合并到 clarify |
 | development-planner | 合并到 /autodev Skill |
 | documentation-generator | 未实现 - 暂不需要 |
 
@@ -209,9 +209,9 @@ trigger: /autodev-worktree
 
 | Agent | 说明 |
 |-------|------|
-| code-analyzer | 代码分析，独立使用 |
-| code-project-cleaner | 项目清理，独立使用 |
-| system-log-analyzer | 日志分析，独立使用 |
+| review | 代码分析，独立使用 |
+| clean | 项目清理，独立使用 |
+| logs | 日志分析，独立使用 |
 
 ---
 
@@ -224,8 +224,8 @@ trigger: /autodev-worktree
 
 ### Phase 2: Agent 精简
 
-- [ ] 重构 feature-shipper（移除 .autoworkflow 依赖）
-- [ ] 重构 requirement-refiner（简化输出）
+- [ ] 重构 ship（移除 .autoworkflow 依赖）
+- [ ] 重构 clarify（简化输出）
 - [x] 删除 stage-development-executor（功能合并）
 
 ### Phase 3: Git Worktree 支持
@@ -248,7 +248,7 @@ trigger: /autodev-worktree
 
 ### Q3: 为什么移除 stage-development-executor？
 
-**答**：它和 feature-shipper 的功能 90% 重叠。都是"写代码 + 跑测试"。保留 feature-shipper 因为它更成熟。
+**答**：它和 ship 的功能 90% 重叠。都是"写代码 + 跑测试"。保留 ship 因为它更成熟。
 
 ### Q4: 状态怎么管理？
 

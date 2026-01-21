@@ -150,7 +150,7 @@ src/main.py 中的 `process_data` 函数（第 45-60 行，见 [Read#1]）存在
 
 ## 三、应用到现有 Agent
 
-### 3.1 feature-shipper.md 改进
+### 3.1 ship.md 改进
 
 在现有 Prompt 的"工具纪律"部分，替换为上述强化版。
 
@@ -168,10 +168,10 @@ src/main.py 中的 `process_data` 函数（第 45-60 行，见 [Read#1]）存在
 
 ### 3.2 其他 Agent 同步修改
 
-- requirement-refiner.md（第 10-14 行）
-- code-analyzer.md（第 12-14 行）
-- code-debug-expert.md（第 10-14 行）
-- system-log-analyzer.md（第 10-14 行）
+- clarify.md（第 10-14 行）
+- review.md（第 12-14 行）
+- debug (已删除).md（第 10-14 行）
+- logs.md（第 10-14 行）
 
 ---
 

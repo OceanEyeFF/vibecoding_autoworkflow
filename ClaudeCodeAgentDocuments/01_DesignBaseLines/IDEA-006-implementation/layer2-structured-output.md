@@ -23,7 +23,7 @@
 
 ​```json
 {
-  "agent": "feature-shipper",
+  "agent": "ship",
   "timestamp": "2024-12-31T16:00:00Z",
   "status": "SUCCESS | PARTIAL | BLOCKED | NEED_INPUT",
 
@@ -115,7 +115,7 @@
 
 ```json
 {
-  "agent": "feature-shipper",
+  "agent": "ship",
   "status": "BLOCKED",
 
   "evidence_summary": {
@@ -238,7 +238,7 @@
 
 ```json
 {
-  "agent": "code-debug-expert",
+  "agent": "debug (已删除)",
   "timestamp": "2024-12-31T16:30:00Z",
   "status": "SUCCESS",
 
@@ -294,7 +294,7 @@
 
 ```json
 {
-  "agent": "feature-shipper",
+  "agent": "ship",
   "timestamp": "2024-12-31T16:30:00Z",
   "status": "BLOCKED",
 

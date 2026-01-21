@@ -60,7 +60,7 @@
 - **实施状态**：✅ 生产可用
 
 #### 2. **单 Agent 多阶段模式**（已有实现）
-- **`feature-shipper`**：5-Phase 闭环 + 3层回路机制
+- **`ship`**：5-Phase 闭环 + 3层回路机制
   - Phase 0: 需求收敛
   - Phase 1: 需求分析/项目探查
   - Phase 2: 验收标准固化
@@ -73,12 +73,12 @@
 #### 3. **强制数据访问机制**（IDEA-006，已完成）
 - **No Evidence, No Output 铁律**
 - **已应用于全部 7 个生产 Agent**：
-  - feature-shipper
-  - requirement-refiner
-  - code-analyzer
-  - code-debug-expert
-  - system-log-analyzer
-  - code-project-cleaner
+  - ship
+  - clarify
+  - review
+  - debug (已删除)
+  - logs
+  - clean
   - knowledge-researcher
 - **详见**：[IDEA-006-implementation/](./IDEA-006-implementation/)
 - **实施状态**：✅ 广泛应用
@@ -145,14 +145,14 @@
 ### 🔄 当前状态
 - **Agent 协作**：基于 Skill 编排（autodev, autodev-worktree）
 - **边界管理**：通过 Prompt 约束 + AskUserQuestion
-- **输出格式**：4 个新 Agent 已统一 JSON 输出（code-debug-expert, code-analyzer, code-project-cleaner, system-log-analyzer）
+- **输出格式**：4 个新 Agent 已统一 JSON 输出（debug (已删除), review, clean, logs）
 - **安全控制**：Soft Lock 机制（.autoworkflow/.owner）
 
 ### 🎯 后续优先级（按需评估）
 
 #### 优先级 1：统一所有 Agent 输出格式
-- **目标**：feature-shipper 和 requirement-refiner 采用 JSON 输出
-- **参考**：code-debug-expert 的实现模式
+- **目标**：ship 和 clarify 采用 JSON 输出
+- **参考**：debug (已删除) 的实现模式
 - **预期收益**：提高 Agent 间协作的可靠性
 - **实施难度**：低（修改 Prompt 和示例）
 
@@ -248,18 +248,18 @@ permission-guard Agent  →        Git Hooks + Prompt 提醒
 ### 源代码
 
 #### 已完成 IDEA-006 改进
-- ✅ `Claude/agents/aw-kernel/feature-shipper.md` - 强制数据访问机制已实施
-- ✅ `Claude/agents/aw-kernel/requirement-refiner.md` - 强制数据访问机制已实施
-- ✅ `Claude/agents/aw-kernel/code-analyzer.md` - 强制数据访问机制已实施
-- ✅ `Claude/agents/aw-kernel/code-debug-expert.md` - 强制数据访问机制已实施
-- ✅ `Claude/agents/aw-kernel/system-log-analyzer.md` - 强制数据访问机制已实施
-- ✅ `Claude/agents/aw-kernel/code-project-cleaner.md` - 强制数据访问机制已实施
+- ✅ `Claude/agents/aw-kernel/ship.md` - 强制数据访问机制已实施
+- ✅ `Claude/agents/aw-kernel/clarify.md` - 强制数据访问机制已实施
+- ✅ `Claude/agents/aw-kernel/review.md` - 强制数据访问机制已实施
+- ✅ `Claude/agents/aw-kernel/debug (已删除).md` - 强制数据访问机制已实施
+- ✅ `Claude/agents/aw-kernel/logs.md` - 强制数据访问机制已实施
+- ✅ `Claude/agents/aw-kernel/clean.md` - 强制数据访问机制已实施
 - ✅ `Claude/agents/aw-kernel/knowledge-researcher.md` - 强制数据访问机制已实施
 
 #### 可行的协作实现
 - ✅ `Claude/skills/aw-kernel/autodev/` - Skill 工作流编排
 - ✅ `Claude/skills/aw-kernel/autodev-worktree/` - Git Worktree 并行开发管理
-- ✅ `Claude/agents/aw-kernel/feature-shipper.md` - 5-Phase 闭环示例
+- ✅ `Claude/agents/aw-kernel/ship.md` - 5-Phase 闭环示例
 
 ---
 
@@ -279,7 +279,7 @@ permission-guard Agent  →        Git Hooks + Prompt 提醒
 
 ### 🔄 当前可行方案
 - **Skill 工作流编排**：autodev, autodev-worktree（已实现）
-- **单 Agent 多阶段模式**：feature-shipper 5-Phase 闭环（已实现）
+- **单 Agent 多阶段模式**：ship 5-Phase 闭环（已实现）
 - **基于文件的协作**：.agent-handoff/（可探索）
 - **AskUserQuestion 边界管理**：部分 Agent 已使用（可扩展）
 
@@ -290,7 +290,7 @@ permission-guard Agent  →        Git Hooks + Prompt 提醒
 
 > **下一步建议**：
 >
-> 1. **统一 JSON 输出格式**：为 feature-shipper 和 requirement-refiner 添加 JSON 输出，参考 code-debug-expert
+> 1. **统一 JSON 输出格式**：为 ship 和 clarify 添加 JSON 输出，参考 debug (已删除)
 > 2. **评估 IDEA-005**：研究长对话中的指令遗忘问题，考虑模块化 Prompt 或外置指令
 > 3. **探索文件协作**：定义 `.agent-handoff/` 协议，实现 Agent 间可靠的数据交换
 >
