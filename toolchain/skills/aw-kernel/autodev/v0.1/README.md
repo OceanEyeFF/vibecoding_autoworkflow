@@ -397,7 +397,7 @@ v0.2 将增加：
 - ✅ Level 1 回路（Git 回退 + 任务重构）
 - ✅ 本地化状态管理（.autodev/state.json）
 
-详见：[autodev-iteration-plan.md](../../../../../ClaudeCodeAgentDocuments/01_DesignBaseLines/autodev-iteration-plan.md)
+详见：[autodev-iteration-plan.md](../../../../../design/01_DesignBaseLines/autodev-iteration-plan.md)
 
 ---
 

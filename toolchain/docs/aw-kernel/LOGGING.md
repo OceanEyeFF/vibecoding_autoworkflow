@@ -374,7 +374,7 @@ touch .autoworkflow/logs/claude-code/feedback.jsonl
 
 初始化：
 ```bash
-python Claude/scripts/claude_autoworkflow.py init
+python toolchain/scripts/claude_autoworkflow.py init
 ```
 
 ### Q7: Windows 上时间戳生成有问题怎么办？

@@ -8,7 +8,7 @@
 ## 📋 目录结构
 
 ```
-Claude/scripts/
+toolchain/scripts/
 ├── README.md                   # 本文档
 ├── install-global.sh           # 全局安装脚本 (Linux/macOS/WSL)
 ├── install-global.ps1          # 全局安装脚本 (Windows PowerShell)
@@ -34,7 +34,7 @@ Claude/scripts/
 │   │   ├── requirement-refiner.md
 │   │   ├── code-debug-expert.md
 │   │   ├── ...
-│   │   ├── CLAUDE.md           # 使用文档
+│   │   ├── GUIDE.md           # 使用文档
 │   │   ├── TOOLCHAIN.md        # 工具链文档
 │   │   └── .installed          # 安装标记文件
 │   │
@@ -74,7 +74,7 @@ Claude/scripts/
 **Linux / macOS / WSL:**
 ```bash
 cd /path/to/Agents-Prompt
-bash Claude/scripts/install-global.sh
+bash toolchain/scripts/install-global.sh
 ```
 
 **Windows PowerShell:**
@@ -107,7 +107,7 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 
 ```bash
 # Linux/macOS/WSL
-bash Claude/scripts/install-global.sh --dry-run
+bash toolchain/scripts/install-global.sh --dry-run
 
 # Windows
 powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -DryRun
@@ -117,7 +117,7 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -DryR
 
 ```bash
 # Linux/macOS/WSL
-bash Claude/scripts/install-global.sh --namespace my-project-agents
+bash toolchain/scripts/install-global.sh --namespace my-project-agents
 
 # Windows
 powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Namespace my-project-agents
@@ -127,7 +127,7 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Name
 
 ```bash
 # Linux/macOS/WSL
-bash Claude/scripts/install-global.sh --force
+bash toolchain/scripts/install-global.sh --force
 
 # Windows
 powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Force
@@ -137,7 +137,7 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Forc
 
 ```bash
 # Linux/macOS/WSL
-bash Claude/scripts/install-global.sh --uninstall --namespace aw-kernel
+bash toolchain/scripts/install-global.sh --uninstall --namespace aw-kernel
 
 # Windows
 powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Uninstall -Namespace aw-kernel
@@ -157,7 +157,7 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Unin
 ```bash
 # Linux/macOS/WSL
 export CLAUDE_HOME="/custom/path/.claude"
-bash Claude/scripts/install-global.sh
+bash toolchain/scripts/install-global.sh
 
 # Windows PowerShell
 $env:CLAUDE_HOME = "C:\custom\path\.claude"
@@ -189,7 +189,7 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 
 ### 文档
 
-- `CLAUDE.md` - Agents 使用指南
+- `GUIDE.md` - Agents 使用指南
 - `TOOLCHAIN.md` - 工具链详细文档
 
 ---
@@ -231,21 +231,21 @@ cd /path/to/Agents-Prompt
 git pull origin develop
 
 # 2. 强制重新安装
-bash Claude/scripts/install-global.sh --force
+bash toolchain/scripts/install-global.sh --force
 ```
 
 ### 维护多个命名空间
 
 ```bash
 # 安装到不同命名空间
-bash Claude/scripts/install-global.sh --namespace project-a
-bash Claude/scripts/install-global.sh --namespace project-b
+bash toolchain/scripts/install-global.sh --namespace project-a
+bash toolchain/scripts/install-global.sh --namespace project-b
 
 # 列出所有命名空间
 ls -d ~/.claude/agents/*/
 
 # 卸载特定命名空间
-bash Claude/scripts/install-global.sh --uninstall --namespace project-a
+bash toolchain/scripts/install-global.sh --uninstall --namespace project-a
 ```
 
 ---
@@ -265,10 +265,10 @@ bash Claude/scripts/install-global.sh --uninstall --namespace project-a
 
 ```bash
 # 安装稳定版到默认命名空间（aw-kernel）
-bash Claude/scripts/install-global.sh
+bash toolchain/scripts/install-global.sh
 
 # 安装开发版到实验命名空间
-bash Claude/scripts/install-global.sh --namespace aw-dev
+bash toolchain/scripts/install-global.sh --namespace aw-dev
 
 # 在项目中使用不同版本
 claude --agent aw-kernel/feature-shipper    # 使用稳定版
@@ -279,13 +279,13 @@ claude --agent aw-dev/feature-shipper       # 使用开发版
 
 ```bash
 # 1. 团队统一使用的命名空间
-bash Claude/scripts/install-global.sh --namespace team-agents
+bash toolchain/scripts/install-global.sh --namespace team-agents
 
 # 2. 每个成员创建 .env 或配置文件指定命名空间
 export NAMESPACE=team-agents
 
 # 3. CI/CD 环境中使用特定命名空间
-bash Claude/scripts/install-global.sh --namespace ci-agents
+bash toolchain/scripts/install-global.sh --namespace ci-agents
 ```
 
 ---
@@ -326,8 +326,8 @@ chmod -R u+w ~/.claude
 
 **Linux/macOS/WSL:**
 ```bash
-chmod +x Claude/scripts/install-global.sh
-bash Claude/scripts/install-global.sh
+chmod +x toolchain/scripts/install-global.sh
+bash toolchain/scripts/install-global.sh
 ```
 
 **Windows:**
@@ -345,7 +345,7 @@ cd /path/to/Agents-Prompt
 pwd  # 应该显示仓库根目录
 
 # 或使用绝对路径
-bash /absolute/path/to/Agents-Prompt/Claude/scripts/install-global.sh
+bash /absolute/path/to/Agents-Prompt/toolchain/scripts/install-global.sh
 ```
 
 ### 问题 3: CLAUDE_HOME 不存在
@@ -355,14 +355,14 @@ bash /absolute/path/to/Agents-Prompt/Claude/scripts/install-global.sh
 mkdir -p ~/.claude/agents ~/.claude/skills ~/.claude/commands
 
 # 或让脚本自动创建（默认行为）
-bash Claude/scripts/install-global.sh
+bash toolchain/scripts/install-global.sh
 ```
 
 ---
 
 ## 📚 相关文档
 
-- [CLAUDE.md](../docs/aw-kernel/CLAUDE.md) - Agents 使用指南
+- [GUIDE.md](../docs/aw-kernel/GUIDE.md) - Agents 使用指南
 - [TOOLCHAIN.md](../docs/aw-kernel/TOOLCHAIN.md) - 工具链详细文档
 - [../README.md](../README.md) - Claude 目录总说明
 
@@ -372,11 +372,11 @@ bash Claude/scripts/install-global.sh
 
 | 操作 | Linux/macOS/WSL | Windows PowerShell |
 |------|-----------------|-------------------|
-| 标准安装 | `bash Claude/scripts/install-global.sh` | `powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1` |
-| 预览安装 | `bash Claude/scripts/install-global.sh --dry-run` | `powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -DryRun` |
-| 强制更新 | `bash Claude/scripts/install-global.sh --force` | `powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Force` |
-| 卸载 | `bash Claude/scripts/install-global.sh --uninstall` | `powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Uninstall` |
-| 帮助 | `bash Claude/scripts/install-global.sh --help` | `powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Help` |
+| 标准安装 | `bash toolchain/scripts/install-global.sh` | `powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1` |
+| 预览安装 | `bash toolchain/scripts/install-global.sh --dry-run` | `powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -DryRun` |
+| 强制更新 | `bash toolchain/scripts/install-global.sh --force` | `powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Force` |
+| 卸载 | `bash toolchain/scripts/install-global.sh --uninstall` | `powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Uninstall` |
+| 帮助 | `bash toolchain/scripts/install-global.sh --help` | `powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1 -Help` |
 
 ---
 

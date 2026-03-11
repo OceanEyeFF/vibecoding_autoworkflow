@@ -35,9 +35,9 @@
 
 | 类型 | 路径 | 示例 |
 |------|------|------|
-| **Agents** | `Claude/agents/aw-kernel/*.md` | review.md |
-| **Skills** | `Claude/skills/aw-kernel/*/SKILL.md` | autodev/SKILL.md |
-| **基础设施文档** | `Claude/agents/aw-kernel/*.md` | LOGGING.md, TOOLCHAIN.md |
+| **Agents** | `toolchain/agents/aw-kernel/*.md` | review.md |
+| **Skills** | `toolchain/skills/aw-kernel/*/SKILL.md` | autodev/SKILL.md |
+| **基础设施文档** | `toolchain/agents/aw-kernel/*.md` | LOGGING.md, TOOLCHAIN.md |
 
 ---
 
@@ -173,7 +173,7 @@ user-invocable: true
 ### CHANGELOG.md 位置
 
 ```
-Claude/agents/aw-kernel/CHANGELOG.md
+toolchain/agents/aw-kernel/CHANGELOG.md
 ```
 
 ### 格式规范

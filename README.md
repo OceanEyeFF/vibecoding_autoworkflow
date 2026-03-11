@@ -5,7 +5,7 @@
 ## 当前开发方向（小需求更稳）
 
 - 方向：小功能自动化工作流（入口规模 Gate + 需求契约 + 2-3-1 角色编排 + 证据型交付）。
-- 范围与非目标：以 `CLAUDE.md` 的“当前开发方向/非目标”为准；大任务必须先拆分后再进入流程。
+- 范围与非目标：以 `GUIDE.md` 的“当前开发方向/非目标”为准；大任务必须先拆分后再进入流程。
 - 设计文档：
   - [`AUTODEV_小需求更稳流程设计.md`](AUTODEV_小需求更稳流程设计.md)
   - [`AUTODEV_小需求更稳_Agent全量定义.md`](AUTODEV_小需求更稳_Agent全量定义.md)
@@ -25,13 +25,13 @@
 
 ```bash
 # Linux/macOS/WSL
-bash Claude/scripts/install-global.sh
+bash toolchain/scripts/install-global.sh
 
 # Windows PowerShell
 powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 ```
 
-> 详细安装选项请参考：[安装脚本详细文档](Claude/scripts/README.md)
+> 详细安装选项请参考：[安装脚本详细文档](toolchain/scripts/README.md)
 
 ### 第2步：选择合适的工具
 
@@ -39,12 +39,12 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 
 | 任务类型 | 推荐工具 | 说明 |
 |---------|---------|------|
-| **新功能开发** | [autodev Skill](Claude/skills/aw-kernel/autodev/SKILL.md) | 完整开发流程，需求→任务→实现→交付 |
-| **代码分析** | [review Agent](Claude/agents/aw-kernel/review.md) | 架构洞察、依赖分析、质量评估 |
-| **日志分析** | [logs Agent](Claude/agents/aw-kernel/logs.md) | 日志解读、异常检测 |
-| **清理重构** | [clean Agent](Claude/agents/aw-kernel/clean.md) | 死代码清理、重构建议 |
-| **需求澄清** | [clarify Agent](Claude/agents/aw-kernel/clarify.md) | DoD细化、边界确认 |
-| **资料研究** | [knowledge-researcher Agent](Claude/agents/aw-kernel/knowledge-researcher.md) | 官方文档/最佳实践检索与整理 |
+| **新功能开发** | [autodev Skill](toolchain/skills/aw-kernel/autodev/SKILL.md) | 完整开发流程，需求→任务→实现→交付 |
+| **代码分析** | [review Agent](toolchain/agents/aw-kernel/review.md) | 架构洞察、依赖分析、质量评估 |
+| **日志分析** | [logs Agent](toolchain/agents/aw-kernel/logs.md) | 日志解读、异常检测 |
+| **清理重构** | [clean Agent](toolchain/agents/aw-kernel/clean.md) | 死代码清理、重构建议 |
+| **需求澄清** | [clarify Agent](toolchain/agents/aw-kernel/clarify.md) | DoD细化、边界确认 |
+| **资料研究** | [knowledge-researcher Agent](toolchain/agents/aw-kernel/knowledge-researcher.md) | 官方文档/最佳实践检索与整理 |
 
 ### 第3步：启动工具
 
@@ -72,24 +72,24 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 
 ## 📊 核心成就
 
-- ✅ 7 个 aw-kernel Agents：`Claude/agents/aw-kernel/`
-- ✅ 2 个核心 Skills：`autodev` / `autodev-worktree`（`Claude/skills/aw-kernel/`）
-- ✅ 可选 `.autoworkflow` 工具链：见 [TOOLCHAIN.md](Claude/docs/aw-kernel/TOOLCHAIN.md)
+- ✅ 7 个 aw-kernel Agents：`toolchain/agents/aw-kernel/`
+- ✅ 2 个核心 Skills：`autodev` / `autodev-worktree`（`toolchain/skills/aw-kernel/`）
+- ✅ 可选 `.autoworkflow` 工具链：见 [TOOLCHAIN.md](toolchain/docs/aw-kernel/TOOLCHAIN.md)
 
 ## 📚 文档导航
 
 ### 核心文档
-- **[CLAUDE.md](CLAUDE.md)** - 项目宪法，协作规则与禁区
+- **[GUIDE.md](GUIDE.md)** - 项目宪法，协作规则与禁区
 - **[INDEX.md](INDEX.md)** - 文档路由中心，快速找到所需资源
 - **[快速开始](#快速开始)** - 本章节，5分钟上手指南
 
 ### 技术文档
-- **[Agent文档](Claude/agents/aw-kernel/)** - 7个专业Agent详细说明
-- **[Skill文档](Claude/skills/aw-kernel/)** - 工作流编排详细说明
-- **[安装脚本](Claude/scripts/README.md)** - 详细安装选项
+- **[Agent文档](toolchain/agents/aw-kernel/)** - 7个专业Agent详细说明
+- **[Skill文档](toolchain/skills/aw-kernel/)** - 工作流编排详细说明
+- **[安装脚本](toolchain/scripts/README.md)** - 详细安装选项
 
 ### 设计文档
-- **[设计基线](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md)** - 设计理念与架构
+- **[设计基线](design/01_DesignBaseLines/README.md)** - 设计理念与架构
 - **[分析精华](docs/analysis/autodev-insights.md)** - 失败模式与改进要点（可落地清单）
 - **[路线图](ROADMAP.md)** - 改进优先级与里程碑
 
@@ -113,8 +113,8 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 ## 💡 更多信息
 
 - **完整目录结构** → [INDEX.md#目录结构](INDEX.md#目录结构)
-- **安装详细选项** → [Claude/scripts/README.md](Claude/scripts/README.md)
-- **设计理念** → [ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md)
+- **安装详细选项** → [toolchain/scripts/README.md](toolchain/scripts/README.md)
+- **设计理念** → [design/01_DesignBaseLines/README.md](design/01_DesignBaseLines/README.md)
 
 ---
 

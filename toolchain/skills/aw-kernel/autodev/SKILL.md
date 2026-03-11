@@ -287,25 +287,25 @@ git clean -fd
    **场景 A：Phase 指令刷新**（Gate 失败时）
    ```javascript
    // 当前在 Phase 1，刷新 Phase 1 + G1 定义
-   Read("Claude/skills/aw-kernel/autodev/SKILL.md", offset=389, limit=60)
+   Read("toolchain/skills/aw-kernel/autodev/SKILL.md", offset=389, limit=60)
    // 读取 Phase 1 章节（第 389-449 行）
 
    // 当前在 Phase 3，刷新 Phase 3 + G3 定义 + 回路机制
-   Read("Claude/skills/aw-kernel/autodev/SKILL.md", offset=567, limit=200)
+   Read("toolchain/skills/aw-kernel/autodev/SKILL.md", offset=567, limit=200)
    // 读取 Phase 3 + Level 0/1/2/3 回路定义
    ```
 
    **场景 B：全局刷新**（轮数触发、用户反馈、恢复模式）
    ```javascript
    // 步骤 1：读取状态机定义和核心原则
-   Read("Claude/skills/aw-kernel/autodev/SKILL.md", offset=1, limit=100)
+   Read("toolchain/skills/aw-kernel/autodev/SKILL.md", offset=1, limit=100)
    // 读取文件头 + 状态机定义 + 核心原则
 
    // 步骤 2：读取当前 Phase 定义
-   Read("Claude/skills/aw-kernel/autodev/SKILL.md", offset=${phase_start_line}, limit=50)
+   Read("toolchain/skills/aw-kernel/autodev/SKILL.md", offset=${phase_start_line}, limit=50)
 
    // 步骤 3：读取 Gate 定义汇总
-   Read("Claude/skills/aw-kernel/autodev/SKILL.md", offset=65, limit=50)
+   Read("toolchain/skills/aw-kernel/autodev/SKILL.md", offset=65, limit=50)
    // 读取 G1/G2/G3 定义表格
    ```
 
@@ -339,7 +339,7 @@ git clean -fd
    ✅ **正确**：显式使用 Read 工具
    ```
    # 应该这样做
-   Read("Claude/skills/aw-kernel/autodev/SKILL.md", offset=567, limit=200)
+   Read("toolchain/skills/aw-kernel/autodev/SKILL.md", offset=567, limit=200)
    "根据读取的内容，Phase 3 定义为：[精确引用]"  ← 基于实际读取
    ```
 

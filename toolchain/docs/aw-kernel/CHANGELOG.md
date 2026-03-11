@@ -64,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **基础设施**:
   - 安装脚本（PowerShell + Bash）
   - 命名空间隔离（`aw-kernel`）
-  - CLAUDE.md 项目说明
+  - GUIDE.md 项目说明
   - TOOLCHAIN.md 工具链文档
   - STANDARDS.md 失败处理规范
 

@@ -16,7 +16,7 @@
 ### 工具链源码（本仓库）
 
 ```
-Claude/
+toolchain/
 ├── scripts/
 │   └── claude_autoworkflow.py     # 核心脚本（~700 行）
 ├── assets/
@@ -66,7 +66,7 @@ Claude/
 python claude_autoworkflow.py init [--force]
 ```
 
-> 脚本位置：本仓库 `Claude/scripts/claude_autoworkflow.py`。  
+> 脚本位置：本仓库 `toolchain/scripts/claude_autoworkflow.py`。  
 > 执行 init 后，会在目标项目生成 `.autoworkflow/tools/claude_autoworkflow.py`（后续可直接使用该副本）。
 
 **功能**：
@@ -424,5 +424,5 @@ rm .autoworkflow/.owner
 ## 相关文档
 
 - [ship.md](./ship.md) - 中枢 Agent 定义
-- [CLAUDE.md](./CLAUDE.md) - 模块文档
-- [根文档](../../../CLAUDE.md) - 项目级文档
+- [GUIDE.md](./GUIDE.md) - 模块文档
+- [根文档](../../../GUIDE.md) - 项目级文档

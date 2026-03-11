@@ -16,11 +16,11 @@
 > 归档内容在仓库 `archive/` 目录，不属于主线。
 
 ## 快速使用
-1) **全局安装**：运行本仓库 `Claude/scripts/install-global.(sh|ps1)` 安装到 `~/.claude/agents/aw-kernel/` 与 `~/.claude/skills/aw-kernel/`。
+1) **全局安装**：运行本仓库 `toolchain/scripts/install-global.(sh|ps1)` 安装到 `~/.claude/agents/aw-kernel/` 与 `~/.claude/skills/aw-kernel/`。
 2) **启动 Claude Code**：在目标仓库根目录启动 Claude Code，按任务选择 Agent 或 Skill（推荐以 `/autodev` 作为工作流入口）。
 
 ## Skills（推荐入口）
-- Skill 目录：`~/.claude/skills/aw-kernel/<skill>/SKILL.md`（本仓库源目录为 `Claude/skills/aw-kernel/`）
+- Skill 目录：`~/.claude/skills/aw-kernel/<skill>/SKILL.md`（本仓库源目录为 `toolchain/skills/aw-kernel/`）
 - `/autodev` 负责工作流编排；必要时才委派专用 Agent
 
 ## 可选：.autoworkflow 工具链
@@ -227,4 +227,4 @@ TodoWrite({
 
 ## 小贴士
 - 复杂 PowerShell 引号：直接编辑 `gate.env` 更稳。
-- 遇到多模块仓库，优先同步 CI 配置或 `CLAUDE.md` 中的命令，以避免偏差。
+- 遇到多模块仓库，优先同步 CI 配置或 `GUIDE.md` 中的命令，以避免偏差。

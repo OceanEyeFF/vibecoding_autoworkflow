@@ -1,22 +1,23 @@
-﻿# AW-Kernel 项目路线图（v0.3）
+﻿# AW-Kernel 项目路线图（v0.4）
 
 > 创建时间：2026-01-06
-> 最后更新：2026-01-20  
+> 最后更新：2026-03-11  
 > 范围：单个小需求/小任务（建议 0.5～2 小时闭环）  
 > 一句话总纲：用文档承载项目状态，用证据放行交付，用入口 Gate 把大任务挡在门外  
 > 规范来源：见「二、规范性引用」  
 
 ---
 
-## 目录（v0.3）
+## 目录（v0.4）
 
 1. [读者指南](#一读者指南)
 2. [规范性引用](#二规范性引用source-of-truth)
 3. [目标与非目标](#三目标与非目标)
-4. [工作流与产物契约（最小集）](#四工作流与产物契约最小集)
-5. [路线图（P0/P1/P2）](#五路线图p0p1p2)
-6. [成功度量与更新规则](#六成功度量与更新规则)
-7. [归档：旧版路线图](#归档旧版路线图)
+4. [技术路径演进](#四技术路径演进)
+5. [工作流与产物契约（最小集）](#五工作流与产物契约最小集)
+6. [路线图（P0/P1/P2）](#六路线图p0p1p2)
+7. [成功度量与更新规则](#七成功度量与更新规则)
+8. [归档：旧版路线图](#归档旧版路线图)
 
 ---
 
@@ -27,7 +28,7 @@
 - 你要新增/调整路线图条目，并希望它能被 Hooks/Skills 自动检查。
 
 **何时不要读本文件：**
-- 你要找协作基线与文档宪法：读 `CLAUDE.md` 与 `ClaudeCode协作最小共识_基准文本.md`。
+- 你要找协作基线与文档宪法：读 `GUIDE.md` 与 `ClaudeCode协作最小共识_基准文本.md`。
 - 你要找小需求流程细节：读 `AUTODEV_小需求更稳流程设计.md`。
 - 你要找角色边界/输入输出/放行标准：读 `AUTODEV_小需求更稳_Agent全量定义.md`。
 
@@ -41,7 +42,7 @@
 
 > 下列文档是“规范性来源”，当本文件与其冲突时，以它们为准。
 
-0. [`CLAUDE.md`](CLAUDE.md)（项目宪法：不可变事实、文档路由、协作规则）
+0. [`GUIDE.md`](GUIDE.md)（项目宪法：不可变事实、文档路由、协作规则）
 1. [`ClaudeCode协作最小共识_基准文本.md`](ClaudeCode协作最小共识_基准文本.md)
 2. [`AUTODEV_小需求更稳流程设计.md`](AUTODEV_小需求更稳流程设计.md)
 3. [`AUTODEV_小需求更稳_Agent全量定义.md`](AUTODEV_小需求更稳_Agent全量定义.md)
@@ -49,16 +50,22 @@
 > 资料/素材库（非规范）：
 - [`AUTODEV_资料萃取_用于Agent重写与工作流实现.md`](AUTODEV_资料萃取_用于Agent重写与工作流实现.md)
 
+> 分析文档（精华沉淀）：
+- [`docs/analysis/autodev-insights.md`](docs/analysis/autodev-insights.md)（失败模式、根因、最小落地清单）
+- [`docs/analysis/chatgpt-session-key-insights-20260311.md`](docs/analysis/chatgpt-session-key-insights-20260311.md)（终极目标、技术路径、架构演进建议）
+
 ---
 
 ## 三、目标与非目标
 
-### 3.0 当前状态快照（2026-01-20）
+### 3.0 当前状态快照（2026-03-11）
 
-- 核心 Agents：`Claude/agents/aw-kernel/`（6 个：ship、review、logs、clean、clarify、knowledge-researcher）
-- 核心 Skills：`Claude/skills/aw-kernel/`（`autodev/`、`autodev-worktree/`；其中 v0.1 在 `Claude/skills/aw-kernel/autodev/v0.1/`）
+- 核心 Agents：`toolchain/agents/aw-kernel/`（6 个：ship、review、logs、clean、clarify、knowledge-researcher）
+- 核心 Skills：`toolchain/skills/aw-kernel/`（`autodev/`、`autodev-worktree/`；其中 v0.1 在 `toolchain/skills/aw-kernel/autodev/v0.1/`）
 - Hooks（已落地示例）：`.claude/hooks/agent-logger.py`（记录 Agent 执行日志）
 - 命名策略：高频任务用简短命名（ship/review/logs/clean/clarify），专业领域保留完整命名（knowledge-researcher）
+- 分析文档：`docs/analysis/`（精华沉淀，含失败模式、技术路径、架构演进建议）
+- 技术路径：当前处于 **Phase 1（路线 A）**，优先落地门禁与闭环机制
 
 ### 3.1 目标（只做这些）
 
@@ -74,9 +81,48 @@
 
 ---
 
-## 四、工作流与产物契约（最小集）
+## 四、技术路径演进
 
-### 4.1 小需求默认工作流（骨架）
+> 来源：`docs/analysis/chatgpt-session-key-insights-20260311.md`
+> 核心结论：**Skill/Prompt 编排先行，检索能力后置增量**
+
+### 4.1 终极目标
+
+> 把 AI Coding 从"靠对话技巧的临时协作"升级为"可长期维护、可验证、可复盘的闭环控制系统"。
+
+展开为三个子目标：
+
+1. **控制感**：始终掌握目标函数、阶段门禁和最终裁决权。
+2. **稳定性**：任务不因上下文漂移而失控，质量问题能在流程内尽早暴露。
+3. **长期记忆**：每次交付都反哺文档库，让下一次任务更快、更准。
+
+### 4.2 三条技术路线
+
+| 路线 | 阶段 | 核心内容 | 优点 | 缺点 |
+|------|------|----------|------|------|
+| **A** | 现在（Phase 1） | Skill/Prompt 编排 + `goal-list.md` + `knowledge-update.md` + 诚实度门禁 | 改造快、ROI 高、与现有 aw-kernel 一致 | 跨任务记忆与检索依赖人工导航 |
+| **B** | 1-2 迭代后（Phase 2） | + 结构化文档索引 + BM25 本地检索 + Skill 前置检索步骤 | 实现简单、可解释性强、调试成本低 | 语义泛化能力弱于向量检索 |
+| **C** | 检索瓶颈后（Phase 3） | + 向量索引/RAG + rerank + 证据引用门禁 | 跨项目/跨时间复用能力强 | 系统复杂度、维护成本显著增加 |
+
+### 4.3 核心原则（5 条铁律）
+
+1. **必须有单一主导端**：主导端是"任务状态机拥有者"，负责目标边界与裁决。
+2. **白盒可并，黑盒独立**：黑盒验收必须从用户视角，避免实现偏见。
+3. **代码完成 ≠ 任务完成**：必须包含变更记录、决策记录、验证证据、风险说明。
+4. **上下文定期清场**：沉淀长期规则，删除阶段性推理噪音。
+5. **闭环优于堆叠 Agent**：关键是"目标→执行→验证→沉淀→清场"的完整回路。
+
+### 4.4 当前阶段判定
+
+- **当前阶段**：Phase 1（路线 A）
+- **进入 Phase 2 的条件**：P0 全部落地且稳定运行 2-3 个迭代
+- **进入 Phase 3 的条件**：文档规模和复用密度明显上升，出现检索瓶颈
+
+---
+
+## 五、工作流与产物契约（最小集）
+
+### 5.1 小需求默认工作流（骨架）
 
 1. **G0：入口规模 Gate（Intake）**
    - `SizeScore(0-10)`：`<=3` 放行，`4-6` 必须拆分，`>=7` 建议拒绝/要求拆分后再进入流程。
@@ -92,7 +138,7 @@
 
 > 运行策略：验证不可做时允许降级为 **2-2-1**，但必须显式输出“验证缺失清单 + 风险标记”，且不得宣称通过。
 
-### 4.2 统一产物命名（强制）
+### 5.2 统一产物命名（强制）
 
 - `requirement-contract.md`：需求契约（MUST-FOLLOW / MUST-VERIFY / 环境矩阵 / 验收）
 - `review-findings.md`：静态审查问题清单（P0/P1/P2）
@@ -102,7 +148,7 @@
 - `delivery-summary.md`：最终交付摘要（交付物清单 + 证据索引 + 风险/回退）
 - `performance-baseline.md`：性能基准（仅当存在 MUST-MEASURE/性能目标）
 
-### 4.3 现有 aw-kernel Agent 的角色映射（渐进式）
+### 5.3 现有 aw-kernel Agent 的角色映射（渐进式）
 
 > 目标：先复用现有 Agent，再逐步把职责收敛到"段内单一职责"。
 
@@ -115,18 +161,20 @@
 
 ---
 
-## 五、路线图（P0/P1/P2）
+## 六、路线图（P0/P1/P2）
 
 ### P0（必须）：把门禁与证据落地到可自动检查
 
 | ID | 条目 | 交付物（产物/改动） | 验收（门禁/证据） |
 |---|---|---|---|
-| P0-1 | 入口规模 Gate（Intake-Gatekeeper） | 在 `Claude/skills/aw-kernel/autodev/v0.1/SKILL.md` 入口加入 `SizeScore` 规则 + 拆分模板 | 大任务不进入默认路径；输出“放行/拆分/拒绝”与 ≤5 子任务验收/风险/验证方式 |
-| P0-2 | 需求契约模板（Spec-Owner） | 在 `Claude/skills/aw-kernel/autodev/v0.1/` 固化 `requirement-contract.md` 模板（MUST-FOLLOW/MUST-VERIFY/环境矩阵/验收/降级策略） | G1 能检查：术语无歧义、每条 MUST-VERIFY 都有验证方法/容差/场景、矩阵明确 |
-| P0-3 | 需求门禁（Spec-Gatekeeper） | 在 `Claude/skills/aw-kernel/autodev/v0.1/SKILL.md` 固化 G1 放行清单（可被 Hooks/Skill 校验） | 未通过不允许进入实现段；能输出“缺失项清单 + 补齐顺序” |
-| P0-4 | 证据门禁（Verifier） | 在 `Claude/skills/aw-kernel/autodev/v0.1/SKILL.md` 强制最小证据三件套产出与校验 | G3 能检查：无证据不放行；无法验证必须显式标注原因与风险等级 |
+| P0-1 | 入口规模 Gate（Intake-Gatekeeper） | 在 `toolchain/skills/aw-kernel/autodev/v0.1/SKILL.md` 入口加入 `SizeScore` 规则 + 拆分模板 | 大任务不进入默认路径；输出“放行/拆分/拒绝”与 ≤5 子任务验收/风险/验证方式 |
+| P0-2 | 需求契约模板（Spec-Owner） | 在 `toolchain/skills/aw-kernel/autodev/v0.1/` 固化 `requirement-contract.md` 模板（MUST-FOLLOW/MUST-VERIFY/环境矩阵/验收/降级策略） | G1 能检查：术语无歧义、每条 MUST-VERIFY 都有验证方法/容差/场景、矩阵明确 |
+| P0-3 | 需求门禁（Spec-Gatekeeper） | 在 `toolchain/skills/aw-kernel/autodev/v0.1/SKILL.md` 固化 G1 放行清单（可被 Hooks/Skill 校验） | 未通过不允许进入实现段；能输出“缺失项清单 + 补齐顺序” |
+| P0-4 | 证据门禁（Verifier） | 在 `toolchain/skills/aw-kernel/autodev/v0.1/SKILL.md` 强制最小证据三件套产出与校验 | G3 能检查：无证据不放行；无法验证必须显式标注原因与风险等级 |
 | P0-5 | Level 0 回路（最多 3 次） | 回路触发/终止规则 + “最小修复清单”格式 | 失败→自动生成修复任务单；连续失败 3 次→明确请求人工介入 |
-| P0-6 | 交付整合（Finalizer） | `delivery-summary.md` 模板（交付清单/证据索引/风险/回退/下一步） | G4 能检查：缺失产物→拒绝“完成交付”；P0 未清零→标记“未达交付门禁” |
+| P0-6 | 交付整合（Finalizer） | `delivery-summary.md` 模板（交付清单/证据索引/风险/回退/下一步） | G4 能检查：缺失产物→拒绝"完成交付"；P0 未清零→标记"未达交付门禁" |
+| P0-7 | 目标列表维护（Goal Tracker） | `goal-list.md` 模板 + 在 `autodev` 流程中增加"目标状态更新"强制步骤 | 任务推进中强制更新中间目标清单（完成/新增/降级）；任务完成时目标状态完整 |
+| P0-8 | 知识沉淀门禁（Knowledge Gate） | `knowledge-update.md` 模板 + Hook 检查 | 每次 commit/交付前强制更新知识库；未更新知识库不得进入交付 |
 
 ### P1（应该）：Prompt 压缩、职责对齐、降低返工
 
@@ -141,20 +189,22 @@
 | ID | 条目 | 交付物（产物/改动） | 验收（门禁/证据） |
 |---|---|---|---|
 | P2-1 | Hooks 最小增稳 | `.claude/hooks/` 增加：上下文注入（inject-context）/输出验证（validate-output） | 能在不改 Agent Prompt 的情况下做“注入 + 校验 + 风险提示” |
-| P2-2 | 成功度量落地 | 在日志/报告中记录证据覆盖率、P0 数量、回路次数、无法验证原因 | 能用数据回答“更稳是否有效” |
+| P2-2 | 成功度量落地 | 在日志/报告中记录证据覆盖率、P0 数量、回路次数、无法验证原因 | 能用数据回答"更稳是否有效" |
+| P2-3 | 文档元数据标准化（Phase 2 准备） | 为 `docs/` 建立统一元数据（标签、日期、主题、状态） | 检索前置准备完成；文档可被结构化索引 |
+| P2-4 | BM25 本地检索（Phase 2 核心） | 本地全文检索命令 + 接入 Skill 前置步骤 | Skill 任务开始前能检索历史约束、同类决策、已知风险 |
 
 ---
 
-## 六、成功度量与更新规则
+## 七、成功度量与更新规则
 
-### 6.1 成功度量（验收这条路线是否有效）
+### 7.1 成功度量（验收这条路线是否有效）
 
 - 问题发现时机：≥80% 的问题在实现段（Reviewer/Verifier）暴露，而不是拖到最终交付阶段。
 - 证据覆盖率：小需求任务 100% 产出最小证据三件套。
 - 诚实度：0 次“无证据宣称编译/测试/性能通过”。
 - 返工成本：同类问题返工时间下降 ≥30%。
 
-### 6.2 路线图更新规则（降低上下文污染）
+### 7.2 路线图更新规则（降低上下文污染）
 
 1. **一条 Roadmap = 一个可交付条目**：必须写清楚交付物与验收标准；没有“怎么验收”的条目不进入 P0/P1。
 2. **状态只由证据推动**：条目标记完成前，必须能给出对应产物与验证路径（或明确“无法验证”的风险说明）。

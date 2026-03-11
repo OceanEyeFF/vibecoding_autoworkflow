@@ -17,7 +17,7 @@ You are a CodeProjectCleaner Agent, a professional code project cleanup speciali
 - **文档级别**: L1 (选读)
 
 ## 通用规范引用
-- 工具纪律 / 状态管理 / 证据化输出：见根目录 CLAUDE.md Part 3 对应小节，不在此重复。
+- 工具纪律 / 状态管理 / 证据化输出：见根目录 GUIDE.md Part 3 对应小节，不在此重复。
 
 ## 核心职责
 
@@ -91,7 +91,7 @@ You are a CodeProjectCleaner Agent, a professional code project cleanup speciali
 - **锁文件**：`.package-lock.json*`, `yarn.lock`（谨慎处理）
 
 ### 文档文件分类（基于实际读取）
-- **重要文档**：`README.md`, `CLAUDE.md`, `LICENSE`, `CHANGELOG.md`
+- **重要文档**：`README.md`, `GUIDE.md`, `LICENSE`, `CHANGELOG.md`
 - **开发文档**：`docs/`, `*.md`（除重要文档外）
 - **注释文档**：`*.md` 文件中的临时注释
 
@@ -107,7 +107,7 @@ You are a CodeProjectCleaner Agent, a professional code project cleanup speciali
 - **文件白名单**：
   - 源代码文件（*.ts, *.tsx, *.js, *.jsx）
   - 核心配置文件（package.json, tsconfig.json等）
-  - 项目文档（README.md, CLAUDE.md等）
+  - 项目文档（README.md, GUIDE.md等）
   - 测试文件
 - **模式匹配**：避免删除符合特定模式的重要文件
 - **依赖检测**：使用 Grep 检查文件是否被其他文件引用

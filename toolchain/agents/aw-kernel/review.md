@@ -17,7 +17,7 @@ You are a CodeAnalyzer Agent, an architectural topology analyst focused on struc
 - **文档级别**: L1 (选读)
 
 ## 通用规范引用
-- 工具纪律 / 状态管理 / 证据化输出：见根目录 CLAUDE.md Part 3 对应小节，不在此重复。
+- 工具纪律 / 状态管理 / 证据化输出：见根目录 GUIDE.md Part 3 对应小节，不在此重复。
 
 ## 执行流程（精简）
 1. 明确分析范围（结构/健康/API）

@@ -4,7 +4,7 @@
 
 ## 当前开发方向（小需求更稳）
 
-- 范围与非目标：以 `CLAUDE.md` 的"当前开发方向/非目标"为准；大任务必须先拆分后再进入流程。
+- 范围与非目标：以 `GUIDE.md` 的"当前开发方向/非目标"为准；大任务必须先拆分后再进入流程。
 - 工作流文档（单一事实源）：[`AUTODEV_小任务工作流.md`](AUTODEV_小任务工作流.md) - 包含流程设计、角色定义、实施参考
 
 ## 🎯 快速导航
@@ -21,20 +21,20 @@
 - [Skill 列表](#skills) - 了解工作流
 
 **🔧 开发者**
-- [源资产目录](Claude/README.md) - 了解目录结构
-- [安装脚本](Claude/scripts/README.md) - 详细安装选项
-- [设计基线](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md) - 理解设计理念
+- [源资产目录](toolchain/README.md) - 了解目录结构
+- [安装脚本](toolchain/scripts/README.md) - 详细安装选项
+- [设计基线](design/01_DesignBaseLines/README.md) - 理解设计理念
 
 ### 按任务类型快速定位
 
 | 任务类型 | 首选工具 | 备选工具 |
 |---------|---------|---------|
-| **新功能开发** | [autodev Skill](Claude/skills/aw-kernel/autodev/SKILL.md) | [ship Agent](Claude/agents/aw-kernel/ship.md) |
-| **代码分析** | [review Agent](Claude/agents/aw-kernel/review.md) | - |
-| **日志分析** | [logs Agent](Claude/agents/aw-kernel/logs.md) | - |
-| **清理重构** | [clean Agent](Claude/agents/aw-kernel/clean.md) | - |
-| **需求澄清** | [clarify Agent](Claude/agents/aw-kernel/clarify.md) | - |
-| **资料研究** | [knowledge-researcher Agent](Claude/agents/aw-kernel/knowledge-researcher.md) | - |
+| **新功能开发** | [autodev Skill](toolchain/skills/aw-kernel/autodev/SKILL.md) | [ship Agent](toolchain/agents/aw-kernel/ship.md) |
+| **代码分析** | [review Agent](toolchain/agents/aw-kernel/review.md) | - |
+| **日志分析** | [logs Agent](toolchain/agents/aw-kernel/logs.md) | - |
+| **清理重构** | [clean Agent](toolchain/agents/aw-kernel/clean.md) | - |
+| **需求澄清** | [clarify Agent](toolchain/agents/aw-kernel/clarify.md) | - |
+| **资料研究** | [knowledge-researcher Agent](toolchain/agents/aw-kernel/knowledge-researcher.md) | - |
 
 ---
 
@@ -46,16 +46,16 @@
 
 | Agent | 文件 | 何时使用 | 核心能力 |
 |-------|------|---------|----------|
-| **ship** | [ship.md](Claude/agents/aw-kernel/ship.md) | 功能开发闭环 | Spec → Plan → Implement → Test → Deliver |
-| **review** | [review.md](Claude/agents/aw-kernel/review.md) | 代码结构分析 | 架构洞察、依赖分析、质量评估 |
-| **logs** | [logs.md](Claude/agents/aw-kernel/logs.md) | 日志分析诊断 | 日志解读、异常检测、趋势分析 |
-| **clean** | [clean.md](Claude/agents/aw-kernel/clean.md) | 代码清理重构 | 死代码清理、重构建议、依赖优化 |
-| **clarify** | [clarify.md](Claude/agents/aw-kernel/clarify.md) | 需求澄清细化 | DoD细化、边界确认、验收标准 |
-| **knowledge-researcher** | [knowledge-researcher.md](Claude/agents/aw-kernel/knowledge-researcher.md) | 技术资料研究与归档 | 官方文档检索、最佳实践整理、知识沉淀 |
+| **ship** | [ship.md](toolchain/agents/aw-kernel/ship.md) | 功能开发闭环 | Spec → Plan → Implement → Test → Deliver |
+| **review** | [review.md](toolchain/agents/aw-kernel/review.md) | 代码结构分析 | 架构洞察、依赖分析、质量评估 |
+| **logs** | [logs.md](toolchain/agents/aw-kernel/logs.md) | 日志分析诊断 | 日志解读、异常检测、趋势分析 |
+| **clean** | [clean.md](toolchain/agents/aw-kernel/clean.md) | 代码清理重构 | 死代码清理、重构建议、依赖优化 |
+| **clarify** | [clarify.md](toolchain/agents/aw-kernel/clarify.md) | 需求澄清细化 | DoD细化、边界确认、验收标准 |
+| **knowledge-researcher** | [knowledge-researcher.md](toolchain/agents/aw-kernel/knowledge-researcher.md) | 技术资料研究与归档 | 官方文档检索、最佳实践整理、知识沉淀 |
 
 ### 位置
 ```
-Claude/agents/aw-kernel/
+toolchain/agents/aw-kernel/
 ├── ship.md                      # 功能交付
 ├── review.md                    # 代码分析
 ├── logs.md                      # 日志分析
@@ -80,12 +80,12 @@ Claude/agents/aw-kernel/
 
 | Skill | 目录 | 何时使用 | 核心能力 |
 |-------|------|---------|----------|
-| **autodev** | [autodev/](Claude/skills/aw-kernel/autodev/SKILL.md) | 自动化开发流程 | 需求分析 → 任务拆解 → 迭代开发 → 交付 |
-| **autodev-worktree** | [autodev-worktree/](Claude/skills/aw-kernel/autodev-worktree/SKILL.md) | 并行开发管理 | Git worktree、隔离工作区、智能合并 |
+| **autodev** | [autodev/](toolchain/skills/aw-kernel/autodev/SKILL.md) | 自动化开发流程 | 需求分析 → 任务拆解 → 迭代开发 → 交付 |
+| **autodev-worktree** | [autodev-worktree/](toolchain/skills/aw-kernel/autodev-worktree/SKILL.md) | 并行开发管理 | Git worktree、隔离工作区、智能合并 |
 
 ### 位置
 ```
-Claude/skills/aw-kernel/
+toolchain/skills/aw-kernel/
 ├── autodev/                     # 自动化开发流程
 │   ├── SKILL.md
 │   └── v0.1/
@@ -106,8 +106,8 @@ Claude/skills/aw-kernel/
 ### 安装位置
 ```
 ~/.claude/                    # 全局安装目录
-├── agents/aw-kernel/         # Agents（从 Claude/agents/aw-kernel/ 安装）
-├── skills/aw-kernel/          # Skills（从 Claude/skills/aw-kernel/ 安装）
+├── agents/aw-kernel/         # Agents（从 toolchain/agents/aw-kernel/ 安装）
+├── skills/aw-kernel/          # Skills（从 toolchain/skills/aw-kernel/ 安装）
 └── commands/aw-kernel/       # Commands（如有）
 ```
 
@@ -115,7 +115,7 @@ Claude/skills/aw-kernel/
 
 **Linux/macOS/WSL:**
 ```bash
-bash Claude/scripts/install-global.sh
+bash toolchain/scripts/install-global.sh
 ```
 
 **Windows PowerShell:**
@@ -133,7 +133,7 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 | `--uninstall` | 卸载 | 清理环境 |
 
 ### 详细文档
-- [安装脚本详细文档](Claude/scripts/README.md)
+- [安装脚本详细文档](toolchain/scripts/README.md)
 
 ---
 
@@ -143,27 +143,27 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 
 | 类型 | 职责 | 示例 |
 |------|------|------|
-| **宪法文档** | 协作规则与禁区 | [CLAUDE.md](CLAUDE.md) |
+| **宪法文档** | 协作规则与禁区 | [GUIDE.md](GUIDE.md) |
 | **项目文档** | 项目介绍与快速开始 | [README.md](README.md) |
 | **索引文档** | 文档路由与快速导航 | [INDEX.md](INDEX.md)（本文件） |
 | **技术文档** | 详细技术说明 | Agent、Skill、脚本文档 |
-| **设计文档** | 设计理念与架构 | [设计基线](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md) |
+| **设计文档** | 设计理念与架构 | [设计基线](design/01_DesignBaseLines/README.md) |
 | **分析文档** | 问题分析与改进 | [分析精华](docs/analysis/autodev-insights.md) |
 
 ### 按使用频率分类
 
 #### 🔥 常用（每天）
-- [CLAUDE.md](CLAUDE.md) - 协作规则
+- [GUIDE.md](GUIDE.md) - 协作规则
 - [INDEX.md](INDEX.md) - 文档路由（本文件）
 - Agent文档 - 工具使用
 
 #### 📖 常用（每周）
 - [README.md](README.md) - 项目介绍
 - Skill文档 - 工作流执行
-- [安装脚本](Claude/scripts/README.md) - 安装配置
+- [安装脚本](toolchain/scripts/README.md) - 安装配置
 
 #### 📚 备用（每月）
-- [设计基线](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md) - 设计理解
+- [设计基线](design/01_DesignBaseLines/README.md) - 设计理解
 - [分析精华](docs/analysis/autodev-insights.md) - 失败模式与改进要点
 - [路线图](ROADMAP.md) - 改进排期与里程碑
 
@@ -173,78 +173,64 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 
 ```
 AutoWorkflow/
-├── 📄 CLAUDE.md                    # 【宪法】协作规则与禁区
+├── 📄 GUIDE.md                    # 【宪法】协作规则与禁区
 ├── 📄 README.md                    # 【项目】项目介绍与快速开始
 ├── 📄 INDEX.md                     # 【索引】文档路由中心（本文件）
 ├── 📄 ROADMAP.md                   # 【项目】路线图
-├── 📄 AUTODEV_小任务工作流.md      # 【SoT】工作流设计与实施参考（合并版）
+├── 📄 AUTODEV_小任务工作流.md      # 【SoT】工作流设计与实施参考
 │
-├── 📁 Claude/                      # 【源资产】Claude Code 资源
-│   ├── 📁 agents/aw-kernel/       # 【技术】Agents
-│   │   ├── ship.md
-│   │   ├── review.md
-│   │   ├── logs.md
-│   │   ├── clean.md
-│   │   ├── clarify.md
-│   │   └── knowledge-researcher.md
-│   │
-│   ├── 📁 docs/aw-kernel/          # 【配置】Agent 全局配置与规范
-│   │   ├── CLAUDE.md              # Agent全局配置
-│   │   ├── STANDARDS.md           # 失败处理规范
-│   │   ├── LOGGING.md             # 日志系统
-│   │   ├── VERSIONING.md          # 版本管理
-│   │   ├── CHANGELOG.md           # 变更日志
-│   │   ├── TOOLCHAIN.md           # 工具链说明
-│   │   └── reports/               # 报告目录
-│   │
-│   ├── 📁 skills/aw-kernel/        # 【技术】Skills
-│   │   ├── autodev/
-│   │   └── autodev-worktree/
-│   │
-│   ├── 📁 assets/                  # 【通用】模板资源
-│   │   └── templates/
-│   │
-│   ├── 📁 scripts/                 # 【工具】脚本工具
-│   │   ├── install-global.sh
-│   │   ├── install-global.ps1
-│   │   ├── claude_autoworkflow.py
-│   │   ├── claude_aw.sh
-│   │   ├── claude_aw.ps1
-│   │   └── README.md              # 脚本说明
-│   │
-│   └── 📄 README.md                # 【技术】源资产说明
+├── 📁 .nav/                        # 【导航】软链接快速遍历（AI 工具层）
+│   ├── @agents → toolchain/agents/aw-kernel/
+│   ├── @skills → toolchain/skills/aw-kernel/
+│   ├── @docs → docs/
+│   ├── @design → design/
+│   ├── @planning → planning/
+│   ├── @ideas → ideas/
+│   └── @modules → modules/
 │
-├── 📁 ClaudeCodeAgentDocuments/    # 【设计】设计文档
-│   ├── 📁 01_DesignBaseLines/      # 设计基线
-│   │   ├── README.md              # 设计基线索引
-│   │   ├── autodev-architecture-v2.md
-│   │   ├── autodev-iteration-plan.md
-│   │   ├── IDEA-005-localized-instruction-cache.md
-│   │   ├── IDEA-006-mandatory-data-access.md
-│   │   ├── 📁 IDEA-006-implementation/
-│   │   └── 📁 archived/           # 已归档设计
-│   │
-│   └── 📁 00_TempFiles/           # 临时文件
+├── 📁 planning/                    # 【任务】任务管理区
+│   ├── README.md                  # 任务管理指南
+│   ├── BACKLOG.md                 # 待办事项池
+│   ├── SPRINT.md                  # 当前迭代任务
+│   └── CHANGELOG.md               # 变更记录
 │
-├── 📁 docs/                       # 【用户】附加文档
-│   ├── AI高效使用指南.md
-│   └── 📁 analysis/               # 【分析】精华沉淀
+├── 📁 ideas/                       # 【研究】Idea 管理区
+│   ├── README.md                  # Idea 管理指南
+│   ├── 📁 active/                 # 活跃研究中
+│   ├── 📁 incubating/             # 孵化中
+│   └── 📁 archived/               # 已归档
+│
+├── 📁 modules/                     # 【模块】功能模块区
+│   ├── README.md                  # 模块索引
+│   ├── 📁 gate/                   # 门禁模块
+│   ├── 📁 workflow/               # 工作流模块
+│   ├── 📁 verification/           # 验证模块
+│   └── 📁 knowledge/              # 知识管理模块
+│
+├── 📁 toolchain/                      # 【实现】Claude Code 资源
+│   ├── 📁 agents/aw-kernel/       # Agents
+│   ├── 📁 skills/aw-kernel/       # Skills
+│   ├── 📁 docs/aw-kernel/         # 配置与规范
+│   ├── 📁 assets/templates/       # 模板资源
+│   ├── 📁 scripts/                # 脚本工具
+│   └── README.md
+│
+├── 📁 design/                      # 【设计】设计基线
+│   └── 📁 01_DesignBaseLines/
 │       ├── README.md
-│       └── autodev-insights.md
+│       ├── autodev-architecture-v2.md
+│       ├── option-a-implementation-roadmap.md
+│       └── 📁 IDEA-006-implementation/
 │
-├── 📁 archive/                    # 【归档】历史文档
-│   ├── work-docs/                 # 【归档】工作留档（阶段性记录）
-│   │   ├── OPTIMIZATION_SUMMARY.md
-│   │   ├── DOCUMENTATION_OPTIMIZATION_REPORT.md
-│   │   └── ROADMAP_legacy_v0.2.md
-│   ├── claude-agents/
-│   └── Trae-agents/
+├── 📁 docs/                        # 【文档】用户文档中心
+│   ├── README.md
+│   ├── 📁 analysis/               # 分析精华
+│   ├── 📁 guides/                 # 用户指南
+│   └── 📁 reference/              # 参考资料
 │
-└── 📁 Claude_Official_Docs/       # 【外部】官方文档映射
-    ├── README.md
-    ├── skills.md
-    ├── hooks-guide.md
-    └── ...
+└── 📁 archive/                     # 【归档】历史文档
+    ├── 📁 work-docs/
+    └── 📁 claude-agents/
 ```
 
 ### 图例说明
@@ -270,16 +256,16 @@ AutoWorkflow/
 
 ### 快速查找技巧
 
-1. **按角色**：管理者看 [docs/analysis/](docs/analysis/)，开发者看 [Claude/](Claude/)
-2. **按类型**：宪法看 [CLAUDE.md](CLAUDE.md)，索引看 [INDEX.md](INDEX.md)
-3. **按任务**：开发看 [autodev](Claude/skills/aw-kernel/autodev/SKILL.md)，分析看 [review](Claude/agents/aw-kernel/review.md)
+1. **按角色**：管理者看 [docs/analysis/](docs/analysis/)，开发者看 [toolchain/](toolchain/)
+2. **按类型**：宪法看 [GUIDE.md](GUIDE.md)，索引看 [INDEX.md](INDEX.md)
+3. **按任务**：开发看 [autodev](toolchain/skills/aw-kernel/autodev/SKILL.md)，分析看 [review](toolchain/agents/aw-kernel/review.md)
 
 ---
 
 ## ⚠️ 重要提示
 
 ### 文档使用规范
-- ✅ **首次使用项目**：先读 [CLAUDE.md](CLAUDE.md) 了解规则
+- ✅ **首次使用项目**：先读 [GUIDE.md](GUIDE.md) 了解规则
 - ✅ **寻找资源**：使用 [INDEX.md](INDEX.md) 快速导航
 - ✅ **具体任务**：只读相关Agent/Skill文档
 - ❌ **不要同时读多个同类文档**（避免冲突）
@@ -292,6 +278,6 @@ AutoWorkflow/
 
 ---
 
-**版本**：v1.0
-**最后更新**：2026-01-11
+**版本**：v1.2
+**最后更新**：2026-03-11
 **维护者**：浮浮酱

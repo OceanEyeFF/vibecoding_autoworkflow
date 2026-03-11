@@ -1,11 +1,11 @@
-# Claude/ 源资产目录
+# toolchain/ 源资产目录
 
 本目录存放 Claude Code 的**源资产**（Agents / Skills / Commands），采用 `aw-kernel` 命名空间隔离设计。
 
 ## 目录结构
 
 ```
-Claude/
+toolchain/
 ├── agents/aw-kernel/           # Agents（命名空间隔离）
 │   ├── code-analyzer.md        # 代码分析 Agent
 │   ├── code-debug-expert.md    # 调试专家 Agent
@@ -13,7 +13,7 @@ Claude/
 │   ├── feature-shipper.md      # 功能交付 Agent
 │   ├── requirement-refiner.md  # 需求澄清 Agent
 │   ├── system-log-analyzer.md  # 日志分析 Agent
-│   ├── CLAUDE.md               # Agent 全局配置
+│   ├── GUIDE.md               # Agent 全局配置
 │   ├── STANDARDS.md            # 失败处理规范
 │   ├── TOOLCHAIN.md            # 工具链说明
 │   └── RECHECK-REPORT.md       # 复查报告
@@ -46,7 +46,7 @@ Claude/
 
 **Linux/macOS/WSL:**
 ```bash
-bash Claude/scripts/install-global.sh
+bash toolchain/scripts/install-global.sh
 ```
 
 **Windows PowerShell:**
@@ -57,25 +57,25 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 **安装后结构：**
 ```
 ~/.claude/
-├── agents/aw-kernel/           # 从 Claude/agents/aw-kernel/ 安装
-├── skills/aw-kernel/           # 从 Claude/skills/aw-kernel/ 安装
-└── commands/aw-kernel/         # 从 Claude/commands/（如有）安装
+├── agents/aw-kernel/           # 从 toolchain/agents/aw-kernel/ 安装
+├── skills/aw-kernel/           # 从 toolchain/skills/aw-kernel/ 安装
+└── commands/aw-kernel/         # 从 toolchain/commands/（如有）安装
 ```
 
 ### 安装选项
 
 ```bash
 # 预览模式（不实际安装）
-bash Claude/scripts/install-global.sh --dry-run
+bash toolchain/scripts/install-global.sh --dry-run
 
 # 强制覆盖
-bash Claude/scripts/install-global.sh --force
+bash toolchain/scripts/install-global.sh --force
 
 # 自定义命名空间
-bash Claude/scripts/install-global.sh --namespace my-custom
+bash toolchain/scripts/install-global.sh --namespace my-custom
 
 # 卸载
-bash Claude/scripts/install-global.sh --uninstall --namespace aw-kernel
+bash toolchain/scripts/install-global.sh --uninstall --namespace aw-kernel
 ```
 
 详细文档请参阅：[scripts/README.md](scripts/README.md)
@@ -86,8 +86,8 @@ bash Claude/scripts/install-global.sh --uninstall --namespace aw-kernel
 
 | 源目录 | 安装目标 |
 |--------|----------|
-| `Claude/agents/aw-kernel/` | `~/.claude/agents/aw-kernel/` |
-| `Claude/skills/aw-kernel/` | `~/.claude/skills/aw-kernel/` |
+| `toolchain/agents/aw-kernel/` | `~/.claude/agents/aw-kernel/` |
+| `toolchain/skills/aw-kernel/` | `~/.claude/skills/aw-kernel/` |
 
 **命名空间优势：**
 - 源目录与安装目标结构一致，降低认知成本
@@ -117,13 +117,13 @@ bash Claude/scripts/install-global.sh --uninstall --namespace aw-kernel
 
 ### 添加新 Agent
 
-1. 在 `Claude/agents/aw-kernel/` 下创建 `new-agent.md`
+1. 在 `toolchain/agents/aw-kernel/` 下创建 `new-agent.md`
 2. 遵循现有 Agent 的格式和规范
 3. 运行安装脚本更新全局目录
 
 ### 添加新 Skill
 
-1. 在 `Claude/skills/aw-kernel/` 下创建新目录
+1. 在 `toolchain/skills/aw-kernel/` 下创建新目录
 2. 创建 `SKILL.md` 定义 Skill
 3. 运行安装脚本更新全局目录
 
@@ -132,11 +132,11 @@ bash Claude/scripts/install-global.sh --uninstall --namespace aw-kernel
 修改源文件后，重新运行安装脚本即可更新全局目录：
 
 ```bash
-bash Claude/scripts/install-global.sh --force
+bash toolchain/scripts/install-global.sh --force
 ```
 
 ## 相关链接
 
 - [主 README](../README.md)
 - [安装脚本详细文档](scripts/README.md)
-- [设计基线文档](../ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md)
+- [设计基线文档](../design/01_DesignBaseLines/README.md)

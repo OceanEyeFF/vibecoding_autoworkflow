@@ -1,4 +1,4 @@
-﻿# CLAUDE.md（本仓库宪法）
+﻿# GUIDE.md（本仓库宪法）
 
 > 本文档是本项目的最高准则，定义 Claude Code 协作的根本规则与文档路由。
 
@@ -17,12 +17,12 @@ AutoWorkflow 是面向小需求交付的 Claude Code Agent 工具链，目标是
 ### Agent 快速清单
 | 任务/意图 | 首选 Agent | 入口文档 |
 |---|---|---|
-| 新功能开发 | ship | [Claude/agents/aw-kernel/ship.md](Claude/agents/aw-kernel/ship.md) |
-| 代码分析 | review | [Claude/agents/aw-kernel/review.md](Claude/agents/aw-kernel/review.md) |
-| 日志分析 | logs | [Claude/agents/aw-kernel/logs.md](Claude/agents/aw-kernel/logs.md) |
-| 清理重构 | clean | [Claude/agents/aw-kernel/clean.md](Claude/agents/aw-kernel/clean.md) |
-| 需求澄清 | clarify | [Claude/agents/aw-kernel/clarify.md](Claude/agents/aw-kernel/clarify.md) |
-| 资料研究 | knowledge-researcher | [Claude/agents/aw-kernel/knowledge-researcher.md](Claude/agents/aw-kernel/knowledge-researcher.md) |
+| 新功能开发 | ship | [toolchain/agents/aw-kernel/ship.md](toolchain/agents/aw-kernel/ship.md) |
+| 代码分析 | review | [toolchain/agents/aw-kernel/review.md](toolchain/agents/aw-kernel/review.md) |
+| 日志分析 | logs | [toolchain/agents/aw-kernel/logs.md](toolchain/agents/aw-kernel/logs.md) |
+| 清理重构 | clean | [toolchain/agents/aw-kernel/clean.md](toolchain/agents/aw-kernel/clean.md) |
+| 需求澄清 | clarify | [toolchain/agents/aw-kernel/clarify.md](toolchain/agents/aw-kernel/clarify.md) |
+| 资料研究 | knowledge-researcher | [toolchain/agents/aw-kernel/knowledge-researcher.md](toolchain/agents/aw-kernel/knowledge-researcher.md) |
 
 ### 文档路由指南（decision tree）
 开始
@@ -38,24 +38,28 @@ AutoWorkflow 是面向小需求交付的 Claude Code Agent 工具链，目标是
 ### 2.1 按任务类型路由表
 | 任务类型 | 首选文档 | 备选文档 |
 |---|---|---|
-| 新功能开发 | [autodev Skill](Claude/skills/aw-kernel/autodev/SKILL.md) | [ship Agent](Claude/agents/aw-kernel/ship.md) |
-| 代码分析 | [review Agent](Claude/agents/aw-kernel/review.md) | - |
-| 日志分析 | [logs Agent](Claude/agents/aw-kernel/logs.md) | - |
-| 清理重构 | [clean Agent](Claude/agents/aw-kernel/clean.md) | - |
-| 需求澄清 | [clarify Agent](Claude/agents/aw-kernel/clarify.md) | - |
-| 资料研究 | [knowledge-researcher Agent](Claude/agents/aw-kernel/knowledge-researcher.md) | - |
+| 新功能开发 | [autodev Skill](toolchain/skills/aw-kernel/autodev/SKILL.md) | [ship Agent](toolchain/agents/aw-kernel/ship.md) |
+| 代码分析 | [review Agent](toolchain/agents/aw-kernel/review.md) | - |
+| 日志分析 | [logs Agent](toolchain/agents/aw-kernel/logs.md) | - |
+| 清理重构 | [clean Agent](toolchain/agents/aw-kernel/clean.md) | - |
+| 需求澄清 | [clarify Agent](toolchain/agents/aw-kernel/clarify.md) | - |
+| 资料研究 | [knowledge-researcher Agent](toolchain/agents/aw-kernel/knowledge-researcher.md) | - |
 
 ### 2.2 按文档类型路由表
 | 文档类型 | 级别 | 何时读 | 代表文件 | 冲突/不读 |
 |---|---|---|---|---|
-| CLAUDE.md Part 1 | L0 必读 | 首次进入项目、协作规则不确定 | 本文件 Part 1 | 不与其他文档并读 |
-| Agent 文档 | L1 选读 | 明确任务执行 | Claude/agents/aw-kernel/*.md | 不与其它 Agent 文档并读 |
-| Skill 文档 | L1 选读 | 需要工作流步骤/编排 | Claude/skills/**/SKILL.md | 不与同任务的多 Skill 并读 |
+| GUIDE.md Part 1 | L0 必读 | 首次进入项目、协作规则不确定 | 本文件 Part 1 | 不与其他文档并读 |
+| Agent 文档 | L1 选读 | 明确任务执行 | toolchain/agents/aw-kernel/*.md | 不与其它 Agent 文档并读 |
+| Skill 文档 | L1 选读 | 需要工作流步骤/编排 | toolchain/skills/**/SKILL.md | 不与同任务的多 Skill 并读 |
 | AUTODEV 规范文档 | L1 选读 | 小需求流程与门禁 | AUTODEV_小任务工作流.md | 不与背景/分析文档并读 |
 | 项目介绍 | L2 按需 | 了解全局与上手 | README.md | 不在具体任务执行时读 |
 | 路线图与计划 | L2 按需 | 了解里程碑与方向 | ROADMAP.md | 不在问题诊断时读 |
-| 分析/设计/历史 | L2 按需 | 需要背景或复盘 | docs/analysis/ / ClaudeCodeAgentDocuments/ / archive/ | 不与任务执行并读 |
-| 索引清单（已被本表替代） | L2 按需 | 只在需要全量清单时读 | INDEX.md | 默认不读 |
+| 分析/设计/历史 | L2 按需 | 需要背景或复盘 | docs/analysis/ / design/ / archive/ | 不与任务执行并读 |
+| 任务管理 | L2 按需 | 查看待办/迭代/变更 | planning/ | 不在具体实现时读 |
+| 研究 Idea | L2 按需 | 探索新方向/技术验证 | ideas/ | 不与任务执行并读 |
+| 功能模块 | L2 按需 | 了解模块设计规格 | modules/ | 按需选择单一模块 |
+| 索引清单 | L2 按需 | 只在需要全量清单时读 | INDEX.md | 默认不读 |
+| 快速导航 | L0 工具 | AI 快速遍历目录 | .nav/ | 不在文档引用中使用 |
 
 ## Part 3: 详细规范
 
