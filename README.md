@@ -5,11 +5,7 @@
 ## 当前开发方向（小需求更稳）
 
 - 方向：小功能自动化工作流（入口规模 Gate + 需求契约 + 2-3-1 角色编排 + 证据型交付）。
-- 范围与非目标：以 `GUIDE.md` 的“当前开发方向/非目标”为准；大任务必须先拆分后再进入流程。
-- 设计文档：
-  - [`AUTODEV_小需求更稳流程设计.md`](AUTODEV_小需求更稳流程设计.md)
-  - [`AUTODEV_小需求更稳_Agent全量定义.md`](AUTODEV_小需求更稳_Agent全量定义.md)
-  - [`AUTODEV_资料萃取_用于Agent重写与工作流实现.md`](AUTODEV_资料萃取_用于Agent重写与工作流实现.md)（背景材料）
+- 范围与非目标：以 `docs/overview/guide.md` 的"当前开发方向/非目标"为准；大任务必须先拆分后再进入流程。
 
 ## ✨ 核心特性
 
@@ -79,7 +75,7 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 ## 📚 文档导航
 
 ### 核心文档
-- **[GUIDE.md](GUIDE.md)** - 项目宪法，协作规则与禁区
+- **[guide.md](docs/overview/guide.md)** - 项目宪法，协作规则与禁区
 - **[INDEX.md](INDEX.md)** - 文档路由中心，快速找到所需资源
 - **[快速开始](#快速开始)** - 本章节，5分钟上手指南
 
@@ -89,9 +85,9 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 - **[安装脚本](toolchain/scripts/README.md)** - 详细安装选项
 
 ### 设计文档
-- **[设计基线](design/01_DesignBaseLines/README.md)** - 设计理念与架构
-- **[分析精华](docs/analysis/autodev-insights.md)** - 失败模式与改进要点（可落地清单）
-- **[路线图](ROADMAP.md)** - 改进优先级与里程碑
+- **[分析精华](docs/knowledge/analysis/autodev-insights.md)** - 失败模式与改进要点（可落地清单）
+- **[路线图](docs/overview/roadmap.md)** - 改进优先级与里程碑
+- **[设计基线](archive/design/01_DesignBaseLines/README.md)** - 设计理念与架构（已归档）
 
 ## 🎯 使用建议
 
@@ -108,13 +104,13 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 
 ## 🔄 持续优化
 
-- 参见：[ROADMAP.md](ROADMAP.md)
+- 参见：[roadmap.md](docs/overview/roadmap.md)
 
 ## 💡 更多信息
 
 - **完整目录结构** → [INDEX.md#目录结构](INDEX.md#目录结构)
 - **安装详细选项** → [toolchain/scripts/README.md](toolchain/scripts/README.md)
-- **设计理念** → [design/01_DesignBaseLines/README.md](design/01_DesignBaseLines/README.md)
+- **设计理念** → [archive/design/01_DesignBaseLines/README.md](archive/design/01_DesignBaseLines/README.md)（已归档）
 
 ---
 

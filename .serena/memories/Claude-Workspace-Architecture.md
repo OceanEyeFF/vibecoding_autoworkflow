@@ -7,7 +7,7 @@
 ```
 源资产（入库维护）          安装产物（生成，不入库）
      ↓                           ↓
-Claude/                    /.claude/
+toolchain/                    /.claude/
 agents/                    agents/
 skills/                    skills/
 commands/                  commands/
@@ -17,15 +17,15 @@ commands/                  commands/
 
 ## 1️⃣ 核心目录结构
 
-### 📁 Claude/ 源资产层
+### 📁 toolchain/ 源资产层
 
 ```
-Claude/
+toolchain/
 ├── README.md                  # 快速开始指南
-├── CLAUDE.md                  # 不存在，但根 CLAUDE.md 引用本层
+├── GUIDE.md                  # 不存在，但根 GUIDE.md 引用本层
 │
 ├── agents/                    # 🤖 Agent 定义（核心）
-│   ├── CLAUDE.md             # Agent 模块指南
+│   ├── GUIDE.md             # Agent 模块指南
 │   ├── TOOLCHAIN.md          # 自动化工具链文档
 │   ├── feature-shipper.md    # 中枢 Agent（最重要）
 │   ├── code-analyzer.md      # 代码结构分析
@@ -63,7 +63,7 @@ Claude/
 │   └── uninstall-local.ps1
 │
 └── docs/
-    └── repo-CLAUDE.md         # 历史文档（已归档）
+    └── repo-GUIDE.md         # 历史文档（已归档）
 ```
 
 ---
@@ -145,10 +145,10 @@ Claude/
 
 ```bash
 # macOS/Linux/WSL
-bash Claude/scripts/install-local.sh
+bash toolchain/scripts/install-local.sh
 
 # Windows PowerShell
-powershell -ExecutionPolicy Bypass -File Claude/scripts/install-local.ps1
+powershell -ExecutionPolicy Bypass -File toolchain/scripts/install-local.ps1
 ```
 
 **效果**：生成 `/.claude/agents`, `/.claude/skills`, `/.claude/commands`（不入库）
@@ -250,7 +250,7 @@ FORMAT_CHECK_CMD=npm run format:check
 
 | 原则 | 含义 | 示例 |
 |------|------|------|
-| **单一真源** | `Claude/` 是唯一源代码 | 更新 Claude/ 后跑安装脚本同步 |
+| **单一真源** | `toolchain/` 是唯一源代码 | 更新 toolchain/ 后跑安装脚本同步 |
 | **共享+隔离** | 共享状态层，日志隔离 | `state.md` 共享，`logs/` 分离 |
 | **门禁优先** | 无绿灯不交付 | Gate 失败自动建议用强模型 |
 | **先验证后输出** | 结论必须有证据 | 所有输出都可追溯文件/行号 |
@@ -270,7 +270,7 @@ FORMAT_CHECK_CMD=npm run format:check
 
 ```bash
 # 1. 在本仓库运行全局安装
-bash Claude/scripts/install-global.sh  # 需补充脚本
+bash toolchain/scripts/install-global.sh  # 需补充脚本
 
 # 2. 跳转到目标项目
 cd /path/to/target-project
@@ -336,6 +336,6 @@ claude
 ## 小贴士 💡
 
 1. **复杂 PowerShell 引号**：直接编辑 `gate.env` 而非命令行
-2. **多模块仓库**：优先同步 CI 配置或根 `CLAUDE.md` 中的命令
+2. **多模块仓库**：优先同步 CI 配置或根 `GUIDE.md` 中的命令
 3. **长日志**：定期清理 `.autoworkflow/logs/*/feedback.jsonl`
 4. **不入库**：加 `.autoworkflow/*` 到 `.git/info/exclude`
