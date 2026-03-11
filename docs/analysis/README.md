@@ -12,4 +12,5 @@
 ## 文档清单
 
 - `autodev-insights.md`：跨任务失败模式、根因结论、最小落地清单与度量指标
+- `chatgpt-session-key-insights-20260311.md`：长对话精华、终极目标与技术路径/架构演进建议
 
