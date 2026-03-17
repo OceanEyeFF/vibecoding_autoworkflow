@@ -1,3 +1,10 @@
+---
+title: "ChatGPT 长对话精华提炼（v2，基于当前项目状态）"
+status: reference
+updated: 2026-03-17
+owner: aw-kernel
+last_verified: 2026-03-17
+---
 # ChatGPT 长对话精华提炼（v2，基于当前项目状态）
 
 > 来源：`docs/ChatGPT - AI Coding 编排方法论 .md`。
@@ -103,7 +110,7 @@
 
 仅在这两类情况：
 
-1. `planning/` 需要被自动化程序当“运行输入目录”（非纯文档）。
+1. `docs/planning/` 需要被自动化程序当“运行输入目录”（非纯文档）。
 2. `idea/` 包含大量原型代码或实验脚本，而非文档提案。
 
 否则默认收敛到 `docs/` 下最稳。
@@ -113,9 +120,9 @@
 ## 5) 对当前仓库的最小落地建议（不做大重构）
 
 1. 新增（或确认）`docs/overview/roadmap.md` 作为对外总入口。
-2. 将 Sprint 文档统一放入 `docs/planning/`。
+2. 将 Sprint 文档保留在 `docs/planning/`，与路线图和任务台账一起维护。
 3. 将历史 `IDEA-*` 逐步迁入 `docs/ideas/`（保留 archived 子目录）。
-4. 保留现有 `docs/analysis/` 作为“复盘与精华沉淀”区。
+4. 保留现有 `docs/knowledge/analysis/` 作为“复盘与精华沉淀”区。
 
 结论：
 

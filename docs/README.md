@@ -1,62 +1,68 @@
+---
+title: "docs/ - 文档中心"
+status: active
+updated: 2026-03-17
+owner: aw-kernel
+last_verified: 2026-03-17
+---
 # docs/ - 文档中心
 
-> 本目录采用三层架构组织项目文档，从粗到细提供不同粒度的信息。
+> 本目录是当前项目文档的主容器。
+> 最后更新：2026-03-17
 
-## 三层架构
+## 当前结构
 
-```
+```text
 docs/
-├── overview/       # L1 概览层 - 粗颗粒度，面向首次进入
-├── modules/        # L2 模块层 - 中等颗粒度，面向模块设计
-├── interfaces/     # L3 接口层 - 细颗粒度，面向接口使用
-└── knowledge/      # 知识库 - 横向支撑，背景与参考
+├── overview/      # 协作规则、路线图
+├── planning/      # 任务台账、迭代承诺、变更记录
+├── ideas/         # 尚未准入的想法与研究
+├── modules/       # 模块设计与中层说明
+├── interfaces/    # Agent / Skill 接口入口
+├── knowledge/     # 分析沉淀、指南、参考资料
+└── archive/       # 历史设计与旧资料
 ```
 
-## 快速导航
+## 怎么读
 
-| 目录 | 粒度 | 何时读 | 入口 |
-|------|------|--------|------|
-| [overview/](overview/) | 粗 | 首次进入、了解规则 | [guide.md](overview/guide.md) |
-| [modules/](modules/) | 中 | 理解模块设计 | [architecture.md](modules/architecture.md) |
-| [interfaces/](interfaces/) | 细 | 查阅接口用法 | [README.md](interfaces/README.md) |
-| [knowledge/](knowledge/) | - | 背景知识、复盘 | [README.md](knowledge/README.md) |
+### 先看规则和方向
 
-## 阅读路径
+- `overview/guide.md`
+- `overview/roadmap.md`
 
-### 首次进入项目
-```
-overview/guide.md → overview/roadmap.md → (按需) modules/
-```
+### 再看状态和计划
 
-### 执行具体任务
-```
-interfaces/README.md → 选择 Agent/Skill → toolchain/
-```
+- `docs/planning/WORKBOARD.md`
+- `docs/planning/SPRINT.md`
+- `docs/planning/CHANGELOG.md`
 
-### 需要背景知识
-```
-knowledge/analysis/ 或 knowledge/guides/
-```
+### 需要背景时补充读
 
-## 层级关系图
+- `docs/ideas/`
+- `docs/knowledge/`
+- `docs/archive/`
 
-```
-overview/ (粗颗粒)
-    │
-    ↓ 细化
-modules/ (中颗粒)
-    │
-    ↓ 细化
-interfaces/ (细颗粒)
-    │
-    ↓ 引用
-toolchain/ (实现)
+## 各目录职责
 
-knowledge/ ←── 横向支撑所有层级
-```
+| 目录 | 职责 | 何时进入 |
+|------|------|----------|
+| [overview/](overview/) | 当前协作规则和路线图 | 判断主线方向、确认文档路由时 |
+| [planning/](planning/) | 已准入任务的真实状态 | 看计划、排迭代、查完成情况时 |
+| [ideas/](ideas/) | 尚未进入正式计划的想法 | 记录或筛选新方向时 |
+| [modules/](modules/) | 模块级设计说明 | 理解模块边界时 |
+| [interfaces/](interfaces/) | 接口与使用入口 | 选择 Agent / Skill 时 |
+| [knowledge/](knowledge/) | 分析、指南、参考资料 | 需要背景、复盘、参考时 |
+| [archive/](archive/) | 历史资料 | 追溯旧方案、旧设计时 |
 
----
+## 当前边界
 
-**版本**：v2.0
-**最后更新**：2026-03-11
-**维护者**：浮浮酱
+- `docs/` 是文档容器，根目录只保留 `README.md`、`GUIDE.md`、`ROADMAP.md` 作为项目入口或兼容入口。
+- `docs/planning/` 和 `docs/ideas/` 已并入 `docs/`，不再视为仓库根层独立文档区。
+- `docs/archive/` 只用于追溯，不参与当前主线判断。
+
+## 最小阅读路径
+
+1. 首次进入项目：`overview/guide.md`
+2. 看当前方向：`overview/roadmap.md`
+3. 看当前状态：`docs/planning/WORKBOARD.md`
+4. 看当前迭代：`docs/planning/SPRINT.md`

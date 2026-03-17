@@ -1,3 +1,10 @@
+---
+title: "分析文档（精华沉淀）"
+status: reference
+updated: 2026-03-17
+owner: aw-kernel
+last_verified: 2026-03-17
+---
 # 分析文档（精华沉淀）
 
 > 本目录用于沉淀“可复用、可落地、可写进 Agent/Skill/Hooks”的分析结论与改进要点。  

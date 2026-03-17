@@ -1,31 +1,30 @@
-# docs/overview/ - 概览层文档
-
-> 粗颗粒度文档，面向首次进入项目或需要理解全局的读者。
-
-## 何时读我？
-
-- ✅ 首次进入项目，需要了解协作规则
-- ✅ 需要理解项目路线图和里程碑
-- ❌ 不在执行具体任务时阅读
-
-## 文档清单
-
-| 文档 | 职责 | 何时读 |
-|------|------|--------|
-| [guide.md](guide.md) | 项目宪法，定义协作规则与文档路由 | 首次进入项目 |
-| [roadmap.md](roadmap.md) | 路线图，定义优先级与里程碑 | 了解项目方向 |
-
-## 与其他层的关系
-
-```
-overview/ (本目录)
-    ↓ 细化
-modules/ (模块设计)
-    ↓ 细化
-interfaces/ (接口定义)
-```
-
 ---
+title: "docs/overview/ - 概览层"
+status: active
+updated: 2026-03-17
+owner: aw-kernel
+last_verified: 2026-03-17
+---
+# docs/overview/ - 概览层
 
-**版本**：v1.0
-**创建日期**：2026-03-11
+> 面向首次进入项目或需要做规划判断的读者。
+> 最后更新：2026-03-17
+
+## 本目录包含什么
+
+| 文档 | 职责 |
+|------|------|
+| `guide.md` | 协作规则、文档路由、当前 SoT |
+| `roadmap.md` | 战略优先级、阶段退出条件 |
+
+## 本目录不包含什么
+
+- 不维护任务状态：去 `docs/planning/WORKBOARD.md`
+- 不维护当前迭代：去 `docs/planning/SPRINT.md`
+- 不记录完成流水：去 `docs/planning/CHANGELOG.md`
+
+## 阅读顺序
+
+1. `guide.md`
+2. `roadmap.md`
+3. 需要落到执行时，再跳转到 `docs/planning/`

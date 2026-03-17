@@ -1,3 +1,10 @@
+---
+title: "docs/interfaces/ - 接口层文档"
+status: active
+updated: 2026-03-17
+owner: aw-kernel
+last_verified: 2026-03-17
+---
 # docs/interfaces/ - 接口层文档
 
 > 细颗粒度文档，提供 Agent 和 Skill 的接口参考。

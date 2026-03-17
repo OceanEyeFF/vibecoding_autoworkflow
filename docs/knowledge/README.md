@@ -1,3 +1,10 @@
+---
+title: "docs/knowledge/ - 知识库文档"
+status: active
+updated: 2026-03-17
+owner: aw-kernel
+last_verified: 2026-03-17
+---
 # docs/knowledge/ - 知识库文档
 
 > 背景知识、分析洞察、参考资料的沉淀区。

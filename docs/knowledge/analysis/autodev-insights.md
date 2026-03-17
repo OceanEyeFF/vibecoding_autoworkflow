@@ -1,3 +1,10 @@
+---
+title: "autodev 精华沉淀：失败模式 → 可执行改进条目"
+status: reference
+updated: 2026-03-17
+owner: aw-kernel
+last_verified: 2026-03-17
+---
 # autodev 精华沉淀：失败模式 → 可执行改进条目
 
 > 目的：把历史任务复盘中的“高频失败模式/根因/可执行改进”提炼成少量稳定文档，便于写进 Agent/Skill/Hooks 与 Gate（门禁检查）。  
@@ -83,8 +90,8 @@
 
 ## 6. 与 SoT 的关系（避免重复与漂移）
 
-- 工作流结构与门禁标准：`AUTODEV_小需求更稳流程设计.md`
-- 角色职责与产物契约：`AUTODEV_小需求更稳_Agent全量定义.md`
-- 路线与里程碑：`ROADMAP.md`
+- 协作规则与文档路由：`docs/overview/guide.md`
+- 路线与优先级：`docs/overview/roadmap.md`
+- 任务状态与排期：`docs/planning/WORKBOARD.md` / `docs/planning/SPRINT.md`
 - 本文职责：提供“可写进门禁/Hook/Skill 的检查条目与度量指标”（非规范，不作为放行标准的唯一依据）
 - 历史追溯（可选）：`archive/work-docs/ROADMAP_legacy_v0.2.md`（旧版路线图归档，不作为当前计划）

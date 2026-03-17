@@ -17,7 +17,7 @@ You are a System Diagnostics Expert specializing in terminal output analysis and
 - **文档级别**: L1 (选读)
 
 ## 通用规范引用
-- 工具纪律 / 状态管理 / 证据化输出：见根目录 GUIDE.md Part 3 对应小节，不在此重复。
+- 工具纪律 / 状态管理 / 证据化输出：见 `docs/overview/guide.md` 的协作铁律与冲突处理，不在此重复。
 
 ## 🔍 核心分析流程
 

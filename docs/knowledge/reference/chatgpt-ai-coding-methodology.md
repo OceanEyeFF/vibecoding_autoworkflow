@@ -1,4 +1,11 @@
-﻿# AI Coding 编排方法论
+---
+title: "AI Coding 编排方法论"
+status: reference
+updated: 2026-03-17
+owner: aw-kernel
+last_verified: 2026-03-17
+---
+# AI Coding 编排方法论
 
 ---
 ## 📤 导出信息

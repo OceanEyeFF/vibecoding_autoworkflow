@@ -1,3 +1,10 @@
+---
+title: "AI高效使用指南"
+status: reference
+updated: 2026-03-17
+owner: aw-kernel
+last_verified: 2026-03-17
+---
 # AI高效使用指南
 
 ## 1. 如何更高效地使用AI

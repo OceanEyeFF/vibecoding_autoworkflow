@@ -1,117 +1,47 @@
-# AutoWorkflow - Claude Code Agent 工具链
-
-> **aw-kernel**: 一套专为 Claude Code 设计的 Agent + Skill 工具链，覆盖需求澄清 → 计划 → 实现 → 测试 → 交付的完整闭环。
-
-## 当前开发方向（小需求更稳）
-
-- 方向：小功能自动化工作流（入口规模 Gate + 需求契约 + 2-3-1 角色编排 + 证据型交付）。
-- 范围与非目标：以 `docs/overview/guide.md` 的"当前开发方向/非目标"为准；大任务必须先拆分后再进入流程。
-
-## ✨ 核心特性
-
-- **🗂️ 命名空间隔离**：`aw-kernel` 命名空间设计，支持多版本并存，避免冲突
-- **🚀 专业 Agents**：7个专业Agent，覆盖代码分析、调试、开发、清理、研究等全流程
-- **⚡ Skill 工作流**：autodev 开发流程、Git worktree 管理等复杂工作流编排
-- **🔧 强制数据访问**：No Evidence, No Output - 杜绝幻觉输出
-- **🌍 跨平台支持**：Linux/macOS/WSL 和 Windows PowerShell
-
-## 🚀 快速开始（5分钟上手）
-
-### 第1步：安装工具
-
-```bash
-# Linux/macOS/WSL
-bash toolchain/scripts/install-global.sh
-
-# Windows PowerShell
-powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
-```
-
-> 详细安装选项请参考：[安装脚本详细文档](toolchain/scripts/README.md)
-
-### 第2步：选择合适的工具
-
-根据您的任务类型选择工具：
-
-| 任务类型 | 推荐工具 | 说明 |
-|---------|---------|------|
-| **新功能开发** | [autodev Skill](toolchain/skills/aw-kernel/autodev/SKILL.md) | 完整开发流程，需求→任务→实现→交付 |
-| **代码分析** | [review Agent](toolchain/agents/aw-kernel/review.md) | 架构洞察、依赖分析、质量评估 |
-| **日志分析** | [logs Agent](toolchain/agents/aw-kernel/logs.md) | 日志解读、异常检测 |
-| **清理重构** | [clean Agent](toolchain/agents/aw-kernel/clean.md) | 死代码清理、重构建议 |
-| **需求澄清** | [clarify Agent](toolchain/agents/aw-kernel/clarify.md) | DoD细化、边界确认 |
-| **资料研究** | [knowledge-researcher Agent](toolchain/agents/aw-kernel/knowledge-researcher.md) | 官方文档/最佳实践检索与整理 |
-
-### 第3步：启动工具
-
-在任意项目中启动 Claude Code，选择对应的 Agent 或 Skill 即可开始工作。
-
-## 🛠️ 核心工具
-
-### Agents（单任务专家）
-
-| Agent | 核心能力 | 适用场景 |
-|-------|---------|---------|
-| **ship** | 功能交付闭环 | 完整功能开发（Spec→Plan→Implement→Test→Deliver） |
-| **review** | 代码结构分析 | 架构洞察、依赖分析、质量评估 |
-| **logs** | 日志分析诊断 | 日志解读、异常检测、趋势分析 |
-| **clean** | 代码清理重构 | 死代码清理、重构建议、依赖优化 |
-| **clarify** | 需求澄清细化 | DoD细化、边界确认、验收标准 |
-| **knowledge-researcher** | 知识研究与资料沉淀 | 官方文档/最佳实践检索与整理 |
-
-### Skills（工作流编排）
-
-| Skill | 核心能力 | 适用场景 |
-|-------|---------|---------|
-| **autodev** | 自动化开发流程 | 需求分析 → 任务拆解 → 迭代开发 → 交付 |
-| **autodev-worktree** | 并行开发管理 | Git worktree、隔离工作区、智能合并 |
-
-## 📊 核心成就
-
-- ✅ 7 个 aw-kernel Agents：`toolchain/agents/aw-kernel/`
-- ✅ 2 个核心 Skills：`autodev` / `autodev-worktree`（`toolchain/skills/aw-kernel/`）
-- ✅ 可选 `.autoworkflow` 工具链：见 [TOOLCHAIN.md](toolchain/docs/aw-kernel/TOOLCHAIN.md)
-
-## 📚 文档导航
-
-### 核心文档
-- **[guide.md](docs/overview/guide.md)** - 项目宪法，协作规则与禁区
-- **[INDEX.md](INDEX.md)** - 文档路由中心，快速找到所需资源
-- **[快速开始](#快速开始)** - 本章节，5分钟上手指南
-
-### 技术文档
-- **[Agent文档](toolchain/agents/aw-kernel/)** - 7个专业Agent详细说明
-- **[Skill文档](toolchain/skills/aw-kernel/)** - 工作流编排详细说明
-- **[安装脚本](toolchain/scripts/README.md)** - 详细安装选项
-
-### 设计文档
-- **[分析精华](docs/knowledge/analysis/autodev-insights.md)** - 失败模式与改进要点（可落地清单）
-- **[路线图](docs/overview/roadmap.md)** - 改进优先级与里程碑
-- **[设计基线](archive/design/01_DesignBaseLines/README.md)** - 设计理念与架构（已归档）
-
-## 🎯 使用建议
-
-### 正确方式
-- ✅ **单次任务用Agent**（专注、高效）
-- ✅ **复杂流程用Skill**（编排、自动化）
-- ✅ **No Evidence, No Output**（必须有证据支撑）
-- ✅ **新任务用新对话**（避免上下文污染）
-
-### 避免方式
-- ❌ **不要串行调用多个Agent**（用Skill工作流）
-- ❌ **不要超长对话**（复杂任务拆分为多个短对话）
-- ❌ **不要无证据输出**（必须引用文件或数据）
-
-## 🔄 持续优化
-
-- 参见：[roadmap.md](docs/overview/roadmap.md)
-
-## 💡 更多信息
-
-- **完整目录结构** → [INDEX.md#目录结构](INDEX.md#目录结构)
-- **安装详细选项** → [toolchain/scripts/README.md](toolchain/scripts/README.md)
-- **设计理念** → [archive/design/01_DesignBaseLines/README.md](archive/design/01_DesignBaseLines/README.md)（已归档）
-
 ---
+title: "AutoWorkflow"
+status: active
+updated: 2026-03-17
+owner: aw-kernel
+last_verified: 2026-03-17
+---
+# AutoWorkflow
 
-**aw-kernel** - AutoWorkflow Kernel | 专为 Claude Code 设计的专业工具链 ฅ'ω'ฅ
+> aw-kernel 是一套面向小需求闭环交付的 Agent + Skill 工具链。
+> 当前主线：先收口规划体系，再推进 P0 工作流控制链。
+
+## 当前入口
+
+- 项目协作规则：`docs/overview/guide.md`
+- 项目路线图：`docs/overview/roadmap.md`
+- 统一任务台账：`docs/planning/WORKBOARD.md`
+- 当前迭代：`docs/planning/SPRINT.md`
+
+## 当前仓库状态
+
+- `6` 个 aw-kernel Agents：`toolchain/agents/aw-kernel/`
+- `2` 个核心 Skills：`toolchain/skills/aw-kernel/`
+- 当前任务状态集中维护在 `docs/planning/`，不再让 `roadmap` 兼任任务看板
+
+## 目录速览
+
+| 目录 | 职责 |
+|------|------|
+| `docs/overview/` | 协作规则、路线图 |
+| `docs/planning/` | 任务台账、迭代承诺、完成记录 |
+| `docs/ideas/` | 想法与研究验证 |
+| `docs/knowledge/` | 分析沉淀与参考资料 |
+| `docs/archive/` | 历史设计与旧资料 |
+| `toolchain/` | Agent / Skill / Script 源资产 |
+
+## 使用建议
+
+1. 首次进入仓库，先读 `docs/overview/guide.md`
+2. 需要判断优先级时，读 `docs/overview/roadmap.md`
+3. 需要知道当前计划状态时，读 `docs/planning/WORKBOARD.md`
+4. 需要执行本轮任务时，再读 `docs/planning/SPRINT.md`
+
+## 说明
+
+- 1 月份的实验性流程文档仍保留在仓库中，但不再代表当前主线。
+- 根目录的 `GUIDE.md` 和 `ROADMAP.md` 仅保留为兼容入口，真正内容在 `docs/overview/`。

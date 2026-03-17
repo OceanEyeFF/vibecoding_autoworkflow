@@ -1,3 +1,10 @@
+---
+title: "docs/modules/ - 模块层文档"
+status: active
+updated: 2026-03-17
+owner: aw-kernel
+last_verified: 2026-03-17
+---
 # docs/modules/ - 模块层文档
 
 > 中等颗粒度文档，描述功能模块的设计规格。
@@ -12,16 +19,16 @@
 
 | 文档 | 职责 | 何时读 |
 |------|------|--------|
-| [architecture.md](architecture.md) | 模块架构总览，定义 gate/workflow/verification/knowledge 四大模块 | 了解模块分工 |
+| [architecture.md](architecture.md) | 模块架构总览，定义 gate/workflow/verification/knowledge 四大能力域 | 了解模块分工 |
 
 ## 模块索引
 
 | 模块 | 职责 | 状态 |
 |------|------|------|
-| **gate** | 任务入口筛选、阶段放行控制 | 规划中 |
-| **workflow** | 任务编排、阶段流转、回路控制 | 规划中 |
-| **verification** | 证据收集、合规检查、诚实度保障 | 规划中 |
-| **knowledge** | 知识沉淀、检索增强、长期记忆 | 规划中 |
+| **gate** | 任务入口筛选、阶段放行控制 | 概念已定义，待落模板 |
+| **workflow** | 任务编排、阶段流转、回路控制 | 概念已定义，待落模板 |
+| **verification** | 证据收集、合规检查、诚实度保障 | 概念已定义，待落模板 |
+| **knowledge** | 知识沉淀、检索增强、长期记忆 | 概念已定义，待落模板 |
 
 ## 与其他层的关系
 

@@ -1,127 +1,95 @@
-﻿# GUIDE.md（本仓库宪法）
+---
+title: "项目协作指南"
+status: active
+updated: 2026-03-17
+owner: aw-kernel
+last_verified: 2026-03-17
+---
+# 项目协作指南
 
-> 本文档是本项目的最高准则，定义 Claude Code 协作的根本规则与文档路由。
+> 本文档定义当前主线的协作规则、文档路由和单一事实源。
+> 最后更新：2026-03-17
 
-## Part 1: 必读精华
+## 项目定位
 
-### 项目定位（3句）
-AutoWorkflow 是面向小需求交付的 Claude Code Agent 工具链，目标是把 0.5～2 小时内可闭环的任务做稳做快。核心价值是用结构化文档对抗上下文污染，用短对话完成具体任务。设计原则是文档承载状态与证据，对话只用于一次性推理并可审计。
+AutoWorkflow 是面向“小需求闭环交付”的 aw-kernel 工具链仓库。当前主线不是继续扩写 1 月份的实验性流程文档，而是先把规划、执行、验证、沉淀这四类信息分开维护。
 
-### 核心规则（5铁律）
-1. 新任务必须新对话（除非明确要求继承上下文）。
-2. 持久状态必须文档化，对话不充当长期记忆。
-3. 结果必须证据化并沉淀到文档（No Evidence, No Output）。
-4. 只加载刚好够用的文档，禁止上下文污染。
-5. 每个文档必须写清楚“何时读我 / 何时不读 / 冲突声明”。
+## 当前单一事实源
 
-### Agent 快速清单
-| 任务/意图 | 首选 Agent | 入口文档 |
-|---|---|---|
-| 新功能开发 | ship | [toolchain/agents/aw-kernel/ship.md](toolchain/agents/aw-kernel/ship.md) |
-| 代码分析 | review | [toolchain/agents/aw-kernel/review.md](toolchain/agents/aw-kernel/review.md) |
-| 日志分析 | logs | [toolchain/agents/aw-kernel/logs.md](toolchain/agents/aw-kernel/logs.md) |
-| 清理重构 | clean | [toolchain/agents/aw-kernel/clean.md](toolchain/agents/aw-kernel/clean.md) |
-| 需求澄清 | clarify | [toolchain/agents/aw-kernel/clarify.md](toolchain/agents/aw-kernel/clarify.md) |
-| 资料研究 | knowledge-researcher | [toolchain/agents/aw-kernel/knowledge-researcher.md](toolchain/agents/aw-kernel/knowledge-researcher.md) |
+| 问题 | 当前文档 |
+|------|----------|
+| 协作规则、读文档顺序 | `docs/overview/guide.md` |
+| 战略优先级、退出条件 | `docs/overview/roadmap.md` |
+| 所有已准入任务的真实状态 | `docs/planning/WORKBOARD.md` |
+| 当前迭代承诺与风险 | `docs/planning/SPRINT.md` |
+| 已完成事项与结构调整 | `docs/planning/CHANGELOG.md` |
+| 新想法与研究验证 | `docs/ideas/` |
+| 背景分析与复盘结论 | `docs/knowledge/analysis/` |
 
-### 文档路由指南（decision tree）
-开始
-├─ 是否首次进入项目 / 不确定协作规则？→ 读 Part 1
-├─ 是否执行具体任务？
-│  ├─ 是 → 读 Part 2「按任务类型路由表」→ 选择对应 Agent/Skill
-│  └─ 否 → 继续
-├─ 是否在找“某类文档如何读”？→ 读 Part 2「按文档类型路由表」
-└─ 是否需要细则、边界或文档原则？→ 读 Part 3
+## 何时读什么
 
-## Part 2: 路由表
+### 首次进入仓库
 
-### 2.1 按任务类型路由表
-| 任务类型 | 首选文档 | 备选文档 |
-|---|---|---|
-| 新功能开发 | [autodev Skill](toolchain/skills/aw-kernel/autodev/SKILL.md) | [ship Agent](toolchain/agents/aw-kernel/ship.md) |
-| 代码分析 | [review Agent](toolchain/agents/aw-kernel/review.md) | - |
-| 日志分析 | [logs Agent](toolchain/agents/aw-kernel/logs.md) | - |
-| 清理重构 | [clean Agent](toolchain/agents/aw-kernel/clean.md) | - |
-| 需求澄清 | [clarify Agent](toolchain/agents/aw-kernel/clarify.md) | - |
-| 资料研究 | [knowledge-researcher Agent](toolchain/agents/aw-kernel/knowledge-researcher.md) | - |
+1. 读 `README.md`
+2. 读 `docs/overview/guide.md`
+3. 按需要读 `docs/overview/roadmap.md` 或 `docs/planning/WORKBOARD.md`
 
-### 2.2 按文档类型路由表
-| 文档类型 | 级别 | 何时读 | 代表文件 | 冲突/不读 |
-|---|---|---|---|---|
-| GUIDE.md Part 1 | L0 必读 | 首次进入项目、协作规则不确定 | 本文件 Part 1 | 不与其他文档并读 |
-| Agent 文档 | L1 选读 | 明确任务执行 | toolchain/agents/aw-kernel/*.md | 不与其它 Agent 文档并读 |
-| Skill 文档 | L1 选读 | 需要工作流步骤/编排 | toolchain/skills/**/SKILL.md | 不与同任务的多 Skill 并读 |
-| AUTODEV 规范文档 | L1 选读 | 小需求流程与门禁 | AUTODEV_小任务工作流.md | 不与背景/分析文档并读 |
-| 项目介绍 | L2 按需 | 了解全局与上手 | README.md | 不在具体任务执行时读 |
-| 路线图与计划 | L2 按需 | 了解里程碑与方向 | ROADMAP.md | 不在问题诊断时读 |
-| 分析/设计/历史 | L2 按需 | 需要背景或复盘 | docs/analysis/ / design/ / archive/ | 不与任务执行并读 |
-| 任务管理 | L2 按需 | 查看待办/迭代/变更 | planning/ | 不在具体实现时读 |
-| 研究 Idea | L2 按需 | 探索新方向/技术验证 | ideas/ | 不与任务执行并读 |
-| 功能模块 | L2 按需 | 了解模块设计规格 | modules/ | 按需选择单一模块 |
-| 索引清单 | L2 按需 | 只在需要全量清单时读 | INDEX.md | 默认不读 |
-| 快速导航 | L0 工具 | AI 快速遍历目录 | .nav/ | 不在文档引用中使用 |
+### 需要做规划判断
 
-## Part 3: 详细规范
+1. 先读 `docs/overview/roadmap.md`
+2. 再读 `docs/planning/WORKBOARD.md`
+3. 只有在要排本周承诺时才读 `docs/planning/SPRINT.md`
 
-### 3.1 协作规则
-- ✅ 新任务 = 新对话（上下文隔离是正确的）
-- ✅ 持久状态必须文档化（对话不充当长期记忆）
-- ✅ 已完成结果必须沉淀为文档（代码 + 文档）
-- ✅ 证据化输出（必须引用文件或数据）
-- ❌ 自动触发 ≠ 可编排 ≠ 可复现
-- ✅ 多层架构与流程控制应放在外部代码与文档系统中
+### 需要执行具体任务
 
-### 3.2 禁区与硬约束
-**禁止事项**
-- ❌ 禁止将对话当作记忆容器（必须文档化）
-- ❌ 禁止上下文污染（每次任务只加载必需文档）
-- ❌ 禁止超长对话（复杂任务拆分为多个短对话）
-- ❌ 禁止无证据输出（No Evidence, No Output）
+1. 先看 `docs/planning/SPRINT.md` 是否已承诺
+2. 再看对应 Agent / Skill 文档
+3. 必要时补充读 `docs/knowledge/analysis/`
 
-**硬约束**
-- ✅ 新任务必须新对话（除非明确需要上下文）
-- ✅ 完成结果必须文档化（代码 + 文档）
-- ✅ 文档必须明确“何时读我”（无此声明视为噪声）
-- ✅ Agent 输出必须有证据支撑（必须引用文件或数据）
+## 当前不再作为主线 SoT 的内容
 
-### 3.3 文档使用原则
-**基本原则**
-- ✅ 一个文档 = 一个明确职责
-- ✅ 文档必须支持精准、选择性读取
-- ✅ 任何任务只加载“刚好够用”的文档
-- ❌ 无法说明“何时该读我”的文档就是噪声
+- 1 月份生成的 `v0.1` 说明、分阶段实验流程、旧版合并设计文档
+- 根目录缺失的 `AUTODEV_*.md` 引用
+- 把 `ROADMAP` 当任务流水账、把 `BACKLOG` 当总台账的旧做法
 
-**文档三要素**
-1. ✅ 我解决什么问题？（明确价值）
-2. ✅ 什么时候才应该被读？（使用场景）
-3. ✅ 读我时，哪些文档不应同时被读？（冲突声明）
+这些内容可以保留在历史位置作为背景，但不能继续代表“当前计划”。
 
-**文档维护规范**
-- ✅ 每月一次价值评估（删除冗余）
-- ✅ 季度一次结构优化（整合相关）
-- ✅ 新增前必须检查重复（避免爆炸）
+## 协作铁律
 
-### 3.4 工具纪律
-- ✅ 能用工具确认的内容先调用工具后输出（Read/Grep/Glob/Bash 等）
-- ✅ 输出必须可追溯证据：文件路径/命令输出/日志行
-- ✅ 无证据即 BLOCKED，并列出所需的工具调用
+1. 新任务先确认是否已经进入 `docs/planning/WORKBOARD.md`，没有准入就不要直接开干。
+2. `roadmap` 只讲方向和退出条件，不记任务状态。
+3. `WORKBOARD` 才是任务状态真相；`SPRINT` 只是当前切片。
+4. 交付完成后必须回写 `CHANGELOG`，否则视为没有真正完成。
+5. 无证据不宣称完成，无状态更新不宣称进入下一阶段。
 
-### 3.5 状态管理
-- ✅ 长任务用 `.autoworkflow/state.md` 或 `.autoworkflow/tmp/<agent>-notes.md` 记录中间状态
-- ✅ 对话仅保留摘要与结论，不承载长期记忆
-- ✅ 每次输出前复查当前仓库状态，避免依赖旧对话
+## 文档分层
 
-### 3.6 证据化输出
-- ✅ 结论必须附证据引用（文件路径/命令输出）
-- ✅ 不确定必须明确说明并列出最小补充信息
+| 层级 | 目录 | 职责 |
+|------|------|------|
+| L0 | `README.md` / `INDEX.md` | 项目入口与总导航 |
+| L1 | `docs/overview/` | 协作规则与路线图 |
+| L2 | `docs/planning/` | 任务状态、迭代承诺、变更记录 |
+| L2 | `docs/ideas/` | 尚未准入的想法和研究 |
+| L2 | `docs/knowledge/` | 分析沉淀与参考资料 |
+| L3 | `toolchain/` | Agent / Skill / Script 源资产 |
 
-**单一事实源（SoT）**
-- 工作流结构与门禁标准：AUTODEV_小需求更稳流程设计.md
-- 角色职责与产物契约：AUTODEV_小需求更稳_Agent全量定义.md
-- 资料萃取（背景材料，非规范）：AUTODEV_资料萃取_用于Agent重写与工作流实现.md
+## 计划状态机
+
+```text
+docs/ideas/ -> docs/planning/WORKBOARD.md -> docs/planning/SPRINT.md -> docs/planning/CHANGELOG.md
+            ^                           |
+            |                           v
+            +-------- blocked / rescope / follow-up -------+
+```
+
+状态解释以 `docs/planning/README.md` 为准。
+
+## 冲突处理
+
+1. 如果 `roadmap` 和 `WORKBOARD` 冲突，以 `WORKBOARD` 的状态为准，以 `roadmap` 的优先级为准。
+2. 如果 `SPRINT` 承诺了未准入任务，先补 `WORKBOARD` 再继续。
+3. 如果历史文档与当前规划冲突，历史文档自动降级为背景资料。
 
 ---
 
-**版本**：v0.4
-**最后更新**：2026-01-16
-**下次评审**：2026-04-10
+**当前主线判断**：先收口计划体系，再推进 P0 工作流控制链。
