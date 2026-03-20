@@ -1,0 +1,4 @@
+interface:
+  display_name: "Context Routing"
+  short_description: "Build a minimal task entry Route Card"
+  default_prompt: "Use $context-routing-skill to produce a minimal Route Card with ordered reading entrypoints and explicit do-not-read boundaries."
