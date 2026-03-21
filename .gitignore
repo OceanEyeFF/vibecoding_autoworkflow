@@ -1,7 +1,22 @@
 # Local automation artifacts
 .autoworkflow/
 .spec-workflow/
+
+# Keep the repo-local Claude Memory Side wrappers tracked, ignore the rest.
 .claude/
+!.claude/
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/knowledge-base-skill/
+!.claude/skills/context-routing-skill/
+!.claude/skills/writeback-cleanup-skill/
+.claude/skills/knowledge-base-skill/*
+!.claude/skills/knowledge-base-skill/SKILL.md
+.claude/skills/context-routing-skill/*
+!.claude/skills/context-routing-skill/SKILL.md
+.claude/skills/writeback-cleanup-skill/*
+!.claude/skills/writeback-cleanup-skill/SKILL.md
 
 # Official documentation mirror (auto-fetched, do not commit)
 Claude_Official_Docs/

@@ -1,9 +1,9 @@
 ---
 title: "Memory Side 总览"
 status: active
-updated: 2026-03-20
+updated: 2026-03-21
 owner: aw-kernel
-last_verified: 2026-03-20
+last_verified: 2026-03-21
 ---
 # Memory Side 总览
 
@@ -116,4 +116,7 @@ Knowledge Base
 
 具体模型见：
 
-- [Memory Side Skill 与 Agent 模型](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/skill-agent-model.md)
+- [Memory Side Skill 与 Agent 模型](/mnt/e/repos/WSL/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/skill-agent-model.md)
+- [Codex Memory Side 部署帮助](/mnt/e/repos/WSL/personal/vibecoding_autoworkflow/docs/knowledge/guides/codex-deployment-help.md)
+- [Claude Memory Side 适配帮助](/mnt/e/repos/WSL/personal/vibecoding_autoworkflow/docs/knowledge/guides/claude-adaptation-help.md)
+- [Memory Side Adapter 评测基线](/mnt/e/repos/WSL/personal/vibecoding_autoworkflow/docs/knowledge/analysis/memory-side-eval-baseline.md)

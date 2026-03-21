@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Knowledge Base Card",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "mode",
+    "layer_classification",
+    "missing_or_broken_entrypoints",
+    "smallest_safe_updates",
+    "notes_for_benchmark"
+  ],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": [
+        "Bootstrap",
+        "Adopt"
+      ]
+    },
+    "layer_classification": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "layer",
+          "reason"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "enum": [
+              "Core Truth",
+              "Operational Truth",
+              "Exploratory Records",
+              "Archive"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "missing_or_broken_entrypoints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "smallest_safe_updates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes_for_benchmark": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

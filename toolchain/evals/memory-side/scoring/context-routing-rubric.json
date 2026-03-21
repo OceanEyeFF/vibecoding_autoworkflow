@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "applies_to_skill": "context-routing-skill",
+  "global": {
+    "forbidden_main_read_patterns": [
+      ".agents/",
+      ".claude/",
+      "toolchain/evals/",
+      "docs/knowledge/memory-side/prompts/"
+    ],
+    "whole_repo_scan_values_exact": [
+      ".",
+      "./",
+      "/",
+      "*",
+      "**/*"
+    ],
+    "whole_repo_scan_patterns": [
+      "entire repo",
+      "whole repo",
+      "repo root",
+      "read everything",
+      "scan everything",
+      "全仓",
+      "整仓",
+      "整个仓库"
+    ],
+    "execution_plan_markers": [
+      "执行计划",
+      "implementation plan",
+      "step 1",
+      "step one",
+      "edit files",
+      "modify files",
+      "开始修改",
+      "直接修改"
+    ],
+    "negation_markers": [
+      "不",
+      "不是",
+      "不要",
+      "不展开",
+      "避免",
+      "not ",
+      "do not",
+      "don't",
+      "avoid "
+    ]
+  },
+  "scenarios": {
+    "CR-1": {
+      "task_type_contains_any": [
+        "docs",
+        "knowledge"
+      ],
+      "read_first_must_include": [
+        "docs/knowledge/memory-side-baseline.md",
+        "docs/knowledge/memory-side/context-routing.md"
+      ],
+      "read_next_should_include_any": [
+        "docs/knowledge/memory-side/context-routing-rules.md",
+        "docs/knowledge/memory-side/formats/context-routing-output-format.md",
+        "docs/knowledge/memory-side/knowledge-base.md"
+      ],
+      "code_entry_should_include_any": [
+        "docs/knowledge/memory-side/"
+      ],
+      "code_entry_forbidden_patterns": [
+        "toolchain/scripts/",
+        "toolchain/evals/",
+        ".agents/",
+        ".claude/"
+      ],
+      "do_not_read_should_include_patterns": [
+        "archive",
+        "ideas",
+        "discussions",
+        "thinking",
+        "prompts",
+        ".agents/",
+        ".claude/",
+        "toolchain/evals/"
+      ]
+    },
+    "CR-2": {
+      "task_type_contains_any": [
+        "feature",
+        "code",
+        "implementation",
+        "refactor",
+        "investigation"
+      ],
+      "task_type_must_not_contain_any": [
+        "docs",
+        "knowledge"
+      ],
+      "read_first_must_include": [
+        "docs/knowledge/memory-side-baseline.md",
+        "docs/knowledge/memory-side/context-routing.md"
+      ],
+      "read_next_should_include_any": [
+        "docs/knowledge/memory-side/context-routing-rules.md",
+        "docs/knowledge/memory-side/skill-agent-model.md",
+        ".agents/skills/context-routing-skill/SKILL.md",
+        "toolchain/skills/aw-kernel/memory-side/context-routing-skill/references/entrypoints.md"
+      ],
+      "code_entry_should_include_any": [
+        "toolchain/scripts/",
+        "toolchain/evals/memory-side/",
+        ".agents/skills/",
+        "toolchain/skills/aw-kernel/memory-side/"
+      ],
+      "code_entry_forbidden_patterns": [
+        "docs/knowledge/**/archive/",
+        "docs/knowledge/**/ideas/",
+        "docs/knowledge/**/discussions/",
+        "docs/knowledge/**/thinking/"
+      ],
+      "do_not_read_should_include_patterns": [
+        "archive",
+        "ideas",
+        "discussions",
+        "thinking"
+      ]
+    }
+  }
+}

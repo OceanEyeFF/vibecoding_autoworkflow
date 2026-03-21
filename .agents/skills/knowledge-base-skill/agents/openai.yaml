@@ -1,0 +1,4 @@
+interface:
+  display_name: "Knowledge Base (Repo)"
+  short_description: "Apply the repo-local Memory Side Knowledge Base adapter"
+  default_prompt: "Use the repo-local $knowledge-base-skill wrapper in .agents/skills to load this repository's canonical Memory Side docs and propose the smallest safe Knowledge Base updates."

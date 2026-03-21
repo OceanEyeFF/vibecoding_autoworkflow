@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "KB-1",
+      "skill": "knowledge-base-skill",
+      "title": "Adopt an existing Memory Side doc system",
+      "goal": "Judge whether the repository is in Bootstrap or Adopt mode and propose the smallest safe entrypoint fixes.",
+      "schema_file": "schemas/knowledge-base-card.schema.json",
+      "user_request": "这个仓库已经有一套 Memory Side 文档体系。请不要重写它，先判断当前更接近 Bootstrap 还是 Adopt，并给出最小的主线入口修补建议。"
+    },
+    {
+      "id": "KB-2",
+      "skill": "knowledge-base-skill",
+      "title": "Repair missing mainline entrypoints without promoting side material",
+      "goal": "Identify missing or broken mainline entrypoints while keeping archive and exploratory material out of the default path.",
+      "schema_file": "schemas/knowledge-base-card.schema.json",
+      "user_request": "我怀疑 Memory Side 的入口文档还不够完整。请检查主线入口是否缺失或断链，但不要把 ideas、discussion 或 archive 提升为默认入口。"
+    },
+    {
+      "id": "CR-1",
+      "skill": "context-routing-skill",
+      "title": "Route a documentation task with minimal context",
+      "goal": "Produce a minimal Route Card for a Memory Side documentation task without turning it into an execution plan.",
+      "schema_file": "schemas/route-card.schema.json",
+      "user_request": "我要继续整理 Memory Side 的说明文档，但先不要直接修改文件。请先给我一张最小 Route Card，告诉我该先读什么、先不要读什么。"
+    },
+    {
+      "id": "CR-2",
+      "skill": "context-routing-skill",
+      "title": "Route a code-adjacent adapter task without whole-repo scanning",
+      "goal": "Produce a minimal Route Card for implementing a local backend adapter runner without defaulting to whole-repo scanning.",
+      "schema_file": "schemas/route-card.schema.json",
+      "user_request": "我要继续做 Codex 和 Claude 的无交互 backend adapter runner，请先给我最小 Route Card，尤其要避免整仓扫描。"
+    },
+    {
+      "id": "WC-1",
+      "skill": "writeback-cleanup-skill",
+      "title": "Write back verified adapter additions",
+      "goal": "Produce a minimal Writeback Card for a round that already added repo-local wrappers and guide docs.",
+      "schema_file": "schemas/writeback-card.schema.json",
+      "user_request": "本轮已经补了 .agents/.claude wrappers 以及 Codex/Claude guide 和 eval 文档。请先生成最小 Writeback Card，判断哪些事实可以安全回写。"
+    },
+    {
+      "id": "WC-2",
+      "skill": "writeback-cleanup-skill",
+      "title": "Refuse premature writeback when evidence is weak",
+      "goal": "Produce a minimal Writeback Card for a round with incomplete verification and clearly separate out what must not be written back.",
+      "schema_file": "schemas/writeback-card.schema.json",
+      "user_request": "这一轮只做了探索和命令确认，还没有充分验证功能。请生成最小 Writeback Card，并明确哪些内容现在不能写回主线。"
+    }
+  ]
+}
