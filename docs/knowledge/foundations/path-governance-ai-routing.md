@@ -29,7 +29,8 @@ last_verified: 2026-03-22
 除此之外，其余根目录对象默认都不是主线真相层：
 
 - `.agents/`、`.claude/`：repo-local mount / deploy target
-- `.autoworkflow/`、`.spec-workflow/`、`.serena/`：repo-local state
+- `.autoworkflow/`、`.spec-workflow/`：repo-local state
+- `.serena/`：repo-local state/config，可保留受控入库的项目级配置与记忆
 - `.nav/`：compatibility navigation
 - `README.md`、`INDEX.md`、`GUIDE.md`、`ROADMAP.md`、`AGENTS.md`：Entry Layer
 - `.git*`：Repo Infra
@@ -168,9 +169,10 @@ last_verified: 2026-03-22
 
 ### 2. `.autoworkflow/`、`.spec-workflow/`、`.serena/`
 
-- 这是 repo-local state
-- 承载运行结果、审批状态、工具配置和记忆
-- 默认不进入，只有任务明确要求读取运行结果或审批状态时才进入
+- 这是 repo-local state/config
+- `.autoworkflow/` 与 `.spec-workflow/` 承载运行结果、审批状态和工具状态
+- `.serena/` 可保留受控入库的项目级配置与记忆，但不属于主线真相层
+- 默认不进入，只有任务明确要求读取运行结果、审批状态或 Serena 项目配置时才进入
 
 ### 3. `.nav/`
 

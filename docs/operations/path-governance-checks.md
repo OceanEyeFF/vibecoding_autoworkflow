@@ -37,6 +37,10 @@ python3 toolchain/scripts/test/path_governance_check.py
    - `.autoworkflow/`
    - `.spec-workflow/`
 
+说明：
+
+- `.serena/` 当前不在这组忽略项里，因为本仓库允许受控保留项目级 Serena 配置与记忆
+
 ## 四、什么时候运行
 
 - 调整主入口或 foundations 文档后

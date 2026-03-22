@@ -33,7 +33,7 @@ last_verified: 2026-03-22
 | Truth Layer | `docs/` | 项目真相、知识基线、研究约束、归档 | 部署结果、本地挂载点、运行状态 |
 | Toolchain Layer | `toolchain/` | 脚本、评测、测试、打包、部署工具 | 业务源码真相、repo-local 手工维护 wrapper |
 | Repo-local Mount Layer | `.claude/` `.agents/` | 本地测试挂载点、repo-local deploy target | 业务源码真相、长期规则正文 |
-| Repo-local State Layer | `.autoworkflow/` `.spec-workflow/` `.serena/` | 运行产物、审批状态、工具配置与记忆 | 当前主线入口、业务源码 |
+| Repo-local State Layer | `.autoworkflow/` `.spec-workflow/` `.serena/` | 运行产物、审批状态、工具配置与记忆；其中 `.serena/` 可保留受控入库的项目级配置 | 当前主线入口、业务源码 |
 | Compatibility Navigation Layer | `.nav/` | 辅助导航和兼容跳转 | 主线规则、真实结构定义 |
 | Repo Infra Layer | `.git/` `.gitignore` `.gitattributes` `.claudeignore` | 版本控制和仓库级基础配置 | 业务规则和知识层内容 |
 

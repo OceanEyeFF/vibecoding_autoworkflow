@@ -18,7 +18,8 @@
 - `docs/` 是文档层，内部再分 `knowledge / operations / analysis / reference / ideas / archive`。
 - `toolchain/` 只放脚本、评测、测试、打包、部署工具。
 - `.agents/` 和 `.claude/` 只属于 repo-local mount layer，是 deploy target，不是源码层。
-- `.autoworkflow/`、`.spec-workflow/`、`.serena/` 只属于 repo-local state layer。
+- `.autoworkflow/`、`.spec-workflow/` 只属于 repo-local state layer。
+- `.serena/` 属于 repo-local state/config layer，可保留受控入库的项目级配置与记忆，但不是主线真相层。
 - `.nav/` 只是 compatibility navigation layer，不能当真实结构定义。
 
 ## Write Rules
@@ -42,7 +43,7 @@
 
 ## Current Warnings
 
-- `.nav/` 里有历史导航位，部分链接仍是兼容入口。
+- `.nav/` 现在只保留 `@docs` 与 `@skills` 两个有效兼容入口。
 - 如果一个新目录说不清 owner 和层级，不要直接加到根目录。
 
 ## Canonical References
