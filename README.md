@@ -1,13 +1,20 @@
 ---
 title: "AutoWorkflow"
 status: active
-updated: 2026-03-22
+updated: 2026-03-23
 owner: aw-kernel
-last_verified: 2026-03-22
+last_verified: 2026-03-23
 ---
 # AutoWorkflow
 
-> 当前主线已经收口为 `product / docs / toolchain + hidden mounts`。业务源码、文档真相、辅助工具各自独立，本地 `.claude/` 与 `.agents/` 只保留部署结果。
+> 本项目是一个 AI coding 的 repo-side contract layer。它不负责完整执行编排，而是负责统一 AI 进入仓库时的阅读入口、上下文边界、静态真相层，以及任务结束后的回写与清理。
+
+## 项目核心
+
+- 这是一个 repo-side contract 项目，不是完整 orchestration 平台。
+- 它只解决 4 件事：AI 先读什么、默认不要读什么、哪些内容属于真相层、任务结束后哪些结果可以安全回写。
+- 它不把宿主工作流、复杂 agents catalog 或 subagents 编排当成项目主线。
+- 当前主线已经收口为 `product / docs / toolchain + hidden mounts`：业务源码、文档真相、辅助工具各自独立，本地 `.claude/` 与 `.agents/` 只保留部署结果。
 
 ## 当前入口
 

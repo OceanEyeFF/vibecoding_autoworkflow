@@ -1,9 +1,9 @@
 ---
 title: "Context Routing 分流规则"
 status: active
-updated: 2026-03-19
+updated: 2026-03-23
 owner: aw-kernel
-last_verified: 2026-03-19
+last_verified: 2026-03-23
 ---
 # Context Routing 分流规则
 
@@ -26,13 +26,13 @@ last_verified: 2026-03-19
 生成 `Route Card` 时，只使用下面几类输入：
 
 - 任务类型
-- 当前目标和范围
+- 优先使用 `Task Contract` 中已定稿的目标和范围；若尚无 Contract，再使用当前目标和范围
 - `Knowledge Base` 中可用的入口文档
 - 与目标直接相关的代码入口
 
 ## 三、统一分流步骤
 
-1. 先判断任务属于哪一类。
+1. 先读取 `Task Contract` 或当前任务目标，判断任务属于哪一类。
 2. 根据任务类型确定默认文档入口层级。
 3. 再补充最小代码入口，不扩大到全仓库。
 4. 明确当前不应读取的资料。

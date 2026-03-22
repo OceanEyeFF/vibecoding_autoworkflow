@@ -24,7 +24,7 @@ last_verified: 2026-03-22
 
 - 大 catalog 式 Agent 编排
 - 复杂 subagents
-- Flow Side 运行时
+- 宿主调用层或执行编排
 
 ## 二、必须保持成立的不变量
 

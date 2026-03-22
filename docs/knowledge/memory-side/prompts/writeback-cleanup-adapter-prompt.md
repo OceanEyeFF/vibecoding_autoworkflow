@@ -1,9 +1,9 @@
 ---
 title: "Writeback & Cleanup 适配 Prompt 草案"
 status: draft
-updated: 2026-03-21
+updated: 2026-03-23
 owner: aw-kernel
-last_verified: 2026-03-21
+last_verified: 2026-03-23
 ---
 # Writeback & Cleanup 适配 Prompt 草案
 
@@ -18,6 +18,7 @@ last_verified: 2026-03-21
 ## 二、核心原则
 
 - 只有已验证结果才能进入回写决策
+- 如果目标仓库已有 `Task Contract`，优先以它作为本轮目标和范围的来源
 - 先判断写回层级，再执行文档修改
 - Prompt 只指导收尾，不持有项目真相
 - 探索过程默认不是主线回写对象
@@ -34,7 +35,7 @@ last_verified: 2026-03-21
 
 ## 四、执行步骤
 
-1. 先确认本轮任务的目标和实际变更。
+1. 先读取 `Task Contract` 或当前任务目标，再确认实际变更。
 2. 读取相关验证结果。
 3. 只提取已确认成立的变更事实。
 4. 判断这些事实应写回 `Core Truth` 还是 `Operational Truth`。
@@ -83,6 +84,7 @@ last_verified: 2026-03-21
 
 然后遵守以下规则：
 - 只有已验证结果才能进入回写决策
+- 如果目标仓库已有 Task Contract，优先以它作为本轮目标和范围来源
 - Prompt 只负责指导收尾，不是真相层
 - 探索过程默认不是主线回写对象
 - 未验证猜测、临时推理、已否定方案默认不写回

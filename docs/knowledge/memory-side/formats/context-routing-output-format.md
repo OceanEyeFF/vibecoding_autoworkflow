@@ -101,7 +101,7 @@ code_entry:
 do_not_read_yet:
 - docs/archive/
 - 无关的 ideas / discussions / thinking
-- Flow Side 运行时实现细节
+- 宿主调用层实现细节
 stop_reading_when:
 - 已确认当前任务所属 Partition
 - 已确认相关文档入口和边界

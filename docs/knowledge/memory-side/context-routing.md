@@ -1,9 +1,9 @@
 ---
 title: "Context Routing 基线"
 status: active
-updated: 2026-03-20
+updated: 2026-03-23
 owner: aw-kernel
-last_verified: 2026-03-20
+last_verified: 2026-03-23
 ---
 # Context Routing 基线
 
@@ -28,12 +28,12 @@ last_verified: 2026-03-20
 ## 四、当前最合适的实现形态
 
 - 文档预整理 Prompt
-- Agent Prompt
-- Task entry 指令
+- `context-routing-skill`
+- repo-local 任务入口模板或检查清单
 
 说明：
 
-- 当前阶段更适合写成 Prompt，而不是先做成交互模块
+- 当前阶段更适合先固化 Prompt、Skill 和模板，而不是先定义任务级 Agent
 - Prompt 的职责是整理阅读入口，不是定义项目真相
 
 ## 五、输入与输出
@@ -41,7 +41,7 @@ last_verified: 2026-03-20
 输入：
 
 - 任务类型
-- 当前目标
+- 优先使用 `Task Contract` 中已定稿的目标和范围；若尚无 Contract，再使用当前目标
 - `Knowledge Base` 中可用的入口文档
 
 输出：

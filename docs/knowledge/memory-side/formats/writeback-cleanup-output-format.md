@@ -99,7 +99,7 @@ verified_changes:
 - 已新增 Context Routing 输出格式文档
 - 已定义 Route Card 的固定字段和模板
 non_changes:
-- 未调整 Flow Side 分区定义
+- 未调整宿主调用层设计
 - 未引入 retrieval 或外部数据库
 write_to_core_truth:
 - Context Routing 的标准输出对象为 Route Card
@@ -108,7 +108,7 @@ write_to_operational_truth:
 - 本轮已完成 Context Routing 文档组初版
 - 后续需要继续补 Writeback & Cleanup 文档组
 do_not_write_back:
-- 对未来 runtime 形态的未验证猜测
+- 对未来宿主调用层形态的未验证猜测
 - 对不同后端细节优化的临时想法
 cleanup_targets:
 - 仍把 Context Routing 描述成泛化交互模块的旧表述

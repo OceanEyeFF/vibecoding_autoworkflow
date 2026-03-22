@@ -1,9 +1,9 @@
 ---
 title: "Memory Side 总览"
 status: active
-updated: 2026-03-22
+updated: 2026-03-23
 owner: aw-kernel
-last_verified: 2026-03-22
+last_verified: 2026-03-23
 ---
 # Memory Side 总览
 
@@ -116,7 +116,7 @@ Knowledge Base
 - 同一类任务进入执行前会拿到相近的阅读入口
 - 任务完成后，项目真相会被统一回写，而不是留在某个对话里
 
-## 十一、Skill 与 Agent 载体
+## 十一、Skill、Task Interface 与可选调用层
 
 当前 `Memory Side` 已经有 Prompt 规范，但后续真实落地不能停在 Prompt。
 
@@ -124,11 +124,13 @@ Knowledge Base
 
 - Prompt：定义语义规范
 - Skill：封装单一能力
-- Agent：编排多个 Skill 的调用顺序
+- `Task Contract`：在讨论和执行之间提供正式任务基线
+- Agent / Workflow Shell：由宿主执行层决定如何调用 Skill，不属于当前仓库知识主线
 
 如果你要理解通用能力模型，先读：
 
 - [Memory Side Skill 与 Agent 模型](./skill-agent-model.md)
+- [项目 Partition 模型](../foundations/partition-model.md)
 
 如果你要看本仓库当前怎么部署和评测，再读：
 

@@ -2,6 +2,13 @@
 
 `docs/` 是当前仓库的第二块正式内容区，负责承载文档真相、仓库操作说明、研究记录、外部参考和 ideas 生命周期。
 
+## 核心定位
+
+- 本项目是一个 AI coding 的 repo-side contract layer。
+- `docs/` 只负责路径、分层、阅读边界和真相落点，不负责具体 `skills / agents / subagents` 的实现设计。
+- 具体的 canonical skills 与 adapters 在 `product/`，部署、评测和治理脚本在 `toolchain/`。
+- 如果 AI 进入仓库后能立刻知道先读什么、先不要读什么、改完后写回哪里，那么 `docs/` 就发挥了作用。
+
 ## 当前结构
 
 - `knowledge/`：canonical truth 与基础治理文档

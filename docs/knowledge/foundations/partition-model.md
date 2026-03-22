@@ -1,13 +1,13 @@
 ---
 title: "项目 Partition 模型"
 status: active
-updated: 2026-03-19
+updated: 2026-03-23
 owner: aw-kernel
-last_verified: 2026-03-19
+last_verified: 2026-03-23
 ---
 # 项目 Partition 模型
 
-> 目标：先定义 Orchestrator 项目的职责分区，再反推目录、模板和运行时实现。
+> 目标：先定义当前仓库这个 repo-side contract layer 需要持有的主线分区和任务接口对象，再反推目录、模板和后续实现落点。
 
 相关目录投影见：
 
@@ -17,22 +17,20 @@ last_verified: 2026-03-19
 
 - 先分职责边界，再分目录结构。
 - 先定义谁持有真相，再定义谁消费真相。
-- 长期记忆和单次任务闭环必须分层。
+- 长期记忆、任务入口和任务收尾必须分层。
+- `foundations` 只固化当前仓库需要持有的合同层，不提前展开宿主运行时。
 - 没有明确 owner 的信息，不应进入主线文档。
 
 ## 二、总览
 
-| Partition | Side | 核心职责 | 持有的真相 |
+| Partition | 类型 | 核心职责 | 持有的真相 |
 |---|---|---|---|
-| `Control Plane` | Flow Side | 持有阶段状态、推进流程、做裁决 | 当前 phase、任务状态、收尾判定 |
 | `Knowledge Base` | Memory Side | 维护项目长期记忆 | 项目总览、模块入口、决策、变更、归档 |
 | `Context Routing` | Memory Side | 决定任务开始前应读取哪些上下文 | 入口文档、代码入口、禁读范围 |
-| `Task Contract` | Flow Side | 把讨论收束成正式执行基线 | 目标、范围、验收标准、约束、风险 |
-| `Execution Runtime` | Flow Side | 执行具体任务和工具调用 | 本轮执行状态、工具结果、局部产物 |
-| `Verification` | Flow Side | 审核证据与验收结果 | 白盒结果、黑盒结果、Gate 结论 |
+| `Task Contract` | Task Interface | 把讨论收束成正式执行基线 | 目标、范围、验收标准、约束、风险 |
 | `Writeback & Cleanup` | Memory Side | 回写项目真相并清理失效上下文 | 变更摘要、风险、待办、清场记录 |
 
-## 三、Side 划分
+## 三、主线分区与接口对象
 
 ### Memory Side
 
@@ -46,56 +44,19 @@ last_verified: 2026-03-19
 - 控制 AI 进入任务时读取什么
 - 保证任务结束后真相被刷新
 
-### Flow Side
+### Task Interface
 
-- `Control Plane`
 - `Task Contract`
-- `Execution Runtime`
-- `Verification`
 
 职责：
 
-- 管理单次任务闭环
-- 约束执行过程
-- 基于证据决定是否完成
+- 在讨论和执行之间建立唯一正式基线
+- 把目标、范围、验收和限制压成可消费对象
+- 约束执行层在进入任务前先拿到同一份边界
 
 ## 四、各 Partition 边界
 
-### 1. Control Plane
-
-**职责**
-
-- 定义当前任务所处阶段
-- 决定何时进入执行、验证、收尾
-- 接收验证反馈并裁决
-- 维护任务级 shared state
-
-**输入**
-
-- 用户目标
-- 当前任务状态
-- Contract、Verification、Writeback 的反馈
-
-**输出**
-
-- 当前 phase
-- 状态更新
-- 下一步动作
-- Done / Blocked / Continue 判定
-
-**不拥有**
-
-- 项目长期知识内容
-- 执行细节实现
-- 具体验证脚本逻辑
-
-**禁止越界**
-
-- 不能跳过 `Task Contract` 直接进入执行
-- 不能用“对话印象”替代正式状态
-- 不能把临时讨论直接写入长期记忆
-
-### 2. Knowledge Base
+### 1. Knowledge Base
 
 **职责**
 
@@ -130,7 +91,7 @@ last_verified: 2026-03-19
 - `archived` 文档不能作为执行入口
 - 临时草稿不能直接覆盖主线入口
 
-### 3. Context Routing
+### 2. Context Routing
 
 **职责**
 
@@ -163,13 +124,14 @@ last_verified: 2026-03-19
 - 不能把全仓库扫描当默认行为
 - 不能把历史文档全部推给执行层
 
-### 4. Task Contract
+### 3. Task Contract
 
 **职责**
 
 - 把模糊讨论压成唯一正式执行基线
 - 定义目标、范围、验收标准和边界
 - 记录风险、限制、依赖和验证要求
+- 可由 skill、agent 或 repo-local 模板承载
 
 **输入**
 
@@ -188,7 +150,7 @@ last_verified: 2026-03-19
 
 - 项目总览
 - 实际执行步骤日志
-- 最终验收裁决
+- 宿主运行时的调度状态
 
 **禁止越界**
 
@@ -196,73 +158,7 @@ last_verified: 2026-03-19
 - Contract 不能只写目标，不写边界和验收
 - Contract 不能把讨论碎片直接原样堆进去
 
-### 5. Execution Runtime
-
-**职责**
-
-- 按 Contract 执行编码、分析、工具调用
-- 管理 worker、CLI、模型和局部运行状态
-- 产出代码、配置、局部说明等交付物
-
-**输入**
-
-- Task Contract
-- Context Routing 指定的入口
-- Control Plane 的阶段指令
-
-**输出**
-
-- 代码变更
-- 工具调用结果
-- 局部自测结果
-- 执行说明
-
-**不拥有**
-
-- 项目长期真相
-- 最终完成判定
-- 独立的黑盒验收结论
-
-**禁止越界**
-
-- 不能自行修改 Contract 目标
-- 不能拿旧记忆代替本轮证据
-- 不能把“实现成功”直接当“任务完成”
-
-### 6. Verification
-
-**职责**
-
-- 做白盒检查和黑盒验收
-- 审查证据链
-- 给出 Gate 结论和风险判断
-
-**输入**
-
-- Execution Runtime 产物
-- Task Contract 验收标准
-- 可执行测试和检查命令
-
-**输出**
-
-- 白盒结果
-- 黑盒结果
-- Gate 结论
-- 风险和未覆盖项
-
-**不拥有**
-
-- 项目总览
-- 最终文档回写
-- 下一轮任务规划
-
-**禁止越界**
-
-- 不能只验证“实现者想验证的东西”
-- 不能无证据宣告通过
-- 不能跳过未覆盖项说明
-
-### 7. Writeback & Cleanup
+### 4. Writeback & Cleanup
 
 **职责**
 
@@ -272,8 +168,8 @@ last_verified: 2026-03-19
 
 **输入**
 
-- Verification 结果
-- Execution Runtime 交付摘要
+- 已验证的任务结果
+- 交付摘要
 - 当前 Knowledge Base 入口
 
 **输出**
@@ -285,9 +181,9 @@ last_verified: 2026-03-19
 
 **不拥有**
 
-- 执行阶段控制权
-- 验证判定权
 - 需求讨论本体
+- 宿主运行时的调度权
+- 未验证的结论
 
 **禁止越界**
 
@@ -297,16 +193,16 @@ last_verified: 2026-03-19
 
 ## 五、Partition 之间的关系
 
-主流程：
-
-`Control Plane -> Task Contract -> Execution Runtime -> Verification -> Writeback & Cleanup`
-
-辅助关系：
-
 - `Knowledge Base -> Context Routing`：提供长期记忆和稳定入口
 - `Context Routing -> Task Contract`：提供任务限读范围和入口
+- `Task Contract -> 执行层`：提供唯一正式基线
+- `已验证结果 -> Writeback & Cleanup`：提供可回写事实
 - `Writeback & Cleanup -> Knowledge Base`：刷新长期真相
-- `Verification -> Control Plane`：提供是否可收尾的依据
+
+说明：
+
+- 当前 foundations 只定义主线分区和接口对象
+- `Control Plane`、`Execution Runtime`、`Verification` 属于后续宿主运行时或仓库实现层议题，不在本页展开
 
 ## 六、建议的最小文档产物
 
@@ -335,14 +231,17 @@ last_verified: 2026-03-19
 
 ### P2
 
-- 再设计 `Control Plane` 的 shared state
-- 再接 `Execution Runtime` 和 `Verification`
+- 如后续确实需要宿主运行时编排，再在仓库实现层单独设计：
+- 执行阶段状态与 shared state
+- 执行运行时与工具调用面
+- 验证流程与验收 gate
 
 ## 八、当前阶段不做什么
 
 - 不先设计复杂 RAG
 - 不先绑定某个单一后端或运行时框架
 - 不先展开大而全的 Agent catalog
+- 不在 foundations 主线中展开 `Control Plane / Execution Runtime / Verification`
 - 不把旧仓库结构直接继承成新架构
 
 ## 九、判断标准
@@ -351,6 +250,6 @@ last_verified: 2026-03-19
 
 - 能明确说出每类信息该写到哪里
 - 能明确说出一个任务开始前该读什么
-- 能明确说出没有哪些产物就不能进入执行
+- 能明确说出没有 `Task Contract` 就不能进入执行
 - 能明确说出代码完成后还缺哪些回写动作
 - 旧文档和主线文档不会同时声称自己是真相源

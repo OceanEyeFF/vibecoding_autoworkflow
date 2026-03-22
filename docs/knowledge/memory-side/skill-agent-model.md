@@ -1,13 +1,13 @@
 ---
 title: "Memory Side Skill 与 Agent 模型"
 status: active
-updated: 2026-03-22
+updated: 2026-03-23
 owner: aw-kernel
-last_verified: 2026-03-22
+last_verified: 2026-03-23
 ---
 # Memory Side Skill 与 Agent 模型
 
-> 目的：定义 `Memory Side` 中 `Prompt`、`Skill`、`Agent` 的关系，并明确它们在当前仓库中分别落到知识层、业务源码层、部署层和工具层的哪里。
+> 目的：定义 `Memory Side` 中 `Prompt`、`Skill` 与可选调用层的关系，并明确 `Task Contract` 这个任务接口对象如何与它们衔接。
 
 ## 一、为什么不能停在 Prompt
 
@@ -21,7 +21,7 @@ last_verified: 2026-03-22
 
 因此，`Memory Side` 的可落地形态不能只有 Prompt。
 
-## 二、三层载体
+## 二、四类载体
 
 ### 1. Prompt
 
@@ -37,12 +37,29 @@ last_verified: 2026-03-22
 - 把单一能力封装成可复用的执行单元
 - 指定何时触发、读取哪些文档、输出什么结构
 
-### 3. Agent
+### 3. Task Contract
 
 职责：
 
-- 决定在什么阶段调用哪个 Skill
-- 串联任务前、中、后的上下文维护动作
+- 把讨论收束成正式执行基线
+- 为 `Context Routing` 和后续执行层提供同一份目标、范围和验收边界
+
+说明：
+
+- 它是任务接口对象，不属于 `Memory Side` 三个组件本体
+- 但它是当前仓库保留的关键上游对象
+
+### 4. Agent / Workflow Shell
+
+职责：
+
+- 在宿主执行层决定何时调用哪个 Skill
+- 串联任务开始前和任务结束后的上下文维护动作
+
+说明：
+
+- 这是可选调用层，不是当前仓库知识主线的一部分
+- 当前仓库不固定 `task-entry-agent`、`task-closeout-agent` 一类命名
 
 ## 三、当前仓库里的四层落点
 
@@ -89,7 +106,7 @@ last_verified: 2026-03-22
 
 - [Memory Side 层级边界](./layer-boundary.md)
 
-## 四、Memory Side 的最小 Skill 集
+## 四、Memory Side 的固定 Skill 集
 
 当前阶段只建议 3 个 Skill：
 
@@ -105,26 +122,27 @@ last_verified: 2026-03-22
 | `context-routing-skill` | `Context Routing` | `Route Card` |
 | `writeback-cleanup-skill` | `Writeback & Cleanup` | `Writeback Card` |
 
-## 五、Memory Side 的最小 Agent 集
+## 五、当前保留的任务接口对象
 
-当前阶段不建议先展开大而全的 Agent catalog。
+当前阶段不在知识主线中定义任务级 Agent 集。
 
-只建议先定义 2 个任务级 Agent：
+当前保留并建议优先固化的任务接口对象只有：
 
-### 1. `task-entry-agent`
-
-职责：
-
-- 在任务开始前整理主线入口
-- 按需调用 `knowledge-base-skill`
-- 产出当前任务的 `Route Card`
-
-### 2. `task-closeout-agent`
+### `Task Contract`
 
 职责：
 
-- 在任务结束后整理回写与清理动作
-- 产出当前任务的 `Writeback Card`
+- 把讨论压成正式执行基线
+- 作为 `Context Routing` 的上游输入
+- 作为执行层和收尾动作共享的边界说明
+
+如果某个宿主执行层未来需要定义任务级 Agent，它们也应消费：
+
+- `Task Contract`
+- `Route Card`
+- `Writeback Card`
+
+但这些 caller 的命名和编排方式不属于当前仓库知识主线。
 
 ## 六、当前仓库中的落点
 
@@ -197,7 +215,7 @@ toolchain/
 
 - Prompt 规范
 - Skill 输入输出约束
-- Agent 调用顺序
+- `Task Contract / Route Card / Writeback Card` 这组接口对象
 - canonical skill 源码
 
 后端差异只应体现在：
@@ -211,6 +229,7 @@ toolchain/
 - 不直接为每个后端分别写一整套独立知识文档
 - 不把 deploy target 当成 source of truth
 - 不把 Skill 做成隐藏规则黑箱
+- 不在知识主线中固定任务级 Agent 命名
 - 不先把 `Codex` / `Claude` 扩成复杂 subagents catalog
 
 ## 九、配套文档

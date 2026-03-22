@@ -1,9 +1,9 @@
 ---
 title: "Writeback & Cleanup 回写规则"
 status: active
-updated: 2026-03-20
+updated: 2026-03-23
 owner: aw-kernel
-last_verified: 2026-03-20
+last_verified: 2026-03-23
 ---
 # Writeback & Cleanup 回写规则
 
@@ -26,14 +26,14 @@ last_verified: 2026-03-20
 
 生成 `Writeback Card` 时，只使用下面几类输入：
 
-- 当前任务目标和范围
+- 优先使用 `Task Contract` 中已定稿的目标和范围；若尚无 Contract，再使用当前任务目标和范围
 - 本轮已完成的代码或文档变更
 - 已完成的验证结果
 - 当前 `Knowledge Base` 中受影响的文档入口
 
 ## 三、统一收尾步骤
 
-1. 先列出本轮已经确认发生的变更。
+1. 先读取 `Task Contract` 或本轮已定稿目标，再列出已经确认发生的变更。
 2. 再列出本轮明确没有变的边界。
 3. 只把已验证内容映射到对应文档层级。
 4. 标出不能写回的内容。

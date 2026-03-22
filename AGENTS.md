@@ -2,6 +2,13 @@
 
 > 这是当前仓库的 agent-facing 最小工作规则入口。若与 `docs/knowledge/` 冲突，以知识层文档为准。
 
+## Project Core
+
+- 本项目是一个 AI coding 的 repo-side contract layer。
+- 它的目标不是提供完整执行编排，而是统一 AI 进入仓库时的阅读入口、上下文边界、静态真相层，以及任务结束后的回写与清理。
+- 如果你开始把本项目理解成宿主工作流系统、复杂 agent catalog 或 subagents 编排系统，通常已经偏离主线。
+- `docs/` 负责路径与 truth boundary，`product/` 负责 canonical skills 与 adapters，`toolchain/` 负责部署、评测与治理脚本，`.agents/` 与 `.claude/` 只是 deploy target。
+
 ## First Read
 
 1. `docs/README.md`

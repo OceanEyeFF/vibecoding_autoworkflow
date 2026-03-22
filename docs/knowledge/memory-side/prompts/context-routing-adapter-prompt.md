@@ -1,9 +1,9 @@
 ---
 title: "Context Routing 适配 Prompt 草案"
 status: draft
-updated: 2026-03-21
+updated: 2026-03-23
 owner: aw-kernel
-last_verified: 2026-03-21
+last_verified: 2026-03-23
 ---
 # Context Routing 适配 Prompt 草案
 
@@ -18,6 +18,7 @@ last_verified: 2026-03-21
 ## 二、核心原则
 
 - `Knowledge Base` 提供真相，`Context Routing` 只整理入口
+- 如果目标仓库已有 `Task Contract`，优先使用其中已定稿的目标和范围
 - 先缩小阅读范围，再进入执行
 - 默认不做全仓扫描
 - 默认不把 `Exploratory Records` 和 `Archive` 推给执行端
@@ -34,7 +35,7 @@ last_verified: 2026-03-21
 
 ## 四、执行步骤
 
-1. 先判断当前任务类型。
+1. 先读取 `Task Contract` 或当前任务目标，判断任务类型。
 2. 读取最小必要的 `Knowledge Base` 入口。
 3. 根据任务类型选择默认阅读顺序。
 4. 只补充和任务直接相关的代码入口。
@@ -81,6 +82,7 @@ last_verified: 2026-03-21
 
 然后读取最小必要的 Knowledge Base 入口，并遵守以下规则：
 - Knowledge Base 提供真相，Context Routing 只整理入口
+- 如果目标仓库已有 Task Contract，优先使用其中已定稿的目标和范围
 - 默认不做全仓扫描
 - 默认不把 ideas / discussions / thinking 当执行基线
 - archive 默认不作为执行入口

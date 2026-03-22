@@ -1,9 +1,9 @@
 ---
 title: "Writeback & Cleanup 基线"
 status: active
-updated: 2026-03-20
+updated: 2026-03-23
 owner: aw-kernel
-last_verified: 2026-03-20
+last_verified: 2026-03-23
 ---
 # Writeback & Cleanup 基线
 
@@ -29,12 +29,13 @@ last_verified: 2026-03-20
 
 - 固定格式更新规则
 - 清理检查清单
-- 文档维护 Prompt
+- `writeback-cleanup-skill`
+- 文档维护 Prompt 或 repo-local 收尾模板
 
 说明：
 
 - 当前阶段重点是“怎么更新”和“更新到哪里”
-- 不必先实现成专门的交互模块
+- 不必先实现成专门的任务级 Agent 或交互模块
 
 ## 五、最小回写内容
 

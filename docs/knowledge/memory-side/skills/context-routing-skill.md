@@ -1,9 +1,9 @@
 ---
 title: "Context Routing Skill 骨架"
 status: draft
-updated: 2026-03-21
+updated: 2026-03-23
 owner: aw-kernel
-last_verified: 2026-03-21
+last_verified: 2026-03-23
 ---
 # Context Routing Skill 骨架
 
@@ -27,7 +27,7 @@ last_verified: 2026-03-21
 
 ## 四、输入
 
-- 当前任务目标和范围
+- 优先使用 `Task Contract` 中已定稿的目标和范围；若尚无 Contract，再使用当前任务目标和范围
 - 当前任务类型
 - `Knowledge Base` 中可用的主线入口
 
@@ -77,9 +77,11 @@ product/memory-side/skills/context-routing-skill/
 - [context-routing-skill/SKILL.md](../../../../product/memory-side/skills/context-routing-skill/SKILL.md)
 - [context-routing-skill/references/entrypoints.md](../../../../product/memory-side/skills/context-routing-skill/references/entrypoints.md)
 
-## 九、建议被谁调用
+## 九、建议接入方式
 
-- `task-entry-agent`
+- 由 repo-local 任务入口模板或检查清单触发
+- 由人工任务进入前的上下文整理动作触发
+- 如果宿主执行层需要统一 caller，可自行命名，但不在本文固定 agent 名
 
 ## 十、判断标准
 
