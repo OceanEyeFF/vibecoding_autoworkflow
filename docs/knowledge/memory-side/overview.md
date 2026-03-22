@@ -1,9 +1,9 @@
 ---
 title: "Memory Side 总览"
 status: active
-updated: 2026-03-21
+updated: 2026-03-22
 owner: aw-kernel
-last_verified: 2026-03-21
+last_verified: 2026-03-22
 ---
 # Memory Side 总览
 
@@ -24,14 +24,14 @@ last_verified: 2026-03-21
 
 ## 二、层级边界
 
-当前仓库里的 `Memory Side` 资产已经明确拆成两层：
+当前仓库里的 `Memory Side` 资产，在阅读判断上可先分为两类：
 
 - 通用合同层：定义能力模型、输入输出和边界，面向“目标仓库”描述
 - 仓库实现层：说明这些合同如何落到本仓库当前的 adapter、runner 和评测资产上
 
-边界说明见：
+在当前仓库的实际落点上，它进一步展开为“三层主体 + 一层挂载”，边界说明见：
 
-- [Memory Side 层级边界](./memory-side/layer-boundary.md)
+- [Memory Side 层级边界](./layer-boundary.md)
 
 ## 三、组件总览
 
@@ -43,9 +43,9 @@ last_verified: 2026-03-21
 
 对应分区文档：
 
-- [Knowledge Base](./memory-side/knowledge-base.md)
-- [Context Routing](./memory-side/context-routing.md)
-- [Writeback & Cleanup](./memory-side/writeback-cleanup.md)
+- [Knowledge Base](./knowledge-base.md)
+- [Context Routing](./context-routing.md)
+- [Writeback & Cleanup](./writeback-cleanup.md)
 
 ## 四、共用原则
 
@@ -90,7 +90,7 @@ Knowledge Base
 ## 七、阅读顺序建议
 
 1. 先读本页，建立 `Memory Side` 的总边界。
-2. 再读 [Memory Side 层级边界](./memory-side/layer-boundary.md)，确认“通用合同层”和“仓库实现层”不要混读。
+2. 再读 [Memory Side 层级边界](./layer-boundary.md)，确认“通用合同层”和“仓库实现层”不要混读。
 3. 再读 `Knowledge Base`，确认长期真相如何存在仓库里。
 4. 再读 `Context Routing`，确认任务开始前怎么整理阅读入口。
 5. 最后读 `Writeback & Cleanup`，确认任务结束后怎么回写和清理。
@@ -128,7 +128,7 @@ Knowledge Base
 
 如果你要理解通用能力模型，先读：
 
-- [Memory Side Skill 与 Agent 模型](./memory-side/skill-agent-model.md)
+- [Memory Side Skill 与 Agent 模型](./skill-agent-model.md)
 
 如果你要看本仓库当前怎么部署和评测，再读：
 

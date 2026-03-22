@@ -15,6 +15,7 @@ last_verified: 2026-03-22
 |------|------|
 | 先建立 docs 模块边界 | `docs/README.md` |
 | 先建立根目录边界 | `docs/knowledge/foundations/root-directory-layering.md` |
+| 先建立路径治理与 AI 告知边界 | `docs/knowledge/foundations/path-governance-ai-routing.md` |
 | 先建立 Toolchain 边界 | `docs/knowledge/foundations/toolchain-layering.md` |
 | 先建立 Memory Side 边界 | `docs/knowledge/memory-side/layer-boundary.md` |
 | 了解 `Memory Side` 总览 | `docs/knowledge/memory-side/overview.md` |
@@ -43,10 +44,14 @@ last_verified: 2026-03-22
 - `docs/reference/`：外部参考资料
 - `toolchain/`：部署、评测、测试工具
 - `.agents/` 与 `.claude/`：repo-local deploy target，不是源码层
+- `.autoworkflow/`、`.spec-workflow/`、`.serena/`：repo-local state，不是默认读取主线
+- `.nav/`：兼容导航层，不是结构定义层
 
 ## 不要再这样用
 
 - 不要把 `.agents/` 或 `.claude/` 当成业务源码层
+- 不要把 `.autoworkflow/`、`.spec-workflow/`、`.serena/` 当成项目真相层
+- 不要把 `.nav/` 当成默认执行入口
 - 不要把 repo-local wrapper 当成通用 skill 合同
 - 不要把本仓库的 eval baseline 当成跨仓库默认标准
 - 不要跳过 `layer-boundary.md` 直接进入某个 deploy target 目录

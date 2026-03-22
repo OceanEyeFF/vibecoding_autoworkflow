@@ -14,6 +14,7 @@ last_verified: 2026-03-22
 - 文档模块入口：`docs/README.md`
 - Agent 规则入口：`AGENTS.md`
 - 根目录分层：`docs/knowledge/foundations/root-directory-layering.md`
+- 路径治理与 AI 告知：`docs/knowledge/foundations/path-governance-ai-routing.md`
 - Toolchain 分层：`docs/knowledge/foundations/toolchain-layering.md`
 - Memory Side 边界：`docs/knowledge/memory-side/layer-boundary.md`
 - Memory Side 总览：`docs/knowledge/memory-side/overview.md`
@@ -40,18 +41,23 @@ last_verified: 2026-03-22
 | `toolchain/` | 脚本、评测、测试、部署工具 |
 | `.agents/` | repo-local Codex / OpenAI mount |
 | `.claude/` | repo-local Claude mount |
+| `.autoworkflow/` `.spec-workflow/` `.serena/` | repo-local state，默认不作为读取主线 |
+| `.nav/` | compatibility navigation，默认不作为执行入口 |
 
 ## 使用建议
 
 1. 先读 `docs/README.md`，先分清文档层内部结构。
 2. 再读 `docs/knowledge/foundations/root-directory-layering.md`，先分清根目录层级。
-3. 再读 `docs/knowledge/memory-side/layer-boundary.md`，先分清 `Memory Side` 的通用层和实例层。
-4. 需要理解能力语义时，读 `docs/knowledge/memory-side/overview.md` 和 `docs/knowledge/memory-side/skill-agent-model.md`。
-5. 需要改业务代码时，优先进入 `product/`。
-6. 需要本地挂载或全局安装时，使用 `toolchain/scripts/deploy/adapter_deploy.py`。
+3. 再读 `docs/knowledge/foundations/path-governance-ai-routing.md`，先确认 AI 默认应进入哪一层、暂时不要进入哪一层。
+4. 再读 `docs/knowledge/memory-side/layer-boundary.md`，先分清 `Memory Side` 的通用层和实例层。
+5. 需要理解能力语义时，读 `docs/knowledge/memory-side/overview.md` 和 `docs/knowledge/memory-side/skill-agent-model.md`。
+6. 需要改业务代码时，优先进入 `product/`。
+7. 需要本地挂载或全局安装时，使用 `toolchain/scripts/deploy/adapter_deploy.py`。
 
 ## 说明
 
 - `docs/knowledge/` 已经不再承载 guide、analysis 和 reference 的全部职责。
 - `.agents/` 与 `.claude/` 已经不再作为源码层。
+- `.autoworkflow/`、`.spec-workflow/`、`.serena/` 只属于运行状态层，默认不进入。
+- `.nav/` 只保留兼容导航职责，不作为结构真相源。
 - `GUIDE.md` 和 `ROADMAP.md` 继续保留为兼容入口。

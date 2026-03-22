@@ -4,42 +4,38 @@
 
 根层级说明见：
 
-- `docs/knowledge/root-directory-layering.md`
+- `docs/knowledge/foundations/root-directory-layering.md`
+- `docs/knowledge/foundations/path-governance-ai-routing.md`
 
 ## 导航符号说明
 
 | 链接 | 目标 | 用途 |
 |------|------|------|
-| `@agents` | 历史导航位 | 当前目标已失效，需要后续修复或移除 |
 | `@skills` | `product/memory-side/skills/` | canonical skill 资产 |
 | `@docs` | `docs/` | 文档中心 |
-| `@ideas` | 历史导航位 | 当前目标已失效，需要后续修复或移除 |
-| `@planning` | 历史导航位 | 当前目标已失效，需要后续修复或移除 |
 
 ## 使用方式
 
 ```bash
-# 快速进入 agents 目录
-cd .nav/@agents
+# 快速进入 docs 模块
+cd .nav/@docs
 
 # 快速查看所有 skill
 ls .nav/@skills/
-
-# AI 可以通过 .nav/ 快速定位任意模块
 ```
 
 ## 何时使用？
 
-- ✅ 需要快速跨模块导航时
-- ✅ 需要在兼容层保留旧入口时
+- ✅ 需要快速跳到仍然有效的兼容入口时
+- ✅ 需要保留历史路径的过渡说明时
 - ❌ 不要在正式文档引用中使用 `.nav/` 路径
 - ❌ 不要把 `.nav/` 当成真实目录结构定义
 
 ## 当前状态提醒
 
 - `.nav/` 只应服务兼容导航，不应反向决定主线结构
-- 当前 `@agents`、`@ideas`、`@planning` 已经不是有效主线入口
-- 后续如继续保留 `.nav/`，应只保留仍然有效的跳转
+- 当前只保留仍然有效的 `@skills` 与 `@docs`
+- 失效的历史软链 `@agents`、`@ideas`、`@planning` 已移除
 
 ---
 

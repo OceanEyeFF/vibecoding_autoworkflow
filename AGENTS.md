@@ -6,10 +6,11 @@
 
 1. `docs/README.md`
 2. `docs/knowledge/foundations/root-directory-layering.md`
-3. `docs/knowledge/foundations/toolchain-layering.md`
-4. `docs/knowledge/memory-side/layer-boundary.md`
-5. `docs/knowledge/memory-side/overview.md`
-6. `docs/knowledge/memory-side/skill-agent-model.md`
+3. `docs/knowledge/foundations/path-governance-ai-routing.md`
+4. `docs/knowledge/foundations/toolchain-layering.md`
+5. `docs/knowledge/memory-side/layer-boundary.md`
+6. `docs/knowledge/memory-side/overview.md`
+7. `docs/knowledge/memory-side/skill-agent-model.md`
 
 ## Root Rules
 
@@ -48,6 +49,7 @@
 
 - `docs/README.md`
 - `docs/knowledge/foundations/root-directory-layering.md`
+- `docs/knowledge/foundations/path-governance-ai-routing.md`
 - `docs/knowledge/memory-side/layer-boundary.md`
 - `docs/knowledge/memory-side/overview.md`
 - `docs/knowledge/memory-side/skill-agent-model.md`

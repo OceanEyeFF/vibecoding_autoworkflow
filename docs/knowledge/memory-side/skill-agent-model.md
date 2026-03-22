@@ -141,9 +141,9 @@ product/
 
 当前入口：
 
-- [knowledge-base-skill/SKILL.md](../../../../product/memory-side/skills/knowledge-base-skill/SKILL.md)
-- [context-routing-skill/SKILL.md](../../../../product/memory-side/skills/context-routing-skill/SKILL.md)
-- [writeback-cleanup-skill/SKILL.md](../../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md)
+- [knowledge-base-skill/SKILL.md](../../../product/memory-side/skills/knowledge-base-skill/SKILL.md)
+- [context-routing-skill/SKILL.md](../../../product/memory-side/skills/context-routing-skill/SKILL.md)
+- [writeback-cleanup-skill/SKILL.md](../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md)
 
 ### 2. Backend adapter 源码
 

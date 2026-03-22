@@ -1,9 +1,9 @@
 ---
 title: "Claude Code Agent 设计基线：结构化交互协议"
 status: archived
-updated: 2026-03-17
+updated: 2026-03-22
 owner: aw-kernel
-last_verified: 2026-03-17
+last_verified: 2026-03-22
 ---
 # Claude Code Agent 设计基线：结构化交互协议
 
@@ -14,7 +14,7 @@ last_verified: 2026-03-17
 > - 无运行时 Orchestrator 解析 JSON 命令
 > - 无强制 Schema 验证机制
 >
-> **可行替代方案**：参见 [归档索引](./README.md)
+> **可行替代方案**：参见 [Ideas 模块入口](../README.md)
 >
 > **归档时间**：2026-01-04
 

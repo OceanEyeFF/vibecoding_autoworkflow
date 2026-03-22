@@ -51,6 +51,7 @@ toolchain/
 - `deploy/adapter_deploy.py`
 - `research/memory_side_autoresearch.py`
 - `research/memory_side_autoresearch_score.py`
+- `test/path_governance_check.py`
 
 硬规则：
 
@@ -62,6 +63,7 @@ toolchain/
 
 - `scripts/deploy/`：部署与安装入口
 - `scripts/research/`：评测执行与评分入口
+- `scripts/test/`：轻量治理检查入口
 
 ### 2. `toolchain/evals/`
 
@@ -127,7 +129,7 @@ toolchain/
    - `scripts/test/`
 3. 只有当测试资产需要独立沉淀时，再新增 `toolchain/tests/`
 
-当前阶段已经先拆出 `deploy/` 与 `research/` 两类入口。
+当前阶段已经落成 `deploy/`、`research/`、`test/` 三类入口。
 后续只有在同类工具继续增长时，才继续往下细分。
 
 ## 五、命名规则

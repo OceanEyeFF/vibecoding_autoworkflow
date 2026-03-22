@@ -153,6 +153,7 @@ last_verified: 2026-03-22
 ## 八、相关文档
 
 - [Docs 模块入口](../../README.md)
+- [路径治理与 AI 告知](./path-governance-ai-routing.md)
 - [项目 Partition 模型](./partition-model.md)
 - [Toolchain 分层](./toolchain-layering.md)
 - [Memory Side 层级边界](../memory-side/layer-boundary.md)
