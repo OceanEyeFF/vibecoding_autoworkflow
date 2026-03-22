@@ -69,7 +69,7 @@ last_verified: 2026-03-20
 
 为了把 `Writeback & Cleanup` 落成可执行产物，当前配套文档包括：
 
-- [Writeback & Cleanup 回写规则](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/writeback-cleanup-rules.md)
-- [Writeback & Cleanup 适配 Prompt 草案](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/prompts/writeback-cleanup-adapter-prompt.md)
-- [Writeback & Cleanup 输出格式](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md)
-- [Writeback & Cleanup Skill 骨架](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/skills/writeback-cleanup-skill.md)
+- [Writeback & Cleanup 回写规则](./writeback-cleanup-rules.md)
+- [Writeback & Cleanup 适配 Prompt 草案](./prompts/writeback-cleanup-adapter-prompt.md)
+- [Writeback & Cleanup 输出格式](./formats/writeback-cleanup-output-format.md)
+- [Writeback & Cleanup Skill 骨架](./skills/writeback-cleanup-skill.md)

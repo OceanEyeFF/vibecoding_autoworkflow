@@ -1,13 +1,13 @@
 ---
 title: "Writeback & Cleanup 适配 Prompt 草案"
 status: draft
-updated: 2026-03-20
+updated: 2026-03-21
 owner: aw-kernel
-last_verified: 2026-03-20
+last_verified: 2026-03-21
 ---
 # Writeback & Cleanup 适配 Prompt 草案
 
-> 目的：作为 `Claude`、`Codex`、`OpenCode`、`OpenClaw` 等后端可复用的基础 Prompt，指导 AI 在任务结束时生成统一的 `Writeback Card`。
+> 目的：作为 `Claude`、`Codex`、`OpenCode`、`OpenClaw` 等后端可复用的通用 Prompt contract，指导 AI 在任务结束时为目标仓库生成统一的 `Writeback Card`。
 
 ## 一、适用场景
 
@@ -66,12 +66,12 @@ last_verified: 2026-03-20
 
 格式约束见：
 
-- [Writeback & Cleanup 输出格式](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md)
+- [Writeback & Cleanup 输出格式](../formats/writeback-cleanup-output-format.md)
 
 ## 七、Prompt 草案
 
 ```text
-你当前负责这个仓库的 Writeback & Cleanup。
+你当前负责目标仓库的 Writeback & Cleanup。
 
 你的职责不是重新执行任务，也不是写一份长篇复盘，而是在任务结束后为当前结果生成一张最小 Writeback Card。
 

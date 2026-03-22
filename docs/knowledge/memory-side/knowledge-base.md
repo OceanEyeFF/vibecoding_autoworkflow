@@ -208,5 +208,5 @@ docs/
 
 为了把 `Knowledge Base` 继续落成可执行载体，当前配套文档包括：
 
-- [Knowledge Base 适配 Prompt 草案](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/prompts/knowledge-base-adapter-prompt.md)
-- [Knowledge Base Skill 骨架](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/skills/knowledge-base-skill.md)
+- [Knowledge Base 适配 Prompt 草案](./prompts/knowledge-base-adapter-prompt.md)
+- [Knowledge Base Skill 骨架](./skills/knowledge-base-skill.md)

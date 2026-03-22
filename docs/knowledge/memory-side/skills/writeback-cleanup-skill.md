@@ -1,13 +1,13 @@
 ---
 title: "Writeback & Cleanup Skill 骨架"
 status: draft
-updated: 2026-03-20
+updated: 2026-03-21
 owner: aw-kernel
-last_verified: 2026-03-20
+last_verified: 2026-03-21
 ---
 # Writeback & Cleanup Skill 骨架
 
-> 目的：定义 `writeback-cleanup-skill` 的最小职责和输入输出，用于后续落成真实 Skill。
+> 目的：定义 `writeback-cleanup-skill` 的最小职责和输入输出，作为面向目标仓库的通用 skill contract。
 
 ## 一、Skill 名称
 
@@ -50,10 +50,11 @@ last_verified: 2026-03-20
 
 ## 六、主要读取入口
 
-- [Writeback & Cleanup 基线](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/writeback-cleanup.md)
-- [Writeback & Cleanup 回写规则](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/writeback-cleanup-rules.md)
-- [Writeback & Cleanup 输出格式](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md)
-- [Writeback & Cleanup 适配 Prompt 草案](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/prompts/writeback-cleanup-adapter-prompt.md)
+- [Memory Side 层级边界](../layer-boundary.md)
+- [Writeback & Cleanup 基线](../writeback-cleanup.md)
+- [Writeback & Cleanup 回写规则](../writeback-cleanup-rules.md)
+- [Writeback & Cleanup 输出格式](../formats/writeback-cleanup-output-format.md)
+- [Writeback & Cleanup 适配 Prompt 草案](../prompts/writeback-cleanup-adapter-prompt.md)
 
 ## 七、硬性约束
 
@@ -62,21 +63,22 @@ last_verified: 2026-03-20
 - 不把临时推理写入正式真相
 - 不把 `Cleanup` 理解成删除全部历史
 
-## 八、当前实际 Skill 落点
+## 八、本文身份与本仓库中的落点
+
+- 本文定义 `writeback-cleanup-skill` 的通用合同，不负责描述某个 repo-local wrapper。
+- 当前仓库里的 canonical skill 实现在下面位置。
 
 ```text
-toolchain/skills/aw-kernel/memory-side/writeback-cleanup-skill/
+product/memory-side/skills/writeback-cleanup-skill/
   SKILL.md
-  agents/
-    openai.yaml
   references/
     entrypoints.md
 ```
 
 当前实际入口：
 
-- [writeback-cleanup-skill/SKILL.md](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/toolchain/skills/aw-kernel/memory-side/writeback-cleanup-skill/SKILL.md)
-- [writeback-cleanup-skill/references/entrypoints.md](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/toolchain/skills/aw-kernel/memory-side/writeback-cleanup-skill/references/entrypoints.md)
+- [writeback-cleanup-skill/SKILL.md](../../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md)
+- [writeback-cleanup-skill/references/entrypoints.md](../../../../product/memory-side/skills/writeback-cleanup-skill/references/entrypoints.md)
 
 ## 九、建议被谁调用
 

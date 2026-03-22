@@ -1,4 +1,0 @@
-interface:
-  display_name: "Writeback Cleanup"
-  short_description: "Close a task with verified writeback rules"
-  default_prompt: "Use $writeback-cleanup-skill to produce a Writeback Card that maps verified results to canonical docs and cleanup targets."

@@ -1,13 +1,13 @@
 ---
 title: "Context Routing Skill 骨架"
 status: draft
-updated: 2026-03-20
+updated: 2026-03-21
 owner: aw-kernel
-last_verified: 2026-03-20
+last_verified: 2026-03-21
 ---
 # Context Routing Skill 骨架
 
-> 目的：定义 `context-routing-skill` 的最小职责和输入输出，用于后续落成真实 Skill。
+> 目的：定义 `context-routing-skill` 的最小职责和输入输出，作为面向目标仓库的通用 skill contract。
 
 ## 一、Skill 名称
 
@@ -47,10 +47,11 @@ last_verified: 2026-03-20
 
 ## 六、主要读取入口
 
-- [Context Routing 基线](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/context-routing.md)
-- [Context Routing 分流规则](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/context-routing-rules.md)
-- [Context Routing 输出格式](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/formats/context-routing-output-format.md)
-- [Context Routing 适配 Prompt 草案](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/prompts/context-routing-adapter-prompt.md)
+- [Memory Side 层级边界](../layer-boundary.md)
+- [Context Routing 基线](../context-routing.md)
+- [Context Routing 分流规则](../context-routing-rules.md)
+- [Context Routing 输出格式](../formats/context-routing-output-format.md)
+- [Context Routing 适配 Prompt 草案](../prompts/context-routing-adapter-prompt.md)
 
 ## 七、硬性约束
 
@@ -59,21 +60,22 @@ last_verified: 2026-03-20
 - 不把 `Archive` 当执行入口
 - 不把 `Route Card` 写成执行计划
 
-## 八、当前实际 Skill 落点
+## 八、本文身份与本仓库中的落点
+
+- 本文定义 `context-routing-skill` 的通用合同，不负责描述某个 repo-local wrapper。
+- 当前仓库里的 canonical skill 实现在下面位置。
 
 ```text
-toolchain/skills/aw-kernel/memory-side/context-routing-skill/
+product/memory-side/skills/context-routing-skill/
   SKILL.md
-  agents/
-    openai.yaml
   references/
     entrypoints.md
 ```
 
 当前实际入口：
 
-- [context-routing-skill/SKILL.md](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/toolchain/skills/aw-kernel/memory-side/context-routing-skill/SKILL.md)
-- [context-routing-skill/references/entrypoints.md](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/toolchain/skills/aw-kernel/memory-side/context-routing-skill/references/entrypoints.md)
+- [context-routing-skill/SKILL.md](../../../../product/memory-side/skills/context-routing-skill/SKILL.md)
+- [context-routing-skill/references/entrypoints.md](../../../../product/memory-side/skills/context-routing-skill/references/entrypoints.md)
 
 ## 九、建议被谁调用
 

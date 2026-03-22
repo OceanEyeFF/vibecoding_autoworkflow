@@ -54,7 +54,7 @@
         "knowledge"
       ],
       "read_first_must_include": [
-        "docs/knowledge/memory-side-baseline.md",
+        "docs/knowledge/memory-side/overview.md",
         "docs/knowledge/memory-side/context-routing.md"
       ],
       "read_next_should_include_any": [
@@ -95,20 +95,20 @@
         "knowledge"
       ],
       "read_first_must_include": [
-        "docs/knowledge/memory-side-baseline.md",
+        "docs/knowledge/memory-side/overview.md",
         "docs/knowledge/memory-side/context-routing.md"
       ],
       "read_next_should_include_any": [
         "docs/knowledge/memory-side/context-routing-rules.md",
         "docs/knowledge/memory-side/skill-agent-model.md",
         ".agents/skills/context-routing-skill/SKILL.md",
-        "toolchain/skills/aw-kernel/memory-side/context-routing-skill/references/entrypoints.md"
+        "product/memory-side/skills/context-routing-skill/references/entrypoints.md"
       ],
       "code_entry_should_include_any": [
         "toolchain/scripts/",
         "toolchain/evals/memory-side/",
         ".agents/skills/",
-        "toolchain/skills/aw-kernel/memory-side/"
+        "product/memory-side/skills/"
       ],
       "code_entry_forbidden_patterns": [
         "docs/knowledge/**/archive/",

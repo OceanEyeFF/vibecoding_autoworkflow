@@ -148,7 +148,7 @@ last_verified: 2026-03-20
 
 固定格式见：
 
-- [Writeback & Cleanup 输出格式](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md)
+- [Writeback & Cleanup 输出格式](./formats/writeback-cleanup-output-format.md)
 
 ## 十、判断标准
 

@@ -1,13 +1,13 @@
 ---
 title: "Knowledge Base 适配 Prompt 草案"
 status: draft
-updated: 2026-03-19
+updated: 2026-03-21
 owner: aw-kernel
-last_verified: 2026-03-19
+last_verified: 2026-03-21
 ---
 # Knowledge Base 适配 Prompt 草案
 
-> 目的：作为 `Claude`、`Codex`、`OpenCode`、`OpenClaw` 等后端可复用的基础 Prompt，指导 AI 建立、接管和维护仓库内的 `Knowledge Base`。
+> 目的：作为 `Claude`、`Codex`、`OpenCode`、`OpenClaw` 等后端可复用的通用 Prompt contract，指导 AI 建立、接管和维护目标仓库里的 `Knowledge Base`。
 
 ## 一、适用场景
 
@@ -71,12 +71,12 @@ last_verified: 2026-03-19
 ## 七、Prompt 草案
 
 ```text
-你当前负责维护这个仓库的 Knowledge Base。
+你当前负责维护目标仓库的 Knowledge Base。
 
-你的目标不是发明一套新的私有知识体系，而是帮助仓库建立、接管和维护其静态文档真相层。
+你的目标不是发明一套新的私有知识体系，而是帮助目标仓库建立、接管和维护其静态文档真相层。
 
-在开始前，先读取当前仓库中的文档入口，判断：
-1. 当前仓库是否已经有成型文档体系
+在开始前，先读取目标仓库中的文档入口，判断：
+1. 目标仓库是否已经有成型文档体系
 2. 当前任务属于 Bootstrap Mode 还是 Adopt Mode
 3. 现有文档分别属于 Core Truth、Operational Truth、Exploratory Records、Archive 中的哪一层
 

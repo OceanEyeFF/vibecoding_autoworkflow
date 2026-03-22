@@ -1,16 +1,20 @@
-# .nav/ - AI 快速导航层
+# .nav/ - 兼容导航层
 
-> 本目录提供软链接快速导航，便于 AI 和开发者快速遍历文档。
+> 本目录提供兼容性的软链接导航，便于 AI 和开发者快速跳转。它属于根目录的兼容导航层，不是主线目录真相。
+
+根层级说明见：
+
+- `docs/knowledge/root-directory-layering.md`
 
 ## 导航符号说明
 
 | 链接 | 目标 | 用途 |
 |------|------|------|
-| `@agents` | `toolchain/agents/aw-kernel/` | Agent 定义文档 |
-| `@skills` | `toolchain/skills/aw-kernel/` | Skill 工作流文档 |
-| `@docs` | `docs/` | 文档中心（三层架构） |
-| `@ideas` | `ideas/` | 研究 Idea 区 |
-| `@planning` | `planning/` | 任务管理区 |
+| `@agents` | 历史导航位 | 当前目标已失效，需要后续修复或移除 |
+| `@skills` | `product/memory-side/skills/` | canonical skill 资产 |
+| `@docs` | `docs/` | 文档中心 |
+| `@ideas` | 历史导航位 | 当前目标已失效，需要后续修复或移除 |
+| `@planning` | 历史导航位 | 当前目标已失效，需要后续修复或移除 |
 
 ## 使用方式
 
@@ -27,14 +31,15 @@ ls .nav/@skills/
 ## 何时使用？
 
 - ✅ 需要快速跨模块导航时
-- ✅ AI 需要遍历多个目录时
-- ❌ 不要在文档引用中使用 .nav/ 路径（使用真实路径）
+- ✅ 需要在兼容层保留旧入口时
+- ❌ 不要在正式文档引用中使用 `.nav/` 路径
+- ❌ 不要把 `.nav/` 当成真实目录结构定义
 
-## 已归档目录
+## 当前状态提醒
 
-以下目录已归档到 `archive/`，不再提供导航链接：
-- `design/` → `archive/design/`
-- `modules/` → `archive/modules-spec/`
+- `.nav/` 只应服务兼容导航，不应反向决定主线结构
+- 当前 `@agents`、`@ideas`、`@planning` 已经不是有效主线入口
+- 后续如继续保留 `.nav/`，应只保留仍然有效的跳转
 
 ---
 

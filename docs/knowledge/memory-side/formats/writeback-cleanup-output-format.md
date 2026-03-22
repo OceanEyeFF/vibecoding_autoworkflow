@@ -91,8 +91,10 @@ notes_for_next_round:
 
 ## 五、推荐模板
 
+下面模板使用的是当前推荐目录布局，只是示例，不代表所有目标仓库都必须逐字采用同一路径。
+
 ```text
-task: 为 Memory Side 补充 Context Routing 的固定输出格式。
+task: 为目标仓库补充 Context Routing 的固定输出格式。
 verified_changes:
 - 已新增 Context Routing 输出格式文档
 - 已定义 Route Card 的固定字段和模板
@@ -121,7 +123,7 @@ followups:
 - 起草 Writeback & Cleanup 的规则文档、Prompt 和输出格式
 docs_to_sync:
 - docs/knowledge/memory-side/context-routing.md
-- docs/knowledge/memory-side-baseline.md
+- docs/knowledge/memory-side/overview.md
 notes_for_next_round:
 - 下一轮应优先补任务结束后的文档回写规则
 ```

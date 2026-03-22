@@ -1,13 +1,13 @@
 ---
 title: "Knowledge Base Skill 骨架"
 status: draft
-updated: 2026-03-20
+updated: 2026-03-21
 owner: aw-kernel
-last_verified: 2026-03-20
+last_verified: 2026-03-21
 ---
 # Knowledge Base Skill 骨架
 
-> 目的：定义 `knowledge-base-skill` 的最小职责和输入输出，用于后续落成真实 Skill。
+> 目的：定义 `knowledge-base-skill` 的最小职责和输入输出，作为面向目标仓库的通用 skill contract。
 
 ## 一、Skill 名称
 
@@ -40,9 +40,10 @@ last_verified: 2026-03-20
 
 ## 六、主要读取入口
 
-- [Knowledge Base 基线](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/knowledge-base.md)
-- [Knowledge Base 适配 Prompt 草案](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/prompts/knowledge-base-adapter-prompt.md)
-- [Memory Side 总览](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side-baseline.md)
+- [Memory Side 层级边界](../layer-boundary.md)
+- [Knowledge Base 基线](../knowledge-base.md)
+- [Knowledge Base 适配 Prompt 草案](../prompts/knowledge-base-adapter-prompt.md)
+- [Memory Side 总览](../overview.md)
 
 ## 七、硬性约束
 
@@ -51,21 +52,22 @@ last_verified: 2026-03-20
 - 不把 `Exploratory Records` 直接提升为主线
 - 不把 `Archive` 当执行入口
 
-## 八、当前实际 Skill 落点
+## 八、本文身份与本仓库中的落点
+
+- 本文定义 `knowledge-base-skill` 的通用合同，不负责描述某个 repo-local wrapper。
+- 当前仓库里的 canonical skill 实现在下面位置。
 
 ```text
-toolchain/skills/aw-kernel/memory-side/knowledge-base-skill/
+product/memory-side/skills/knowledge-base-skill/
   SKILL.md
-  agents/
-    openai.yaml
   references/
     entrypoints.md
 ```
 
 当前实际入口：
 
-- [knowledge-base-skill/SKILL.md](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/toolchain/skills/aw-kernel/memory-side/knowledge-base-skill/SKILL.md)
-- [knowledge-base-skill/references/entrypoints.md](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/toolchain/skills/aw-kernel/memory-side/knowledge-base-skill/references/entrypoints.md)
+- [knowledge-base-skill/SKILL.md](../../../../product/memory-side/skills/knowledge-base-skill/SKILL.md)
+- [knowledge-base-skill/references/entrypoints.md](../../../../product/memory-side/skills/knowledge-base-skill/references/entrypoints.md)
 
 ## 九、建议被谁调用
 

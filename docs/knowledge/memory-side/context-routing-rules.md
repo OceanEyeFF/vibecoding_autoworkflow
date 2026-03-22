@@ -216,7 +216,7 @@ last_verified: 2026-03-19
 
 固定格式见：
 
-- [Context Routing 输出格式](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/formats/context-routing-output-format.md)
+- [Context Routing 输出格式](./formats/context-routing-output-format.md)
 
 ## 九、判断标准
 

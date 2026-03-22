@@ -1,4 +1,0 @@
-interface:
-  display_name: "Knowledge Base"
-  short_description: "Bootstrap or adopt canonical repo docs"
-  default_prompt: "Use $knowledge-base-skill to inspect this repo documentation system and propose the smallest safe Knowledge Base updates."

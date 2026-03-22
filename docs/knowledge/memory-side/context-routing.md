@@ -69,7 +69,7 @@ last_verified: 2026-03-20
 
 为了把 `Context Routing` 落成可执行产物，当前配套文档包括：
 
-- [Context Routing 分流规则](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/context-routing-rules.md)
-- [Context Routing 适配 Prompt 草案](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/prompts/context-routing-adapter-prompt.md)
-- [Context Routing 输出格式](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/formats/context-routing-output-format.md)
-- [Context Routing Skill 骨架](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/skills/context-routing-skill.md)
+- [Context Routing 分流规则](./context-routing-rules.md)
+- [Context Routing 适配 Prompt 草案](./prompts/context-routing-adapter-prompt.md)
+- [Context Routing 输出格式](./formats/context-routing-output-format.md)
+- [Context Routing Skill 骨架](./skills/context-routing-skill.md)

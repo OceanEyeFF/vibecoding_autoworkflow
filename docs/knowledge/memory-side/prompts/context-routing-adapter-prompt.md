@@ -1,13 +1,13 @@
 ---
 title: "Context Routing 适配 Prompt 草案"
 status: draft
-updated: 2026-03-19
+updated: 2026-03-21
 owner: aw-kernel
-last_verified: 2026-03-19
+last_verified: 2026-03-21
 ---
 # Context Routing 适配 Prompt 草案
 
-> 目的：作为 `Claude`、`Codex`、`OpenCode`、`OpenClaw` 等后端可复用的基础 Prompt，指导 AI 在任务开始前生成统一的 `Route Card`。
+> 目的：作为 `Claude`、`Codex`、`OpenCode`、`OpenClaw` 等后端可复用的通用 Prompt contract，指导 AI 在任务开始前为目标仓库生成统一的 `Route Card`。
 
 ## 一、适用场景
 
@@ -63,12 +63,12 @@ last_verified: 2026-03-19
 
 格式约束见：
 
-- [Context Routing 输出格式](/mnt/e/repos/wsl/personal/vibecoding_autoworkflow/docs/knowledge/memory-side/formats/context-routing-output-format.md)
+- [Context Routing 输出格式](../formats/context-routing-output-format.md)
 
 ## 七、Prompt 草案
 
 ```text
-你当前负责这个仓库的 Context Routing。
+你当前负责目标仓库的 Context Routing。
 
 你的职责不是解释整个项目，也不是直接开始执行任务，而是在任务开始前为当前目标生成一张最小 Route Card。
 

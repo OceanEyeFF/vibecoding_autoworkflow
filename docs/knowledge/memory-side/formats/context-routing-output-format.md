@@ -83,21 +83,23 @@ open_questions:
 
 ## 五、推荐模板
 
+下面模板使用的是当前推荐目录布局，只是示例，不代表所有目标仓库都必须逐字采用同一路径。
+
 ```text
 task_type: Feature
-goal: 为当前模块补一条新的写回规则，并保持现有知识分层不变。
-scope_hint: 只涉及 Memory Side 文档，不进入 Flow Side 运行时设计。
+goal: 为目标仓库补一条新的写回规则，并保持现有知识分层不变。
+scope_hint: 只涉及目标仓库的 Memory Side 文档，不进入运行时实现设计。
 read_first:
-- docs/knowledge/memory-side-baseline.md
+- docs/knowledge/memory-side/overview.md
 - docs/knowledge/memory-side/knowledge-base.md
 - docs/knowledge/memory-side/context-routing.md
 read_next:
 - docs/knowledge/memory-side/context-routing-rules.md
-- docs/knowledge/partition-model.md
+- docs/knowledge/foundations/partition-model.md
 code_entry:
 - docs/knowledge/
 do_not_read_yet:
-- docs/knowledge/archive/
+- docs/archive/
 - 无关的 ideas / discussions / thinking
 - Flow Side 运行时实现细节
 stop_reading_when:
@@ -107,7 +109,7 @@ stop_reading_when:
 verification_entry:
 - 检查新增文档是否与现有基线定义冲突
 optional_background:
-- docs/knowledge/reference/
+- docs/reference/
 open_questions:
 - 当前任务是否需要同步补 Writeback 规则
 ```
