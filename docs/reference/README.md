@@ -4,7 +4,11 @@
 
 当前主线：
 
-- `chatgpt-ai-coding-methodology.md`
+- `chatgpt-ai-coding-methodology.md`：受治理的外部参考摘要
+
+原始导出追溯：
+
+- `../archive/chatgpt-ai-coding-methodology-raw-export.md`
 
 AI 先读什么：
 
@@ -21,6 +25,7 @@ AI 先读什么：
 
 - 外部导入长文
 - 参考资料摘录
+- 经过治理的外部参考摘要
 - 方法论备查资料
 
 这里不适合放：
