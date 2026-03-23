@@ -7,7 +7,7 @@ last_verified: 2026-03-24
 ---
 # Repo-local Eval 研究推进步骤
 
-> 目的：把当前仓库评测方法后续怎么继续推进写清楚，但只作为研究推进顺序和边界说明，不把它写成已经承诺落地的大方案。
+> 目的：把当前仓库评测与调优方法后续怎么继续推进写清楚，但只作为实施路线和边界说明，不把它写成已经承诺落地的大而全平台。
 
 ## 一、当前判断
 
@@ -19,7 +19,20 @@ last_verified: 2026-03-24
 
 但这条线还只是单主题、最小闭环。
 
-`Task Interface` 目前还没有独立的程序化测量面，因此不适合直接把下一步定义成“统一成一个大而全的通用 eval 平台”。
+对接下来的实施路线，当前更合适的方向不是：
+
+- 先补完整正式评测集
+- 先做大量人工复核
+- 先抽象成跨主题大平台
+
+而是：
+
+- 先让 `Claude` 与 `OpenAI API` 都能参与自动评测
+- 先建立 `AI-only` 的自动判定链路
+- 先把 `Memory Side` 作为单主题试点压实
+- 等自动链路稳定后，再从运行日志反推正式评测集
+
+`Task Interface` 仍然重要，但它更适合放到第二波，而不是和第一条自动化试点线并行推进。
 
 ## 二、当前方法来源
 
@@ -32,7 +45,13 @@ last_verified: 2026-03-24
    - 主要借它的 Claude 侧执行壳、loop、guard、logging 思路
    - 不直接把整套命令面、插件体系和大 catalog 作为本仓库主线
 
-这里的重点不是“照搬外部仓库”，而是把其中可复用的方法压进本仓库现有分层里。
+另外，`OpenAI API` 在这里的角色也要单独说明：
+
+- 它是一个可并列比较的推理 backend
+- 它不是本仓库新增的 repo-local skill host
+- 它更适合参与自动验证与对照，而不是承载本仓库部署层语义
+
+这里的重点不是“照搬外部仓库”，而是把其中可复用的方法压进本仓库现有分层里，再用双后端运行结果反推本仓库真正需要的测量面。
 
 ## 三、固定边界
 
@@ -51,118 +70,158 @@ last_verified: 2026-03-24
 
 后续完善评测时，优先遵守下面几条：
 
-1. 先补稳定测量面，再补更复杂的执行后端
-2. 先做单主题收口，再做跨主题抽象
-3. 先做人工可复核的机械检查，再做自动化扩展
-4. 先测 repo-local adapter，再考虑单独测 canonical skill
-5. 每一步都要能回答“如果今天停在这里，是否仍然自洽”
+1. 先做自动 gate，再做正式评测集
+2. 先做单主题试点，再做跨主题扩展
+3. 先让 `Claude` 与 `OpenAI API` 都能跑，再谈更复杂抽象
+4. 先让 AI 自动判定通过 / 失败 / 分歧，再考虑人工分析
+5. 先压实 bounded tuning，再考虑更长的 autoresearch loop
+6. 每一步都要能回答“如果今天停在这里，是否仍然自洽”
 
-如果某一步必须先引入抽象层、统一 runner、额外 backend 或复杂 loop 才能开始，通常说明步子迈大了。
+这里的默认前提是：评测尽量不依赖人工逐条介入。
+
+这并不意味着“只信一个模型的主观判断”，而是意味着：
+
+- 先用确定性规则做硬门槛
+- 再让多个 AI backend 相互对照
+- 分歧时保留 `inconclusive`，而不是强行给出通过结论
+
+如果某一步必须先引入大量人审、先写完整评测集、或先重构成大平台才能开始，通常说明步子迈大了。
 
 ## 五、建议推进顺序
 
-### Step 1. 先把当前 `Memory Side` 评测线压实
+### Phase 0. 先立自动 gate，不先立正式评测集
 
-这一阶段不新增新主题，不引入新宿主，只做下面几件事：
+这一阶段先不上完整 eval set，只先建立最硬的自动失败条件：
 
-- 保持 `program.md`、`scenarios.json`、`schemas/`、`scoring/` 的稳定性
-- 继续用当前 `codex` / `claude` 命令级 runner 跑固定场景
-- 让评分和运行记录更容易人工复核
-- 确认 dry run、真实运行、评分三段链路都稳定
+- 固定 `JSON schema`
+- 固定输出结构
+- 禁止字段或禁止路径
+- `adapter_deploy.py --dry-run`
+- `path_governance_check.py`
 
-这一阶段的完成标志：
-
-- 当前场景集不再频繁改 schema
-- 两个 backend 至少能在同一组场景下重复出结果
-- 评分结论可以稳定复现
-
-### Step 2. 再给 `Task Interface` 补最小测量面
-
-这一阶段不急着写通用 runner，先把缺的资产补齐：
-
-- `toolchain/evals/task-interface/`
-- 最小 `Task Contract` 输出 schema
-- 最小场景集
-- 对 `confirmed / pending` 边界的 rubric
-
-这一阶段的目标不是“做大”，而是让 `Task Interface` 从人工基线进入最小程序化验证。
+这一阶段的目标是先让大量显性失败能够被脚本自动拦下，而不是先追求“场景覆盖完整”。
 
 这一阶段的完成标志：
 
-- `Task Interface` 也具备和 `Memory Side` 类似的最小测量面
-- 输出能被固定 schema 检查
-- 人工验收开始有程序化辅助，而不是完全手工判断
+- 明显的结构错误、路径越界、部署错误能被稳定判成失败
+- 不需要人工逐条看输出结构是否合规
 
-### Step 3. 等两个主题都稳定后，再抽共享 runner
+### Phase 1. 先做 `Memory Side` 的双后端执行面
 
-只有当 `Memory Side` 和 `Task Interface` 都已经有独立测量面时，才值得做共享抽象。
+这一阶段先只拿 `Memory Side` 做试点，不并行拉起新主题。
 
-这时再考虑把当前 runner 抽成：
+优先完成：
 
-- 主题参数化
-- backend 参数化
-- 通用 manifest 结构
-- 通用评分入口
+- 同一组场景能被 `Claude` 跑
+- 同一组场景也能被 `OpenAI API` 跑
+- 两边都写出统一 manifest
+- 两边结果都落到统一运行目录
 
-在这一步之前，不必急着把现有脚本重构成“大一统框架”。
+这里的重点不是先做“完整正式评测集”，而是先把自动运行面搭起来。
 
-### Step 4. 把 Claude 侧扩展保持在 backend 层
+这一阶段的完成标志：
 
-如果后续要继续参考 `uditgoenka/autoresearch`，优先吸收的是：
+- `Memory Side` 至少有一组稳定场景能被双后端重复运行
+- 运行结果能被统一收集和比较
 
-- loop 约束
-- guard 思路
-- logging 结构
-- 更稳定的 Claude 非交互调用方式
+### Phase 2. 做 `AI-only judge`
 
-不建议在当前仓库直接引入：
+这一阶段开始让评测从“能跑”进入“能自动判”。
 
-- 大量 `/autoresearch:*` 子命令
-- 面向通用业务域的 command catalog
-- 把本仓库误写成 Claude 插件宿主系统的结构
+建议至少分成三层：
 
-这一阶段的目标只是让 `Claude` backend 更稳，不是把仓库改造成另一个 `autoresearch` 产品。
+1. `rule judge`
+   - 负责 schema、路径边界、禁止字段、硬规则检查
+2. `cross judge`
+   - `Claude` 判断 `OpenAI API` 输出
+   - `OpenAI API` 判断 `Claude` 输出
+3. `disagreement bucket`
+   - 两边判断不一致时，不给通过，标成 `inconclusive`
 
-### Step 5. 最后才引入 OpenAI API 侧验证
+这一阶段的目标不是追求单一正确裁判，而是尽量减少人工介入，同时避免让单个模型独裁。
 
-OpenAI API 可以进入评测面，但建议放在更后面，而且边界要写死：
+这一阶段的完成标志：
 
-- 它更适合用来测 canonical skill contract 的稳定输出
-- 它不等于本仓库又多了一个 repo-local skill host
-- 它不应该先于 `Task Interface` 测量面补齐
-- 它不应该先于共享 schema 和评分规则稳定下来
+- 同一轮运行能自动得到 `pass / fail / inconclusive`
+- 大部分明显问题不再需要人工翻日志判定
 
-更具体地说：
+### Phase 3. 再做 bounded hardening 与调优
 
-- `codex` / `claude` CLI 主要测 repo-local adapter 与 deploy target
-- OpenAI API 更适合单独测“在固定 prompt + 固定 schema 下，canonical contract 是否稳定”
+只有自动判定链路已经成立后，才值得开始调优。
 
-只有当这个边界被写清楚，OpenAI API 的引入才不会把 adapter eval 和 canonical skill eval 混在一起。
+这一阶段建议保持很窄：
+
+- 固定场景
+- 固定轮数
+- 单变量改动
+- 只调 `program.md`、adapter、backend prompt 或调用参数
+- 只有 hard gate 通过且总分提升才保留
+
+这里更接近“有边界的 autoresearch”，而不是无限自演化 loop。
+
+这一阶段的完成标志：
+
+- 至少有一类改动能稳定提升分数
+- 调优过程不会破坏当前边界和结构约束
+
+### Phase 4. 从运行日志里反推正式评测集
+
+等双后端运行和自动判定都稳定后，再从真实结果里沉淀本仓库自己的 eval set。
+
+优先从下面这些来源收敛：
+
+- 高频失败
+- 高频分歧
+- 容易漂移的字段边界
+- `Claude` 与 `OpenAI API` 表现差异最大的任务
+
+这一阶段的目标不是“凭空设计完美场景”，而是从真实失败面反推最有价值的稳定测量面。
+
+这一阶段的完成标志：
+
+- 已经能从真实日志中归纳出一批高价值正式场景
+- 新评测集能覆盖之前最常见的失败模式
+
+### Phase 5. 再把正式评测集提升为主测量面，并扩到下一主题
+
+这时再把稳定场景正式沉淀到 `toolchain/evals/`，并逐步扩到下一主题。
+
+推进顺序建议仍然是：
+
+1. 先把 `Memory Side` 的正式评测集稳定下来
+2. 再把同样的方法移到 `Task Interface`
+3. 最后才考虑共享 runner 或跨主题统一框架
+
+这样做可以避免在第一波自动化试点还不稳的时候，同时拉多条主线。
 
 ## 六、当前阶段明确不做什么
 
 按现在仓库状态，下面这些都不应当成为近期默认动作：
 
+- 不先补一个看起来很完整但没有真实失败依据的正式评测集
+- 不默认要求人逐条审输出
 - 不直接把当前脚本重构成跨主题大平台
 - 不默认引入无限 loop、自动提交、自动回滚
-- 不为了接 OpenAI API 先抽象出过度设计的 backend framework
 - 不把外部 `autoresearch` 仓库的命令树照搬进来
-- 不在没有稳定 schema 的情况下比较不同 backend 的优劣
+- 不在没有 hard gate 和自动 judge 的情况下比较不同 backend 的优劣
+- 不在第一阶段同时并行推进 `Memory Side` 与 `Task Interface`
 
 ## 七、一个更稳的近期落点
 
 如果只看近期最务实的推进，建议顺序是：
 
-1. 把这套研究方法先写进 `docs/analysis/`
-2. 继续用当前 `Memory Side` runner 做少量固定场景复跑
-3. 补 `Task Interface` 的最小 schema、场景和 rubric
-4. 再决定是否值得抽共享 runner
+1. 先把 `Memory Side` 的 hard gate 压实
+2. 让 `Claude` 与 `OpenAI API` 都能跑同一组场景
+3. 建 `AI-only judge`
+4. 在固定场景上做 bounded tuning
+5. 再从日志里沉淀自己的正式评测集
 
 这样做的好处是：
 
 - 每一步都能停住
-- 每一步都能复核
+- 每一步都能自动判断
 - 每一步都不会把仓库往宿主工作流系统方向推偏
+- 正式评测集来自真实失败面，而不是先验想象
 
 ## 八、外部参考
 

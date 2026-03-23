@@ -101,7 +101,7 @@ python3 toolchain/scripts/research/memory_side_autoresearch.py run \
 - 不在没有固定 schema 的情况下比较输出好坏
 - 不为了提分去放宽 truth boundary
 
-如果后续要继续把这条方法扩到更多主题或更多 backend，先按：
+如果后续要继续把这条方法扩到 `Claude + OpenAI API + AI-only judge` 的自动评测路线，再扩到更多主题或更多 backend，先按：
 
 - [Repo-local Eval 研究推进步骤](../eval-method-evolution.md)
 
