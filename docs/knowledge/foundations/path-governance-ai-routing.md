@@ -49,6 +49,7 @@ last_verified: 2026-03-22
 
 - `docs/knowledge/memory-side/overview.md`
 - `docs/knowledge/memory-side/skill-agent-model.md`
+- `docs/knowledge/task-interface/task-contract.md`
 - 按任务进入 `product/`、`docs/` 或 `toolchain/` 的局部入口页
 
 ### `do_not_read_yet`

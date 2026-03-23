@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deploy Memory Side adapter sources to repo-local or global skill roots."""
+"""Deploy repo adapter sources to repo-local or global skill roots."""
 
 from __future__ import annotations
 
@@ -11,11 +11,8 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-PRODUCT_ROOT = REPO_ROOT / "product" / "memory-side"
-BACKEND_SOURCE_ROOTS = {
-    "claude": PRODUCT_ROOT / "adapters" / "claude" / "skills",
-    "agents": PRODUCT_ROOT / "adapters" / "agents" / "skills",
-}
+PRODUCT_ROOT = REPO_ROOT / "product"
+PRODUCT_PARTITIONS = ("memory-side", "task-interface")
 LOCAL_TARGET_ROOTS = {
     "claude": REPO_ROOT / ".claude" / "skills",
     "agents": REPO_ROOT / ".agents" / "skills",
@@ -28,7 +25,7 @@ class DeployError(RuntimeError):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Deploy Memory Side adapter sources to local mounts or global skill roots."
+        description="Deploy repo adapter sources to local mounts or global skill roots."
     )
     subparsers = parser.add_subparsers(dest="mode", required=True)
 
@@ -76,11 +73,16 @@ def iter_backends(selected: str) -> list[str]:
     return [selected]
 
 
-def source_root_for(backend: str) -> Path:
-    source_root = BACKEND_SOURCE_ROOTS[backend]
-    if not source_root.is_dir():
-        raise DeployError(f"Missing source root for {backend}: {source_root}")
-    return source_root
+def source_roots_for(backend: str) -> list[Path]:
+    source_roots = []
+    for partition in PRODUCT_PARTITIONS:
+        source_root = PRODUCT_ROOT / partition / "adapters" / backend / "skills"
+        if source_root.is_dir():
+            source_roots.append(source_root)
+
+    if not source_roots:
+        raise DeployError(f"Missing source roots for {backend} under {PRODUCT_ROOT}")
+    return source_roots
 
 
 def global_target_root_for(backend: str, args: argparse.Namespace) -> Path:
@@ -158,13 +160,13 @@ def deploy_one(source_path: Path, target_path: Path, method: str, dry_run: bool)
 
 
 def deploy_backend(backend: str, args: argparse.Namespace) -> None:
-    source_root = source_root_for(backend)
     target_root = target_root_for(backend, args)
     ensure_target_root(target_root, args)
 
-    for source_path in sorted(path for path in source_root.iterdir() if path.is_dir()):
-        target_path = target_root / source_path.name
-        deploy_one(source_path, target_path, args.method, args.dry_run)
+    for source_root in source_roots_for(backend):
+        for source_path in sorted(path for path in source_root.iterdir() if path.is_dir()):
+            target_path = target_root / source_path.name
+            deploy_one(source_path, target_path, args.method, args.dry_run)
 
 
 def main() -> int:

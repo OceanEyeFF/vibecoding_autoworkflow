@@ -49,6 +49,9 @@ last_verified: 2026-03-22
 - `product/memory-side/adapters/claude/`：Claude adapter 源码
 - `product/memory-side/adapters/agents/`：Codex / OpenAI adapter 源码
 - `product/memory-side/manifests/`：全局安装与分发元数据预留位
+- `product/task-interface/skills/`：Task Interface canonical skill 源码
+- `product/task-interface/adapters/claude/`：Task Interface 的 Claude adapter 源码
+- `product/task-interface/adapters/agents/`：Task Interface 的 Codex / OpenAI adapter 源码
 
 硬规则：
 

@@ -114,6 +114,11 @@ last_verified: 2026-03-23
 - `context-routing-skill`
 - `writeback-cleanup-skill`
 
+说明：
+
+- 这 3 个 skill 只覆盖 `Memory Side`
+- `task-contract-skill` 属于 `Task Interface`，不计入 `Memory Side` skill 集
+
 对应关系：
 
 | Skill | 对应 Partition | 核心产物 |
@@ -141,6 +146,12 @@ last_verified: 2026-03-23
 - `Task Contract`
 - `Route Card`
 - `Writeback Card`
+
+当前仓库还提供一个 `Task Interface` 层的直接调用载体：
+
+- `product/task-interface/skills/task-contract-skill/`
+- `product/task-interface/adapters/agents/skills/task-contract-skill/`
+- `product/task-interface/adapters/claude/skills/task-contract-skill/`
 
 但这些 caller 的命名和编排方式不属于当前仓库知识主线。
 

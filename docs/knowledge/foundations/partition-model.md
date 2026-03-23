@@ -54,6 +54,12 @@ last_verified: 2026-03-23
 - 把目标、范围、验收和限制压成可消费对象
 - 约束执行层在进入任务前先拿到同一份边界
 
+当前仓库中的最小载体：
+
+- `docs/knowledge/foundations/task-contract-template.md`
+- `docs/knowledge/task-interface/task-contract.md`
+- `product/task-interface/skills/task-contract-skill/`
+
 ## 四、各 Partition 边界
 
 ### 1. Knowledge Base
@@ -157,6 +163,7 @@ last_verified: 2026-03-23
 - 没有 Contract 不得进入执行
 - Contract 不能只写目标，不写边界和验收
 - Contract 不能把讨论碎片直接原样堆进去
+- Contract skill 不能退化成 runtime 编排器或任务级 agent catalog
 
 ### 4. Writeback & Cleanup
 
@@ -210,7 +217,7 @@ last_verified: 2026-03-23
 
 - `project_overview.md`
 - `partition-model.md`
-- `task-contract-template.md`
+- [task-contract-template.md](./task-contract-template.md)
 - `context-entry-template.md`
 - `writeback-log-template.md`
 - `decision-record-template.md`

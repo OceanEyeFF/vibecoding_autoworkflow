@@ -23,7 +23,7 @@
 1. `knowledge/foundations/root-directory-layering.md`
 2. `knowledge/foundations/path-governance-ai-routing.md`
 3. `knowledge/foundations/toolchain-layering.md`
-4. 目标领域目录，例如 `knowledge/memory-side/`
+4. 目标领域目录，例如 `knowledge/memory-side/` 或 `knowledge/task-interface/`
 5. 需要实际部署或评测时，再读 `operations/` 与 `analysis/`
 
 ## 文档治理规则

@@ -1,0 +1,106 @@
+---
+title: "Task Contract 基线"
+status: active
+updated: 2026-03-23
+owner: aw-kernel
+last_verified: 2026-03-23
+---
+# Task Contract 基线
+
+> 目的：定义 `Task Contract` 作为 `Task Interface` 对象的职责和边界，并说明它如何被固定为可直接调用的 skill 载体，而不把它并入 `Memory Side`。
+
+## 一、对象
+
+`Task Contract`
+
+## 二、角色
+
+- 位于 `discussion -> execution` 之间
+- 把讨论压缩成唯一正式执行基线
+- 为 `Context Routing`、执行层和 `Writeback & Cleanup` 提供同一份上游边界
+
+## 三、它不是什么
+
+- 不是 `Memory Side` 组件
+- 不是产品功能设计
+- 不是后端服务模块
+- 不是宿主运行时编排器
+- 不是客户端专属调用逻辑
+
+## 四、输入与输出
+
+输入：
+
+- 已收敛的用户讨论
+- 当前仓库主线约束
+- 必要时使用 `Context Routing` 已确定的最小入口
+
+输出：
+
+- 一份固定结构的 `Task Contract`
+- 其中明确：
+  - `confirmed`
+  - `pending`
+  - 任务范围
+  - 非目标
+  - 验收
+  - 依赖
+  - 风险
+  - 验证要求
+
+## 五、当前最合适的载体
+
+当前仓库中，`Task Contract` 适合同时由两类载体承载：
+
+- `docs/knowledge/foundations/task-contract-template.md`
+- `task-contract-skill`
+
+说明：
+
+- 模板负责固定结构
+- skill 负责把同一结构变成可直接调用的稳定能力
+- 两者都属于 `Task Interface`，不属于 `Memory Side`
+
+## 六、不做什么
+
+- 不直接进入编码
+- 不直接分配 agents
+- 不直接生成多步执行计划
+- 不把 `Route Card` 或 `Writeback Card` 混入本体
+- 不基于猜测补全缺失事实
+
+## 七、当前仓库中的落点
+
+```text
+docs/knowledge/
+  foundations/
+    task-contract-template.md
+  task-interface/
+    task-contract.md
+    skills/
+      task-contract-skill.md
+
+product/
+  task-interface/
+    skills/
+      task-contract-skill/
+    adapters/
+      agents/
+      claude/
+```
+
+## 八、判断标准
+
+如果下面几句话成立，说明 `Task Contract` 的基线是清楚的：
+
+- 它能稳定收束讨论，而不是复制讨论碎片
+- 它能作为执行前唯一正式基线
+- 它能被不同后端用同一套结构消费
+- 它不会被误写成 `Memory Side` 组件或 runtime 方案
+
+## 九、相关文档
+
+- [项目 Partition 模型](../foundations/partition-model.md)
+- [Task Contract 模板](../foundations/task-contract-template.md)
+- [Task Contract Skill 骨架](./skills/task-contract-skill.md)
+- [Memory Side 总览](../memory-side/overview.md)

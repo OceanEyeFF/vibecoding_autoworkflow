@@ -13,6 +13,12 @@ last_verified: 2026-03-22
 
 - [Memory Side 层级边界](../../knowledge/memory-side/layer-boundary.md)
 
+说明：
+
+- 当前部署脚本按 backend 汇总部署 `product/` 下的所有 adapter skill。
+- 如果仓库同时存在 `Task Interface` skill，它也会一起挂载到 `.agents/skills/`。
+- 本页只约束其中 `Memory Side` 这一组 skill 的边界和检查项。
+
 ## 一、当前落点
 
 ```text
