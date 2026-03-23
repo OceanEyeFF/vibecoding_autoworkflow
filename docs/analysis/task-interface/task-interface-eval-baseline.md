@@ -96,11 +96,16 @@ toolchain/evals/task-interface/
 - 最小评测场景集
 - 对 `confirmed / pending` 边界的 rubric
 
+推进顺序上，先补最小测量面，再考虑共享 runner 或额外 backend：
+
+- [Repo-local Eval 研究推进步骤](../eval-method-evolution.md)
+
 在这些资产落地前，本页仍以人工可复核基线为准。
 
 ## 八、相关文档
 
 - [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
 - [Task Contract Skill 骨架](../../knowledge/task-interface/skills/task-contract-skill.md)
+- [Repo-local Eval 研究推进步骤](../eval-method-evolution.md)
 - [Codex Task Interface Repo-local Adapter 部署帮助](../../operations/task-interface/codex-deployment-help.md)
 - [Claude Task Interface Repo-local Adapter 适配帮助](../../operations/task-interface/claude-adaptation-help.md)

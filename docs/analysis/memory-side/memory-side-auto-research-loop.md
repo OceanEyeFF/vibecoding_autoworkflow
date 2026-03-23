@@ -101,10 +101,15 @@ python3 toolchain/scripts/research/memory_side_autoresearch.py run \
 - 不在没有固定 schema 的情况下比较输出好坏
 - 不为了提分去放宽 truth boundary
 
+如果后续要继续把这条方法扩到更多主题或更多 backend，先按：
+
+- [Repo-local Eval 研究推进步骤](../eval-method-evolution.md)
+
 ## 六、相关文档
 
 - [Memory Side 层级边界](../../knowledge/memory-side/layer-boundary.md)
 - [Memory Side Repo-local Adapter 评测基线](./memory-side-eval-baseline.md)
+- [Repo-local Eval 研究推进步骤](../eval-method-evolution.md)
 - [Memory Side Skill 与 Agent 模型](../../knowledge/memory-side/skill-agent-model.md)
 - [Codex Memory Side Repo-local Adapter 部署帮助](../../operations/memory-side/codex-deployment-help.md)
 - [Claude Memory Side Repo-local Adapter 适配帮助](../../operations/memory-side/claude-adaptation-help.md)
