@@ -6,6 +6,7 @@
 
 - `memory-side/memory-side-eval-baseline.md`
 - `memory-side/memory-side-auto-research-loop.md`
+- `task-interface/task-interface-eval-baseline.md`
 
 AI 先读什么：
 

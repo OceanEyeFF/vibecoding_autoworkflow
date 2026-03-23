@@ -103,4 +103,7 @@ product/
 - [项目 Partition 模型](../foundations/partition-model.md)
 - [Task Contract 模板](../foundations/task-contract-template.md)
 - [Task Contract Skill 骨架](./skills/task-contract-skill.md)
+- [Codex Task Interface Repo-local Adapter 部署帮助](../../operations/task-interface/codex-deployment-help.md)
+- [Claude Task Interface Repo-local Adapter 适配帮助](../../operations/task-interface/claude-adaptation-help.md)
+- [Task Interface Repo-local Adapter 评测基线](../../analysis/task-interface/task-interface-eval-baseline.md)
 - [Memory Side 总览](../memory-side/overview.md)

@@ -7,12 +7,15 @@
 - `path-governance-checks.md`
 - `memory-side/codex-deployment-help.md`
 - `memory-side/claude-adaptation-help.md`
+- `task-interface/codex-deployment-help.md`
+- `task-interface/claude-adaptation-help.md`
 
 AI 先读什么：
 
 1. `docs/knowledge/foundations/root-directory-layering.md`
-2. `docs/knowledge/memory-side/layer-boundary.md`
-3. 目标主题下的操作说明，例如 `memory-side/`
+2. `docs/knowledge/foundations/partition-model.md`
+3. 对应 partition 的知识主线，例如 `memory-side/` 或 `task-interface/`
+4. 目标主题下的操作说明
 
 暂时不要先读什么：
 
