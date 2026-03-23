@@ -82,8 +82,8 @@ last_verified: 2026-03-22
 `read_first`
 
 1. `product/README.md`
-2. `product/memory-side/README.md`
-3. `product/memory-side/skills/README.md` 或 `product/memory-side/adapters/README.md`
+2. `product/memory-side/README.md` 或 `product/task-interface/README.md`
+3. 对应 partition 的 `skills/README.md` 或 `adapters/README.md`
 
 `read_next`
 
@@ -100,7 +100,7 @@ last_verified: 2026-03-22
 `stop_reading_when`
 
 - 已确认当前源码入口
-- 已确认当前任务是否涉及 canonical skill 或 backend adapter
+- 已确认当前任务涉及哪个 partition、哪个 canonical skill 或哪个 backend adapter
 
 ### 2. `docs/`
 

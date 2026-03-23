@@ -127,6 +127,12 @@ Knowledge Base
 - `Task Contract`：在讨论和执行之间提供正式任务基线
 - Agent / Workflow Shell：由宿主执行层决定如何调用 Skill，不属于当前仓库知识主线
 
+当前仓库中与 `Task Contract` 对应的实际落点包括：
+
+- [Task Contract 模板](../foundations/task-contract-template.md)
+- [Task Contract 基线](../task-interface/task-contract.md)
+- [Task Contract Skill 骨架](../task-interface/skills/task-contract-skill.md)
+
 如果你要理解通用能力模型，先读：
 
 - [Memory Side Skill 与 Agent 模型](./skill-agent-model.md)

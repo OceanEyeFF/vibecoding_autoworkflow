@@ -20,9 +20,11 @@ last_verified: 2026-03-23
 
 - 文档模块入口：`docs/README.md`
 - Agent 规则入口：`AGENTS.md`
+- 项目 Partition 模型：`docs/knowledge/foundations/partition-model.md`
 - 根目录分层：`docs/knowledge/foundations/root-directory-layering.md`
 - 路径治理与 AI 告知：`docs/knowledge/foundations/path-governance-ai-routing.md`
 - Toolchain 分层：`docs/knowledge/foundations/toolchain-layering.md`
+- Task Interface / Task Contract：`docs/knowledge/task-interface/task-contract.md`
 - Memory Side 边界：`docs/knowledge/memory-side/layer-boundary.md`
 - Memory Side 总览：`docs/knowledge/memory-side/overview.md`
 - Skill / Agent 模型：`docs/knowledge/memory-side/skill-agent-model.md`
@@ -32,7 +34,11 @@ last_verified: 2026-03-23
 - `product/memory-side/skills/`：canonical skill 源码
 - `product/memory-side/adapters/agents/`：Codex / OpenAI adapter 源码
 - `product/memory-side/adapters/claude/`：Claude adapter 源码
+- `product/task-interface/skills/`：Task Interface canonical skill 源码
+- `product/task-interface/adapters/agents/`：Task Interface 的 Codex / OpenAI adapter 源码
+- `product/task-interface/adapters/claude/`：Task Interface 的 Claude adapter 源码
 - `docs/knowledge/`：canonical truth 与基础治理
+- `docs/knowledge/task-interface/`：Task Interface 真相与 skill skeleton
 - `docs/operations/`：repo-local runbook 与部署说明
 - `docs/analysis/`：评测与研究说明
 - `docs/reference/`：外部参考资料
@@ -57,9 +63,10 @@ last_verified: 2026-03-23
 2. 再读 `docs/knowledge/foundations/root-directory-layering.md`，先分清根目录层级。
 3. 再读 `docs/knowledge/foundations/path-governance-ai-routing.md`，先确认 AI 默认应进入哪一层、暂时不要进入哪一层。
 4. 再读 `docs/knowledge/memory-side/layer-boundary.md`，先分清 `Memory Side` 的通用层和实例层。
-5. 需要理解能力语义时，读 `docs/knowledge/memory-side/overview.md` 和 `docs/knowledge/memory-side/skill-agent-model.md`。
-6. 需要改业务代码时，优先进入 `product/`。
-7. 需要本地挂载或全局安装时，使用 `toolchain/scripts/deploy/adapter_deploy.py`。
+5. 需要理解 `Task Contract` 和执行前正式基线时，读 `docs/knowledge/task-interface/task-contract.md`。
+6. 需要理解能力语义时，读 `docs/knowledge/memory-side/overview.md` 和 `docs/knowledge/memory-side/skill-agent-model.md`。
+7. 需要改业务代码时，优先进入 `product/`。
+8. 需要本地挂载或全局安装时，使用 `toolchain/scripts/deploy/adapter_deploy.py`。
 
 ## 说明
 

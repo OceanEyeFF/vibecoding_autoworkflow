@@ -15,9 +15,11 @@
 2. `docs/knowledge/foundations/root-directory-layering.md`
 3. `docs/knowledge/foundations/path-governance-ai-routing.md`
 4. `docs/knowledge/foundations/toolchain-layering.md`
-5. `docs/knowledge/memory-side/layer-boundary.md`
-6. `docs/knowledge/memory-side/overview.md`
-7. `docs/knowledge/memory-side/skill-agent-model.md`
+5. `docs/knowledge/foundations/partition-model.md`
+6. `docs/knowledge/task-interface/task-contract.md`
+7. `docs/knowledge/memory-side/layer-boundary.md`
+8. `docs/knowledge/memory-side/overview.md`
+9. `docs/knowledge/memory-side/skill-agent-model.md`
 
 ## Root Rules
 
@@ -36,8 +38,8 @@
 - benchmark 与研究说明写到 `docs/analysis/`。
 - 外部参考资料写到 `docs/reference/`。
 - 未准入主线的想法写到 `docs/ideas/`，并保持目录与 `status` 一致。
-- canonical skill 源码写到 `product/memory-side/skills/`。
-- backend adapter 源码写到 `product/memory-side/adapters/`。
+- canonical skill 源码写到 `product/` 下对应 partition 的 `skills/`。
+- backend adapter 源码写到 `product/` 下对应 partition 的 `adapters/`。
 - 部署、评测、测试、打包脚本写到 `toolchain/`。
 - 不要把项目真相写进 `.agents/`、`.claude/`、`.nav/`。
 
@@ -56,8 +58,10 @@
 ## Canonical References
 
 - `docs/README.md`
+- `docs/knowledge/foundations/partition-model.md`
 - `docs/knowledge/foundations/root-directory-layering.md`
 - `docs/knowledge/foundations/path-governance-ai-routing.md`
+- `docs/knowledge/task-interface/task-contract.md`
 - `docs/knowledge/memory-side/layer-boundary.md`
 - `docs/knowledge/memory-side/overview.md`
 - `docs/knowledge/memory-side/skill-agent-model.md`
