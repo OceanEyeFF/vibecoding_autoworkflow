@@ -16,6 +16,12 @@ AI 先读什么：
 3. `scenarios.json`
 4. 需要校验输出时，再读 `schemas/` 与 `scoring/`
 
+当前 `scoring/` 的最小覆盖面包括：
+
+- `knowledge-base-rubric.json`
+- `context-routing-rubric.json`
+- `writeback-cleanup-rubric.json`
+
 暂时不要先读什么：
 
 - `.autoworkflow/` 里的运行结果

@@ -52,7 +52,9 @@ toolchain/evals/memory-side/
   program.md
   scenarios.json
   scoring/
+    knowledge-base-rubric.json
     context-routing-rubric.json
+    writeback-cleanup-rubric.json
   schemas/
     knowledge-base-card.schema.json
     route-card.schema.json

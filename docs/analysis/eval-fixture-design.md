@@ -244,6 +244,11 @@ last_verified: 2026-03-24
 toolchain/evals/
 ```
 
+其中 fixture 相关的 canonical schema 直接落在：
+
+- `toolchain/evals/fixtures/fixture-manifest.schema.json`
+- `toolchain/evals/fixtures/run-manifest.schema.json`
+
 运行产物仍应落到：
 
 ```text
@@ -257,6 +262,11 @@ toolchain/evals/fixtures/
 ```
 
 而不是单独新起一个根级 benchmark 仓结构。
+
+当前如果要把这层先落成稳定合同，优先落的对象应是：
+
+- `toolchain/evals/fixtures/fixture-manifest.schema.json`
+- `toolchain/evals/fixtures/run-manifest.schema.json`
 
 ## 九、相关文档
 

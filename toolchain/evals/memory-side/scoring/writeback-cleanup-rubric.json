@@ -1,0 +1,151 @@
+{
+  "version": 1,
+  "applies_to_skill": "writeback-cleanup-skill",
+  "global": {
+    "verification_markers": [
+      "verified",
+      "验证",
+      "check",
+      "checked",
+      "confirm",
+      "confirmed",
+      "dry-run",
+      "test",
+      "tested",
+      "命令",
+      "通过"
+    ],
+    "uncertainty_markers": [
+      "未验证",
+      "待确认",
+      "uncertain",
+      "unverified",
+      "incomplete",
+      "not enough",
+      "不能写回",
+      "暂不写回",
+      "探索"
+    ]
+  },
+  "scenarios": {
+    "WC-1": {
+      "requires_mainline_writeback": true,
+      "verified_change_markers": [
+        ".agents",
+        ".claude",
+        "wrapper",
+        "guide",
+        "eval",
+        "adapter"
+      ],
+      "verification_markers": [
+        "dry-run",
+        "check",
+        "verified",
+        "验证",
+        "命令"
+      ],
+      "uncertainty_markers": [
+        "未验证",
+        "temporary",
+        "临时",
+        "探索",
+        "猜测"
+      ],
+      "cleanup_markers": [
+        "stale",
+        "old",
+        "过期",
+        "旧",
+        "entrypoint",
+        "入口",
+        "prompt",
+        "wrapper"
+      ],
+      "risk_markers": [
+        "risk",
+        "风险",
+        "pending",
+        "待确认",
+        "gap",
+        "缺口"
+      ],
+      "followup_markers": [
+        "docs/",
+        ".md",
+        "sync",
+        "同步",
+        "next",
+        "下一轮",
+        "follow"
+      ],
+      "scenario_markers": [
+        ".agents",
+        ".claude",
+        "guide",
+        "eval",
+        "wrapper",
+        "adapter"
+      ]
+    },
+    "WC-2": {
+      "requires_mainline_writeback": false,
+      "verified_change_markers": [
+        "explor",
+        "探索",
+        "command",
+        "命令",
+        "确认"
+      ],
+      "verification_markers": [
+        "未验证",
+        "不充分",
+        "incomplete",
+        "command",
+        "命令确认",
+        "探索"
+      ],
+      "uncertainty_markers": [
+        "未验证",
+        "不充分",
+        "不能写回",
+        "待确认",
+        "incomplete",
+        "unverified"
+      ],
+      "cleanup_markers": [
+        "stale",
+        "old",
+        "过期",
+        "旧",
+        "assumption",
+        "假设",
+        "entrypoint",
+        "prompt"
+      ],
+      "risk_markers": [
+        "risk",
+        "风险",
+        "pending",
+        "待确认",
+        "verification",
+        "验证"
+      ],
+      "followup_markers": [
+        "follow",
+        "next",
+        "下一轮",
+        "验证",
+        "confirm",
+        "check"
+      ],
+      "scenario_markers": [
+        "未验证",
+        "探索",
+        "命令",
+        "确认",
+        "不能写回"
+      ]
+    }
+  }
+}

@@ -29,11 +29,15 @@ def load_scenarios(path: Path) -> dict[str, dict[str, Any]]:
     return {item["id"]: item for item in data["scenarios"]}
 
 
-def build_prompt(program_text: str, scenario: dict[str, Any], backend: str) -> str:
-    adapter_path = {
-        "codex": f".agents/skills/{scenario['skill']}/",
-        "claude": f".claude/skills/{scenario['skill']}/",
+def get_adapter_path(skill: str, backend: str) -> str:
+    return {
+        "codex": f".agents/skills/{skill}/",
+        "claude": f".claude/skills/{skill}/",
     }[backend]
+
+
+def build_prompt(program_text: str, scenario: dict[str, Any], backend: str) -> str:
+    adapter_path = get_adapter_path(scenario["skill"], backend)
 
     prompt_lines = [
         program_text.strip(),
@@ -161,7 +165,9 @@ def run_scenario(
     dry_run: bool,
 ) -> dict[str, Any]:
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    run_dir = ensure_dir(output_root / f"{timestamp}-{backend.lower()}-{scenario['id'].lower()}")
+    run_id = f"{timestamp}-{backend.lower()}-{scenario['id'].lower()}"
+    started_at = datetime.now().astimezone().isoformat(timespec="seconds")
+    run_dir = ensure_dir(output_root / run_id)
     prompt_path = run_dir / "prompt.txt"
     stdout_path = run_dir / "stdout.txt"
     stderr_path = run_dir / "stderr.txt"
@@ -182,11 +188,18 @@ def run_scenario(
         raise ValueError(f"Unsupported backend: {backend}")
 
     manifest: dict[str, Any] = {
+        "manifest_type": "run-manifest",
+        "manifest_version": 1,
+        "run_id": run_id,
+        "run_dir": str(run_dir.relative_to(REPO_ROOT)),
+        "started_at": started_at,
         "backend": backend,
+        "model": model,
         "scenario_id": scenario["id"],
         "skill": scenario["skill"],
         "title": scenario["title"],
         "goal": scenario["goal"],
+        "adapter_path": get_adapter_path(scenario["skill"], backend),
         "program_path": str(program_path.relative_to(REPO_ROOT)),
         "schema_path": str(schema_path.relative_to(REPO_ROOT)),
         "prompt_path": str(prompt_path.relative_to(REPO_ROOT)),
@@ -196,6 +209,7 @@ def run_scenario(
         "parsed_path": str(parsed_path.relative_to(REPO_ROOT)),
         "command": cmd,
         "dry_run": dry_run,
+        "timeout_sec": timeout_sec,
     }
 
     if dry_run:
