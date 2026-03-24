@@ -1,6 +1,6 @@
 # Analysis
 
-`docs/analysis/` 只保存 benchmark、评测基线和研究闭环，不作为当前项目真相的默认执行入口。
+`docs/analysis/` 只保存测试说明、测试基线和 prompt 改进记录，不作为当前项目真相的默认执行入口。
 
 当前主线：
 
@@ -24,9 +24,10 @@ AI 先读什么：
 
 这里适合放：
 
-- repo-local eval baseline
-- 研究流程说明
-- benchmark 约束和观察
+- 测试流程说明
+- 问题列表设计
+- 测试评分规则
+- prompt 改进观察
 
 这里不适合放：
 

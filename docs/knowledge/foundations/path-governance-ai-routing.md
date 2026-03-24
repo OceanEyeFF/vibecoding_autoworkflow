@@ -1,9 +1,9 @@
 ---
 title: "路径治理与 AI 告知"
 status: active
-updated: 2026-03-22
+updated: 2026-03-25
 owner: aw-kernel
-last_verified: 2026-03-22
+last_verified: 2026-03-25
 ---
 # 路径治理与 AI 告知
 
@@ -141,12 +141,13 @@ last_verified: 2026-03-22
 
 1. `toolchain/README.md`
 2. `toolchain/scripts/README.md` 或 `toolchain/evals/README.md`
-3. 目标二级入口，例如 `scripts/deploy/README.md`、`scripts/research/README.md`、`evals/memory-side/README.md`
+3. 目标二级入口，例如 `scripts/deploy/README.md`、`scripts/research/README.md`、`evals/fixtures/README.md`、`evals/memory-side/README.md`
 
 `read_next`
 
 - 目标 CLI 脚本
-- 目标 benchmark 资产
+- 目标问题列表与测试评分规则
+- 目标测试仓库说明格式或测试记录格式
 
 `do_not_read_yet`
 

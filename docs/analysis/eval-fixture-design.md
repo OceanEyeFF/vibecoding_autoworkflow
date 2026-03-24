@@ -1,276 +1,117 @@
 ---
-title: "Repo-local Eval 基底 Repo 与任务模板设计"
+title: "Repo-local 测试仓库与问题列表设计"
 status: active
-updated: 2026-03-24
+updated: 2026-03-25
 owner: aw-kernel
-last_verified: 2026-03-24
+last_verified: 2026-03-25
 ---
-# Repo-local Eval 基底 Repo 与任务模板设计
+# Repo-local 测试仓库与问题列表设计
 
-> 目的：把 `repo fixture`、任务模板、数据集来源和细节资产单独落成一页，作为 [Repo-local Eval 研究推进步骤](./eval-method-evolution.md) 的重内容补充，而不把路线文档压得过重。
+> 目的：把当前仓库怎么选测试仓库、怎么设计关键问题列表、怎么保存测试记录和测试评分说清楚，作为 prompt 改进流程的补充说明。
 
-## 一、定位
-
-本页不负责定义推进阶段，也不承诺当前仓库已经实现下列资产。
+## 一、这页回答什么
 
 本页只回答 4 个问题：
 
-- 评测用的基底 repo 应该怎么选
-- 任务模板应该怎么拆
-- 数据集应从哪里来
-- 后续更细的评测资产应落到哪里
+- 测试仓库应该怎么选
+- 关键问题应该怎么列
+- 测试记录应该记什么
+- 测试评分应该看什么
 
-路线、边界和先后顺序，仍以：
+本页不负责回答：
 
-- [Repo-local Eval 研究推进步骤](./eval-method-evolution.md)
+- prompt 的真相定义写在哪里
+- 业务源码该怎么组织
+- 是否要搭一个更大的评测平台
 
-为主。
+## 二、测试仓库怎么选
 
-## 二、默认假设：`CLI-first`
+当前更适合用“少量、稳定、能重复”的测试仓库，而不是一次铺很多。
 
-当前评测设计默认优先覆盖 `CLI / text-stream` 场景，而不是先覆盖 GUI 或复杂交互式宿主。
+更稳的选择标准是：
 
-原因：
+1. 能固定到某个 commit
+2. 有清晰入口，最好是 `CLI` 或强文本流仓库
+3. setup 成本低
+4. 测试仓库本身不要太大
+5. 结构和模块边界相对清楚
 
-- 当前主要执行入口本来就是 `Codex CLI`、`Claude CLI` 和 `OpenAI API`
-- `CLI` 场景更容易固定输入输出边界
-- `CLI` repo 更适合做自动 gate、自动 judge 和回归比较
-- 文本流更接近当前仓库要约束的真实交互形态
+这样做的目的不是凑数据集，而是让同一组问题能在不同轮次里被稳定复跑。
 
-这不意味着后续永远不测其他场景，而是意味着第一波基底 repo 应优先满足：
+## 三、关键问题怎么列
 
-- 有清晰命令入口
-- 有明确文本输出
-- 有稳定测试
-- setup 成本低
-- token 成本可控
+关键问题列表应直接服务 prompt 改进，而不是为了把题库做大。
 
-## 三、基底 Repo 选择原则
+当前更适合的问题类型是：
 
-第一阶段不需要“很多 repo”，而需要“少量、稳定、可重复”的 repo fixtures。
+- 入口判断题
+  - AI 能不能先读对文档入口和代码入口
+- 边界判断题
+  - AI 会不会把不该读的层当成主线
+- 覆盖判断题
+  - 回答有没有覆盖应该回答的关键点
+- 表达判断题
+  - 回答是不是清楚、克制、没有跑偏
 
-更合适的约束是：
+如果问题很多，但看不出它们和 prompt 改进的关系，这组问题就不够好。
 
-1. 每种语言先选 `1-2` 个 repo
-2. 优先选 `CLI-first` 或强文本流 repo
-3. 优先选小而真实、可在单次评测中吃下的代码库
-4. 必须能固定到 commit，避免上游漂移
-5. 必须有清晰测试入口
-6. 优先选结构清楚、模块边界明显的项目
-7. 不优先选需要大量 GUI、浏览器或复杂服务依赖的项目
+## 四、测试记录应该记什么
 
-## 四、当前更合适的初始候选
+测试记录不需要写得很花，只要足够复盘即可。
 
-下面这些更适合做第一波候选，但当前仍应视为“建议 shortlist”，不是已经正式准入的 benchmark 资产。
+至少要记录：
 
-### Python
-
-- `fastapi/typer`
-  - 适合测 `CLI` 参数、命令组织、帮助文本、文档与代码一致性
-- `httpie/cli`
-  - 适合测更真实的长期维护任务、参数变更和行为更新
-
-### TypeScript
-
-- `tj/commander.js`
-  - 适合测典型 `CLI` 参数解析、命令结构和 API 记忆
-- `oclif/core`
-  - 适合测更强的子命令组织和较复杂的 `CLI` 结构
-
-### C++
-
-- `CLIUtils/CLI11`
-  - 适合做跨语言 `CLI` 对比，也适合测参数系统和帮助文本
-- `fmtlib/fmt`
-  - 更偏文本输出与格式规则，适合补强 `CLI` 文本生成相关场景
-
-### Prompt / Text-only
-
-`Prompt` 不应先被视为一种语言 repo，而更适合作为独立任务族：
-
-- 讨论收束成 `Task Contract`
-- 任务开始前的 `Context Routing`
-- 任务结束后的 `Writeback` 与 mismatch 处理
-
-## 五、任务模板
-
-当前更适合先固定 5 类任务模板。
-
-### 1. 事实写入
-
-目标：
-
-- 从 repo 与任务上下文中提取稳定事实
-- 输出结构化结果
-- 不改代码
-
-更接近：
-
-- `Knowledge Base`
-- `Writeback & Cleanup`
-
-### 2. 基于记忆的读取与引用
-
-目标：
-
-- 优先消费已有记忆或入口
-- 避免重复盲读
-- 引用已有上下文而不是幻觉补全
-
-更接近：
-
-- `Knowledge Base`
-- `Context Routing`
-
-### 3. mismatch 更新
-
-目标：
-
-- 找到现有记忆与最新事实的冲突
-- 更新结果并保留边界
-- 不把旧事实静默覆盖成新事实
-
-更接近：
-
-- `Writeback & Cleanup`
-
-### 4. 任务收束与优化
-
-目标：
-
-- 把模糊讨论收束成稳定任务基线
-- 明确范围、非目标、依赖、风险和验收
-- 控制上下文膨胀
-
-更接近：
-
-- `Task Contract`
-
-### 5. 长链 continuation
-
-目标：
-
-- 让同一任务跨多个步骤保持一致
-- 在写入、修改、更新、再收束之间不漂移
-- 暴露长期上下文管理问题
-
-这类任务不应作为最初 hard gate，而更适合在自动 judge 已经稳定后成为强压力场景。
-
-## 六、数据集来源
-
-后续数据集不应只来自单一来源，而应至少分成 4 类：
-
-1. 种子场景
-   - 当前仓库已有的最小 benchmark 场景
-   - 适合做第一波自动运行
-2. 外部基底 repo fixtures
-   - 以固定 commit 的外部 repo 作为标准材料
-   - 适合做跨语言、跨结构对比
-3. 合成变更样本
-   - 人工或脚本注入的小范围改动、冲突和 mismatch
-   - 适合测更新和回写边界
-4. 真实失败日志
-   - 来自双后端运行中的高频失败、分歧和漂移案例
-   - 适合在后期沉淀为正式评测集
-
-当前更稳的顺序仍然是：
-
-- 先用种子场景和少量外部 fixture 起跑
-- 再从真实失败日志反推正式评测集
-
-## 七、细节资产建议
-
-如果后续把这套东西继续压实，建议把稳定资产拆成下面几类。
-
-### 1. fixture manifest
-
-建议记录：
-
-- repo 标识
-- 固定 commit
-- 语言
-- setup 命令
-- test 命令
-- CLI 入口
-- 禁读或禁改路径
-- 适用任务族
-
-### 2. task template
-
-建议记录：
-
-- task id
-- 任务族
-- 输入材料
-- 允许动作
-- 禁止动作
-- 期望输出结构
-- judge 入口
-
-### 3. judge schema 与 rubric
-
-建议记录：
-
-- 结构合法性
-- 事实正确性
-- 冗余率
-- 漂移率
-- 范围控制
-- `pass / fail / inconclusive` 判定条件
-
-### 4. run manifest
-
-建议记录：
-
+- 测试仓库
 - backend
-- model
-- scenario id
-- fixture id
-- token 或调用成本
-- 读文件数
-- 运行轮数
+- 当前 prompt / wrapper 版本
+- 问题内容
+- 原始回答
+- 运行时间
 - 输出路径
-- 最终判定
 
-## 八、建议的落点
+这些信息的作用只是让你知道“这一轮 prompt 回答成了什么样”，不是为了制造更多格式对象。
 
-稳定说明和研究记录继续放在：
+## 五、测试评分看什么
+
+测试评分当前更适合看下面几类最直接的指标：
+
+- 是否答到了关键点
+- 是否有明显错误
+- 是否有无关展开
+- 是否越过了路径边界
+- `Codex` 和 `Claude` 的表现差异有多大
+
+如果需要更细一点，也应优先围绕“回答质量”而不是“格式完整性”展开。
+
+## 六、当前推荐的最小落点
+
+当前推荐的最小落点是：
 
 - `docs/analysis/`
+  - 保存测试方法和问题设计说明
+- `toolchain/evals/fixtures/`
+  - 保存测试仓库说明格式和测试记录格式
+- `toolchain/evals/*/`
+  - 保存具体主题的问题列表和测试评分规则
+- `.autoworkflow/`
+  - 保存实际测试记录
 
-稳定测量资产后续应优先落到：
+## 七、当前不应把重点放在哪里
 
-```text
-toolchain/evals/
-```
+按现在仓库状态，下面这些都不应该抢走主流程：
 
-其中 fixture 相关的 canonical schema 直接落在：
+- 不先把测试格式写得越来越复杂
+- 不先扩一大批测试仓库
+- 不先把目录分得越来越细
+- 不先让 schema 和术语变成主角
 
-- `toolchain/evals/fixtures/fixture-manifest.schema.json`
-- `toolchain/evals/fixtures/run-manifest.schema.json`
+真正的主流程仍然只有一句话：
 
-运行产物仍应落到：
+在同一个测试仓库里，用同一组关键问题比较 `Codex` 和 `Claude` 的 prompt 表现，并据此继续改 prompt。
 
-```text
-.autoworkflow/
-```
+## 八、相关文档
 
-如果后续加入 fixture manifest，更适合放在：
-
-```text
-toolchain/evals/fixtures/
-```
-
-而不是单独新起一个根级 benchmark 仓结构。
-
-当前如果要把这层先落成稳定合同，优先落的对象应是：
-
-- `toolchain/evals/fixtures/fixture-manifest.schema.json`
-- `toolchain/evals/fixtures/run-manifest.schema.json`
-
-## 九、相关文档
-
-- [Repo-local Eval 研究推进步骤](./eval-method-evolution.md)
-- [Memory Side Repo-local Auto Research Loop](./memory-side/memory-side-auto-research-loop.md)
+- [Repo-local Prompt 测试与改进流程](./eval-method-evolution.md)
+- [Memory Side Repo-local Prompt 改进闭环](./memory-side/memory-side-auto-research-loop.md)
 - [Memory Side Repo-local Adapter 评测基线](./memory-side/memory-side-eval-baseline.md)
 - [Task Interface Repo-local Adapter 评测基线](./task-interface/task-interface-eval-baseline.md)

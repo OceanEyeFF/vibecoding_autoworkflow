@@ -1,6 +1,6 @@
 # Evals
 
-`toolchain/evals/` 只保存稳定测量面。
+`toolchain/evals/` 只保存测试数据集、测试记录格式和测试评分规则。
 
 当前主线：
 
@@ -9,10 +9,10 @@
 
 这里适合放：
 
-- benchmark program
-- scenarios
-- schemas
-- scoring rubrics
+- 基础测试提示
+- 关键问题列表
+- 测试记录格式
+- 测试评分规则
 
 这里不适合放：
 

@@ -1,6 +1,6 @@
 # Eval Fixtures
 
-`toolchain/evals/fixtures/` 保存跨主题可复用的 fixture contract，不保存实际运行日志。
+`toolchain/evals/fixtures/` 保存跨主题可复用的测试仓库说明格式和测试记录格式，不保存实际运行日志。
 
 当前主线：
 
@@ -9,9 +9,9 @@
 
 这里适合放：
 
-- fixture manifest schema
-- run manifest schema
-- 少量 schema 级说明
+- 测试仓库说明格式
+- 测试记录格式
+- 少量公共格式说明
 
 这里不适合放：
 

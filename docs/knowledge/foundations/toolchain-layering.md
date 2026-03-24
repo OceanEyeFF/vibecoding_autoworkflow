@@ -1,9 +1,9 @@
 ---
 title: "Toolchain 分层"
 status: active
-updated: 2026-03-22
+updated: 2026-03-25
 owner: aw-kernel
-last_verified: 2026-03-22
+last_verified: 2026-03-25
 ---
 # Toolchain 分层
 
@@ -69,14 +69,20 @@ toolchain/
 
 职责：
 
-- 保存 benchmark 程序、场景、schema、rubric 等稳定测量面
+- 保存基础测试提示、问题列表、测试记录格式和测试评分规则
 
 当前内容：
 
+- `fixtures/`
 - `memory-side/program.md`
 - `memory-side/scenarios.json`
 - `memory-side/schemas/`
 - `memory-side/scoring/`
+
+其中：
+
+- `fixtures/` 保存跨主题共享的测试仓库说明格式、测试记录格式和少量公共格式说明
+- `memory-side/` 保存 `Memory Side` 主题下的基础测试提示、问题列表和测试评分规则
 
 硬规则：
 

@@ -1,6 +1,6 @@
 # Memory Side Evals
 
-`toolchain/evals/memory-side/` 保存 `Memory Side` 主题下的稳定测量面，不保存业务源码和运行期产物。
+`toolchain/evals/memory-side/` 保存 `Memory Side` 主题下的基础测试提示、关键问题列表和测试评分规则，不保存业务源码和运行期产物。
 
 当前主线：
 
@@ -12,9 +12,9 @@
 AI 先读什么：
 
 1. `toolchain/evals/README.md`
-2. `program.md`
-3. `scenarios.json`
-4. 需要校验输出时，再读 `schemas/` 与 `scoring/`
+2. `program.md`：基础测试提示
+3. `scenarios.json`：关键问题列表
+4. 需要看记录格式和测试评分时，再读 `schemas/` 与 `scoring/`
 
 当前 `scoring/` 的最小覆盖面包括：
 
@@ -29,10 +29,10 @@ AI 先读什么：
 
 这里适合放：
 
-- benchmark program
-- scenarios
-- schemas
-- scoring rubrics
+- 基础测试提示
+- 关键问题列表
+- 测试记录格式
+- 测试评分规则
 
 这里不适合放：
 
