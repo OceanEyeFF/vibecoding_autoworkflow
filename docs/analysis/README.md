@@ -5,6 +5,7 @@
 当前主线：
 
 - `eval-method-evolution.md`
+- `eval-fixture-design.md`
 - `memory-side/memory-side-eval-baseline.md`
 - `memory-side/memory-side-auto-research-loop.md`
 - `task-interface/task-interface-eval-baseline.md`
