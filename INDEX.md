@@ -21,7 +21,6 @@ last_verified: 2026-03-22
 | 了解 `Memory Side` 总览 | `docs/knowledge/memory-side/overview.md` |
 | 了解 Skill / Agent 关系 | `docs/knowledge/memory-side/skill-agent-model.md` |
 | 处理本地或全局部署 | `toolchain/scripts/deploy/adapter_deploy.py` |
-| 处理本仓库评测 | `docs/analysis/memory-side/memory-side-eval-baseline.md` |
 
 ## 目录结构
 
@@ -40,9 +39,9 @@ last_verified: 2026-03-22
 - `product/`：业务代码唯一源码根
 - `docs/knowledge/`：canonical truth 与基础治理
 - `docs/operations/`：本仓库部署说明
-- `docs/analysis/`：本仓库评测与研究说明
+- `docs/analysis/`：预留给后续准入的研究说明
 - `docs/reference/`：外部参考资料
-- `toolchain/`：部署、评测、测试工具
+- `toolchain/`：部署、测试与预留工具入口
 - `.agents/` 与 `.claude/`：repo-local deploy target，不是源码层
 - `.autoworkflow/`、`.spec-workflow/`、`.serena/`：repo-local state，不是默认读取主线
 - `.nav/`：兼容导航层，不是结构定义层
@@ -53,5 +52,4 @@ last_verified: 2026-03-22
 - 不要把 `.autoworkflow/`、`.spec-workflow/`、`.serena/` 当成项目真相层
 - 不要把 `.nav/` 当成默认执行入口
 - 不要把 repo-local wrapper 当成通用 skill 合同
-- 不要把本仓库的 eval baseline 当成跨仓库默认标准
 - 不要跳过 `layer-boundary.md` 直接进入某个 deploy target 目录

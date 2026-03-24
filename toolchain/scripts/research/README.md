@@ -1,8 +1,8 @@
 # Research Scripts
 
-本目录保存测试执行和测试评分入口。
+本目录当前只保留占位入口。
 
-当前主线：
+当前状态：
 
-- `memory_side_autoresearch.py`：在同一个测试仓库里跑同一组问题
-- `memory_side_autoresearch_score.py`：按对应 skill 的评分规则给测试结果打分
+- 当前没有 active 的 research runner
+- 后续只有在方案被明确准入后，才重新把最小脚本放回这里

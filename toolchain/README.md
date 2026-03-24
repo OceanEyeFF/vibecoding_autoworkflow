@@ -5,8 +5,8 @@
 它只负责：
 
 - 执行动作的脚本入口
-- 评测程序、场景、schema、rubric
-- 后续测试、打包、分发工具
+- 轻量测试与治理入口
+- 后续按需准入的打包、分发或测量工具
 
 它不负责：
 
@@ -18,7 +18,6 @@
 当前主线：
 
 - `scripts/deploy/`
-- `scripts/research/`
 - `scripts/test/`
 - `evals/`
 
@@ -27,9 +26,8 @@ AI 先读什么：
 1. `docs/knowledge/foundations/toolchain-layering.md`
 2. `toolchain/scripts/README.md` 或 `toolchain/evals/README.md`
 3. 需要部署时进入 `scripts/deploy/`
-4. 需要看测试仓库说明格式或测试记录格式时进入 `evals/fixtures/`
-5. 需要评测时进入 `scripts/research/` 或 `evals/memory-side/`
-6. 需要做轻量治理回归时进入 `scripts/test/`
+4. 需要做轻量治理回归时进入 `scripts/test/`
+5. 只有任务明确涉及已准入测量资产时，才进入 `scripts/research/` 或 `evals/`
 
 暂时不要先读什么：
 

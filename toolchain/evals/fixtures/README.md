@@ -1,16 +1,15 @@
 # Eval Fixtures
 
-`toolchain/evals/fixtures/` 保存跨主题可复用的测试仓库说明格式和测试记录格式，不保存实际运行日志。
+`toolchain/evals/fixtures/` 当前只保留目录占位，不承载 active 资产。
 
-当前主线：
+当前状态：
 
-- `fixture-manifest.schema.json`
-- `run-manifest.schema.json`
+- 目录保留
+- 当前没有 active fixture schema
 
 这里适合放：
 
-- 测试仓库说明格式
-- 测试记录格式
+- 后续被明确准入的 fixture 格式
 - 少量公共格式说明
 
 这里不适合放：

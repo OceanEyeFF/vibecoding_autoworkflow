@@ -105,5 +105,4 @@ python3 toolchain/scripts/deploy/adapter_deploy.py global \
 
 - [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
 - [Task Contract Skill 骨架](../../knowledge/task-interface/skills/task-contract-skill.md)
-- [Task Interface Repo-local Adapter 评测基线](../../analysis/task-interface/task-interface-eval-baseline.md)
 - [Task Contract canonical skill](../../../product/task-interface/skills/task-contract-skill/SKILL.md)

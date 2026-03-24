@@ -98,7 +98,6 @@ python3 toolchain/scripts/deploy/adapter_deploy.py global \
 
 - [Memory Side 层级边界](../../knowledge/memory-side/layer-boundary.md)
 - [Memory Side Skill 与 Agent 模型](../../knowledge/memory-side/skill-agent-model.md)
-- [Memory Side Repo-local Adapter 评测基线](../../analysis/memory-side/memory-side-eval-baseline.md)
 - [Knowledge Base canonical skill](../../../product/memory-side/skills/knowledge-base-skill/SKILL.md)
 - [Context Routing canonical skill](../../../product/memory-side/skills/context-routing-skill/SKILL.md)
 - [Writeback & Cleanup canonical skill](../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md)

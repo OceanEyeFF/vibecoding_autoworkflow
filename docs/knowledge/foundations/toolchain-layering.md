@@ -16,9 +16,8 @@ last_verified: 2026-03-25
 它只承载下面这些内容：
 
 - 部署脚本
-- 评测程序
-- 自动评分规则
 - 测试入口
+- 按需准入的测量资产
 - 打包与分发工具
 
 它不承载下面这些内容：
@@ -44,14 +43,16 @@ toolchain/
 职责：
 
 - 提供可直接执行的 CLI 脚本
-- 承接部署、评测执行、评分、打包等动作入口
+- 承接部署、治理检查、打包等动作入口
 
 当前内容：
 
 - `deploy/adapter_deploy.py`
-- `research/memory_side_autoresearch.py`
-- `research/memory_side_autoresearch_score.py`
 - `test/path_governance_check.py`
+
+说明：
+
+- `research/` 目录当前只保留占位入口，不承载 active runner
 
 硬规则：
 
@@ -62,27 +63,24 @@ toolchain/
 当前子层级：
 
 - `scripts/deploy/`：部署与安装入口
-- `scripts/research/`：评测执行与评分入口
+- `scripts/research/`：预留给后续准入的最小研究脚本
 - `scripts/test/`：轻量治理检查入口
 
 ### 2. `toolchain/evals/`
 
 职责：
 
-- 保存基础测试提示、问题列表、测试记录格式和测试评分规则
+- 保存被明确准入的最小测量资产
 
 当前内容：
 
 - `fixtures/`
-- `memory-side/program.md`
-- `memory-side/scenarios.json`
-- `memory-side/schemas/`
-- `memory-side/scoring/`
+- `memory-side/`
 
 其中：
 
-- `fixtures/` 保存跨主题共享的测试仓库说明格式、测试记录格式和少量公共格式说明
-- `memory-side/` 保存 `Memory Side` 主题下的基础测试提示、问题列表和测试评分规则
+- `fixtures/` 当前只保留目录占位
+- `memory-side/` 当前只保留目录占位
 
 硬规则：
 
@@ -111,7 +109,7 @@ toolchain/
 
 `toolchain/` 内脚本产生的运行结果，应落到 repo-local state：
 
-- benchmark 运行记录写到 `.autoworkflow/`
+- 未来测量脚本的运行记录写到 `.autoworkflow/`
 - 其他审批、记忆或状态写到各自状态目录
 
 不要把下面这些东西直接写回 `toolchain/`：
@@ -135,13 +133,13 @@ toolchain/
    - `scripts/test/`
 3. 只有当测试资产需要独立沉淀时，再新增 `toolchain/tests/`
 
-当前阶段已经落成 `deploy/`、`research/`、`test/` 三类入口。
-后续只有在同类工具继续增长时，才继续往下细分。
+当前阶段的 active 入口只有 `deploy/` 和 `test/`。
+`research/` 与 `evals/` 保留为预留位，只有在方案重新准入后才继续扩展。
 
 ## 五、命名规则
 
 - 脚本名优先直接表达动作，例如 `adapter_deploy.py`
-- 评测目录优先按主题命名，例如 `evals/memory-side/`
+- 测量目录优先按主题命名，例如 `evals/<topic>/`
 - 不使用 `misc`、`temp`、`draft-tools` 这类无 owner 的目录名
 - 如果一个新脚本说不清它属于部署、评测、测试还是打包，就不要直接加入 `toolchain/`
 
@@ -163,4 +161,3 @@ toolchain/
 
 - [根目录分层](./root-directory-layering.md)
 - [Memory Side 层级边界](../memory-side/layer-boundary.md)
-- [Memory Side Repo-local Auto Research Loop](../../analysis/memory-side/memory-side-auto-research-loop.md)

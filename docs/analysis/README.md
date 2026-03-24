@@ -1,20 +1,17 @@
 # Analysis
 
-`docs/analysis/` 只保存测试说明、测试基线和 prompt 改进记录，不作为当前项目真相的默认执行入口。
+`docs/analysis/` 只保留已准入的研究说明，不作为当前项目真相的默认执行入口。
 
-当前主线：
+当前状态：
 
-- `eval-method-evolution.md`
-- `eval-fixture-design.md`
-- `memory-side/memory-side-eval-baseline.md`
-- `memory-side/memory-side-auto-research-loop.md`
-- `task-interface/task-interface-eval-baseline.md`
+- 当前没有 active 的主线研究资产
+- 后续只有在方案被明确准入后，才重新把说明文档放回这里
 
 AI 先读什么：
 
 1. `docs/knowledge/foundations/root-directory-layering.md`
 2. `docs/knowledge/foundations/toolchain-layering.md`
-3. 需要评测或研究时，再进入目标主题目录
+3. 只有任务明确要求历史研究或新准入研究时，再进入这里
 
 暂时不要先读什么：
 
@@ -24,13 +21,12 @@ AI 先读什么：
 
 这里适合放：
 
-- 测试流程说明
-- 问题列表设计
-- 测试评分规则
-- prompt 改进观察
+- 已准入的研究说明
+- 稳定的复盘结论
 
 这里不适合放：
 
 - 当前主线规则
 - 业务源码真相
 - 运行期临时结果
+- 未准入的重型评测设计

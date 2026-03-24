@@ -113,4 +113,3 @@ Claude 侧必须和 Codex 侧保持同一套边界：
 - [Memory Side 层级边界](../../knowledge/memory-side/layer-boundary.md)
 - [Memory Side Skill 与 Agent 模型](../../knowledge/memory-side/skill-agent-model.md)
 - [Codex Memory Side Repo-local Adapter 部署帮助](./codex-deployment-help.md)
-- [Memory Side Repo-local Adapter 评测基线](../../analysis/memory-side/memory-side-eval-baseline.md)

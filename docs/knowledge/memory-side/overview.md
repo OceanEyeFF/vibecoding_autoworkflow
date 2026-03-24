@@ -138,8 +138,7 @@ Knowledge Base
 - [Memory Side Skill 与 Agent 模型](./skill-agent-model.md)
 - [项目 Partition 模型](../foundations/partition-model.md)
 
-如果你要看本仓库当前怎么部署和评测，再读：
+如果你要看本仓库当前怎么部署和 repo-local 使用，再读：
 
 - [Codex Memory Side Repo-local Adapter 部署帮助](../../operations/memory-side/codex-deployment-help.md)
 - [Claude Memory Side Repo-local Adapter 适配帮助](../../operations/memory-side/claude-adaptation-help.md)
-- [Memory Side Repo-local Adapter 评测基线](../../analysis/memory-side/memory-side-eval-baseline.md)

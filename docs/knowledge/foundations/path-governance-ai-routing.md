@@ -118,7 +118,7 @@ last_verified: 2026-03-25
 `read_next`
 
 - 需要部署或维护时进入 `docs/operations/README.md`
-- 需要评测或研究时进入 `docs/analysis/README.md`
+- 只有任务明确要求历史研究或新准入研究时，才进入 `docs/analysis/README.md`
 
 `do_not_read_yet`
 
@@ -141,13 +141,13 @@ last_verified: 2026-03-25
 
 1. `toolchain/README.md`
 2. `toolchain/scripts/README.md` 或 `toolchain/evals/README.md`
-3. 目标二级入口，例如 `scripts/deploy/README.md`、`scripts/research/README.md`、`evals/fixtures/README.md`、`evals/memory-side/README.md`
+3. 目标二级入口，例如 `scripts/deploy/README.md`、`scripts/test/README.md`
 
 `read_next`
 
 - 目标 CLI 脚本
-- 目标问题列表与测试评分规则
-- 目标测试仓库说明格式或测试记录格式
+- 目标治理说明
+- 只有任务明确要求测量资产时，才继续进入 `scripts/research/` 或 `evals/`
 
 `do_not_read_yet`
 
@@ -195,8 +195,8 @@ last_verified: 2026-03-25
 
 只在下面情况进入：
 
-- 任务明确涉及评测基线
-- 任务明确涉及 benchmark、研究闭环或结果解释
+- 任务明确涉及已准入研究说明
+- 任务明确要求查看历史分析结论
 
 ### 3. 进入 `docs/reference/`
 

@@ -74,17 +74,12 @@ last_verified: 2026-03-22
 职责：
 
 - 说明当前仓库如何实例化这些合同
-- 说明本仓库的 runner、部署、评测和研究闭环
+- 说明本仓库的部署与 repo-local 使用方式
 
 当前属于这一层的内容：
 
 - `docs/operations/memory-side/`
-- `docs/analysis/memory-side/memory-side-eval-baseline.md`
-- `docs/analysis/memory-side/memory-side-auto-research-loop.md`
-- `toolchain/evals/memory-side/`
 - `toolchain/scripts/deploy/adapter_deploy.py`
-- `toolchain/scripts/research/memory_side_autoresearch.py`
-- `toolchain/scripts/research/memory_side_autoresearch_score.py`
 
 ### 4. Repo-local deploy target
 
@@ -119,7 +114,6 @@ last_verified: 2026-03-22
 - `.agents/skills/`
 - `.claude/skills/`
 - repo-local deployment guide
-- repo-local eval baseline
 
 ### 2. 需要改业务源码时
 
@@ -130,7 +124,7 @@ last_verified: 2026-03-22
 3. `product/memory-side/skills/`
 4. `product/memory-side/adapters/`
 
-### 3. 需要在本仓库部署或评测时
+### 3. 需要在本仓库部署或维护时
 
 先读通用合同层，再读仓库实现层，最后再看 deploy target：
 
@@ -139,8 +133,7 @@ last_verified: 2026-03-22
 3. `product/memory-side/skills/`
 4. `docs/operations/memory-side/`
 5. `toolchain/scripts/`
-6. `toolchain/evals/memory-side/`
-7. `.agents/skills/` 或 `.claude/skills/`
+6. `.agents/skills/` 或 `.claude/skills/`
 
 ## 四、措辞规范
 

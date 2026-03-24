@@ -99,7 +99,7 @@ last_verified: 2026-03-23
 
 说明：
 
-- 工具层负责部署、评测、实验
+- 工具层负责部署、治理检查和按需准入的辅助入口
 - 工具层不再保存 canonical skill 源码
 
 边界说明见：
@@ -218,7 +218,7 @@ toolchain/
 说明：
 
 - `deploy/adapter_deploy.py` 负责本地挂载与全局安装
-- `research/memory_side_autoresearch.py` 和 `research/memory_side_autoresearch_score.py` 负责评测和实验闭环
+- `test/path_governance_check.py` 负责轻量路径治理回归
 
 ## 七、与不同后端的关系
 
@@ -249,7 +249,5 @@ toolchain/
 - [Knowledge Base Skill 骨架](./skills/knowledge-base-skill.md)
 - [Context Routing Skill 骨架](./skills/context-routing-skill.md)
 - [Writeback & Cleanup Skill 骨架](./skills/writeback-cleanup-skill.md)
-- [Memory Side Repo-local Auto Research Loop](../../analysis/memory-side/memory-side-auto-research-loop.md)
 - [Codex Memory Side Repo-local Adapter 部署帮助](../../operations/memory-side/codex-deployment-help.md)
 - [Claude Memory Side Repo-local Adapter 适配帮助](../../operations/memory-side/claude-adaptation-help.md)
-- [Memory Side Repo-local Adapter 评测基线](../../analysis/memory-side/memory-side-eval-baseline.md)

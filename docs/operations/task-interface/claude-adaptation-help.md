@@ -120,4 +120,3 @@ Claude 侧必须和 Codex 侧保持同一套边界：
 - [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
 - [Task Contract Skill 骨架](../../knowledge/task-interface/skills/task-contract-skill.md)
 - [Codex Task Interface Repo-local Adapter 部署帮助](./codex-deployment-help.md)
-- [Task Interface Repo-local Adapter 评测基线](../../analysis/task-interface/task-interface-eval-baseline.md)
