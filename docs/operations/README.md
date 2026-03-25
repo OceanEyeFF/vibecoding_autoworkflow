@@ -5,6 +5,7 @@
 当前主线：
 
 - `path-governance-checks.md`
+- `research-cli-help.md`
 - `memory-side/codex-deployment-help.md`
 - `memory-side/claude-adaptation-help.md`
 - `task-interface/codex-deployment-help.md`
