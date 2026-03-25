@@ -1,19 +1,48 @@
 # Eval Fixtures
 
-`toolchain/evals/fixtures/` 当前只保留目录占位，不承载 active 资产。
+`toolchain/evals/fixtures/` 只承载稳定的 fixture 资产：公共 schema 参考和 suite manifest。临时运行结果不会写回这里。
 
-当前状态：
+当前 fixture：
 
-- 目录保留
-- 当前没有 active fixture schema
+- `schemas/eval-result.schema.json`
+- `schemas/run-summary.schema.json`
+- `suites/memory-side-skills.v1.yaml`
 
-这里适合放：
+## Schemas
 
-- 后续被明确准入的 fixture 格式
-- 少量公共格式说明
+`schemas/eval-result.schema.json`
 
-这里不适合放：
+- 这是通用 eval 结果 contract 的参考模板。
+- 它定义了结果对象的共享外形：`skill`、`repo`、`backend`、`judge_backend`、`scores`、`total_score`、`max_score`、`overall`、`key_issues`、`key_strengths`，以及可选的 `source_format`。
+- 其中 `scores` 在这个公共 schema 里只约束为至少一个 `1..3` 的整数分值，不固定具体维度 key。
+- 当 judge backend 支持 JSON Schema 时，runner 会按 task 的 `EVAL_SCORE_DIMENSIONS` 物化一个 task-scoped schema 文件，再把那个生成文件传给结构化 judge。
+- 因此，这里的 `eval-result.schema.json` 是公共参考 contract，不是每次 eval 运行时直接下发给 judge 的最终 schema 文件。
+
+`schemas/run-summary.schema.json`
+
+- 这是 `run_skill_suite.py` 在 `--save-dir` 下写出的 `run-summary.json` 的 schema。
+- 顶层字段包括 `runner`、`generated_at`、`suite_file`、`summary_schema` 和 `results`。
+- `results` 里的每一项对应一次 `skill` 或 `eval` phase，记录 repo、task、backend、prompt 文件、返回码、超时状态、耗时、起止时间，以及生成的 artifact 文件名映射。
+- 对 eval phase，条目还可带 `schema_file`、`structured_output` 和 `parse_error`。
+
+## Suite Manifests
+
+`suites/memory-side-skills.v1.yaml`
+
+- 这是 version `1` 的 suite manifest 示例。
+- `defaults` 用来提供运行默认值；当前包含 `backend`、`judge_backend` 和 `with_eval`。
+- `runs` 是执行列表；每个 entry 至少提供 `repo`，可选覆盖 `task`、`backend`、`judge_backend`、`with_eval`、`prompt_file`、`eval_prompt_file`。
+- `task: all` 表示对该 repo 展开所有已注册 task prompt，而不是单个 task。
+- `--suite` 支持显式路径，也支持直接引用 `toolchain/evals/fixtures/suites/` 下的文件名。
+
+适合放在这里的内容：
+
+- 被 runner 复用的稳定 schema fixture
+- 被 `--suite` 直接消费的版本化 suite manifest
+
+不适合放在这里的内容：
 
 - 外部 repo checkout
 - 临时 benchmark 产物
 - 本地运行日志
+- `--save-dir` 产生的 run artifacts

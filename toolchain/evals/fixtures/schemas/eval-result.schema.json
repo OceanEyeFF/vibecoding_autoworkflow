@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Research Eval Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "skill",
+    "repo",
+    "backend",
+    "judge_backend",
+    "scores",
+    "total_score",
+    "max_score",
+    "overall",
+    "key_issues",
+    "key_strengths"
+  ],
+  "properties": {
+    "skill": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repo": {
+      "type": "string",
+      "minLength": 1
+    },
+    "backend": {
+      "type": "string",
+      "minLength": 1
+    },
+    "judge_backend": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scores": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 3
+      }
+    },
+    "total_score": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "max_score": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "overall": {
+      "type": "string",
+      "enum": ["Bad", "Okay", "Good"]
+    },
+    "key_issues": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "key_strengths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "source_format": {
+      "type": "string"
+    }
+  }
+}

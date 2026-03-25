@@ -1,108 +1,190 @@
 ---
 title: "Research 评测契约与边界"
 status: active
-updated: 2026-03-25
+updated: 2026-03-26
 owner: aw-kernel
-last_verified: 2026-03-25
+last_verified: 2026-03-26
 ---
 # Research 评测契约与边界
 
-> 目的：基于已验证的 `Claude skills + eval skills` 闭环，固定 Research/Eval 的最小契约、目录口径与扩展边界，为后续多 backend 统一 runner 做前置规范。
+> 目的：基于当前代码基线，固定 Research/Eval 的最小执行契约、backend 边界、suite 口径与结构化 judge 行为；这里是 analysis/boundary 文档，不是运行日志。
 
-## 一、当前已验证的最小闭环
+## 一、当前主实现与闭环口径
 
-当前仓库已验证通过的最小闭环只有一条：
+当前 active 入口已经不是单一的 Claude-only runner，而是：
 
-1. 对 `.exrepos/<repo>` 里的目标仓库运行 repo-local skill prompt
-2. 捕获 skill 最终输出
-3. 把 skill 输出注入 eval rubric prompt 中的 `{{TEST_OUTPUT}}`
-4. 再次调用后端 CLI，产出评测结果
-5. 可选把 prompt / response / meta / summary 落到外部目录
-
-当前已验证的 active 实现：
-
+- `toolchain/scripts/research/run_skill_suite.py`
 - `toolchain/scripts/research/run_claude_skill_eval.py`
-- `toolchain/scripts/research/tasks/`
+- `toolchain/scripts/research/backends/`
 - `toolchain/evals/prompts/`
+- `toolchain/evals/fixtures/`
 
-说明：
+其中：
 
-- 当前 `run_claude_skill_eval.py` 是已验证基线
-- 下一步不应平行新增 `Codex` 专用 runner，而应抽成多 backend 通用执行器，并把当前脚本保留为兼容壳
+- `run_skill_suite.py` 是统一主实现
+- `run_claude_skill_eval.py` 只是兼容壳，内部委托统一 runner
+- 闭环形态是 `skill backend -> optional judge backend`
+- `skill` 与 `eval` 都走同一套 backend registry / invocation contract
+- 是否落盘由 `--save-dir` 显式决定，运行产物不回写到 `toolchain/`
 
-当前已验证的 active backend：
+当前最小闭环仍然是两阶段：
 
-- `Claude`
+1. 对目标仓库执行 repo-local skill prompt
+2. 捕获 final message / raw stdout
+3. 把 skill 输出注入 eval prompt 的 `{{TEST_OUTPUT}}`
+4. 可选再调用 judge backend 产出结构化或可解析的 eval 结果
+5. 可选把 prompt / response / meta / summary 写到外部运行目录
 
-当前已知但尚未接入的 backend：
+## 二、验证口径：默认 suite 覆盖 vs 手工矩阵覆盖
 
-- `Codex`
-- `OpenCode`
+当前需要明确区分两类“已验证”：
 
-## 二、目录口径与分层边界
+- 默认 suite 覆盖：`toolchain/evals/fixtures/suites/memory-side-skills.v1.yaml` 当前默认是 `backend=claude`、`judge_backend=claude`、`with_eval=true`
+- 运行样例证据：`/tmp/research-run-suite/20260325T155954Z-memory-side-skills-v1/run-summary.json` 体现的是这条默认 suite 路径，而不是全部 backend/judge 组合
+- 手工矩阵覆盖：除默认 suite 外，当前文档应允许单独陈述对 active backend 组合的手工验证结果，不再把它们误写成“只有 Claude -> Claude 被验证”
 
-### 1. `toolchain/scripts/research/`
+因此，当前正确表述应是：
 
-职责：
+- 固化在 checked-in suite 资产里的默认覆盖仍然是 `claude -> claude`
+- 但研究 runner 的 active 验证口径不应被缩写成“只验证了 Claude -> Claude”
+- 对 `claude / codex` 的附加组合覆盖，应视为手工矩阵验证，不应冒充 suite 默认资产
 
-- 承载执行型 runner
-- 负责把 prompt 送进某个 CLI
-- 负责捕获结果与保存元数据
+## 三、当前 backend 状态
+
+当前 backend registry 暴露三个 id：
+
+- `claude`
+- `codex`
+- `opencode`
+
+但 active 状态并不相同：
+
+- `claude`：active backend
+- `codex`：active backend
+- `opencode`：预留 stub，不是 active backend
+
+当前准确边界：
+
+- `claude` 与 `codex` 都会通过 `build_backend()` 进入统一 runner
+- `opencode` 虽然保留在 registry 中，但 `healthcheck()` 会直接返回未实现，不应当作当前可运行 backend 文档化
+- 不应再把“当前 active backend”写成 `Claude / Codex / OpenCode`
+
+## 四、统一 runner 与 backend contract
+
+`run_skill_suite.py` 当前统一承担：
+
+- `--repo` 直跑模式
+- `--suite` manifest 模式
+- `skill backend` 与 `judge backend` 的拆分
+- run dir 初始化、过程输出、artifact 落盘与 `run-summary.json` 汇总
+
+backend contract 的最小形状在 `backends/base.py`，不是按 backend 复制 runner：
+
+- `backend_id`
+- `skill_mount_path`
+- `healthcheck()`
+- `build_skill_command(...)`
+- `build_eval_command(...)`
+- `extract_final_message(...)`
+- `supports_stdin_prompt`
+- `supports_output_file`
+- `supports_json_schema`
+
+每次调用都落在统一的 `BackendInvocation` 上：
+
+- `command`
+- `stdin_text`
+- `final_message_path`
+- `cleanup_paths`
+
+这层抽象的目的只是收敛 CLI 差异，不是引入新的 orchestrator 层。
+
+## 五、当前 backend 差异
+
+当前代码中的差异已经收敛到 backend adapter：
+
+- `Claude`：prompt 直接拼进命令；schema-backed eval 时改走 `--output-format json`，并把 schema 文本通过 `--json-schema` 传入
+- `Codex`：走 `codex exec`；prompt 通过 stdin 输入；final message 通过 `--output-last-message` 文件回收；schema-backed eval 时通过 `--output-schema <path>` 传入
+- `OpenCode`：只保留占位实现，`build_skill_command()` / `build_eval_command()` / `extract_final_message()` 都未落地
+
+因此当前 policy 是：
+
+- 允许 `skill backend != judge backend`
+- 不再新增 `run_codex_*` 一类 backend-specific 平行脚本
+- 在 `OpenCode` 真正实现前，只保留 contract slot，不声明稳定参数形状
+
+## 六、结构化 judge schema 的当前口径
+
+`toolchain/evals/fixtures/schemas/eval-result.schema.json` 当前是通用参考 schema，不是直接下发给 judge 的最终 task schema。
+
+runner 当前行为是：
+
+- 以通用参考 schema 为底
+- 结合 `common.py` 里的 `EVAL_SCORE_DIMENSIONS`
+- 按 task 物化出固定 score keys 的 task-scoped schema
+- 仅在 judge backend 声明 `supports_json_schema=True` 时，为该次 eval 准备 schema 文件
+
+这意味着：
+
+- 结构化 judge 的 contract 已经是“task-scoped materialized schema”
+- 不是“所有任务共用一个静态 eval schema 原样下发”
+- `run-summary.json` 与单条 `meta.json` 里的 `schema_file` 指向的是本轮物化出的 schema 工件
+
+## 七、eval 输出归一化口径
+
+当前 eval 路径不是只接受一种输出形态：
+
+- 优先解析 JSON object
+- 若 judge 没有给出可用 JSON，再回退到 rubric-text parser
+- 最终统一归一化为 `skill / repo / backend / judge_backend / scores / total_score / max_score / overall / key_issues / key_strengths / source_format`
+
+但在结构化 judge 路径下，runner 的目标仍然是：
+
+- 通过 task-scoped schema 约束 JSON
+- 让 `structured_output` 成为 eval 成功的主路径
+- 把 text parser 视为兼容退路，而不是默认 contract
+
+## 八、目录与真相边界
+
+### `toolchain/scripts/research/`
+
+负责：
+
+- 执行 runner
+- backend 调用
+- 结果采集与临时 artifact 落盘
 
 不负责：
 
-- 保存长期评测资产
-- 定义评分规则正文
-- 保存运行产物
+- 长期评测资产沉淀
+- 评测真相层定义
+- 仓库级知识回写
 
-### 2. `toolchain/evals/`
+### `toolchain/evals/`
 
-职责：
+负责：
 
-- 承载稳定的评测 prompt、fixture、schema 和 suite 描述
-
-当前 active 内容：
-
-- `toolchain/evals/prompts/`
+- 稳定 prompt
+- fixture schema 参考
+- suite manifest
 
 不负责：
 
-- 业务源码
-- repo-local mount
-- 临时日志
-- 本地运行缓存
+- 运行日志
+- 临时结果目录
+- backend deploy mount
 
-### 3. `product/*/adapters/`
+### `product/*/adapters/`
 
-职责：
+负责：
 
-- 提供各 backend 的 repo-local skill adapter 源码
-
-当前已存在：
-
-- `product/memory-side/adapters/claude/`
-- `product/memory-side/adapters/agents/`
-- `product/task-interface/adapters/claude/`
-- `product/task-interface/adapters/agents/`
+- canonical repo-local adapter 源码
 
 说明：
 
-- `.claude/skills/` 与 `.agents/skills/` 是 deploy target，不是架构真相层
+- `.claude/skills/` 与 `.agents/skills/` 仍然只是 deploy target，不是源码真相层
 
-## 三、执行与评测后端必须解耦
-
-当前闭环虽然是 `Claude -> Claude judge`，但后续必须允许：
-
-- `backend=codex, judge=claude`
-- `backend=opencode, judge=claude`
-- `backend=codex, judge=codex`
-
-原因：
-
-- 执行后端与评测后端不一定相同
-- 本地某个 backend 可能暂时不可用，但 judge 仍可运行
-
-## 四、非交互 prompt 约束
+## 九、非交互 prompt 约束
 
 当前已经验证出几个必要条件：
 
@@ -111,7 +193,7 @@ last_verified: 2026-03-25
 - 明确禁止追问
 - 信息不足时要求降级输出，而不是扩扫或继续追问
 
-## 五、评测 prompt 占位符约束
+## 十、评测 prompt 占位符约束
 
 当前统一使用：
 
@@ -119,113 +201,7 @@ last_verified: 2026-03-25
 
 后续任何评测 prompt 都应保持同一占位符，避免 runner 为不同模板写特判。
 
-## 六、最小可扩展形态（目录草案）
-
-下一阶段不要再按 backend 复制 runner，也不要新增一个 `Codex` 专用平行脚本，而是把当前 runner 抽象成统一外壳，并保留 `run_claude_skill_eval.py` 作为兼容入口。
-
-建议形态：
-
-```text
-toolchain/scripts/research/
-  run_skill_suite.py
-  run_claude_skill_eval.py
-  backends/
-    base.py
-    claude.py
-    codex.py
-    opencode.py
-  prompts/
-    templates/
-toolchain/evals/
-  prompts/
-  fixtures/
-    schemas/
-      eval-result.schema.json
-      run-summary.schema.json
-    suites/
-      memory-side-skills.v1.yaml
-```
-
-其中：
-
-- `run_skill_suite.py`：统一编排
-- `run_claude_skill_eval.py`：兼容壳，内部应委托统一 runner
-- `backends/base.py`：backend contract
-- `claude.py`：当前已验证 backend
-- `codex.py`：下一步优先接入
-- `opencode.py`：先保留 stub
-- `prompts/templates/`：放 backend-neutral 的 scenario body 或包装模板
-- `toolchain/evals/fixtures/schemas/`：放结构化评测结果与运行汇总 schema
-- `toolchain/evals/fixtures/suites/`：放 repo / task / backend / judge 的 suite 清单
-
-## 七、backend contract 的最小字段
-
-后续 backend adapter 最少需要统一这几类能力：
-
-- `backend_id`
-- `healthcheck()`
-- `skill_mount_path`
-- `build_skill_command(...)`
-- `build_eval_command(...)`
-- `extract_final_message(...)`
-- `supports_stdin_prompt`
-- `supports_output_file`
-- `supports_json_schema`
-
-目的不是做复杂抽象，而是把三个 backend 的差异收敛到命令构造层。
-
-## 八、当前 backend 状态与准入顺序
-
-### `Claude`
-
-当前状态：
-
-- 本机可用
-- 已验证 `-p/--print` 非交互调用
-- 已验证 skill + eval 双阶段运行
-
-### `Codex`
-
-当前状态：
-
-- 本机 `codex` CLI 可用
-- 已知非交互入口是 `codex exec`
-
-当前已知能力：
-
-- `--cd`
-- `--sandbox`
-- `--full-auto`
-- `--output-last-message`
-- `--json`
-- `--output-schema`
-
-结论：
-
-- 可以作为下一步优先接入的 backend
-- 推荐优先走 `stdin` 喂 prompt，并通过单独 final message 通道抓最终回答
-
-### `OpenCode`
-
-当前状态：
-
-- 本机存在 `opencode` 命令入口
-- 当前安装状态异常，help 未正常工作
-
-结论：
-
-- 现在只适合预留 adapter contract
-- 不应在本轮文档中假定其稳定参数形状
-
-推荐的准入顺序：
-
-1. 保留当前 `Claude` runner 作为已验证基线
-2. 抽出统一 runner 外壳，并把 `run_claude_skill_eval.py` 降为兼容壳
-3. 接入 `Codex` backend
-4. 升级 eval 输出为结构化 schema
-5. 再接 `OpenCode`
-
-## 九、非目标
+## 十一、非目标
 
 当前这套 research / eval 架构明确不做下面这些事：
 
@@ -235,7 +211,7 @@ toolchain/evals/
 - 不把 backend-specific mount 当成真相层
 - 不先扩成多 agent 编排系统
 
-## 十、相关文档
+## 十二、相关文档
 
 - [Research 评测观测与输出规范](./research-eval-observability.md)
 - [Research CLI 指令](../operations/research-cli-help.md)
