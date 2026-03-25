@@ -5,7 +5,8 @@
 当前状态：
 
 - 当前已有最小 active 研究说明：
-  - `research-eval-architecture.md`
+  - `research-eval-contracts.md`
+  - `research-eval-observability.md`
 - 后续只有在方案被明确准入后，才继续扩展这里的研究说明
 
 AI 先读什么：

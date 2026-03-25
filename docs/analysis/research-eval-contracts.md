@@ -1,17 +1,17 @@
 ---
-title: "Research 评测架构"
+title: "Research 评测契约与边界"
 status: active
 updated: 2026-03-25
 owner: aw-kernel
 last_verified: 2026-03-25
 ---
-# Research 评测架构
+# Research 评测契约与边界
 
-> 目的：基于当前已经跑通的 `Claude skills + eval skills` 闭环，固定一个最小可扩展的 research / eval 架构，供后续接入 `Codex` 和预留 `OpenCode` 使用。
+> 目的：基于已验证的 `Claude skills + eval skills` 闭环，固定 Research/Eval 的最小契约、目录口径与扩展边界，为后续多 backend 统一 runner 做前置规范。
 
-## 一、当前已验证的闭环
+## 一、当前已验证的最小闭环
 
-当前仓库已经验证通过的最小闭环只有一条：
+当前仓库已验证通过的最小闭环只有一条：
 
 1. 对 `.exrepos/<repo>` 里的目标仓库运行 repo-local skill prompt
 2. 捕获 skill 最终输出
@@ -28,7 +28,7 @@ last_verified: 2026-03-25
 说明：
 
 - 当前 `run_claude_skill_eval.py` 是已验证基线
-- 下一步不应再平行新增 `Codex` 专用 runner，而应把它抽成多 backend 通用执行器，并把当前脚本保留为兼容壳
+- 下一步不应平行新增 `Codex` 专用 runner，而应抽成多 backend 通用执行器，并把当前脚本保留为兼容壳
 
 当前已验证的 active backend：
 
@@ -39,7 +39,7 @@ last_verified: 2026-03-25
 - `Codex`
 - `OpenCode`
 
-## 二、当前架构边界
+## 二、目录口径与分层边界
 
 ### 1. `toolchain/scripts/research/`
 
@@ -89,9 +89,7 @@ last_verified: 2026-03-25
 
 - `.claude/skills/` 与 `.agents/skills/` 是 deploy target，不是架构真相层
 
-## 三、从当前闭环吸收出的约束
-
-### 1. backend 执行与 judge 执行必须解耦
+## 三、执行与评测后端必须解耦
 
 当前闭环虽然是 `Claude -> Claude judge`，但后续必须允许：
 
@@ -104,7 +102,7 @@ last_verified: 2026-03-25
 - 执行后端与评测后端不一定相同
 - 本地某个 backend 可能暂时不可用，但 judge 仍可运行
 
-### 2. non-interactive prompt 必须显式约束
+## 四、非交互 prompt 约束
 
 当前已经验证出几个必要条件：
 
@@ -113,7 +111,7 @@ last_verified: 2026-03-25
 - 明确禁止追问
 - 信息不足时要求降级输出，而不是扩扫或继续追问
 
-### 3. eval prompt 必须有统一插槽
+## 五、评测 prompt 占位符约束
 
 当前统一使用：
 
@@ -121,31 +119,7 @@ last_verified: 2026-03-25
 
 后续任何评测 prompt 都应保持同一占位符，避免 runner 为不同模板写特判。
 
-### 4. 运行产物不能写回 `toolchain/`
-
-当前已经验证的合理做法是：
-
-- 显式传 `--save-dir`
-- 把结果写到外部目录，例如 `/tmp/...`
-
-后续如果要沉淀到 repo-local state，也应落到状态层，而不是 `toolchain/` 本体。
-
-### 5. 评分结果不应长期依赖自然语言抓分
-
-这轮研究已经能工作，但仍然依赖从自然语言里抓：
-
-- `Total Score`
-- `Overall Feeling`
-
-这只适合研究期。
-
-后续准入方向应是：
-
-- judge 输出结构化 JSON
-- `toolchain/evals/fixtures/schemas/` 提供 schema
-- runner 直接汇总结构化结果
-
-## 四、建议的最小扩展形态
+## 六、最小可扩展形态（目录草案）
 
 下一阶段不要再按 backend 复制 runner，也不要新增一个 `Codex` 专用平行脚本，而是把当前 runner 抽象成统一外壳，并保留 `run_claude_skill_eval.py` 作为兼容入口。
 
@@ -184,7 +158,7 @@ toolchain/evals/
 - `toolchain/evals/fixtures/schemas/`：放结构化评测结果与运行汇总 schema
 - `toolchain/evals/fixtures/suites/`：放 repo / task / backend / judge 的 suite 清单
 
-## 五、backend contract 的最小字段
+## 七、backend contract 的最小字段
 
 后续 backend adapter 最少需要统一这几类能力：
 
@@ -200,48 +174,7 @@ toolchain/evals/
 
 目的不是做复杂抽象，而是把三个 backend 的差异收敛到命令构造层。
 
-## 六、运行记录与评测结果约束
-
-这轮研究已经暴露出两个需要尽快固定的基础约束：
-
-- `elapsed_seconds` 不应继续用 wall-clock 差值，后续应改为 `time.perf_counter()`
-- runner 应显式区分 `raw stdout/stderr` 与 `final message`
-
-原因：
-
-- Claude 输出可能混入 chatter
-- Codex 更适合走 `stdin prompt + output file final message`
-- 如果不拆开原始输出与最终回答，后续多 backend 汇总会变脆
-
-结构化评测结果也应尽快固定为 schema，而不是继续从自然语言里抓：
-
-```json
-{
-  "skill": "context-routing",
-  "repo": "typer",
-  "backend": "codex",
-  "judge_backend": "claude",
-  "scores": {
-    "path_contraction": 3,
-    "entry_point_identification": 2,
-    "avoidance_of_over_scanning": 3,
-    "execution_usability": 2
-  },
-  "total_score": 10,
-  "max_score": 12,
-  "overall": "Okay",
-  "key_issues": ["..."],
-  "key_strengths": ["..."]
-}
-```
-
-最小结论：
-
-- Claude judge 后续应优先输出受 schema 约束的 JSON
-- Codex judge 后续可优先走 `--output-schema`
-- OpenCode 若暂时不支持 schema，再退回 text + parser
-
-## 七、当前已知 backend 状态
+## 八、当前 backend 状态与准入顺序
 
 ### `Claude`
 
@@ -284,12 +217,12 @@ toolchain/evals/
 - 现在只适合预留 adapter contract
 - 不应在本轮文档中假定其稳定参数形状
 
-## 八、推荐的准入顺序
+推荐的准入顺序：
 
 1. 保留当前 `Claude` runner 作为已验证基线
 2. 抽出统一 runner 外壳，并把 `run_claude_skill_eval.py` 降为兼容壳
 3. 接入 `Codex` backend
-4. 把 eval 输出升级为结构化 schema
+4. 升级 eval 输出为结构化 schema
 5. 再接 `OpenCode`
 
 ## 九、非目标
@@ -304,6 +237,8 @@ toolchain/evals/
 
 ## 十、相关文档
 
+- [Research 评测观测与输出规范](./research-eval-observability.md)
+- [Research CLI 指令](../operations/research-cli-help.md)
 - [Toolchain 分层](../knowledge/foundations/toolchain-layering.md)
 - [toolchain/evals/README.md](../../toolchain/evals/README.md)
 - [toolchain/scripts/research/README.md](../../toolchain/scripts/research/README.md)

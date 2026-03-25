@@ -261,7 +261,8 @@ python3 toolchain/scripts/research/run_claude_skill_eval.py \
 
 ## 十、相关文档
 
-- [Research 评测架构](../analysis/research-eval-architecture.md)
+- [Research 评测契约与边界](../analysis/research-eval-contracts.md)
+- [Research 评测观测与输出规范](../analysis/research-eval-observability.md)
 - [toolchain/scripts/research/README.md](../../toolchain/scripts/research/README.md)
 - [toolchain/evals/README.md](../../toolchain/evals/README.md)
 - [Codex Memory Side Repo-local Adapter 部署帮助](./memory-side/codex-deployment-help.md)
