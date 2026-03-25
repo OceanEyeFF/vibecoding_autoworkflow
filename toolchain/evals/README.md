@@ -4,13 +4,15 @@
 
 当前状态：
 
+- `prompts/`
 - `fixtures/`
 - `memory-side/`
 
 说明：
 
-- 这两个目录当前只保留占位入口
-- 当前没有 active 的 V1 测量资产
+- `prompts/` 当前承载最小 rubric prompt 资产
+- `fixtures/` 与 `memory-side/` 仍然只保留占位入口
+- 当前还没有完整的 V1 `fixtures / schemas / scoring program` 资产
 
 这里适合放：
 

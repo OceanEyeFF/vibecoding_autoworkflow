@@ -1,6 +1,7 @@
 # Local automation artifacts
 .autoworkflow/
 .spec-workflow/
+.exrepos/
 
 # Repo-local adapter mounts are generated from product/, never tracked.
 .agents/
