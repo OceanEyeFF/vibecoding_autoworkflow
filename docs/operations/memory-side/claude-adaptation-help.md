@@ -1,9 +1,9 @@
 ---
 title: "Claude Memory Side Repo-local Adapter 适配帮助"
 status: active
-updated: 2026-03-22
+updated: 2026-03-26
 owner: aw-kernel
-last_verified: 2026-03-22
+last_verified: 2026-03-26
 ---
 # Claude Memory Side Repo-local Adapter 适配帮助
 
@@ -12,6 +12,7 @@ last_verified: 2026-03-22
 先建立通用边界，再读本页：
 
 - [Memory Side 层级边界](../../knowledge/memory-side/layer-boundary.md)
+- [Skill Deployment 维护流](../skill-deployment-maintenance.md)
 
 说明：
 
@@ -69,6 +70,24 @@ python3 toolchain/scripts/deploy/adapter_deploy.py local --backend claude
 python3 toolchain/scripts/deploy/adapter_deploy.py local --backend claude --dry-run
 ```
 
+先做 repo-local 检查：
+
+```bash
+python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend claude
+```
+
+如需清理陈旧 target：
+
+```bash
+python3 toolchain/scripts/deploy/adapter_deploy.py local --backend claude --prune
+```
+
+部署后复验：
+
+```bash
+python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend claude
+```
+
 ## 四、全局安装
 
 默认把 adapter 复制到 `~/.claude/skills/`：
@@ -83,6 +102,15 @@ python3 toolchain/scripts/deploy/adapter_deploy.py global --backend claude --dry
 python3 toolchain/scripts/deploy/adapter_deploy.py global \
   --backend claude \
   --create-roots
+```
+
+如需检查全局目标：
+
+```bash
+python3 toolchain/scripts/deploy/adapter_deploy.py verify \
+  --target global \
+  --backend claude \
+  --claude-root ~/.claude/skills
 ```
 
 ## 五、对齐要求

@@ -6,10 +6,13 @@
 
 - `path-governance-checks.md`
 - `research-cli-help.md`
+- `skill-deployment-maintenance.md`
 - `memory-side/codex-deployment-help.md`
 - `memory-side/claude-adaptation-help.md`
+- `memory-side/opencode-deployment-help.md`
 - `task-interface/codex-deployment-help.md`
 - `task-interface/claude-adaptation-help.md`
+- `task-interface/opencode-deployment-help.md`
 
 AI 先读什么：
 
@@ -24,6 +27,7 @@ AI 先读什么：
 - `docs/archive/`
 - `.agents/`
 - `.claude/`
+- `.opencode/`
 
 这里适合放：
 

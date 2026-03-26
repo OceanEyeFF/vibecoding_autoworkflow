@@ -249,7 +249,7 @@ last_verified: 2026-03-23
 - `docs/`
 - `toolchain/`
 
-`.agents/`、`.claude/`、`.autoworkflow/`、`.spec-workflow/`、`.serena/` 不属于正式内容区。
+`.agents/`、`.claude/`、`.opencode/`、`.autoworkflow/`、`.spec-workflow/`、`.serena/` 不属于正式内容区。
 
 ## 3. Current Task Contract
 

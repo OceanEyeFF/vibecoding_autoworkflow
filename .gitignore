@@ -6,6 +6,7 @@
 # Repo-local adapter mounts are generated from product/, never tracked.
 .agents/
 .claude/
+.opencode/
 
 # Official documentation mirror (auto-fetched, do not commit)
 Claude_Official_Docs/

@@ -46,6 +46,11 @@ last_verified: 2026-03-26
   - `final_message` 优先读取该临时文件内容。
   - 若文件不存在或未写入，再退回 `stdout.strip()`。
 
+当前不把 `OpenCode` 纳入这套 observability contract：
+
+- `OpenCode` 在 research runner 中仍是 reserved backend
+- 因此当前没有正式的 OpenCode `final_message`、stdout 或 stderr 观测口径
+
 因此：
 
 - `response.md` 是“便于阅读的最终展示结果”，不是原始 stdout transcript。

@@ -5,5 +5,6 @@
 - `skills/`：Task Interface canonical skill
 - `adapters/agents/`：Codex / OpenAI adapter 源码
 - `adapters/claude/`：Claude adapter 源码
+- `adapters/opencode/`：OpenCode adapter 源码
 
-repo-local `.claude/skills/` 与 `.agents/skills/` 由部署脚本生成。
+repo-local `.claude/skills/`、`.agents/skills/` 与 `.opencode/skills/` 由部署脚本生成。

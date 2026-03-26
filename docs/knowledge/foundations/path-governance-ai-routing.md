@@ -1,9 +1,9 @@
 ---
 title: "路径治理与 AI 告知"
 status: active
-updated: 2026-03-25
+updated: 2026-03-26
 owner: aw-kernel
-last_verified: 2026-03-25
+last_verified: 2026-03-26
 ---
 # 路径治理与 AI 告知
 
@@ -28,7 +28,7 @@ last_verified: 2026-03-25
 
 除此之外，其余根目录对象默认都不是主线真相层：
 
-- `.agents/`、`.claude/`：repo-local mount / deploy target
+- `.agents/`、`.claude/`、`.opencode/`：repo-local mount / deploy target
 - `.autoworkflow/`、`.spec-workflow/`：repo-local state
 - `.serena/`：repo-local state/config，可保留受控入库的项目级配置与记忆
 - `.nav/`：compatibility navigation
@@ -56,6 +56,7 @@ last_verified: 2026-03-25
 
 - `.agents/`
 - `.claude/`
+- `.opencode/`
 - `.autoworkflow/`
 - `.spec-workflow/`
 - `.serena/`
@@ -94,6 +95,7 @@ last_verified: 2026-03-25
 
 - 根目录 `.agents/`
 - 根目录 `.claude/`
+- 根目录 `.opencode/`
 - `docs/operations/`
 - `toolchain/evals/`
 
@@ -153,7 +155,7 @@ last_verified: 2026-03-25
 
 - `product/` 下的业务源码
 - `.autoworkflow/` 下的运行产物
-- `.agents/` 与 `.claude/`
+- `.agents/`、`.claude/` 与 `.opencode/`
 
 `stop_reading_when`
 
@@ -162,7 +164,7 @@ last_verified: 2026-03-25
 
 ## 五、隐藏层和兼容层的默认定位
 
-### 1. `.agents/` 与 `.claude/`
+### 1. `.agents/`、`.claude/` 与 `.opencode/`
 
 - 这是 repo-local deploy target
 - 不是业务源码层
@@ -218,7 +220,7 @@ last_verified: 2026-03-25
 
 如果出现下面任一现象，说明 AI 路径治理又开始失效：
 
-- AI 一开始就进入 `.agents/`、`.claude/` 或 `.nav/`
+- AI 一开始就进入 `.agents/`、`.claude/`、`.opencode/` 或 `.nav/`
 - AI 跳过 `docs/README.md` 和 foundations 主线文档直接全仓扫描
 - `docs/reference/`、`docs/ideas/`、`docs/archive/` 被默认当成执行基线
 - repo-local state 被误当成项目真相

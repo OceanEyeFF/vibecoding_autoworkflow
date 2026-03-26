@@ -1,9 +1,9 @@
 ---
 title: "根目录分层"
 status: active
-updated: 2026-03-22
+updated: 2026-03-26
 owner: aw-kernel
-last_verified: 2026-03-22
+last_verified: 2026-03-26
 ---
 # 根目录分层
 
@@ -19,7 +19,7 @@ last_verified: 2026-03-22
 
 除此之外，根目录只允许保留：
 
-- `.claude/`、`.agents/`：repo-local mount / deploy target
+- `.claude/`、`.agents/`、`.opencode/`：repo-local mount / deploy target
 - `.autoworkflow/`、`.spec-workflow/`、`.serena/`：repo-local state
 - `.nav/`：兼容导航层
 - `.git*` 等基础设施文件
@@ -32,7 +32,7 @@ last_verified: 2026-03-22
 | Product Layer | `product/` | 业务代码唯一源码根 | 仓库真相正文、评测产物、运行状态 |
 | Truth Layer | `docs/` | 项目真相、知识基线、研究约束、归档 | 部署结果、本地挂载点、运行状态 |
 | Toolchain Layer | `toolchain/` | 脚本、评测、测试、打包、部署工具 | 业务源码真相、repo-local 手工维护 wrapper |
-| Repo-local Mount Layer | `.claude/` `.agents/` | 本地测试挂载点、repo-local deploy target | 业务源码真相、长期规则正文 |
+| Repo-local Mount Layer | `.claude/` `.agents/` `.opencode/` | 本地测试挂载点、repo-local deploy target | 业务源码真相、长期规则正文 |
 | Repo-local State Layer | `.autoworkflow/` `.spec-workflow/` `.serena/` | 运行产物、审批状态、工具配置与记忆；其中 `.serena/` 可保留受控入库的项目级配置 | 当前主线入口、业务源码 |
 | Compatibility Navigation Layer | `.nav/` | 辅助导航和兼容跳转 | 主线规则、真实结构定义 |
 | Repo Infra Layer | `.git/` `.gitignore` `.gitattributes` `.claudeignore` | 版本控制和仓库级基础配置 | 业务规则和知识层内容 |
@@ -48,15 +48,17 @@ last_verified: 2026-03-22
 - `product/memory-side/skills/`：canonical skill 源码
 - `product/memory-side/adapters/claude/`：Claude adapter 源码
 - `product/memory-side/adapters/agents/`：Codex / OpenAI adapter 源码
+- `product/memory-side/adapters/opencode/`：OpenCode adapter 源码
 - `product/memory-side/manifests/`：全局安装与分发元数据预留位
 - `product/task-interface/skills/`：Task Interface canonical skill 源码
 - `product/task-interface/adapters/claude/`：Task Interface 的 Claude adapter 源码
 - `product/task-interface/adapters/agents/`：Task Interface 的 Codex / OpenAI adapter 源码
+- `product/task-interface/adapters/opencode/`：Task Interface 的 OpenCode adapter 源码
 
 硬规则：
 
 - 业务源码只改 `product/`
-- `.claude/` 和 `.agents/` 里的内容不手工维护
+- `.claude/`、`.agents/` 和 `.opencode/` 里的内容不手工维护
 - repo-local wrapper 由部署脚本从 `product/` 同步出来
 
 ### 2. `docs/`
@@ -96,6 +98,7 @@ last_verified: 2026-03-22
 
 - `.claude/`
 - `.agents/`
+- `.opencode/`
 
 它们现在只承担两类职责：
 
@@ -141,6 +144,7 @@ last_verified: 2026-03-22
 ├── toolchain/            # 脚本、评测、部署工具
 ├── .claude/              # repo-local mount
 ├── .agents/              # repo-local mount
+├── .opencode/            # repo-local mount
 ├── .autoworkflow/        # repo-local state
 ├── .spec-workflow/       # repo-local state
 ├── .serena/              # repo-local state

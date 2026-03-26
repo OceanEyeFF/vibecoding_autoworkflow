@@ -10,7 +10,7 @@ from .base import BackendInvocation, ResearchBackend
 
 class OpenCodeBackend(ResearchBackend):
     backend_id = "opencode"
-    skill_mount_path = ".agents/skills"
+    skill_mount_path = ".opencode/skills"
     supports_stdin_prompt = False
     supports_output_file = False
     supports_json_schema = False
@@ -35,4 +35,3 @@ class OpenCodeBackend(ResearchBackend):
 
     def extract_final_message(self, invocation: BackendInvocation, stdout: str) -> str:
         raise NotImplementedError("OpenCode backend is reserved but not implemented.")
-

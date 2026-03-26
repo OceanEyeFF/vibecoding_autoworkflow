@@ -1,9 +1,9 @@
 ---
 title: "Toolchain 分层"
 status: active
-updated: 2026-03-25
+updated: 2026-03-26
 owner: aw-kernel
-last_verified: 2026-03-25
+last_verified: 2026-03-26
 ---
 # Toolchain 分层
 
@@ -52,7 +52,8 @@ toolchain/
 
 说明：
 
-- `research/` 目录当前只保留占位入口，不承载 active runner
+- `deploy/adapter_deploy.py` 当前是 active 的 deploy / verify 统一入口
+- `research/` 目录当前只保留占位入口，不承载 active runner；其中 `OpenCode` 仍是 research backend 预留位
 
 硬规则：
 
@@ -96,7 +97,7 @@ toolchain/
 
 - `product/` 下的 canonical skill 或 adapter 源码
 - `docs/knowledge/` 下的规则正文
-- `.agents/`、`.claude/` 下的 repo-local deploy target
+- `.agents/`、`.claude/`、`.opencode/` 下的 repo-local deploy target
 - `.autoworkflow/` 下的运行结果
 
 ### 2. Toolchain 与其他两块的关系

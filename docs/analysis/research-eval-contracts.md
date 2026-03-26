@@ -182,7 +182,7 @@ runner 当前行为是：
 
 说明：
 
-- `.claude/skills/` 与 `.agents/skills/` 仍然只是 deploy target，不是源码真相层
+- `.claude/skills/`、`.agents/skills/` 与 `.opencode/skills/` 仍然只是 deploy target，不是源码真相层
 
 ## 九、非交互 prompt 约束
 

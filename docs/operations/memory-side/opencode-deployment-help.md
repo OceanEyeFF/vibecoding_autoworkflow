@@ -1,13 +1,13 @@
 ---
-title: "Codex Memory Side Repo-local Adapter 部署帮助"
+title: "OpenCode Memory Side Repo-local Adapter 部署帮助"
 status: active
 updated: 2026-03-26
 owner: aw-kernel
 last_verified: 2026-03-26
 ---
-# Codex Memory Side Repo-local Adapter 部署帮助
+# OpenCode Memory Side Repo-local Adapter 部署帮助
 
-> 目的：说明如何把 `product/` 下的 Codex / OpenAI adapter 源码部署到本仓库 `.agents/`，或安装到全局 `CODEX_HOME`。本页属于仓库实现层，不是跨仓库通用合同。
+> 目的：说明如何把 `product/` 下的 OpenCode adapter 源码部署到本仓库 `.opencode/`，或安装到全局 OpenCode skills 根目录。本页属于仓库实现层，不是跨仓库通用合同。
 
 先建立通用边界，再读本页：
 
@@ -17,7 +17,7 @@ last_verified: 2026-03-26
 说明：
 
 - 当前部署脚本按 backend 汇总部署 `product/` 下的所有 adapter skill。
-- 如果仓库同时存在 `Task Interface` skill，它也会一起挂载到 `.agents/skills/`。
+- 如果仓库同时存在 `Task Interface` skill，它也会一起挂载到 `.opencode/skills/`。
 - 本页只约束其中 `Memory Side` 这一组 skill 的边界和检查项。
 
 ## 一、当前落点
@@ -30,10 +30,10 @@ docs/knowledge/
 product/memory-side/
   skills/
   adapters/
-    agents/
+    opencode/
       skills/
 
-.agents/
+.opencode/
   skills/
 
 toolchain/scripts/
@@ -45,63 +45,68 @@ toolchain/scripts/
 
 - `docs/knowledge/` 是真相层
 - `product/memory-side/skills/` 是 canonical skill 源码
-- `product/memory-side/adapters/agents/` 是 Codex / OpenAI adapter 源码
-- `.agents/skills/` 是 repo-local deploy target
-- `agents/openai.yaml` 只承载 interface metadata，不承载 `Memory Side` 规则正文
+- `product/memory-side/adapters/opencode/` 是 OpenCode adapter 源码
+- `.opencode/skills/` 是 repo-local deploy target
 
 ## 二、部署原则
 
-- 不把项目真相搬进 `.agents/skills/`
-- 不直接手工维护 `.agents/skills/`
-- 不把 `.agents/skills/` 当成第二真相层
+- 不把项目真相搬进 `.opencode/skills/`
+- 不直接手工维护 `.opencode/skills/`
+- 不把 `.opencode/skills/` 当成第二真相层
 - 业务源码始终改在 `product/`
 
 ## 三、本地挂载
 
-默认把 adapter 源码以软链方式挂到本仓库 `.agents/skills/`：
+默认把 adapter 源码以软链方式挂到本仓库 `.opencode/skills/`：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py local --backend agents
+python3 toolchain/scripts/deploy/adapter_deploy.py local --backend opencode
 ```
 
 做 dry run：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py local --backend agents --dry-run
+python3 toolchain/scripts/deploy/adapter_deploy.py local --backend opencode --dry-run
 ```
 
 先做 repo-local 检查：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
+python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend opencode
 ```
 
 如需清理陈旧 target：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py local --backend agents --prune
+python3 toolchain/scripts/deploy/adapter_deploy.py local --backend opencode --prune
 ```
 
 部署后复验：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
+python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend opencode
 ```
 
 ## 四、全局安装
 
-默认把 adapter 复制到 `$CODEX_HOME/skills/`：
+默认把 adapter 复制到 OpenCode 的全局 skills 根目录：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --dry-run
+python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --dry-run
 ```
 
-如果没有设置 `CODEX_HOME`，可以显式传入目标根：
+默认根目录解析规则：
+
+- 优先使用 `--opencode-root`
+- 否则使用 `$XDG_CONFIG_HOME/opencode/skills`
+- 如果没有设置 `XDG_CONFIG_HOME`，则回落到 `~/.config/opencode/skills`
+
+显式指定目标根：
 
 ```bash
 python3 toolchain/scripts/deploy/adapter_deploy.py global \
-  --backend agents \
-  --agents-root ~/.codex/skills \
+  --backend opencode \
+  --opencode-root ~/.config/opencode/skills \
   --create-roots
 ```
 
@@ -110,15 +115,14 @@ python3 toolchain/scripts/deploy/adapter_deploy.py global \
 ```bash
 python3 toolchain/scripts/deploy/adapter_deploy.py verify \
   --target global \
-  --backend agents \
-  --agents-root ~/.codex/skills
+  --backend opencode \
+  --opencode-root ~/.config/opencode/skills
 ```
 
 ## 五、最小检查项
 
-- `product/memory-side/adapters/agents/skills/*/SKILL.md` 先读 canonical skill，再读 canonical docs
-- `product/memory-side/adapters/agents/skills/*/agents/openai.yaml` 只保留显示名、短说明和默认提示
-- `.agents/skills/` 由部署脚本生成，而不是手工维护
+- `product/memory-side/adapters/opencode/skills/*/SKILL.md` 先读 canonical skill，再读 canonical docs
+- `.opencode/skills/` 由部署脚本生成，而不是手工维护
 - skill 输出仍然使用 canonical docs 中定义的固定格式
 - adapter 内没有复制 `Memory Side` 规则正文
 

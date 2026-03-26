@@ -1,9 +1,9 @@
 ---
 title: "Memory Side 层级边界"
 status: active
-updated: 2026-03-22
+updated: 2026-03-26
 owner: aw-kernel
-last_verified: 2026-03-22
+last_verified: 2026-03-26
 ---
 # Memory Side 层级边界
 
@@ -20,7 +20,7 @@ last_verified: 2026-03-22
 - 定义 `Memory Side` 通用边界的知识文档
 - 定义 canonical skill 的业务源码
 - 定义后端 adapter 的业务源码
-- repo-local `.agents/`、`.claude/` 下的部署结果与评测资产
+- repo-local `.agents/`、`.claude/`、`.opencode/` 下的部署结果与评测资产
 
 如果这几类对象继续混写，后续开发很容易出现下面几种问题：
 
@@ -63,11 +63,12 @@ last_verified: 2026-03-22
 - `product/memory-side/skills/`
 - `product/memory-side/adapters/agents/`
 - `product/memory-side/adapters/claude/`
+- `product/memory-side/adapters/opencode/`
 
 硬要求：
 
 - 业务源码只改 `product/`
-- `.agents/` 与 `.claude/` 不能替代这一层
+- `.agents/`、`.claude/` 与 `.opencode/` 不能替代这一层
 
 ### 3. 仓库实现层
 
@@ -92,6 +93,7 @@ last_verified: 2026-03-22
 
 - `.agents/skills/`
 - `.claude/skills/`
+- `.opencode/skills/`
 
 硬要求：
 
@@ -113,6 +115,7 @@ last_verified: 2026-03-22
 
 - `.agents/skills/`
 - `.claude/skills/`
+- `.opencode/skills/`
 - repo-local deployment guide
 
 ### 2. 需要改业务源码时
@@ -133,7 +136,7 @@ last_verified: 2026-03-22
 3. `product/memory-side/skills/`
 4. `docs/operations/memory-side/`
 5. `toolchain/scripts/`
-6. `.agents/skills/` 或 `.claude/skills/`
+6. `.agents/skills/`、`.claude/skills/` 或 `.opencode/skills/`
 
 ## 四、措辞规范
 
@@ -152,8 +155,8 @@ last_verified: 2026-03-22
 
 如果出现下面任一现象，说明分层又开始混了：
 
-- 通用合同层开始默认引用 `.agents/` 或 `.claude/`
-- 业务源码被直接改回 `.agents/` 或 `.claude/`
+- 通用合同层开始默认引用 `.agents/`、`.claude/` 或 `.opencode/`
+- 业务源码被直接改回 `.agents/`、`.claude/` 或 `.opencode/`
 - deploy target 被当成 source of truth
 - repo-local guide 开始把自己描述成跨仓库通用默认方案
 - 评测场景只覆盖本仓库，却被当成通用验收标准

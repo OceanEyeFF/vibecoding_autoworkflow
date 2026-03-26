@@ -1,9 +1,9 @@
 ---
 title: "Memory Side Skill 与 Agent 模型"
 status: active
-updated: 2026-03-23
+updated: 2026-03-26
 owner: aw-kernel
-last_verified: 2026-03-23
+last_verified: 2026-03-26
 ---
 # Memory Side Skill 与 Agent 模型
 
@@ -76,6 +76,7 @@ last_verified: 2026-03-23
 - `product/memory-side/skills/` 下的 canonical skill 源码
 - `product/memory-side/adapters/agents/` 下的 Codex / OpenAI adapter 源码
 - `product/memory-side/adapters/claude/` 下的 Claude adapter 源码
+- `product/memory-side/adapters/opencode/` 下的 OpenCode adapter 源码
 
 ### 3. 部署结果层
 
@@ -83,6 +84,7 @@ last_verified: 2026-03-23
 
 - `.agents/skills/`
 - `.claude/skills/`
+- `.opencode/skills/`
 
 说明：
 
@@ -152,6 +154,7 @@ last_verified: 2026-03-23
 - `product/task-interface/skills/task-contract-skill/`
 - `product/task-interface/adapters/agents/skills/task-contract-skill/`
 - `product/task-interface/adapters/claude/skills/task-contract-skill/`
+- `product/task-interface/adapters/opencode/skills/task-contract-skill/`
 
 但这些 caller 的命名和编排方式不属于当前仓库知识主线。
 
@@ -184,6 +187,8 @@ product/
         skills/
       claude/
         skills/
+      opencode/
+        skills/
 ```
 
 说明：
@@ -198,6 +203,9 @@ product/
   skills/
 
 .claude/
+  skills/
+
+.opencode/
   skills/
 ```
 

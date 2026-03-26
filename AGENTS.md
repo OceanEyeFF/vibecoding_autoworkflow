@@ -7,7 +7,7 @@
 - 本项目是一个 AI coding 的 repo-side contract layer。
 - 它的目标不是提供完整执行编排，而是统一 AI 进入仓库时的阅读入口、上下文边界、静态真相层，以及任务结束后的回写与清理。
 - 如果你开始把本项目理解成宿主工作流系统、复杂 agent catalog 或 subagents 编排系统，通常已经偏离主线。
-- `docs/` 负责路径与 truth boundary，`product/` 负责 canonical skills 与 adapters，`toolchain/` 负责部署、评测与治理脚本，`.agents/` 与 `.claude/` 只是 deploy target。
+- `docs/` 负责路径与 truth boundary，`product/` 负责 canonical skills 与 adapters，`toolchain/` 负责部署、评测与治理脚本，`.agents/`、`.claude/` 与 `.opencode/` 只是 deploy target。
 
 ## First Read
 
@@ -26,7 +26,7 @@
 - `product/` 是业务代码唯一源码根。
 - `docs/` 是文档层，内部再分 `knowledge / operations / analysis / reference / ideas / archive`。
 - `toolchain/` 只放脚本、评测、测试、打包、部署工具。
-- `.agents/` 和 `.claude/` 只属于 repo-local mount layer，是 deploy target，不是源码层。
+- `.agents/`、`.claude/` 和 `.opencode/` 只属于 repo-local mount layer，是 deploy target，不是源码层。
 - `.autoworkflow/`、`.spec-workflow/` 只属于 repo-local state layer。
 - `.serena/` 属于 repo-local state/config layer，可保留受控入库的项目级配置与记忆，但不是主线真相层。
 - `.nav/` 只是 compatibility navigation layer，不能当真实结构定义。
@@ -41,14 +41,14 @@
 - canonical skill 源码写到 `product/` 下对应 partition 的 `skills/`。
 - backend adapter 源码写到 `product/` 下对应 partition 的 `adapters/`。
 - 部署、评测、测试、打包脚本写到 `toolchain/`。
-- 不要把项目真相写进 `.agents/`、`.claude/`、`.nav/`。
+- 不要把项目真相写进 `.agents/`、`.claude/`、`.opencode/`、`.nav/`。
 
 ## Rule Of Separation
 
 - 先区分通用合同层和仓库实现层，再写文档或 prompt。
 - 通用层优先写“目标仓库”。
 - 仓库实现层才允许默认写“本仓库”。
-- `.agents/` 与 `.claude/` 只保留部署结果，不手工维护源码。
+- `.agents/`、`.claude/` 与 `.opencode/` 只保留部署结果，不手工维护源码。
 
 ## Current Warnings
 
