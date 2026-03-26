@@ -52,11 +52,11 @@
 eval prompt 由 `common.py` 统一生成：
 
 - 先把 skill 输出注入 task 对应的 eval prompt
-- 如果 judge backend 支持 JSON schema，则按 task 动态物化 score-key 受限的 schema
+- 如果 judge backend 支持 JSON schema，则按 task 动态物化 score-key 与 `dimension_feedback` key 受限的 schema
 - schema 在未落盘时写入临时文件；启用 `--save-dir` 时写入 run 目录
 - Claude judge 在 schema 模式下会切到 `--output-format json`
 - Codex judge 使用 `--output-schema <schema-path>`
-- 不支持 schema 的 judge 仍可返回 rubric text，runner 会做兼容解析
+- 不支持 schema 的 judge 仍可返回 rubric text，runner 会解析 `scores` 与按维度的 `What Worked / Needs Improvement` 反馈
 
 这里的差异只停留在执行层：task、prompt、summary、artifact 命名都由 unified runner 统一处理。
 
@@ -138,7 +138,7 @@ python3 toolchain/scripts/research/run_claude_skill_eval.py \
 - `*.raw.stderr.txt`：进程原始 stderr，仅在 stderr 非空时写入
 - `*.stderr.txt`：兼容保留的 stderr 副本，仅在 stderr 非空时写入
 - `*.eval-schema.<judge>.json`：本次 eval 实际使用的 task-scoped schema，仅 schema judge 写入
-- `*.structured.json`：规范化后的 eval 结构化结果；JSON judge 或 rubric 解析成功时写入
+- `*.structured.json`：规范化后的 eval 结构化结果；其中除了分数，还会保留每个维度的 `dimension_feedback`
 - `*.meta.json`：单条结果元数据，含 command、returncode、timing、schema_file、parse_error、artifacts
 - `run-summary.json`：整轮汇总，含 `summary_schema` 路径、suite 来源和所有 result 记录
 

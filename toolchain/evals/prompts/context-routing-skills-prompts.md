@@ -8,6 +8,7 @@ Evaluation rules:
 - Penalize missing required fields instead of inferring intent.
 - Focus on correctness, boundary control, and next-step usability, not writing style.
 - If the captured output contains tool chatter or a failure string, score only the final usable answer. If there is no usable answer, score the relevant dimensions as `1`.
+- For each dimension, fill `What Worked` and `Needs Improvement` with one short, concrete sentence.
 - Return the completed rubric only.
 
 ---
@@ -36,6 +37,9 @@ Paste the captured skill output below before running this evaluation.
 - Is the contraction strategy tight rather than generic?
 - Does it avoid unnecessary exploration?
 
+**What Worked:** ...
+**Needs Improvement:** ...
+
 ---
 
 ### [Dimension 2: Entry Point Identification]
@@ -50,6 +54,9 @@ Paste the captured skill output below before running this evaluation.
 - Are the entry docs/files correctly identified?
 - Does it prioritize the most relevant entry points?
 - Is the reasoning for entry point selection sound?
+
+**What Worked:** ...
+**Needs Improvement:** ...
 
 ---
 
@@ -66,6 +73,9 @@ Paste the captured skill output below before running this evaluation.
 - Does the response demonstrate restraint in exploration?
 - Are irrelevant areas explicitly excluded?
 
+**What Worked:** ...
+**Needs Improvement:** ...
+
 ---
 
 ### [Dimension 4: Output Contract and Execution Usability]
@@ -80,6 +90,9 @@ Paste the captured skill output below before running this evaluation.
 - Does the answer include the expected `Route Card` fields such as `read_first`, `read_next`, `code_entry`, `do_not_read_yet`, and `stop_reading_when`?
 - Can the output be used directly for next steps?
 - Is the guidance specific and actionable?
+
+**What Worked:** ...
+**Needs Improvement:** ...
 
 ---
 

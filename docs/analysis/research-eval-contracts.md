@@ -137,7 +137,7 @@ runner 当前行为是：
 
 - 优先解析 JSON object
 - 若 judge 没有给出可用 JSON，再回退到 rubric-text parser
-- 最终统一归一化为 `skill / repo / backend / judge_backend / scores / total_score / max_score / overall / key_issues / key_strengths / source_format`
+- 最终统一归一化为 `skill / repo / backend / judge_backend / scores / dimension_feedback / total_score / max_score / overall / key_issues / key_strengths / source_format`
 
 但在结构化 judge 路径下，runner 的目标仍然是：
 

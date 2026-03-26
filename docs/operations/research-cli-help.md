@@ -379,7 +379,7 @@ python3 toolchain/scripts/research/run_claude_skill_eval.py \
 - `NN.<repo>.<task>.eval-schema.<judge_backend>.json`
 
 这个文件不是静态拷贝，而是由 `toolchain/evals/fixtures/schemas/eval-result.schema.json` 按 task 动态展开后的结果。
-其中 `scores` 字段会被收紧为该 task 的固定 score keys。
+其中 `scores` 字段会被收紧为该 task 的固定 score keys，`dimension_feedback` 也会被收紧为同一组维度 key，并要求输出 `what_worked / needs_improvement`。
 
 不传 `--save-dir` 时：
 

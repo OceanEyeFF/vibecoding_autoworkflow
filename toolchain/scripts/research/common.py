@@ -177,6 +177,29 @@ def build_eval_result_schema(task_name: str) -> dict[str, Any]:
             for key in score_keys
         },
     }
+    properties["dimension_feedback"] = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": score_keys,
+        "properties": {
+            key: {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["what_worked", "needs_improvement"],
+                "properties": {
+                    "what_worked": {
+                        "type": "string",
+                        "minLength": 1,
+                    },
+                    "needs_improvement": {
+                        "type": "string",
+                        "minLength": 1,
+                    },
+                },
+            }
+            for key in score_keys
+        },
+    }
     properties["source_format"] = {
         "type": "string",
         "enum": ["json"],
@@ -236,6 +259,10 @@ def inject_test_output(eval_prompt_text: str, test_output: str) -> str:
 def build_structured_eval_suffix(task_name: str, repo_name: str, backend: str, judge_backend: str) -> str:
     dimensions = EVAL_SCORE_DIMENSIONS[task_name]
     score_lines = "\n".join(f'- `{key}`: score for "{label}"' for key, label in dimensions)
+    feedback_lines = "\n".join(
+        f'- `dimension_feedback.{key}`: short `what_worked` and `needs_improvement` notes for "{label}"'
+        for key, label in dimensions
+    )
     max_score = len(dimensions) * 3
     return (
         "\n\n---\n\n"
@@ -248,6 +275,9 @@ def build_structured_eval_suffix(task_name: str, repo_name: str, backend: str, j
         f'Set `"judge_backend"` to `{judge_backend}`.\n'
         "Populate `scores` with these exact keys:\n"
         f"{score_lines}\n"
+        "Populate `dimension_feedback` with these exact keys:\n"
+        f"{feedback_lines}\n"
+        "Each `dimension_feedback` entry must contain short, concrete `what_worked` and `needs_improvement` strings.\n"
         f'Set `"max_score"` to `{max_score}`.\n'
         'Use `"overall"` as one of `Bad`, `Okay`, or `Good`.\n'
         "Use arrays of short strings for `key_issues` and `key_strengths`.\n"
@@ -310,12 +340,26 @@ def parse_bullet_block(text: str) -> list[str]:
     return lines
 
 
+def parse_named_field(body: str, field_name: str) -> str:
+    pattern = re.compile(rf"\*\*{re.escape(field_name)}:\*\*\s*(?P<value>.+)")
+    match = pattern.search(body)
+    if not match:
+        return ""
+    value = match.group("value").strip()
+    return "" if value == "..." else value
+
+
 def parse_rubric_text(task_name: str, text: str) -> dict[str, Any]:
     dimensions = dict(EVAL_SCORE_DIMENSIONS[task_name])
     score_pattern = re.compile(
         r"###\s+\[Dimension\s+\d+:\s*(?P<label>[^\]]+)\]\s*"
         r"(?:.|\n)*?\*\*Score:\*\*\s*(?P<score>[123])",
         re.MULTILINE,
+    )
+    section_pattern = re.compile(
+        r"###\s+\[Dimension\s+\d+:\s*(?P<label>[^\]]+)\]\s*"
+        r"(?P<body>.*?)(?=\n###\s+\[Dimension\s+\d+:|\n###\s+\[Overall Feeling\]|\Z)",
+        re.S,
     )
     scores: dict[str, int] = {}
     for match in score_pattern.finditer(text):
@@ -324,6 +368,21 @@ def parse_rubric_text(task_name: str, text: str) -> dict[str, Any]:
         if key is None:
             key = normalize_dimension_key(label)
         scores[key] = int(match.group("score"))
+
+    dimension_feedback: dict[str, dict[str, str]] = {}
+    for match in section_pattern.finditer(text):
+        label = match.group("label").strip()
+        key = next((score_key for score_key, known_label in dimensions.items() if known_label == label), None)
+        if key is None:
+            key = normalize_dimension_key(label)
+        body = match.group("body")
+        what_worked = parse_named_field(body, "What Worked")
+        needs_improvement = parse_named_field(body, "Needs Improvement")
+        if what_worked or needs_improvement:
+            dimension_feedback[key] = {
+                "what_worked": what_worked,
+                "needs_improvement": needs_improvement,
+            }
 
     total_match = re.search(r"Total Score:\*\*\s*(\d+)\s*/\s*(\d+)", text)
     total_score = int(total_match.group(1)) if total_match else sum(scores.values())
@@ -340,6 +399,7 @@ def parse_rubric_text(task_name: str, text: str) -> dict[str, Any]:
     return {
         "skill": task_name,
         "scores": scores,
+        "dimension_feedback": dimension_feedback,
         "total_score": total_score,
         "max_score": max_score,
         "overall": overall,
@@ -368,6 +428,21 @@ def normalize_eval_payload(
         elif isinstance(value, str) and value.isdigit():
             scores[key] = int(value)
 
+    raw_dimension_feedback = payload.get("dimension_feedback") or {}
+    dimension_feedback: dict[str, dict[str, str]] = {}
+    for key in dimensions:
+        entry = raw_dimension_feedback.get(key)
+        if not isinstance(entry, dict):
+            continue
+        what_worked = str(entry.get("what_worked") or "").strip()
+        needs_improvement = str(entry.get("needs_improvement") or "").strip()
+        if not what_worked or not needs_improvement:
+            continue
+        dimension_feedback[key] = {
+            "what_worked": what_worked,
+            "needs_improvement": needs_improvement,
+        }
+
     total_score = payload.get("total_score")
     if not isinstance(total_score, int):
         total_score = sum(scores.values())
@@ -393,6 +468,7 @@ def normalize_eval_payload(
         "backend": backend,
         "judge_backend": judge_backend,
         "scores": scores,
+        "dimension_feedback": dimension_feedback,
         "total_score": total_score,
         "max_score": max_score,
         "overall": overall,

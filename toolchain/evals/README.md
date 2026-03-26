@@ -24,13 +24,14 @@
 
 - `fixtures/schemas/eval-result.schema.json` 是通用 eval 结果 contract 模板，不是 runner 直接原样交给所有 judge 的最终 schema。
 - `run_skill_suite.py` 会结合 `toolchain/scripts/research/common.py` 中的 `EVAL_SCORE_DIMENSIONS`，按 task 物化出固定 score keys 的结构化 judge schema。
+- 除了 `scores` 之外，task-scoped schema 还会固定 `dimension_feedback` 的维度 key，用来记录每个评分维度“做得好的点”和“需要改进的点”。
 - 这些 task-scoped schema 属于运行时产物：未开启 `--save-dir` 时通常写到临时文件；开启 `--save-dir` 时会作为某次 run 的 artifact 保存到该次输出目录。
 - `fixtures/schemas/run-summary.schema.json` 用来约束保存出的 `run-summary.json` 结构，描述一次 suite/direct run 的汇总元数据与 artifact 索引。
 
 `fixtures/` 当前内容：
 
 - `fixtures/schemas/`
-- `eval-result.schema.json`：通用 eval 结果字段模板，约束 `skill / repo / backend / judge_backend / scores / total_score / max_score / overall / key_issues / key_strengths` 等基础字段。
+- `eval-result.schema.json`：通用 eval 结果字段模板，约束 `skill / repo / backend / judge_backend / scores / dimension_feedback / total_score / max_score / overall / key_issues / key_strengths` 等基础字段。
 - `run-summary.schema.json`：一次运行的汇总 contract，覆盖 `runner`、时间戳、`suite_file`、每条 result 的 phase、耗时、schema_file、structured_output、artifacts 等字段。
 - `fixtures/suites/`
 - `memory-side-skills.v1.yaml`：当前最小 suite manifest 示例，声明默认 backend / judge_backend / with_eval，并对目标 repo 运行 memory-side skills 任务集。

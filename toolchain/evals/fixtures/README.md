@@ -13,8 +13,9 @@
 `schemas/eval-result.schema.json`
 
 - 这是通用 eval 结果 contract 的参考模板。
-- 它定义了结果对象的共享外形：`skill`、`repo`、`backend`、`judge_backend`、`scores`、`total_score`、`max_score`、`overall`、`key_issues`、`key_strengths`，以及可选的 `source_format`。
+- 它定义了结果对象的共享外形：`skill`、`repo`、`backend`、`judge_backend`、`scores`、`dimension_feedback`、`total_score`、`max_score`、`overall`、`key_issues`、`key_strengths`，以及可选的 `source_format`。
 - 其中 `scores` 在这个公共 schema 里只约束为至少一个 `1..3` 的整数分值，不固定具体维度 key。
+- `dimension_feedback` 在公共 schema 里约束为“按维度输出 `what_worked / needs_improvement`”的对象模板；实际运行时仍会被 runner 收紧成 task-scoped 的固定 key 集。
 - 当 judge backend 支持 JSON Schema 时，runner 会按 task 的 `EVAL_SCORE_DIMENSIONS` 物化一个 task-scoped schema 文件，再把那个生成文件传给结构化 judge。
 - 因此，这里的 `eval-result.schema.json` 是公共参考 contract，不是每次 eval 运行时直接下发给 judge 的最终 schema 文件。
 

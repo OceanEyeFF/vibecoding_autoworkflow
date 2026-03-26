@@ -21,6 +21,11 @@ class EvalSchemaTest(unittest.TestCase):
                 self.assertEqual(scores["required"], score_keys)
                 self.assertEqual(list(scores["properties"].keys()), score_keys)
 
+                feedback = schema["properties"]["dimension_feedback"]
+                self.assertFalse(feedback["additionalProperties"])
+                self.assertEqual(feedback["required"], score_keys)
+                self.assertEqual(list(feedback["properties"].keys()), score_keys)
+
 
 if __name__ == "__main__":
     unittest.main()

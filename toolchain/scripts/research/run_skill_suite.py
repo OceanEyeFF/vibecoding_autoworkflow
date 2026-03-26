@@ -15,6 +15,7 @@ from typing import Any
 
 from backends import BACKEND_IDS, build_backend
 from common import (
+    EVAL_SCORE_DIMENSIONS,
     RUN_SUMMARY_SCHEMA_PATH,
     RunResult,
     RunSpec,
@@ -403,6 +404,7 @@ def cleanup_backend_artifacts(paths: list[Path]) -> None:
 
 
 def parse_eval_output(spec: RunSpec, raw_text: str) -> tuple[dict[str, Any] | None, str | None]:
+    expected_dimension_count = len(EVAL_SCORE_DIMENSIONS[spec.task])
     if not raw_text.strip():
         return None, "Eval phase produced no usable output."
 
@@ -417,6 +419,8 @@ def parse_eval_output(spec: RunSpec, raw_text: str) -> tuple[dict[str, Any] | No
         )
         if not normalized["scores"]:
             return normalized, "Structured eval output did not contain any recognized score keys."
+        if len(normalized["dimension_feedback"]) != expected_dimension_count:
+            return normalized, "Structured eval output did not contain complete dimension feedback."
         return normalized, None
 
     text_payload = parse_rubric_text(spec.task, raw_text)
@@ -429,6 +433,8 @@ def parse_eval_output(spec: RunSpec, raw_text: str) -> tuple[dict[str, Any] | No
     )
     if not normalized["scores"]:
         return normalized, "Eval output did not contain any parsed rubric scores."
+    if len(normalized["dimension_feedback"]) != expected_dimension_count:
+        return normalized, "Eval output did not contain complete dimension feedback."
     return normalized, None
 
 

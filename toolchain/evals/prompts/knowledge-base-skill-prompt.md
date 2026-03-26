@@ -7,6 +7,7 @@ Evaluation rules:
 - Score every dimension with `1`, `2`, or `3`. Do not use half scores.
 - Penalize missing classification, missing entrypoints, and overbuilt recommendations instead of assuming they were implied.
 - Focus on documentation-system judgment, structural fit, and minimum-safe change behavior.
+- For each dimension, fill `What Worked` and `Needs Improvement` with one short, concrete sentence.
 - Return the completed rubric only.
 
 ---
@@ -35,6 +36,9 @@ Paste the captured skill output below before running this evaluation.
 - Are content layers clearly distinguished?
 - Is the structure consistent with repository conventions rather than generic doc advice?
 
+**What Worked:** ...
+**Needs Improvement:** ...
+
 ---
 
 ### [Dimension 2: Mainline Entrypoint Identification]
@@ -49,6 +53,9 @@ Paste the captured skill output below before running this evaluation.
 - Are the main entrypoints correctly identified?
 - Does it distinguish mainline entrypoints from secondary material?
 - Is the entrypoint prioritization sound?
+
+**What Worked:** ...
+**Needs Improvement:** ...
 
 ---
 
@@ -65,6 +72,9 @@ Paste the captured skill output below before running this evaluation.
 - Are changes minimal and focused?
 - Is there evidence of restraint in modifications?
 
+**What Worked:** ...
+**Needs Improvement:** ...
+
 ---
 
 ### [Dimension 4: Alignment with Existing Repo]
@@ -79,6 +89,9 @@ Paste the captured skill output below before running this evaluation.
 - Does it respect existing repository conventions?
 - Is it consistent with current documentation patterns?
 - Would the proposed changes integrate cleanly into the repo?
+
+**What Worked:** ...
+**Needs Improvement:** ...
 
 ---
 

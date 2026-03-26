@@ -7,6 +7,7 @@ Evaluation rules:
 - Score every dimension with `1`, `2`, or `3`. Do not use half scores.
 - Penalize unsupported claims, incorrect writeback targets, and weak cleanup recommendations.
 - Reward explicit verification boundaries and clear separation between verified changes and non-writeback material.
+- For each dimension, fill `What Worked` and `Needs Improvement` with one short, concrete sentence.
 - Return the completed rubric only.
 
 ---
@@ -35,6 +36,9 @@ Paste the captured skill output below before running this evaluation.
 - Does it capture the important modifications?
 - Is there evidence of false positives or false negatives?
 
+**What Worked:** ...
+**Needs Improvement:** ...
+
 ---
 
 ### [Dimension 2: Verification Awareness]
@@ -49,6 +53,9 @@ Paste the captured skill output below before running this evaluation.
 - Does it distinguish between verified and assumed information?
 - Are assumptions clearly labeled?
 - Is the verification basis explicit enough to justify writeback decisions?
+
+**What Worked:** ...
+**Needs Improvement:** ...
 
 ---
 
@@ -65,6 +72,9 @@ Paste the captured skill output below before running this evaluation.
 - Does it distinguish between core truth, operational docs, and `do_not_write_back` material?
 - Is the location selection aligned with repository conventions?
 
+**What Worked:** ...
+**Needs Improvement:** ...
+
 ---
 
 ### [Dimension 4: Cleanup Quality]
@@ -79,6 +89,9 @@ Paste the captured skill output below before running this evaluation.
 - Is stale information properly identified?
 - Does it preserve content that is still valid?
 - Are cleanup targets concrete and useful?
+
+**What Worked:** ...
+**Needs Improvement:** ...
 
 ---
 

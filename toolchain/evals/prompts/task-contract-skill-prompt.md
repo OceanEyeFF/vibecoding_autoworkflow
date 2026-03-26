@@ -7,6 +7,7 @@ Evaluation rules:
 - Score every dimension with `1`, `2`, or `3`. Do not use half scores.
 - Penalize guessed facts, missing boundaries, and solution leakage instead of assuming intent.
 - Because the current test flow is non-interactive, do not reward follow-up questioning. Reward clear handling of uncertainty through `pending`, `Open Decisions`, or equivalent sections.
+- For each dimension, fill `What Worked` and `Needs Improvement` with one short, concrete sentence.
 - Return the completed rubric only.
 
 ---
@@ -35,6 +36,9 @@ Paste the captured skill output below before running this evaluation.
 - Does it cover the essential parts of the task?
 - Is the formatting consistent enough to act as a reusable contract?
 
+**What Worked:** ...
+**Needs Improvement:** ...
+
 ---
 
 ### [Dimension 2: Boundary Definition]
@@ -49,6 +53,9 @@ Paste the captured skill output below before running this evaluation.
 - Are task boundaries clearly defined?
 - Is the scope appropriately bounded?
 - Does it avoid scope creep and ambiguity?
+
+**What Worked:** ...
+**Needs Improvement:** ...
 
 ---
 
@@ -65,6 +72,9 @@ Paste the captured skill output below before running this evaluation.
 - Are repo-specific constraints or observations included where supported?
 - Is the contract tailored to the specific repository rather than generic?
 
+**What Worked:** ...
+**Needs Improvement:** ...
+
 ---
 
 ### [Dimension 4: Avoidance of Solution Leakage]
@@ -80,6 +90,9 @@ Paste the captured skill output below before running this evaluation.
 - Are there implementation details or specific solutions mentioned without need?
 - Is the language appropriately abstract and contract-oriented?
 
+**What Worked:** ...
+**Needs Improvement:** ...
+
 ---
 
 ### [Dimension 5: Uncertainty Handling]
@@ -94,6 +107,9 @@ Paste the captured skill output below before running this evaluation.
 - Are unresolved items clearly marked?
 - Does the response avoid pretending ambiguity is resolved?
 - Can the contract still be consumed even when some items remain pending?
+
+**What Worked:** ...
+**Needs Improvement:** ...
 
 ---
 
