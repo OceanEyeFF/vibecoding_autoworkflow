@@ -1,58 +1,64 @@
 ---
-title: "文档索引"
+title: "根目录索引"
 status: active
 updated: 2026-03-26
 owner: aw-kernel
 last_verified: 2026-03-26
 ---
-# 文档索引
+# 根目录索引
 
-> 用来快速定位当前 `product / docs / toolchain` 主线，并区分源码层、知识层和本地挂载层。
+> 用来按任务目标快速定位当前主线入口。项目定位看 [`README.md`](./README.md)，任务分流看本页。
 
-## 最先读什么
+## 先看哪些基础合同
 
-| 目的 | 文档 |
+| 目的 | 入口 |
 |------|------|
-| 先建立 docs 模块边界 | `docs/README.md` |
-| 先进入知识主线入口 | `docs/knowledge/README.md` |
-| 先进入 foundations 入口 | `docs/knowledge/foundations/README.md` |
-| 先建立根目录边界 | `docs/knowledge/foundations/root-directory-layering.md` |
-| 先建立路径治理与 AI 告知边界 | `docs/knowledge/foundations/path-governance-ai-routing.md` |
-| 先建立文档治理边界 | `docs/knowledge/foundations/docs-governance.md` |
-| 先建立 Toolchain 边界 | `docs/knowledge/foundations/toolchain-layering.md` |
-| 先建立 Memory Side 边界 | `docs/knowledge/memory-side/layer-boundary.md` |
-| 了解 `Memory Side` 总览 | `docs/knowledge/memory-side/overview.md` |
-| 了解 Skill / Agent 关系 | `docs/knowledge/memory-side/skill-agent-model.md` |
-| 处理本地或全局部署 | `toolchain/scripts/deploy/adapter_deploy.py` |
+| 建立 docs 模块边界 | [`docs/README.md`](./docs/README.md) |
+| 进入知识主线 | [`docs/knowledge/README.md`](./docs/knowledge/README.md) |
+| 进入 foundations 主线 | [`docs/knowledge/foundations/README.md`](./docs/knowledge/foundations/README.md) |
+| 建立根目录边界 | [`docs/knowledge/foundations/root-directory-layering.md`](./docs/knowledge/foundations/root-directory-layering.md) |
+| 建立路径治理边界 | [`docs/knowledge/foundations/path-governance-ai-routing.md`](./docs/knowledge/foundations/path-governance-ai-routing.md) |
+| 建立文档治理边界 | [`docs/knowledge/foundations/docs-governance.md`](./docs/knowledge/foundations/docs-governance.md) |
 
-## 目录结构
+## 按任务进入
 
-```text
-.
-├── product/
-├── docs/
-├── toolchain/
-├── .agents/
-├── .claude/
-└── repo meta files
-```
+| 任务目标 | 入口 |
+|------|------|
+| 理解项目是什么、根目录怎么分层 | [`README.md`](./README.md) |
+| 看文档真相层与阅读顺序 | [`docs/README.md`](./docs/README.md) |
+| 看稳定规则与分层合同 | [`docs/knowledge/README.md`](./docs/knowledge/README.md) |
+| 改 `Memory Side` 主线文档 | [`docs/knowledge/memory-side/README.md`](./docs/knowledge/memory-side/README.md) |
+| 改 `Task Interface` 主线文档 | [`docs/knowledge/task-interface/README.md`](./docs/knowledge/task-interface/README.md) |
+| 改业务源码 | [`product/README.md`](./product/README.md) |
+| 改工具脚本、部署或评测 | [`toolchain/README.md`](./toolchain/README.md) |
+| 看 repo-local runbook | [`docs/operations/README.md`](./docs/operations/README.md) |
+| 运行路径治理检查 | [`docs/operations/path-governance-checks.md`](./docs/operations/path-governance-checks.md) |
+| 看 agent-facing 最小规则 | [`AGENTS.md`](./AGENTS.md) |
 
-## 当前文档边界
+## 根目录对象怎么理解
 
 - `product/`：业务代码唯一源码根
-- `docs/knowledge/`：canonical truth 与基础治理
-- `docs/operations/`：本仓库部署说明
-- `docs/analysis/`：已准入的研究说明与阶段性合同
-- `docs/reference/`：外部参考资料
-- `toolchain/`：部署、测试与预留工具入口
-- `.agents/` 与 `.claude/`：repo-local deploy target，不是源码层
-- `.autoworkflow/`、`.spec-workflow/`、`.serena/`：repo-local state，不是默认读取主线
-- `.nav/`：兼容导航层，不是结构定义层
+- `docs/`：文档真相与知识主线
+- `toolchain/`：脚本、部署、测试、评测工具
+- `.agents/`、`.claude/`、`.opencode/`：repo-local mount / deploy target
+- `.autoworkflow/`、`.spec-workflow/`、`.serena/`：repo-local state / config
+- `.nav/`：compatibility navigation
 
-## 不要再这样用
+## 默认先不要读
 
-- 不要把 `.agents/` 或 `.claude/` 当成业务源码层
-- 不要把 `.autoworkflow/`、`.spec-workflow/`、`.serena/` 当成项目真相层
-- 不要把 `.nav/` 当成默认执行入口
-- 不要把 repo-local wrapper 当成通用 skill 合同
-- 不要跳过 `layer-boundary.md` 直接进入某个 deploy target 目录
+- `.agents/`
+- `.claude/`
+- `.opencode/`
+- `.autoworkflow/`
+- `.spec-workflow/`
+- `.serena/`
+- `.nav/`
+- `docs/reference/`
+- `docs/ideas/`
+- `docs/archive/`
+
+## 停止继续扩读的条件
+
+- 已确认任务落在 `product/`、`docs/` 或 `toolchain/` 的哪一块正式内容区
+- 已定位到最小局部入口
+- 继续扩读只会重复背景，而不会增加决策价值
