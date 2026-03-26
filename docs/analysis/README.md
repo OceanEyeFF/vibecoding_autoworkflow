@@ -5,8 +5,12 @@
 当前状态：
 
 - 当前已有最小 active 研究说明：
-  - `research-eval-contracts.md`
-  - `research-eval-observability.md`
+  - [research-eval-contracts.md](./research-eval-contracts.md)
+  - [research-eval-observability.md](./research-eval-observability.md)
+- 当前新增的 autoresearch 分阶段草案：
+  - [autoresearch-p0-1-contract-and-data-plane.md](./autoresearch-p0-1-contract-and-data-plane.md)
+  - [autoresearch-p0-2-worktree-control-shell.md](./autoresearch-p0-2-worktree-control-shell.md)
+  - [autoresearch-p0-3-baseline-loop-and-round-execution.md](./autoresearch-p0-3-baseline-loop-and-round-execution.md)
 - 后续只有在方案被明确准入后，才继续扩展这里的研究说明
 
 AI 先读什么：
