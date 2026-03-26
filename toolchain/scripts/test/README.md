@@ -4,7 +4,7 @@
 
 当前主线：
 
-- `path_governance_check.py`：检查 markdown 相对链接、关键主入口、路径治理回链和 `.gitignore` 中的关键 hidden-layer 忽略项
+- `path_governance_check.py`：检查 markdown 相对链接、关键主入口、路径/文档治理回链、`docs/knowledge/` 主线入口完整性、正文文档 frontmatter、目录状态约束和 `.gitignore` 中的关键 hidden-layer 忽略项
 
 适用场景：
 

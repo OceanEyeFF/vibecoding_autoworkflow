@@ -1,17 +1,20 @@
 ---
 title: "ROADMAP - 兼容入口"
 status: active
-updated: 2026-03-22
+updated: 2026-03-26
 owner: aw-kernel
-last_verified: 2026-03-22
+last_verified: 2026-03-26
 ---
 # ROADMAP - 兼容入口
 
 当前仓库不再维护旧的 roadmap 主线。
 
 - 当前 docs 模块入口：`docs/README.md`
+- 当前知识主线入口：`docs/knowledge/README.md`
+- 当前 foundations 入口：`docs/knowledge/foundations/README.md`
 - 当前根目录边界入口：`docs/knowledge/foundations/root-directory-layering.md`
 - 当前路径治理入口：`docs/knowledge/foundations/path-governance-ai-routing.md`
+- 当前文档治理入口：`docs/knowledge/foundations/docs-governance.md`
 - 当前业务源码入口：`product/README.md`
 - 当前部署入口：`toolchain/scripts/deploy/adapter_deploy.py`
 - 当前不维护主线评测入口

@@ -40,10 +40,13 @@ last_verified: 2026-03-26
 ### `read_first`
 
 1. `docs/README.md`
-2. `docs/knowledge/foundations/root-directory-layering.md`
-3. `docs/knowledge/foundations/path-governance-ai-routing.md`
-4. `docs/knowledge/foundations/toolchain-layering.md`
-5. `docs/knowledge/memory-side/layer-boundary.md`
+2. `docs/knowledge/README.md`
+3. `docs/knowledge/foundations/README.md`
+4. `docs/knowledge/foundations/root-directory-layering.md`
+5. `docs/knowledge/foundations/path-governance-ai-routing.md`
+6. `docs/knowledge/foundations/docs-governance.md`
+7. `docs/knowledge/foundations/toolchain-layering.md`
+8. `docs/knowledge/memory-side/layer-boundary.md`
 
 ### `read_next`
 
@@ -113,9 +116,12 @@ last_verified: 2026-03-26
 `read_first`
 
 1. `docs/README.md`
-2. `docs/knowledge/foundations/root-directory-layering.md`
-3. `docs/knowledge/foundations/path-governance-ai-routing.md`
-4. 目标领域的 `knowledge/` 主线文档
+2. `docs/knowledge/README.md`
+3. `docs/knowledge/foundations/README.md`
+4. `docs/knowledge/foundations/root-directory-layering.md`
+5. `docs/knowledge/foundations/path-governance-ai-routing.md`
+6. `docs/knowledge/foundations/docs-governance.md`
+7. 目标领域的 `knowledge/` 主线文档
 
 `read_next`
 

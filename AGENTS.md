@@ -12,14 +12,17 @@
 ## First Read
 
 1. `docs/README.md`
-2. `docs/knowledge/foundations/root-directory-layering.md`
-3. `docs/knowledge/foundations/path-governance-ai-routing.md`
-4. `docs/knowledge/foundations/toolchain-layering.md`
-5. `docs/knowledge/foundations/partition-model.md`
-6. `docs/knowledge/task-interface/task-contract.md`
-7. `docs/knowledge/memory-side/layer-boundary.md`
-8. `docs/knowledge/memory-side/overview.md`
-9. `docs/knowledge/memory-side/skill-agent-model.md`
+2. `docs/knowledge/README.md`
+3. `docs/knowledge/foundations/README.md`
+4. `docs/knowledge/foundations/root-directory-layering.md`
+5. `docs/knowledge/foundations/path-governance-ai-routing.md`
+6. `docs/knowledge/foundations/docs-governance.md`
+7. `docs/knowledge/foundations/toolchain-layering.md`
+8. `docs/knowledge/foundations/partition-model.md`
+9. `docs/knowledge/task-interface/task-contract.md`
+10. `docs/knowledge/memory-side/layer-boundary.md`
+11. `docs/knowledge/memory-side/overview.md`
+12. `docs/knowledge/memory-side/skill-agent-model.md`
 
 ## Root Rules
 
@@ -58,9 +61,12 @@
 ## Canonical References
 
 - `docs/README.md`
+- `docs/knowledge/README.md`
+- `docs/knowledge/foundations/README.md`
 - `docs/knowledge/foundations/partition-model.md`
 - `docs/knowledge/foundations/root-directory-layering.md`
 - `docs/knowledge/foundations/path-governance-ai-routing.md`
+- `docs/knowledge/foundations/docs-governance.md`
 - `docs/knowledge/task-interface/task-contract.md`
 - `docs/knowledge/memory-side/layer-boundary.md`
 - `docs/knowledge/memory-side/overview.md`

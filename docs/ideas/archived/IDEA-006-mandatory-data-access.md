@@ -1,11 +1,20 @@
 ---
 title: "Claude Code Agent 设计基线：强制数据访问机制"
-status: active
-updated: 2026-03-17
+status: archived
+updated: 2026-03-26
 owner: aw-kernel
-last_verified: 2026-03-17
+last_verified: 2026-03-26
 ---
 # Claude Code Agent 设计基线：强制数据访问机制
+
+> ⚠️ **归档原因**：本设计基于旧版 `toolchain/agents` / runtime agent catalog 假设，且依赖当前仓库中已不存在的 `toolchain/agents/`、`toolchain/schemas/` 与多 agent 输出链路。
+>
+> **当前仓库边界**：
+> - 本仓库主线已收口为 repo-side contract layer，而不是 agent catalog 或 runtime orchestrator
+> - 当前仓库不再维护 `feature-shipper`、`requirement-refiner`、`code-debug-expert` 这类 agent 资产
+> - 如果未来要重启“强制数据访问”主题，应按当前主线改写为 repo-side contract / tool-level verification 设计，而不是直接沿用本文的旧落点
+>
+> **归档时间**：2026-03-26
 
 > 编号：IDEA-006
 > 优先级：P0

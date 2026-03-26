@@ -1,9 +1,9 @@
 ---
 title: "AutoWorkflow"
 status: active
-updated: 2026-03-23
+updated: 2026-03-26
 owner: aw-kernel
-last_verified: 2026-03-23
+last_verified: 2026-03-26
 ---
 # AutoWorkflow
 
@@ -19,10 +19,13 @@ last_verified: 2026-03-23
 ## 当前入口
 
 - 文档模块入口：`docs/README.md`
+- 知识主线入口：`docs/knowledge/README.md`
+- Foundations 入口：`docs/knowledge/foundations/README.md`
 - Agent 规则入口：`AGENTS.md`
 - 项目 Partition 模型：`docs/knowledge/foundations/partition-model.md`
 - 根目录分层：`docs/knowledge/foundations/root-directory-layering.md`
 - 路径治理与 AI 告知：`docs/knowledge/foundations/path-governance-ai-routing.md`
+- Docs 文档治理基线：`docs/knowledge/foundations/docs-governance.md`
 - Toolchain 分层：`docs/knowledge/foundations/toolchain-layering.md`
 - Task Interface / Task Contract：`docs/knowledge/task-interface/task-contract.md`
 - Memory Side 边界：`docs/knowledge/memory-side/layer-boundary.md`
@@ -60,13 +63,12 @@ last_verified: 2026-03-23
 ## 使用建议
 
 1. 先读 `docs/README.md`，先分清文档层内部结构。
-2. 再读 `docs/knowledge/foundations/root-directory-layering.md`，先分清根目录层级。
-3. 再读 `docs/knowledge/foundations/path-governance-ai-routing.md`，先确认 AI 默认应进入哪一层、暂时不要进入哪一层。
-4. 再读 `docs/knowledge/memory-side/layer-boundary.md`，先分清 `Memory Side` 的通用层和实例层。
-5. 需要理解 `Task Contract` 和执行前正式基线时，读 `docs/knowledge/task-interface/task-contract.md`。
-6. 需要理解能力语义时，读 `docs/knowledge/memory-side/overview.md` 和 `docs/knowledge/memory-side/skill-agent-model.md`。
-7. 需要改业务代码时，优先进入 `product/`。
-8. 需要本地挂载或全局安装时，使用 `toolchain/scripts/deploy/adapter_deploy.py`。
+2. 再读 `docs/knowledge/README.md` 和 `docs/knowledge/foundations/README.md`，先拿到知识主线入口。
+3. 再读 `docs/knowledge/foundations/root-directory-layering.md`，先分清根目录层级。
+4. 再读 `docs/knowledge/foundations/path-governance-ai-routing.md` 与 `docs/knowledge/foundations/docs-governance.md`，先确认 AI 默认应进入哪一层、暂时不要进入哪一层，以及文档如何治理。
+5. 再读 `docs/knowledge/memory-side/README.md` 或 `docs/knowledge/task-interface/README.md`，进入目标领域。
+6. 需要改业务代码时，优先进入 `product/`。
+7. 需要本地挂载或全局安装时，使用 `toolchain/scripts/deploy/adapter_deploy.py`。
 
 ## 说明
 

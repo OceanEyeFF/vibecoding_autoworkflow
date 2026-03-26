@@ -13,8 +13,9 @@
 AI 先读什么：
 
 1. 先读 `docs/README.md`
-2. 再读 `docs/knowledge/` 中与当前任务直接相关的主线文档
-3. 只有在主线文档不足以支持判断时，才进入 `reference/`
+2. 再读 `docs/knowledge/README.md`
+3. 再读 `docs/knowledge/` 中与当前任务直接相关的主线文档
+4. 只有在主线文档不足以支持判断时，才进入 `reference/`
 
 暂时不要先读什么：
 

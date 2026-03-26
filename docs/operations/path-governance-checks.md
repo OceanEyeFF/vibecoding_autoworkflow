@@ -1,13 +1,13 @@
 ---
-title: "路径治理检查运行说明"
+title: "路径与文档治理检查运行说明"
 status: active
-updated: 2026-03-22
+updated: 2026-03-26
 owner: aw-kernel
-last_verified: 2026-03-22
+last_verified: 2026-03-26
 ---
-# 路径治理检查运行说明
+# 路径与文档治理检查运行说明
 
-> 目的：说明如何在本仓库本地执行“路径治理与 AI 告知”相关的最小回归检查。
+> 目的：说明如何在本仓库本地执行“路径治理与文档治理”相关的最小回归检查。
 
 ## 一、适用范围
 
@@ -15,8 +15,12 @@ last_verified: 2026-03-22
 
 - markdown 相对链接是否仍然可达
 - 关键主入口文件是否存在
-- `path-governance-ai-routing.md` 是否仍被关键入口页回链
+- `path-governance-ai-routing.md` 与 `docs-governance.md` 是否仍被关键入口页回链
+- `docs/knowledge/` 主线入口是否仍然完整
 - `.gitignore` 是否仍继续忽略关键 hidden layers
+- `docs/` 下正文文档的 frontmatter 是否齐全
+- `status` 是否仍和目录语义一致
+- `docs/analysis/README.md` 是否仍枚举当前研究说明
 
 它不替代人工审阅，也不检查所有 anchor 片段。
 
@@ -30,8 +34,12 @@ python3 toolchain/scripts/test/path_governance_check.py
 
 1. 根入口与文档主线入口是否存在
 2. `docs/`、`product/`、`toolchain/`、根入口页和 `.nav/README.md` 内的 markdown 相对链接是否指向存在路径
-3. `docs/knowledge/foundations/path-governance-ai-routing.md` 是否仍被关键入口页显式引用
-4. `.gitignore` 是否仍忽略：
+3. `docs/knowledge/foundations/path-governance-ai-routing.md` 与 `docs/knowledge/foundations/docs-governance.md` 是否仍被关键入口页显式引用
+4. `docs/knowledge/README.md` 与关键子入口是否仍存在，并继续链接 Foundations、Memory Side 与 Task Interface 主线
+5. `docs/` 下除 `README.md` 以外的正文文档是否仍保留最小 frontmatter
+6. `docs/reference/`、`docs/archive/` 与 `docs/ideas/*/` 的 `status` 是否仍匹配目录语义
+7. `docs/analysis/README.md` 是否仍回链当前分析文档
+8. `.gitignore` 是否仍忽略：
    - `.agents/`
    - `.claude/`
    - `.autoworkflow/`

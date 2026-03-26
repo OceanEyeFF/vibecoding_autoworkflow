@@ -1,9 +1,9 @@
 ---
 title: "文档索引"
 status: active
-updated: 2026-03-22
+updated: 2026-03-26
 owner: aw-kernel
-last_verified: 2026-03-22
+last_verified: 2026-03-26
 ---
 # 文档索引
 
@@ -14,8 +14,11 @@ last_verified: 2026-03-22
 | 目的 | 文档 |
 |------|------|
 | 先建立 docs 模块边界 | `docs/README.md` |
+| 先进入知识主线入口 | `docs/knowledge/README.md` |
+| 先进入 foundations 入口 | `docs/knowledge/foundations/README.md` |
 | 先建立根目录边界 | `docs/knowledge/foundations/root-directory-layering.md` |
 | 先建立路径治理与 AI 告知边界 | `docs/knowledge/foundations/path-governance-ai-routing.md` |
+| 先建立文档治理边界 | `docs/knowledge/foundations/docs-governance.md` |
 | 先建立 Toolchain 边界 | `docs/knowledge/foundations/toolchain-layering.md` |
 | 先建立 Memory Side 边界 | `docs/knowledge/memory-side/layer-boundary.md` |
 | 了解 `Memory Side` 总览 | `docs/knowledge/memory-side/overview.md` |
@@ -39,7 +42,7 @@ last_verified: 2026-03-22
 - `product/`：业务代码唯一源码根
 - `docs/knowledge/`：canonical truth 与基础治理
 - `docs/operations/`：本仓库部署说明
-- `docs/analysis/`：预留给后续准入的研究说明
+- `docs/analysis/`：已准入的研究说明与阶段性合同
 - `docs/reference/`：外部参考资料
 - `toolchain/`：部署、测试与预留工具入口
 - `.agents/` 与 `.claude/`：repo-local deploy target，不是源码层
