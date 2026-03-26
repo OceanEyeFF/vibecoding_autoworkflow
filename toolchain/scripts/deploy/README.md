@@ -8,12 +8,15 @@
 
 最小维护流：
 
-1. 先跑 `verify`
+1. 先跑 `sync verify`
 2. 再跑 `local` 或 `global` 部署
-3. 最后再跑一次 `verify`
+3. 最后再跑一次 `sync verify`
+4. 如 backend 支持，再补 `smoke verify`
 
 额外说明：
 
-- `verify` 用于检查缺失 mount、陈旧 target、坏链路和错误路径类型
+- `sync verify` 由 `adapter_deploy.py verify` 提供，用于检查缺失 mount、陈旧 target、坏链路和错误路径类型
+- `smoke verify` 是 backend-specific 的最小可用性确认，不属于 deploy 脚本本身
+- 当前 `smoke verify` 只对 `agents` 与 `claude` 建立口径，`opencode` 仍停在 `sync verify`
 - `--prune` 用于在部署时清理已经没有 source 对应关系的 target
 - 该目录只负责部署维护，不负责 research runner

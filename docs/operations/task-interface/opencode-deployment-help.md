@@ -15,6 +15,14 @@ last_verified: 2026-03-26
 - [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
 - [Skill Deployment 维护流](../skill-deployment-maintenance.md)
 
+本页当前只采用一层验证：
+
+- `sync verify`：通过 `adapter_deploy.py verify` 检查 `.opencode/skills/` 的同步状态
+
+当前不写成已支持：
+
+- `smoke verify`
+
 说明：
 
 - 当前部署脚本按 backend 汇总部署 `product/` 下的所有 adapter skill。
@@ -94,6 +102,12 @@ python3 toolchain/scripts/deploy/adapter_deploy.py local --backend opencode --pr
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend opencode
 ```
 
+当前边界：
+
+- `OpenCode` 当前只确认 deploy sync 成立
+- 不把 `OpenCode` 写成已经具备稳定 `task-contract-skill` smoke verify 口径
+- 如需进一步 runtime 验证，应等独立 contract 明确后再补
+
 ## 四、全局安装
 
 默认把 adapter 复制到 OpenCode 的全局 skills 根目录：
@@ -125,6 +139,11 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify \
   --backend opencode \
   --opencode-root ~/.config/opencode/skills
 ```
+
+全局维护同样只停在 `sync verify`：
+
+- 先检查 target 是否与 source 同步
+- 不在本页声明 OpenCode runtime smoke 已可作为稳定维护动作
 
 ## 五、最小检查项
 

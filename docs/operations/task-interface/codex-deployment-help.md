@@ -15,6 +15,11 @@ last_verified: 2026-03-26
 - [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
 - [Skill Deployment 维护流](../skill-deployment-maintenance.md)
 
+本页默认采用两层验证：
+
+- `sync verify`：通过 `adapter_deploy.py verify` 检查 `.agents/skills/` 的同步状态
+- `smoke verify`：在 Codex / OpenAI 侧做最小 skill 可用性确认
+
 说明：
 
 - 当前部署脚本按 backend 汇总部署 `product/` 下的所有 adapter skill。
@@ -95,6 +100,13 @@ python3 toolchain/scripts/deploy/adapter_deploy.py local --backend agents --prun
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
 ```
 
+最小 smoke verify：
+
+- 在 Codex / OpenAI 侧显式调用 repo-local `task-contract-skill`
+- 只确认两件事：
+  - backend 能读取 `.agents/skills/task-contract-skill`
+  - 返回结果仍符合固定 `Task Contract` 结构
+
 ## 四、全局安装
 
 默认把 adapter 复制到 `$CODEX_HOME/skills/`：
@@ -120,6 +132,12 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify \
   --backend agents \
   --agents-root ~/.codex/skills
 ```
+
+全局 smoke verify 仍沿同一口径：
+
+- 先做 `sync verify`
+- 再在 Codex / OpenAI 侧调用全局安装后的 `task-contract-skill`
+- 不把 smoke verify 扩成研究评测
 
 ## 五、最小检查项
 

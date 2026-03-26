@@ -14,6 +14,11 @@ last_verified: 2026-03-26
 - [Memory Side 层级边界](../../knowledge/memory-side/layer-boundary.md)
 - [Skill Deployment 维护流](../skill-deployment-maintenance.md)
 
+本页默认采用两层验证：
+
+- `sync verify`：通过 `adapter_deploy.py verify` 检查 `.claude/skills/` 的同步状态
+- `smoke verify`：在 Claude 侧做最小 skill 可用性确认
+
 说明：
 
 - 当前部署脚本按 backend 汇总部署 `product/` 下的所有 adapter skill。
@@ -88,6 +93,14 @@ python3 toolchain/scripts/deploy/adapter_deploy.py local --backend claude --prun
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend claude
 ```
 
+最小 smoke verify：
+
+- 在 Claude 侧显式调用本仓库 `.claude/skills/` 下的一个项目级 skill
+- 例如让它使用 `context-routing-skill` 或 `writeback-cleanup-skill`
+- 只确认两件事：
+  - Claude 能读取 repo-local wrapper
+  - wrapper 仍返回固定格式结果
+
 ## 四、全局安装
 
 默认把 adapter 复制到 `~/.claude/skills/`：
@@ -112,6 +125,12 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify \
   --backend claude \
   --claude-root ~/.claude/skills
 ```
+
+全局 smoke verify 仍沿同一口径：
+
+- 先做 `sync verify`
+- 再在 Claude 侧调用全局安装后的对应 skill
+- 不把 smoke verify 扩成 benchmark 或 research runner 验证
 
 ## 五、对齐要求
 

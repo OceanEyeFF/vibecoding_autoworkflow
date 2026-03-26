@@ -14,6 +14,11 @@ last_verified: 2026-03-26
 - [Memory Side 层级边界](../../knowledge/memory-side/layer-boundary.md)
 - [Skill Deployment 维护流](../skill-deployment-maintenance.md)
 
+本页默认采用两层验证：
+
+- `sync verify`：通过 `adapter_deploy.py verify` 检查 `.agents/skills/` 的同步状态
+- `smoke verify`：在 Codex / OpenAI 侧做最小 skill 可用性确认
+
 说明：
 
 - 当前部署脚本按 backend 汇总部署 `product/` 下的所有 adapter skill。
@@ -88,6 +93,14 @@ python3 toolchain/scripts/deploy/adapter_deploy.py local --backend agents --prun
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
 ```
 
+最小 smoke verify：
+
+- 在 Codex / OpenAI 侧显式调用本仓库 `.agents/skills/` 下的一个 wrapper
+- 例如让它使用 `$context-routing-skill` 或 `$task-contract-skill`
+- 只确认两件事：
+  - backend 能读取 repo-local wrapper
+  - wrapper 仍返回固定格式结果
+
 ## 四、全局安装
 
 默认把 adapter 复制到 `$CODEX_HOME/skills/`：
@@ -113,6 +126,12 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify \
   --backend agents \
   --agents-root ~/.codex/skills
 ```
+
+全局 smoke verify 仍沿同一口径：
+
+- 先做 `sync verify`
+- 再在 Codex / OpenAI 侧调用全局安装后的对应 skill
+- 不把 smoke verify 扩成完整评测
 
 ## 五、最小检查项
 

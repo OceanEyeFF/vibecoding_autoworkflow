@@ -30,7 +30,54 @@ last_verified: 2026-03-26
 - 是 target 需要重新同步
 - 是 deploy 后仍然存在结构问题
 
-## 二、Repo-local 维护
+## 二、验证分层
+
+当前把 deployment verification 分成两层：
+
+### 1. `sync verify`
+
+用途：
+
+- 检查 deploy target 是否和 `product/.../adapters/<backend>/skills/` 同步
+- 发现缺失 mount、陈旧 target、坏链路和错误路径类型
+- 作为 repo-local / global deploy 的统一结构检查
+
+当前支持：
+
+- `agents`
+- `claude`
+- `opencode`
+
+执行入口：
+
+```bash
+python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend <backend>
+```
+
+### 2. `smoke verify`
+
+用途：
+
+- 在 backend 自己的真实运行环境里，做最小可用性确认
+- 确认 backend 不只是“挂载结构存在”，而是真的能读取对应 repo-local skill wrapper
+- 只做最小项目级 skill 调用验证，不扩成 research runner 或长期评测
+
+当前支持：
+
+- `agents`
+- `claude`
+
+当前不支持：
+
+- `opencode`
+
+说明：
+
+- `OpenCode` 当前只确认 deployment adaptation 成立
+- 当前不把 `OpenCode` 写成 smoke verify 已稳定可做的 backend
+- 如果后续有稳定 runtime contract，再单独补 smoke verify 口径
+
+## 三、Repo-local 维护
 
 检查 repo-local mounts：
 
@@ -64,7 +111,7 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend claude
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend opencode
 ```
 
-## 三、全局安装维护
+## 四、全局安装维护
 
 检查全局 target 时，优先显式传目标根，避免受环境变量差异影响。
 
@@ -124,7 +171,7 @@ python3 toolchain/scripts/deploy/adapter_deploy.py global \
   --prune
 ```
 
-## 四、`verify` 当前会检查什么
+## 五、`verify` 当前会检查什么
 
 - target root 是否存在
 - target root 类型是否正确
@@ -136,7 +183,23 @@ python3 toolchain/scripts/deploy/adapter_deploy.py global \
 
 `verify` 发现 drift 时会返回非零退出码，适合直接挂进手工检查或 CI。
 
-## 五、什么时候使用 `--prune`
+## 六、Smoke Verify 的当前边界
+
+`smoke verify` 当前只覆盖 `agents` 与 `claude`。
+
+最小口径：
+
+- `agents`：在 Codex / OpenAI 侧显式调用 repo-local `.agents/skills/` 下的 wrapper，确认固定格式输出成立
+- `claude`：在 Claude 侧显式调用 repo-local `.claude/skills/` 下的 wrapper，确认固定格式输出成立
+- `opencode`：当前不写成 smoke verify 已支持；只保留 `sync verify`
+
+因此当前推荐节奏是：
+
+1. 所有 backend 先做 `sync verify`
+2. `agents` 与 `claude` 再按各自 runbook 做 `smoke verify`
+3. `opencode` 当前停在 deploy sync 层，不补 runtime smoke 结论
+
+## 七、什么时候使用 `--prune`
 
 适合在下面几种场景使用：
 
@@ -149,7 +212,7 @@ python3 toolchain/scripts/deploy/adapter_deploy.py global \
 - 你还没先跑过一次 `verify`
 - 你不确定 target 里是否有临时手工实验内容
 
-## 六、非目标
+## 八、非目标
 
 本页不是：
 

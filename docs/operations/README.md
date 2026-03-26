@@ -4,6 +4,7 @@
 
 当前主线：
 
+- `deploy-runbook.md`
 - `path-governance-checks.md`
 - `research-cli-help.md`
 - `skill-deployment-maintenance.md`
@@ -19,7 +20,7 @@ AI 先读什么：
 1. `docs/knowledge/foundations/root-directory-layering.md`
 2. `docs/knowledge/foundations/partition-model.md`
 3. 对应 partition 的知识主线，例如 `memory-side/` 或 `task-interface/`
-4. 目标主题下的操作说明
+4. `deploy-runbook.md` 或其他目标主题下的操作说明
 
 暂时不要先读什么：
 
@@ -31,6 +32,7 @@ AI 先读什么：
 
 这里适合放：
 
+- 本仓库统一 deploy runbook
 - 本仓库部署步骤
 - repo-local 维护说明
 - runner 或 adapter 的使用帮助

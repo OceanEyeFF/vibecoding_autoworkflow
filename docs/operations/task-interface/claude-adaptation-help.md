@@ -15,6 +15,11 @@ last_verified: 2026-03-26
 - [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
 - [Skill Deployment 维护流](../skill-deployment-maintenance.md)
 
+本页默认采用两层验证：
+
+- `sync verify`：通过 `adapter_deploy.py verify` 检查 `.claude/skills/` 的同步状态
+- `smoke verify`：在 Claude 侧做最小 skill 可用性确认
+
 说明：
 
 - 当前部署脚本按 backend 汇总部署 `product/` 下的所有 adapter skill。
@@ -95,6 +100,13 @@ python3 toolchain/scripts/deploy/adapter_deploy.py local --backend claude --prun
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend claude
 ```
 
+最小 smoke verify：
+
+- 在 Claude 侧显式调用 repo-local `task-contract-skill`
+- 只确认两件事：
+  - Claude 能读取 `.claude/skills/task-contract-skill`
+  - 返回结果仍符合固定 `Task Contract` 结构
+
 ## 四、全局安装
 
 默认把 adapter 复制到 `~/.claude/skills/`：
@@ -119,6 +131,12 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify \
   --backend claude \
   --claude-root ~/.claude/skills
 ```
+
+全局 smoke verify 仍沿同一口径：
+
+- 先做 `sync verify`
+- 再在 Claude 侧调用全局安装后的 `task-contract-skill`
+- 不把 smoke verify 扩成 benchmark 或 research runner 验证
 
 ## 五、对齐要求
 
