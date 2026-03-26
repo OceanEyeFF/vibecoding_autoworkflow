@@ -362,7 +362,12 @@ class AutoresearchRoundManager:
         if str(round_payload.get("state")) != "candidate_active":
             raise RuntimeError("run-round requires the active round to be in candidate_active state.")
         round_dir = self.worktree_manager.round_dir(contract.run_id, round_number)
-        mutation_payload = read_json(self.mutation_path(contract.run_id, round_number))
+        mutation_payload = load_mutation_payload(self.mutation_path(contract.run_id, round_number))
+        if int(mutation_payload["round"]) != round_number:
+            raise ValueError(
+                f"Mutation spec round={mutation_payload['round']} does not match active round {round_number}."
+            )
+        self._validate_mutation_scope(contract, mutation_payload)
         agent_report = self.agent_report_path(contract.run_id, round_number)
         if not agent_report.is_file():
             raise FileNotFoundError(f"Missing agent report: {agent_report}")
@@ -447,7 +452,12 @@ class AutoresearchRoundManager:
             lifecycle = self.worktree_manager.discard_round(contract.run_id)
 
         self._append_history(contract.run_id, decision_payload)
-        self._update_baseline_scoreboard(contract.run_id, baseline_scoreboard)
+        self._update_baseline_scoreboard(
+            contract.run_id,
+            baseline_scoreboard,
+            decision_payload=decision_payload,
+            round_scoreboard=round_scoreboard,
+        )
         return {
             "decision": decision_payload,
             "lifecycle": lifecycle,
@@ -582,8 +592,19 @@ class AutoresearchRoundManager:
             notes=f"mutation_id={decision_payload['mutation_id']}",
         )
 
-    def _update_baseline_scoreboard(self, run_id: str, scoreboard: dict[str, Any]) -> None:
+    def _update_baseline_scoreboard(
+        self,
+        run_id: str,
+        scoreboard: dict[str, Any],
+        *,
+        decision_payload: dict[str, Any],
+        round_scoreboard: dict[str, Any],
+    ) -> None:
         rows = _history_rows(self.history_path(run_id))
+        if decision_payload["decision"] == "keep":
+            scoreboard["baseline_sha"] = str(decision_payload["candidate_sha"])
+            scoreboard["lanes"] = list(round_scoreboard.get("lanes") or [])
+            scoreboard["repo_tasks"] = list(round_scoreboard.get("repo_tasks") or [])
         scoreboard["rounds_completed"] = sum(1 for row in rows if row.get("decision") in {"keep", "discard"})
         scoreboard["best_round"] = self._best_round(rows)
         scoreboard["generated_at"] = now_iso()

@@ -122,6 +122,7 @@ P0.3 还不做自动搜索，因此 mutation spec 可以先人工给定。
 - `kind` 例如：`prompt_rewrite`、`adapter_rephrase`、`ordering_adjustment`
 - `allowed_actions` 用来限制本轮只做允许的修改类型
 - `expected_effect` 不作为 keep 依据，只作为 round report 的解释字段
+- `mutation.json` 在 `run-round` 阶段会被脚本重新读取并按 contract 边界再次校验，因此不能依赖“prepare 通过后再手改 spec”来扩大允许修改范围
 
 ## 六、建议的 round 目录
 
@@ -161,9 +162,10 @@ P0.3 还不做自动搜索，因此 mutation spec 可以先人工给定。
 
 ### 3. 评测阶段
 
-1. 脚本运行 train suites
-2. 脚本运行 validation suites
-3. 脚本更新本轮 scoreboard
+1. 脚本重新读取并校验 round 目录里的 `mutation.json`
+2. 脚本运行 train suites
+3. 脚本运行 validation suites
+4. 脚本更新本轮 scoreboard
 
 ### 4. 决策阶段
 
@@ -182,8 +184,8 @@ P0.3 不应让模型自由决定结果，建议直接固定为脚本规则。
 
 同时满足：
 
-- `train_score > baseline_train_score`
-- `validation_score >= baseline_validation_score`
+- `train_score > current_comparison_baseline_train_score`
+- `validation_score >= current_comparison_baseline_validation_score`
 - `parse_error_rate` 没有显著升高
 - `timeout_rate` 没有显著升高
 
@@ -191,8 +193,8 @@ P0.3 不应让模型自由决定结果，建议直接固定为脚本规则。
 
 命中任一：
 
-- train 没提升
-- validation 退化
+- train 相对当前比较基线没提升
+- validation 相对当前比较基线退化
 - 出现明显 `parse_error` 回归
 - 出现明显 timeout / hard fail 回归
 
@@ -252,6 +254,12 @@ P0.3 完成后，应满足：
 3. candidate 改动可由 Codex 或 subagent 执行
 4. keep / discard 由脚本按固定规则输出
 5. 每轮都有可追踪的 `decision.json` 与 `agent-report.md`
+
+这里的 `current comparison baseline` 指：
+
+- round 0 时使用 baseline 聚合结果
+- 每次 `keep` 后，顶层 `scoreboard.json` 前移为当前 champion 的聚合结果
+- 下一轮固定拿这个当前 champion scoreboard 做比较，而不是一直拿最初 baseline 做比较
 
 ## 十二、后续关系
 

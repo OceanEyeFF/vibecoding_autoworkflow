@@ -109,6 +109,26 @@ def build_round_manager() -> AutoresearchRoundManager:
     return AutoresearchRoundManager(repo_root=REPO_ROOT, autoresearch_root=AUTORESEARCH_ROOT)
 
 
+def sync_runtime_to_baseline(run_id: str, base_sha: str) -> None:
+    manager = build_worktree_manager()
+    runtime = manager.load_runtime(run_id)
+    if runtime.get("active_round") is not None:
+        raise RuntimeError("Cannot run baseline while an active round exists.")
+    champion_branch = str(runtime["champion_branch"])
+    if manager.branch_exists(champion_branch):
+        champion_sha = manager.ref_sha(champion_branch)
+        if champion_sha != base_sha:
+            raise RuntimeError(
+                "Baseline HEAD does not match the existing champion branch. "
+                f"baseline={base_sha} champion={champion_sha}"
+            )
+    runtime["champion_sha"] = base_sha
+    runtime["active_round"] = None
+    runtime["active_candidate_branch"] = None
+    runtime["active_candidate_worktree"] = None
+    manager.save_runtime(run_id, runtime)
+
+
 def _capture_new_summary(save_dir: Path, before: set[Path]) -> Path:
     after = {path for path in save_dir.iterdir() if path.is_dir()}
     new_dirs = sorted(after - before)
@@ -182,6 +202,9 @@ def cmd_baseline(contract_path: Path) -> int:
     history_path = run_dir / "history.tsv"
     ensure_history_file(history_path)
 
+    base_sha = resolve_head_sha()
+    sync_runtime_to_baseline(contract.run_id, base_sha)
+
     suites = resolve_suite_files(contract)
     train_summaries = run_lane_suites(suites["train"], run_dir / "baseline" / "train")
     validation_summaries = run_lane_suites(suites["validation"], run_dir / "baseline" / "validation")
@@ -189,7 +212,6 @@ def cmd_baseline(contract_path: Path) -> int:
         "train": merge_run_summaries(train_summaries),
         "validation": merge_run_summaries(validation_summaries),
     }
-    base_sha = resolve_head_sha()
     scoreboard = build_scoreboard(run_id=contract.run_id, baseline_sha=base_sha, lane_summaries=lane_summaries)
     write_scoreboard(run_dir / "scoreboard.json", scoreboard)
 

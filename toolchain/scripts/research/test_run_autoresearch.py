@@ -121,6 +121,7 @@ class RunAutoresearchTest(unittest.TestCase):
     def test_baseline_delegates_to_runner_and_writes_scoreboard(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
+            init_git_repo(root)
             (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
             (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
             (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
@@ -138,10 +139,15 @@ class RunAutoresearchTest(unittest.TestCase):
                 return 0
 
             with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
-                run_autoresearch, "REPO_ROOT", Path.cwd()
-            ), mock.patch.object(run_autoresearch, "run_skill_suite_main", side_effect=fake_runner), mock.patch.object(
-                run_autoresearch, "resolve_head_sha", return_value="abc123"
-            ):
+                run_autoresearch, "REPO_ROOT", root
+            ), mock.patch.object(run_autoresearch, "run_skill_suite_main", side_effect=fake_runner):
+                head_sha = subprocess.run(
+                    ["git", "rev-parse", "HEAD"],
+                    cwd=root,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                ).stdout.strip()
                 exit_code = run_autoresearch.main(["baseline", "--contract", str(contract_path)])
 
             self.assertEqual(exit_code, 0)
@@ -149,10 +155,64 @@ class RunAutoresearchTest(unittest.TestCase):
             run_dir = root / ".autoworkflow" / "demo-run"
             self.assertTrue((run_dir / "scoreboard.json").is_file())
             scoreboard = json.loads((run_dir / "scoreboard.json").read_text(encoding="utf-8"))
-            self.assertEqual(scoreboard["baseline_sha"], "abc123")
+            runtime = json.loads((run_dir / "runtime.json").read_text(encoding="utf-8"))
+            self.assertEqual(scoreboard["baseline_sha"], head_sha)
+            self.assertEqual(runtime["champion_sha"], head_sha)
             history_lines = (run_dir / "history.tsv").read_text(encoding="utf-8").strip().splitlines()
             self.assertEqual(len(history_lines), 2)
             self.assertIn("\tbaseline\t", history_lines[1])
+
+    def test_baseline_resyncs_runtime_after_init_if_head_advanced(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+
+            def fake_runner(argv: list[str]) -> int:
+                save_dir = Path(argv[argv.index("--save-dir") + 1])
+                label = "train" if "baseline/train" in str(save_dir) else "validation"
+                write_summary(save_dir, label, 9 if label == "train" else 8)
+                return 0
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ), mock.patch.object(run_autoresearch, "run_skill_suite_main", side_effect=fake_runner):
+                init_code = run_autoresearch.main(["init", "--contract", str(contract_path)])
+                (root / "README.md").write_text("advanced\n", encoding="utf-8")
+                subprocess.run(["git", "add", "README.md"], cwd=root, check=True, capture_output=True, text=True)
+                subprocess.run(["git", "commit", "-q", "-m", "advance"], cwd=root, check=True, capture_output=True, text=True)
+                advanced_sha = subprocess.run(
+                    ["git", "rev-parse", "HEAD"],
+                    cwd=root,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                ).stdout.strip()
+                baseline_code = run_autoresearch.main(["baseline", "--contract", str(contract_path)])
+
+            self.assertEqual(init_code, 0)
+            self.assertEqual(baseline_code, 0)
+            run_dir = root / ".autoworkflow" / "demo-run"
+            runtime = json.loads((run_dir / "runtime.json").read_text(encoding="utf-8"))
+            scoreboard = json.loads((run_dir / "scoreboard.json").read_text(encoding="utf-8"))
+            self.assertEqual(runtime["champion_sha"], advanced_sha)
+            self.assertEqual(scoreboard["baseline_sha"], advanced_sha)
+            champion_ref = subprocess.run(
+                ["git", "show-ref", "--verify", "--quiet", "refs/heads/champion/demo-run"],
+                cwd=root,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(champion_ref.returncode, 1)
+            self.assertEqual(runtime["active_round"], None)
+            self.assertEqual(runtime["active_candidate_branch"], None)
+            self.assertEqual(runtime["active_candidate_worktree"], None)
 
     def test_prepare_round_and_discard_round_via_cli(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

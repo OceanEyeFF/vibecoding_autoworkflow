@@ -42,12 +42,12 @@
 `run_autoresearch.py` 当前覆盖三层边界：
 
 - `init`：读取并校验 contract，初始化 `.autoworkflow/autoresearch/<run-id>/contract.json` 与 `history.tsv`
-- `baseline`：按 contract 分开执行 train/validation suite，写 `scoreboard.json` 并记录 baseline 历史行
+- `baseline`：按 contract 分开执行 train/validation suite，写 `scoreboard.json`、记录 baseline 历史行，并把 `runtime.json` 的 `champion_sha` 同步到这次 baseline 实际评测的 HEAD
 - baseline 只跑 train/validation；acceptance suite 仅作为 contract fixture 引用，不在 P0.1 默认 baseline 中执行
 - `prepare-round`：在不切换当前工作树的前提下创建 `candidate/<run-id>/rNNN` 和独立 worktree，并写 `runtime.json`、`round.json`、`worktree.json`
 - `prepare-round --mutation`：在创建 candidate worktree 后把本轮人工提供的 `mutation.json` 写入 `rounds/round-NNN/`，并校验 `target_paths` 必须落在 contract 的 `mutable_paths` 内
-- `run-round`：要求 `agent-report.md` 已写入 round 目录；脚本会先校验 candidate 改动只能触达 `mutation.json` 的 `target_paths`、且动作类型符合 `allowed_actions`，然后提交 candidate 改动、从 candidate worktree 运行 train / validation suites，并写 round 级 `scoreboard.json`
-- `decide-round`：读取 baseline scoreboard 和本轮 scoreboard，按固定规则写 `decision.json`，然后调用 promote 或 discard；fixed rule 同时约束 score、parse_error、timeout 与 hard-fail/pass_rate 非回退
+- `run-round`：要求 `agent-report.md` 已写入 round 目录；脚本会重新读取并校验 round 目录里的 `mutation.json`，然后校验 candidate 改动只能触达 `target_paths`、且动作类型符合 `allowed_actions`，再提交 candidate 改动、从 candidate worktree 运行 train / validation suites，并写 round 级 `scoreboard.json`
+- `decide-round`：读取“当前比较基线 scoreboard”和本轮 scoreboard，按固定规则写 `decision.json`，然后调用 promote 或 discard；fixed rule 同时约束 score、parse_error、timeout 与 hard-fail/pass_rate 非回退
 - `promote-round`：只允许 fast-forward 语义，把 `champion/<run-id>` 前进到 active candidate commit，然后清理 candidate branch/worktree
 - `discard-round`：直接删除 active candidate branch/worktree，不走 `git revert`
 - `cleanup-round`：按 `.autoworkflow/autoresearch/<run-id>/runtime.json` 回收中断残留的 active candidate
@@ -80,7 +80,8 @@ P0.1 当前代码侧的最小 contract / 数据面行为固定为：
   - `decision`
   - `notes`
 - `autoresearch_scoreboard.py` 当前只聚合 `train` 和 `validation` 两条 lane；lane 指标来自 `run-summary.json` 中 `phase=eval` 的结果
-- round 级字段 `rounds_completed` / `best_round` 在 baseline scoreboard 中会初始化为 `0`，留给后续阶段更新
+- round 级字段 `rounds_completed` / `best_round` 在 baseline scoreboard 中会初始化为 `0`，后续 round 裁决时更新
+- 顶层 `scoreboard.json` 在 round 0 代表 baseline；后续每次 `keep` 后会前移为当前 champion 的比较基线，`discard` 时保持不变
 
 ### Autoresearch P0.1 Baseline Flow And Artifacts
 
@@ -106,6 +107,7 @@ python3 toolchain/scripts/research/run_autoresearch.py \
 - `baseline`
   - 只运行 `train_suites` 和 `validation_suites`
   - 不运行 `acceptance_suites`
+  - 会把 `runtime.json.champion_sha` 同步到本次 baseline 的 `baseline_sha`
   - 产物会写到：
     - `.autoworkflow/autoresearch/<run-id>/baseline/train/`
     - `.autoworkflow/autoresearch/<run-id>/baseline/validation/`
@@ -201,7 +203,7 @@ P0.1 当前已固定的校验和边界是：
 - `contract.json`
 - `runtime.json`
 - `history.tsv`
-- 顶层 `scoreboard.json`：作为 baseline 比较基线，并在 round 裁决后更新 `rounds_completed` 与 `best_round`
+- 顶层 `scoreboard.json`：作为“下一轮比较基线”；round 0 时是 baseline，`keep` 后会前移到当前 champion，并在 round 裁决后更新 `rounds_completed` 与 `best_round`
 
 ### Autoresearch P0.3 Guardrails
 
@@ -211,6 +213,7 @@ P0.3 的脚本侧约束当前固定为：
   - `target_paths` 必须落在 contract 的 `mutable_paths` 内
   - `target_paths` 不得与 `frozen_paths` 重叠
   - `allowed_actions` 只能使用当前脚本支持的动作类型
+- `run-round` 读取 round 目录里的 `mutation.json` 后会重新做同一套 scope 校验，因此不能通过“prepare 后手改 mutation spec”来扩大允许变更范围
 - `run-round` 只允许在 round 状态为 `candidate_active` 时执行
 - `decide-round` 只允许在 round 状态为 `evaluated` 时执行
 - `run-round` 会同时校验两类 candidate 改动：
@@ -224,11 +227,11 @@ P0.3 的脚本侧约束当前固定为：
 `decide-round` 当前是固定脚本规则，不接受模型自由裁决：
 
 - `keep` 同时要求：
-  - train `avg_total_score` 严格高于 baseline
-  - validation `avg_total_score` 不低于 baseline
-  - train / validation `pass_rate` 不低于 baseline
-  - train / validation `parse_error_rate` 不高于 baseline
-  - train / validation `timeout_rate` 不高于 baseline
+  - train `avg_total_score` 严格高于当前比较基线
+  - validation `avg_total_score` 不低于当前比较基线
+  - train / validation `pass_rate` 不低于当前比较基线
+  - train / validation `parse_error_rate` 不高于当前比较基线
+  - train / validation `timeout_rate` 不高于当前比较基线
 - `discard` 命中任一非回退检查失败即可
 - `qualitative_veto_checks` 当前只保留字段入口，不提供奖励权；脚本不会因为定性描述把硬指标无提升的 round 提升为 `keep`
 

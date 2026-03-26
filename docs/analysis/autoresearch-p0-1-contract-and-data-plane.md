@@ -73,6 +73,7 @@ P0.1 不回答下面问题：
 建议最小产物：
 
 - `contract.json`
+- `runtime.json`
 - `history.tsv`
 - `scoreboard.json`
 - `baseline/`
@@ -170,6 +171,7 @@ P0.1 的 scoreboard 不追求复杂，只要足够支撑后续 round decision。
 
 - repo / task 级数据继续沿用 `run-summary.json` 的结果形状
 - scoreboard 只负责把这些结果提升为“可比较的 round 输入”
+- round 0 时它记录 baseline 聚合结果；后续阶段可以在 `keep` 后把它前移为当前 champion 的比较基线
 
 ## 六、控制边界：脚本 vs Codex
 
@@ -204,11 +206,12 @@ P0.1 只需要把 baseline 跑通：
 
 1. 读取 `contract.json`
 2. 校验 suite 引用与 mutable/frozen path 约束
-3. 调用 `run_skill_suite.py` 跑 train suites
-4. 调用 `run_skill_suite.py` 跑 validation suites
-5. 聚合 `run-summary.json`
-6. 写出 `scoreboard.json`
-7. 记录 `history.tsv` 的 baseline 行
+3. 读取或初始化 `runtime.json`，把 `champion_sha` 对齐到本次 baseline 的 HEAD
+4. 调用 `run_skill_suite.py` 跑 train suites
+5. 调用 `run_skill_suite.py` 跑 validation suites
+6. 聚合 `run-summary.json`
+7. 写出 `scoreboard.json`
+8. 记录 `history.tsv` 的 baseline 行
 
 此时还没有：
 
@@ -255,6 +258,7 @@ P0.1 完成后，应满足：
 P0.1 完成后，P0.2 才有稳定输入：
 
 - `contract.json`
+- `runtime.json`
 - `history.tsv`
 - `scoreboard.json`
 - `baseline_sha`

@@ -238,6 +238,20 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "action is not allowed: create"):
             self.round_manager.run_round(self.contract)
 
+    def test_run_round_revalidates_mutation_scope_after_prepare(self) -> None:
+        candidate_worktree, _ = self._prepare_active_round()
+        round_dir = self.worktree_manager.round_dir(self.contract.run_id, 1)
+        tampered_mutation = build_mutation_payload()
+        tampered_mutation["target_paths"] = ["README.md"]
+        (round_dir / "mutation.json").write_text(
+            json.dumps(tampered_mutation, ensure_ascii=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        (candidate_worktree / "README.md").write_text("tampered\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(ValueError, "Mutation target_paths must stay within contract.mutable_paths"):
+            self.round_manager.run_round(self.contract)
+
     def test_decide_round_keeps_candidate_and_updates_history(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
         (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
@@ -265,6 +279,9 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         self.assertEqual(result["decision"]["decision"], "keep")
         self.assertIsNone(runtime["active_round"])
         self.assertEqual(self._git_output("rev-parse", champion_branch_name(self.contract.run_id)), result["decision"]["candidate_sha"])
+        self.assertEqual(baseline_scoreboard["baseline_sha"], result["decision"]["candidate_sha"])
+        self.assertEqual(baseline_scoreboard["lanes"][0]["avg_total_score"], 10.0)
+        self.assertEqual(baseline_scoreboard["lanes"][1]["avg_total_score"], 8.0)
         self.assertEqual(baseline_scoreboard["rounds_completed"], 1)
         self.assertEqual(baseline_scoreboard["best_round"], 1)
         self.assertEqual(len(history_lines), 2)
@@ -300,6 +317,60 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         self.assertEqual(baseline_scoreboard["best_round"], 0)
         self.assertEqual(len(history_lines), 2)
         self.assertIn("\tdiscard\t", history_lines[1])
+
+    def test_decide_round_compares_against_current_champion_scoreboard(self) -> None:
+        first_candidate, _ = self._prepare_active_round()
+        (first_candidate / "product" / "memory-side" / "skills" / "skill.md").write_text(
+            "candidate keep round one\n",
+            encoding="utf-8",
+        )
+        capture = self.worktree_manager.capture_candidate_commit(
+            self.contract.run_id,
+            message="candidate keep round one",
+        )
+        first_round = capture["round"]
+        first_round["state"] = "evaluated"
+        (self.worktree_manager.round_path(self.contract.run_id, 1)).write_text(
+            json.dumps(first_round, ensure_ascii=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        write_scoreboard(self.round_manager.round_scoreboard_path(self.contract.run_id, 1), build_scoreboard(10.0, 8.0))
+
+        first_result = self.round_manager.decide_round(self.contract)
+        first_champion_sha = str(first_result["decision"]["candidate_sha"])
+
+        second_mutation = build_mutation_payload(round_number=2, mutation_id="mut-002")
+        self.round_manager.ensure_prepare_allowed(self.contract, second_mutation)
+        second_prepare = self.worktree_manager.prepare_round(self.contract.run_id)
+        self.round_manager.stage_mutation(self.contract.run_id, 2, second_mutation)
+        second_round_dir = self.worktree_manager.round_dir(self.contract.run_id, 2)
+        (second_round_dir / "agent-report.md").write_text("# Agent Report\n\nApplied mutation.\n", encoding="utf-8")
+        second_candidate = Path(str(second_prepare["worktree"]["path"]))
+        (second_candidate / "product" / "memory-side" / "skills" / "skill.md").write_text(
+            "candidate discard round two\n",
+            encoding="utf-8",
+        )
+        second_capture = self.worktree_manager.capture_candidate_commit(
+            self.contract.run_id,
+            message="candidate discard round two",
+        )
+        second_round = second_capture["round"]
+        second_round["state"] = "evaluated"
+        (self.worktree_manager.round_path(self.contract.run_id, 2)).write_text(
+            json.dumps(second_round, ensure_ascii=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        write_scoreboard(self.round_manager.round_scoreboard_path(self.contract.run_id, 2), build_scoreboard(9.0, 8.0))
+
+        second_result = self.round_manager.decide_round(self.contract)
+
+        baseline_scoreboard = read_json(self.run_dir / "scoreboard.json")
+        self.assertEqual(second_result["decision"]["decision"], "discard")
+        self.assertIn("train_score_improved", second_result["decision"]["reasons"])
+        self.assertEqual(baseline_scoreboard["baseline_sha"], first_champion_sha)
+        self.assertEqual(baseline_scoreboard["lanes"][0]["avg_total_score"], 10.0)
+        self.assertEqual(baseline_scoreboard["rounds_completed"], 2)
+        self.assertEqual(baseline_scoreboard["best_round"], 1)
 
     def test_decide_round_discards_parse_error_regression(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
