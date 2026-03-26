@@ -87,6 +87,7 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 - **[Agent文档](Claude/agents/aw-kernel/)** - 7个专业Agent详细说明
 - **[Skill文档](Claude/skills/aw-kernel/)** - 工作流编排详细说明
 - **[安装脚本](Claude/scripts/README.md)** - 详细安装选项
+- **[Prompt 模板（repo-side contract）](docs/operations/prompt-templates/)** - 轻量/严格执行工作流与执行合同模板
 
 ### 设计文档
 - **[设计基线](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md)** - 设计理念与架构
@@ -115,6 +116,7 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 - **完整目录结构** → [INDEX.md#目录结构](INDEX.md#目录结构)
 - **安装详细选项** → [Claude/scripts/README.md](Claude/scripts/README.md)
 - **设计理念** → [ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md)
+- **文档入口** → [docs/README.md](docs/README.md)
 
 ---
 

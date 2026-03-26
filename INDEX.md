@@ -19,6 +19,7 @@
 - [快速开始](README.md#快速开始) - 5分钟上手
 - [Agent 列表](#agents) - 选择合适工具
 - [Skill 列表](#skills) - 了解工作流
+- [Prompt 模板](docs/operations/prompt-templates/) - repo-side contract 执行模板
 
 **🔧 开发者**
 - [源资产目录](Claude/README.md) - 了解目录结构
@@ -227,10 +228,17 @@ AutoWorkflow/
 │   └── 📁 00_TempFiles/           # 临时文件
 │
 ├── 📁 docs/                       # 【用户】附加文档
+│   ├── README.md                  # docs 目录入口
 │   ├── AI高效使用指南.md
-│   └── 📁 analysis/               # 【分析】精华沉淀
+│   ├── 📁 analysis/               # 【分析】精华沉淀
 │       ├── README.md
 │       └── autodev-insights.md
+│   └── 📁 operations/             # 【运行】runbook 与执行模板
+│       ├── README.md
+│       └── 📁 prompt-templates/
+│           ├── simple-subagent-workflow.md
+│           ├── strict-subagent-workflow.md
+│           └── execution-contract-template.md
 │
 ├── 📁 archive/                    # 【归档】历史文档
 │   ├── work-docs/                 # 【归档】工作留档（阶段性记录）
