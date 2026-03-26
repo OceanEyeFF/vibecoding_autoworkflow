@@ -41,6 +41,12 @@ last_verified: 2026-03-26
 - 想理解业务源码入口：看 [`product/README.md`](./product/README.md)
 - 想理解工具层与检查入口：看 [`toolchain/README.md`](./toolchain/README.md)
 
+## 许可证
+
+- 当前仓库采用 MIT License。
+- 正式授权文本以根目录 [`LICENSE`](./LICENSE) 文件为准。
+- 当前仓库的授权边界只看正式许可证文件，不依赖 README 文案。
+
 ## 当前提醒
 
 - 不要把 `.agents/`、`.claude/`、`.opencode/` 当成源码层或真相层。
