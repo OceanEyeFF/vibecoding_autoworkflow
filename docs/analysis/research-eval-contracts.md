@@ -35,19 +35,20 @@ last_verified: 2026-03-26
 4. 可选再调用 judge backend 产出结构化或可解析的 eval 结果
 5. 可选把 prompt / response / meta / summary 写到外部运行目录
 
-## 二、验证口径：默认 suite 覆盖 vs 手工矩阵覆盖
+## 二、验证口径：默认 suite 覆盖 vs live acceptance matrix
 
 当前需要明确区分两类“已验证”：
 
 - 默认 suite 覆盖：`toolchain/evals/fixtures/suites/memory-side-skills.v1.yaml` 当前默认是 `backend=claude`、`judge_backend=claude`、`with_eval=true`
 - 运行样例证据：`/tmp/research-run-suite/20260325T155954Z-memory-side-skills-v1/run-summary.json` 体现的是这条默认 suite 路径，而不是全部 backend/judge 组合
-- 手工矩阵覆盖：除默认 suite 外，当前文档应允许单独陈述对 active backend 组合的手工验证结果，不再把它们误写成“只有 Claude -> Claude 被验证”
+- live acceptance matrix：`toolchain/scripts/research/run_backend_acceptance_matrix.py` 固定跑 `codex -> codex` 与 `claude -> codex`，并对四个 skills 全量执行 `task: all`
 
 因此，当前正确表述应是：
 
 - 固化在 checked-in suite 资产里的默认覆盖仍然是 `claude -> claude`
 - 但研究 runner 的 active 验证口径不应被缩写成“只验证了 Claude -> Claude”
-- 对 `claude / codex` 的附加组合覆盖，应视为手工矩阵验证，不应冒充 suite 默认资产
+- `backend acceptance matrix` 是单独的 live acceptance 入口，不应冒充默认 suite，也不应被降格理解成 deterministic unit/regression
+- 这条矩阵依赖真实 backend，有成本与波动，不应被文档写成默认快速 CI
 
 ## 三、当前 backend 状态
 

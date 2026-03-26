@@ -21,16 +21,22 @@ python3 toolchain/scripts/research/run_skill_suite.py
 python3 toolchain/scripts/research/run_claude_skill_eval.py
 ```
 
+```bash
+python3 toolchain/scripts/research/run_backend_acceptance_matrix.py
+```
+
 当前定位：
 
 - `run_skill_suite.py`：统一主入口
 - `run_claude_skill_eval.py`：Claude 兼容壳
+- `run_backend_acceptance_matrix.py`：live acceptance 入口
 
 边界：
 
 - 不再新增 `run_codex_skill_eval.py` 这类 backend-specific wrapper
 - `run_skill_suite.py` 是唯一主实现
 - `run_claude_skill_eval.py` 只保留兼容用途，不扩成第二套主 CLI
+- `run_backend_acceptance_matrix.py` 也不是第二套 runner，它只是把固定矩阵组织成 suite 后委托统一 runner
 
 ## 二、统一主入口的当前用法
 
@@ -88,6 +94,25 @@ python3 toolchain/scripts/research/run_skill_suite.py \
 - `defaults.with_eval: true`
 - `runs[0].repo: typer`
 - `runs[0].task: all`
+
+### 5. backend acceptance matrix
+
+```bash
+python3 toolchain/scripts/research/run_backend_acceptance_matrix.py \
+  --repo typer \
+  --save-dir /tmp/backend-acceptance
+```
+
+当前固定矩阵：
+
+- `codex -> codex`
+- `claude -> codex`
+
+当前固定覆盖：
+
+- 每条 lane 都跑 `task: all`
+- 因此会覆盖四个 skills
+- 这是 live acceptance，不是 cheap regression
 
 ## 三、统一主入口的参数语义
 
@@ -488,7 +513,25 @@ codex exec \
 - 不是当前可运行 backend
 - 不应该在示例命令里把它写成 active 路径
 
-## 九、相关文档
+## 九、backend acceptance matrix 的真实边界
+
+`run_backend_acceptance_matrix.py` 当前只解决一件事：把 active 的 live acceptance lane 固定成稳定命名的 repo-local 入口。
+
+它当前不会做的事：
+
+- 不引入新的 runner 实现
+- 不改变 `run_skill_suite.py` 的 suite 解析规则
+- 不把 OpenCode 纳入 live acceptance
+- 不承诺这条矩阵适合作为每次都跑的快速 CI
+
+它当前实际做的事：
+
+- 为给定 repo 生成一份临时 suite manifest
+- 把两条 lane 固定为 `codex -> codex` 与 `claude -> codex`
+- 把每条 lane 固定为 `task: all`
+- 继续复用统一 runner 的 artifact、schema 和 summary 逻辑
+
+## 十、相关文档
 
 - [Research 评测契约与边界](../analysis/research-eval-contracts.md)
 - [Research 评测观测与输出规范](../analysis/research-eval-observability.md)

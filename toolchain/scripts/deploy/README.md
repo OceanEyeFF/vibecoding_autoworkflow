@@ -20,3 +20,16 @@
 - 当前 `smoke verify` 只对 `agents` 与 `claude` 建立口径，`opencode` 仍停在 `sync verify`
 - `--prune` 用于在部署时清理已经没有 source 对应关系的 target
 - 该目录只负责部署维护，不负责 research runner
+
+回归测试入口：
+
+```bash
+python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
+```
+
+当前测试覆盖：
+
+- local / global 首次部署到空 target
+- source 更新后的重新部署
+- source 删除后的 drift 检测、`--prune` 清理与复验
+- `verify` 的 missing / unexpected / broken symlink / wrong type 结构错误

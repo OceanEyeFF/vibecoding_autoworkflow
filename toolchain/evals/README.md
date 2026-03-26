@@ -14,6 +14,12 @@
 - `fixtures/` 当前承载稳定的 fixture 资产，主要是 schema 参考与 suite manifest。
 - `memory-side/` 当前只保留占位入口，不承载 active 的 `program / scenarios / scoring database` 一类资产。
 
+这里还需要和 live acceptance 区分：
+
+- deterministic fixture / schema / suite 资产可以稳定入库
+- `backend acceptance matrix` 属于真实 backend 验收路径，运行入口在 `toolchain/scripts/research/run_backend_acceptance_matrix.py`
+- 它仍然会复用这里的 prompt / schema 资产，但不应被理解成 cheap CI fixture
+
 稳定资产与运行时产物要分开理解：
 
 - `fixtures/schemas/eval-result.schema.json` 是通用 eval 结果 contract 模板，不是 runner 直接原样交给所有 judge 的最终 schema。
@@ -35,6 +41,7 @@
 - 没有数据库式的历史结果系统
 - 没有内置的场景仓库 checkout
 - 没有应长期保存在仓库内的 run logs 或临时 benchmark 输出
+- 没有把 live acceptance matrix 固定成默认每次都跑的快速回归
 
 这里适合放：
 
