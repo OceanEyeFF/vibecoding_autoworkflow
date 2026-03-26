@@ -11,6 +11,8 @@
 - `autoresearch_contract.py`：P0.1 contract 读取、schema 校验、suite/path 边界校验
 - `autoresearch_scoreboard.py`：P0.1 baseline scoreboard 聚合与校验
 - `autoresearch_round.py`：P0.3 的 mutation / round scoreboard / decision 聚合与固定 keep-discard 规则
+- `autoresearch_mutation_registry.py`：P1.1 mutation registry 的 schema 校验、contract 边界校验、canonicalize 与 fingerprint 计算
+- `autoresearch_worker_contract.py`：P1.1 worker contract 的 schema 校验与生成（agent-facing envelope）
 - `worktree_manager.py`：P0.2 的 git worktree 生命周期管理器
 - `backends/`：backend registry、抽象 contract、以及 `claude / codex / opencode` 适配层
 - `common.py`：repo/task/suite/eval schema/artifact 的共享解析与写盘逻辑
@@ -45,7 +47,10 @@
 - `baseline`：按 contract 分开执行 train/validation suite，写 `scoreboard.json`、记录 baseline 历史行，并把 `runtime.json` 的 `champion_sha` 同步到这次 baseline 实际评测的 HEAD
 - baseline 只跑 train/validation；acceptance suite 仅作为 contract fixture 引用，不在 P0.1 默认 baseline 中执行
 - `prepare-round`：在不切换当前工作树的前提下创建 `candidate/<run-id>/rNNN` 和独立 worktree，并写 `runtime.json`、`round.json`、`worktree.json`
-- `prepare-round --mutation`：在创建 candidate worktree 后把本轮人工提供的 `mutation.json` 写入 `rounds/round-NNN/`，并校验 `target_paths` 必须落在 contract 的 `mutable_paths` 内
+- `prepare-round` 默认会从 run-local `mutation-registry.json` 自动选择下一条可用 entry，materialize 本轮 `mutation.json`，并回写 `attempts / last_selected_round`
+- `prepare-round --mutation-key <key>`：显式覆盖自动选择，直接选中指定 entry（仍会校验 entry 可用性）
+- `prepare-round --mutation <path>`：兼容旧入口，但会先把手工 spec import/canonicalize 成 registry entry，再 materialize 本轮 `mutation.json`；不再直接把一次性 spec 原样写入 round 目录
+- `prepare-round` 会同时写出 `mutation.json` 和 `worker-contract.json`；两者的 hash 都会写入 `round.json`，`run-round` 会在评测前重算校验，防止通过手改 round 文件扩大 scope
 - `run-round`：要求 `agent-report.md` 已写入 round 目录；脚本会重新读取并校验 round 目录里的 `mutation.json`，然后校验 candidate 改动只能触达 `target_paths`、且动作类型符合 `allowed_actions`，再提交 candidate 改动、从 candidate worktree 运行 train / validation suites，并写 round 级 `scoreboard.json`
 - `decide-round`：读取“当前比较基线 scoreboard”和本轮 scoreboard，按固定规则写 `decision.json`，然后调用 promote 或 discard；fixed rule 同时约束 score、parse_error、timeout 与 hard-fail/pass_rate 非回退
 - `promote-round`：只允许 fast-forward 语义，把 `champion/<run-id>` 前进到 active candidate commit，然后清理 candidate branch/worktree
@@ -191,7 +196,8 @@ P0.1 当前已固定的校验和边界是：
 
 - `round.json`：round 编号、`base_sha`、candidate 分支/worktree、当前状态
 - `worktree.json`：candidate worktree 路径、分支、`base_sha`、`candidate_sha`、清理时间
-- `mutation.json`：本轮单个 mutation spec，至少包含 `round`、`mutation_id`、`kind`、`target_paths`、`allowed_actions`、`instruction`、`expected_effect`
+- `mutation.json`：本轮 authority mutation spec，包含 `mutation_key`、`attempt`、`fingerprint`、`instruction`、`expected_effect`、`guardrails` 等字段
+- `worker-contract.json`：agent-facing 执行信封，压平 candidate worktree、instruction、target_paths、allowed_actions、report path 等本轮执行要点
 - `agent-report.md`：由 Codex / subagent 写出的本轮内容工作摘要；缺失时 `run-round` 会直接失败
 - `train/`：本轮 train suite 的 run artifacts
 - `validation/`：本轮 validation suite 的 run artifacts
@@ -209,11 +215,10 @@ P0.1 当前已固定的校验和边界是：
 
 P0.3 的脚本侧约束当前固定为：
 
-- `prepare-round --mutation` 会先校验 `mutation.json`：
-  - `target_paths` 必须落在 contract 的 `mutable_paths` 内
-  - `target_paths` 不得与 `frozen_paths` 重叠
-  - `allowed_actions` 只能使用当前脚本支持的动作类型
+- `prepare-round --mutation-key` 或兼容 `--mutation` 会先 materialize authority `mutation.json`，再生成 `worker-contract.json`
+- materialized `mutation.json` 与 `worker-contract.json` 的 hash 都会写入 `round.json`
 - `run-round` 读取 round 目录里的 `mutation.json` 后会重新做同一套 scope 校验，因此不能通过“prepare 后手改 mutation spec”来扩大允许变更范围
+- `run-round` 还会校验 `worker-contract.json` 的存在性、hash 和关键 tracing 字段一致性，但最终 authority 仍然是 `mutation.json + round.json + git diff`
 - `run-round` 只允许在 round 状态为 `candidate_active` 时执行
 - `decide-round` 只允许在 round 状态为 `evaluated` 时执行
 - `run-round` 会同时校验两类 candidate 改动：
@@ -239,7 +244,7 @@ P0.3 的脚本侧约束当前固定为：
 
 当前已验证的范围是：
 
-- `init -> baseline -> prepare-round --mutation -> run-round -> decide-round` 主路径可跑通
+- `init -> baseline -> prepare-round --mutation-key -> run-round -> decide-round` 主路径可跑通
 - `keep` 路径可跑通
 - `discard` 路径可跑通
 - committed-change bypass 已修复：candidate 先手工提交越界改动时，`run-round` 会失败
@@ -370,13 +375,22 @@ autoresearch P0.3 准备一轮 candidate：
 ```bash
 python3 toolchain/scripts/research/run_autoresearch.py \
   prepare-round \
-  --contract /path/to/contract.json \
-  --mutation /path/to/mutation.json
+  --contract /path/to/contract.json
 ```
 
-在 candidate worktree 内完成允许的改动，并把 `agent-report.md` 写到：
+如需显式覆盖自动选择：
+
+```bash
+python3 toolchain/scripts/research/run_autoresearch.py \
+  prepare-round \
+  --contract /path/to/contract.json \
+  --mutation-key text_rephrase:demo:intro-tighten-v1
+```
+
+先读取 round 目录里的 `worker-contract.json`，再在 candidate worktree 内完成允许的改动，并把 `agent-report.md` 写到：
 
 ```text
+.autoworkflow/autoresearch/<run-id>/rounds/round-NNN/worker-contract.json
 .autoworkflow/autoresearch/<run-id>/rounds/round-NNN/agent-report.md
 ```
 
@@ -416,6 +430,59 @@ python3 toolchain/scripts/research/run_claude_skill_eval.py \
   --task context-routing \
   --with-eval
 ```
+
+## P1.1 Regression Checklist
+
+P1.1 回归建议固定分三层执行：
+
+- 静态检查：
+
+```bash
+python3 -m py_compile \
+  toolchain/scripts/research/run_autoresearch.py \
+  toolchain/scripts/research/autoresearch_mutation_registry.py \
+  toolchain/scripts/research/autoresearch_worker_contract.py \
+  toolchain/scripts/research/autoresearch_selector.py \
+  toolchain/scripts/research/test_autoresearch_mutation_registry.py \
+  toolchain/scripts/research/test_autoresearch_worker_contract.py \
+  toolchain/scripts/research/test_autoresearch_selector.py \
+  toolchain/scripts/research/test_autoresearch_round.py \
+  toolchain/scripts/research/test_run_autoresearch.py \
+  toolchain/scripts/research/test_autoresearch_p1_1_smoke.py
+```
+
+- 白盒测试：
+
+```bash
+python3 -m unittest \
+  toolchain/scripts/research/test_autoresearch_mutation_registry.py \
+  toolchain/scripts/research/test_autoresearch_worker_contract.py \
+  toolchain/scripts/research/test_autoresearch_selector.py \
+  toolchain/scripts/research/test_autoresearch_round.py \
+  toolchain/scripts/research/test_run_autoresearch.py \
+  toolchain/scripts/research/test_autoresearch_p1_1_smoke.py
+```
+
+- smoke 测试覆盖（由 `test_autoresearch_p1_1_smoke.py` 固定）：
+  - `init -> baseline -> prepare-round(auto select) -> run-round -> decide-round`
+  - `prepare-round --mutation-key` 显式覆盖自动选择
+  - all-unselectable 时 `prepare-round` 失败
+  - tamper `worker-contract.json` 时 `run-round` 失败
+
+P1.1 selector 规则（最小 deterministic）固定为：
+
+- 只考虑 `status == active` 的 entry
+- 跳过 `attempts >= max_candidate_attempts_per_round` 的 entry
+- 按 `attempts -> registry 原始顺序 -> fingerprint` 选最小项
+
+P1.1 常见失败语义：
+
+- `Missing mutation registry ...`：未提供 `--mutation` 且 run-local registry 缺失
+- `No selectable mutation entries ...`：entry 全部 disabled/exhausted
+- `mutation.json does not match hash ...`：round mutation 被篡改
+- `worker-contract.json does not match hash ...`：worker contract 被篡改
+- `Missing worker contract ...`：prepare 后缺少 worker-contract 产物
+- `Missing agent report ...`：run-round 前未写入 `agent-report.md`
 
 ## Saved Artifacts
 

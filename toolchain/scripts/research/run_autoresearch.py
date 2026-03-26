@@ -10,8 +10,19 @@ import sys
 from pathlib import Path
 
 from autoresearch_contract import HISTORY_COLUMNS, history_header, load_contract, resolve_suite_files
-from autoresearch_round import AutoresearchRoundManager, load_mutation_payload
+from autoresearch_round import AutoresearchRoundManager
 from autoresearch_scoreboard import build_scoreboard, load_run_summary, merge_run_summaries, write_scoreboard
+from autoresearch_mutation_registry import (
+    build_registry_payload,
+    find_registry_entry,
+    import_manual_mutation_as_registry_entry,
+    load_mutation_registry,
+    materialize_round_mutation,
+    upsert_registry_entry,
+    write_mutation_registry,
+)
+from autoresearch_selector import select_next_mutation_entry
+from worktree_manager import read_json
 from common import REPO_ROOT, slugify
 from run_skill_suite import main as run_skill_suite_main
 from worktree_manager import WorktreeManager
@@ -37,11 +48,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Create one candidate branch/worktree and write round runtime state.",
     )
     prepare_parser.add_argument("--contract", type=Path, required=True, help="Path to autoresearch contract JSON.")
-    prepare_parser.add_argument(
+    prepare_group = prepare_parser.add_mutually_exclusive_group(required=False)
+    prepare_group.add_argument(
+        "--mutation-key",
+        type=str,
+        help="Mutation key to materialize from the run-local mutation-registry.json.",
+    )
+    prepare_group.add_argument(
         "--mutation",
         type=Path,
-        required=True,
-        help="Path to the manual mutation JSON spec for the next round.",
+        help="Path to a manual mutation JSON spec (legacy-compatible; imported into the registry).",
     )
 
     run_round_parser = subparsers.add_parser(
@@ -229,23 +245,105 @@ def cmd_baseline(contract_path: Path) -> int:
     return 0
 
 
-def cmd_prepare_round(contract_path: Path, mutation_path: Path) -> int:
+def cmd_prepare_round(
+    contract_path: Path,
+    *,
+    mutation_key: str | None,
+    mutation_path: Path | None,
+) -> int:
     contract = load_contract(contract_path, repo_root=REPO_ROOT)
-    mutation_payload = load_mutation_payload(mutation_path)
     run_dir = run_dir_for_id(contract.run_id)
     run_dir.mkdir(parents=True, exist_ok=True)
     write_canonical_contract(run_dir, contract.payload)
     ensure_history_file(run_dir / "history.tsv")
     round_manager = build_round_manager()
+    manager = build_worktree_manager()
+    next_round = manager.next_round_number(contract.run_id)
+
+    registry_path = run_dir / "mutation-registry.json"
+    registry = (
+        load_mutation_registry(registry_path, contract=contract, repo_root=REPO_ROOT)
+        if registry_path.is_file()
+        else None
+    )
+
+    if mutation_key is not None:
+        if registry is None:
+            raise FileNotFoundError(f"Missing mutation registry: {registry_path}")
+        entry = find_registry_entry(registry, mutation_key)
+    else:
+        if mutation_path is None:
+            if registry is None:
+                raise FileNotFoundError(
+                    "Missing mutation registry and no mutation specified. "
+                    f"Expected: {registry_path} (or pass --mutation-key / --mutation)"
+                )
+            selection = select_next_mutation_entry(registry, contract=contract)
+            entry = selection.entry
+        else:
+            manual_payload = json.loads(mutation_path.read_text(encoding="utf-8"))
+            if not isinstance(manual_payload, dict):
+                raise ValueError("Manual mutation spec must be a JSON object.")
+            imported = import_manual_mutation_as_registry_entry(
+                manual_payload,
+                contract=contract,
+                repo_root=REPO_ROOT,
+                origin_ref=str(mutation_path),
+            )
+            if registry is None:
+                registry_payload = build_registry_payload(contract=contract, entries=[imported])
+                write_mutation_registry(registry_path, registry_payload)
+                registry = load_mutation_registry(registry_path, contract=contract, repo_root=REPO_ROOT)
+            else:
+                registry = upsert_registry_entry(registry=registry, entry=imported)
+                registry_payload = dict(registry.payload)
+                registry_payload["entries"] = registry.entries
+                write_mutation_registry(registry_path, registry_payload)
+                registry = load_mutation_registry(registry_path, contract=contract, repo_root=REPO_ROOT)
+            entry = find_registry_entry(registry, str(imported.get("mutation_key") or ""))
+
+    if str(entry.get("status")) != "active":
+        raise RuntimeError(f"Selected mutation_key is not active: {entry.get('mutation_key')}")
+
+    max_attempts_raw = contract.payload.get("max_candidate_attempts_per_round")
+    if isinstance(max_attempts_raw, bool) or not isinstance(max_attempts_raw, int) or max_attempts_raw <= 0:
+        raise ValueError("contract.payload.max_candidate_attempts_per_round must be a positive integer.")
+    attempts_raw = entry.get("attempts") or 0
+    if isinstance(attempts_raw, bool) or not isinstance(attempts_raw, int) or attempts_raw < 0:
+        raise ValueError("Registry entry attempts must be a non-negative integer.")
+    if attempts_raw >= max_attempts_raw:
+        raise RuntimeError(f"Selected mutation_key has exhausted attempts: {entry.get('mutation_key')}")
+    attempt = attempts_raw + 1
+    mutation_payload = materialize_round_mutation(entry=entry, round_number=next_round, attempt=attempt)
     round_manager.ensure_prepare_allowed(contract, mutation_payload)
-    result = build_worktree_manager().prepare_round(contract.run_id)
+    result = manager.prepare_round(contract.run_id)
     round_payload = result["round"]
-    round_manager.stage_mutation(contract.run_id, int(round_payload["round"]), mutation_payload)
+    round_number = int(round_payload["round"])
+    round_manager.stage_mutation(contract.run_id, round_number, mutation_payload)
+
+    baseline_scoreboard = read_json(run_dir / "scoreboard.json")
+    worker_contract_path = round_manager.stage_worker_contract(
+        contract,
+        contract_path=run_dir / "contract.json",
+        round_payload=round_payload,
+        worktree_payload=result["worktree"],
+        mutation_payload=mutation_payload,
+        baseline_scoreboard=baseline_scoreboard,
+    )
+
+    # Write back the updated registry attempts/selection bookkeeping.
+    entry["attempts"] = attempt
+    entry["last_selected_round"] = round_number
+    registry_payload = dict(registry.payload)
+    registry_payload["entries"] = registry.entries
+    write_mutation_registry(registry_path, registry_payload)
+
     print(f"prepared_round: {round_payload['round']}")
     print(f"candidate_branch: {round_payload['candidate_branch']}")
     print(f"candidate_worktree: {round_payload['candidate_worktree']}")
-    print(f"mutation_path: {round_manager.mutation_path(contract.run_id, int(round_payload['round']))}")
-    print(f"agent_report_path: {round_manager.agent_report_path(contract.run_id, int(round_payload['round']))}")
+    print(f"mutation_path: {round_manager.mutation_path(contract.run_id, round_number)}")
+    print(f"worker_contract_path: {worker_contract_path}")
+    print(f"agent_report_path: {round_manager.agent_report_path(contract.run_id, round_number)}")
     return 0
 
 
@@ -304,7 +402,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "baseline":
             return cmd_baseline(args.contract)
         if args.command == "prepare-round":
-            return cmd_prepare_round(args.contract, args.mutation)
+            return cmd_prepare_round(
+                args.contract,
+                mutation_key=getattr(args, "mutation_key", None),
+                mutation_path=getattr(args, "mutation", None),
+            )
         if args.command == "run-round":
             return cmd_run_round(args.contract)
         if args.command == "decide-round":

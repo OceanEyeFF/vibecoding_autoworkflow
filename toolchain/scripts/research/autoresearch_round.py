@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -18,6 +19,13 @@ from autoresearch_contract import (
     resolve_suite_files,
 )
 from autoresearch_scoreboard import build_scoreboard, load_run_summary, merge_run_summaries, write_scoreboard
+from autoresearch_worker_contract import (
+    build_worker_contract_payload,
+    compute_worker_contract_sha256,
+    load_worker_contract_payload,
+    validate_worker_contract_consistency,
+    write_worker_contract,
+)
 from common import REPO_ROOT
 from worktree_manager import AUTORESEARCH_ROOT, WorktreeManager, read_json, write_json
 
@@ -25,11 +33,15 @@ from worktree_manager import AUTORESEARCH_ROOT, WorktreeManager, read_json, writ
 MUTATION_REQUIRED_FIELDS = [
     "round",
     "mutation_id",
+    "mutation_key",
+    "attempt",
+    "fingerprint",
     "kind",
     "target_paths",
     "allowed_actions",
     "instruction",
     "expected_effect",
+    "guardrails",
 ]
 SUPPORTED_MUTATION_ACTIONS = {"edit", "create", "delete", "rename", "copy"}
 EPSILON = 1e-9
@@ -65,6 +77,11 @@ def _require_non_empty_string_list(payload: dict[str, Any], field: str) -> list[
     return normalized
 
 
+def _sha256_file_prefixed(path: Path) -> str:
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    return f"sha256:{digest}"
+
+
 def load_mutation_payload(path: Path) -> dict[str, Any]:
     payload = _load_json(path.expanduser().resolve())
     missing = [field for field in MUTATION_REQUIRED_FIELDS if field not in payload]
@@ -73,10 +90,45 @@ def load_mutation_payload(path: Path) -> dict[str, Any]:
     round_number = payload.get("round")
     if not isinstance(round_number, int) or round_number <= 0:
         raise ValueError("Mutation spec field 'round' must be a positive integer.")
+    attempt = payload.get("attempt")
+    if not isinstance(attempt, int) or attempt <= 0:
+        raise ValueError("Mutation spec field 'attempt' must be a positive integer.")
     payload["mutation_id"] = _require_non_empty_string(payload, "mutation_id")
+    payload["mutation_key"] = _require_non_empty_string(payload, "mutation_key")
+    payload["fingerprint"] = _require_non_empty_string(payload, "fingerprint")
     payload["kind"] = _require_non_empty_string(payload, "kind")
     payload["instruction"] = _require_non_empty_string(payload, "instruction")
-    payload["expected_effect"] = _require_non_empty_string(payload, "expected_effect")
+    expected_effect = payload.get("expected_effect")
+    if not isinstance(expected_effect, dict):
+        raise ValueError("Mutation spec field 'expected_effect' must be an object.")
+    hypothesis = expected_effect.get("hypothesis")
+    if not isinstance(hypothesis, str) or not hypothesis.strip():
+        raise ValueError("Mutation spec expected_effect.hypothesis must be a non-empty string.")
+    primary_metrics = expected_effect.get("primary_metrics")
+    if not isinstance(primary_metrics, list) or not primary_metrics:
+        raise ValueError("Mutation spec expected_effect.primary_metrics must be a non-empty array.")
+    guard_metrics = expected_effect.get("guard_metrics")
+    if guard_metrics is not None and not isinstance(guard_metrics, list):
+        raise ValueError("Mutation spec expected_effect.guard_metrics must be an array.")
+    payload["expected_effect"] = {
+        "hypothesis": hypothesis.strip(),
+        "primary_metrics": [str(item).strip() for item in primary_metrics if str(item).strip()],
+        "guard_metrics": [str(item).strip() for item in (guard_metrics or []) if str(item).strip()],
+    }
+    guardrails = payload.get("guardrails")
+    if not isinstance(guardrails, dict):
+        raise ValueError("Mutation spec field 'guardrails' must be an object.")
+    max_files_touched = guardrails.get("max_files_touched")
+    if not isinstance(max_files_touched, int) or max_files_touched <= 0:
+        raise ValueError("Mutation spec guardrails.max_files_touched must be a positive integer.")
+    extra_frozen_paths = guardrails.get("extra_frozen_paths")
+    if extra_frozen_paths is not None and not isinstance(extra_frozen_paths, list):
+        raise ValueError("Mutation spec guardrails.extra_frozen_paths must be an array.")
+    payload["guardrails"] = {
+        "require_non_empty_diff": bool(guardrails.get("require_non_empty_diff")),
+        "max_files_touched": int(max_files_touched),
+        "extra_frozen_paths": [str(item).strip() for item in (extra_frozen_paths or []) if str(item).strip()],
+    }
     payload["target_paths"] = _require_non_empty_string_list(payload, "target_paths")
     payload["allowed_actions"] = [
         value.lower() for value in _require_non_empty_string_list(payload, "allowed_actions")
@@ -229,6 +281,9 @@ class AutoresearchRoundManager:
     def agent_report_path(self, run_id: str, round_number: int) -> Path:
         return self.worktree_manager.round_dir(run_id, round_number) / "agent-report.md"
 
+    def worker_contract_path(self, run_id: str, round_number: int) -> Path:
+        return self.worktree_manager.round_dir(run_id, round_number) / "worker-contract.json"
+
     def baseline_scoreboard_path(self, run_id: str) -> Path:
         return self.run_dir(run_id) / "scoreboard.json"
 
@@ -352,7 +407,47 @@ class AutoresearchRoundManager:
     def stage_mutation(self, run_id: str, round_number: int, mutation_payload: dict[str, Any]) -> Path:
         mutation_path = self.mutation_path(run_id, round_number)
         write_json(mutation_path, mutation_payload)
+        round_path = self.worktree_manager.round_path(run_id, round_number)
+        round_payload = read_json(round_path)
+        round_payload["mutation_sha256"] = _sha256_file_prefixed(mutation_path)
+        write_json(round_path, round_payload)
         return mutation_path
+
+    def stage_worker_contract(
+        self,
+        contract: AutoresearchContract,
+        *,
+        contract_path: Path,
+        round_payload: dict[str, Any],
+        worktree_payload: dict[str, Any],
+        mutation_payload: dict[str, Any],
+        baseline_scoreboard: dict[str, Any] | None = None,
+    ) -> Path:
+        run_id = contract.run_id
+        round_number = int(round_payload["round"])
+        mutation_path = self.mutation_path(run_id, round_number)
+        round_path = self.worktree_manager.round_path(run_id, round_number)
+        stored_round = read_json(round_path)
+        mutation_sha256 = str(stored_round.get("mutation_sha256") or "")
+        if not mutation_sha256:
+            raise RuntimeError("Missing mutation_sha256 in round.json; stage mutation before worker contract.")
+
+        worker_path = self.worker_contract_path(run_id, round_number)
+        payload = build_worker_contract_payload(
+            contract=contract,
+            contract_path=contract_path,
+            mutation_path=mutation_path,
+            mutation_payload=mutation_payload,
+            mutation_sha256=mutation_sha256,
+            round_payload=round_payload,
+            worktree_payload=worktree_payload,
+            agent_report_path=self.agent_report_path(run_id, round_number),
+            baseline_scoreboard=baseline_scoreboard,
+        )
+        write_worker_contract(worker_path, payload)
+        stored_round["worker_contract_sha256"] = compute_worker_contract_sha256(worker_path)
+        write_json(round_path, stored_round)
+        return worker_path
 
     def run_round(self, contract: AutoresearchContract) -> dict[str, Any]:
         active = self.worktree_manager.load_active_round(contract.run_id)
@@ -362,7 +457,33 @@ class AutoresearchRoundManager:
         if str(round_payload.get("state")) != "candidate_active":
             raise RuntimeError("run-round requires the active round to be in candidate_active state.")
         round_dir = self.worktree_manager.round_dir(contract.run_id, round_number)
-        mutation_payload = load_mutation_payload(self.mutation_path(contract.run_id, round_number))
+        mutation_path = self.mutation_path(contract.run_id, round_number)
+        expected_hash = str(round_payload.get("mutation_sha256") or "")
+        if not expected_hash:
+            raise RuntimeError("Missing mutation_sha256 in round.json; rerun prepare-round to materialize mutation.")
+        actual_hash = _sha256_file_prefixed(mutation_path)
+        if actual_hash != expected_hash:
+            raise RuntimeError("mutation.json does not match hash recorded in round.json (possible tampering).")
+        mutation_payload = load_mutation_payload(mutation_path)
+
+        worker_path = self.worker_contract_path(contract.run_id, round_number)
+        if not worker_path.is_file():
+            raise FileNotFoundError(f"Missing worker contract: {worker_path}")
+        expected_worker_hash = str(round_payload.get("worker_contract_sha256") or "")
+        if not expected_worker_hash:
+            raise RuntimeError("Missing worker_contract_sha256 in round.json; rerun prepare-round to materialize.")
+        actual_worker_hash = compute_worker_contract_sha256(worker_path)
+        if actual_worker_hash != expected_worker_hash:
+            raise RuntimeError("worker-contract.json does not match hash recorded in round.json (possible tampering).")
+        worker_contract = load_worker_contract_payload(worker_path)
+        validate_worker_contract_consistency(
+            worker_contract=worker_contract,
+            round_payload=round_payload,
+            mutation_payload=mutation_payload,
+            worktree_payload=worktree_payload,
+            mutation_sha256=actual_hash,
+        )
+
         if int(mutation_payload["round"]) != round_number:
             raise ValueError(
                 f"Mutation spec round={mutation_payload['round']} does not match active round {round_number}."

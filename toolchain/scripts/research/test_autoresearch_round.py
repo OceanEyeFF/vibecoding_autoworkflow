@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from autoresearch_contract import history_header, load_contract
 from autoresearch_round import AutoresearchRoundManager
 from autoresearch_scoreboard import write_scoreboard
+from autoresearch_worker_contract import build_worker_contract_payload, write_worker_contract, compute_worker_contract_sha256
 from worktree_manager import WorktreeManager, champion_branch_name, read_json
 
 
@@ -40,11 +41,23 @@ def build_mutation_payload(round_number: int = 1, mutation_id: str = "mut-001") 
     return {
         "round": round_number,
         "mutation_id": mutation_id,
-        "kind": "prompt_rewrite",
+        "mutation_key": "text_rephrase:demo:intro-tighten-v1",
+        "attempt": 1,
+        "fingerprint": "sha256:test",
+        "kind": "text_rephrase",
         "target_paths": ["product/memory-side/skills"],
         "allowed_actions": ["edit"],
         "instruction": "Tighten skill wording.",
-        "expected_effect": "Improve train score without validation regression.",
+        "expected_effect": {
+            "hypothesis": "Improve train score without validation regression.",
+            "primary_metrics": ["avg_total_score"],
+            "guard_metrics": ["parse_error_rate", "timeout_rate"],
+        },
+        "guardrails": {
+            "require_non_empty_diff": True,
+            "max_files_touched": 1,
+            "extra_frozen_paths": [],
+        },
     }
 
 
@@ -166,6 +179,29 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         result = self.worktree_manager.prepare_round(self.contract.run_id)
         round_number = int(result["round"]["round"])
         self.round_manager.stage_mutation(self.contract.run_id, round_number, mutation_payload)
+        # Stage a worker contract envelope, as run-round now requires it.
+        round_payload = read_json(self.worktree_manager.round_path(self.contract.run_id, round_number))
+        worktree_payload = read_json(self.worktree_manager.worktree_path_record(self.contract.run_id, round_number))
+        mutation_path = self.round_manager.mutation_path(self.contract.run_id, round_number)
+        mutation_sha256 = str(round_payload.get("mutation_sha256"))
+        worker_payload = build_worker_contract_payload(
+            contract=self.contract,
+            contract_path=self.run_dir / "contract.json",
+            mutation_path=mutation_path,
+            mutation_payload=mutation_payload,
+            mutation_sha256=mutation_sha256,
+            round_payload=round_payload,
+            worktree_payload=worktree_payload,
+            agent_report_path=self.round_manager.agent_report_path(self.contract.run_id, round_number),
+            baseline_scoreboard=read_json(self.run_dir / "scoreboard.json"),
+        )
+        worker_path = self.round_manager.worker_contract_path(self.contract.run_id, round_number)
+        write_worker_contract(worker_path, worker_payload)
+        round_payload["worker_contract_sha256"] = compute_worker_contract_sha256(worker_path)
+        (self.worktree_manager.round_path(self.contract.run_id, round_number)).write_text(
+            json.dumps(round_payload, ensure_ascii=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
         agent_report = self.round_manager.agent_report_path(self.contract.run_id, round_number)
         agent_report.write_text("# Agent Report\n\nApplied mutation.\n", encoding="utf-8")
         candidate_worktree = Path(str(result["worktree"]["path"]))
@@ -211,6 +247,29 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         self.round_manager.ensure_prepare_allowed(self.contract, mutation_payload)
         self.worktree_manager.prepare_round(self.contract.run_id)
         self.round_manager.stage_mutation(self.contract.run_id, 1, mutation_payload)
+        # Stage worker contract but intentionally omit agent-report.md to exercise that failure path.
+        round_payload = read_json(self.worktree_manager.round_path(self.contract.run_id, 1))
+        worktree_payload = read_json(self.worktree_manager.worktree_path_record(self.contract.run_id, 1))
+        mutation_path = self.round_manager.mutation_path(self.contract.run_id, 1)
+        mutation_sha256 = str(round_payload.get("mutation_sha256"))
+        worker_payload = build_worker_contract_payload(
+            contract=self.contract,
+            contract_path=self.run_dir / "contract.json",
+            mutation_path=mutation_path,
+            mutation_payload=mutation_payload,
+            mutation_sha256=mutation_sha256,
+            round_payload=round_payload,
+            worktree_payload=worktree_payload,
+            agent_report_path=self.round_manager.agent_report_path(self.contract.run_id, 1),
+            baseline_scoreboard=read_json(self.run_dir / "scoreboard.json"),
+        )
+        worker_path = self.round_manager.worker_contract_path(self.contract.run_id, 1)
+        write_worker_contract(worker_path, worker_payload)
+        round_payload["worker_contract_sha256"] = compute_worker_contract_sha256(worker_path)
+        (self.worktree_manager.round_path(self.contract.run_id, 1)).write_text(
+            json.dumps(round_payload, ensure_ascii=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
         with self.assertRaisesRegex(FileNotFoundError, "Missing agent report"):
             self.round_manager.run_round(self.contract)
 
@@ -249,7 +308,30 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         )
         (candidate_worktree / "README.md").write_text("tampered\n", encoding="utf-8")
 
-        with self.assertRaisesRegex(ValueError, "Mutation target_paths must stay within contract.mutable_paths"):
+        with self.assertRaisesRegex(RuntimeError, "mutation\\.json does not match hash"):
+            self.round_manager.run_round(self.contract)
+
+    def test_run_round_requires_worker_contract(self) -> None:
+        candidate_worktree, _ = self._prepare_active_round()
+        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+            "candidate change\n",
+            encoding="utf-8",
+        )
+        (self.round_manager.worker_contract_path(self.contract.run_id, 1)).unlink()
+        with self.assertRaisesRegex(FileNotFoundError, "Missing worker contract"):
+            self.round_manager.run_round(self.contract)
+
+    def test_run_round_rejects_tampered_worker_contract(self) -> None:
+        candidate_worktree, _ = self._prepare_active_round()
+        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+            "candidate change\n",
+            encoding="utf-8",
+        )
+        worker_path = self.round_manager.worker_contract_path(self.contract.run_id, 1)
+        payload = json.loads(worker_path.read_text(encoding="utf-8"))
+        payload["instruction"] = "tampered"
+        worker_path.write_text(json.dumps(payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(RuntimeError, "worker-contract\\.json does not match hash"):
             self.round_manager.run_round(self.contract)
 
     def test_decide_round_keeps_candidate_and_updates_history(self) -> None:
