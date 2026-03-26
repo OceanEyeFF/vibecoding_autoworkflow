@@ -1,0 +1,8 @@
+version: 1
+defaults:
+  backend: claude
+  judge_backend: claude
+  with_eval: true
+runs:
+  - repo: typer
+    task: all

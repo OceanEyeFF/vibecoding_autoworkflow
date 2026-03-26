@@ -1,0 +1,8 @@
+version: 1
+defaults:
+  backend: claude
+  judge_backend: codex
+  with_eval: true
+runs:
+  - repo: fmt
+    task: all

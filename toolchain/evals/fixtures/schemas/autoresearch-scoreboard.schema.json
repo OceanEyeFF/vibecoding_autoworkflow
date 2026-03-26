@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Autoresearch Scoreboard",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "run_id",
+    "generated_at",
+    "baseline_sha",
+    "rounds_completed",
+    "best_round",
+    "lanes",
+    "repo_tasks"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "baseline_sha": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rounds_completed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "best_round": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "lanes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lane_name",
+          "suite_file",
+          "backend",
+          "judge_backend",
+          "repos_total",
+          "tasks_total",
+          "pass_rate",
+          "timeout_rate",
+          "parse_error_rate",
+          "avg_total_score"
+        ],
+        "properties": {
+          "lane_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "suite_file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "backend": {
+            "type": "string",
+            "minLength": 1
+          },
+          "judge_backend": {
+            "type": "string",
+            "minLength": 1
+          },
+          "repos_total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tasks_total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pass_rate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "timeout_rate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "parse_error_rate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "avg_total_score": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "repo_tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lane_name",
+          "repo",
+          "task",
+          "phase",
+          "total_score",
+          "overall",
+          "dimension_feedback"
+        ],
+        "properties": {
+          "lane_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "repo": {
+            "type": "string",
+            "minLength": 1
+          },
+          "task": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "eval"
+            ]
+          },
+          "total_score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "overall": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dimension_feedback": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+}

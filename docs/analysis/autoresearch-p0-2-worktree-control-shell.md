@@ -239,6 +239,141 @@ P0.2 完成后，P0.3 才能安全引入：
 - Codex / subagent 进入 candidate worktree 改文件
 - 基于 score 的 keep / discard
 
+## 十四、当前代码落地情况
+
+下面内容描述的是当前仓库已经落地的 P0.2 实现，不再是建议形态。
+
+### 1. 当前 CLI 入口
+
+P0.2 当前实际由 `toolchain/scripts/research/run_autoresearch.py` 暴露下面几个入口：
+
+- `init --contract <contract.json>`
+- `prepare-round --contract <contract.json> --mutation <mutation.json>`
+- `promote-round --contract <contract.json>`
+- `discard-round --contract <contract.json>`
+- `cleanup-round --contract <contract.json>`
+
+说明：
+
+- `prepare-round` 在当前主入口上已经带有 `--mutation` 参数，这是因为主脚本现在同时承载 P0.3 入口
+- 但 P0.2 自身负责的仍然只是 worktree 生命周期，不负责 mutation 执行、round 评测或 keep / discard 打分
+- `run-round` 与 `decide-round` 属于后续层的入口，不应当反向写成 P0.2 已覆盖的职责
+
+### 2. 当前命名与路径
+
+当前代码已经固定为：
+
+- champion branch：`champion/<run-id>`
+- candidate branch：`candidate/<run-id>/rNNN`
+- round 目录：`.autoworkflow/autoresearch/<run-id>/rounds/round-NNN/`
+- candidate worktree 目录：`.autoworkflow/autoresearch/<run-id>/worktrees/round-NNN/`
+
+当前运行期状态文件为：
+
+- `.autoworkflow/autoresearch/<run-id>/runtime.json`
+- `.autoworkflow/autoresearch/<run-id>/rounds/round-NNN/round.json`
+- `.autoworkflow/autoresearch/<run-id>/rounds/round-NNN/worktree.json`
+
+其中当前代码实际会维护的关键字段包括：
+
+- `runtime.json`：`run_id`、`champion_branch`、`champion_sha`、`active_round`、`active_candidate_branch`、`active_candidate_worktree`
+- `round.json`：`round`、`state`、`base_sha`、`candidate_branch`、`candidate_worktree`、`candidate_sha`、`decision`
+- `worktree.json`：`path`、`branch`、`base_sha`、`candidate_sha`、`created_at`、`cleaned_at`
+
+## 十五、当前语义已经固定的动作
+
+### 1. prepare-round
+
+当前代码语义是：
+
+1. 读取或初始化 `runtime.json`
+2. 确保 `champion/<run-id>` 存在，并把它的 HEAD 作为 `base_sha`
+3. 若已有 `active_round`，直接拒绝创建第二个 candidate
+4. 先写 `round.json` 和 `worktree.json` 的恢复骨架
+5. 再执行 `git worktree add -b candidate/<run-id>/rNNN ...`
+6. worktree 创建成功后回填 `candidate_sha`，并把 round 状态推进到 `candidate_active`
+
+这里的关键实现约束是：
+
+- 不切换用户当前工作树
+- candidate 一轮只允许一个
+- 失败恢复依赖状态文件，而不是重新猜测 git 现场
+
+### 2. promote-round
+
+当前代码不是做通用 merge，而是：
+
+- 只接受 fast-forward 语义
+- 先检查 `champion/<run-id>` 是否是 candidate 的祖先
+- 通过后用 `update-ref` 把 champion 前进到 candidate commit
+- 然后统一走清理逻辑，删除 candidate branch 和 worktree
+
+如果 candidate 已经与 champion 分叉，当前实现会直接报错，不会擅自做 merge。
+
+### 3. discard-round
+
+当前代码语义是：
+
+- 将 round 标记为 `discard`
+- 不执行 `git revert`
+- 直接删除 candidate worktree
+- 直接删除 candidate branch
+- 将 round 最终状态推进为 `cleaned`
+
+这与文档原始目标一致：失败候选只作为 runtime 记录保留，不进入长期 git 历史。
+
+### 4. cleanup-round
+
+`cleanup-round` 的定位是恢复与回收，而不是裁决：
+
+- 它只要求当前存在 `active_round`
+- 不要求 candidate 已评测或已裁决
+- 会按记录的路径和分支尝试移除 worktree / branch
+- 最后清空 `runtime.json` 里的 active 字段，并把 round 标记为 `cleaned`
+
+## 十六、恢复入口与中断语义
+
+当前代码已经把下面原则落地：
+
+- `runtime.json` 是恢复入口
+- `round.json` 与 `worktree.json` 是 round 级补充状态
+- 脚本不会通过扫描 git 现场来推断上次做到哪里
+
+这层目前最重要的恢复语义是：
+
+- `prepare-round` 在 `git worktree add` 之前就会先写入 `round.json` 与 `worktree.json`
+- 如果进程在 `git worktree add` 阶段失败，中断后仍然能从 `runtime.json + round.json + worktree.json` 找回 active round
+- 如果 `worktree.json` 缺失，当前实现也会优先根据 `runtime.json` 和 `round.json` 重建一个最小可清理记录
+- 因此 `cleanup-round` / `discard-round` 可以回收“worktree 尚未真正创建成功”这一类半完成状态
+
+换句话说，当前恢复路径的真相层是 `.autoworkflow/autoresearch/<run-id>/`，而不是 git worktree 列表本身。
+
+## 十七、当前已验证范围
+
+当前仓库里的白盒测试已经覆盖下面范围，而且测试均在临时 git repo 中执行，不污染当前仓库：
+
+- `prepare-round` 会创建 champion branch、candidate branch、candidate worktree 和状态文件
+- 存在 `active_round` 时会拒绝再开第二个 candidate
+- `promote-round` 能 fast-forward 推进 champion，并在完成后清理 candidate
+- 非 fast-forward candidate 会被拒绝 promote
+- `discard-round` 不产生 revert 噪音，且不会污染当前主工作树
+- `cleanup-round` 能回收脏 candidate worktree
+- `git worktree add` 中断后，仍可通过 `cleanup-round` 恢复并清理残留状态
+- CLI 层至少覆盖了 `init -> prepare-round -> discard-round` 的最小链路
+
+## 十八、当前未承诺事项
+
+当前 P0.2 文档不应反向承诺下面能力：
+
+- mutation 生成
+- candidate worktree 内的内容编辑
+- `run-round`
+- `decide-round`
+- 基于 score 的 keep / discard 规则
+- acceptance suite 每轮执行
+
+这些能力即使已经出现在同一个脚本入口里，也属于后续层，不应被解释为 P0.2 自身职责。
+
 相关文档：
 
 - [Autoresearch P0.1：合同与数据面](./autoresearch-p0-1-contract-and-data-plane.md)
