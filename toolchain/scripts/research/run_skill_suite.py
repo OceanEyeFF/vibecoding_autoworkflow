@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -106,6 +107,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Optional directory for saved prompts, final answers, raw outputs, metadata, and summary.",
     )
     parser.add_argument(
+        "--jobs",
+        type=int,
+        default=1,
+        help=(
+            "Number of spec pipelines to run concurrently. "
+            "Each pipeline still runs skill then eval sequentially. Defaults to 1."
+        ),
+    )
+    parser.add_argument(
         "--claude-bin",
         default="claude",
         help="Claude executable to invoke. Defaults to 'claude'.",
@@ -147,6 +157,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def validate_args(args: argparse.Namespace) -> None:
+    if args.jobs < 1:
+        raise ValueError("--jobs must be at least 1.")
+
     if args.suite:
         forbidden = []
         if args.backend is not None:
@@ -607,6 +620,106 @@ def result_is_success(result: RunResult) -> bool:
     return True
 
 
+def run_spec_pipeline(
+    spec: RunSpec,
+    spec_index: int,
+    *,
+    args: argparse.Namespace,
+    backend_registry: dict[str, Any],
+    run_dir: Path | None,
+) -> list[tuple[RunResult, dict[str, str] | None]]:
+    results: list[tuple[RunResult, dict[str, str] | None]] = []
+    prompt_text = read_prompt(spec.prompt_file)
+    skill_result = run_backend_prompt(
+        backend=backend_registry[spec.backend],
+        spec=spec,
+        phase="skill",
+        prompt_file=spec.prompt_file,
+        prompt_text=prompt_text,
+        model=args.model,
+        timeout=args.timeout,
+        schema_file=None,
+    )
+    skill_artifacts = save_result(run_dir, skill_result, spec_index * 2 - 1) if run_dir else None
+    results.append((skill_result, skill_artifacts))
+
+    if not spec.with_eval or spec.eval_prompt_file is None:
+        return results
+
+    judge_backend = backend_registry[spec.judge_backend]
+    schema_file = None
+    schema_cleanup = None
+    if judge_backend.supports_json_schema:
+        schema_file, schema_cleanup = prepare_eval_schema_file(spec, run_dir, spec_index * 2)
+    eval_prompt_text = build_eval_prompt(
+        eval_prompt_file=spec.eval_prompt_file,
+        skill_result=skill_result,
+        structured_output=judge_backend.supports_json_schema,
+    )
+    try:
+        eval_result = run_backend_prompt(
+            backend=judge_backend,
+            spec=spec,
+            phase="eval",
+            prompt_file=spec.eval_prompt_file,
+            prompt_text=eval_prompt_text,
+            model=args.eval_model or args.model,
+            timeout=args.eval_timeout or args.timeout,
+            schema_file=schema_file,
+        )
+    finally:
+        if schema_cleanup is not None:
+            schema_cleanup.unlink(missing_ok=True)
+    eval_artifacts = save_result(run_dir, eval_result, spec_index * 2) if run_dir else None
+    results.append((eval_result, eval_artifacts))
+    return results
+
+
+def execute_specs(
+    specs: list[RunSpec],
+    *,
+    args: argparse.Namespace,
+    backend_registry: dict[str, Any],
+    run_dir: Path | None,
+) -> list[tuple[RunResult, dict[str, str] | None]]:
+    if not specs:
+        return []
+
+    max_workers = min(args.jobs, len(specs))
+    if max_workers == 1:
+        ordered_results: list[tuple[RunResult, dict[str, str] | None]] = []
+        for spec_index, spec in enumerate(specs, start=1):
+            ordered_results.extend(
+                run_spec_pipeline(
+                    spec,
+                    spec_index,
+                    args=args,
+                    backend_registry=backend_registry,
+                    run_dir=run_dir,
+                )
+            )
+        return ordered_results
+
+    futures: list[Future[list[tuple[RunResult, dict[str, str] | None]]]] = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for spec_index, spec in enumerate(specs, start=1):
+            futures.append(
+                executor.submit(
+                    run_spec_pipeline,
+                    spec,
+                    spec_index,
+                    args=args,
+                    backend_registry=backend_registry,
+                    run_dir=run_dir,
+                )
+            )
+
+        ordered_results = []
+        for future in futures:
+            ordered_results.extend(future.result())
+        return ordered_results
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
@@ -622,54 +735,15 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     run_dir = ensure_run_dir(args.save_dir, run_label)
-    results: list[tuple[RunResult, dict[str, str] | None]] = []
+    results = execute_specs(
+        specs,
+        args=args,
+        backend_registry=backend_registry,
+        run_dir=run_dir,
+    )
 
-    for index, spec in enumerate(specs, start=1):
-        prompt_text = read_prompt(spec.prompt_file)
-        skill_result = run_backend_prompt(
-            backend=backend_registry[spec.backend],
-            spec=spec,
-            phase="skill",
-            prompt_file=spec.prompt_file,
-            prompt_text=prompt_text,
-            model=args.model,
-            timeout=args.timeout,
-            schema_file=None,
-        )
-        print_result(skill_result)
-        skill_artifacts = save_result(run_dir, skill_result, index * 2 - 1) if run_dir else None
-        results.append((skill_result, skill_artifacts))
-
-        if not spec.with_eval or spec.eval_prompt_file is None:
-            continue
-
-        judge_backend = backend_registry[spec.judge_backend]
-        schema_file = None
-        schema_cleanup = None
-        if judge_backend.supports_json_schema:
-            schema_file, schema_cleanup = prepare_eval_schema_file(spec, run_dir, index * 2)
-        eval_prompt_text = build_eval_prompt(
-            eval_prompt_file=spec.eval_prompt_file,
-            skill_result=skill_result,
-            structured_output=judge_backend.supports_json_schema,
-        )
-        try:
-            eval_result = run_backend_prompt(
-                backend=judge_backend,
-                spec=spec,
-                phase="eval",
-                prompt_file=spec.eval_prompt_file,
-                prompt_text=eval_prompt_text,
-                model=args.eval_model or args.model,
-                timeout=args.eval_timeout or args.timeout,
-                schema_file=schema_file,
-            )
-        finally:
-            if schema_cleanup is not None:
-                schema_cleanup.unlink(missing_ok=True)
-        print_result(eval_result)
-        eval_artifacts = save_result(run_dir, eval_result, index * 2) if run_dir else None
-        results.append((eval_result, eval_artifacts))
+    for result, _ in results:
+        print_result(result)
 
     if run_dir is not None:
         save_summary(run_dir, suite_path, results)

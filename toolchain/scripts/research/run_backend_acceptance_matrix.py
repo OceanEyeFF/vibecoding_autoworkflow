@@ -55,6 +55,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Optional directory for saved prompts, outputs, metadata, and summary.",
     )
     parser.add_argument(
+        "--jobs",
+        type=int,
+        default=1,
+        help=(
+            "Number of spec pipelines to run concurrently after the temporary suite is generated. "
+            "Defaults to 1."
+        ),
+    )
+    parser.add_argument(
         "--claude-bin",
         default="claude",
         help="Claude executable to invoke. Defaults to 'claude'.",
@@ -125,6 +134,8 @@ def build_forward_args(args: argparse.Namespace, suite_path: Path) -> list[str]:
         str(suite_path),
         "--timeout",
         str(args.timeout),
+        "--jobs",
+        str(args.jobs),
         "--claude-bin",
         args.claude_bin,
         "--permission-mode",

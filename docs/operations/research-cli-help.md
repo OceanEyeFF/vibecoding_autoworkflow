@@ -114,6 +114,20 @@ python3 toolchain/scripts/research/run_backend_acceptance_matrix.py \
 - 因此会覆盖四个 skills
 - 这是 live acceptance，不是 cheap regression
 
+### 6. 并发执行
+
+`run_skill_suite.py` 支持：
+
+- `--jobs <N>`
+
+含义：
+
+- 按 spec pipeline 并发执行
+- 每个 pipeline 内仍保持 `skill -> eval` 串行
+- 默认 `1`
+
+对 `--repo typer --task all` 这类单仓全量运行，`--jobs 4` 可以把四个 skills 并行跑掉。
+
 ## 三、统一主入口的参数语义
 
 ### 1. 作用域
@@ -174,6 +188,16 @@ python3 toolchain/scripts/research/run_backend_acceptance_matrix.py \
 - `--eval-timeout`：每个 eval task 的超时，默认继承 `--timeout`
 
 ### 6. backend-specific 运行参数
+
+另有一个 runner-level 参数：
+
+- `--jobs`
+
+说明：
+
+- `--jobs` 控制并发的 spec pipeline 数量
+- 结果打印顺序、artifact 编号、`run-summary.json` 顺序仍按输入 spec 顺序保持稳定
+- 如果希望最保守地观察真实 backend 行为，可以继续使用 `--jobs 1`
 
 当前统一 CLI 还暴露这些 backend-specific 参数：
 

@@ -40,6 +40,7 @@ class BackendAcceptanceMatrixTest(unittest.TestCase):
 
         forwarded = build_forward_args(args, Path("/tmp/matrix.json"))
 
+        self.assertEqual(forwarded[forwarded.index("--jobs") + 1], "1")
         self.assertNotIn("--model", forwarded)
         self.assertNotIn("--eval-model", forwarded)
         self.assertNotIn("--eval-timeout", forwarded)
@@ -58,6 +59,8 @@ class BackendAcceptanceMatrixTest(unittest.TestCase):
                 "gpt-5.4-mini",
                 "--timeout",
                 "450",
+                "--jobs",
+                "2",
                 "--eval-timeout",
                 "120",
                 "--save-dir",
@@ -84,6 +87,7 @@ class BackendAcceptanceMatrixTest(unittest.TestCase):
         self.assertIn("--save-dir", forwarded)
         self.assertIn("--no-full-auto", forwarded)
         self.assertNotIn("--full-auto", forwarded)
+        self.assertEqual(forwarded[forwarded.index("--jobs") + 1], "2")
         self.assertEqual(forwarded[forwarded.index("--timeout") + 1], "450")
         self.assertEqual(forwarded[forwarded.index("--eval-timeout") + 1], "120")
 
