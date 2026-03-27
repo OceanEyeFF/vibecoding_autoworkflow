@@ -730,7 +730,7 @@ class RunAutoresearchTest(unittest.TestCase):
             )
             self.assertEqual(round_mutation["mutation_key"], "text_rephrase:demo:first")
 
-    def test_prepare_round_auto_select_skips_pending_duplicate_fingerprint(self) -> None:
+    def test_prepare_round_auto_select_skips_pending_duplicate_fingerprint_with_runtime_lookup_only(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_git_repo(root)
@@ -822,22 +822,10 @@ class RunAutoresearchTest(unittest.TestCase):
                     encoding="utf-8",
                 )
 
-                original_load_runtime = run_autoresearch.WorktreeManager.load_runtime
-                load_runtime_calls = 0
-
-                def fake_load_runtime(manager: object, run_id: str) -> dict[str, object]:
-                    nonlocal load_runtime_calls
-                    load_runtime_calls += 1
-                    runtime_payload = original_load_runtime(manager, run_id)
-                    if load_runtime_calls == 1:
-                        runtime_payload = dict(runtime_payload)
-                        runtime_payload["active_round"] = 9
-                    return runtime_payload
-
                 with mock.patch.object(
-                    run_autoresearch.WorktreeManager,
-                    "load_runtime",
-                    new=fake_load_runtime,
+                    run_autoresearch,
+                    "read_runtime_if_present",
+                    return_value={"active_round": 9},
                 ), mock.patch.object(run_autoresearch.WorktreeManager, "next_round_number", return_value=1):
                     prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
 
@@ -1014,6 +1002,103 @@ class RunAutoresearchTest(unittest.TestCase):
             self.assertEqual(prepare_code, 1)
             self.assertIn("No selectable mutation entries", stderr.getvalue())
 
+    def test_prepare_round_missing_registry_does_not_initialize_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+            run_dir = root / ".autoworkflow" / "demo-run"
+            run_dir.mkdir(parents=True, exist_ok=True)
+            scoreboard = {
+                "run_id": "demo-run",
+                "generated_at": "2026-03-26T00:00:00+00:00",
+                "baseline_sha": current_head_sha(root),
+                "rounds_completed": 0,
+                "best_round": 0,
+                "lanes": [],
+                "repo_tasks": [],
+            }
+            (run_dir / "scoreboard.json").write_text(json.dumps(scoreboard), encoding="utf-8")
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
+
+            self.assertEqual(prepare_code, 1)
+            self.assertFalse((run_dir / "runtime.json").exists())
+
+    def test_prepare_round_invalid_mutation_key_does_not_initialize_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+            run_dir = root / ".autoworkflow" / "demo-run"
+            run_dir.mkdir(parents=True, exist_ok=True)
+            scoreboard = {
+                "run_id": "demo-run",
+                "generated_at": "2026-03-26T00:00:00+00:00",
+                "baseline_sha": current_head_sha(root),
+                "rounds_completed": 0,
+                "best_round": 0,
+                "lanes": [],
+                "repo_tasks": [],
+            }
+            (run_dir / "scoreboard.json").write_text(json.dumps(scoreboard), encoding="utf-8")
+            registry_payload = {
+                "run_id": "demo-run",
+                "registry_version": 1,
+                "contract_fingerprint": compute_contract_fingerprint(load_contract(contract_path, repo_root=root)),
+                "entries": [
+                    {
+                        "mutation_key": "text_rephrase:demo:available",
+                        "kind": "text_rephrase",
+                        "status": "active",
+                        "target_paths": ["product/memory-side/skills"],
+                        "allowed_actions": ["edit"],
+                        "instruction_seed": "Available mutation.",
+                        "expected_effect": {
+                            "hypothesis": "Improve train score without validation regression.",
+                            "primary_metrics": ["avg_total_score"],
+                            "guard_metrics": ["parse_error_rate"],
+                        },
+                        "guardrails": {
+                            "require_non_empty_diff": True,
+                            "max_files_touched": 1,
+                            "extra_frozen_paths": [],
+                        },
+                        "origin": {"type": "manual_seed", "ref": "test"},
+                        "attempts": 0,
+                        "last_selected_round": None,
+                        "last_decision": None,
+                    }
+                ],
+            }
+            (run_dir / "mutation-registry.json").write_text(
+                json.dumps(registry_payload, ensure_ascii=True, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                prepare_code = run_autoresearch.main(
+                    ["prepare-round", "--contract", str(contract_path), "--mutation-key", "text_rephrase:demo:missing"]
+                )
+
+            self.assertEqual(prepare_code, 1)
+            self.assertFalse((run_dir / "runtime.json").exists())
+
     def test_prepare_round_mutation_key_overrides_auto_selection(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1117,7 +1202,7 @@ class RunAutoresearchTest(unittest.TestCase):
             )
             self.assertEqual(round_mutation["mutation_key"], "text_rephrase:demo:explicit")
 
-    def test_prepare_round_auto_select_skips_pending_duplicate_fingerprint(self) -> None:
+    def test_prepare_round_auto_select_skips_pending_duplicate_fingerprint_with_active_candidate_identity(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_git_repo(root)
@@ -1209,26 +1294,15 @@ class RunAutoresearchTest(unittest.TestCase):
                     encoding="utf-8",
                 )
 
-                real_load_runtime = run_autoresearch.WorktreeManager.load_runtime
-                load_runtime_calls = {"count": 0}
-
-                def fake_load_runtime(self: object, run_id: str) -> dict[str, object]:
-                    runtime = real_load_runtime(self, run_id)
-                    if load_runtime_calls["count"] == 0:
-                        runtime = dict(runtime)
-                        runtime["active_round"] = 9
-                        runtime["active_candidate_branch"] = "candidate/demo-run/r009"
-                        runtime["active_candidate_worktree"] = str(run_dir / "worktrees" / "round-009")
-                    load_runtime_calls["count"] += 1
-                    return runtime
-
-                def fake_next_round_number(self: object, run_id: str) -> int:
-                    del self, run_id
-                    return 1
-
-                with mock.patch.object(run_autoresearch.WorktreeManager, "load_runtime", new=fake_load_runtime), mock.patch.object(
-                    run_autoresearch.WorktreeManager, "next_round_number", new=fake_next_round_number
-                ):
+                with mock.patch.object(
+                    run_autoresearch,
+                    "read_runtime_if_present",
+                    return_value={
+                        "active_round": 9,
+                        "active_candidate_branch": "candidate/demo-run/r009",
+                        "active_candidate_worktree": str(run_dir / "worktrees" / "round-009"),
+                    },
+                ), mock.patch.object(run_autoresearch.WorktreeManager, "next_round_number", return_value=1):
                     prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
 
             self.assertEqual(init_code, 0)

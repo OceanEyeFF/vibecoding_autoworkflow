@@ -138,6 +138,44 @@ class SelectorTest(unittest.TestCase):
         self.assertEqual(selection.selection_reason, "skip_duplicate_fingerprint")
         self.assertEqual(selection.selection_index, 1)
 
+    def test_duplicate_fingerprint_does_not_override_lowest_attempt_reason(self) -> None:
+        contract = build_contract(max_attempts=3)
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            round_dir = run_dir / "rounds" / "round-001"
+            round_dir.mkdir(parents=True, exist_ok=True)
+            (round_dir / "mutation.json").write_text(
+                '{"fingerprint": "sha256:dup"}\n',
+                encoding="utf-8",
+            )
+            registry = build_registry(
+                [
+                    {
+                        "mutation_key": "dup",
+                        "status": "active",
+                        "attempts": 1,
+                        "fingerprint": "sha256:dup",
+                    },
+                    {
+                        "mutation_key": "fresh",
+                        "status": "active",
+                        "attempts": 0,
+                        "fingerprint": "sha256:fresh",
+                    },
+                ],
+                source_path=run_dir / "mutation-registry.json",
+            )
+
+            selection = select_next_mutation_entry(
+                registry,
+                contract=contract,
+                runtime={"active_round": 1},
+            )
+
+        self.assertEqual(selection.mutation_key, "fresh")
+        self.assertEqual(selection.selection_reason, "lowest_attempt_count")
+        self.assertEqual(selection.selection_index, 1)
+
     def test_raises_when_no_selectable_entries(self) -> None:
         contract = build_contract(max_attempts=1)
         registry = build_registry(
