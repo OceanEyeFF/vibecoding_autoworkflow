@@ -81,6 +81,26 @@ last_verified: 2026-03-27
 }
 ```
 
+其中 `run_id` 在手动单轮场景里应被视为 **base run_id**，不要长期复用同一个已经跑过的真实 run id。
+
+实际运行前，先用下面这个本地工具把 contract 刷成 fresh run id：
+
+```bash
+python3 toolchain/scripts/research/refresh_manual_run_contract.py \
+  --contract /abs/path/to/contract.json
+```
+
+当前工具会把 `run_id` 刷成：
+
+- `<base>-r<serial>-m<residue>`
+- `serial` 单调递增，负责 freshness
+- `residue` 按 `mod 100003` 生成，负责 lineage 辅助标记
+
+如果跳过这一步而直接复用旧 `run_id`，最常见的失败是：
+
+- 旧的 `history.tsv` / `mutation-registry.json` / `feedback-ledger.jsonl` 污染新一轮
+- `prepare-round` 直接因为 `max_rounds` 或 attempts 已耗尽而失败
+
 最小 `train.yaml` / `validation.yaml` 示例：
 
 ```yaml
@@ -110,6 +130,15 @@ runs:
 ```
 
 ## 四、推荐执行顺序
+
+先刷新 contract 的 fresh `run_id`：
+
+```bash
+python3 toolchain/scripts/research/refresh_manual_run_contract.py \
+  --contract /abs/path/to/contract.json
+```
+
+然后再执行：
 
 ```bash
 python3 toolchain/scripts/research/run_autoresearch.py \

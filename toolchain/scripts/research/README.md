@@ -8,6 +8,7 @@
 - `run_claude_skill_eval.py`：Claude 兼容壳，参数翻译后委托 `run_skill_suite.py`
 - `run_backend_acceptance_matrix.py`：live acceptance 入口，固定跑 `codex -> codex` 与 `claude -> codex` 两条矩阵
 - `run_autoresearch.py`：autoresearch P0.1/P0.2/P0.3/P1.1/P1.2/P1.3 入口，负责 baseline 数据面、worktree 控制壳、registry materialization、worker contract、feedback distillation 与 round 外环
+- `refresh_manual_run_contract.py`：给手动单轮 contract 刷新一个 fresh `run_id`；使用单调 `serial` 加 `mod 100003` residue，避免复用旧 run 状态
 - `autoresearch_contract.py`：P0.1 contract 读取、schema 校验、suite/path 边界校验
 - `autoresearch_scoreboard.py`：P0.1 baseline scoreboard 聚合与校验
 - `autoresearch_round.py`：P0.3 round 生命周期与 P1.2 的 mutation / worker-contract authority 校验、round scoreboard / decision 聚合
