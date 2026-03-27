@@ -273,7 +273,11 @@ def cmd_prepare_round(
     if mutation_key is not None:
         if registry is None:
             raise FileNotFoundError(f"Missing mutation registry: {registry_path}")
-        entry = find_registry_entry(registry, mutation_key)
+        try:
+            entry = find_registry_entry(registry, mutation_key)
+        except KeyError as exc:
+            message = str(exc.args[0]) if exc.args else "mutation_key not found in registry."
+            raise RuntimeError(message) from exc
     else:
         if mutation_path is None:
             if registry is None:
@@ -429,7 +433,7 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_discard_round(args.contract)
         if args.command == "cleanup-round":
             return cmd_cleanup_round(args.contract)
-    except (FileNotFoundError, KeyError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
+    except (FileNotFoundError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     raise RuntimeError(f"Unsupported command: {args.command}")
