@@ -10,25 +10,27 @@
     "mutation_id",
     "mutation_key",
     "attempt",
-    "fingerprint",
-    "kind",
-    "instruction",
-    "target_paths",
-    "allowed_actions",
-    "guardrails",
-    "expected_effect",
     "base_sha",
     "candidate_branch",
     "candidate_worktree",
     "agent_report_path",
-    "mutation_path",
-    "contract_path",
-    "mutation_sha256"
+    "target_paths",
+    "allowed_actions",
+    "guardrails",
+    "instruction",
+    "expected_effect",
+    "objective",
+    "target_surface",
+    "comparison_baseline",
+    "recent_feedback_excerpt",
+    "contract_fingerprint",
+    "mutation_fingerprint",
+    "materialized_at"
   ],
   "properties": {
     "worker_contract_version": {
       "type": "integer",
-      "minimum": 1
+      "const": 2
     },
     "run_id": {
       "type": "string",
@@ -50,15 +52,19 @@
       "type": "integer",
       "minimum": 1
     },
-    "fingerprint": {
+    "base_sha": {
       "type": "string",
       "minLength": 1
     },
-    "kind": {
+    "candidate_branch": {
       "type": "string",
       "minLength": 1
     },
-    "instruction": {
+    "candidate_worktree": {
+      "type": "string",
+      "minLength": 1
+    },
+    "agent_report_path": {
       "type": "string",
       "minLength": 1
     },
@@ -103,6 +109,10 @@
         }
       }
     },
+    "instruction": {
+      "type": "string",
+      "minLength": 1
+    },
     "expected_effect": {
       "type": "object",
       "additionalProperties": false,
@@ -133,50 +143,53 @@
         }
       }
     },
-    "base_sha": {
+    "objective": {
       "type": "string",
       "minLength": 1
     },
-    "candidate_branch": {
+    "target_surface": {
       "type": "string",
       "minLength": 1
     },
-    "candidate_worktree": {
-      "type": "string",
-      "minLength": 1
-    },
-    "agent_report_path": {
-      "type": "string",
-      "minLength": 1
-    },
-    "mutation_path": {
-      "type": "string",
-      "minLength": 1
-    },
-    "contract_path": {
-      "type": "string",
-      "minLength": 1
-    },
-    "mutation_sha256": {
-      "type": "string",
-      "minLength": 1
-    },
-    "baseline_summary": {
-      "type": "object"
-    },
-    "previous_feedback_excerpt": {
-      "oneOf": [
-        {
-          "type": "null"
+    "comparison_baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "train_score",
+        "validation_score"
+      ],
+      "properties": {
+        "train_score": {
+          "type": [
+            "number",
+            "null"
+          ]
         },
-        {
-          "type": "string"
+        "validation_score": {
+          "type": [
+            "number",
+            "null"
+          ]
         }
-      ]
+      }
     },
-    "authority_note": {
-      "type": "string"
+    "recent_feedback_excerpt": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "contract_fingerprint": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mutation_fingerprint": {
+      "type": "string",
+      "minLength": 1
+    },
+    "materialized_at": {
+      "type": "string",
+      "minLength": 1
     }
   }
 }
-

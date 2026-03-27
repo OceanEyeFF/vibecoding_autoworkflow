@@ -451,6 +451,13 @@ class AutoresearchRoundManager:
         mutation_path = self.mutation_path(contract.run_id, round_number)
         if not mutation_path.is_file():
             raise FileNotFoundError(f"Missing mutation file: {mutation_path}")
+        round_payload = read_json(self.worktree_manager.round_path(contract.run_id, round_number))
+        recorded_mutation_sha256 = str(round_payload.get("mutation_sha256") or "")
+        if not recorded_mutation_sha256:
+            raise RuntimeError("Missing mutation_sha256 in round.json for the active round.")
+        actual_mutation_sha256 = _sha256_file_prefixed(mutation_path)
+        if actual_mutation_sha256 != recorded_mutation_sha256:
+            raise RuntimeError("mutation.json does not match hash recorded in round.json.")
         actual_mutation = load_mutation_payload(mutation_path)
         if actual_mutation != frozen_mutation_payload:
             raise RuntimeError("mutation.json does not match frozen round authority snapshot.")
@@ -537,32 +544,30 @@ class AutoresearchRoundManager:
         self,
         contract: AutoresearchContract,
         *,
-        contract_path: Path,
         round_payload: dict[str, Any],
-        worktree_payload: dict[str, Any],
         mutation_payload: dict[str, Any],
         baseline_scoreboard: dict[str, Any] | None = None,
     ) -> Path:
         run_id = contract.run_id
         round_number = int(round_payload["round"])
-        mutation_path = self.mutation_path(run_id, round_number)
         round_path = self.worktree_manager.round_path(run_id, round_number)
         stored_round = read_json(round_path)
         mutation_sha256 = str(stored_round.get("mutation_sha256") or "")
         if not mutation_sha256:
             raise RuntimeError("Missing mutation_sha256 in round.json; stage mutation before worker contract.")
+        materialized_at = str(stored_round.get("worker_contract_materialized_at") or "").strip()
+        if not materialized_at:
+            materialized_at = now_iso()
+            stored_round["worker_contract_materialized_at"] = materialized_at
 
         worker_path = self.worker_contract_path(run_id, round_number)
         payload = build_worker_contract_payload(
             contract=contract,
-            contract_path=contract_path,
-            mutation_path=mutation_path,
             mutation_payload=mutation_payload,
-            mutation_sha256=mutation_sha256,
-            round_payload=round_payload,
-            worktree_payload=worktree_payload,
+            round_payload=stored_round,
             agent_report_path=self.agent_report_path(run_id, round_number),
             baseline_scoreboard=baseline_scoreboard,
+            materialized_at=materialized_at,
         )
         write_worker_contract(worker_path, payload)
         stored_round["worker_contract_sha256"] = compute_worker_contract_sha256(worker_path)
@@ -572,7 +577,6 @@ class AutoresearchRoundManager:
     def run_round(self, contract: AutoresearchContract) -> dict[str, Any]:
         active = self.worktree_manager.load_active_round(contract.run_id)
         round_payload = active["round"]
-        worktree_payload = active["worktree"]
         round_number = int(round_payload["round"])
         if str(round_payload.get("state")) != "candidate_active":
             raise RuntimeError("run-round requires the active round to be in candidate_active state.")
@@ -584,16 +588,19 @@ class AutoresearchRoundManager:
             raise FileNotFoundError(f"Missing worker contract: {worker_path}")
         worker_contract = load_worker_contract_payload(worker_path)
         baseline_scoreboard = read_json(self.baseline_scoreboard_path(contract.run_id))
+        recorded_worker_contract_sha256 = str(round_payload.get("worker_contract_sha256") or "")
+        if not recorded_worker_contract_sha256:
+            raise RuntimeError("Missing worker_contract_sha256 in round.json for the active round.")
+        actual_worker_contract_sha256 = compute_worker_contract_sha256(worker_path)
+        if actual_worker_contract_sha256 != recorded_worker_contract_sha256:
+            raise RuntimeError("worker-contract.json does not match hash recorded in round.json.")
         expected_worker_contract = build_worker_contract_payload(
             contract=contract,
-            contract_path=self.run_dir(contract.run_id) / "contract.json",
-            mutation_path=mutation_path,
             mutation_payload=mutation_payload,
-            mutation_sha256=_sha256_file_prefixed(mutation_path),
             round_payload=round_payload,
-            worktree_payload=worktree_payload,
             agent_report_path=self.agent_report_path(contract.run_id, round_number),
             baseline_scoreboard=baseline_scoreboard,
+            materialized_at=str(round_payload.get("worker_contract_materialized_at") or ""),
         )
         if worker_contract != expected_worker_contract:
             raise RuntimeError("worker-contract.json does not match authoritative round/mutation/worktree state.")
@@ -606,6 +613,7 @@ class AutoresearchRoundManager:
         agent_report = self.agent_report_path(contract.run_id, round_number)
         if not agent_report.is_file():
             raise FileNotFoundError(f"Missing agent report: {agent_report}")
+        worktree_payload = active["worktree"]
         candidate_worktree = Path(str(worktree_payload["path"]))
         self._validate_candidate_changes(
             contract,

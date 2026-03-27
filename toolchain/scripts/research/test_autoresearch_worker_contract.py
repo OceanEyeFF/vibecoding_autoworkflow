@@ -39,6 +39,27 @@ def build_contract_payload(*, suite_name: str = "lane.yaml") -> dict[str, object
     }
 
 
+def build_scoreboard() -> dict[str, object]:
+    return {
+        "run_id": "p1-1-demo",
+        "generated_at": "2026-03-27T00:00:00+00:00",
+        "baseline_sha": "base",
+        "rounds_completed": 0,
+        "best_round": 0,
+        "lanes": [
+            {
+                "lane_name": "train",
+                "avg_total_score": 9.0,
+            },
+            {
+                "lane_name": "validation",
+                "avg_total_score": 8.0,
+            },
+        ],
+        "repo_tasks": [],
+    }
+
+
 class AutoresearchWorkerContractTest(unittest.TestCase):
     def test_build_and_validate_worker_contract(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -76,31 +97,71 @@ class AutoresearchWorkerContractTest(unittest.TestCase):
             mutation_path.write_text(json.dumps(mutation_payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
             worker_payload = build_worker_contract_payload(
                 contract=contract,
-                contract_path=contract_path,
-                mutation_path=mutation_path,
                 mutation_payload=mutation_payload,
-                mutation_sha256="sha256:mut",
                 round_payload=round_payload,
-                worktree_payload=worktree_payload,
                 agent_report_path=root / "agent-report.md",
-                baseline_scoreboard=None,
+                baseline_scoreboard=build_scoreboard(),
+                materialized_at="2026-03-27T00:00:00+00:00",
             )
             worker_path = root / "worker-contract.json"
             write_worker_contract(worker_path, worker_payload)
             loaded = load_worker_contract_payload(worker_path)
             self.assertEqual(loaded["run_id"], contract.run_id)
             self.assertEqual(loaded["mutation_key"], "k")
+            self.assertEqual(loaded["objective"], "Worker contract")
+            self.assertEqual(loaded["target_surface"], "memory-side")
+            self.assertEqual(loaded["comparison_baseline"]["train_score"], 9.0)
+            self.assertEqual(loaded["mutation_fingerprint"], "sha256:fp")
             self.assertTrue(compute_worker_contract_sha256(worker_path).startswith("sha256:"))
+
+    def test_write_worker_contract_rejects_legacy_extra_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "lane.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(build_contract_payload()), encoding="utf-8")
+            contract = load_contract(contract_path, repo_root=root)
+            worker_payload = build_worker_contract_payload(
+                contract=contract,
+                mutation_payload={
+                    "round": 1,
+                    "mutation_id": "k#a001",
+                    "mutation_key": "k",
+                    "attempt": 1,
+                    "fingerprint": "sha256:fp",
+                    "target_paths": ["product/memory-side/skills"],
+                    "allowed_actions": ["edit"],
+                    "instruction": "Do the thing.",
+                    "expected_effect": {
+                        "hypothesis": "Improve.",
+                        "primary_metrics": ["avg_total_score"],
+                        "guard_metrics": ["parse_error_rate"],
+                    },
+                    "guardrails": {"require_non_empty_diff": True, "max_files_touched": 1, "extra_frozen_paths": []},
+                },
+                round_payload={
+                    "round": 1,
+                    "base_sha": "base",
+                    "candidate_branch": "candidate/x/r001",
+                    "candidate_worktree": str(root / "wt"),
+                },
+                agent_report_path=root / "agent-report.md",
+                baseline_scoreboard=build_scoreboard(),
+                materialized_at="2026-03-27T00:00:00+00:00",
+            )
+            worker_payload["mutation_path"] = "/tmp/legacy.json"
+
+            with self.assertRaisesRegex(Exception, "Additional properties are not allowed"):
+                write_worker_contract(root / "worker-contract.json", worker_payload)
 
     def test_validate_worker_contract_consistency_detects_drift(self) -> None:
         worker_contract = {
             "round": 1,
             "mutation_key": "k",
-            "fingerprint": "sha256:fp",
+            "mutation_fingerprint": "sha256:fp",
             "candidate_worktree": "/tmp/wt",
             "candidate_branch": "b",
             "base_sha": "s",
-            "mutation_sha256": "sha256:mut",
         }
         round_payload = {"round": 1, "candidate_worktree": "/tmp/wt", "candidate_branch": "b", "base_sha": "s"}
         mutation_payload = {"mutation_key": "k", "fingerprint": "sha256:fp"}
@@ -110,7 +171,6 @@ class AutoresearchWorkerContractTest(unittest.TestCase):
             round_payload=round_payload,
             mutation_payload=mutation_payload,
             worktree_payload=worktree_payload,
-            mutation_sha256="sha256:mut",
         )
         with self.assertRaisesRegex(RuntimeError, "field mismatch"):
             validate_worker_contract_consistency(
@@ -118,10 +178,8 @@ class AutoresearchWorkerContractTest(unittest.TestCase):
                 round_payload=round_payload,
                 mutation_payload=mutation_payload,
                 worktree_payload=worktree_payload,
-                mutation_sha256="sha256:mut",
             )
 
 
 if __name__ == "__main__":
     unittest.main()
-

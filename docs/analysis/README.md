@@ -11,11 +11,15 @@
   - [autoresearch-p0-1-contract-and-data-plane.md](./autoresearch-p0-1-contract-and-data-plane.md)
   - [autoresearch-p0-2-worktree-control-shell.md](./autoresearch-p0-2-worktree-control-shell.md)
   - [autoresearch-p0-3-baseline-loop-and-round-execution.md](./autoresearch-p0-3-baseline-loop-and-round-execution.md)
+  - [autoresearch-p1-1-mutation-registry.md](./autoresearch-p1-1-mutation-registry.md)
+  - [autoresearch-p1-2-worker-contract-and-minimal-selector.md](./autoresearch-p1-2-worker-contract-and-minimal-selector.md)
+  - [autoresearch-p1-3-feedback-distillation-and-adaptive-scheduler.md](./autoresearch-p1-3-feedback-distillation-and-adaptive-scheduler.md)
 
 说明：
 
 - `research-eval-*` 固定的是当前 research runner 与 eval contract 的边界
 - `autoresearch-p0-*` 固定的是 `autoresearch` 轨道在 P0 阶段的局部合同，不自动覆盖 `docs/knowledge/`、`docs/operations/` 或实现入口
+- `autoresearch-p1-*` 固定的是 `mutation registry -> worker contract -> selector -> feedback distillation` 的阶段边界；已落地实现仍应继续回写到 `toolchain/` 入口说明
 
 ## 准入与升格规则
 

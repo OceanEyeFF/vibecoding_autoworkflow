@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import run_autoresearch
 from autoresearch_contract import load_contract
-from autoresearch_mutation_registry import compute_contract_fingerprint
+from autoresearch_mutation_registry import compute_contract_fingerprint, load_mutation_registry
 
 
 def build_contract_payload(train_suite: str, validation_suite: str, acceptance_suite: str) -> dict[str, object]:
@@ -730,6 +730,126 @@ class RunAutoresearchTest(unittest.TestCase):
             )
             self.assertEqual(round_mutation["mutation_key"], "text_rephrase:demo:first")
 
+    def test_prepare_round_auto_select_skips_pending_duplicate_fingerprint(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+            scoreboard = {
+                "run_id": "demo-run",
+                "generated_at": "2026-03-26T00:00:00+00:00",
+                "baseline_sha": current_head_sha(root),
+                "rounds_completed": 0,
+                "best_round": 0,
+                "lanes": [],
+                "repo_tasks": [],
+            }
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                init_code = run_autoresearch.main(["init", "--contract", str(contract_path)])
+                run_dir = root / ".autoworkflow" / "demo-run"
+                (run_dir / "scoreboard.json").write_text(json.dumps(scoreboard), encoding="utf-8")
+
+                contract_obj = load_contract(contract_path, repo_root=root)
+                registry_payload = {
+                    "run_id": contract_obj.run_id,
+                    "registry_version": 1,
+                    "contract_fingerprint": compute_contract_fingerprint(contract_obj),
+                    "entries": [
+                        {
+                            "mutation_key": "text_rephrase:demo:first",
+                            "kind": "text_rephrase",
+                            "status": "active",
+                            "target_paths": ["product/memory-side/skills"],
+                            "allowed_actions": ["edit"],
+                            "instruction_seed": "First mutation.",
+                            "expected_effect": {
+                                "hypothesis": "Improve train score without validation regression.",
+                                "primary_metrics": ["avg_total_score"],
+                                "guard_metrics": ["parse_error_rate"],
+                            },
+                            "guardrails": {
+                                "require_non_empty_diff": True,
+                                "max_files_touched": 1,
+                                "extra_frozen_paths": [],
+                            },
+                            "origin": {"type": "manual_seed", "ref": "test"},
+                            "attempts": 0,
+                            "last_selected_round": None,
+                            "last_decision": None,
+                        },
+                        {
+                            "mutation_key": "text_rephrase:demo:second",
+                            "kind": "text_rephrase",
+                            "status": "active",
+                            "target_paths": ["product/memory-side/skills"],
+                            "allowed_actions": ["edit"],
+                            "instruction_seed": "Second mutation.",
+                            "expected_effect": {
+                                "hypothesis": "Improve train score without validation regression.",
+                                "primary_metrics": ["avg_total_score"],
+                                "guard_metrics": ["parse_error_rate"],
+                            },
+                            "guardrails": {
+                                "require_non_empty_diff": True,
+                                "max_files_touched": 1,
+                                "extra_frozen_paths": [],
+                            },
+                            "origin": {"type": "manual_seed", "ref": "test"},
+                            "attempts": 0,
+                            "last_selected_round": None,
+                            "last_decision": None,
+                        },
+                    ],
+                }
+                registry_path = run_dir / "mutation-registry.json"
+                registry_path.write_text(
+                    json.dumps(registry_payload, ensure_ascii=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                registry = load_mutation_registry(registry_path, contract=contract_obj, repo_root=root)
+                pending_round_dir = run_dir / "rounds" / "round-009"
+                pending_round_dir.mkdir(parents=True, exist_ok=True)
+                (pending_round_dir / "mutation.json").write_text(
+                    json.dumps({"fingerprint": registry.entries[0]["fingerprint"]}, ensure_ascii=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+
+                original_load_runtime = run_autoresearch.WorktreeManager.load_runtime
+                load_runtime_calls = 0
+
+                def fake_load_runtime(manager: object, run_id: str) -> dict[str, object]:
+                    nonlocal load_runtime_calls
+                    load_runtime_calls += 1
+                    runtime_payload = original_load_runtime(manager, run_id)
+                    if load_runtime_calls == 1:
+                        runtime_payload = dict(runtime_payload)
+                        runtime_payload["active_round"] = 9
+                    return runtime_payload
+
+                with mock.patch.object(
+                    run_autoresearch.WorktreeManager,
+                    "load_runtime",
+                    new=fake_load_runtime,
+                ), mock.patch.object(run_autoresearch.WorktreeManager, "next_round_number", return_value=1):
+                    prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
+
+            self.assertEqual(init_code, 0)
+            self.assertEqual(prepare_code, 0)
+            round_mutation = json.loads(
+                (root / ".autoworkflow" / "demo-run" / "rounds" / "round-001" / "mutation.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(round_mutation["mutation_key"], "text_rephrase:demo:second")
+
     def test_prepare_round_auto_select_skips_disabled_first_entry(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -996,6 +1116,129 @@ class RunAutoresearchTest(unittest.TestCase):
                 )
             )
             self.assertEqual(round_mutation["mutation_key"], "text_rephrase:demo:explicit")
+
+    def test_prepare_round_auto_select_skips_pending_duplicate_fingerprint(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+            scoreboard = {
+                "run_id": "demo-run",
+                "generated_at": "2026-03-26T00:00:00+00:00",
+                "baseline_sha": current_head_sha(root),
+                "rounds_completed": 0,
+                "best_round": 0,
+                "lanes": [],
+                "repo_tasks": [],
+            }
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                init_code = run_autoresearch.main(["init", "--contract", str(contract_path)])
+                run_dir = root / ".autoworkflow" / "demo-run"
+                (run_dir / "scoreboard.json").write_text(json.dumps(scoreboard), encoding="utf-8")
+
+                contract_obj = load_contract(contract_path, repo_root=root)
+                registry_payload = {
+                    "run_id": contract_obj.run_id,
+                    "registry_version": 1,
+                    "contract_fingerprint": compute_contract_fingerprint(contract_obj),
+                    "entries": [
+                        {
+                            "mutation_key": "text_rephrase:demo:duplicate",
+                            "kind": "text_rephrase",
+                            "status": "active",
+                            "target_paths": ["product/memory-side/skills"],
+                            "allowed_actions": ["edit"],
+                            "instruction_seed": "Duplicate mutation.",
+                            "expected_effect": {
+                                "hypothesis": "Improve train score without validation regression.",
+                                "primary_metrics": ["avg_total_score"],
+                                "guard_metrics": ["parse_error_rate"],
+                            },
+                            "guardrails": {
+                                "require_non_empty_diff": True,
+                                "max_files_touched": 1,
+                                "extra_frozen_paths": [],
+                            },
+                            "origin": {"type": "manual_seed", "ref": "test"},
+                            "attempts": 0,
+                            "last_selected_round": None,
+                            "last_decision": None,
+                        },
+                        {
+                            "mutation_key": "text_rephrase:demo:fresh",
+                            "kind": "text_rephrase",
+                            "status": "active",
+                            "target_paths": ["product/memory-side/skills"],
+                            "allowed_actions": ["edit"],
+                            "instruction_seed": "Fresh mutation.",
+                            "expected_effect": {
+                                "hypothesis": "Improve train score without validation regression.",
+                                "primary_metrics": ["avg_total_score"],
+                                "guard_metrics": ["parse_error_rate"],
+                            },
+                            "guardrails": {
+                                "require_non_empty_diff": True,
+                                "max_files_touched": 1,
+                                "extra_frozen_paths": [],
+                            },
+                            "origin": {"type": "manual_seed", "ref": "test"},
+                            "attempts": 0,
+                            "last_selected_round": None,
+                            "last_decision": None,
+                        },
+                    ],
+                }
+                registry_path = run_dir / "mutation-registry.json"
+                registry_path.write_text(
+                    json.dumps(registry_payload, ensure_ascii=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                registry = load_mutation_registry(registry_path, contract=contract_obj, repo_root=root)
+                pending_round_dir = run_dir / "rounds" / "round-009"
+                pending_round_dir.mkdir(parents=True, exist_ok=True)
+                (pending_round_dir / "mutation.json").write_text(
+                    json.dumps({"fingerprint": registry.entries[0]["fingerprint"]}, ensure_ascii=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                real_load_runtime = run_autoresearch.WorktreeManager.load_runtime
+                load_runtime_calls = {"count": 0}
+
+                def fake_load_runtime(self: object, run_id: str) -> dict[str, object]:
+                    runtime = real_load_runtime(self, run_id)
+                    if load_runtime_calls["count"] == 0:
+                        runtime = dict(runtime)
+                        runtime["active_round"] = 9
+                        runtime["active_candidate_branch"] = "candidate/demo-run/r009"
+                        runtime["active_candidate_worktree"] = str(run_dir / "worktrees" / "round-009")
+                    load_runtime_calls["count"] += 1
+                    return runtime
+
+                def fake_next_round_number(self: object, run_id: str) -> int:
+                    del self, run_id
+                    return 1
+
+                with mock.patch.object(run_autoresearch.WorktreeManager, "load_runtime", new=fake_load_runtime), mock.patch.object(
+                    run_autoresearch.WorktreeManager, "next_round_number", new=fake_next_round_number
+                ):
+                    prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
+
+            self.assertEqual(init_code, 0)
+            self.assertEqual(prepare_code, 0)
+            round_mutation = json.loads(
+                (root / ".autoworkflow" / "demo-run" / "rounds" / "round-001" / "mutation.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(round_mutation["mutation_key"], "text_rephrase:demo:fresh")
 
 
 if __name__ == "__main__":

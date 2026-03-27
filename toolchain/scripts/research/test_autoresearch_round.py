@@ -246,22 +246,17 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         )
         # Stage a worker contract envelope, as run-round now requires it.
         round_payload = read_json(self.worktree_manager.round_path(self.contract.run_id, round_number))
-        worktree_payload = read_json(self.worktree_manager.worktree_path_record(self.contract.run_id, round_number))
-        mutation_path = self.round_manager.mutation_path(self.contract.run_id, round_number)
-        mutation_sha256 = str(round_payload.get("mutation_sha256"))
         worker_payload = build_worker_contract_payload(
             contract=self.contract,
-            contract_path=self.run_dir / "contract.json",
-            mutation_path=mutation_path,
             mutation_payload=mutation_payload,
-            mutation_sha256=mutation_sha256,
             round_payload=round_payload,
-            worktree_payload=worktree_payload,
             agent_report_path=self.round_manager.agent_report_path(self.contract.run_id, round_number),
             baseline_scoreboard=read_json(self.run_dir / "scoreboard.json"),
+            materialized_at="2026-03-27T00:00:00+00:00",
         )
         worker_path = self.round_manager.worker_contract_path(self.contract.run_id, round_number)
         write_worker_contract(worker_path, worker_payload)
+        round_payload["worker_contract_materialized_at"] = worker_payload["materialized_at"]
         round_payload["worker_contract_sha256"] = compute_worker_contract_sha256(worker_path)
         (self.worktree_manager.round_path(self.contract.run_id, round_number)).write_text(
             json.dumps(round_payload, ensure_ascii=True, indent=2) + "\n",
@@ -327,22 +322,17 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         )
         # Stage worker contract but intentionally omit agent-report.md to exercise that failure path.
         round_payload = read_json(self.worktree_manager.round_path(self.contract.run_id, 1))
-        worktree_payload = read_json(self.worktree_manager.worktree_path_record(self.contract.run_id, 1))
-        mutation_path = self.round_manager.mutation_path(self.contract.run_id, 1)
-        mutation_sha256 = str(round_payload.get("mutation_sha256"))
         worker_payload = build_worker_contract_payload(
             contract=self.contract,
-            contract_path=self.run_dir / "contract.json",
-            mutation_path=mutation_path,
             mutation_payload=mutation_payload,
-            mutation_sha256=mutation_sha256,
             round_payload=round_payload,
-            worktree_payload=worktree_payload,
             agent_report_path=self.round_manager.agent_report_path(self.contract.run_id, 1),
             baseline_scoreboard=read_json(self.run_dir / "scoreboard.json"),
+            materialized_at="2026-03-27T00:00:00+00:00",
         )
         worker_path = self.round_manager.worker_contract_path(self.contract.run_id, 1)
         write_worker_contract(worker_path, worker_payload)
+        round_payload["worker_contract_materialized_at"] = worker_payload["materialized_at"]
         round_payload["worker_contract_sha256"] = compute_worker_contract_sha256(worker_path)
         (self.worktree_manager.round_path(self.contract.run_id, 1)).write_text(
             json.dumps(round_payload, ensure_ascii=True, indent=2) + "\n",
@@ -427,7 +417,20 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         payload = json.loads(worker_path.read_text(encoding="utf-8"))
         payload["instruction"] = "tampered"
         worker_path.write_text(json.dumps(payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
-        with self.assertRaisesRegex(RuntimeError, "authoritative round/mutation/worktree state"):
+        with self.assertRaisesRegex(RuntimeError, "hash recorded in round.json"):
+            self.round_manager.run_round(self.contract)
+
+    def test_run_round_rejects_value_preserving_worker_contract_rewrite(self) -> None:
+        candidate_worktree, _ = self._prepare_active_round()
+        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+            "candidate change\n",
+            encoding="utf-8",
+        )
+        worker_path = self.round_manager.worker_contract_path(self.contract.run_id, 1)
+        worker_payload = json.loads(worker_path.read_text(encoding="utf-8"))
+        worker_path.write_text(json.dumps(worker_payload, ensure_ascii=True) + "\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(RuntimeError, "hash recorded in round.json"):
             self.round_manager.run_round(self.contract)
 
     def test_run_round_rejects_tampered_frozen_round_authority(self) -> None:
@@ -466,20 +469,17 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             encoding="utf-8",
         )
 
-        worktree_payload = read_json(self.worktree_manager.worktree_path_record(self.contract.run_id, 1))
         worker_payload = build_worker_contract_payload(
             contract=self.contract,
-            contract_path=self.run_dir / "contract.json",
-            mutation_path=mutation_path,
             mutation_payload=tampered_mutation,
-            mutation_sha256=round_payload["mutation_sha256"],
             round_payload=round_payload,
-            worktree_payload=worktree_payload,
             agent_report_path=self.round_manager.agent_report_path(self.contract.run_id, 1),
             baseline_scoreboard=read_json(self.run_dir / "scoreboard.json"),
+            materialized_at="2026-03-27T00:00:00+00:00",
         )
         worker_path = self.round_manager.worker_contract_path(self.contract.run_id, 1)
         write_worker_contract(worker_path, worker_payload)
+        round_payload["worker_contract_materialized_at"] = worker_payload["materialized_at"]
         round_payload["worker_contract_sha256"] = compute_worker_contract_sha256(worker_path)
         self.worktree_manager.round_path(self.contract.run_id, 1).write_text(
             json.dumps(round_payload, ensure_ascii=True, indent=2) + "\n",
@@ -487,6 +487,19 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(RuntimeError, "frozen round authority snapshot"):
+            self.round_manager.run_round(self.contract)
+
+    def test_run_round_rejects_value_preserving_mutation_rewrite(self) -> None:
+        candidate_worktree, _ = self._prepare_active_round()
+        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+            "candidate change\n",
+            encoding="utf-8",
+        )
+        mutation_path = self.round_manager.mutation_path(self.contract.run_id, 1)
+        mutation_payload = json.loads(mutation_path.read_text(encoding="utf-8"))
+        mutation_path.write_text(json.dumps(mutation_payload, ensure_ascii=True) + "\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(RuntimeError, "mutation.json does not match hash recorded in round.json"):
             self.round_manager.run_round(self.contract)
 
     def test_run_round_rejects_empty_diff_when_required(self) -> None:

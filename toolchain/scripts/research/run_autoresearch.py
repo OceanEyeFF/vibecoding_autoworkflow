@@ -253,6 +253,8 @@ def cmd_prepare_round(
     round_manager = build_round_manager()
     manager = build_worktree_manager()
     next_round = manager.next_round_number(contract.run_id)
+    baseline_scoreboard = read_json(run_dir / "scoreboard.json")
+    runtime = manager.load_runtime(contract.run_id)
 
     registry_path = run_dir / "mutation-registry.json"
     registry = (
@@ -260,6 +262,7 @@ def cmd_prepare_round(
         if registry_path.is_file()
         else None
     )
+    selection = None
 
     if mutation_key is not None:
         if registry is None:
@@ -272,7 +275,12 @@ def cmd_prepare_round(
                     "Missing mutation registry and no mutation specified. "
                     f"Expected: {registry_path} (or pass --mutation-key / --mutation)"
                 )
-            selection = select_next_mutation_entry(registry, contract=contract)
+            selection = select_next_mutation_entry(
+                registry,
+                contract=contract,
+                runtime=runtime,
+                comparison_baseline=baseline_scoreboard,
+            )
             entry = selection.entry
         else:
             manual_payload = json.loads(mutation_path.read_text(encoding="utf-8"))
@@ -307,7 +315,7 @@ def cmd_prepare_round(
         raise ValueError("Registry entry attempts must be a non-negative integer.")
     if attempts_raw >= max_attempts_raw:
         raise RuntimeError(f"Selected mutation_key has exhausted attempts: {entry.get('mutation_key')}")
-    attempt = attempts_raw + 1
+    attempt = selection.attempt if selection is not None else attempts_raw + 1
     mutation_payload = materialize_round_mutation(entry=entry, round_number=next_round, attempt=attempt)
     round_manager.ensure_prepare_allowed(contract, mutation_payload)
     result = manager.prepare_round(contract.run_id)
@@ -315,12 +323,9 @@ def cmd_prepare_round(
     round_number = int(round_payload["round"])
     round_manager.stage_mutation(contract.run_id, round_number, mutation_payload)
 
-    baseline_scoreboard = read_json(run_dir / "scoreboard.json")
     worker_contract_path = round_manager.stage_worker_contract(
         contract,
-        contract_path=run_dir / "contract.json",
         round_payload=round_payload,
-        worktree_payload=result["worktree"],
         mutation_payload=mutation_payload,
         baseline_scoreboard=baseline_scoreboard,
     )

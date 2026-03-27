@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -25,9 +26,9 @@ def build_contract(max_attempts: int) -> AutoresearchContract:
     )
 
 
-def build_registry(entries: list[dict[str, object]]) -> AutoresearchMutationRegistry:
+def build_registry(entries: list[dict[str, object]], *, source_path: Path | None = None) -> AutoresearchMutationRegistry:
     return AutoresearchMutationRegistry(
-        source_path=Path("mutation-registry.json"),
+        source_path=source_path or Path("mutation-registry.json"),
         payload={},
         run_id="demo-run",
         registry_version=1,
@@ -65,6 +66,8 @@ class SelectorTest(unittest.TestCase):
         selection = select_next_mutation_entry(registry, contract=contract)
         self.assertEqual(selection.mutation_key, "k1")
         self.assertEqual(selection.attempt, 1)
+        self.assertEqual(selection.selection_reason, "lowest_attempt_count")
+        self.assertEqual(selection.selection_index, 0)
 
     def test_skips_disabled_and_exhausted_attempts(self) -> None:
         contract = build_contract(max_attempts=2)
@@ -94,6 +97,46 @@ class SelectorTest(unittest.TestCase):
         selection = select_next_mutation_entry(registry, contract=contract)
         self.assertEqual(selection.mutation_key, "ok")
         self.assertEqual(selection.attempt, 2)
+        self.assertEqual(selection.selection_index, 2)
+
+    def test_skips_pending_round_duplicate_fingerprint(self) -> None:
+        contract = build_contract(max_attempts=2)
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            round_dir = run_dir / "rounds" / "round-001"
+            round_dir.mkdir(parents=True, exist_ok=True)
+            (round_dir / "mutation.json").write_text(
+                '{"fingerprint": "sha256:dup"}\n',
+                encoding="utf-8",
+            )
+            registry = build_registry(
+                [
+                    {
+                        "mutation_key": "dup",
+                        "status": "active",
+                        "attempts": 0,
+                        "fingerprint": "sha256:dup",
+                    },
+                    {
+                        "mutation_key": "next",
+                        "status": "active",
+                        "attempts": 0,
+                        "fingerprint": "sha256:next",
+                    },
+                ],
+                source_path=run_dir / "mutation-registry.json",
+            )
+
+            selection = select_next_mutation_entry(
+                registry,
+                contract=contract,
+                runtime={"active_round": 1},
+                comparison_baseline={"train_score": 9.0, "validation_score": 8.0},
+            )
+
+        self.assertEqual(selection.mutation_key, "next")
+        self.assertEqual(selection.selection_reason, "skip_duplicate_fingerprint")
+        self.assertEqual(selection.selection_index, 1)
 
     def test_raises_when_no_selectable_entries(self) -> None:
         contract = build_contract(max_attempts=1)
@@ -109,4 +152,3 @@ class SelectorTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

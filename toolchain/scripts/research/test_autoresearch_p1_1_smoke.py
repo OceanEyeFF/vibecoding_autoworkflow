@@ -376,7 +376,7 @@ class AutoresearchP11SmokeTest(unittest.TestCase):
                 run_code = run_autoresearch.main(["run-round", "--contract", str(contract_path)])
 
             self.assertEqual(run_code, 1)
-            self.assertIn("authoritative round/mutation/worktree state", stderr.getvalue())
+            self.assertIn("hash recorded in round.json", stderr.getvalue())
 
 
 if __name__ == "__main__":
