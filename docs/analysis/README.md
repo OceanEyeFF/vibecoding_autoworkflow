@@ -15,6 +15,7 @@
   - [autoresearch-p1-2-worker-contract-and-minimal-selector.md](./autoresearch-p1-2-worker-contract-and-minimal-selector.md)
   - [autoresearch-p1-3-feedback-distillation-and-adaptive-scheduler.md](./autoresearch-p1-3-feedback-distillation-and-adaptive-scheduler.md)
   - [autoresearch-p1-final-code-audit-and-followups.md](./autoresearch-p1-final-code-audit-and-followups.md) — 合并后的 P1.Final 代码复核、当前状态与后续动作
+  - [autoresearch-p1-final-followup-task-plan.md](./autoresearch-p1-final-followup-task-plan.md) — 按任务边界、依赖和难度拆解的后续实现规划
 
 说明：
 
