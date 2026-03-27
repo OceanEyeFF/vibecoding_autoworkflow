@@ -186,7 +186,7 @@ P1.1 的原则应当是：
 - `kind`
   - 必须来自受控枚举，不允许自由文本
 - `target_paths`
-  - 非空；必须落在 `contract.mutable_paths` 内；不得与 `contract.frozen_paths` 重叠
+  - 非空；必须是 `contract.mutable_paths` 的同级或更窄子路径；不得与 `contract.frozen_paths` 重叠
 - `allowed_actions`
   - 必须来自受控集合；P1 第一版应收敛到 `["edit"]`
 - `instruction_seed`
@@ -214,6 +214,15 @@ P1.1 的原则应当是：
 - `fingerprint` 不应由人工直接填写
 - `attempts` 不应由 agent 回写
 - `status` 不是 prompt 建议，而是脚本状态
+
+当前实现里，`attempts / last_selected_round / last_decision / status` 的语义应进一步收口为：
+
+- 它们属于普通持久化 bookkeeping 状态，不进入 mutation fingerprint
+- 但脚本会对它们做单调一致性检查，例如：
+  - `last_selected_round` 不能在 `attempts = 0` 时出现
+  - `last_decision` 不能脱离 `last_selected_round`
+  - `status = exhausted` 不能早于 attempts 达到上限
+- active round 存在时，这些字段还必须与 frozen round authority 对账；不一致时应 fail closed
 
 ### 3. 哪些字段只是解释，不是 keep 依据
 
@@ -255,6 +264,7 @@ P1.1 的原则应当是：
 - entry 级 `target_paths` 必须是 `contract.mutable_paths` 的子集
 - round 内实际 git diff 只能落在这些路径里
 - `target_paths` 只能收窄，不能在 round materialization 时放大
+- 这里的“子集”应按路径前缀严格解释：允许同级或更窄子路径，不允许把 `target_paths` 放大成更宽父目录
 
 ### 3. `allowed_actions`
 

@@ -22,7 +22,12 @@ from autoresearch_mutation_registry import (
 )
 from autoresearch_round import AutoresearchRoundManager
 from autoresearch_scoreboard import write_scoreboard
-from autoresearch_worker_contract import build_worker_contract_payload, write_worker_contract, compute_worker_contract_sha256
+from autoresearch_worker_contract import (
+    build_comparison_baseline,
+    build_worker_contract_payload,
+    compute_worker_contract_sha256,
+    write_worker_contract,
+)
 from worktree_manager import WorktreeManager, champion_branch_name, read_json
 
 
@@ -140,6 +145,10 @@ def build_scoreboard(
     }
 
 
+def build_recent_feedback_excerpt() -> list[str]:
+    return ["round=1 | mutation=text_rephrase:demo:intro-tighten-v1 | decision=discard | signal=mixed"]
+
+
 class AutoresearchRoundManagerTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -239,11 +248,15 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         write_mutation_registry(self.run_dir / "mutation-registry.json", registry_payload)
         registry = load_mutation_registry(self.run_dir / "mutation-registry.json", contract=self.contract, repo_root=self.repo_root)
         registry_entry = find_registry_entry(registry, str(registry_entry["mutation_key"]))
+        comparison_baseline = build_comparison_baseline(read_json(self.run_dir / "scoreboard.json"))
+        recent_feedback_excerpt = build_recent_feedback_excerpt()
         self.round_manager.stage_round_authority(
             self.contract.run_id,
             round_number,
             registry_entry=registry_entry,
             mutation_payload=mutation_payload,
+            comparison_baseline=comparison_baseline,
+            recent_feedback_excerpt=recent_feedback_excerpt,
         )
         # Stage a worker contract envelope, as run-round now requires it.
         round_payload = read_json(self.worktree_manager.round_path(self.contract.run_id, round_number))
@@ -252,7 +265,8 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             mutation_payload=mutation_payload,
             round_payload=round_payload,
             agent_report_path=self.round_manager.agent_report_path(self.contract.run_id, round_number),
-            baseline_scoreboard=read_json(self.run_dir / "scoreboard.json"),
+            comparison_baseline=comparison_baseline,
+            recent_feedback_excerpt=recent_feedback_excerpt,
             materialized_at="2026-03-27T00:00:00+00:00",
         )
         worker_path = self.round_manager.worker_contract_path(self.contract.run_id, round_number)
@@ -291,6 +305,25 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         self.assertNotEqual(round_payload["candidate_sha"], round_payload["base_sha"])
         self.assertEqual(scoreboard["lanes"][0]["avg_total_score"], 10.0)
         self.assertEqual(scoreboard["lanes"][1]["avg_total_score"], 8.5)
+
+    def test_run_round_uses_frozen_worker_contract_comparison_baseline(self) -> None:
+        candidate_worktree, _ = self._prepare_active_round()
+        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+            "candidate change\n",
+            encoding="utf-8",
+        )
+        tampered_scoreboard = build_scoreboard(99.0, 99.0, baseline_sha=self._git_output("rev-parse", "HEAD"))
+        write_scoreboard(self.run_dir / "scoreboard.json", tampered_scoreboard)
+
+        def fake_lane_runner(*, candidate_worktree: Path, suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+            if "train" in str(save_dir):
+                return [{"suite_file": "train.yaml", "results": [self._eval_result(10.0)]}]
+            return [{"suite_file": "validation.yaml", "results": [self._eval_result(8.5)]}]
+
+        self.round_manager._run_lane_suites = fake_lane_runner  # type: ignore[method-assign]
+        result = self.round_manager.run_round(self.contract)
+
+        self.assertEqual(result["round"]["state"], "evaluated")
 
     def test_run_round_accepts_legacy_worker_contract_without_round_hashes(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
@@ -362,6 +395,12 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Mutation target_paths must stay within contract.mutable_paths"):
             self.round_manager.ensure_prepare_allowed(self.contract, mutation_payload)
 
+    def test_prepare_round_rejects_parent_target_path_that_widens_mutable_scope(self) -> None:
+        mutation_payload = build_mutation_payload()
+        mutation_payload["target_paths"] = ["product/memory-side"]
+        with self.assertRaisesRegex(ValueError, "Mutation target_paths must stay within contract.mutable_paths"):
+            self.round_manager.ensure_prepare_allowed(self.contract, mutation_payload)
+
     def test_run_round_requires_agent_report(self) -> None:
         mutation_payload = build_mutation_payload()
         self.round_manager.ensure_prepare_allowed(self.contract, mutation_payload)
@@ -374,11 +413,14 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         write_mutation_registry(self.run_dir / "mutation-registry.json", registry_payload)
         registry = load_mutation_registry(self.run_dir / "mutation-registry.json", contract=self.contract, repo_root=self.repo_root)
         registry_entry = find_registry_entry(registry, str(registry_entry["mutation_key"]))
+        comparison_baseline = build_comparison_baseline(read_json(self.run_dir / "scoreboard.json"))
         self.round_manager.stage_round_authority(
             self.contract.run_id,
             1,
             registry_entry=registry_entry,
             mutation_payload=mutation_payload,
+            comparison_baseline=comparison_baseline,
+            recent_feedback_excerpt=[],
         )
         # Stage worker contract but intentionally omit agent-report.md to exercise that failure path.
         round_payload = read_json(self.worktree_manager.round_path(self.contract.run_id, 1))
@@ -387,7 +429,8 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             mutation_payload=mutation_payload,
             round_payload=round_payload,
             agent_report_path=self.round_manager.agent_report_path(self.contract.run_id, 1),
-            baseline_scoreboard=read_json(self.run_dir / "scoreboard.json"),
+            comparison_baseline=comparison_baseline,
+            recent_feedback_excerpt=[],
             materialized_at="2026-03-27T00:00:00+00:00",
         )
         worker_path = self.round_manager.worker_contract_path(self.contract.run_id, 1)
@@ -534,7 +577,8 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             mutation_payload=tampered_mutation,
             round_payload=round_payload,
             agent_report_path=self.round_manager.agent_report_path(self.contract.run_id, 1),
-            baseline_scoreboard=read_json(self.run_dir / "scoreboard.json"),
+            comparison_baseline=build_comparison_baseline(read_json(self.run_dir / "scoreboard.json")),
+            recent_feedback_excerpt=[],
             materialized_at="2026-03-27T00:00:00+00:00",
         )
         worker_path = self.round_manager.worker_contract_path(self.contract.run_id, 1)
@@ -788,6 +832,8 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             2,
             registry_entry=second_registry_entry,
             mutation_payload=second_mutation,
+            comparison_baseline=build_comparison_baseline(read_json(self.run_dir / "scoreboard.json")),
+            recent_feedback_excerpt=[],
         )
         second_round_dir = self.worktree_manager.round_dir(self.contract.run_id, 2)
         (second_round_dir / "agent-report.md").write_text("# Agent Report\n\nApplied mutation.\n", encoding="utf-8")

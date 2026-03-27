@@ -93,6 +93,118 @@ def _signal_strength(
     return "mixed"
 
 
+def _score_direction(delta: float, *, positive_label: str, negative_label: str) -> str:
+    if delta > EPSILON:
+        return positive_label
+    if delta < -EPSILON:
+        return negative_label
+    return "stable"
+
+
+def _dimension_feedback_summary(
+    *,
+    decision: str,
+    train_score_delta: float,
+    validation_score_delta: float,
+    parse_error_delta: float,
+    timeout_rate_delta: float,
+    regression_flags: list[str],
+) -> dict[str, str]:
+    summary = {
+        "decision_signal": "accepted" if decision == "keep" else "rejected",
+        "train_score": _score_direction(
+            train_score_delta,
+            positive_label="improved",
+            negative_label="weaker",
+        ),
+        "validation_score": _score_direction(
+            validation_score_delta,
+            positive_label="improved",
+            negative_label="weaker",
+        ),
+        "stability": "stable",
+    }
+    if parse_error_delta > EPSILON:
+        summary["stability"] = "parse_error_regression"
+    elif timeout_rate_delta > EPSILON:
+        summary["stability"] = "timeout_regression"
+    elif regression_flags:
+        summary["stability"] = "score_regression"
+    return summary
+
+
+def _suggested_adjustments(
+    *,
+    decision: str,
+    regression_flags: list[str],
+    dimension_feedback_summary: dict[str, str],
+) -> list[str]:
+    adjustments: list[str] = []
+    if decision == "keep":
+        adjustments.append("reuse this family with a similarly narrow edit scope")
+    if "validation_drop" in regression_flags:
+        adjustments.append("narrow the next retry to protect validation behavior")
+    if "train_drop" in regression_flags:
+        adjustments.append("revisit the instruction seed before retrying this family")
+    if "validation_parse_error_increase" in regression_flags or "train_parse_error_increase" in regression_flags:
+        adjustments.append("reduce formatting churn to avoid parse-error regressions")
+    if "validation_timeout_increase" in regression_flags or "train_timeout_increase" in regression_flags:
+        adjustments.append("reduce scope and output size to avoid timeout regressions")
+    if not adjustments and dimension_feedback_summary.get("validation_score") == "weaker":
+        adjustments.append("keep the promising idea but tighten the changed surface before retrying")
+    return adjustments[:3]
+
+
+def build_recent_feedback_excerpt(
+    feedback_ledger: list[dict[str, Any]],
+    *,
+    limit: int = 2,
+) -> list[str]:
+    if limit <= 0:
+        raise ValueError("recent feedback excerpt limit must be positive.")
+    ordered = sorted(
+        (
+            entry
+            for entry in feedback_ledger
+            if isinstance(entry, dict)
+        ),
+        key=lambda item: (int(item.get("round") or 0), str(item.get("mutation_id") or "")),
+        reverse=True,
+    )
+    excerpt: list[str] = []
+    for entry in ordered[:limit]:
+        mutation_key = str(entry.get("mutation_key") or "").strip()
+        decision = str(entry.get("decision") or "").strip()
+        signal = str(entry.get("signal_strength") or "").strip()
+        flags = [str(flag).strip() for flag in (entry.get("regression_flags") or []) if str(flag).strip()]
+        adjustments = [
+            str(item).strip()
+            for item in (entry.get("suggested_adjustments") or [])
+            if str(item).strip()
+        ]
+        summary = entry.get("dimension_feedback_summary") or {}
+        summary_bits: list[str] = []
+        if isinstance(summary, dict):
+            for key in ("train_score", "validation_score", "stability"):
+                value = str(summary.get(key) or "").strip()
+                if value:
+                    summary_bits.append(f"{key}={value}")
+        parts = [
+            f"round={int(entry.get('round') or 0)}",
+            f"mutation={mutation_key}",
+            f"decision={decision}",
+            f"signal={signal}",
+        ]
+        if flags:
+            parts.append("flags=" + ",".join(flags))
+        if summary_bits:
+            parts.append("summary=" + ",".join(summary_bits))
+        if adjustments:
+            parts.append("next=" + adjustments[0])
+        excerpt.append(" | ".join(parts))
+    return excerpt
+
+
 def validate_feedback_distill_payload(payload: dict[str, Any]) -> None:
     try:
         import jsonschema
@@ -197,6 +309,14 @@ def build_feedback_distill_payload(
         round_scoreboard=round_scoreboard,
     )
     decision = str(decision_payload["decision"])
+    dimension_feedback_summary = _dimension_feedback_summary(
+        decision=decision,
+        train_score_delta=train_score_delta,
+        validation_score_delta=validation_score_delta,
+        parse_error_delta=parse_error_delta,
+        timeout_rate_delta=timeout_rate_delta,
+        regression_flags=regression_flags,
+    )
     payload: dict[str, Any] = {
         "feedback_distill_version": FEEDBACK_DISTILL_VERSION,
         "run_id": str(decision_payload.get("run_id") or baseline_scoreboard.get("run_id") or ""),
@@ -215,8 +335,12 @@ def build_feedback_distill_payload(
             regression_flags=regression_flags,
         ),
         "regression_flags": regression_flags,
-        "dimension_feedback_summary": {},
-        "suggested_adjustments": [],
+        "dimension_feedback_summary": dimension_feedback_summary,
+        "suggested_adjustments": _suggested_adjustments(
+            decision=decision,
+            regression_flags=regression_flags,
+            dimension_feedback_summary=dimension_feedback_summary,
+        ),
         "scoreboard_ref": _relative_ref(round_dir / "scoreboard.json", run_dir=run_dir),
         "decision_ref": _relative_ref(round_dir / "decision.json", run_dir=run_dir),
         "worker_contract_ref": _relative_ref(round_dir / "worker-contract.json", run_dir=run_dir),
@@ -244,16 +368,41 @@ def feedback_family_priority(
 
     latest = family_entries[-1]
     latest_signal = str(latest.get("signal_strength") or "").strip().lower()
+    latest_flags = {
+        str(flag).strip()
+        for flag in (latest.get("regression_flags") or [])
+        if str(flag).strip()
+    }
+    latest_adjustments = [
+        str(item).strip()
+        for item in (latest.get("suggested_adjustments") or [])
+        if str(item).strip()
+    ]
     negative_streak = 0
     for entry in reversed(family_entries):
         if str(entry.get("signal_strength") or "").strip().lower() != "negative":
             break
         negative_streak += 1
+    guardrail_flags = {
+        "validation_drop",
+        "validation_pass_rate_drop",
+        "validation_parse_error_increase",
+        "train_parse_error_increase",
+        "validation_timeout_increase",
+        "train_timeout_increase",
+    }
+    has_guardrail_regression = bool(latest_flags & guardrail_flags)
 
     if latest_signal == "positive":
         return 0, "recent_positive_signal"
     if latest_signal == "mixed":
+        if has_guardrail_regression:
+            return 3, "guardrail_capped_mixed_retry"
+        if latest_adjustments:
+            return 2, "guided_mixed_retry"
         return 2, "mixed_signal_retry"
     if negative_streak >= 2:
-        return 4, "sustained_regression_deprioritized"
+        return 5, "sustained_regression_deprioritized"
+    if has_guardrail_regression:
+        return 4, "guardrail_blocked_retry"
     return 3, "latest_negative_signal"

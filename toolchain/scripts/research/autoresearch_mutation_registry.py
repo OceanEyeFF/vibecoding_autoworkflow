@@ -142,6 +142,49 @@ def _posix_is_under(base: PurePosixPath, target: PurePosixPath) -> bool:
     return base_parts == target_parts[: len(base_parts)]
 
 
+def _validate_bookkeeping_state(
+    *,
+    entry: dict[str, Any],
+    max_attempts: int,
+) -> None:
+    status = str(entry.get("status") or "").strip().lower()
+    attempts = int(entry.get("attempts") or 0)
+    last_selected_round = entry.get("last_selected_round")
+    last_decision = entry.get("last_decision")
+
+    if attempts > max_attempts:
+        raise ValueError(
+            "Registry entry attempts must not exceed contract.max_candidate_attempts_per_round: "
+            f"{entry.get('mutation_key')}"
+        )
+    if last_selected_round is not None and attempts <= 0:
+        raise ValueError(
+            "Registry entry last_selected_round requires attempts > 0: "
+            f"{entry.get('mutation_key')}"
+        )
+    if last_decision is not None and last_selected_round is None:
+        raise ValueError(
+            "Registry entry last_decision requires last_selected_round: "
+            f"{entry.get('mutation_key')}"
+        )
+    if status == "exhausted":
+        if attempts < max_attempts:
+            raise ValueError(
+                "Registry entry exhausted status requires attempts to reach the configured max: "
+                f"{entry.get('mutation_key')}"
+            )
+        if last_decision is None:
+            raise ValueError(
+                "Registry entry exhausted status requires a recorded last_decision: "
+                f"{entry.get('mutation_key')}"
+            )
+    if status == "active" and attempts >= max_attempts and last_decision is not None:
+        raise ValueError(
+            "Registry entry with a recorded last_decision must not remain active after exhausting attempts: "
+            f"{entry.get('mutation_key')}"
+        )
+
+
 def build_mutation_fingerprint_basis(entry_payload: dict[str, Any]) -> dict[str, Any]:
     guardrails = entry_payload.get("guardrails") or {}
     if not isinstance(guardrails, dict):
@@ -230,7 +273,7 @@ def canonicalize_mutation_entry(
     contract_mutable = _normalize_paths([str(value) for value in contract.mutable_paths], repo_root=repo_root)
     contract_frozen = _normalize_paths([str(value) for value in contract.frozen_paths], repo_root=repo_root)
     for target_path in target_paths:
-        if not any(paths_overlap(mutable_path, target_path) for mutable_path in contract_mutable):
+        if not any(_posix_is_under(base=mutable_path, target=target_path) for mutable_path in contract_mutable):
             raise ValueError(
                 "Registry entry target_paths must stay within contract.mutable_paths: "
                 f"{target_path.as_posix()}"
@@ -369,6 +412,9 @@ def load_mutation_registry(
     entries_raw = payload.get("entries")
     if not isinstance(entries_raw, list) or not entries_raw:
         raise ValueError("Registry field 'entries' must be a non-empty array.")
+    max_attempts_raw = contract.payload.get("max_candidate_attempts_per_round")
+    if isinstance(max_attempts_raw, bool) or not isinstance(max_attempts_raw, int) or max_attempts_raw <= 0:
+        raise ValueError("contract.payload.max_candidate_attempts_per_round must be a positive integer.")
 
     canonical_entries: list[dict[str, Any]] = []
     seen_keys: set[str] = set()
@@ -379,6 +425,7 @@ def load_mutation_registry(
             repo_root=repo_root,
             contract=contract,
         )
+        _validate_bookkeeping_state(entry=entry, max_attempts=max_attempts_raw)
         key = str(entry["mutation_key"])
         if key in seen_keys:
             raise ValueError(f"Duplicate mutation_key in registry: {key}")

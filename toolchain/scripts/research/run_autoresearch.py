@@ -22,7 +22,8 @@ from autoresearch_mutation_registry import (
     write_mutation_registry,
 )
 from autoresearch_selector import select_next_mutation_entry
-from autoresearch_feedback_distill import load_feedback_ledger
+from autoresearch_feedback_distill import build_recent_feedback_excerpt, load_feedback_ledger
+from autoresearch_worker_contract import build_comparison_baseline
 from worktree_manager import read_json
 from common import REPO_ROOT, slugify
 from run_skill_suite import main as run_skill_suite_main
@@ -260,8 +261,14 @@ def cmd_prepare_round(
     ensure_history_file(run_dir / "history.tsv")
     round_manager = build_round_manager()
     manager = build_worktree_manager()
-    next_round = manager.next_round_number(contract.run_id)
     baseline_scoreboard = read_json(run_dir / "scoreboard.json")
+    recovery = round_manager.reconcile_prepare_state(contract)
+    if recovery is not None:
+        print(
+            "[P1] prepare_recovery: reconciled active round {}, restored mutation/worker artifacts and verified registry bookkeeping".format(
+                recovery["round"]
+            )
+        )
 
     registry_path = run_dir / "mutation-registry.json"
     registry = (
@@ -329,6 +336,7 @@ def cmd_prepare_round(
         raise ValueError("Registry entry attempts must be a non-negative integer.")
     if attempts_raw >= max_attempts_raw:
         raise RuntimeError(f"Selected mutation_key has exhausted attempts: {entry.get('mutation_key')}")
+    next_round = manager.next_round_number(contract.run_id)
     attempt = selection.attempt if selection is not None else attempts_raw + 1
     mutation_payload = materialize_round_mutation(entry=entry, round_number=next_round, attempt=attempt)
     round_manager.ensure_prepare_allowed(contract, mutation_payload)
@@ -337,29 +345,32 @@ def cmd_prepare_round(
     round_number = int(round_payload["round"])
     round_manager.stage_mutation(contract.run_id, round_number, mutation_payload)
 
-    worker_contract_path = round_manager.stage_worker_contract(
-        contract,
-        round_payload=round_payload,
-        mutation_payload=mutation_payload,
-        baseline_scoreboard=baseline_scoreboard,
-    )
-
     # Write back the updated registry attempts/selection bookkeeping.
     entry["attempts"] = attempt
     entry["last_selected_round"] = round_number
-    registry_payload = dict(registry.payload)
-    registry_payload["entries"] = registry.entries
-    write_mutation_registry(registry_path, registry_payload)
-    print("[P1] registry_writeback: mutation_registry.json updated, attempts={}, last_selected_round={}".format(
-        entry["attempts"], round_number))
+    comparison_baseline = build_comparison_baseline(baseline_scoreboard)
+    recent_feedback_excerpt = build_recent_feedback_excerpt(feedback_ledger)
     round_manager.stage_round_authority(
         contract.run_id,
         round_number,
         registry_entry=dict(entry),
         mutation_payload=mutation_payload,
+        comparison_baseline=comparison_baseline,
+        recent_feedback_excerpt=recent_feedback_excerpt,
     )
-
     print("[P1] authority_snapshot: round_authority staged for round {}".format(round_number))
+    worker_contract_path = round_manager.stage_worker_contract(
+        contract,
+        round_payload=round_payload,
+        mutation_payload=mutation_payload,
+        comparison_baseline=comparison_baseline,
+        recent_feedback_excerpt=recent_feedback_excerpt,
+    )
+    registry_payload = dict(registry.payload)
+    registry_payload["entries"] = registry.entries
+    write_mutation_registry(registry_path, registry_payload)
+    print("[P1] registry_writeback: mutation_registry.json updated, attempts={}, last_selected_round={}".format(
+        entry["attempts"], round_number))
     print(f"prepared_round: {round_payload['round']}")
     print(f"candidate_branch: {round_payload['candidate_branch']}")
     print(f"candidate_worktree: {round_payload['candidate_worktree']}")

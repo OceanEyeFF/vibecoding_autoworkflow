@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from autoresearch_contract import load_contract
 from autoresearch_worker_contract import (
+    build_comparison_baseline,
     build_worker_contract_payload,
     compute_worker_contract_sha256,
     load_worker_contract_payload,
@@ -100,7 +101,8 @@ class AutoresearchWorkerContractTest(unittest.TestCase):
                 mutation_payload=mutation_payload,
                 round_payload=round_payload,
                 agent_report_path=root / "agent-report.md",
-                baseline_scoreboard=build_scoreboard(),
+                comparison_baseline=build_comparison_baseline(build_scoreboard()),
+                recent_feedback_excerpt=["round=1 | mutation=k | decision=discard | signal=mixed"],
                 materialized_at="2026-03-27T00:00:00+00:00",
             )
             worker_path = root / "worker-contract.json"
@@ -112,6 +114,7 @@ class AutoresearchWorkerContractTest(unittest.TestCase):
             self.assertEqual(loaded["target_surface"], "memory-side")
             self.assertEqual(loaded["comparison_baseline"]["train_score"], 9.0)
             self.assertEqual(loaded["mutation_fingerprint"], "sha256:fp")
+            self.assertEqual(len(loaded["recent_feedback_excerpt"]), 1)
             self.assertTrue(compute_worker_contract_sha256(worker_path).startswith("sha256:"))
 
     def test_write_worker_contract_rejects_legacy_extra_fields(self) -> None:
@@ -146,7 +149,8 @@ class AutoresearchWorkerContractTest(unittest.TestCase):
                     "candidate_worktree": str(root / "wt"),
                 },
                 agent_report_path=root / "agent-report.md",
-                baseline_scoreboard=build_scoreboard(),
+                comparison_baseline=build_comparison_baseline(build_scoreboard()),
+                recent_feedback_excerpt=[],
                 materialized_at="2026-03-27T00:00:00+00:00",
             )
             worker_payload["mutation_path"] = "/tmp/legacy.json"

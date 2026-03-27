@@ -66,100 +66,82 @@ last_verified: 2026-03-28
 
 ## 三、当前仍成立的风险与缺口
 
-下面这些结论在当前代码下仍成立。
+下面这些结论是当前代码下更准确的状态。
 
-### 1. `target_paths` 仍是 overlap 语义，不是严格子集语义
+### 1. `target_paths` 已经收紧成严格子集语义
 
-这是当前最明确的边界缺口之一。
-
-- `autoresearch_mutation_registry.py` 和 `autoresearch_round.py` 都仍按 `paths_overlap(...)` 判断 `target_paths` 是否位于 `contract.mutable_paths` 内
-- 这意味着更宽的父路径有机会被视为合法，而不是真正的“只允许收窄”
-
-所以“`target_paths ⊆ mutable_paths` 只是文档要求、还没被严格编码”为真。
-
-### 2. registry bookkeeping 仍然信任磁盘上的 schema-valid 值
-
-`attempts`、`last_selected_round`、`last_decision`、`status` 这些 bookkeeping 字段目前仍属于“可持久化状态”，不是防篡改 authority 字段。
-
-当前脚本会在运行期校验：
-
-- `run_id`
-- `contract_fingerprint`
-- schema 和字段类型
-
-但不会额外给 bookkeeping 字段加 tamper-proof 机制。因此“手工改写后仍可被继续消费”这条风险仍成立，只是它更偏完整性风险，而不是首次闭环阻塞。
-
-### 3. round authority 与 registry 写回之间仍有 crash 窗口
-
-`prepare-round` 当前顺序是：
-
-1. 写 `mutation.json`
-2. 写 `worker-contract.json`
-3. 回写 registry 的 `attempts / last_selected_round`
-4. 写 round authority 快照
-
-因此在第 3 步成功、第 4 步失败之间，仍存在 registry 已推进但 authority 未冻结的窗口。这个结论比旧文档里“`stage_worker_contract()` 失败前就会写脏 registry”更准确。
-
-### 4. worker contract 的 comparison baseline 仍来自 run-level scoreboard 重建
-
-v2 路径下，`run-round` 会重新读取 run-level baseline scoreboard，并重建一份期望的 worker contract payload 来对比现存文件。
+当前 `autoresearch_mutation_registry.py` 和 `autoresearch_round.py` 都要求 `target_paths` 必须是 `contract.mutable_paths` 的同级或更窄子路径。
 
 这意味着：
 
-- comparison baseline 不是单独冻结在 round authority 里的独立对象
-- 如果将来出现 `prepare-round` 之后、`run-round` 之前 baseline scoreboard 被外部改动的场景，worker-contract 可能因对不上而失败
+- 更宽的父路径会被拒绝
+- “`target_paths` 只能收窄，不能放大”已经不只是文档要求
 
-这条仍然是代码层面的真实耦合点。
+### 2. registry bookkeeping 已被明确成“普通持久化状态 + 一致性校验”
 
-### 5. `recent_feedback_excerpt` 仍是空数组占位
+`attempts`、`last_selected_round`、`last_decision`、`status` 当前仍不是 fingerprint-bound authority 字段，但也不再是“schema-valid 就默认可信”。
 
-P1.3 已经有 `feedback-distill.json` 和 `feedback-ledger.jsonl`，但 worker-facing envelope 里的 `recent_feedback_excerpt` 仍固定写 `[]`。
+当前脚本会额外校验：
 
-所以现在是：
+- `last_selected_round` 不能脱离 `attempts`
+- `last_decision` 不能脱离 `last_selected_round`
+- `status = exhausted` 不能早于 attempts 达到上限
+- active round 存在时，registry entry 还必须与 frozen round authority 对账
 
-- feedback 已存在于 run-level 历史
-- 但没有真正压平进 agent-facing worker contract
+因此这组字段现在更准确地属于“可持久化 bookkeeping 状态”，而不是“可随意手改的隐式输入”。
 
-### 6. `dimension_feedback_summary` / `suggested_adjustments` 仍是占位结构
+### 3. `prepare-round` 的 authority 写盘顺序已经收紧，并有恢复路径
 
-当前 distill payload 仍固定写：
+当前 `prepare-round` 的关键顺序已经变成：
+
+1. 写 `mutation.json`
+2. 冻结 round authority（含 registry entry、materialized mutation、frozen baseline、feedback excerpt）
+3. 生成 `worker-contract.json`
+4. 回写 registry bookkeeping
+
+如果发现中断残留的 active round，再次执行 `prepare-round` 时会先按 frozen authority 修复 `mutation.json` / `worker-contract.json`，并对账 registry bookkeeping，再拒绝直接开启新 round；如果 `mutation-registry.json` 已缺失，则当前实现会 fail closed，而不是有损重建 candidate pool。
+
+### 4. worker contract 的 `comparison_baseline` 已冻结到 round authority
+
+v2 路径下，`run-round` 不再从可变 run-level scoreboard 重建 `comparison_baseline`。
+
+现在的行为是：
+
+- `prepare-round` 冻结 `comparison_baseline`
+- `worker-contract.json` 直接消费冻结对象
+- `run-round` 校验时也复用同一份 frozen baseline
+
+所以 prepare 之后外部 scoreboard 漂移不会再让 v2 worker contract 发生 envelope drift。
+
+### 5. `recent_feedback_excerpt`、`dimension_feedback_summary` 和 `suggested_adjustments` 已有最小实现
+
+当前 distill payload 不再固定为：
 
 - `dimension_feedback_summary: {}`
 - `suggested_adjustments: []`
 
-因此 P1.3 当前完成的是：
+同时 worker-facing envelope 也不再固定写 `recent_feedback_excerpt: []`。这些字段现在都由 deterministic rules 生成，但仍属于建议层，不影响 fixed-rule `decision.json` 的可重算性。
 
-- deterministic distillation
-- ledger upsert
-- feedback-aware family priority
+### 6. adaptive selector 仍主要由 feedback ledger 驱动，但 guardrail 和 smoke 都已补上
 
-但还没有进入“根据 distilled 建议生成新 proposal / 新 instruction seed”的下一层闭环。
+当前 adaptive 排序的主导输入仍然是 feedback ledger 中的 family signal，这一点没有变化。
 
-### 7. adaptive selector 仍主要由 feedback ledger 信号驱动
+但当前实现已经额外具备：
 
-当前 adaptive 排序的核心输入仍是 feedback ledger 中的 family signal。文档里如果把“champion scoreboard 摘要”写成 scheduler 的实际排序输入，会高于代码事实。
+- 针对 `validation_drop` / parse-error / timeout 回退信号的 guardrail
+- repo-local smoke 对 adaptive 路径的最小证明
 
-更准确的说法应是：
+因此它不再只是“代码和单测里存在”的分支。
 
-- baseline scoreboard 会参与 selector 的接口和上下文
-- 但 family 排序的当前主导信号仍来自 ledger，而不是独立的 champion scoreboard 摘要
+### 7. legacy worker-contract 兼容路径仍保留，但身份已经更明确
 
-### 8. legacy worker-contract 兼容路径仍然是弱校验分支
+legacy v1 路径仍然存在，且仍是弱校验兼容分支；这点没有变。
 
-legacy v1 路径仍保留 required-fields / 类型校验，以及少量 tracing 一致性校验，但不具备 v2 的 hash-bound envelope 约束强度。它不是当前主路径阻塞，但仍是一个应明确退场条件的兼容分支。
+当前更准确的表述应是：
 
-### 9. adaptive selector 已被代码和单测覆盖，但尚未被当前最小 runbook 单独证明
-
-当前最小闭环 runbook 走的是 `prepare-round --mutation <manual-mutation.json>` 路径，已经证明：
-
-- P1.1 registry import/materialization 可工作
-- P1.2 worker contract 可工作
-- P1.3 distill / ledger 落盘可工作
-
-但它并不单独证明“依赖已有 ledger 的 adaptive selector 排序路径”已经被 repo-local 最小实跑覆盖。更准确的状态应是：
-
-- adaptive selector 已被代码与单测覆盖
-- 当前最小 runbook 还没有单独把这一路径做成实跑证明
+- 它属于 `transition_compat_weak_checks`
+- 只在 `worker_contract_sha256` 缺失时进入
+- 当前正常 prepare-flow 默认仍是 v2 hash-bound envelope
 
 ## 四、已经过期或需要修正的旧结论
 
@@ -194,16 +176,13 @@ legacy v1 路径仍保留 required-fields / 类型校验，以及少量 tracing 
 
 ### P1.Final 优先
 
-1. 把 `target_paths` 校验从 overlap 收紧成真正的子集语义。
-2. 明确 registry bookkeeping 是“普通持久化状态”还是“需要防篡改的 authority 字段”，并补相应测试。
-3. 收紧 `prepare-round` 的写盘顺序或补恢复策略，缩小 registry/authority crash 窗口。
-4. 明确 legacy worker-contract 的退场条件，避免长期保留弱校验分支。
+1. 继续评估 bookkeeping 是否还需要更强的 tamper-proof 机制；当前只做到一致性校验，不是签名式 authority。
+2. 把 legacy worker-contract 的最终退场时间点和删除条件写得更硬，而不只是标成 `transition_compat_weak_checks`。
 
 ### P1.3+ 优先
 
-1. 把最近一条或几条 distilled feedback 摘要写进 `recent_feedback_excerpt`。
-2. 给 `dimension_feedback_summary` 与 `suggested_adjustments` 落一个最小可用实现，但不要让它影响 fixed-rule decision 的可重算性。
-3. 为 adaptive selector 增加更明确的 guardrail，例如负信号连续次数上限或退避策略。
+1. 如果后续要继续演进 adaptive scheduler，优先在当前 deterministic 摘要层之上加更细的退避策略，而不是直接引入模型自由排序。
+2. 若要继续增强 feedback，需要保持 `dimension_feedback_summary` / `suggested_adjustments` 只停留在建议层，不反向改写 fixed-rule decision。
 
 ### 文档与承接层
 

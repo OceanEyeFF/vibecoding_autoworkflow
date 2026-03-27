@@ -159,6 +159,14 @@ python3 toolchain/scripts/research/run_autoresearch.py \
   --mutation /abs/path/to/manual-mutation.json
 ```
 
+如果 `prepare-round` 因中途中断留下 active round，再次执行 `prepare-round` 时当前脚本会先尝试按 frozen round authority 修复 `mutation.json` / `worker-contract.json`，并对账 `mutation-registry.json` 的 bookkeeping；如果 `runtime.json` 缺失也会先重建。但如果 `mutation-registry.json` 已缺失，当前实现会直接 fail closed，不会有损重建 registry。此时应继续当前 round，或显式执行：
+
+```bash
+python3 toolchain/scripts/research/run_autoresearch.py \
+  cleanup-round \
+  --contract /abs/path/to/contract.json
+```
+
 此时会得到：
 
 - candidate branch
@@ -225,6 +233,11 @@ runs:
 product/memory-side/adapters/claude/skills/context-routing-skill/SKILL.md
 ```
 
+另外，当前 `target_paths` 校验已经是严格子集语义：
+
+- `contract.mutable_paths = product/.../skills` 时，`target_paths = product/.../skills/skill.md` 可以通过
+- 但把 `target_paths` 放宽成更大的父路径会被拒绝
+
 如果此时又把整个 `product/` 放进 `frozen_paths`，就会被直接拒绝，报：
 
 ```text
@@ -253,6 +266,11 @@ run 根目录固定在：
 - `scoreboard.json`
 - `mutation-registry.json`
 - `feedback-ledger.jsonl`
+
+当前仓库的 smoke 覆盖还额外证明了一条最小 adaptive 路径：
+
+- 有既有 ledger 时，positive family 可以在第二轮优先于 fresh entry 被再次选择
+- 带 `validation_drop` 的 mixed family 会被 guardrail 降权，fresh family 会优先被选择
 
 单轮 `rounds/round-001/` 下至少会有：
 

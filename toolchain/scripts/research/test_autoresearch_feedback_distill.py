@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from autoresearch_feedback_distill import (
+    build_recent_feedback_excerpt,
     build_feedback_distill_payload,
     feedback_family_priority,
     load_feedback_ledger,
@@ -86,6 +87,9 @@ class AutoresearchFeedbackDistillTest(unittest.TestCase):
         self.assertAlmostEqual(payload["train_score_delta"], 1.0)
         self.assertAlmostEqual(payload["validation_score_delta"], -0.5)
         self.assertIn("validation_drop", payload["regression_flags"])
+        self.assertEqual(payload["dimension_feedback_summary"]["train_score"], "improved")
+        self.assertEqual(payload["dimension_feedback_summary"]["validation_score"], "weaker")
+        self.assertTrue(payload["suggested_adjustments"])
         self.assertEqual(payload["scoreboard_ref"], "rounds/round-001/scoreboard.json")
 
     def test_upsert_feedback_ledger_replaces_same_round_entry(self) -> None:
@@ -193,11 +197,61 @@ class AutoresearchFeedbackDistillTest(unittest.TestCase):
         ]
 
         self.assertEqual(feedback_family_priority(ledger, mutation_key="positive"), (0, "recent_positive_signal"))
-        self.assertEqual(
-            feedback_family_priority(ledger, mutation_key="negative"),
-            (4, "sustained_regression_deprioritized"),
-        )
+        self.assertEqual(feedback_family_priority(ledger, mutation_key="negative"), (5, "sustained_regression_deprioritized"))
         self.assertEqual(feedback_family_priority(ledger, mutation_key="fresh"), (1, "no_feedback_history"))
+
+    def test_build_recent_feedback_excerpt_uses_latest_entries(self) -> None:
+        ledger = [
+            {
+                "feedback_distill_version": 1,
+                "run_id": "demo-run",
+                "round": 1,
+                "mutation_key": "k1",
+                "mutation_id": "k1#a001",
+                "attempt": 1,
+                "decision": "discard",
+                "train_score_delta": 0.5,
+                "validation_score_delta": -0.2,
+                "parse_error_delta": 0.0,
+                "timeout_rate_delta": 0.0,
+                "signal_strength": "mixed",
+                "regression_flags": ["validation_drop"],
+                "dimension_feedback_summary": {"validation_score": "weaker"},
+                "suggested_adjustments": ["narrow the next retry to protect validation behavior"],
+                "scoreboard_ref": "rounds/round-001/scoreboard.json",
+                "decision_ref": "rounds/round-001/decision.json",
+                "worker_contract_ref": "rounds/round-001/worker-contract.json",
+                "distilled_at": "2026-03-27T00:00:00+00:00",
+            },
+            {
+                "feedback_distill_version": 1,
+                "run_id": "demo-run",
+                "round": 2,
+                "mutation_key": "k2",
+                "mutation_id": "k2#a001",
+                "attempt": 1,
+                "decision": "keep",
+                "train_score_delta": 0.8,
+                "validation_score_delta": 0.1,
+                "parse_error_delta": 0.0,
+                "timeout_rate_delta": 0.0,
+                "signal_strength": "positive",
+                "regression_flags": [],
+                "dimension_feedback_summary": {"train_score": "improved", "validation_score": "improved"},
+                "suggested_adjustments": ["reuse this family with a similarly narrow edit scope"],
+                "scoreboard_ref": "rounds/round-002/scoreboard.json",
+                "decision_ref": "rounds/round-002/decision.json",
+                "worker_contract_ref": "rounds/round-002/worker-contract.json",
+                "distilled_at": "2026-03-27T00:00:00+00:00",
+            },
+        ]
+
+        excerpt = build_recent_feedback_excerpt(ledger)
+
+        self.assertEqual(len(excerpt), 2)
+        self.assertIn("round=2", excerpt[0])
+        self.assertIn("next=reuse this family", excerpt[0])
+        self.assertIn("flags=validation_drop", excerpt[1])
 
 
 if __name__ == "__main__":

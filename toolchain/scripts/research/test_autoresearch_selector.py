@@ -346,7 +346,7 @@ class SelectorTest(unittest.TestCase):
 
         self.assertEqual(selection.mutation_key, "mixed")
         self.assertEqual(selection.selection_reason, "adaptive_priority")
-        self.assertEqual(selection.scheduler_reason, "mixed_signal_retry")
+        self.assertEqual(selection.scheduler_reason, "guardrail_capped_mixed_retry")
 
     def test_raises_when_no_selectable_entries(self) -> None:
         contract = build_contract(max_attempts=1)

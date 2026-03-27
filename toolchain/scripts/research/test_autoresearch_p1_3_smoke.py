@@ -217,6 +217,79 @@ class AutoresearchP13SmokeTest(unittest.TestCase):
 
             self.assertEqual(second_mutation["mutation_key"], "text_rephrase:demo:auto-first")
 
+    def test_prepare_round_adaptive_guardrail_prefers_fresh_family_over_regressed_family(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract_path = root / "contract.json"
+            contract_path.write_text(
+                json.dumps(build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")),
+                encoding="utf-8",
+            )
+
+            def fake_baseline_runner(argv: list[str]) -> int:
+                save_dir = Path(argv[argv.index("--save-dir") + 1])
+                label = "train" if "baseline/train" in str(save_dir) else "validation"
+                write_summary(save_dir, label, 9.0 if label == "train" else 8.0)
+                return 0
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ), mock.patch.object(run_autoresearch, "run_skill_suite_main", side_effect=fake_baseline_runner):
+                self.assertEqual(run_autoresearch.main(["init", "--contract", str(contract_path)]), 0)
+                self.assertEqual(run_autoresearch.main(["baseline", "--contract", str(contract_path)]), 0)
+
+                contract = load_contract(contract_path, repo_root=root)
+                run_dir = root / ".autoworkflow" / "demo-run"
+                registry_payload = {
+                    "run_id": contract.run_id,
+                    "registry_version": 1,
+                    "contract_fingerprint": compute_contract_fingerprint(contract),
+                    "entries": [
+                        make_registry_entry(mutation_key="text_rephrase:demo:regressed-family"),
+                        make_registry_entry(mutation_key="text_rephrase:demo:fresh-family", attempts=1),
+                    ],
+                }
+                (run_dir / "mutation-registry.json").write_text(
+                    json.dumps(registry_payload, ensure_ascii=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                feedback_entry = {
+                    "feedback_distill_version": 1,
+                    "run_id": contract.run_id,
+                    "round": 1,
+                    "mutation_key": "text_rephrase:demo:regressed-family",
+                    "mutation_id": "text_rephrase:demo:regressed-family#a001",
+                    "attempt": 1,
+                    "decision": "discard",
+                    "train_score_delta": 0.2,
+                    "validation_score_delta": -0.4,
+                    "parse_error_delta": 0.0,
+                    "timeout_rate_delta": 0.0,
+                    "signal_strength": "mixed",
+                    "regression_flags": ["validation_drop"],
+                    "dimension_feedback_summary": {
+                        "decision_signal": "rejected",
+                        "train_score": "improved",
+                        "validation_score": "weaker",
+                        "stability": "score_regression",
+                    },
+                    "suggested_adjustments": ["narrow the next retry to protect validation behavior"],
+                    "scoreboard_ref": "rounds/round-001/scoreboard.json",
+                    "decision_ref": "rounds/round-001/decision.json",
+                    "worker_contract_ref": "rounds/round-001/worker-contract.json",
+                    "distilled_at": "2026-03-27T00:00:00+00:00",
+                }
+                (run_dir / "feedback-ledger.jsonl").write_text(json.dumps(feedback_entry) + "\n", encoding="utf-8")
+
+                self.assertEqual(run_autoresearch.main(["prepare-round", "--contract", str(contract_path)]), 0)
+                mutation = json.loads((run_dir / "rounds" / "round-001" / "mutation.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(mutation["mutation_key"], "text_rephrase:demo:fresh-family")
+
 
 if __name__ == "__main__":
     unittest.main()

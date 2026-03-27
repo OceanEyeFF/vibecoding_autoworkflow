@@ -24,6 +24,7 @@ from common import SCHEMAS_ROOT
 AUTORESEARCH_WORKER_CONTRACT_SCHEMA_PATH = SCHEMAS_ROOT / "autoresearch-worker-contract.schema.json"
 WORKER_CONTRACT_VERSION = 2
 LEGACY_WORKER_CONTRACT_VERSION = 1
+LEGACY_WORKER_CONTRACT_POLICY = "transition_compat_weak_checks"
 
 LEGACY_WORKER_CONTRACT_REQUIRED_FIELDS = (
     "worker_contract_version",
@@ -142,21 +143,29 @@ def _comparison_baseline(scoreboard: dict[str, Any] | None) -> dict[str, float |
     }
 
 
+def build_comparison_baseline(scoreboard: dict[str, Any] | None) -> dict[str, float | None]:
+    comparison_baseline = _comparison_baseline(scoreboard)
+    if comparison_baseline is None:
+        raise ValueError("baseline_scoreboard is required to build worker-contract comparison_baseline.")
+    return comparison_baseline
+
+
 def build_worker_contract_payload(
     *,
     contract: AutoresearchContract,
     mutation_payload: dict[str, Any],
     round_payload: dict[str, Any],
     agent_report_path: Path,
-    baseline_scoreboard: dict[str, Any] | None = None,
+    comparison_baseline: dict[str, float | None] | None = None,
+    recent_feedback_excerpt: list[str] | None = None,
     materialized_at: str | None = None,
 ) -> dict[str, Any]:
     resolved_materialized_at = str(materialized_at or round_payload.get("worker_contract_materialized_at") or "").strip()
     if not resolved_materialized_at:
         raise ValueError("worker contract materialized_at must be provided by round authority.")
-    comparison_baseline = _comparison_baseline(baseline_scoreboard)
     if comparison_baseline is None:
-        raise ValueError("baseline_scoreboard is required to build worker-contract comparison_baseline.")
+        raise ValueError("comparison_baseline is required to build worker-contract payload.")
+    excerpt = [str(item).strip() for item in (recent_feedback_excerpt or []) if str(item).strip()]
     # All paths are serialized as absolute strings to keep agent consumption independent of CWD.
     payload: dict[str, Any] = {
         "worker_contract_version": WORKER_CONTRACT_VERSION,
@@ -176,8 +185,8 @@ def build_worker_contract_payload(
         "expected_effect": dict(mutation_payload.get("expected_effect") or {}),
         "objective": str(contract.payload["objective"]),
         "target_surface": str(contract.payload["target_surface"]),
-        "comparison_baseline": comparison_baseline,
-        "recent_feedback_excerpt": [],
+        "comparison_baseline": dict(comparison_baseline),
+        "recent_feedback_excerpt": excerpt,
         "contract_fingerprint": compute_contract_fingerprint(contract),
         "mutation_fingerprint": str(mutation_payload["fingerprint"]),
         "materialized_at": resolved_materialized_at,

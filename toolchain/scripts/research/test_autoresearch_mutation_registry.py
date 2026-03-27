@@ -300,6 +300,51 @@ class AutoresearchMutationRegistryTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "must stay within contract.mutable_paths"):
                 load_mutation_registry(registry_path, contract=contract, repo_root=root)
 
+    def test_load_mutation_registry_rejects_parent_target_path_that_widens_mutable_scope(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            contract_path = self._write_contract(root)
+            contract = load_contract(contract_path, repo_root=root)
+            contract_fp = compute_contract_fingerprint(contract)
+            entry = build_entry_payload()
+            entry["target_paths"] = ["product/memory-side"]
+            entry.pop("fingerprint_basis")
+            entry.pop("fingerprint")
+            registry_payload = {
+                "run_id": contract.run_id,
+                "registry_version": 1,
+                "contract_fingerprint": contract_fp,
+                "entries": [entry],
+            }
+            registry_path = root / "mutation-registry.json"
+            registry_path.write_text(json.dumps(registry_payload), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "must stay within contract.mutable_paths"):
+                load_mutation_registry(registry_path, contract=contract, repo_root=root)
+
+    def test_load_mutation_registry_accepts_narrower_child_target_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            contract_path = self._write_contract(root)
+            contract = load_contract(contract_path, repo_root=root)
+            contract_fp = compute_contract_fingerprint(contract)
+            entry = build_entry_payload()
+            entry["target_paths"] = ["product/memory-side/skills/skill.md"]
+            entry.pop("fingerprint_basis")
+            entry.pop("fingerprint")
+            registry_payload = {
+                "run_id": contract.run_id,
+                "registry_version": 1,
+                "contract_fingerprint": contract_fp,
+                "entries": [entry],
+            }
+            registry_path = root / "mutation-registry.json"
+            registry_path.write_text(json.dumps(registry_payload), encoding="utf-8")
+
+            loaded = load_mutation_registry(registry_path, contract=contract, repo_root=root)
+
+        self.assertEqual(loaded.entries[0]["target_paths"], ["product/memory-side/skills/skill.md"])
+
     def test_load_mutation_registry_rejects_target_paths_overlapping_frozen_paths(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -419,6 +464,54 @@ class AutoresearchMutationRegistryTest(unittest.TestCase):
             registry_path.write_text(json.dumps(registry_payload), encoding="utf-8")
 
             with self.assertRaisesRegex(ValueError, "fingerprint_basis"):
+                load_mutation_registry(registry_path, contract=contract, repo_root=root)
+
+    def test_load_mutation_registry_rejects_inconsistent_bookkeeping_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            contract_path = self._write_contract(root)
+            contract = load_contract(contract_path, repo_root=root)
+            contract_fp = compute_contract_fingerprint(contract)
+            entry = build_entry_payload()
+            entry["attempts"] = 0
+            entry["last_selected_round"] = 1
+            entry.pop("fingerprint_basis")
+            entry.pop("fingerprint")
+            registry_payload = {
+                "run_id": contract.run_id,
+                "registry_version": 1,
+                "contract_fingerprint": contract_fp,
+                "entries": [entry],
+            }
+            registry_path = root / "mutation-registry.json"
+            registry_path.write_text(json.dumps(registry_payload), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "last_selected_round requires attempts > 0"):
+                load_mutation_registry(registry_path, contract=contract, repo_root=root)
+
+    def test_load_mutation_registry_rejects_exhausted_state_without_recorded_decision(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            contract_path = self._write_contract(root)
+            contract = load_contract(contract_path, repo_root=root)
+            contract_fp = compute_contract_fingerprint(contract)
+            entry = build_entry_payload()
+            entry["status"] = "exhausted"
+            entry["attempts"] = 1
+            entry["last_selected_round"] = 1
+            entry["last_decision"] = None
+            entry.pop("fingerprint_basis")
+            entry.pop("fingerprint")
+            registry_payload = {
+                "run_id": contract.run_id,
+                "registry_version": 1,
+                "contract_fingerprint": contract_fp,
+                "entries": [entry],
+            }
+            registry_path = root / "mutation-registry.json"
+            registry_path.write_text(json.dumps(registry_payload), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "exhausted status requires a recorded last_decision"):
                 load_mutation_registry(registry_path, contract=contract, repo_root=root)
 
     def test_import_manual_mutation_as_registry_entry_supports_legacy_shape(self) -> None:

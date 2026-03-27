@@ -50,11 +50,11 @@
 - `baseline`：按 contract 分开执行 train/validation suite，写 `scoreboard.json`、记录 baseline 历史行，并把 `runtime.json` 的 `champion_sha` 同步到这次 baseline 实际评测的 HEAD
 - baseline 只跑 train/validation；acceptance suite 仅作为 contract fixture 引用，不在 P0.1 默认 baseline 中执行
 - `prepare-round`：在不切换当前工作树的前提下创建 `candidate/<run-id>/rNNN` 和独立 worktree，并写 `runtime.json`、`round.json`、`worktree.json`
-- `prepare-round` 默认会从 run-local `mutation-registry.json` 自动选择下一条可用 entry；当前 selector 输入包含 registry、runtime、比较基线 scoreboard，以及可选的 `feedback-ledger.jsonl`，在没有 ledger 时保持 P1.2 的 deterministic 规则，有 ledger 时则按 family signal 做 feedback-aware priority，再 materialize 本轮 `mutation.json` 并回写 `attempts / last_selected_round`
+- `prepare-round` 默认会从 run-local `mutation-registry.json` 自动选择下一条可用 entry；当前 selector 输入包含 registry、runtime、比较基线 scoreboard，以及可选的 `feedback-ledger.jsonl`，在没有 ledger 时保持 P1.2 的 deterministic 规则，有 ledger 时则按 family signal 做 feedback-aware priority，并对 validation / parse-error / timeout 回退信号施加 guardrail，再 materialize 本轮 `mutation.json` 并回写 `attempts / last_selected_round`
 - `prepare-round --mutation-key <key>`：显式覆盖自动选择，直接选中指定 entry（仍会校验 entry 可用性）
 - `prepare-round --mutation <path>`：兼容旧入口，但会先把手工 spec import/canonicalize 成 registry entry，再 materialize 本轮 `mutation.json`；不再直接把一次性 spec 原样写入 round 目录
-- `prepare-round` 会同时写出 `mutation.json` 和 `worker-contract.json`；两者的 hash 都会写入 `round.json`，`worker-contract.json` 的 `materialized_at` 也会固定进 `round.json`，`run-round` 会在评测前重算校验，防止通过手改 round 文件扩大 scope
-- `run-round`：要求 `agent-report.md` 已写入 round 目录；脚本会重新读取并校验 round 目录里的 `mutation.json`，然后校验 candidate 改动只能触达 `target_paths`、且动作类型符合 `allowed_actions`，再提交 candidate 改动、从 candidate worktree 运行 train / validation suites，并写 round 级 `scoreboard.json`
+- `prepare-round` 会先冻结 round authority（registry entry、materialized mutation、frozen `comparison_baseline`、`recent_feedback_excerpt`），再写出 `worker-contract.json` 并回写 registry bookkeeping；若发现中断残留的 active round，会先按 frozen authority 修复 `mutation.json` / `worker-contract.json` 并对账 registry bookkeeping，再拒绝开启新 round；若 `mutation-registry.json` 已缺失，则会 fail closed 并要求先 `cleanup-round`
+- `run-round`：要求 `agent-report.md` 已写入 round 目录；脚本会重新读取并校验 round 目录里的 `mutation.json`，然后校验 candidate 改动只能触达 `target_paths` 的同级或更窄子路径、且动作类型符合 `allowed_actions`，再提交 candidate 改动、从 candidate worktree 运行 train / validation suites，并写 round 级 `scoreboard.json`
 - `decide-round`：读取“当前比较基线 scoreboard”和本轮 scoreboard，按固定规则写 `decision.json`，再产出 round 级 `feedback-distill.json` 和 run 级 `feedback-ledger.jsonl`，然后调用 promote 或 discard；fixed rule 同时约束 score、parse_error、timeout 与 hard-fail/pass_rate 非回退
 - `promote-round`：只允许 fast-forward 语义，把 `champion/<run-id>` 前进到 active candidate commit，然后清理 candidate branch/worktree
 - `discard-round`：直接删除 active candidate branch/worktree，不走 `git revert`
@@ -200,7 +200,7 @@ P0.1 当前已固定的校验和边界是：
 - `round.json`：round 编号、`base_sha`、candidate 分支/worktree、当前状态
 - `worktree.json`：candidate worktree 路径、分支、`base_sha`、`candidate_sha`、清理时间
 - `mutation.json`：本轮 authority mutation spec，包含 `mutation_key`、`attempt`、`fingerprint`、`instruction`、`expected_effect`、`guardrails` 等字段
-- `worker-contract.json`：agent-facing 执行信封，压平 candidate worktree、instruction、target_paths、allowed_actions、comparison_baseline、fingerprints、`materialized_at` 等本轮执行要点
+- `worker-contract.json`：agent-facing 执行信封，压平 candidate worktree、instruction、target_paths、allowed_actions、frozen `comparison_baseline`、`recent_feedback_excerpt`、fingerprints、`materialized_at` 等本轮执行要点
 - `agent-report.md`：由 Codex / subagent 写出的本轮内容工作摘要；缺失时 `run-round` 会直接失败
 - `train/`：本轮 train suite 的 run artifacts
 - `validation/`：本轮 validation suite 的 run artifacts
@@ -220,10 +220,11 @@ P0.1 当前已固定的校验和边界是：
 
 P0.3 的脚本侧约束当前固定为：
 
-- `prepare-round --mutation-key` 或兼容 `--mutation` 会先 materialize authority `mutation.json`，再生成 `worker-contract.json`
+- `prepare-round --mutation-key` 或兼容 `--mutation` 会先 materialize authority `mutation.json`，再冻结 round authority，随后生成 `worker-contract.json`
 - materialized `mutation.json` 与 `worker-contract.json` 的 hash 都会写入 `round.json`
+- `target_paths` 对 `contract.mutable_paths` 的校验现在是严格子集语义；更宽父路径会被拒绝
 - `run-round` 读取 round 目录里的 `mutation.json` 后会重新做同一套 scope 校验，因此不能通过“prepare 后手改 mutation spec”来扩大允许变更范围
-- `run-round` 还会校验 `worker-contract.json` 的存在性、hash 和关键 tracing 字段一致性；当前顺序是先做 hash-first tamper 检查，再重建 payload 做语义一致性校验，但最终 authority 仍然是 `contract.json + mutation-registry/round authority + mutation.json + round.json + git diff`
+- `run-round` 还会校验 `worker-contract.json` 的存在性、hash 和关键 tracing 字段一致性；当前 v2 路径会直接复用 frozen `comparison_baseline` 与 `recent_feedback_excerpt` 重建期望 payload，legacy v1 则仅保留 `transition_compat_weak_checks` 弱校验兼容
 - `run-round` 只允许在 round 状态为 `candidate_active` 时执行
 - `decide-round` 只允许在 round 状态为 `evaluated` 时执行
 - `run-round` 会同时校验两类 candidate 改动：
@@ -492,8 +493,11 @@ P1.3 selector 规则（feedback-aware，但仍保持脚本主控）固定为：
 - `signal band` 固定为：
   - `recent_positive_signal`
   - `no_feedback_history`
+  - `guided_mixed_retry`
   - `mixed_signal_retry`
+  - `guardrail_capped_mixed_retry`
   - `latest_negative_signal`
+  - `guardrail_blocked_retry`
   - `sustained_regression_deprioritized`
 - selector 返回 `mutation_key / attempt / selection_reason / scheduler_reason / selection_index`
 

@@ -323,14 +323,19 @@ P1.3 的第一版 adaptive scheduler 只需要做到：
 - 当前 priority 顺序是：
   - `recent_positive_signal`
   - `no_feedback_history`
+  - `guided_mixed_retry`
   - `mixed_signal_retry`
+  - `guardrail_capped_mixed_retry`
   - `latest_negative_signal`
+  - `guardrail_blocked_retry`
   - `sustained_regression_deprioritized`
 - `comparison_baseline` 仍保留在 selector 入参里，用于接口兼容，但当前排序没有用它做权重
 
 ### 4. 当前实现的边界
 
-- `dimension_feedback_summary` 和 `suggested_adjustments` 目前仍是空的结构化占位，不做模型辅助压缩
+- `dimension_feedback_summary` 现在会按 score delta / regression flags 生成 deterministic 的最小摘要
+- `suggested_adjustments` 现在会按 fixed rules 生成有限建议，但仍不具备改写 `decision` 或直接写 registry 的权力
+- `recent_feedback_excerpt` 会把最近几条 distilled feedback 压成短字符串，供下一轮 worker contract 只读消费
 - `spawn_proposal` 仍未进入实现链
 - scheduler 只改变候选顺序，不改写 registry truth
 - `decision.json` 仍然完全由固定 keep / discard 规则决定
@@ -349,6 +354,7 @@ P1.3 的第一版 adaptive scheduler 只需要做到：
 
 - 当前还没有接入模型辅助压缩；这些字段仍是后续能力
 - 如果后续加入模型压缩，只能压缩 `dimension_feedback_summary` 与 `suggested_adjustments`
+- 当前最小 smoke 已经覆盖 adaptive 路径，但只覆盖 deterministic distill + guardrail，不覆盖模型辅助压缩
 
 ### 3. 不能交给 Codex 主控
 

@@ -500,6 +500,275 @@ class RunAutoresearchTest(unittest.TestCase):
             self.assertIsNone(runtime["active_round"])
             self.assertFalse(candidate_worktree.exists())
 
+    def test_prepare_round_reconciles_registry_and_worker_contract_for_active_round(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+            scoreboard = {
+                "run_id": "demo-run",
+                "generated_at": "2026-03-26T00:00:00+00:00",
+                "baseline_sha": current_head_sha(root),
+                "rounds_completed": 0,
+                "best_round": 0,
+                "lanes": [
+                    {"lane_name": "train", "avg_total_score": 9.0},
+                    {"lane_name": "validation", "avg_total_score": 8.0},
+                ],
+                "repo_tasks": [],
+            }
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                self.assertEqual(run_autoresearch.main(["init", "--contract", str(contract_path)]), 0)
+                run_dir = root / ".autoworkflow" / "demo-run"
+                (run_dir / "scoreboard.json").write_text(json.dumps(scoreboard), encoding="utf-8")
+
+                contract_obj = load_contract(contract_path, repo_root=root)
+                mutation_key = "text_rephrase:demo:intro-tighten-v1"
+                registry_payload = {
+                    "run_id": contract_obj.run_id,
+                    "registry_version": 1,
+                    "contract_fingerprint": compute_contract_fingerprint(contract_obj),
+                    "entries": [
+                        {
+                            "mutation_key": mutation_key,
+                            "kind": "text_rephrase",
+                            "status": "active",
+                            "target_paths": ["product/memory-side/skills"],
+                            "allowed_actions": ["edit"],
+                            "instruction_seed": "Tighten skill wording.",
+                            "expected_effect": {
+                                "hypothesis": "Improve train score without validation regression.",
+                                "primary_metrics": ["avg_total_score"],
+                                "guard_metrics": ["parse_error_rate"],
+                            },
+                            "guardrails": {
+                                "require_non_empty_diff": True,
+                                "max_files_touched": 1,
+                                "extra_frozen_paths": [],
+                            },
+                            "origin": {"type": "manual_seed", "ref": "test"},
+                            "attempts": 0,
+                            "last_selected_round": None,
+                            "last_decision": None,
+                        }
+                    ],
+                }
+                (run_dir / "mutation-registry.json").write_text(
+                    json.dumps(registry_payload, ensure_ascii=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                self.assertEqual(
+                    run_autoresearch.main(["prepare-round", "--contract", str(contract_path), "--mutation-key", mutation_key]),
+                    0,
+                )
+
+                registry_after = json.loads((run_dir / "mutation-registry.json").read_text(encoding="utf-8"))
+                registry_after["entries"][0]["attempts"] = 0
+                registry_after["entries"][0]["last_selected_round"] = None
+                (run_dir / "mutation-registry.json").write_text(
+                    json.dumps(registry_after, ensure_ascii=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                worker_path = run_dir / "rounds" / "round-001" / "worker-contract.json"
+                worker_path.unlink()
+                (run_dir / "runtime.json").unlink()
+
+                prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
+
+            self.assertEqual(prepare_code, 1)
+            repaired_registry = json.loads((run_dir / "mutation-registry.json").read_text(encoding="utf-8"))
+            self.assertEqual(repaired_registry["entries"][0]["attempts"], 1)
+            self.assertEqual(repaired_registry["entries"][0]["last_selected_round"], 1)
+            self.assertTrue(worker_path.is_file())
+            runtime = json.loads((run_dir / "runtime.json").read_text(encoding="utf-8"))
+            self.assertEqual(runtime["active_round"], 1)
+            self.assertEqual(runtime["active_candidate_branch"], "candidate/demo-run/r001")
+
+    def test_prepare_round_recovery_fails_closed_when_registry_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+            scoreboard = {
+                "run_id": "demo-run",
+                "generated_at": "2026-03-26T00:00:00+00:00",
+                "baseline_sha": current_head_sha(root),
+                "rounds_completed": 0,
+                "best_round": 0,
+                "lanes": [
+                    {"lane_name": "train", "avg_total_score": 9.0},
+                    {"lane_name": "validation", "avg_total_score": 8.0},
+                ],
+                "repo_tasks": [],
+            }
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                self.assertEqual(run_autoresearch.main(["init", "--contract", str(contract_path)]), 0)
+                run_dir = root / ".autoworkflow" / "demo-run"
+                (run_dir / "scoreboard.json").write_text(json.dumps(scoreboard), encoding="utf-8")
+
+                contract_obj = load_contract(contract_path, repo_root=root)
+                mutation_key = "text_rephrase:demo:intro-tighten-v1"
+                registry_payload = {
+                    "run_id": contract_obj.run_id,
+                    "registry_version": 1,
+                    "contract_fingerprint": compute_contract_fingerprint(contract_obj),
+                    "entries": [
+                        {
+                            "mutation_key": mutation_key,
+                            "kind": "text_rephrase",
+                            "status": "active",
+                            "target_paths": ["product/memory-side/skills"],
+                            "allowed_actions": ["edit"],
+                            "instruction_seed": "Tighten skill wording.",
+                            "expected_effect": {
+                                "hypothesis": "Improve train score without validation regression.",
+                                "primary_metrics": ["avg_total_score"],
+                                "guard_metrics": ["parse_error_rate"],
+                            },
+                            "guardrails": {
+                                "require_non_empty_diff": True,
+                                "max_files_touched": 1,
+                                "extra_frozen_paths": [],
+                            },
+                            "origin": {"type": "manual_seed", "ref": "test"},
+                            "attempts": 0,
+                            "last_selected_round": None,
+                            "last_decision": None,
+                        }
+                    ],
+                }
+                (run_dir / "mutation-registry.json").write_text(
+                    json.dumps(registry_payload, ensure_ascii=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                self.assertEqual(
+                    run_autoresearch.main(["prepare-round", "--contract", str(contract_path), "--mutation-key", mutation_key]),
+                    0,
+                )
+
+                (run_dir / "mutation-registry.json").unlink()
+                prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
+
+            self.assertEqual(prepare_code, 1)
+            self.assertFalse((run_dir / "mutation-registry.json").exists())
+
+    def test_prepare_round_worker_contract_includes_recent_feedback_excerpt(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+            scoreboard = {
+                "run_id": "demo-run",
+                "generated_at": "2026-03-26T00:00:00+00:00",
+                "baseline_sha": current_head_sha(root),
+                "rounds_completed": 1,
+                "best_round": 1,
+                "lanes": [
+                    {"lane_name": "train", "avg_total_score": 9.0},
+                    {"lane_name": "validation", "avg_total_score": 8.0},
+                ],
+                "repo_tasks": [],
+            }
+            feedback_entry = {
+                "feedback_distill_version": 1,
+                "run_id": "demo-run",
+                "round": 1,
+                "mutation_key": "seed",
+                "mutation_id": "seed#a001",
+                "attempt": 1,
+                "decision": "discard",
+                "train_score_delta": 0.5,
+                "validation_score_delta": -0.2,
+                "parse_error_delta": 0.0,
+                "timeout_rate_delta": 0.0,
+                "signal_strength": "mixed",
+                "regression_flags": ["validation_drop"],
+                "dimension_feedback_summary": {"validation_score": "weaker"},
+                "suggested_adjustments": ["narrow the next retry to protect validation behavior"],
+                "scoreboard_ref": "rounds/round-001/scoreboard.json",
+                "decision_ref": "rounds/round-001/decision.json",
+                "worker_contract_ref": "rounds/round-001/worker-contract.json",
+                "distilled_at": "2026-03-27T00:00:00+00:00",
+            }
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                self.assertEqual(run_autoresearch.main(["init", "--contract", str(contract_path)]), 0)
+                run_dir = root / ".autoworkflow" / "demo-run"
+                (run_dir / "scoreboard.json").write_text(json.dumps(scoreboard), encoding="utf-8")
+                (run_dir / "feedback-ledger.jsonl").write_text(json.dumps(feedback_entry) + "\n", encoding="utf-8")
+
+                contract_obj = load_contract(contract_path, repo_root=root)
+                mutation_key = "text_rephrase:demo:intro-tighten-v1"
+                registry_payload = {
+                    "run_id": contract_obj.run_id,
+                    "registry_version": 1,
+                    "contract_fingerprint": compute_contract_fingerprint(contract_obj),
+                    "entries": [
+                        {
+                            "mutation_key": mutation_key,
+                            "kind": "text_rephrase",
+                            "status": "active",
+                            "target_paths": ["product/memory-side/skills"],
+                            "allowed_actions": ["edit"],
+                            "instruction_seed": "Tighten skill wording.",
+                            "expected_effect": {
+                                "hypothesis": "Improve train score without validation regression.",
+                                "primary_metrics": ["avg_total_score"],
+                                "guard_metrics": ["parse_error_rate"],
+                            },
+                            "guardrails": {
+                                "require_non_empty_diff": True,
+                                "max_files_touched": 1,
+                                "extra_frozen_paths": [],
+                            },
+                            "origin": {"type": "manual_seed", "ref": "test"},
+                            "attempts": 0,
+                            "last_selected_round": None,
+                            "last_decision": None,
+                        }
+                    ],
+                }
+                (run_dir / "mutation-registry.json").write_text(
+                    json.dumps(registry_payload, ensure_ascii=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+
+                self.assertEqual(
+                    run_autoresearch.main(["prepare-round", "--contract", str(contract_path), "--mutation-key", mutation_key]),
+                    0,
+                )
+
+            worker_payload = json.loads(
+                (root / ".autoworkflow" / "demo-run" / "rounds" / "round-001" / "worker-contract.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertTrue(worker_payload["recent_feedback_excerpt"])
+            self.assertIn("validation_drop", worker_payload["recent_feedback_excerpt"][0])
+
     def test_prepare_round_with_legacy_mutation_imports_into_registry(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
