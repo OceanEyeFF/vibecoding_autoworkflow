@@ -266,21 +266,89 @@ P1.3 的第一版 adaptive scheduler 只需要做到：
 - 先有 deterministic baseline
 - 再在其上叠加 distilled feedback
 
-## 九、控制边界
+当前代码已经把这条路径落成了第一版：distillation 是脚本确定性的，scheduler 只是 feedback-aware 的 priority 层，不是 LLM 驱动的策略学习器。
+
+## 九、已落地实现
+
+### 1. 代码落点
+
+- `toolchain/scripts/research/autoresearch_feedback_distill.py`
+  - 生成和校验 `feedback-distill.json`
+  - 读取和写回 `feedback-ledger.jsonl`
+  - 计算 family signal priority
+- `toolchain/evals/fixtures/schemas/autoresearch-feedback-distill.schema.json`
+  - 约束 P1.3 distilled feedback 的字段形状
+- `toolchain/scripts/research/autoresearch_round.py`
+  - 在 `decide-round` 阶段计算 delta、flags、signal
+  - 写出 round 级 `feedback-distill.json`
+  - 追加或覆盖 run 级 `feedback-ledger.jsonl`
+- `toolchain/scripts/research/run_autoresearch.py`
+  - `prepare-round` 自动选择时加载 ledger
+  - `decide-round` 之后输出 distill/ledger 产物
+- `toolchain/scripts/research/autoresearch_selector.py`
+  - 接收可选 `feedback_ledger`
+  - 输出 `selection_reason` 和 `scheduler_reason`
+
+### 2. 产物形状
+
+- `feedback-distill.json`
+  - `feedback_distill_version`
+  - `run_id`
+  - `round`
+  - `mutation_key`
+  - `mutation_id`
+  - `attempt`
+  - `decision`
+  - `train_score_delta`
+  - `validation_score_delta`
+  - `parse_error_delta`
+  - `timeout_rate_delta`
+  - `signal_strength`
+  - `regression_flags`
+  - `dimension_feedback_summary`
+  - `suggested_adjustments`
+  - `scoreboard_ref`
+  - `decision_ref`
+  - `worker_contract_ref`
+  - `distilled_at`
+- `feedback-ledger.jsonl`
+  - 每行一个 distilled feedback JSON object
+  - 按 `(run_id, round, mutation_id)` 做 upsert，而不是无脑追加
+
+### 3. 当前排序语义
+
+- 没有 ledger 时，selector 仍然回退到 P1.2 的 deterministic 行为
+- 有 ledger 时，selector 按 family signal priority 排序
+- fingerprint 冲突的 pending round 仍然优先于 family signal 排序被跳过
+- 当前 priority 顺序是：
+  - `recent_positive_signal`
+  - `no_feedback_history`
+  - `mixed_signal_retry`
+  - `latest_negative_signal`
+  - `sustained_regression_deprioritized`
+- `comparison_baseline` 仍保留在 selector 入参里，用于接口兼容，但当前排序没有用它做权重
+
+### 4. 当前实现的边界
+
+- `dimension_feedback_summary` 和 `suggested_adjustments` 目前仍是空的结构化占位，不做模型辅助压缩
+- `spawn_proposal` 仍未进入实现链
+- scheduler 只改变候选顺序，不改写 registry truth
+- `decision.json` 仍然完全由固定 keep / discard 规则决定
+
+## 十、控制边界
 
 ### 1. 必须由脚本控制
 
 - score delta 计算
 - regression flag 计算
 - ledger 追加与索引
-- scheduler 最终选项落定
-- spawn proposal 的 canonicalize 与 registry 写入
+- family signal priority 的排序规则
+- `decision.json` 的 keep / discard 裁决
 
 ### 2. 可由 Codex / subagent 辅助
 
-- 对 `dimension_feedback` 做摘要压缩
-- 对 `suggested_adjustments` 做语言层归纳
-- 对 mixed signal family 给出下一步尝试建议
+- 当前还没有接入模型辅助压缩；这些字段仍是后续能力
+- 如果后续加入模型压缩，只能压缩 `dimension_feedback_summary` 与 `suggested_adjustments`
 
 ### 3. 不能交给 Codex 主控
 
@@ -289,57 +357,15 @@ P1.3 的第一版 adaptive scheduler 只需要做到：
 - 自己提高某 family 的优先级分数
 - 自己跳过脚本的 exhaustion / veto 规则
 
-## 十、最小落地路径
+## 十一、当前状态
 
-### 1. 子阶段 A：冻结 distillation 文档
+### 1. 已完成
 
-只写 `docs/analysis/`：
+- deterministic feedback distillation
+- `feedback-distill.json` 与 `feedback-ledger.jsonl` 的落盘和 upsert
+- feedback-aware selector priority
 
-- 固定 `feedback-distill.json` 与 `feedback-ledger.jsonl` 的角色
-- 固定脚本与模型的反馈边界
-
-验收信号：
-
-- 原始结果与 distilled feedback 的关系清楚
-- adaptive scheduler 的输入对象不再模糊
-
-### 2. 子阶段 B：实现 deterministic distillation
-
-进入 `toolchain/scripts/research/`：
-
-- 先只做纯脚本版 distillation
-- 先只产出数值 delta、flags 与 refs
-
-验收信号：
-
-- 每轮结束后都有 `feedback-distill.json`
-- run 级 ledger 能按 `mutation_key` 聚合同类历史
-
-### 3. 子阶段 C：补模型辅助摘要
-
-进入 `toolchain/scripts/research/`：
-
-- 在 deterministic distillation 上补充可选的摘要压缩
-- 只处理 `dimension_feedback_summary` 与 `suggested_adjustments`
-
-验收信号：
-
-- 摘要层失败不影响 round 主流程
-- `decision` 与数值 delta 仍完全可重算
-
-### 4. 子阶段 D：实现 adaptive scheduler
-
-进入 `toolchain/scripts/research/`：
-
-- 在 minimal selector 之上增加 feedback-aware priority
-- 仍保持脚本主控
-
-验收信号：
-
-- scheduler 的选择理由能追溯到具体 ledger signal
-- 没有把 scheduler 扩成新的 orchestrator 层
-
-## 十一、当前阶段先不要碰
+### 2. 仍待后续验证或实现
 
 P1.3 里先不要碰：
 
@@ -348,20 +374,25 @@ P1.3 里先不要碰：
 - LLM 自由生成并直接执行 mutation
 - 多 candidate 并发 bandit
 - acceptance 全量纳入每轮自适应
+- `dimension_feedback_summary` 与 `suggested_adjustments` 的模型辅助压缩
+- `spawn_proposal` 的生成与 canonicalize
+- 任何会让 scheduler 变成独立 orchestrator 的机制
 
 这些都不是当前主链上的第一批硬前置。
 
 ## 十二、结论
 
-P1.3 的关键不是“再加一个更聪明的调度器”，而是先把原始 round 结果压缩成 family 级反馈资产。
+P1.3 当前已经落成的是一层 deterministic feedback distillation，再加一层基于 family signal 的 feedback-aware priority selector。
 
-只有这样，adaptive scheduler 才不是：
+它还不是：
 
 - 直接在噪声 transcript 上做选择
+- 也不是模型辅助的摘要压缩器
+- 也不是带 `spawn_proposal` 的调度编排层
 
 而是：
 
-- 在已经稳定归档的 mutation family 历史上做有依据的调度
+- 在已经稳定归档的 mutation family 历史上做有依据、可回放的排序与记录
 
 相关文档：
 

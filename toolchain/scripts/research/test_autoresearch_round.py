@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from autoresearch_contract import history_header, load_contract
+from autoresearch_feedback_distill import load_feedback_ledger
 from autoresearch_mutation_registry import (
     build_registry_payload,
     compute_mutation_fingerprint,
@@ -566,6 +567,8 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
         runtime = read_json(self.worktree_manager.runtime_path(self.contract.run_id))
         baseline_scoreboard = read_json(self.run_dir / "scoreboard.json")
+        feedback_distill = read_json(self.round_manager.feedback_distill_path(self.contract.run_id, 1))
+        feedback_ledger = load_feedback_ledger(self.round_manager.feedback_ledger_path(self.contract.run_id))
         history_lines = (self.run_dir / "history.tsv").read_text(encoding="utf-8").strip().splitlines()
 
         self.assertEqual(result["decision"]["decision"], "keep")
@@ -577,6 +580,10 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         self.assertEqual(baseline_scoreboard["lanes"][1]["avg_total_score"], 8.0)
         self.assertEqual(baseline_scoreboard["rounds_completed"], 1)
         self.assertEqual(baseline_scoreboard["best_round"], 1)
+        self.assertEqual(feedback_distill["decision"], "keep")
+        self.assertEqual(feedback_distill["signal_strength"], "positive")
+        self.assertEqual(len(feedback_ledger), 1)
+        self.assertEqual(feedback_ledger[0]["mutation_id"], result["decision"]["mutation_id"])
         self.assertEqual(len(history_lines), 2)
         self.assertIn("\tkeep\t", history_lines[1])
         registry_after = read_json(self.run_dir / "mutation-registry.json")
@@ -668,12 +675,15 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
         runtime = read_json(self.worktree_manager.runtime_path(self.contract.run_id))
         baseline_scoreboard = read_json(self.run_dir / "scoreboard.json")
+        feedback_distill = read_json(self.round_manager.feedback_distill_path(self.contract.run_id, 1))
         history_lines = (self.run_dir / "history.tsv").read_text(encoding="utf-8").strip().splitlines()
 
         self.assertEqual(result["decision"]["decision"], "discard")
         self.assertIsNone(runtime["active_round"])
         self.assertEqual(baseline_scoreboard["rounds_completed"], 1)
         self.assertEqual(baseline_scoreboard["best_round"], 0)
+        self.assertEqual(feedback_distill["signal_strength"], "mixed")
+        self.assertIn("validation_drop", feedback_distill["regression_flags"])
         self.assertEqual(len(history_lines), 2)
         self.assertIn("\tdiscard\t", history_lines[1])
         registry_after = read_json(self.run_dir / "mutation-registry.json")

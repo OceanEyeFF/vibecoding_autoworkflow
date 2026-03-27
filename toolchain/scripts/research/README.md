@@ -7,13 +7,14 @@
 - `run_skill_suite.py`：统一 runner，支持 direct run 和 suite run
 - `run_claude_skill_eval.py`：Claude 兼容壳，参数翻译后委托 `run_skill_suite.py`
 - `run_backend_acceptance_matrix.py`：live acceptance 入口，固定跑 `codex -> codex` 与 `claude -> codex` 两条矩阵
-- `run_autoresearch.py`：autoresearch P0.1/P0.2/P0.3/P1.1/P1.2 入口，负责 baseline 数据面、worktree 控制壳、registry materialization、worker contract 与 round 外环
+- `run_autoresearch.py`：autoresearch P0.1/P0.2/P0.3/P1.1/P1.2/P1.3 入口，负责 baseline 数据面、worktree 控制壳、registry materialization、worker contract、feedback distillation 与 round 外环
 - `autoresearch_contract.py`：P0.1 contract 读取、schema 校验、suite/path 边界校验
 - `autoresearch_scoreboard.py`：P0.1 baseline scoreboard 聚合与校验
 - `autoresearch_round.py`：P0.3 round 生命周期与 P1.2 的 mutation / worker-contract authority 校验、round scoreboard / decision 聚合
 - `autoresearch_mutation_registry.py`：P1.1 mutation registry 的 schema 校验、contract 边界校验、canonicalize 与 fingerprint 计算
 - `autoresearch_worker_contract.py`：P1.2 worker contract 的 schema 校验与生成（agent-facing envelope）
-- `autoresearch_selector.py`：P1.2 minimal selector 的 deterministic 选择结果对象与 pending fingerprint skip 规则
+- `autoresearch_selector.py`：P1.2/P1.3 selector，保留 deterministic 基线，并在有 distilled ledger 时按 family signal 做 feedback-aware priority
+- `autoresearch_feedback_distill.py`：P1.3 deterministic feedback distillation、ledger upsert 与 family signal helper
 - `worktree_manager.py`：P0.2 的 git worktree 生命周期管理器
 - `backends/`：backend registry、抽象 contract、以及 `claude / codex / opencode` 适配层
 - `common.py`：repo/task/suite/eval schema/artifact 的共享解析与写盘逻辑
@@ -42,18 +43,18 @@
 - 每条 lane 都跑 `task: all`，因此会覆盖四个 skills
 - 这是高成本、真实 backend 的系统级验收，不是普通 deterministic regression
 
-`run_autoresearch.py` 当前覆盖 P0 到 P1.2 的最小边界：
+`run_autoresearch.py` 当前覆盖 P0 到 P1.3 的最小边界：
 
 - `init`：读取并校验 contract，初始化 `.autoworkflow/autoresearch/<run-id>/contract.json` 与 `history.tsv`
 - `baseline`：按 contract 分开执行 train/validation suite，写 `scoreboard.json`、记录 baseline 历史行，并把 `runtime.json` 的 `champion_sha` 同步到这次 baseline 实际评测的 HEAD
 - baseline 只跑 train/validation；acceptance suite 仅作为 contract fixture 引用，不在 P0.1 默认 baseline 中执行
 - `prepare-round`：在不切换当前工作树的前提下创建 `candidate/<run-id>/rNNN` 和独立 worktree，并写 `runtime.json`、`round.json`、`worktree.json`
-- `prepare-round` 默认会从 run-local `mutation-registry.json` 自动选择下一条可用 entry；当前 selector 输入包含 registry、runtime 和比较基线 scoreboard，输出稳定选择结果对象，再 materialize 本轮 `mutation.json` 并回写 `attempts / last_selected_round`
+- `prepare-round` 默认会从 run-local `mutation-registry.json` 自动选择下一条可用 entry；当前 selector 输入包含 registry、runtime、比较基线 scoreboard，以及可选的 `feedback-ledger.jsonl`，在没有 ledger 时保持 P1.2 的 deterministic 规则，有 ledger 时则按 family signal 做 feedback-aware priority，再 materialize 本轮 `mutation.json` 并回写 `attempts / last_selected_round`
 - `prepare-round --mutation-key <key>`：显式覆盖自动选择，直接选中指定 entry（仍会校验 entry 可用性）
 - `prepare-round --mutation <path>`：兼容旧入口，但会先把手工 spec import/canonicalize 成 registry entry，再 materialize 本轮 `mutation.json`；不再直接把一次性 spec 原样写入 round 目录
 - `prepare-round` 会同时写出 `mutation.json` 和 `worker-contract.json`；两者的 hash 都会写入 `round.json`，`worker-contract.json` 的 `materialized_at` 也会固定进 `round.json`，`run-round` 会在评测前重算校验，防止通过手改 round 文件扩大 scope
 - `run-round`：要求 `agent-report.md` 已写入 round 目录；脚本会重新读取并校验 round 目录里的 `mutation.json`，然后校验 candidate 改动只能触达 `target_paths`、且动作类型符合 `allowed_actions`，再提交 candidate 改动、从 candidate worktree 运行 train / validation suites，并写 round 级 `scoreboard.json`
-- `decide-round`：读取“当前比较基线 scoreboard”和本轮 scoreboard，按固定规则写 `decision.json`，然后调用 promote 或 discard；fixed rule 同时约束 score、parse_error、timeout 与 hard-fail/pass_rate 非回退
+- `decide-round`：读取“当前比较基线 scoreboard”和本轮 scoreboard，按固定规则写 `decision.json`，再产出 round 级 `feedback-distill.json` 和 run 级 `feedback-ledger.jsonl`，然后调用 promote 或 discard；fixed rule 同时约束 score、parse_error、timeout 与 hard-fail/pass_rate 非回退
 - `promote-round`：只允许 fast-forward 语义，把 `champion/<run-id>` 前进到 active candidate commit，然后清理 candidate branch/worktree
 - `discard-round`：直接删除 active candidate branch/worktree，不走 `git revert`
 - `cleanup-round`：按 `.autoworkflow/autoresearch/<run-id>/runtime.json` 回收中断残留的 active candidate
@@ -204,6 +205,7 @@ P0.1 当前已固定的校验和边界是：
 - `validation/`：本轮 validation suite 的 run artifacts
 - `scoreboard.json`：本轮 train / validation 聚合结果
 - `decision.json`：固定 keep / discard 规则输出
+- `feedback-distill.json`：P1.3 的 round 级 deterministic distilled feedback，记录 delta、signal、flags 与 refs
 
 根目录还会持续维护：
 
@@ -211,6 +213,7 @@ P0.1 当前已固定的校验和边界是：
 - `runtime.json`
 - `history.tsv`
 - 顶层 `scoreboard.json`：作为“下一轮比较基线”；round 0 时是 baseline，`keep` 后会前移到当前 champion，并在 round 裁决后更新 `rounds_completed` 与 `best_round`
+- `feedback-ledger.jsonl`：P1.3 的 run 级 family feedback ledger；同一 `(run_id, round, mutation_id)` 会被 upsert，而不是盲目追加重复行
 
 ### Autoresearch P0.3 Guardrails
 
@@ -432,52 +435,66 @@ python3 toolchain/scripts/research/run_claude_skill_eval.py \
   --with-eval
 ```
 
-## P1.2 Regression Checklist
+## P1.3 Regression Checklist
 
-P1.2 回归建议固定分三层执行：
+P1.3 回归建议固定分三层执行：
 
 - 静态检查：
 
 ```bash
 python3 -m py_compile \
   toolchain/scripts/research/run_autoresearch.py \
+  toolchain/scripts/research/autoresearch_feedback_distill.py \
   toolchain/scripts/research/autoresearch_mutation_registry.py \
   toolchain/scripts/research/autoresearch_worker_contract.py \
   toolchain/scripts/research/autoresearch_selector.py \
+  toolchain/scripts/research/test_autoresearch_feedback_distill.py \
   toolchain/scripts/research/test_autoresearch_mutation_registry.py \
   toolchain/scripts/research/test_autoresearch_worker_contract.py \
   toolchain/scripts/research/test_autoresearch_selector.py \
   toolchain/scripts/research/test_autoresearch_round.py \
   toolchain/scripts/research/test_run_autoresearch.py \
-  toolchain/scripts/research/test_autoresearch_p1_1_smoke.py
+  toolchain/scripts/research/test_autoresearch_p1_1_smoke.py \
+  toolchain/scripts/research/test_autoresearch_p1_3_smoke.py
 ```
 
 - 白盒测试：
 
 ```bash
 python3 -m unittest \
+  toolchain/scripts/research/test_autoresearch_feedback_distill.py \
   toolchain/scripts/research/test_autoresearch_mutation_registry.py \
   toolchain/scripts/research/test_autoresearch_worker_contract.py \
   toolchain/scripts/research/test_autoresearch_selector.py \
   toolchain/scripts/research/test_autoresearch_round.py \
   toolchain/scripts/research/test_run_autoresearch.py \
-  toolchain/scripts/research/test_autoresearch_p1_1_smoke.py
+  toolchain/scripts/research/test_autoresearch_p1_1_smoke.py \
+  toolchain/scripts/research/test_autoresearch_p1_3_smoke.py
 ```
 
-- smoke 测试覆盖（当前仍由 `test_autoresearch_p1_1_smoke.py` 固定）：
+- smoke 测试覆盖（当前由 `test_autoresearch_p1_1_smoke.py` 与 `test_autoresearch_p1_3_smoke.py` 固定）：
   - `init -> baseline -> prepare-round(auto select) -> run-round -> decide-round`
   - `prepare-round --mutation-key` 显式覆盖自动选择
   - all-unselectable 时 `prepare-round` 失败
   - tamper `worker-contract.json` 时 `run-round` 失败
   - pending duplicate fingerprint 会在 auto select 时被跳过
+  - `decide-round` 会写出 `feedback-distill.json` 和 `feedback-ledger.jsonl`
+  - round 2 auto select 会优先复用近期 positive signal family，而不是盲目回到最低 attempts 规则
 
-P1.2 selector 规则（最小 deterministic）固定为：
+P1.3 selector 规则（feedback-aware，但仍保持脚本主控）固定为：
 
 - 只考虑 `status == active` 的 entry
 - 跳过 `attempts >= max_candidate_attempts_per_round` 的 entry
 - 跳过 fingerprint 与当前 pending round 冲突的 entry
-- 按 `attempts -> registry 原始顺序 -> mutation_key` 选最小项
-- selector 返回 `mutation_key / attempt / selection_reason / selection_index`
+- 无 ledger 时，按 `attempts -> registry 原始顺序 -> mutation_key` 选最小项
+- 有 ledger 时，先按 `signal band -> attempts -> registry 原始顺序 -> mutation_key` 排序
+- `signal band` 固定为：
+  - `recent_positive_signal`
+  - `no_feedback_history`
+  - `mixed_signal_retry`
+  - `latest_negative_signal`
+  - `sustained_regression_deprioritized`
+- selector 返回 `mutation_key / attempt / selection_reason / scheduler_reason / selection_index`
 
 P1.2 worker-contract 形状当前固定为：
 

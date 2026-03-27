@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Minimal deterministic mutation selector for autoresearch P1.2.
+"""Mutation selector for autoresearch P1.2/P1.3.
 
 Hard constraints (by design):
-- No adaptive scheduling
-- No feedback distillation / scheduler behavior
-- Deterministic selection from the run-local mutation registry
+- No free-form mutation generation
+- No registry writes from scheduler output
+- Deterministic fallback when no feedback ledger is present
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from typing import Any
 
 from autoresearch_contract import AutoresearchContract
 from autoresearch_mutation_registry import AutoresearchMutationRegistry
+from autoresearch_feedback_distill import feedback_family_priority
 
 
 @dataclass(frozen=True)
@@ -23,7 +24,9 @@ class MutationSelection:
     mutation_key: str
     attempt: int
     selection_reason: str
+    scheduler_reason: str
     selection_index: int
+    spawn_proposal: dict[str, Any] | None = None
 
 
 def _require_int(value: object, *, field: str) -> int:
@@ -64,14 +67,16 @@ def select_next_mutation_entry(
     contract: AutoresearchContract,
     runtime: dict[str, Any] | None = None,
     comparison_baseline: dict[str, Any] | None = None,
+    feedback_ledger: list[dict[str, Any]] | None = None,
 ) -> MutationSelection:
-    """Select the next mutation entry using a deterministic P1.2 policy.
+    """Select the next mutation entry using a deterministic P1.2/P1.3 policy.
 
     Rules:
     - only consider `status == "active"`
     - skip entries where `attempts >= contract.payload["max_candidate_attempts_per_round"]`
     - skip entries whose fingerprint conflicts with the current pending round
-    - sort by `attempts` ascending
+    - if a feedback ledger is present, rank by family signal band first
+    - otherwise fall back to `attempts` ascending
     - tie-break by registry original order
     """
     if comparison_baseline is not None and not isinstance(comparison_baseline, dict):
@@ -84,8 +89,9 @@ def select_next_mutation_entry(
 
     pending_fingerprint = _load_pending_round_fingerprint(registry, runtime=runtime)
 
-    ranked_candidates: list[tuple[int, int, str, dict[str, Any]]] = []
-    selectable_candidates: list[tuple[int, int, str, dict[str, Any]]] = []
+    adaptive_mode = bool(feedback_ledger)
+    ranked_candidates: list[tuple[int, int, int, str, str, dict[str, Any]]] = []
+    selectable_candidates: list[tuple[int, int, int, str, str, dict[str, Any]]] = []
     for idx, entry in enumerate(registry.entries):
         status = str(entry.get("status") or "").strip().lower()
         if status != "active":
@@ -98,7 +104,11 @@ def select_next_mutation_entry(
             continue
         fingerprint = str(entry.get("fingerprint") or "")
         mutation_key = str(entry.get("mutation_key") or "").strip()
-        candidate = (attempts, idx, mutation_key, entry)
+        scheduler_rank, scheduler_reason = feedback_family_priority(
+            feedback_ledger or [],
+            mutation_key=mutation_key,
+        )
+        candidate = (scheduler_rank, attempts, idx, mutation_key, scheduler_reason, entry)
         ranked_candidates.append(candidate)
         if pending_fingerprint is not None and fingerprint == pending_fingerprint:
             continue
@@ -109,21 +119,22 @@ def select_next_mutation_entry(
             "No selectable mutation entries found (need status=active and attempts below max_candidate_attempts_per_round)."
         )
 
-    ranked_candidates.sort(key=lambda item: (item[0], item[1], item[2]))
-    selectable_candidates.sort(key=lambda item: (item[0], item[1], item[2]))
-    attempts, selection_index, _mutation_key_sort, entry = selectable_candidates[0]
+    ranked_candidates.sort(key=lambda item: (item[0], item[1], item[2], item[3]))
+    selectable_candidates.sort(key=lambda item: (item[0], item[1], item[2], item[3]))
+    _scheduler_rank, attempts, selection_index, _mutation_key_sort, scheduler_reason, entry = selectable_candidates[0]
     mutation_key = str(entry.get("mutation_key") or "").strip()
     if not mutation_key:
         raise ValueError("Selected mutation entry is missing mutation_key.")
     selection_reason = (
         "skip_duplicate_fingerprint"
         if selectable_candidates[0] != ranked_candidates[0]
-        else "lowest_attempt_count"
+        else ("adaptive_priority" if adaptive_mode else "lowest_attempt_count")
     )
     return MutationSelection(
         entry=entry,
         mutation_key=mutation_key,
         attempt=attempts + 1,
         selection_reason=selection_reason,
+        scheduler_reason=scheduler_reason,
         selection_index=selection_index,
     )

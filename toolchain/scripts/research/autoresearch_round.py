@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Round execution helpers for autoresearch P0.3."""
+"""Round execution helpers for autoresearch P0.3/P1.3."""
 
 from __future__ import annotations
 
@@ -24,6 +24,11 @@ from autoresearch_mutation_registry import (
     materialize_round_mutation,
     upsert_registry_entry,
     write_mutation_registry,
+)
+from autoresearch_feedback_distill import (
+    build_feedback_distill_payload,
+    upsert_feedback_ledger_entry,
+    write_feedback_distill,
 )
 from autoresearch_scoreboard import build_scoreboard, load_run_summary, merge_run_summaries, write_scoreboard
 from autoresearch_worker_contract import (
@@ -289,6 +294,12 @@ class AutoresearchRoundManager:
 
     def worker_contract_path(self, run_id: str, round_number: int) -> Path:
         return self.worktree_manager.round_dir(run_id, round_number) / "worker-contract.json"
+
+    def feedback_distill_path(self, run_id: str, round_number: int) -> Path:
+        return self.worktree_manager.round_dir(run_id, round_number) / "feedback-distill.json"
+
+    def feedback_ledger_path(self, run_id: str) -> Path:
+        return self.run_dir(run_id) / "feedback-ledger.jsonl"
 
     def baseline_scoreboard_path(self, run_id: str) -> Path:
         return self.run_dir(run_id) / "scoreboard.json"
@@ -688,6 +699,16 @@ class AutoresearchRoundManager:
             round_scoreboard=round_scoreboard,
         )
         write_json(self.decision_path(contract.run_id, round_number), decision_payload)
+        feedback_distill = build_feedback_distill_payload(
+            run_dir=self.run_dir(contract.run_id),
+            round_dir=self.worktree_manager.round_dir(contract.run_id, round_number),
+            mutation_payload=mutation_payload,
+            decision_payload=decision_payload,
+            baseline_scoreboard=baseline_scoreboard,
+            round_scoreboard=round_scoreboard,
+        )
+        write_feedback_distill(self.feedback_distill_path(contract.run_id, round_number), feedback_distill)
+        upsert_feedback_ledger_entry(self.feedback_ledger_path(contract.run_id), feedback_distill)
 
         if decision_payload["decision"] == "keep":
             lifecycle = self.worktree_manager.promote_round(contract.run_id)
@@ -800,6 +821,7 @@ class AutoresearchRoundManager:
 
         return {
             "round": int(round_payload["round"]),
+            "run_id": contract.run_id,
             "decision": decision,
             "base_sha": str(round_payload["base_sha"]),
             "candidate_sha": str(round_payload.get("candidate_sha") or round_payload["base_sha"]),

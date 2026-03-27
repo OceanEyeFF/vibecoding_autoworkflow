@@ -67,6 +67,7 @@ class SelectorTest(unittest.TestCase):
         self.assertEqual(selection.mutation_key, "k1")
         self.assertEqual(selection.attempt, 1)
         self.assertEqual(selection.selection_reason, "lowest_attempt_count")
+        self.assertEqual(selection.scheduler_reason, "no_feedback_history")
         self.assertEqual(selection.selection_index, 0)
 
     def test_skips_disabled_and_exhausted_attempts(self) -> None:
@@ -97,6 +98,7 @@ class SelectorTest(unittest.TestCase):
         selection = select_next_mutation_entry(registry, contract=contract)
         self.assertEqual(selection.mutation_key, "ok")
         self.assertEqual(selection.attempt, 2)
+        self.assertEqual(selection.scheduler_reason, "no_feedback_history")
         self.assertEqual(selection.selection_index, 2)
 
     def test_skips_pending_round_duplicate_fingerprint(self) -> None:
@@ -136,6 +138,7 @@ class SelectorTest(unittest.TestCase):
 
         self.assertEqual(selection.mutation_key, "next")
         self.assertEqual(selection.selection_reason, "skip_duplicate_fingerprint")
+        self.assertEqual(selection.scheduler_reason, "no_feedback_history")
         self.assertEqual(selection.selection_index, 1)
 
     def test_duplicate_fingerprint_does_not_override_lowest_attempt_reason(self) -> None:
@@ -174,7 +177,176 @@ class SelectorTest(unittest.TestCase):
 
         self.assertEqual(selection.mutation_key, "fresh")
         self.assertEqual(selection.selection_reason, "lowest_attempt_count")
+        self.assertEqual(selection.scheduler_reason, "no_feedback_history")
         self.assertEqual(selection.selection_index, 1)
+
+    def test_prioritizes_recent_positive_signal_over_fresh_entry(self) -> None:
+        contract = build_contract(max_attempts=3)
+        registry = build_registry(
+            [
+                {
+                    "mutation_key": "fresh",
+                    "status": "active",
+                    "attempts": 0,
+                    "fingerprint": "sha256:fresh",
+                },
+                {
+                    "mutation_key": "positive",
+                    "status": "active",
+                    "attempts": 1,
+                    "fingerprint": "sha256:positive",
+                },
+            ]
+        )
+
+        selection = select_next_mutation_entry(
+            registry,
+            contract=contract,
+            feedback_ledger=[
+                {
+                    "feedback_distill_version": 1,
+                    "run_id": "demo-run",
+                    "round": 1,
+                    "mutation_key": "positive",
+                    "mutation_id": "positive#a001",
+                    "attempt": 1,
+                    "decision": "keep",
+                    "train_score_delta": 1.0,
+                    "validation_score_delta": 0.0,
+                    "parse_error_delta": 0.0,
+                    "timeout_rate_delta": 0.0,
+                    "signal_strength": "positive",
+                    "regression_flags": [],
+                    "dimension_feedback_summary": {},
+                    "suggested_adjustments": [],
+                    "scoreboard_ref": "rounds/round-001/scoreboard.json",
+                    "decision_ref": "rounds/round-001/decision.json",
+                    "worker_contract_ref": "rounds/round-001/worker-contract.json",
+                    "distilled_at": "2026-03-27T00:00:00+00:00",
+                }
+            ],
+        )
+
+        self.assertEqual(selection.mutation_key, "positive")
+        self.assertEqual(selection.selection_reason, "adaptive_priority")
+        self.assertEqual(selection.scheduler_reason, "recent_positive_signal")
+
+    def test_deprioritizes_sustained_regression_below_fresh_entry(self) -> None:
+        contract = build_contract(max_attempts=3)
+        registry = build_registry(
+            [
+                {
+                    "mutation_key": "negative",
+                    "status": "active",
+                    "attempts": 0,
+                    "fingerprint": "sha256:negative",
+                },
+                {
+                    "mutation_key": "fresh",
+                    "status": "active",
+                    "attempts": 1,
+                    "fingerprint": "sha256:fresh",
+                },
+            ]
+        )
+
+        selection = select_next_mutation_entry(
+            registry,
+            contract=contract,
+            feedback_ledger=[
+                {
+                    "feedback_distill_version": 1,
+                    "run_id": "demo-run",
+                    "round": 1,
+                    "mutation_key": "negative",
+                    "mutation_id": "negative#a001",
+                    "attempt": 1,
+                    "decision": "discard",
+                    "train_score_delta": -0.3,
+                    "validation_score_delta": -0.2,
+                    "parse_error_delta": 0.0,
+                    "timeout_rate_delta": 0.0,
+                    "signal_strength": "negative",
+                    "regression_flags": ["validation_drop"],
+                    "dimension_feedback_summary": {},
+                    "suggested_adjustments": [],
+                    "scoreboard_ref": "rounds/round-001/scoreboard.json",
+                    "decision_ref": "rounds/round-001/decision.json",
+                    "worker_contract_ref": "rounds/round-001/worker-contract.json",
+                    "distilled_at": "2026-03-27T00:00:00+00:00",
+                },
+                {
+                    "feedback_distill_version": 1,
+                    "run_id": "demo-run",
+                    "round": 2,
+                    "mutation_key": "negative",
+                    "mutation_id": "negative#a002",
+                    "attempt": 2,
+                    "decision": "discard",
+                    "train_score_delta": -0.1,
+                    "validation_score_delta": -0.2,
+                    "parse_error_delta": 0.0,
+                    "timeout_rate_delta": 0.0,
+                    "signal_strength": "negative",
+                    "regression_flags": ["validation_drop"],
+                    "dimension_feedback_summary": {},
+                    "suggested_adjustments": [],
+                    "scoreboard_ref": "rounds/round-002/scoreboard.json",
+                    "decision_ref": "rounds/round-002/decision.json",
+                    "worker_contract_ref": "rounds/round-002/worker-contract.json",
+                    "distilled_at": "2026-03-27T00:00:00+00:00",
+                },
+            ],
+        )
+
+        self.assertEqual(selection.mutation_key, "fresh")
+        self.assertEqual(selection.selection_reason, "adaptive_priority")
+        self.assertEqual(selection.scheduler_reason, "no_feedback_history")
+
+    def test_mixed_signal_family_remains_selectable(self) -> None:
+        contract = build_contract(max_attempts=3)
+        registry = build_registry(
+            [
+                {
+                    "mutation_key": "mixed",
+                    "status": "active",
+                    "attempts": 1,
+                    "fingerprint": "sha256:mixed",
+                }
+            ]
+        )
+
+        selection = select_next_mutation_entry(
+            registry,
+            contract=contract,
+            feedback_ledger=[
+                {
+                    "feedback_distill_version": 1,
+                    "run_id": "demo-run",
+                    "round": 1,
+                    "mutation_key": "mixed",
+                    "mutation_id": "mixed#a001",
+                    "attempt": 1,
+                    "decision": "discard",
+                    "train_score_delta": 0.5,
+                    "validation_score_delta": -0.2,
+                    "parse_error_delta": 0.0,
+                    "timeout_rate_delta": 0.0,
+                    "signal_strength": "mixed",
+                    "regression_flags": ["validation_drop"],
+                    "dimension_feedback_summary": {},
+                    "suggested_adjustments": [],
+                    "scoreboard_ref": "rounds/round-001/scoreboard.json",
+                    "decision_ref": "rounds/round-001/decision.json",
+                    "worker_contract_ref": "rounds/round-001/worker-contract.json",
+                    "distilled_at": "2026-03-27T00:00:00+00:00",
+                }
+            ],
+        )
+
+        self.assertEqual(selection.mutation_key, "mixed")
+        self.assertEqual(selection.selection_reason, "adaptive_priority")
+        self.assertEqual(selection.scheduler_reason, "mixed_signal_retry")
 
     def test_raises_when_no_selectable_entries(self) -> None:
         contract = build_contract(max_attempts=1)

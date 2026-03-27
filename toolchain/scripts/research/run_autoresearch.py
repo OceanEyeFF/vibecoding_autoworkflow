@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Autoresearch entrypoint for P0.1 baseline, P0.2 worktree shell, and P0.3 round loop."""
+"""Autoresearch entrypoint for P0.1-P1.3 baseline, worktree, round, and feedback flows."""
 
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ from autoresearch_mutation_registry import (
     write_mutation_registry,
 )
 from autoresearch_selector import select_next_mutation_entry
+from autoresearch_feedback_distill import load_feedback_ledger
 from worktree_manager import read_json
 from common import REPO_ROOT, slugify
 from run_skill_suite import main as run_skill_suite_main
@@ -268,6 +269,7 @@ def cmd_prepare_round(
         if registry_path.is_file()
         else None
     )
+    feedback_ledger = load_feedback_ledger(run_dir / "feedback-ledger.jsonl")
     selection = None
 
     if mutation_key is not None:
@@ -291,6 +293,7 @@ def cmd_prepare_round(
                 contract=contract,
                 runtime=runtime,
                 comparison_baseline=baseline_scoreboard,
+                feedback_ledger=feedback_ledger,
             )
             entry = selection.entry
         else:
@@ -360,6 +363,9 @@ def cmd_prepare_round(
     print(f"mutation_path: {round_manager.mutation_path(contract.run_id, round_number)}")
     print(f"worker_contract_path: {worker_contract_path}")
     print(f"agent_report_path: {round_manager.agent_report_path(contract.run_id, round_number)}")
+    if selection is not None:
+        print(f"scheduler_reason: {selection.scheduler_reason}")
+        print(f"selection_reason: {selection.selection_reason}")
     return 0
 
 
