@@ -14,6 +14,7 @@
   - [autoresearch-p1-1-mutation-registry.md](./autoresearch-p1-1-mutation-registry.md)
   - [autoresearch-p1-2-worker-contract-and-minimal-selector.md](./autoresearch-p1-2-worker-contract-and-minimal-selector.md)
   - [autoresearch-p1-3-feedback-distillation-and-adaptive-scheduler.md](./autoresearch-p1-3-feedback-distillation-and-adaptive-scheduler.md)
+  - [autoresearch-p1-final-risk-register-and-followups.md](./autoresearch-p1-final-risk-register-and-followups.md)
 
 说明：
 
