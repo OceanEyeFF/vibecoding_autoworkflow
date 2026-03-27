@@ -559,6 +559,7 @@ codex exec \
 
 - [Research 评测契约与边界](../analysis/research-eval-contracts.md)
 - [Research 评测观测与输出规范](../analysis/research-eval-observability.md)
+- [Autoresearch 最小闭环运行说明](./autoresearch-minimal-loop.md)
 - [toolchain/scripts/research/README.md](../../toolchain/scripts/research/README.md)
 - [toolchain/evals/README.md](../../toolchain/evals/README.md)
 - [Codex Memory Side Repo-local Adapter 部署帮助](./memory-side/codex-deployment-help.md)
