@@ -18,12 +18,18 @@ from autoresearch_contract import (
     paths_overlap,
     resolve_suite_files,
 )
+from autoresearch_mutation_registry import (
+    AutoresearchMutationRegistry,
+    load_mutation_registry,
+    materialize_round_mutation,
+    upsert_registry_entry,
+    write_mutation_registry,
+)
 from autoresearch_scoreboard import build_scoreboard, load_run_summary, merge_run_summaries, write_scoreboard
 from autoresearch_worker_contract import (
     build_worker_contract_payload,
     compute_worker_contract_sha256,
     load_worker_contract_payload,
-    validate_worker_contract_consistency,
     write_worker_contract,
 )
 from common import REPO_ROOT
@@ -290,6 +296,12 @@ class AutoresearchRoundManager:
     def history_path(self, run_id: str) -> Path:
         return self.run_dir(run_id) / "history.tsv"
 
+    def mutation_registry_path(self, run_id: str) -> Path:
+        return self.run_dir(run_id) / "mutation-registry.json"
+
+    def round_authority_ref(self, run_id: str, round_number: int) -> str:
+        return self.worktree_manager.round_authority_ref(run_id, round_number)
+
     def _normalize_contract_paths(self, values: list[str]) -> list[PurePosixPath]:
         return [normalize_repo_path(value, self.repo_root) for value in values]
 
@@ -372,14 +384,22 @@ class AutoresearchRoundManager:
         allowed_actions = set(str(value) for value in mutation_payload["allowed_actions"])
         target_paths = self._normalize_contract_paths([str(value) for value in mutation_payload["target_paths"]])
         frozen_paths = self._normalize_contract_paths(contract.frozen_paths)
+        guardrails = mutation_payload.get("guardrails") or {}
+        if not isinstance(guardrails, dict):
+            raise RuntimeError("Mutation guardrails must be an object.")
+        extra_frozen_paths = self._normalize_contract_paths([str(value) for value in guardrails.get("extra_frozen_paths") or []])
+        max_files_touched = int(guardrails.get("max_files_touched") or 0)
+        require_non_empty_diff = bool(guardrails.get("require_non_empty_diff"))
         changes = self._collect_candidate_committed_changes(candidate_worktree, base_sha=base_sha)
         changes.extend(self._collect_candidate_worktree_changes(candidate_worktree))
+        touched_paths: set[str] = set()
         for change in changes:
             action = str(change["action"])
             if action not in allowed_actions:
                 rendered_paths = ", ".join(path.as_posix() for path in change["paths"])
                 raise RuntimeError(f"Candidate change action is not allowed: {action} for {rendered_paths}")
             for changed_path in change["paths"]:
+                touched_paths.add(changed_path.as_posix())
                 if not any(paths_overlap(target_path, changed_path) for target_path in target_paths):
                     raise RuntimeError(
                         "Candidate change escapes mutation target_paths: "
@@ -387,6 +407,74 @@ class AutoresearchRoundManager:
                     )
                 if any(paths_overlap(changed_path, frozen_path) for frozen_path in frozen_paths):
                     raise RuntimeError(f"Candidate change touches frozen path: {changed_path.as_posix()}")
+                if any(paths_overlap(changed_path, frozen_path) for frozen_path in extra_frozen_paths):
+                    raise RuntimeError(f"Candidate change touches frozen guardrail path: {changed_path.as_posix()}")
+        if require_non_empty_diff and not touched_paths:
+            raise RuntimeError("Candidate diff must be non-empty when require_non_empty_diff is enabled.")
+        if max_files_touched <= 0:
+            raise RuntimeError("Mutation guardrails.max_files_touched must be a positive integer.")
+        if len(touched_paths) > max_files_touched:
+            raise RuntimeError(
+                "Candidate diff touches too many files for guardrails.max_files_touched: "
+                f"{len(touched_paths)} > {max_files_touched}"
+            )
+
+    def _load_authoritative_mutation(
+        self,
+        contract: AutoresearchContract,
+        round_number: int,
+    ) -> tuple[AutoresearchMutationRegistry, dict[str, Any], dict[str, Any]]:
+        _authority_oid, _authority, frozen_registry_entry, frozen_mutation_payload = self._load_round_authority(
+            contract, round_number
+        )
+        registry_path = self.mutation_registry_path(contract.run_id)
+        if not registry_path.is_file():
+            raise FileNotFoundError(f"Missing mutation registry: {registry_path}")
+        registry = load_mutation_registry(registry_path, contract=contract, repo_root=self.repo_root)
+        selected_entries = [
+            entry for entry in registry.entries if int(entry.get("last_selected_round") or 0) == round_number
+        ]
+        if len(selected_entries) != 1:
+            raise RuntimeError(
+                "Mutation registry must contain exactly one entry selected for the active round. "
+                f"round={round_number} matches={len(selected_entries)}"
+            )
+        entry = selected_entries[0]
+        attempts = entry.get("attempts")
+        if isinstance(attempts, bool) or not isinstance(attempts, int) or attempts <= 0:
+            raise RuntimeError("Registry entry attempts must be a positive integer for the active round.")
+        if entry != frozen_registry_entry:
+            raise RuntimeError("mutation-registry.json does not match frozen round authority snapshot.")
+        mutation_payload = materialize_round_mutation(entry=entry, round_number=round_number, attempt=attempts)
+        if mutation_payload != frozen_mutation_payload:
+            raise RuntimeError("Materialized mutation does not match frozen round authority snapshot.")
+        mutation_path = self.mutation_path(contract.run_id, round_number)
+        if not mutation_path.is_file():
+            raise FileNotFoundError(f"Missing mutation file: {mutation_path}")
+        actual_mutation = load_mutation_payload(mutation_path)
+        if actual_mutation != frozen_mutation_payload:
+            raise RuntimeError("mutation.json does not match frozen round authority snapshot.")
+        return registry, entry, frozen_mutation_payload
+
+    def _write_registry_decision_state(
+        self,
+        contract: AutoresearchContract,
+        *,
+        registry: AutoresearchMutationRegistry,
+        entry: dict[str, Any],
+        decision: str,
+    ) -> None:
+        updated_entry = dict(entry)
+        updated_entry["last_decision"] = decision
+        max_attempts_raw = contract.payload.get("max_candidate_attempts_per_round")
+        if isinstance(max_attempts_raw, bool) or not isinstance(max_attempts_raw, int) or max_attempts_raw <= 0:
+            raise ValueError("contract.payload.max_candidate_attempts_per_round must be a positive integer.")
+        if int(updated_entry.get("attempts") or 0) >= max_attempts_raw:
+            updated_entry["status"] = "exhausted"
+        updated_registry = upsert_registry_entry(registry=registry, entry=updated_entry)
+        registry_payload = dict(updated_registry.payload)
+        registry_payload["entries"] = updated_registry.entries
+        write_mutation_registry(self.mutation_registry_path(contract.run_id), registry_payload)
 
     def ensure_prepare_allowed(self, contract: AutoresearchContract, mutation_payload: dict[str, Any]) -> None:
         baseline_scoreboard = self.baseline_scoreboard_path(contract.run_id)
@@ -412,6 +500,38 @@ class AutoresearchRoundManager:
         round_payload["mutation_sha256"] = _sha256_file_prefixed(mutation_path)
         write_json(round_path, round_payload)
         return mutation_path
+
+    def stage_round_authority(
+        self,
+        run_id: str,
+        round_number: int,
+        *,
+        registry_entry: dict[str, Any],
+        mutation_payload: dict[str, Any],
+    ) -> str:
+        authority_payload = {
+            "run_id": run_id,
+            "round": round_number,
+            "registry_entry": registry_entry,
+            "mutation_payload": mutation_payload,
+        }
+        return self.worktree_manager.write_round_authority(run_id, round_number, authority_payload)
+
+    def _load_round_authority(
+        self,
+        contract: AutoresearchContract,
+        round_number: int,
+    ) -> tuple[str, dict[str, Any], dict[str, Any], dict[str, Any]]:
+        authority_oid, authority = self.worktree_manager.read_round_authority(contract.run_id, round_number)
+        if str(authority.get("run_id") or "") != contract.run_id:
+            raise RuntimeError("round authority snapshot run_id does not match the active contract.")
+        if int(authority.get("round") or 0) != round_number:
+            raise RuntimeError("round authority snapshot round does not match the active round.")
+        registry_entry = authority.get("registry_entry")
+        mutation_payload = authority.get("mutation_payload")
+        if not isinstance(registry_entry, dict) or not isinstance(mutation_payload, dict):
+            raise RuntimeError("round authority snapshot must contain registry_entry and mutation_payload objects.")
+        return authority_oid, authority, registry_entry, mutation_payload
 
     def stage_worker_contract(
         self,
@@ -457,32 +577,26 @@ class AutoresearchRoundManager:
         if str(round_payload.get("state")) != "candidate_active":
             raise RuntimeError("run-round requires the active round to be in candidate_active state.")
         round_dir = self.worktree_manager.round_dir(contract.run_id, round_number)
+        _registry, _registry_entry, mutation_payload = self._load_authoritative_mutation(contract, round_number)
         mutation_path = self.mutation_path(contract.run_id, round_number)
-        expected_hash = str(round_payload.get("mutation_sha256") or "")
-        if not expected_hash:
-            raise RuntimeError("Missing mutation_sha256 in round.json; rerun prepare-round to materialize mutation.")
-        actual_hash = _sha256_file_prefixed(mutation_path)
-        if actual_hash != expected_hash:
-            raise RuntimeError("mutation.json does not match hash recorded in round.json (possible tampering).")
-        mutation_payload = load_mutation_payload(mutation_path)
-
         worker_path = self.worker_contract_path(contract.run_id, round_number)
         if not worker_path.is_file():
             raise FileNotFoundError(f"Missing worker contract: {worker_path}")
-        expected_worker_hash = str(round_payload.get("worker_contract_sha256") or "")
-        if not expected_worker_hash:
-            raise RuntimeError("Missing worker_contract_sha256 in round.json; rerun prepare-round to materialize.")
-        actual_worker_hash = compute_worker_contract_sha256(worker_path)
-        if actual_worker_hash != expected_worker_hash:
-            raise RuntimeError("worker-contract.json does not match hash recorded in round.json (possible tampering).")
         worker_contract = load_worker_contract_payload(worker_path)
-        validate_worker_contract_consistency(
-            worker_contract=worker_contract,
-            round_payload=round_payload,
+        baseline_scoreboard = read_json(self.baseline_scoreboard_path(contract.run_id))
+        expected_worker_contract = build_worker_contract_payload(
+            contract=contract,
+            contract_path=self.run_dir(contract.run_id) / "contract.json",
+            mutation_path=mutation_path,
             mutation_payload=mutation_payload,
+            mutation_sha256=_sha256_file_prefixed(mutation_path),
+            round_payload=round_payload,
             worktree_payload=worktree_payload,
-            mutation_sha256=actual_hash,
+            agent_report_path=self.agent_report_path(contract.run_id, round_number),
+            baseline_scoreboard=baseline_scoreboard,
         )
+        if worker_contract != expected_worker_contract:
+            raise RuntimeError("worker-contract.json does not match authoritative round/mutation/worktree state.")
 
         if int(mutation_payload["round"]) != round_number:
             raise ValueError(
@@ -555,7 +669,7 @@ class AutoresearchRoundManager:
         round_number = int(round_payload["round"])
         if str(round_payload.get("state")) != "evaluated":
             raise RuntimeError("decide-round requires the active round to be in evaluated state.")
-        mutation_payload = read_json(self.mutation_path(contract.run_id, round_number))
+        registry, registry_entry, mutation_payload = self._load_authoritative_mutation(contract, round_number)
         baseline_scoreboard = read_json(self.baseline_scoreboard_path(contract.run_id))
         round_scoreboard = read_json(self.round_scoreboard_path(contract.run_id, round_number))
         decision_payload = self._build_decision(
@@ -578,6 +692,12 @@ class AutoresearchRoundManager:
             baseline_scoreboard,
             decision_payload=decision_payload,
             round_scoreboard=round_scoreboard,
+        )
+        self._write_registry_decision_state(
+            contract,
+            registry=registry,
+            entry=registry_entry,
+            decision=str(decision_payload["decision"]),
         )
         return {
             "decision": decision_payload,
@@ -679,7 +799,7 @@ class AutoresearchRoundManager:
             "kind": str(mutation_payload["kind"]),
             "target_paths": mutation_payload["target_paths"],
             "allowed_actions": mutation_payload["allowed_actions"],
-            "expected_effect": str(mutation_payload["expected_effect"]),
+            "expected_effect": dict(mutation_payload["expected_effect"]),
             "qualitative_veto_checks": list(contract.payload.get("qualitative_veto_checks") or []),
             "qualitative_veto_triggered": qualitative_veto,
             "checks": checks,

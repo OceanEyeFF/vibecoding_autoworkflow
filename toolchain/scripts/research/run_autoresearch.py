@@ -25,7 +25,7 @@ from autoresearch_selector import select_next_mutation_entry
 from worktree_manager import read_json
 from common import REPO_ROOT, slugify
 from run_skill_suite import main as run_skill_suite_main
-from worktree_manager import WorktreeManager
+from worktree_manager import WorktreeManager, champion_branch_name
 
 
 AUTORESEARCH_ROOT = REPO_ROOT / ".autoworkflow" / "autoresearch"
@@ -130,14 +130,7 @@ def sync_runtime_to_baseline(run_id: str, base_sha: str) -> None:
     runtime = manager.load_runtime(run_id)
     if runtime.get("active_round") is not None:
         raise RuntimeError("Cannot run baseline while an active round exists.")
-    champion_branch = str(runtime["champion_branch"])
-    if manager.branch_exists(champion_branch):
-        champion_sha = manager.ref_sha(champion_branch)
-        if champion_sha != base_sha:
-            raise RuntimeError(
-                "Baseline HEAD does not match the existing champion branch. "
-                f"baseline={base_sha} champion={champion_sha}"
-            )
+    runtime["champion_branch"] = champion_branch_name(run_id)
     runtime["champion_sha"] = base_sha
     runtime["active_round"] = None
     runtime["active_candidate_branch"] = None
@@ -230,6 +223,7 @@ def cmd_baseline(contract_path: Path) -> int:
     }
     scoreboard = build_scoreboard(run_id=contract.run_id, baseline_sha=base_sha, lane_summaries=lane_summaries)
     write_scoreboard(run_dir / "scoreboard.json", scoreboard)
+    build_worktree_manager().refresh_champion_branch(contract.run_id, base_sha)
 
     train_lane = next((lane for lane in scoreboard["lanes"] if lane["lane_name"] == "train"), {})
     validation_lane = next((lane for lane in scoreboard["lanes"] if lane["lane_name"] == "validation"), {})
@@ -337,6 +331,12 @@ def cmd_prepare_round(
     registry_payload = dict(registry.payload)
     registry_payload["entries"] = registry.entries
     write_mutation_registry(registry_path, registry_payload)
+    round_manager.stage_round_authority(
+        contract.run_id,
+        round_number,
+        registry_entry=dict(entry),
+        mutation_payload=mutation_payload,
+    )
 
     print(f"prepared_round: {round_payload['round']}")
     print(f"candidate_branch: {round_payload['candidate_branch']}")
