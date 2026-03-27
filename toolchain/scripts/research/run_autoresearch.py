@@ -350,6 +350,8 @@ def cmd_prepare_round(
     registry_payload = dict(registry.payload)
     registry_payload["entries"] = registry.entries
     write_mutation_registry(registry_path, registry_payload)
+    print("[P1] registry_writeback: mutation_registry.json updated, attempts={}, last_selected_round={}".format(
+        entry["attempts"], round_number))
     round_manager.stage_round_authority(
         contract.run_id,
         round_number,
@@ -357,6 +359,7 @@ def cmd_prepare_round(
         mutation_payload=mutation_payload,
     )
 
+    print("[P1] authority_snapshot: round_authority staged for round {}".format(round_number))
     print(f"prepared_round: {round_payload['round']}")
     print(f"candidate_branch: {round_payload['candidate_branch']}")
     print(f"candidate_worktree: {round_payload['candidate_worktree']}")

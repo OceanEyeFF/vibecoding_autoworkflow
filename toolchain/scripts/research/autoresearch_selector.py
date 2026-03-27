@@ -90,6 +90,10 @@ def select_next_mutation_entry(
     pending_fingerprint = _load_pending_round_fingerprint(registry, runtime=runtime)
 
     adaptive_mode = bool(feedback_ledger)
+    print("[P1] selector_mode: {}, feedback_ledger_entries={}, selection_reason_base={}".format(
+        "adaptive_priority" if adaptive_mode else "deterministic_lowest_attempt_count",
+        len(feedback_ledger) if feedback_ledger else 0,
+        "lowest_attempt_count"))
     ranked_candidates: list[tuple[int, int, int, str, str, dict[str, Any]]] = []
     selectable_candidates: list[tuple[int, int, int, str, str, dict[str, Any]]] = []
     for idx, entry in enumerate(registry.entries):
