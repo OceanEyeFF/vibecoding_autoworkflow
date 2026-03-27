@@ -292,6 +292,65 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         self.assertEqual(scoreboard["lanes"][0]["avg_total_score"], 10.0)
         self.assertEqual(scoreboard["lanes"][1]["avg_total_score"], 8.5)
 
+    def test_run_round_accepts_legacy_worker_contract_without_round_hashes(self) -> None:
+        candidate_worktree, _ = self._prepare_active_round()
+        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+            "legacy candidate change\n",
+            encoding="utf-8",
+        )
+
+        round_path = self.worktree_manager.round_path(self.contract.run_id, 1)
+        round_payload = read_json(round_path)
+        mutation_path = self.round_manager.mutation_path(self.contract.run_id, 1)
+        mutation_payload = read_json(mutation_path)
+        worker_path = self.round_manager.worker_contract_path(self.contract.run_id, 1)
+        legacy_worker_payload = {
+            "worker_contract_version": 1,
+            "run_id": self.contract.run_id,
+            "round": round_payload["round"],
+            "mutation_id": mutation_payload["mutation_id"],
+            "mutation_key": mutation_payload["mutation_key"],
+            "attempt": mutation_payload["attempt"],
+            "fingerprint": mutation_payload["fingerprint"],
+            "kind": mutation_payload["kind"],
+            "instruction": mutation_payload["instruction"],
+            "target_paths": list(mutation_payload["target_paths"]),
+            "allowed_actions": list(mutation_payload["allowed_actions"]),
+            "guardrails": dict(mutation_payload["guardrails"]),
+            "expected_effect": dict(mutation_payload["expected_effect"]),
+            "base_sha": round_payload["base_sha"],
+            "candidate_branch": round_payload["candidate_branch"],
+            "candidate_worktree": round_payload["candidate_worktree"],
+            "agent_report_path": str(self.round_manager.agent_report_path(self.contract.run_id, 1)),
+            "mutation_path": str(mutation_path),
+            "contract_path": str(self.run_dir / "contract.json"),
+            "mutation_sha256": round_payload["mutation_sha256"],
+            "previous_feedback_excerpt": None,
+            "authority_note": (
+                "worker-contract.json is an agent-facing envelope only. "
+                "Authority remains: contract.json + mutation-registry.json + mutation.json hash + git diff validation."
+            ),
+        }
+        worker_path.write_text(json.dumps(legacy_worker_payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+        round_payload.pop("worker_contract_materialized_at", None)
+        round_payload.pop("worker_contract_sha256", None)
+        round_path.write_text(json.dumps(round_payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+
+        def fake_lane_runner(*, candidate_worktree: Path, suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+            if "train" in str(save_dir):
+                return [{"suite_file": "train.yaml", "results": [self._eval_result(10.0)]}]
+            return [{"suite_file": "validation.yaml", "results": [self._eval_result(8.5)]}]
+
+        self.round_manager._run_lane_suites = fake_lane_runner  # type: ignore[method-assign]
+        result = self.round_manager.run_round(self.contract)
+
+        refreshed_round = read_json(round_path)
+        scoreboard = read_json(self.round_manager.round_scoreboard_path(self.contract.run_id, 1))
+        self.assertEqual(result["round"]["state"], "evaluated")
+        self.assertEqual(refreshed_round["state"], "evaluated")
+        self.assertEqual(scoreboard["lanes"][0]["avg_total_score"], 10.0)
+        self.assertEqual(scoreboard["lanes"][1]["avg_total_score"], 8.5)
+
     def test_prepare_round_requires_baseline_scoreboard(self) -> None:
         (self.run_dir / "scoreboard.json").unlink()
         with self.assertRaisesRegex(FileNotFoundError, "Baseline scoreboard missing"):

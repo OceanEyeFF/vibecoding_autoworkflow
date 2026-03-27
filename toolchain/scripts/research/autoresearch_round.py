@@ -34,7 +34,9 @@ from autoresearch_scoreboard import build_scoreboard, load_run_summary, merge_ru
 from autoresearch_worker_contract import (
     build_worker_contract_payload,
     compute_worker_contract_sha256,
+    load_legacy_worker_contract_payload,
     load_worker_contract_payload,
+    validate_legacy_worker_contract_consistency,
     write_worker_contract,
 )
 from common import REPO_ROOT
@@ -597,24 +599,35 @@ class AutoresearchRoundManager:
         worker_path = self.worker_contract_path(contract.run_id, round_number)
         if not worker_path.is_file():
             raise FileNotFoundError(f"Missing worker contract: {worker_path}")
-        worker_contract = load_worker_contract_payload(worker_path)
-        baseline_scoreboard = read_json(self.baseline_scoreboard_path(contract.run_id))
         recorded_worker_contract_sha256 = str(round_payload.get("worker_contract_sha256") or "")
-        if not recorded_worker_contract_sha256:
-            raise RuntimeError("Missing worker_contract_sha256 in round.json for the active round.")
-        actual_worker_contract_sha256 = compute_worker_contract_sha256(worker_path)
-        if actual_worker_contract_sha256 != recorded_worker_contract_sha256:
-            raise RuntimeError("worker-contract.json does not match hash recorded in round.json.")
-        expected_worker_contract = build_worker_contract_payload(
-            contract=contract,
-            mutation_payload=mutation_payload,
-            round_payload=round_payload,
-            agent_report_path=self.agent_report_path(contract.run_id, round_number),
-            baseline_scoreboard=baseline_scoreboard,
-            materialized_at=str(round_payload.get("worker_contract_materialized_at") or ""),
-        )
-        if worker_contract != expected_worker_contract:
-            raise RuntimeError("worker-contract.json does not match authoritative round/mutation/worktree state.")
+        if recorded_worker_contract_sha256:
+            worker_contract = load_worker_contract_payload(worker_path)
+            baseline_scoreboard = read_json(self.baseline_scoreboard_path(contract.run_id))
+            actual_worker_contract_sha256 = compute_worker_contract_sha256(worker_path)
+            if actual_worker_contract_sha256 != recorded_worker_contract_sha256:
+                raise RuntimeError("worker-contract.json does not match hash recorded in round.json.")
+            expected_worker_contract = build_worker_contract_payload(
+                contract=contract,
+                mutation_payload=mutation_payload,
+                round_payload=round_payload,
+                agent_report_path=self.agent_report_path(contract.run_id, round_number),
+                baseline_scoreboard=baseline_scoreboard,
+                materialized_at=str(round_payload.get("worker_contract_materialized_at") or ""),
+            )
+            if worker_contract != expected_worker_contract:
+                raise RuntimeError("worker-contract.json does not match authoritative round/mutation/worktree state.")
+        else:
+            worker_contract = load_legacy_worker_contract_payload(worker_path)
+            mutation_sha256 = str(round_payload.get("mutation_sha256") or "")
+            if not mutation_sha256:
+                raise RuntimeError("Missing mutation_sha256 in round.json for the active round.")
+            validate_legacy_worker_contract_consistency(
+                worker_contract=worker_contract,
+                round_payload=round_payload,
+                mutation_payload=mutation_payload,
+                worktree_payload=active["worktree"],
+                mutation_sha256=mutation_sha256,
+            )
 
         if int(mutation_payload["round"]) != round_number:
             raise ValueError(

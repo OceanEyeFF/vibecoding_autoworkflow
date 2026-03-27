@@ -23,6 +23,32 @@ from common import SCHEMAS_ROOT
 
 AUTORESEARCH_WORKER_CONTRACT_SCHEMA_PATH = SCHEMAS_ROOT / "autoresearch-worker-contract.schema.json"
 WORKER_CONTRACT_VERSION = 2
+LEGACY_WORKER_CONTRACT_VERSION = 1
+
+LEGACY_WORKER_CONTRACT_REQUIRED_FIELDS = (
+    "worker_contract_version",
+    "run_id",
+    "round",
+    "mutation_id",
+    "mutation_key",
+    "attempt",
+    "fingerprint",
+    "kind",
+    "instruction",
+    "target_paths",
+    "allowed_actions",
+    "guardrails",
+    "expected_effect",
+    "base_sha",
+    "candidate_branch",
+    "candidate_worktree",
+    "agent_report_path",
+    "mutation_path",
+    "contract_path",
+    "mutation_sha256",
+    "previous_feedback_excerpt",
+    "authority_note",
+)
 
 
 def _sha256_file_prefixed(path: Path) -> str:
@@ -50,6 +76,38 @@ def validate_worker_contract_payload(payload: dict[str, Any]) -> None:
 def load_worker_contract_payload(path: Path) -> dict[str, Any]:
     payload = _load_json(path.expanduser().resolve())
     validate_worker_contract_payload(payload)
+    return payload
+
+
+def validate_legacy_worker_contract_payload(payload: dict[str, Any]) -> None:
+    required_fields = [field for field in LEGACY_WORKER_CONTRACT_REQUIRED_FIELDS if field not in payload]
+    if required_fields:
+        raise ValueError(
+            "Legacy worker contract missing required fields: " + ", ".join(required_fields)
+        )
+    version = payload.get("worker_contract_version")
+    if version != LEGACY_WORKER_CONTRACT_VERSION:
+        raise ValueError("Legacy worker contract must have worker_contract_version == 1.")
+
+    if not isinstance(payload.get("run_id"), str) or not str(payload["run_id"]).strip():
+        raise ValueError("Legacy worker contract field 'run_id' must be a non-empty string.")
+    if not isinstance(payload.get("round"), int) or int(payload["round"]) < 1:
+        raise ValueError("Legacy worker contract field 'round' must be a positive integer.")
+    if not isinstance(payload.get("mutation_key"), str) or not str(payload["mutation_key"]).strip():
+        raise ValueError("Legacy worker contract field 'mutation_key' must be a non-empty string.")
+    if not isinstance(payload.get("candidate_worktree"), str) or not str(payload["candidate_worktree"]).strip():
+        raise ValueError("Legacy worker contract field 'candidate_worktree' must be a non-empty string.")
+    if not isinstance(payload.get("candidate_branch"), str) or not str(payload["candidate_branch"]).strip():
+        raise ValueError("Legacy worker contract field 'candidate_branch' must be a non-empty string.")
+    if not isinstance(payload.get("base_sha"), str) or not str(payload["base_sha"]).strip():
+        raise ValueError("Legacy worker contract field 'base_sha' must be a non-empty string.")
+    if not isinstance(payload.get("mutation_sha256"), str) or not str(payload["mutation_sha256"]).strip():
+        raise ValueError("Legacy worker contract field 'mutation_sha256' must be a non-empty string.")
+
+
+def load_legacy_worker_contract_payload(path: Path) -> dict[str, Any]:
+    payload = _load_json(path.expanduser().resolve())
+    validate_legacy_worker_contract_payload(payload)
     return payload
 
 
@@ -158,5 +216,33 @@ def validate_worker_contract_consistency(
     if str(worker_contract.get("candidate_worktree")) != str(worktree_payload.get("path")):
         raise RuntimeError(
             "worker-contract.json candidate_worktree does not match worktree.json path: "
+            f"{worker_contract.get('candidate_worktree')!r} != {worktree_payload.get('path')!r}"
+        )
+
+
+def validate_legacy_worker_contract_consistency(
+    *,
+    worker_contract: dict[str, Any],
+    round_payload: dict[str, Any],
+    mutation_payload: dict[str, Any],
+    worktree_payload: dict[str, Any],
+    mutation_sha256: str,
+) -> None:
+    checks: list[tuple[str, object, object]] = [
+        ("round", worker_contract.get("round"), int(round_payload.get("round"))),
+        ("mutation_key", worker_contract.get("mutation_key"), mutation_payload.get("mutation_key")),
+        ("fingerprint", worker_contract.get("fingerprint"), mutation_payload.get("fingerprint")),
+        ("mutation_sha256", worker_contract.get("mutation_sha256"), mutation_sha256),
+        ("candidate_worktree", worker_contract.get("candidate_worktree"), round_payload.get("candidate_worktree")),
+        ("candidate_branch", worker_contract.get("candidate_branch"), round_payload.get("candidate_branch")),
+        ("base_sha", worker_contract.get("base_sha"), round_payload.get("base_sha")),
+    ]
+    for field, actual, expected in checks:
+        if actual != expected:
+            raise RuntimeError(f"legacy worker-contract.json field mismatch: {field}: {actual!r} != {expected!r}")
+
+    if str(worker_contract.get("candidate_worktree")) != str(worktree_payload.get("path")):
+        raise RuntimeError(
+            "legacy worker-contract.json candidate_worktree does not match worktree.json path: "
             f"{worker_contract.get('candidate_worktree')!r} != {worktree_payload.get('path')!r}"
         )
