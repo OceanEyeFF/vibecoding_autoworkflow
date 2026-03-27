@@ -125,6 +125,13 @@ def build_round_manager() -> AutoresearchRoundManager:
     return AutoresearchRoundManager(repo_root=REPO_ROOT, autoresearch_root=AUTORESEARCH_ROOT)
 
 
+def read_runtime_if_present(manager: WorktreeManager, run_id: str) -> dict[str, object] | None:
+    runtime_path = manager.runtime_path(run_id)
+    if not runtime_path.is_file():
+        return None
+    return read_json(runtime_path)
+
+
 def sync_runtime_to_baseline(run_id: str, base_sha: str) -> None:
     manager = build_worktree_manager()
     runtime = manager.load_runtime(run_id)
@@ -254,7 +261,6 @@ def cmd_prepare_round(
     manager = build_worktree_manager()
     next_round = manager.next_round_number(contract.run_id)
     baseline_scoreboard = read_json(run_dir / "scoreboard.json")
-    runtime = manager.load_runtime(contract.run_id)
 
     registry_path = run_dir / "mutation-registry.json"
     registry = (
@@ -275,6 +281,7 @@ def cmd_prepare_round(
                     "Missing mutation registry and no mutation specified. "
                     f"Expected: {registry_path} (or pass --mutation-key / --mutation)"
                 )
+            runtime = read_runtime_if_present(manager, contract.run_id)
             selection = select_next_mutation_entry(
                 registry,
                 contract=contract,
@@ -422,7 +429,7 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_discard_round(args.contract)
         if args.command == "cleanup-round":
             return cmd_cleanup_round(args.contract)
-    except (FileNotFoundError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
+    except (FileNotFoundError, KeyError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     raise RuntimeError(f"Unsupported command: {args.command}")

@@ -83,9 +83,9 @@ def select_next_mutation_entry(
         raise ValueError("contract.payload.max_candidate_attempts_per_round must be a positive integer.")
 
     pending_fingerprint = _load_pending_round_fingerprint(registry, runtime=runtime)
-    skipped_duplicate_fingerprint = False
 
-    candidates: list[tuple[int, int, str, dict[str, Any]]] = []
+    ranked_candidates: list[tuple[int, int, str, dict[str, Any]]] = []
+    selectable_candidates: list[tuple[int, int, str, dict[str, Any]]] = []
     for idx, entry in enumerate(registry.entries):
         status = str(entry.get("status") or "").strip().lower()
         if status != "active":
@@ -97,23 +97,29 @@ def select_next_mutation_entry(
         if attempts >= max_attempts:
             continue
         fingerprint = str(entry.get("fingerprint") or "")
-        if pending_fingerprint is not None and fingerprint == pending_fingerprint:
-            skipped_duplicate_fingerprint = True
-            continue
         mutation_key = str(entry.get("mutation_key") or "").strip()
-        candidates.append((attempts, idx, mutation_key, entry))
+        candidate = (attempts, idx, mutation_key, entry)
+        ranked_candidates.append(candidate)
+        if pending_fingerprint is not None and fingerprint == pending_fingerprint:
+            continue
+        selectable_candidates.append(candidate)
 
-    if not candidates:
+    if not selectable_candidates:
         raise RuntimeError(
             "No selectable mutation entries found (need status=active and attempts below max_candidate_attempts_per_round)."
         )
 
-    candidates.sort(key=lambda item: (item[0], item[1], item[2]))
-    attempts, selection_index, _mutation_key_sort, entry = candidates[0]
+    ranked_candidates.sort(key=lambda item: (item[0], item[1], item[2]))
+    selectable_candidates.sort(key=lambda item: (item[0], item[1], item[2]))
+    attempts, selection_index, _mutation_key_sort, entry = selectable_candidates[0]
     mutation_key = str(entry.get("mutation_key") or "").strip()
     if not mutation_key:
         raise ValueError("Selected mutation entry is missing mutation_key.")
-    selection_reason = "skip_duplicate_fingerprint" if skipped_duplicate_fingerprint else "lowest_attempt_count"
+    selection_reason = (
+        "skip_duplicate_fingerprint"
+        if selectable_candidates[0] != ranked_candidates[0]
+        else "lowest_attempt_count"
+    )
     return MutationSelection(
         entry=entry,
         mutation_key=mutation_key,
