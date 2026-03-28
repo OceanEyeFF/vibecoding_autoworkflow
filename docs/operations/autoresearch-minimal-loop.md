@@ -65,7 +65,9 @@ last_verified: 2026-03-28
   - `target_prompt_path`
 - `mutable_paths` 必须精确收紧到 `[target_prompt_path]`
 - `init / baseline / prepare-round / run-round` 会做 P2 preflight
-- `decide-round / promote-round / discard-round / cleanup-round` 不做 suite 级 preflight，保证 recovery 不会因为 suite 漂移而卡死
+- `decide-round` 不做无条件 CLI preflight，但如果命中 replay 条件，会在 replay 前复用同一套 P2 preflight
+- `promote-round` 会做 P2 preflight
+- `discard-round / cleanup-round` 不做 suite 级 preflight
 
 ## 三、最小输入
 
@@ -266,6 +268,11 @@ python3 toolchain/scripts/research/run_autoresearch.py \
 
 接着在 candidate worktree 内完成允许的改动，并写 `agent-report.md`。
 
+如果当前 run 采用 P2 单 Prompt profile，`prepare-round` 在创建新 candidate 之前还会先做 stop gate。当前已落地的 stop gate 只有两条：
+
+- 连续 `3` 轮已完成 round 都没有产生新的 validation champion，则直接停止创建新 round
+- 所有 `active` mutation family 都至少尝试过 `1` 次，且当前 run 还没有任何最终 `keep`，则直接停止创建新 round
+
 然后执行：
 
 ```bash
@@ -289,13 +296,20 @@ python3 toolchain/scripts/research/run_autoresearch.py \
   - `baseline`
   - `prepare-round`
   - `run-round`
-- 不会执行 P2 preflight：
+- 不会做无条件 CLI P2 preflight：
   - `decide-round`
+- 会做 P2 preflight：
   - `promote-round`
+- 不会执行 P2 preflight：
   - `discard-round`
   - `cleanup-round`
 
-后者刻意保留为 recovery/post-eval 命令，避免已经跑完评测的 round 因 suite 文件后续变动而无法收尾。
+补充说明：
+
+- `decide-round` 只有在“本轮 provisional keep 且 validation 严格高于当前 champion validation”时才会进入 replay
+- replay 真正执行前会复用同一套 P2 preflight；如果 preflight 失败，本轮最终会停在错误而不是盲目 replay
+- `promote-round` 当前是显式受 P2 preflight 保护的收尾命令
+- `discard-round / cleanup-round` 仍保留为 recovery/post-eval 命令，不会因为 suite 漂移而卡死
 
 ## 五、这次实跑确认的三个坑
 
@@ -399,6 +413,7 @@ run 根目录固定在：
 - `scoreboard.json`
 - `decision.json`
 - `feedback-distill.json`
+- `replay/scoreboard.json`（仅当 round 先命中 provisional `keep` 且触发 replay 时生成）
 
 `train/` 和 `validation/` 下还会继续落 runner artifact：
 
@@ -419,6 +434,11 @@ run 根目录固定在：
 3. `run-round` 成功写出 round 级 `scoreboard.json`
 4. `decide-round` 成功写出 `decision.json` 和 `feedback-distill.json`
 5. `runtime.json.active_round` 回到 `null`
+
+如果当前 round 触发 replay，还应额外满足：
+
+6. `rounds/round-NNN/replay/scoreboard.json` 已写出
+7. 只有当 replay validation 不低于本轮 round validation 时，最终 `decision.json` 才会保持 `keep`
 
 也就是说：
 

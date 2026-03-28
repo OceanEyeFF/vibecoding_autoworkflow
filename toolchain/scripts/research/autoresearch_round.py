@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 import hashlib
@@ -14,6 +15,9 @@ from typing import Any
 from autoresearch_contract import (
     HISTORY_COLUMNS,
     AutoresearchContract,
+    P2_RUNNER_TASK_TO_TARGET_TASK,
+    P2_TARGET_TASK_TO_PROMPT_PATH,
+    P2_TARGET_TASK_TO_RUNNER_TASK,
     normalize_repo_path,
     paths_overlap,
     resolve_p2_contract_target,
@@ -44,6 +48,7 @@ from autoresearch_worker_contract import (
 )
 from common import REPO_ROOT
 from worktree_manager import AUTORESEARCH_ROOT, WorktreeManager, candidate_branch_name, champion_branch_name, read_json, write_json
+from run_skill_suite import load_suite_manifest, resolve_path_override
 
 
 MUTATION_REQUIRED_FIELDS = [
@@ -311,6 +316,12 @@ class AutoresearchRoundManager:
     def feedback_distill_path(self, run_id: str, round_number: int) -> Path:
         return self.worktree_manager.round_dir(run_id, round_number) / "feedback-distill.json"
 
+    def replay_dir(self, run_id: str, round_number: int) -> Path:
+        return self.worktree_manager.round_dir(run_id, round_number) / "replay"
+
+    def replay_scoreboard_path(self, run_id: str, round_number: int) -> Path:
+        return self.replay_dir(run_id, round_number) / "scoreboard.json"
+
     def feedback_ledger_path(self, run_id: str) -> Path:
         return self.run_dir(run_id) / "feedback-ledger.jsonl"
 
@@ -499,6 +510,73 @@ class AutoresearchRoundManager:
         if actual_mutation != frozen_mutation_payload:
             raise RuntimeError("mutation.json does not match frozen round authority snapshot.")
         return registry, entry, frozen_mutation_payload, frozen_comparison_baseline, frozen_recent_feedback_excerpt
+
+    def validate_p2_preflight(self, contract: AutoresearchContract) -> None:
+        resolved_target = resolve_p2_contract_target(contract, repo_root=self.repo_root)
+        if resolved_target is None:
+            return
+        target_task, target_prompt_path = resolved_target
+        expected_runner_task = next(
+            runner_task for runner_task, mapped_target in P2_RUNNER_TASK_TO_TARGET_TASK.items() if mapped_target == target_task
+        )
+        suite_files = resolve_suite_files(contract)
+        for lane_name, paths in suite_files.items():
+            for suite_path in paths:
+                manifest = load_suite_manifest(suite_path)
+                version = manifest.get("version", 1)
+                if version != 1:
+                    raise ValueError(f"Unsupported suite manifest version for P2 preflight: {version}")
+                defaults = manifest.get("defaults") or {}
+                if not isinstance(defaults, dict):
+                    raise ValueError("Suite manifest 'defaults' must be a mapping when present.")
+                runs = manifest.get("runs")
+                if not isinstance(runs, list) or not runs:
+                    raise ValueError("Suite manifest must define a non-empty 'runs' list.")
+
+                resolved_specs: list[dict[str, Any]] = []
+                for index, run_entry in enumerate(runs, start=1):
+                    if not isinstance(run_entry, dict):
+                        raise ValueError(f"Suite run #{index} must be a mapping.")
+                    task_name = str(run_entry.get("task") or "all").strip()
+                    backend = str(run_entry.get("backend") or defaults.get("backend") or "").strip()
+                    judge_backend = str(run_entry.get("judge_backend") or defaults.get("judge_backend") or backend).strip()
+                    if not backend:
+                        raise ValueError(f"Suite run #{index} is missing 'backend'.")
+                    prompt_override = resolve_path_override(run_entry.get("prompt_file"), suite_path.parent)
+                    if task_name == "all":
+                        if prompt_override is not None:
+                            raise ValueError("P2 suite preflight does not allow prompt_file override with task=all.")
+                        task_names = sorted(P2_RUNNER_TASK_TO_TARGET_TASK)
+                    else:
+                        task_names = [P2_TARGET_TASK_TO_RUNNER_TASK.get(task_name, task_name)]
+                    for resolved_task in task_names:
+                        resolved_specs.append(
+                            {
+                                "task": resolved_task,
+                                "backend": backend,
+                                "judge_backend": judge_backend,
+                                "prompt_file": (
+                                    prompt_override.resolve()
+                                    if prompt_override is not None
+                                    else (self.repo_root / P2_TARGET_TASK_TO_PROMPT_PATH[P2_RUNNER_TASK_TO_TARGET_TASK[resolved_task]]).resolve()
+                                ),
+                            }
+                        )
+                for spec in resolved_specs:
+                    if str(spec["task"]) != expected_runner_task:
+                        raise ValueError(
+                            f"P2 suite {lane_name} must only cover target_task={target_task}: {suite_path}"
+                        )
+                    prompt_path = Path(str(spec["prompt_file"])).resolve()
+                    if prompt_path != (self.repo_root / target_prompt_path).resolve():
+                        raise ValueError(
+                            "P2 suite prompt_file must resolve to target_prompt_path: "
+                            f"{suite_path}"
+                        )
+                    if str(spec["backend"]) != "codex" or str(spec["judge_backend"]) != "codex":
+                        raise ValueError(
+                            f"P2 suite must enforce codex -> codex for every run: {suite_path}"
+                        )
 
     def _write_registry_decision_state(
         self,
@@ -881,6 +959,7 @@ class AutoresearchRoundManager:
     def decide_round(self, contract: AutoresearchContract) -> dict[str, Any]:
         active = self.worktree_manager.load_active_round(contract.run_id)
         round_payload = active["round"]
+        worktree_payload = active["worktree"]
         round_number = int(round_payload["round"])
         if str(round_payload.get("state")) != "evaluated":
             raise RuntimeError("decide-round requires the active round to be in evaluated state.")
@@ -896,6 +975,25 @@ class AutoresearchRoundManager:
             baseline_scoreboard=baseline_scoreboard,
             round_scoreboard=round_scoreboard,
         )
+        replay = self._evaluate_replay(
+            contract=contract,
+            round_number=round_number,
+            round_payload=round_payload,
+            worktree_payload=worktree_payload,
+            baseline_scoreboard=baseline_scoreboard,
+            round_scoreboard=round_scoreboard,
+            decision_payload=decision_payload,
+        )
+        if replay is not None:
+            decision_payload["provisional_decision"] = decision_payload["decision"]
+            decision_payload["replay"] = replay
+            if replay["status"] != "passed":
+                decision_payload["decision"] = "discard"
+                reasons = list(decision_payload.get("reasons") or [])
+                replay_reason = str(replay.get("reason") or "replay_failed").strip()
+                if replay_reason and replay_reason not in reasons:
+                    reasons.append(replay_reason)
+                decision_payload["reasons"] = reasons
         write_json(self.decision_path(contract.run_id, round_number), decision_payload)
         feedback_distill = build_feedback_distill_payload(
             run_dir=self.run_dir(contract.run_id),
@@ -929,6 +1027,81 @@ class AutoresearchRoundManager:
         return {
             "decision": decision_payload,
             "lifecycle": lifecycle,
+        }
+
+    def _evaluate_replay(
+        self,
+        *,
+        contract: AutoresearchContract,
+        round_number: int,
+        round_payload: dict[str, Any],
+        worktree_payload: dict[str, Any],
+        baseline_scoreboard: dict[str, Any],
+        round_scoreboard: dict[str, Any],
+        decision_payload: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        if str(decision_payload.get("decision") or "") != "keep":
+            return None
+        baseline_validation = _float_metric(_lane_map(baseline_scoreboard).get("validation", {}), "avg_total_score")
+        round_validation = _float_metric(_lane_map(round_scoreboard).get("validation", {}), "avg_total_score")
+        if round_validation <= baseline_validation + EPSILON:
+            return None
+        self.validate_p2_preflight(contract)
+
+        candidate_worktree = Path(str(worktree_payload["path"]))
+        replay_dir = self.replay_dir(contract.run_id, round_number)
+        if replay_dir.exists():
+            shutil.rmtree(replay_dir)
+        replay_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            suites = resolve_suite_files(contract)
+            train_summaries = self._run_lane_suites(
+                candidate_worktree=candidate_worktree,
+                suite_files=suites["train"],
+                save_dir=replay_dir / "train",
+            )
+            validation_summaries = self._run_lane_suites(
+                candidate_worktree=candidate_worktree,
+                suite_files=suites["validation"],
+                save_dir=replay_dir / "validation",
+            )
+        except (FileNotFoundError, RuntimeError, subprocess.CalledProcessError) as exc:
+            return {
+                "status": "failed",
+                "reason": "replay_execution_failed",
+                "error": str(exc),
+            }
+
+        lane_summaries = {
+            "train": merge_run_summaries(train_summaries),
+            "validation": merge_run_summaries(validation_summaries),
+        }
+        replay_scoreboard = build_scoreboard(
+            run_id=contract.run_id,
+            baseline_sha=str(round_payload.get("base_sha") or baseline_scoreboard.get("baseline_sha") or ""),
+            lane_summaries=lane_summaries,
+        )
+        replay_scoreboard["rounds_completed"] = int(baseline_scoreboard.get("rounds_completed") or 0)
+        replay_scoreboard["best_round"] = int(baseline_scoreboard.get("best_round") or 0)
+        write_scoreboard(self.replay_scoreboard_path(contract.run_id, round_number), replay_scoreboard)
+
+        replay_validation = _float_metric(_lane_map(replay_scoreboard).get("validation", {}), "avg_total_score")
+        if replay_validation + EPSILON < round_validation:
+            return {
+                "status": "failed",
+                "reason": "replay_validation_regression",
+                "champion_validation_score": baseline_validation,
+                "round_validation_score": round_validation,
+                "replay_validation_score": replay_validation,
+                "scoreboard_ref": "replay/scoreboard.json",
+            }
+        return {
+            "status": "passed",
+            "reason": "replay_validation_non_regression",
+            "champion_validation_score": baseline_validation,
+            "round_validation_score": round_validation,
+            "replay_validation_score": replay_validation,
+            "scoreboard_ref": "replay/scoreboard.json",
         }
 
     def _run_lane_suites(

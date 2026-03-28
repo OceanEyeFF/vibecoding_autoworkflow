@@ -41,6 +41,7 @@ from worktree_manager import WorktreeManager, champion_branch_name
 
 
 AUTORESEARCH_ROOT = REPO_ROOT / ".autoworkflow" / "autoresearch"
+EPSILON = 1e-9
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -112,6 +113,74 @@ def ensure_history_file(history_path: Path) -> None:
     if history_path.exists():
         return
     history_path.write_text(history_header() + "\n", encoding="utf-8")
+
+
+def _history_rows(history_path: Path) -> list[dict[str, str]]:
+    if not history_path.is_file():
+        return []
+    lines = [line for line in history_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    if len(lines) <= 1:
+        return []
+    rows: list[dict[str, str]] = []
+    for line in lines[1:]:
+        parts = line.split("\t")
+        if len(parts) != len(HISTORY_COLUMNS):
+            continue
+        rows.append(dict(zip(HISTORY_COLUMNS, parts, strict=True)))
+    return rows
+
+
+def _has_final_keep(history_path: Path) -> bool:
+    return any(row.get("decision") == "keep" for row in _history_rows(history_path))
+
+
+def _rounds_since_new_validation_champion(history_path: Path) -> int:
+    champion_validation: float | None = None
+    stale_rounds = 0
+    for row in _history_rows(history_path):
+        decision = str(row.get("decision") or "").strip()
+        try:
+            validation_score = float(row.get("validation_score") or "0")
+        except ValueError:
+            continue
+        if decision == "baseline":
+            champion_validation = validation_score
+            stale_rounds = 0
+            continue
+        if decision not in {"keep", "discard"}:
+            continue
+        if decision == "keep" and champion_validation is not None and validation_score > champion_validation + EPSILON:
+            champion_validation = validation_score
+            stale_rounds = 0
+            continue
+        stale_rounds += 1
+    return stale_rounds
+
+
+def _prepare_round_stop_reason(
+    *,
+    run_dir: Path,
+    registry,
+) -> str | None:
+    history_path = run_dir / "history.tsv"
+    stale_rounds = _rounds_since_new_validation_champion(history_path)
+    if stale_rounds >= 3:
+        return "Stop gate triggered: 3 consecutive completed rounds without a new validation champion."
+
+    if registry is None:
+        return None
+    active_entries = [
+        entry
+        for entry in registry.entries
+        if str(entry.get("status") or "").strip().lower() == "active"
+    ]
+    if active_entries and not _has_final_keep(history_path):
+        if all(int(entry.get("attempts") or 0) > 0 for entry in active_entries):
+            return (
+                "Stop gate triggered: all active mutation families have been tried at least once "
+                "and the run has no final keep."
+            )
+    return None
 
 
 def write_canonical_contract(run_dir: Path, payload: dict[str, object]) -> None:
@@ -190,31 +259,7 @@ def _iter_suite_specs_for_p2(suite_path: Path) -> list[dict[str, Any]]:
 
 
 def _validate_p2_preflight(contract) -> None:
-    resolved_target = resolve_p2_contract_target(contract, repo_root=REPO_ROOT)
-    if resolved_target is None:
-        return
-    target_task, target_prompt_path = resolved_target
-    expected_runner_task = next(
-        runner_task for runner_task, mapped_target in P2_RUNNER_TASK_TO_TARGET_TASK.items() if mapped_target == target_task
-    )
-    suite_files = resolve_suite_files(contract)
-    for lane_name, paths in suite_files.items():
-        for suite_path in paths:
-            for spec in _iter_suite_specs_for_p2(suite_path):
-                if str(spec["task"]) != expected_runner_task:
-                    raise ValueError(
-                        f"P2 suite {lane_name} must only cover target_task={target_task}: {suite_path}"
-                    )
-                prompt_path = Path(str(spec["prompt_file"])).resolve()
-                if prompt_path != (REPO_ROOT / target_prompt_path).resolve():
-                    raise ValueError(
-                        "P2 suite prompt_file must resolve to target_prompt_path: "
-                        f"{suite_path}"
-                    )
-                if str(spec["backend"]) != "codex" or str(spec["judge_backend"]) != "codex":
-                    raise ValueError(
-                        f"P2 suite must enforce codex -> codex for every run: {suite_path}"
-                    )
+    build_round_manager().validate_p2_preflight(contract)
 
 
 def load_contract_for_cli(path: Path, *, enforce_p2_preflight: bool) -> Any:
@@ -374,6 +419,11 @@ def cmd_prepare_round(
         else None
     )
     feedback_ledger = load_feedback_ledger(run_dir / "feedback-ledger.jsonl")
+    runtime = read_runtime_if_present(manager, contract.run_id)
+    if runtime is None or runtime.get("active_round") is None:
+        stop_reason = _prepare_round_stop_reason(run_dir=run_dir, registry=registry)
+        if stop_reason is not None:
+            raise RuntimeError(stop_reason)
     selection = None
 
     if mutation_key is not None:
@@ -391,7 +441,6 @@ def cmd_prepare_round(
                     "Missing mutation registry and no mutation specified. "
                     f"Expected: {registry_path} (or pass --mutation-key / --mutation)"
                 )
-            runtime = read_runtime_if_present(manager, contract.run_id)
             selection = select_next_mutation_entry(
                 registry,
                 contract=contract,
@@ -505,7 +554,7 @@ def cmd_decide_round(contract_path: Path) -> int:
 
 
 def cmd_promote_round(contract_path: Path) -> int:
-    contract = load_contract_for_cli(contract_path, enforce_p2_preflight=False)
+    contract = load_contract_for_cli(contract_path, enforce_p2_preflight=True)
     result = build_worktree_manager().promote_round(contract.run_id)
     runtime = result["runtime"]
     print(f"promoted_round: {result['round']['round']}")

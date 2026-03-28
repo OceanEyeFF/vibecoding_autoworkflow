@@ -825,6 +825,216 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         self.assertEqual(registry_after["entries"][0]["last_decision"], "discard")
         self.assertEqual(registry_after["entries"][0]["status"], "exhausted")
 
+    def test_decide_round_replays_only_when_replay_keeps_round_validation_stable(self) -> None:
+        candidate_worktree, _ = self._prepare_active_round()
+        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+            "candidate keep with replay\n",
+            encoding="utf-8",
+        )
+        capture = self.worktree_manager.capture_candidate_commit(
+            self.contract.run_id,
+            message="candidate keep with replay",
+        )
+        round_payload = capture["round"]
+        round_payload["state"] = "evaluated"
+        (self.worktree_manager.round_path(self.contract.run_id, 1)).write_text(
+            json.dumps(round_payload, ensure_ascii=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        write_scoreboard(self.round_manager.round_scoreboard_path(self.contract.run_id, 1), build_scoreboard(10.0, 9.0))
+        replay_root = self.round_manager.replay_dir(self.contract.run_id, 1)
+        (replay_root / "train").mkdir(parents=True, exist_ok=True)
+        (replay_root / "train" / "stale.txt").write_text("stale\n", encoding="utf-8")
+        (replay_root / "validation").mkdir(parents=True, exist_ok=True)
+        (replay_root / "validation" / "stale.txt").write_text("stale\n", encoding="utf-8")
+
+        lane_results = [
+            [{"suite_file": "train.yaml", "results": [self._eval_result(10.5)]}],
+            [{"suite_file": "validation.yaml", "results": [self._eval_result(9.1)]}],
+        ]
+
+        def fake_replay_runner(*, candidate_worktree: Path, suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+            self.assertIn("/replay/", save_dir.as_posix())
+            self.assertFalse((save_dir / "stale.txt").exists())
+            return lane_results.pop(0)
+
+        self.round_manager._run_lane_suites = fake_replay_runner  # type: ignore[method-assign]
+
+        result = self.round_manager.decide_round(self.contract)
+
+        baseline_scoreboard = read_json(self.run_dir / "scoreboard.json")
+        replay_scoreboard = read_json(self.round_manager.replay_scoreboard_path(self.contract.run_id, 1))
+        self.assertEqual(result["decision"]["decision"], "keep")
+        self.assertEqual(result["decision"]["provisional_decision"], "keep")
+        self.assertEqual(result["decision"]["replay"]["status"], "passed")
+        self.assertEqual(replay_scoreboard["lanes"][1]["avg_total_score"], 9.1)
+        self.assertEqual(baseline_scoreboard["baseline_sha"], result["decision"]["candidate_sha"])
+
+    def test_decide_round_replay_failure_discards_candidate_without_promotion(self) -> None:
+        candidate_worktree, _ = self._prepare_active_round()
+        original_champion_sha = self._git_output("rev-parse", champion_branch_name(self.contract.run_id))
+        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+            "candidate replay failure\n",
+            encoding="utf-8",
+        )
+        capture = self.worktree_manager.capture_candidate_commit(
+            self.contract.run_id,
+            message="candidate replay failure",
+        )
+        round_payload = capture["round"]
+        round_payload["state"] = "evaluated"
+        (self.worktree_manager.round_path(self.contract.run_id, 1)).write_text(
+            json.dumps(round_payload, ensure_ascii=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        write_scoreboard(self.round_manager.round_scoreboard_path(self.contract.run_id, 1), build_scoreboard(10.0, 9.0))
+        replay_root = self.round_manager.replay_dir(self.contract.run_id, 1)
+        (replay_root / "train").mkdir(parents=True, exist_ok=True)
+        (replay_root / "train" / "stale.txt").write_text("stale\n", encoding="utf-8")
+        (replay_root / "validation").mkdir(parents=True, exist_ok=True)
+        (replay_root / "validation" / "stale.txt").write_text("stale\n", encoding="utf-8")
+
+        lane_results = [
+            [{"suite_file": "train.yaml", "results": [self._eval_result(10.5)]}],
+            [{"suite_file": "validation.yaml", "results": [self._eval_result(7.5)]}],
+        ]
+
+        def fake_replay_runner(*, candidate_worktree: Path, suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+            self.assertIn("/replay/", save_dir.as_posix())
+            self.assertFalse((save_dir / "stale.txt").exists())
+            return lane_results.pop(0)
+
+        self.round_manager._run_lane_suites = fake_replay_runner  # type: ignore[method-assign]
+
+        result = self.round_manager.decide_round(self.contract)
+
+        baseline_scoreboard = read_json(self.run_dir / "scoreboard.json")
+        feedback_distill = read_json(self.round_manager.feedback_distill_path(self.contract.run_id, 1))
+        self.assertEqual(result["decision"]["provisional_decision"], "keep")
+        self.assertEqual(result["decision"]["decision"], "discard")
+        self.assertEqual(result["decision"]["replay"]["status"], "failed")
+        self.assertEqual(result["decision"]["replay"]["reason"], "replay_validation_regression")
+        self.assertEqual(self._git_output("rev-parse", champion_branch_name(self.contract.run_id)), original_champion_sha)
+        self.assertEqual(baseline_scoreboard["baseline_sha"], original_champion_sha)
+        self.assertEqual(feedback_distill["decision"], "discard")
+
+    def test_decide_round_replay_failure_triggers_on_round_validation_drop_even_if_above_champion(self) -> None:
+        candidate_worktree, _ = self._prepare_active_round()
+        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+            "candidate replay threshold\n",
+            encoding="utf-8",
+        )
+        capture = self.worktree_manager.capture_candidate_commit(
+            self.contract.run_id,
+            message="candidate replay threshold",
+        )
+        round_payload = capture["round"]
+        round_payload["state"] = "evaluated"
+        (self.worktree_manager.round_path(self.contract.run_id, 1)).write_text(
+            json.dumps(round_payload, ensure_ascii=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        write_scoreboard(self.round_manager.round_scoreboard_path(self.contract.run_id, 1), build_scoreboard(10.0, 9.0))
+
+        lane_results = [
+            [{"suite_file": "train.yaml", "results": [self._eval_result(10.2)]}],
+            [{"suite_file": "validation.yaml", "results": [self._eval_result(8.5)]}],
+        ]
+
+        def fake_replay_runner(*, candidate_worktree: Path, suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+            return lane_results.pop(0)
+
+        self.round_manager._run_lane_suites = fake_replay_runner  # type: ignore[method-assign]
+
+        result = self.round_manager.decide_round(self.contract)
+
+        self.assertEqual(result["decision"]["provisional_decision"], "keep")
+        self.assertEqual(result["decision"]["decision"], "discard")
+        self.assertEqual(result["decision"]["replay"]["status"], "failed")
+        self.assertEqual(result["decision"]["replay"]["reason"], "replay_validation_regression")
+        self.assertEqual(result["decision"]["replay"]["round_validation_score"], 9.0)
+        self.assertEqual(result["decision"]["replay"]["replay_validation_score"], 8.5)
+
+    def test_decide_round_replay_needed_enforces_p2_preflight_before_replay(self) -> None:
+        prompt_path = "toolchain/scripts/research/tasks/context-routing-skill-prompt.md"
+        (self.repo_root / prompt_path).parent.mkdir(parents=True, exist_ok=True)
+        (self.repo_root / prompt_path).write_text("prompt\n", encoding="utf-8")
+        self._git("add", prompt_path)
+        self._git("commit", "-q", "-m", "add p2 prompt")
+        head_sha = self._git_output("rev-parse", "HEAD")
+        runtime = self.worktree_manager.load_runtime(self.contract.run_id)
+        runtime["champion_sha"] = head_sha
+        self.worktree_manager.save_runtime(self.contract.run_id, runtime)
+        self.worktree_manager.refresh_champion_branch(self.contract.run_id, head_sha)
+        contract_payload = build_contract_payload(
+            "train.yaml",
+            "validation.yaml",
+            "acceptance.yaml",
+            mutable_paths=[prompt_path],
+            target_task="context-routing-skill",
+            target_prompt_path=prompt_path,
+        )
+        self.contract_path.write_text(json.dumps(contract_payload), encoding="utf-8")
+        self.contract = load_contract(self.contract_path, repo_root=self.repo_root)
+        (self.run_dir / "contract.json").write_text(json.dumps(contract_payload), encoding="utf-8")
+        write_scoreboard(
+            self.run_dir / "scoreboard.json",
+            build_scoreboard(9.0, 8.0, baseline_sha=head_sha),
+        )
+
+        def write_codex_suite(path: Path) -> None:
+            path.write_text(
+                "version: 1\n"
+                "defaults:\n"
+                "  backend: codex\n"
+                "  judge_backend: codex\n"
+                "  with_eval: true\n"
+                "runs:\n"
+                "  - repo: .\n"
+                "    task: context-routing\n",
+                encoding="utf-8",
+            )
+
+        write_codex_suite(self.repo_root / "train.yaml")
+        write_codex_suite(self.repo_root / "validation.yaml")
+        write_codex_suite(self.repo_root / "acceptance.yaml")
+
+        mutation_payload = build_mutation_payload()
+        mutation_payload["target_paths"] = [prompt_path]
+        candidate_worktree, _ = self._prepare_active_round(mutation_payload)
+        (candidate_worktree / prompt_path).parent.mkdir(parents=True, exist_ok=True)
+        (candidate_worktree / prompt_path).write_text("candidate change\n", encoding="utf-8")
+
+        replay_attempts: list[str] = []
+
+        def fake_replay_runner(*, candidate_worktree: Path, suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+            replay_attempts.append(save_dir.as_posix())
+            if len(replay_attempts) > 2:
+                raise AssertionError("replay should not run when P2 preflight fails")
+            if "train" in str(save_dir):
+                return [{"suite_file": "train.yaml", "results": [self._eval_result(10.0)]}]
+            return [{"suite_file": "validation.yaml", "results": [self._eval_result(9.5)]}]
+
+        self.round_manager._run_lane_suites = fake_replay_runner  # type: ignore[method-assign]
+        self.round_manager.run_round(self.contract)
+
+        (self.repo_root / "train.yaml").write_text(
+            "version: 1\n"
+            "defaults:\n"
+            "  backend: claude\n"
+            "  judge_backend: claude\n"
+            "  with_eval: true\n"
+            "runs:\n"
+            "  - repo: .\n"
+            "    task: context-routing\n",
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(ValueError, "P2 suite must enforce codex -> codex"):
+            self.round_manager.decide_round(self.contract)
+
+        self.assertEqual(len(replay_attempts), 2)
+
     def test_decide_round_compares_against_current_champion_scoreboard(self) -> None:
         first_candidate, _ = self._prepare_active_round()
         (first_candidate / "product" / "memory-side" / "skills" / "skill.md").write_text(

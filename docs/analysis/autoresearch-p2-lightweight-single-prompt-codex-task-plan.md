@@ -45,7 +45,7 @@ last_verified: 2026-03-28
 
 为减少 Batch 1 内部返工，本文先冻结以下实现前提：
 
-- P2 约束真相层放在 `toolchain/scripts/research/run_autoresearch.py` 的 P2 preflight
+- P2 约束真相层由共享 P2 preflight 提供，CLI 入口和 replay 路径都必须复用同一套校验
 - contract 只承载两项轻量真相字段：
   - `target_task`
   - `target_prompt_path`
@@ -65,7 +65,63 @@ last_verified: 2026-03-28
 - T-001 负责定义并冻结这套边界
 - T-002 只负责消费这套边界，不得自行推导第二套 prompt 目标语义
 
-## 四、任务清单
+## 四、Batch 2 状态设计决议
+
+为避免 T-003 在实现时把 round 生命周期扩成新系统，先冻结以下最小决议：
+
+该决议已在 Batch 2 开始前通过“双 SubAgent 调研 + 主执行路径复核”确认，后续实现不得偏离这组最小语义。
+
+- 不新增新的顶层 CLI 子命令
+- 不新增新的外层 workflow 或 study-state
+- stop rule 只在 `prepare-round` 前执行
+- replay 只作为 `decide-round` 内部固定子步骤执行
+
+固定语义如下：
+
+- `prepare-round` 在创建新 candidate 前先做 stop gate
+- stop gate 只实现两条：
+  - 连续 3 轮没有产生新的 validation champion，则停止创建新 round
+  - 所有 active mutation family 都至少尝试 1 次，且 run 内没有任何最终 `keep`，则停止创建新 round
+- 这里的 “validation champion” 只按最终升级成功的 champion 计算
+- validation 分数相等不算新 champion，必须严格更高才重置计数
+
+replay 固定语义如下：
+
+- replay 不占用新的 `round_number`
+- replay 不产生新的 candidate branch/worktree
+- replay 复用当前 round 已固定的 candidate commit 和同一套 train/validation suites
+- replay 产物写到当前 round 目录下的 `replay/` 子目录
+- replay 只在“本轮 provisional `keep` 且 validation 严格高于当前 champion validation”时触发
+- replay 执行前必须再次通过同一套 P2 preflight
+- replay 复跑前必须清空旧的 `replay/` 子目录
+
+最终决策语义如下：
+
+- `decision.json` 仍只输出最终 `keep` 或 `discard`
+- 若本轮 provisional `keep`，但 replay 失败，则最终决策写为 `discard`
+- replay 失败时必须在 `decision.json` 中写明：
+  - `provisional_decision`
+  - `replay.status`
+  - `replay.reason`
+- champion promotion 只允许发生在 replay 通过之后
+
+这样做的目的有两个：
+
+- 不引入新的 round 类型、pending state 或 replay-round 编号
+- 让 `history.tsv`、`feedback-ledger.jsonl`、top-level `scoreboard.json` 继续只消费最终结果，避免新一轮状态分叉
+
+### Batch 2 当前实现状态补记
+
+截至 `2026-03-28`，Batch 2 相关实现和 review-loop 已补齐到以下边界：
+
+- `prepare-round` 的 stop gate 已落地在创建新 candidate 之前
+- replay 已固定为 `decide-round` 的内部脚本步骤
+- replay 目录会在复跑前先清空，避免陈旧产物污染
+- replay 的 non-regression 判定已收紧为“replay validation 不低于本轮 round validation”
+- `decide-round` 不做无条件 CLI P2 preflight，但 replay-needed 路径会在 replay 前复用同一套 P2 preflight
+- `promote-round` 当前显式执行 P2 preflight
+
+## 五、任务清单
 
 ### 任务ID：T-001
 任务名称：收紧 autoresearch contract 为单 Prompt、Codex-only 模式
@@ -336,9 +392,9 @@ last_verified: 2026-03-28
 
 #### 8. 风险与不确定性（Risks）
 
-- replay 放在何处执行会影响当前 round 状态机
+- replay 仍会触及当前 round 状态机，是本任务最容易引入回归的部分
 - “所有 family 至少尝试 1 次”的判定可能受 registry 当前状态字段限制
-- 若复评实现侵入过大，可能需要先引入最小辅助状态
+- 若 stop gate 统计口径和 history/registry 语义不一致，容易出现误停机或漏停机
 
 #### 9. 验证计划（Validation Plan）
 
@@ -348,6 +404,8 @@ last_verified: 2026-03-28
   - 新增连续无提升停机用例
   - 新增 family 耗尽停机用例
   - 新增 replay 失败不升级 champion 用例
+  - 新增 replay-needed 路径在 replay 前执行 P2 preflight 的用例
+  - 新增 replay 复跑前清理旧 `replay/` 产物的用例
 - Runtime：
   - 可做最小 bounded run smoke
 - 是否可以做 smoke test：
@@ -432,7 +490,7 @@ last_verified: 2026-03-28
 - live Codex 相关 smoke 可能受环境影响，不适合默认进入普通测试
 - 现有 smoke 主要覆盖 P1.3，P2 路径可能需要新夹具
 - README 更新若早于测试稳定，容易写出失真说明
-- `decide-round / promote-round / discard-round / cleanup-round` 当前依赖“绕过 suite-level P2 preflight”的恢复语义，但还缺少专门的 `promote-round` suite-drift 回归测试，后续改动可能把 recovery 路径重新锁死
+- `decide-round` / `promote-round` / replay 三者的 preflight 边界如果回写不清楚，后续改动容易再次漂移
 
 #### 9. 验证计划（Validation Plan）
 
@@ -442,7 +500,9 @@ last_verified: 2026-03-28
   - 覆盖单 Prompt 限制
   - 覆盖 `codex -> codex`
   - 覆盖 stop rule 主路径
-  - 新增 `promote-round` 在 suite manifest 漂移场景下仍可完成收尾的专门回归测试
+  - 覆盖 `decide-round` 在 replay 不需要时跳过无条件 CLI preflight
+  - 覆盖 `promote-round` 会显式执行 P2 guard path
+  - 覆盖 replay-needed 路径会在 replay 前执行 P2 preflight
 - Runtime：
   - 可选 live smoke，取决于环境
 - 是否可以做 smoke test：
@@ -452,7 +512,7 @@ last_verified: 2026-03-28
 
 - 至少一条最小 smoke 证明 P2 主路径可跑
 - 核心回归测试通过
-- `promote-round` 的 suite-drift 恢复语义有明确自动化覆盖，或该缺口被显式保留并记录为未完成项
+- `decide-round` / `promote-round` / replay 的 P2 preflight 边界有明确自动化覆盖
 - README 能描述当前已验证边界
 - 未把高成本 live acceptance 错写成默认回归路径
 
@@ -553,7 +613,7 @@ last_verified: 2026-03-28
 - 若发现实现与设计存在偏差，必须回报差异，而不是自行修正文档目标
 - 允许请求更多上下文，但不得擅自补代码
 
-## 五、任务依赖图
+## 六、任务依赖图
 
 - T-001 与 T-002 是起始任务，二者可并行，但并行前提是先冻结 `target_task / target_prompt_path` 的共享语义。
 - T-003 依赖 T-001，因为 stop rule 需要先建立单 Prompt、`codex -> codex` 的入口约束。
@@ -570,7 +630,7 @@ T-002 ----/           \
 T-002 -----------------/
 ```
 
-## 六、推荐执行顺序（Batch 划分）
+## 七、推荐执行顺序（Batch 划分）
 
 ### Batch 1
 
@@ -606,7 +666,7 @@ T-002 -----------------/
 
 - 最后做文档承接，确保 runbook 只写已验证事实
 
-## 七、可并行执行的任务组
+## 八、可并行执行的任务组
 
 - 并行组 A：
   - T-001
@@ -618,14 +678,14 @@ T-002 -----------------/
 
 其余任务建议串行推进。
 
-## 八、高风险任务列表
+## 九、高风险任务列表
 
 - T-003：会触及 round 生命周期、champion 前移和 replay 逻辑，最容易引入状态机回归。
 - T-001：若 contract 收紧方式选错，可能波及现有 fixture 和非 P2 路径。
 - T-002：若 registry 和 round 各自定义单文件语义，容易形成 prepare 能过、run-round 才失败的双轨问题。
 - T-004：若 smoke 设计不当，容易把高成本 live 验证错误纳入默认回归。
 
-## 九、推荐整体执行策略
+## 十、推荐整体执行策略
 
 推荐策略是：
 

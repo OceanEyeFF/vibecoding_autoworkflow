@@ -54,8 +54,11 @@
 - `prepare-round --mutation-key <key>`：显式覆盖自动选择，直接选中指定 entry（仍会校验 entry 可用性）
 - `prepare-round --mutation <path>`：兼容旧入口，但会先把手工 spec import/canonicalize 成 registry entry，再 materialize 本轮 `mutation.json`；不再直接把一次性 spec 原样写入 round 目录
 - `prepare-round` 会先冻结 round authority（registry entry、materialized mutation、frozen `comparison_baseline`、`recent_feedback_excerpt`），再写出 `worker-contract.json` 并回写 registry bookkeeping；若发现中断残留的 active round，会先按 frozen authority 修复 `mutation.json` / `worker-contract.json` 并对账 registry bookkeeping，再拒绝开启新 round；若 `mutation-registry.json` 已缺失，则会 fail closed 并要求先 `cleanup-round`
+- 在没有 active round 时，`prepare-round` 还会先执行最小 stop gate：
+  - 连续 `3` 轮已完成 round 都没有产生新的 validation champion，则停止创建新 round
+  - 所有 `active` mutation family 都至少尝试过 `1` 次，且当前 run 没有任何最终 `keep`，则停止创建新 round
 - `run-round`：要求 `agent-report.md` 已写入 round 目录；脚本会重新读取并校验 round 目录里的 `mutation.json`，然后校验 candidate 改动只能触达 `target_paths` 的同级或更窄子路径、且动作类型符合 `allowed_actions`，再提交 candidate 改动、从 candidate worktree 运行 train / validation suites，并写 round 级 `scoreboard.json`
-- `decide-round`：读取“当前比较基线 scoreboard”和本轮 scoreboard，按固定规则写 `decision.json`，再产出 round 级 `feedback-distill.json` 和 run 级 `feedback-ledger.jsonl`，然后调用 promote 或 discard；fixed rule 同时约束 score、parse_error、timeout 与 hard-fail/pass_rate 非回退
+- `decide-round`：读取“当前比较基线 scoreboard”和本轮 scoreboard，按固定规则先计算 provisional `keep / discard`，必要时在当前 round 下执行 replay，再写 `decision.json`，产出 round 级 `feedback-distill.json` 和 run 级 `feedback-ledger.jsonl`，然后调用 promote 或 discard；fixed rule 同时约束 score、parse_error、timeout 与 hard-fail/pass_rate 非回退
 - `promote-round`：只允许 fast-forward 语义，把 `champion/<run-id>` 前进到 active candidate commit，然后清理 candidate branch/worktree
 - `discard-round`：直接删除 active candidate branch/worktree，不走 `git revert`
 - `cleanup-round`：按 `.autoworkflow/autoresearch/<run-id>/runtime.json` 回收中断残留的 active candidate
@@ -234,13 +237,20 @@ P2 Batch 1 的命令边界当前固定为：
   - `baseline`
   - `prepare-round`
   - `run-round`
-- 不会执行 suite 级 P2 preflight：
+- 不会做无条件 CLI suite 级 P2 preflight：
   - `decide-round`
+- 会执行 suite 级 P2 preflight：
   - `promote-round`
+- 不会执行 suite 级 P2 preflight：
   - `discard-round`
   - `cleanup-round`
 
-这个拆分是刻意保留的：post-eval / recovery 命令不能因为 suite 漂移而 fail-stuck。
+补充语义：
+
+- `decide-round` 只有在“provisional keep 且 validation 严格高于当前 champion validation”时才会进入 replay
+- replay 执行前会复用同一套 P2 preflight，因此 replay-needed 路径不会绕开 `codex -> codex` 与单 prompt 约束
+- `promote-round` 当前显式受 P2 preflight 保护
+- `discard-round` / `cleanup-round` 仍保留 recovery 语义，不会因为 suite 漂移而 fail-stuck
 
 P2 Batch 1 对 registry / round authority 的额外约束当前也已固定：
 
@@ -255,15 +265,18 @@ P2 Batch 1 对 registry / round authority 的额外约束当前也已固定：
 - contract 可用 `target_task + target_prompt_path` 显式声明“只调一个 prompt”
 - 四个 research prompt 的 task/path 固定映射已落地
 - `init -> baseline -> prepare-round -> run-round` 会对 P2 单 prompt Codex profile 做 fail-closed preflight
+- `prepare-round` 已落地最小 stop gate，不再只依赖 `max_rounds`
 - registry entry 与 round mutation 都会被收紧到唯一的 `target_prompt_path`
-- `decide-round` / `promote-round` / `discard-round` / `cleanup-round` 保持可恢复，不会被 suite preflight 卡死
+- `decide-round` 只在 replay-needed 路径复用 P2 preflight，`promote-round` 会显式执行 P2 preflight
+- replay 已作为 `decide-round` 的固定脚本子步骤落地，并且 replay 产物会写到 `rounds/round-NNN/replay/`
+- replay 通过条件已经收紧为“replay validation 不低于本轮 round validation”，而不是只看 champion baseline
 
 当前没有承诺或未覆盖的范围是：
 
 - 同一 run 同时调多个 prompt
 - 在 P2 profile 下切换到非 `codex -> codex` backend/judge 组合
 - prompt 文本之外的参数搜索
-- 基于 suite 漂移场景的专门 `promote-round` 回归测试
+- 更丰富的 persisted family 状态模型
 
 ### Autoresearch P0.3 Round Artifacts
 
@@ -323,6 +336,15 @@ P0.3 的脚本侧约束当前固定为：
   - train / validation `timeout_rate` 不高于当前比较基线
 - `discard` 命中任一非回退检查失败即可
 - `qualitative_veto_checks` 当前只保留字段入口，不提供奖励权；脚本不会因为定性描述把硬指标无提升的 round 提升为 `keep`
+
+对于 P2 单 Prompt Codex profile，`decide-round` 还带有一个固定 replay 子步骤：
+
+- 只有当本轮 provisional `keep` 且 validation 严格高于当前 champion validation 时，才会触发 replay
+- replay 复用当前 round 已固定的 candidate commit 和同一套 train / validation suites
+- replay 执行前会再次执行 P2 preflight
+- replay 目录如果已存在旧产物，会先清空，再重跑 train / validation
+- 若 replay validation 低于本轮 round validation，则最终决策会从 provisional `keep` 改写为 `discard`
+- replay 结果会写入 `decision.json.replay`，并把 replay scoreboard 写到 `rounds/round-NNN/replay/scoreboard.json`
 
 ### Autoresearch P0.3 Verified Scope
 

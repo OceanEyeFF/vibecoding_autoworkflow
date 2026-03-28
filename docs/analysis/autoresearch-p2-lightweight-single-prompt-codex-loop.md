@@ -85,7 +85,7 @@ last_verified: 2026-03-28
 
 为避免 `T-001` 和 `T-002` 各自发明一套边界语义，本方案先固定一版实现前定案：
 
-- P2 约束真相层放在 `run_autoresearch.py` 的 P2 preflight
+- P2 约束真相层由共享 P2 preflight 提供，CLI 入口和 replay 路径都必须复用同一套校验
 - contract 只承载两项轻量真相字段：
   - `target_task`
   - `target_prompt_path`
@@ -172,7 +172,9 @@ P2 preflight 需要同时校验：
 ### 3. 新冠军复评
 
 - 任一 round 命中 `keep` 后，立即用同一配置 replay 1 次
-- 若 replay 不能保持 validation 不下降，则该 round 视为不稳定，不升级 champion
+- replay 必须先复用同一套 P2 preflight，不能绕开单 prompt 与 `codex -> codex` 约束
+- 若 replay 不能保持 validation 相对本轮 round validation 不下降，则该 round 视为不稳定，不升级 champion
+- replay 复跑前应先清空旧的 `replay/` 子目录，避免陈旧产物污染结果
 
 这 3 条规则的目的分别是：
 
