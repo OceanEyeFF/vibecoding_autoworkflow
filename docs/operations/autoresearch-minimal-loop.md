@@ -90,6 +90,11 @@ python3 toolchain/scripts/research/refresh_manual_run_contract.py \
   --contract /abs/path/to/contract.json
 ```
 
+状态文件落点当前规则是：
+
+- contract 在仓库内时，写到 `.autoworkflow/manual-runs/.run-id-state/<contract-parent>/`
+- contract 在仓库外时，回退到 contract 同级 `.run-id-state/`
+
 当前工具会把 `run_id` 刷成：
 
 - `<base>-r<serial>-m<residue>`

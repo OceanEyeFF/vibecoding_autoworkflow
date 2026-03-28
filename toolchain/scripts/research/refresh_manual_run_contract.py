@@ -55,7 +55,12 @@ def state_dir_for_contract(contract_path: Path) -> Path:
         relative = contract_path.relative_to(REPO_ROOT)
     except ValueError:
         return contract_path.parent / ".run-id-state"
-    return REPO_ROOT / ".autoworkflow" / "manual-runs" / ".run-id-state" / relative.parent.relative_to(".autoworkflow/manual-runs")
+    state_root = REPO_ROOT / ".autoworkflow" / "manual-runs" / ".run-id-state"
+    try:
+        suffix = relative.parent.relative_to(".autoworkflow/manual-runs")
+    except ValueError:
+        suffix = relative.parent
+    return state_root / suffix
 
 
 def state_path_for_contract(contract_path: Path, *, base_run_id: str) -> Path:

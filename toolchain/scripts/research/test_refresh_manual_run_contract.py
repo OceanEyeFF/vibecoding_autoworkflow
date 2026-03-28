@@ -60,6 +60,32 @@ class RefreshManualRunContractTest(unittest.TestCase):
             self.assertEqual(state_payload["last_run_id"], second["run_id"])
             self.assertEqual(state_payload["modulus"], refresh_manual_run_contract.DEFAULT_MODULUS)
 
+    def test_refresh_contract_run_id_supports_repo_local_contract_outside_manual_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            contract_path = root / "contracts" / "manual.json"
+            contract_path.parent.mkdir(parents=True, exist_ok=True)
+            contract_path.write_text(
+                json.dumps(
+                    {
+                        "run_id": "manual-cr-typer-claude",
+                        "label": "demo",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(refresh_manual_run_contract, "REPO_ROOT", root):
+                result = refresh_manual_run_contract.refresh_contract_run_id(contract_path)
+
+            state_path = Path(result["state_path"])
+            self.assertEqual(
+                state_path,
+                root / ".autoworkflow" / "manual-runs" / ".run-id-state" / "contracts" / "manual-cr-typer-claude.json",
+            )
+            self.assertTrue(state_path.is_file())
+
     def test_build_fresh_run_id_is_seeded_by_base(self) -> None:
         run_id_a, residue_a = refresh_manual_run_contract.build_fresh_run_id(
             "manual-cr-typer-claude",
