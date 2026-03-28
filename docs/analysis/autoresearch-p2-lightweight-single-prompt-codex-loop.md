@@ -9,6 +9,20 @@ last_verified: 2026-03-28
 
 > 目的：在不把 `autoresearch` 扩成独立大系统的前提下，为当前仓库补一条低侵入、低变量、可回放的 Prompt 文本微调闭环。本文只固定一版最小设计草案，不直接替代 `docs/operations/` 的现行 runbook，也不直接替代 `toolchain/` 的当前实现合同。
 
+## 当前承接状态
+
+截至 `2026-03-28`，本文中的 Batch 1 到 Batch 3 最小落地边界已经承接到：
+
+- `docs/operations/autoresearch-minimal-loop.md`
+- `toolchain/scripts/research/README.md`
+
+本文继续保留为：
+
+- P2 方案为什么要收窄为“单 Prompt、`codex -> codex`、低变量”的设计记录
+- 尚未升格为主线运行说明的背景约束与取舍说明
+
+因此，如果当前任务是“实际发起或复核已实现的 P2 run”，应优先读取上面的 runbook 和脚本入口文档，而不是把本文当作唯一执行入口。
+
 ## 一、定位
 
 这份草案只解决一个问题：

@@ -49,9 +49,9 @@ last_verified: 2026-03-28
 
 说明当前代码层面的闭环已经成立，即使 round 最终没有被 `keep`。
 
-### 2. `2026-03-28` Batch 1 代码验收已确认的 P2 轻量边界
+### 2. `2026-03-28` Batch 1 到 Batch 3 代码与 smoke 验收已确认的 P2 轻量边界
 
-这一轮不是新的 live backend 观测，而是针对已落地代码的验收事实：
+这一轮不是新的 live backend 观测，而是针对已落地代码与 deterministic smoke 的验收事实：
 
 - 只允许微调一个 research prompt 文件
 - 只允许 `codex -> codex`
@@ -68,6 +68,16 @@ last_verified: 2026-03-28
 - `decide-round` 不做无条件 CLI preflight，但如果命中 replay 条件，会在 replay 前复用同一套 P2 preflight
 - `promote-round` 会做 P2 preflight
 - `discard-round / cleanup-round` 不做 suite 级 preflight
+- 独立的 P2 deterministic smoke 已固定在 `toolchain/scripts/research/test_autoresearch_p2_smoke.py`。注意当前 smoke 是 orchestration smoke：lane 执行使用 mock runner，只覆盖 CLI 编排与 decision/replay 产物面
+- `test_run_autoresearch.py` 已覆盖 family-stop 先于 selector 空集报错、`decide-round` 的 no-replay 边界，以及 `promote-round` 的 P2 guard
+- `test_autoresearch_round.py` 已覆盖 replay-needed 分支的 `provisional_decision` 与 `replay.*` 输出面
+
+这组事实当前的主线承接位置是：
+
+- `docs/operations/autoresearch-minimal-loop.md`
+- `toolchain/scripts/research/README.md`
+
+而 `docs/analysis/autoresearch-p2-lightweight-single-prompt-codex-loop.md` 继续只保留设计背景和收窄理由。
 
 ## 三、最小输入
 
@@ -311,6 +321,29 @@ python3 toolchain/scripts/research/run_autoresearch.py \
 - `promote-round` 当前是显式受 P2 preflight 保护的收尾命令
 - `discard-round / cleanup-round` 仍保留为 recovery/post-eval 命令，不会因为 suite 漂移而卡死
 
+当前 deterministic 验收命令可以直接用下面两组：
+
+```bash
+python3 -m py_compile \
+  toolchain/scripts/research/test_autoresearch_p2_smoke.py \
+  toolchain/scripts/research/test_run_autoresearch.py \
+  toolchain/scripts/research/test_autoresearch_round.py
+```
+
+```bash
+python3 -m unittest \
+  toolchain/scripts/research/test_autoresearch_p2_smoke.py \
+  toolchain/scripts/research/test_run_autoresearch.py \
+  toolchain/scripts/research/test_autoresearch_round.py \
+  toolchain/scripts/research/test_autoresearch_p1_3_smoke.py
+```
+
+当前命令口径代表的是：
+
+- P2 单 Prompt、`codex -> codex` 主路径可以用 deterministic smoke 证明
+- legacy P1.3 smoke 仍保持独立存在，没有被 P2 夹具吞并
+- 这不是 live Codex acceptance matrix；高成本 live 验收仍属于单独系统级验证
+
 ## 五、这次实跑确认的三个坑
 
 ### 1. suite 里的 `repo` 要写绝对路径
@@ -466,4 +499,6 @@ run 根目录固定在：
 
 - [Research CLI 指令](./research-cli-help.md)
 - [toolchain/scripts/research/README.md](../../toolchain/scripts/research/README.md)
+- [Autoresearch P2：单 Prompt、Codex-only 轻量迭代方案](../analysis/autoresearch-p2-lightweight-single-prompt-codex-loop.md)
+- [Autoresearch P2：单 Prompt、Codex-only 轻量迭代任务规划](../analysis/autoresearch-p2-lightweight-single-prompt-codex-task-plan.md)
 - [Research 评测观测与输出规范](../analysis/research-eval-observability.md)

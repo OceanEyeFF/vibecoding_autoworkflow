@@ -270,6 +270,9 @@ P2 Batch 1 对 registry / round authority 的额外约束当前也已固定：
 - `decide-round` 只在 replay-needed 路径复用 P2 preflight，`promote-round` 会显式执行 P2 preflight
 - replay 已作为 `decide-round` 的固定脚本子步骤落地，并且 replay 产物会写到 `rounds/round-NNN/replay/`
 - replay 通过条件已经收紧为“replay validation 不低于本轮 round validation”，而不是只看 champion baseline
+- deterministic P2 smoke 已独立落在 `test_autoresearch_p2_smoke.py`，但当前是 orchestration smoke：覆盖 CLI 主链路与 decision/replay 产物面；lane 执行使用 mock runner（不等价于真实 candidate-side subprocess 跑 `run_skill_suite.py`）
+- `test_run_autoresearch.py` 增加了 family-stop guardrail 与 selector 空集区分、replay 前置 P2 preflight 的验收，用于防止 stop rule 被 selector 错误吞掉
+- `test_autoresearch_round.py` replay-needed 分支里断言 `provisional_decision` 与 `replay.*` 字段，并保障 replay 再跑产物、scoreboard 与 P2 preflight 一致
 
 当前没有承诺或未覆盖的范围是：
 
@@ -557,7 +560,8 @@ python3 -m py_compile \
   toolchain/scripts/research/test_autoresearch_round.py \
   toolchain/scripts/research/test_run_autoresearch.py \
   toolchain/scripts/research/test_autoresearch_p1_1_smoke.py \
-  toolchain/scripts/research/test_autoresearch_p1_3_smoke.py
+  toolchain/scripts/research/test_autoresearch_p1_3_smoke.py \
+  toolchain/scripts/research/test_autoresearch_p2_smoke.py
 ```
 
 - 白盒测试：
@@ -571,10 +575,12 @@ python3 -m unittest \
   toolchain/scripts/research/test_autoresearch_round.py \
   toolchain/scripts/research/test_run_autoresearch.py \
   toolchain/scripts/research/test_autoresearch_p1_1_smoke.py \
-  toolchain/scripts/research/test_autoresearch_p1_3_smoke.py
+  toolchain/scripts/research/test_autoresearch_p1_3_smoke.py \
+  toolchain/scripts/research/test_autoresearch_p2_smoke.py
 ```
 
-- smoke 测试覆盖（当前由 `test_autoresearch_p1_1_smoke.py` 与 `test_autoresearch_p1_3_smoke.py` 固定）：
+- smoke 测试覆盖：
+  - legacy P1 路径由 `test_autoresearch_p1_1_smoke.py` 与 `test_autoresearch_p1_3_smoke.py` 固定
   - `init -> baseline -> prepare-round(auto select) -> run-round -> decide-round`
   - `prepare-round --mutation-key` 显式覆盖自动选择
   - all-unselectable 时 `prepare-round` 失败
@@ -582,6 +588,8 @@ python3 -m unittest \
   - pending duplicate fingerprint 会在 auto select 时被跳过
   - `decide-round` 会写出 `feedback-distill.json` 和 `feedback-ledger.jsonl`
   - round 2 auto select 会优先复用近期 positive signal family，而不是盲目回到最低 attempts 规则
+  - P2 orchestration smoke 由 `test_autoresearch_p2_smoke.py` 固定（mock lane 执行，只覆盖 CLI 编排与 decision/replay 产物面）
+  - family-stop 命中时会先于 `No selectable mutation entries` 触发，避免把 stop gate 误判成 selector 空集
 
 P1.3 selector 规则（feedback-aware，但仍保持脚本主控）固定为：
 

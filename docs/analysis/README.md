@@ -18,13 +18,14 @@
   - [autoresearch-p1-final-followup-task-plan.md](./autoresearch-p1-final-followup-task-plan.md) — 按任务边界、依赖和难度拆解的后续实现规划
   - [autoresearch-p2-lightweight-single-prompt-codex-loop.md](./autoresearch-p2-lightweight-single-prompt-codex-loop.md) — 单 Prompt、`codex -> codex` 的轻量迭代设计草案
   - [autoresearch-p2-lightweight-single-prompt-codex-task-plan.md](./autoresearch-p2-lightweight-single-prompt-codex-task-plan.md) — 面向多 Agent 执行的 P2 任务规划文档
+  - [autoresearch-p2-batch3-prereq-task-plan.md](./autoresearch-p2-batch3-prereq-task-plan.md) — Batch 3 正式开始前的 3 个前序任务规划，用于先隔离 smoke 夹具并固定 stop/replay 测试语义
 
 说明：
 
 - `research-eval-*` 固定的是当前 research runner 与 eval contract 的边界
 - `autoresearch-p0-*` 固定的是 `autoresearch` 轨道在 P0 阶段的局部合同，不自动覆盖 `docs/knowledge/`、`docs/operations/` 或实现入口
 - `autoresearch-p1-*` 固定的是 `mutation registry -> worker contract -> selector -> feedback distillation` 的阶段边界；已落地实现仍应继续回写到 `toolchain/` 入口说明
-- `autoresearch-p2-*` 固定的是在当前轨道上进一步收窄为“单 Prompt、Codex-only、低侵入”方案的设计边界；若后续落地，仍应回写到 `docs/operations/` 与 `toolchain/`
+- `autoresearch-p2-*` 固定的是在当前轨道上进一步收窄为“单 Prompt、Codex-only、低侵入”方案的设计边界；截至 `2026-03-28`，已落地的运行说明与已验证边界已承接到 `docs/operations/autoresearch-minimal-loop.md` 与 `toolchain/scripts/research/README.md`
 
 ## 准入与升格规则
 

@@ -1290,6 +1290,148 @@ class RunAutoresearchTest(unittest.TestCase):
             self.assertEqual(registry_after["entries"][0]["attempts"], 1)
             self.assertEqual(registry_after["entries"][0]["last_selected_round"], 1)
 
+    def test_prepare_round_stop_reason_triggers_before_selector_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
+            contract_path = root / "contract.json"
+            contract["max_candidate_attempts_per_round"] = 2
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                self.assertEqual(run_autoresearch.main(["init", "--contract", str(contract_path)]), 0)
+                run_dir = root / ".autoworkflow" / "demo-run"
+                scoreboard_payload = {
+                    "run_id": "demo-run",
+                    "generated_at": "2026-03-26T00:00:00+00:00",
+                    "baseline_sha": current_head_sha(root),
+                    "rounds_completed": 0,
+                    "best_round": 0,
+                    "lanes": [],
+                    "repo_tasks": [],
+                }
+                (run_dir / "scoreboard.json").write_text(json.dumps(scoreboard_payload), encoding="utf-8")
+                registry = {
+                    "run_id": "demo-run",
+                    "registry_version": 1,
+                    "contract_fingerprint": compute_contract_fingerprint(load_contract(contract_path, repo_root=root)),
+                    "entries": [
+                        {
+                            "mutation_key": "text_rephrase:demo:stop-gate",
+                            "kind": "text_rephrase",
+                            "status": "active",
+                            "target_paths": ["product/memory-side/skills"],
+                            "allowed_actions": ["edit"],
+                            "instruction_seed": "tighten",
+                            "expected_effect": {
+                                "hypothesis": "Improve train score",
+                                "primary_metrics": ["avg_total_score"],
+                                "guard_metrics": ["parse_error_rate"],
+                            },
+                            "guardrails": {
+                                "require_non_empty_diff": True,
+                                "max_files_touched": 1,
+                                "extra_frozen_paths": [],
+                            },
+                            "origin": {"type": "manual_seed", "ref": "test"},
+                            "attempts": 1,
+                            "last_selected_round": 1,
+                            "last_decision": "discard",
+                        }
+                    ],
+                }
+                (run_dir / "mutation-registry.json").write_text(json.dumps(registry, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+                stderr = io.StringIO()
+                with mock.patch("sys.stderr", stderr), mock.patch.object(
+                    run_autoresearch, "select_next_mutation_entry", side_effect=AssertionError("selector should not run")
+                ):
+                    code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
+
+        self.assertEqual(code, 1)
+        stderr_value = stderr.getvalue()
+        stop_message = (
+            "Stop gate triggered: all active mutation families have been tried at least once "
+            "and the run has no final keep."
+        )
+        self.assertIn(stop_message, stderr_value)
+        self.assertNotIn("No selectable mutation entries found", stderr_value)
+
+    def test_prepare_round_reports_selector_error_when_no_active_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                self.assertEqual(run_autoresearch.main(["init", "--contract", str(contract_path)]), 0)
+                run_dir = root / ".autoworkflow" / "demo-run"
+                scoreboard_payload = {
+                    "run_id": "demo-run",
+                    "generated_at": "2026-03-26T00:00:00+00:00",
+                    "baseline_sha": current_head_sha(root),
+                    "rounds_completed": 0,
+                    "best_round": 0,
+                    "lanes": [],
+                    "repo_tasks": [],
+                }
+                (run_dir / "scoreboard.json").write_text(json.dumps(scoreboard_payload), encoding="utf-8")
+                registry_payload = {
+                    "run_id": "demo-run",
+                    "registry_version": 1,
+                    "contract_fingerprint": compute_contract_fingerprint(
+                        load_contract(contract_path, repo_root=root)
+                    ),
+                    "entries": [
+                        {
+                            "mutation_key": "text_rephrase:demo:inactive",
+                            "kind": "text_rephrase",
+                            "status": "disabled",
+                            "target_paths": ["product/memory-side/skills"],
+                            "allowed_actions": ["edit"],
+                            "instruction_seed": "inactive entry only",
+                            "expected_effect": {
+                                "hypothesis": "No active work",
+                                "primary_metrics": ["avg_total_score"],
+                                "guard_metrics": ["parse_error_rate"],
+                            },
+                            "guardrails": {
+                                "require_non_empty_diff": True,
+                                "max_files_touched": 1,
+                                "extra_frozen_paths": [],
+                            },
+                            "origin": {"type": "manual_seed", "ref": "test"},
+                            "attempts": 0,
+                            "last_selected_round": None,
+                            "last_decision": None,
+                        }
+                    ],
+                }
+                (run_dir / "mutation-registry.json").write_text(
+                    json.dumps(registry_payload, ensure_ascii=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                stderr = io.StringIO()
+                with mock.patch("sys.stderr", stderr):
+                    code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
+
+        self.assertEqual(code, 1)
+        stderr_value = stderr.getvalue()
+        self.assertIn("No selectable mutation entries found", stderr_value)
+        self.assertNotIn("Stop gate triggered", stderr_value)
+
     def test_prepare_round_stops_after_three_completed_rounds_without_new_validation_champion(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

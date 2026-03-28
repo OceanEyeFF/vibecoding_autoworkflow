@@ -955,6 +955,52 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         self.assertEqual(result["decision"]["replay"]["round_validation_score"], 9.0)
         self.assertEqual(result["decision"]["replay"]["replay_validation_score"], 8.5)
 
+    def test_decide_round_replay_output_surfaces_provisional_and_replay_fields(self) -> None:
+        candidate_worktree, _ = self._prepare_active_round()
+        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+            "candidate replay final check\n",
+            encoding="utf-8",
+        )
+        capture = self.worktree_manager.capture_candidate_commit(
+            self.contract.run_id,
+            message="candidate replay final",
+        )
+        round_payload = capture["round"]
+        round_payload["state"] = "evaluated"
+        (self.worktree_manager.round_path(self.contract.run_id, 1)).write_text(
+            json.dumps(round_payload, ensure_ascii=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        write_scoreboard(self.round_manager.round_scoreboard_path(self.contract.run_id, 1), build_scoreboard(10.0, 9.5))
+        replay_root = self.round_manager.replay_dir(self.contract.run_id, 1)
+        (replay_root / "train").mkdir(parents=True, exist_ok=True)
+        (replay_root / "validation").mkdir(parents=True, exist_ok=True)
+
+        lane_results = [
+            [{"suite_file": "train.yaml", "results": [self._eval_result(10.5)]}],
+            [{"suite_file": "validation.yaml", "results": [self._eval_result(9.5)]}],
+        ]
+
+        def fake_replay_runner(*, candidate_worktree: Path, suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+            self.assertIn("/replay/", save_dir.as_posix())
+            return lane_results.pop(0)
+
+        self.round_manager._run_lane_suites = fake_replay_runner  # type: ignore[method-assign]
+
+        result = self.round_manager.decide_round(self.contract)
+
+        decision = result["decision"]
+        replay = decision["replay"]
+        replay_scoreboard = read_json(self.round_manager.replay_scoreboard_path(self.contract.run_id, 1))
+
+        self.assertEqual(decision["decision"], "keep")
+        self.assertEqual(decision["provisional_decision"], "keep")
+        self.assertEqual(replay["status"], "passed")
+        self.assertEqual(replay["reason"], "replay_validation_non_regression")
+        self.assertEqual(replay["scoreboard_ref"], "replay/scoreboard.json")
+        self.assertEqual(replay["round_validation_score"], 9.5)
+        self.assertEqual(replay["replay_validation_score"], 9.5)
+        self.assertGreaterEqual(replay_scoreboard["lanes"][1]["avg_total_score"], 9.5)
     def test_decide_round_replay_needed_enforces_p2_preflight_before_replay(self) -> None:
         prompt_path = "toolchain/scripts/research/tasks/context-routing-skill-prompt.md"
         (self.repo_root / prompt_path).parent.mkdir(parents=True, exist_ok=True)
