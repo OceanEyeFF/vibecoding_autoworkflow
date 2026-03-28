@@ -8,8 +8,18 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
-from autoresearch_contract import HISTORY_COLUMNS, history_header, load_contract, resolve_suite_files
+from autoresearch_contract import (
+    HISTORY_COLUMNS,
+    P2_RUNNER_TASK_TO_TARGET_TASK,
+    P2_TARGET_TASK_TO_RUNNER_TASK,
+    P2_TARGET_TASK_TO_PROMPT_PATH,
+    history_header,
+    load_contract,
+    resolve_p2_contract_target,
+    resolve_suite_files,
+)
 from autoresearch_round import AutoresearchRoundManager
 from autoresearch_scoreboard import build_scoreboard, load_run_summary, merge_run_summaries, write_scoreboard
 from autoresearch_mutation_registry import (
@@ -26,7 +36,7 @@ from autoresearch_feedback_distill import build_recent_feedback_excerpt, load_fe
 from autoresearch_worker_contract import build_comparison_baseline
 from worktree_manager import read_json
 from common import REPO_ROOT, slugify
-from run_skill_suite import main as run_skill_suite_main
+from run_skill_suite import load_suite_manifest, main as run_skill_suite_main, resolve_path_override
 from worktree_manager import WorktreeManager, champion_branch_name
 
 
@@ -127,6 +137,93 @@ def build_round_manager() -> AutoresearchRoundManager:
     return AutoresearchRoundManager(repo_root=REPO_ROOT, autoresearch_root=AUTORESEARCH_ROOT)
 
 
+def _default_prompt_path_for_runner_task(task_name: str) -> Path:
+    runner_task = P2_TARGET_TASK_TO_RUNNER_TASK.get(task_name, task_name)
+    target_task = P2_RUNNER_TASK_TO_TARGET_TASK.get(runner_task)
+    if target_task is None:
+        raise ValueError(f"P2 suite task is not supported: {task_name}")
+    return (REPO_ROOT / P2_TARGET_TASK_TO_PROMPT_PATH[target_task]).resolve()
+
+
+def _iter_suite_specs_for_p2(suite_path: Path) -> list[dict[str, Any]]:
+    manifest = load_suite_manifest(suite_path)
+    version = manifest.get("version", 1)
+    if version != 1:
+        raise ValueError(f"Unsupported suite manifest version for P2 preflight: {version}")
+    defaults = manifest.get("defaults") or {}
+    if not isinstance(defaults, dict):
+        raise ValueError("Suite manifest 'defaults' must be a mapping when present.")
+    runs = manifest.get("runs")
+    if not isinstance(runs, list) or not runs:
+        raise ValueError("Suite manifest must define a non-empty 'runs' list.")
+
+    resolved_specs: list[dict[str, Any]] = []
+    for index, run_entry in enumerate(runs, start=1):
+        if not isinstance(run_entry, dict):
+            raise ValueError(f"Suite run #{index} must be a mapping.")
+        task_name = str(run_entry.get("task") or "all").strip()
+        backend = str(run_entry.get("backend") or defaults.get("backend") or "").strip()
+        judge_backend = str(run_entry.get("judge_backend") or defaults.get("judge_backend") or backend).strip()
+        if not backend:
+            raise ValueError(f"Suite run #{index} is missing 'backend'.")
+        prompt_override = resolve_path_override(run_entry.get("prompt_file"), suite_path.parent)
+        if task_name == "all":
+            if prompt_override is not None:
+                raise ValueError("P2 suite preflight does not allow prompt_file override with task=all.")
+            task_names = sorted(P2_RUNNER_TASK_TO_TARGET_TASK)
+        else:
+            task_names = [P2_TARGET_TASK_TO_RUNNER_TASK.get(task_name, task_name)]
+        for resolved_task in task_names:
+            resolved_specs.append(
+                {
+                    "task": resolved_task,
+                    "backend": backend,
+                    "judge_backend": judge_backend,
+                    "prompt_file": (
+                        prompt_override.resolve()
+                        if prompt_override is not None
+                        else _default_prompt_path_for_runner_task(resolved_task)
+                    ),
+                }
+            )
+    return resolved_specs
+
+
+def _validate_p2_preflight(contract) -> None:
+    resolved_target = resolve_p2_contract_target(contract, repo_root=REPO_ROOT)
+    if resolved_target is None:
+        return
+    target_task, target_prompt_path = resolved_target
+    expected_runner_task = next(
+        runner_task for runner_task, mapped_target in P2_RUNNER_TASK_TO_TARGET_TASK.items() if mapped_target == target_task
+    )
+    suite_files = resolve_suite_files(contract)
+    for lane_name, paths in suite_files.items():
+        for suite_path in paths:
+            for spec in _iter_suite_specs_for_p2(suite_path):
+                if str(spec["task"]) != expected_runner_task:
+                    raise ValueError(
+                        f"P2 suite {lane_name} must only cover target_task={target_task}: {suite_path}"
+                    )
+                prompt_path = Path(str(spec["prompt_file"])).resolve()
+                if prompt_path != (REPO_ROOT / target_prompt_path).resolve():
+                    raise ValueError(
+                        "P2 suite prompt_file must resolve to target_prompt_path: "
+                        f"{suite_path}"
+                    )
+                if str(spec["backend"]) != "codex" or str(spec["judge_backend"]) != "codex":
+                    raise ValueError(
+                        f"P2 suite must enforce codex -> codex for every run: {suite_path}"
+                    )
+
+
+def load_contract_for_cli(path: Path, *, enforce_p2_preflight: bool) -> Any:
+    contract = load_contract(path, repo_root=REPO_ROOT)
+    if enforce_p2_preflight:
+        _validate_p2_preflight(contract)
+    return contract
+
+
 def read_runtime_if_present(manager: WorktreeManager, run_id: str) -> dict[str, object] | None:
     runtime_path = manager.runtime_path(run_id)
     if not runtime_path.is_file():
@@ -201,7 +298,7 @@ def append_history_baseline_row(
 
 
 def cmd_init(contract_path: Path) -> int:
-    contract = load_contract(contract_path, repo_root=REPO_ROOT)
+    contract = load_contract_for_cli(contract_path, enforce_p2_preflight=True)
     run_dir = run_dir_for_id(contract.run_id)
     run_dir.mkdir(parents=True, exist_ok=True)
     write_canonical_contract(run_dir, contract.payload)
@@ -212,7 +309,7 @@ def cmd_init(contract_path: Path) -> int:
 
 
 def cmd_baseline(contract_path: Path) -> int:
-    contract = load_contract(contract_path, repo_root=REPO_ROOT)
+    contract = load_contract_for_cli(contract_path, enforce_p2_preflight=True)
     run_dir = run_dir_for_id(contract.run_id)
     run_dir.mkdir(parents=True, exist_ok=True)
     write_canonical_contract(run_dir, contract.payload)
@@ -254,7 +351,7 @@ def cmd_prepare_round(
     mutation_key: str | None,
     mutation_path: Path | None,
 ) -> int:
-    contract = load_contract(contract_path, repo_root=REPO_ROOT)
+    contract = load_contract_for_cli(contract_path, enforce_p2_preflight=True)
     run_dir = run_dir_for_id(contract.run_id)
     run_dir.mkdir(parents=True, exist_ok=True)
     write_canonical_contract(run_dir, contract.payload)
@@ -384,7 +481,7 @@ def cmd_prepare_round(
 
 
 def cmd_run_round(contract_path: Path) -> int:
-    contract = load_contract(contract_path, repo_root=REPO_ROOT)
+    contract = load_contract_for_cli(contract_path, enforce_p2_preflight=True)
     result = build_round_manager().run_round(contract)
     round_payload = result["round"]
     scoreboard = result["scoreboard"]
@@ -398,7 +495,7 @@ def cmd_run_round(contract_path: Path) -> int:
 
 
 def cmd_decide_round(contract_path: Path) -> int:
-    contract = load_contract(contract_path, repo_root=REPO_ROOT)
+    contract = load_contract_for_cli(contract_path, enforce_p2_preflight=False)
     result = build_round_manager().decide_round(contract)
     decision = result["decision"]
     print(f"decided_round: {decision['round']}")
@@ -408,7 +505,7 @@ def cmd_decide_round(contract_path: Path) -> int:
 
 
 def cmd_promote_round(contract_path: Path) -> int:
-    contract = load_contract(contract_path, repo_root=REPO_ROOT)
+    contract = load_contract_for_cli(contract_path, enforce_p2_preflight=False)
     result = build_worktree_manager().promote_round(contract.run_id)
     runtime = result["runtime"]
     print(f"promoted_round: {result['round']['round']}")
@@ -417,14 +514,14 @@ def cmd_promote_round(contract_path: Path) -> int:
 
 
 def cmd_discard_round(contract_path: Path) -> int:
-    contract = load_contract(contract_path, repo_root=REPO_ROOT)
+    contract = load_contract_for_cli(contract_path, enforce_p2_preflight=False)
     result = build_worktree_manager().discard_round(contract.run_id)
     print(f"discarded_round: {result['round']['round']}")
     return 0
 
 
 def cmd_cleanup_round(contract_path: Path) -> int:
-    contract = load_contract(contract_path, repo_root=REPO_ROOT)
+    contract = load_contract_for_cli(contract_path, enforce_p2_preflight=False)
     result = build_worktree_manager().cleanup_round(contract.run_id)
     print(f"cleaned_round: {result['round']['round']}")
     return 0

@@ -187,6 +187,84 @@ P0.1 当前已固定的校验和边界是：
 - candidate worktree、round loop、mutation、keep / discard 决策
 - qualitative veto 的自动执行逻辑；当前只保留 contract 字段入口
 
+### Autoresearch P2 Batch 1 Single-Prompt Codex Profile
+
+P2 Batch 1 当前不是通用参数搜索系统，只是在现有 `run_autoresearch.py` 上收紧出一个轻量、单 prompt、Codex-only 的 contract profile。
+
+当前代码侧固定了两层映射：
+
+- `target_task -> runner task`
+  - `context-routing-skill -> context-routing`
+  - `knowledge-base-skill -> knowledge-base`
+  - `task-contract-skill -> task-contract`
+  - `writeback-cleanup-skill -> writeback-cleanup`
+- `target_task -> target_prompt_path`
+  - `context-routing-skill -> toolchain/scripts/research/tasks/context-routing-skill-prompt.md`
+  - `knowledge-base-skill -> toolchain/scripts/research/tasks/knowledge-base-skill-prompt.md`
+  - `task-contract-skill -> toolchain/scripts/research/tasks/task-contract-skill-prompt.md`
+  - `writeback-cleanup-skill -> toolchain/scripts/research/tasks/writeback-cleanup-skill-prompt.md`
+
+`autoresearch_contract.py` 当前提供了 P2 的共享边界：
+
+- `AutoresearchContract` 新增可选字段：
+  - `target_task`
+  - `target_prompt_path`
+- 如果 contract 未提供这两个字段，P0/P1 的通用行为保持不变
+- 如果提供了其中任一字段，则必须同时提供两者
+- `resolve_p2_contract_target()` 会强制校验：
+  - `target_task` 必须是上述四个 skill 之一
+  - `target_prompt_path` 必须精确匹配固定映射
+  - `mutable_paths` 归一化后必须只剩 `[target_prompt_path]`
+
+`run_autoresearch.py` 当前提供了 P2 的 CLI preflight：
+
+- `_validate_p2_preflight()` 会遍历 `train` / `validation` / `acceptance` 三类 suite manifest
+- 每个 run 都必须满足：
+  - suite 只能覆盖 contract 指定的单个 task
+  - `prompt_file` 必须解析到 `contract.target_prompt_path`
+  - `backend` 必须是 `codex`
+  - `judge_backend` 必须是 `codex`
+- `task: all` 在 P2 preflight 下不会被接受为多 prompt 批跑入口
+- 允许 suite 不显式写 `prompt_file`，此时会按 task 默认 prompt 路径回填；回填结果仍必须等于 `target_prompt_path`
+
+P2 Batch 1 的命令边界当前固定为：
+
+- 会执行 suite 级 P2 preflight：
+  - `init`
+  - `baseline`
+  - `prepare-round`
+  - `run-round`
+- 不会执行 suite 级 P2 preflight：
+  - `decide-round`
+  - `promote-round`
+  - `discard-round`
+  - `cleanup-round`
+
+这个拆分是刻意保留的：post-eval / recovery 命令不能因为 suite 漂移而 fail-stuck。
+
+P2 Batch 1 对 registry / round authority 的额外约束当前也已固定：
+
+- `autoresearch_mutation_registry.py` 会要求 registry entry 的 `target_paths` 必须精确等于 `[contract.target_prompt_path]`
+- `autoresearch_round.py` 会要求 materialized round `mutation.json` 的 `target_paths` 也必须精确等于 `[contract.target_prompt_path]`
+- 这意味着 Batch 1 当前只允许调一个 prompt 文件，不允许顺手扩大到同 skill 的其他文件或多 prompt 组合
+
+### Autoresearch P2 Batch 1 Verified Scope
+
+当前已验证的范围是：
+
+- contract 可用 `target_task + target_prompt_path` 显式声明“只调一个 prompt”
+- 四个 research prompt 的 task/path 固定映射已落地
+- `init -> baseline -> prepare-round -> run-round` 会对 P2 单 prompt Codex profile 做 fail-closed preflight
+- registry entry 与 round mutation 都会被收紧到唯一的 `target_prompt_path`
+- `decide-round` / `promote-round` / `discard-round` / `cleanup-round` 保持可恢复，不会被 suite preflight 卡死
+
+当前没有承诺或未覆盖的范围是：
+
+- 同一 run 同时调多个 prompt
+- 在 P2 profile 下切换到非 `codex -> codex` backend/judge 组合
+- prompt 文本之外的参数搜索
+- 基于 suite 漂移场景的专门 `promote-round` 回归测试
+
 ### Autoresearch P0.3 Round Artifacts
 
 单轮 round 目录固定在：

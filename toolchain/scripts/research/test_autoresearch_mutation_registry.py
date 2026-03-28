@@ -18,13 +18,19 @@ from autoresearch_mutation_registry import (
 )
 
 
-def build_contract_payload(*, suite_name: str = "lane.yaml") -> dict[str, object]:
-    return {
+def build_contract_payload(
+    *,
+    suite_name: str = "lane.yaml",
+    mutable_paths: list[str] | None = None,
+    target_task: str | None = None,
+    target_prompt_path: str | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
         "run_id": "p1-1-demo",
         "label": "P1.1 Demo",
         "objective": "Registry loading",
         "target_surface": "memory-side",
-        "mutable_paths": ["product/memory-side/skills"],
+        "mutable_paths": mutable_paths or ["product/memory-side/skills"],
         "frozen_paths": ["docs/knowledge"],
         "train_suites": [suite_name],
         "validation_suites": [suite_name],
@@ -37,6 +43,11 @@ def build_contract_payload(*, suite_name: str = "lane.yaml") -> dict[str, object
         "timeout_policy": {"seconds": 120},
         "promotion_policy": {"mode": "script"},
     }
+    if target_task is not None:
+        payload["target_task"] = target_task
+    if target_prompt_path is not None:
+        payload["target_prompt_path"] = target_prompt_path
+    return payload
 
 
 def build_entry_payload(*, mutation_key: str = "text_rephrase:demo:intro-tighten-v1") -> dict[str, object]:
@@ -344,6 +355,34 @@ class AutoresearchMutationRegistryTest(unittest.TestCase):
             loaded = load_mutation_registry(registry_path, contract=contract, repo_root=root)
 
         self.assertEqual(loaded.entries[0]["target_paths"], ["product/memory-side/skills/skill.md"])
+
+    def test_load_mutation_registry_rejects_p2_target_paths_not_equal_to_target_prompt_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            contract_path = self._write_contract(root)
+            payload = build_contract_payload(
+                mutable_paths=["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+                target_task="context-routing-skill",
+                target_prompt_path="toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+            )
+            contract_path.write_text(json.dumps(payload), encoding="utf-8")
+            contract = load_contract(contract_path, repo_root=root)
+            contract_fp = compute_contract_fingerprint(contract)
+            entry = build_entry_payload()
+            entry["target_paths"] = ["toolchain/scripts/research/tasks/knowledge-base-skill-prompt.md"]
+            entry.pop("fingerprint_basis")
+            entry.pop("fingerprint")
+            registry_payload = {
+                "run_id": contract.run_id,
+                "registry_version": 1,
+                "contract_fingerprint": contract_fp,
+                "entries": [entry],
+            }
+            registry_path = root / "mutation-registry.json"
+            registry_path.write_text(json.dumps(registry_payload), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "exactly \\[contract.target_prompt_path\\]"):
+                load_mutation_registry(registry_path, contract=contract, repo_root=root)
 
     def test_load_mutation_registry_rejects_target_paths_overlapping_frozen_paths(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

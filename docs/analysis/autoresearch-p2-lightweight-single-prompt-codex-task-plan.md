@@ -41,7 +41,31 @@ last_verified: 2026-03-28
 - 任务 T-004 依赖 T-001、T-002、T-003。
 - 任务 T-005 最后执行。
 
-## 三、任务清单
+## 三、已冻结实现前提
+
+为减少 Batch 1 内部返工，本文先冻结以下实现前提：
+
+- P2 约束真相层放在 `toolchain/scripts/research/run_autoresearch.py` 的 P2 preflight
+- contract 只承载两项轻量真相字段：
+  - `target_task`
+  - `target_prompt_path`
+- `codex -> codex` 通过 P2 preflight 解析 suite manifest 后做强校验，而不是先扩成 contract 主 schema 的静态真相
+- 通用 `load_contract()` 继续承担通用合同校验，不直接变成 P2 专属 fail-closed 入口
+- `mutable_paths` 在 P2 模式下必须规范化为只包含 `target_prompt_path`
+
+固定映射如下：
+
+- `context-routing-skill` -> `toolchain/scripts/research/tasks/context-routing-skill-prompt.md`
+- `knowledge-base-skill` -> `toolchain/scripts/research/tasks/knowledge-base-skill-prompt.md`
+- `task-contract-skill` -> `toolchain/scripts/research/tasks/task-contract-skill-prompt.md`
+- `writeback-cleanup-skill` -> `toolchain/scripts/research/tasks/writeback-cleanup-skill-prompt.md`
+
+执行约束如下：
+
+- T-001 负责定义并冻结这套边界
+- T-002 只负责消费这套边界，不得自行推导第二套 prompt 目标语义
+
+## 四、任务清单
 
 ### 任务ID：T-001
 任务名称：收紧 autoresearch contract 为单 Prompt、Codex-only 模式
@@ -97,6 +121,7 @@ last_verified: 2026-03-28
 - 优先在 contract load / CLI 入口层增加强校验，不要把约束分散到多个下游点
 - 先补失败用例，再补实现
 - 若 schema 改动会扩大侵入，优先采用运行时强校验，保持最小侵入
+- 优先把 `target_task -> target_prompt_path` 固定映射做成共享常量或共享校验逻辑，避免 T-002 再重复定义
 
 #### 6. 模型与推理建议（Execution Profile）
 
@@ -115,6 +140,7 @@ last_verified: 2026-03-28
 - contract schema 是否需要同步收紧，存在实现策略分歧
 - 现有测试夹具可能默认允许多 task / 多 backend，需要同步调整
 - 可能遗漏 `baseline` 或 `prepare-round` 的入口一致性校验
+- `codex -> codex` 真实约束位于 suite manifest 解析面，而不只在 contract 本体
 
 #### 9. 验证计划（Validation Plan）
 
@@ -134,6 +160,7 @@ last_verified: 2026-03-28
 - 非法配置会 fail closed
 - 相关单测通过
 - 不会影响现有非 P2 路径之外的正常 contract 读取逻辑，或影响被明确限制在 P2 入口
+- `target_task`、`target_prompt_path` 与 `mutable_paths` 的 P2 语义已经被唯一收口
 
 #### 11. 失败协议（Failure Handling）
 
@@ -188,7 +215,7 @@ last_verified: 2026-03-28
 #### 5. 执行策略（Execution Strategy）
 
 - 推荐执行方式：局部修改 + 补测试
-- 先确认当前 `target_paths`、`mutable_paths`、task prompt 文件之间的对应关系
+- 先复用 T-001 已冻结的 `target_task -> target_prompt_path` 映射，不要在本任务内自行重新推导
 - 再在 registry canonicalize 和 round diff guardrail 两处都补单文件约束
 - 先做小范围验证，确认不会把合法单文件 mutation 误杀
 
@@ -203,10 +230,12 @@ last_verified: 2026-03-28
 - 前置任务（必须完成）：无
 - 可并行任务：T-001
 - 是否属于某个批次（Batch）：Batch 1
+- 软依赖说明：
+  - 若 `target_prompt_path` 尚未在 T-001 中冻结语义，本任务不得自行发明第二套边界定义
 
 #### 8. 风险与不确定性（Risks）
 
-- `target_prompt_path` 若未在 T-001 落地，可能需要先用现有 `mutable_paths` 承接
+- 若绕开 T-001 的冻结语义，只依赖现有 `mutable_paths` 做“假单文件模式”，后续返工概率高
 - round guardrail 与 registry 语义可能出现重复或不一致
 - 可能需要明确四个 prompt 文件的 canonical 映射关系
 
@@ -229,6 +258,7 @@ last_verified: 2026-03-28
 - registry 和 round 校验语义一致
 - 相关测试通过
 - 不引入对 docs、adapter、skill wrapper 的误伤限制
+- registry 和 round 只消费 `target_prompt_path` 这一单一来源，不保留第二套推导规则
 
 #### 11. 失败协议（Failure Handling）
 
@@ -338,7 +368,7 @@ last_verified: 2026-03-28
 
 ### 任务ID：T-004
 任务名称：补齐单 Prompt、Codex-only 路径的 smoke 与回归测试
-任务类型（Task Type）：Review
+任务类型（Task Type）：Implement
 
 #### 1. 任务目标（Goal）
 
@@ -402,6 +432,7 @@ last_verified: 2026-03-28
 - live Codex 相关 smoke 可能受环境影响，不适合默认进入普通测试
 - 现有 smoke 主要覆盖 P1.3，P2 路径可能需要新夹具
 - README 更新若早于测试稳定，容易写出失真说明
+- `decide-round / promote-round / discard-round / cleanup-round` 当前依赖“绕过 suite-level P2 preflight”的恢复语义，但还缺少专门的 `promote-round` suite-drift 回归测试，后续改动可能把 recovery 路径重新锁死
 
 #### 9. 验证计划（Validation Plan）
 
@@ -411,6 +442,7 @@ last_verified: 2026-03-28
   - 覆盖单 Prompt 限制
   - 覆盖 `codex -> codex`
   - 覆盖 stop rule 主路径
+  - 新增 `promote-round` 在 suite manifest 漂移场景下仍可完成收尾的专门回归测试
 - Runtime：
   - 可选 live smoke，取决于环境
 - 是否可以做 smoke test：
@@ -420,6 +452,7 @@ last_verified: 2026-03-28
 
 - 至少一条最小 smoke 证明 P2 主路径可跑
 - 核心回归测试通过
+- `promote-round` 的 suite-drift 恢复语义有明确自动化覆盖，或该缺口被显式保留并记录为未完成项
 - README 能描述当前已验证边界
 - 未把高成本 live acceptance 错写成默认回归路径
 
@@ -520,9 +553,9 @@ last_verified: 2026-03-28
 - 若发现实现与设计存在偏差，必须回报差异，而不是自行修正文档目标
 - 允许请求更多上下文，但不得擅自补代码
 
-## 四、任务依赖图
+## 五、任务依赖图
 
-- T-001 与 T-002 是起始任务，二者可并行。
+- T-001 与 T-002 是起始任务，二者可并行，但并行前提是先冻结 `target_task / target_prompt_path` 的共享语义。
 - T-003 依赖 T-001，因为 stop rule 需要先建立单 Prompt、`codex -> codex` 的入口约束。
 - T-004 依赖 T-001、T-002、T-003，因为 smoke 与回归测试必须建立在完整 P2 主路径之上。
 - T-005 依赖 T-004，因为 runbook 和入口文档只能承接已验证行为。
@@ -537,7 +570,7 @@ T-002 ----/           \
 T-002 -----------------/
 ```
 
-## 五、推荐执行顺序（Batch 划分）
+## 六、推荐执行顺序（Batch 划分）
 
 ### Batch 1
 
@@ -573,7 +606,7 @@ T-002 -----------------/
 
 - 最后做文档承接，确保 runbook 只写已验证事实
 
-## 六、可并行执行的任务组
+## 七、可并行执行的任务组
 
 - 并行组 A：
   - T-001
@@ -581,22 +614,23 @@ T-002 -----------------/
 
 说明：
 
-- 两者修改面基本分离，但都涉及 P2 边界定义；并行时需提前约定 `target_task / target_prompt_path` 的字段语义
+- 两者修改面基本分离，但都涉及 P2 边界定义；并行时必须先共享 T-001 冻结后的 `target_task / target_prompt_path` 语义
 
 其余任务建议串行推进。
 
-## 七、高风险任务列表
+## 八、高风险任务列表
 
 - T-003：会触及 round 生命周期、champion 前移和 replay 逻辑，最容易引入状态机回归。
 - T-001：若 contract 收紧方式选错，可能波及现有 fixture 和非 P2 路径。
+- T-002：若 registry 和 round 各自定义单文件语义，容易形成 prepare 能过、run-round 才失败的双轨问题。
 - T-004：若 smoke 设计不当，容易把高成本 live 验证错误纳入默认回归。
 
-## 八、推荐整体执行策略
+## 九、推荐整体执行策略
 
 推荐策略是：
 
 1. 先把 P2 当成“对现有 autoresearch 的收窄模式”，而不是新系统。
-2. 先完成入口收紧和 mutation 边界，确保变量面真的降下来。
+2. 先由 T-001 冻结 `target_task / target_prompt_path / mutable_paths` 的共享边界语义，再完成 mutation 边界。
 3. 再实现最小 stop rule，不要提前做更复杂的 adaptive 演进。
 4. 用 smoke 和回归测试证明主路径成立后，再承接到 `docs/operations/` 与 `toolchain` 入口文档。
 

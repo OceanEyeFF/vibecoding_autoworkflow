@@ -81,7 +81,40 @@ last_verified: 2026-03-28
 - 不要求一开始重做完整 schema 设计
 - 若后续证明稳定，再决定是否升格为正式 schema 字段
 
-## 五、Mutation 边界
+## 五、约束真相层定案
+
+为避免 `T-001` 和 `T-002` 各自发明一套边界语义，本方案先固定一版实现前定案：
+
+- P2 约束真相层放在 `run_autoresearch.py` 的 P2 preflight
+- contract 只承载两项轻量真相字段：
+  - `target_task`
+  - `target_prompt_path`
+- `codex -> codex` 不作为 contract 主 schema 的静态真相，而是在 P2 preflight 中解析 suite manifest 后做强校验
+- 通用 `load_contract()` 继续承担通用合同校验，不直接变成 P2 专属 fail-closed 入口
+- P2 专属收紧只在显式 P2 路径上生效，避免误伤当前已存在的非 P2 fixture 和 smoke
+
+采用这版定案的原因是：
+
+- 能把 `T-001` 的责任收敛到“定义并冻结边界”
+- 能把 `T-002` 的责任收敛到“执行同一套边界”
+- 能避免 contract、CLI、registry、round 各自维护不同的单 prompt 语义
+
+### Task / Prompt 固定映射
+
+为减少 `T-002` 返工，本方案同时固定 `target_task` 和 `target_prompt_path` 的一一映射：
+
+- `context-routing-skill` -> `toolchain/scripts/research/tasks/context-routing-skill-prompt.md`
+- `knowledge-base-skill` -> `toolchain/scripts/research/tasks/knowledge-base-skill-prompt.md`
+- `task-contract-skill` -> `toolchain/scripts/research/tasks/task-contract-skill-prompt.md`
+- `writeback-cleanup-skill` -> `toolchain/scripts/research/tasks/writeback-cleanup-skill-prompt.md`
+
+P2 preflight 需要同时校验：
+
+- `target_prompt_path` 必须命中上面的 4 个 prompt 文件之一
+- `target_task` 必须与 `target_prompt_path` 的映射一致
+- `mutable_paths` 在 P2 模式下必须规范化为只包含 `target_prompt_path`
+
+## 六、Mutation 边界
 
 本方案不需要新的复杂 scheduler，只需要收紧 mutation discipline。
 
@@ -103,8 +136,9 @@ last_verified: 2026-03-28
 - `target_paths` 必须只指向 `target_prompt_path`
 - diff 应尽量保持局部
 - 同一 round 不允许跨到其他 prompt 文件
+- registry 和 round 都只允许消费 `target_prompt_path` 这一单一来源，不得自行推导第二套 prompt 目标语义
 
-## 六、Codex-only 执行面
+## 七、Codex-only 执行面
 
 本方案把 `Codex` 定为唯一执行与评测后端。
 
@@ -121,7 +155,7 @@ last_verified: 2026-03-28
 
 因此这里不再把 `claude -> codex` 作为默认研究主路径，只保留它在其他研究场景中的价值。
 
-## 七、最小停机规则
+## 八、最小停机规则
 
 当前只有 `max_rounds` 还不够，但也没有必要引入复杂 stop policy。
 
@@ -146,7 +180,7 @@ last_verified: 2026-03-28
 - 防止把“全试过但都没用”的 run 无限拖长
 - 防止单次偶然得分把噪声误判为改进
 
-## 八、建议保留与建议避免
+## 九、建议保留与建议避免
 
 ### 建议保留
 
@@ -163,7 +197,7 @@ last_verified: 2026-03-28
 - 让模型自由决定 stop 条件
 - 在当前阶段扩成通用参数搜索器
 
-## 九、最小施工清单
+## 十、最小施工清单
 
 如果采用本方案，建议只做下面几件事：
 
@@ -173,7 +207,7 @@ last_verified: 2026-03-28
 4. 为 `codex -> codex` 的单 prompt 路径补一条最小 smoke。
 5. 在 `docs/operations/` 中补一页对应 runbook，前提是实现已经落地并验证通过。
 
-## 十、与现有文档体系的关系
+## 十一、与现有文档体系的关系
 
 本文当前属于：
 
@@ -195,7 +229,7 @@ last_verified: 2026-03-28
 
 - `docs/knowledge/`
 
-## 十一、一句话结论
+## 十二、一句话结论
 
 当前最值得做的，不是把 `autoresearch` 扩成更大的系统，而是把它压缩成：
 

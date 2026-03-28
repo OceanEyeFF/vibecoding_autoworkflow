@@ -31,13 +31,21 @@ from autoresearch_worker_contract import (
 from worktree_manager import WorktreeManager, champion_branch_name, read_json
 
 
-def build_contract_payload(train_suite: str, validation_suite: str, acceptance_suite: str) -> dict[str, object]:
-    return {
+def build_contract_payload(
+    train_suite: str,
+    validation_suite: str,
+    acceptance_suite: str,
+    *,
+    mutable_paths: list[str] | None = None,
+    target_task: str | None = None,
+    target_prompt_path: str | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
         "run_id": "demo-run",
         "label": "Demo",
         "objective": "Round execution",
         "target_surface": "memory-side",
-        "mutable_paths": ["product/memory-side/skills"],
+        "mutable_paths": mutable_paths or ["product/memory-side/skills"],
         "frozen_paths": ["docs/knowledge"],
         "train_suites": [train_suite],
         "validation_suites": [validation_suite],
@@ -50,6 +58,11 @@ def build_contract_payload(train_suite: str, validation_suite: str, acceptance_s
         "timeout_policy": {"seconds": 120},
         "promotion_policy": {"mode": "script"},
     }
+    if target_task is not None:
+        payload["target_task"] = target_task
+    if target_prompt_path is not None:
+        payload["target_prompt_path"] = target_prompt_path
+    return payload
 
 
 def build_mutation_payload(round_number: int = 1, mutation_id: str = "mut-001") -> dict[str, object]:
@@ -399,6 +412,25 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         mutation_payload = build_mutation_payload()
         mutation_payload["target_paths"] = ["product/memory-side"]
         with self.assertRaisesRegex(ValueError, "Mutation target_paths must stay within contract.mutable_paths"):
+            self.round_manager.ensure_prepare_allowed(self.contract, mutation_payload)
+
+    def test_prepare_round_rejects_p2_target_paths_not_equal_to_target_prompt_path(self) -> None:
+        contract_payload = build_contract_payload(
+            "train.yaml",
+            "validation.yaml",
+            "acceptance.yaml",
+            mutable_paths=["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+            target_task="context-routing-skill",
+            target_prompt_path="toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+        )
+        self.contract_path.write_text(json.dumps(contract_payload), encoding="utf-8")
+        self.contract = load_contract(self.contract_path, repo_root=self.repo_root)
+        (self.run_dir / "contract.json").write_text(json.dumps(contract_payload), encoding="utf-8")
+
+        mutation_payload = build_mutation_payload()
+        mutation_payload["target_paths"] = ["toolchain/scripts/research/tasks/knowledge-base-skill-prompt.md"]
+
+        with self.assertRaisesRegex(ValueError, "exactly \\[contract.target_prompt_path\\]"):
             self.round_manager.ensure_prepare_allowed(self.contract, mutation_payload)
 
     def test_run_round_requires_agent_report(self) -> None:

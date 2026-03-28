@@ -16,6 +16,7 @@ from autoresearch_contract import (
     AutoresearchContract,
     normalize_repo_path,
     paths_overlap,
+    resolve_p2_contract_target,
     resolve_suite_files,
 )
 from autoresearch_mutation_registry import (
@@ -332,11 +333,19 @@ class AutoresearchRoundManager:
         target_paths = self._normalize_contract_paths([str(value) for value in mutation_payload["target_paths"]])
         mutable_paths = self._normalize_contract_paths(contract.mutable_paths)
         frozen_paths = self._normalize_contract_paths(contract.frozen_paths)
+        p2_target = resolve_p2_contract_target(contract, repo_root=self.repo_root)
         unsupported_actions = sorted(set(mutation_payload["allowed_actions"]) - SUPPORTED_MUTATION_ACTIONS)
         if unsupported_actions:
             raise ValueError(
                 "Mutation spec allowed_actions contain unsupported values: " + ", ".join(unsupported_actions)
             )
+        if p2_target is not None:
+            _target_task, target_prompt_path = p2_target
+            if target_paths != [target_prompt_path]:
+                raise ValueError(
+                    "P2 mutation target_paths must be exactly [contract.target_prompt_path]: "
+                    f"{target_prompt_path.as_posix()}"
+                )
         for target_path in target_paths:
             if not any(_posix_is_under(base=mutable_path, target=target_path) for mutable_path in mutable_paths):
                 raise ValueError(

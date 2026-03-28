@@ -1,9 +1,9 @@
 ---
 title: "Autoresearch 最小闭环运行说明"
 status: active
-updated: 2026-03-27
+updated: 2026-03-28
 owner: aw-kernel
-last_verified: 2026-03-27
+last_verified: 2026-03-28
 ---
 # Autoresearch 最小闭环运行说明
 
@@ -17,6 +17,7 @@ last_verified: 2026-03-27
 - 单个 skill
 - `train / validation` 两条 lane
 - 一次 `init -> baseline -> prepare-round -> run-round -> decide-round`
+- 单 prompt 的轻量 P2 profile 仅限单个 research prompt 文本
 
 它不覆盖：
 
@@ -24,8 +25,13 @@ last_verified: 2026-03-27
 - acceptance matrix
 - 自动 mutation 搜索
 - planner / proposer / critic 多角色实验
+- prompt 文本之外的参数搜索
 
 ## 二、已验证的最小组合
+
+当前文档包含两类已验证事实：
+
+### 1. 实跑过的一轮最小闭环
 
 `2026-03-27` 已在当前仓库实际跑过下面这组最小闭环：
 
@@ -42,6 +48,24 @@ last_verified: 2026-03-27
 - fixed rule 正常做出 `discard`
 
 说明当前代码层面的闭环已经成立，即使 round 最终没有被 `keep`。
+
+### 2. `2026-03-28` Batch 1 代码验收已确认的 P2 轻量边界
+
+这一轮不是新的 live backend 观测，而是针对已落地代码的验收事实：
+
+- 只允许微调一个 research prompt 文件
+- 只允许 `codex -> codex`
+- 只允许四个固定 target task 之一：
+  - `context-routing-skill`
+  - `knowledge-base-skill`
+  - `task-contract-skill`
+  - `writeback-cleanup-skill`
+- contract 需要同时声明：
+  - `target_task`
+  - `target_prompt_path`
+- `mutable_paths` 必须精确收紧到 `[target_prompt_path]`
+- `init / baseline / prepare-round / run-round` 会做 P2 preflight
+- `decide-round / promote-round / discard-round / cleanup-round` 不做 suite 级 preflight，保证 recovery 不会因为 suite 漂移而卡死
 
 ## 三、最小输入
 
@@ -134,6 +158,66 @@ runs:
 }
 ```
 
+### Batch 1 单 Prompt Codex profile 的额外输入约束
+
+如果当前 run 采用 Batch 1 的轻量 P2 profile，contract 还需要额外满足：
+
+- `target_task` 和 `target_prompt_path` 必须同时存在
+- `mutable_paths` 必须只包含这个 prompt 文件
+- `target_prompt_path` 必须命中固定 task/path 映射，不能自定义漂移
+
+最小 P2 形态示例：
+
+```json
+{
+  "run_id": "manual-cr-p2-codex",
+  "label": "Minimal P2 Context Routing x Codex",
+  "objective": "Tune exactly one research prompt file with codex as both runner and judge.",
+  "target_surface": "research prompt",
+  "target_task": "context-routing-skill",
+  "target_prompt_path": "toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+  "mutable_paths": [
+    "toolchain/scripts/research/tasks/context-routing-skill-prompt.md"
+  ],
+  "frozen_paths": [
+    "docs",
+    "product",
+    ".agents"
+  ],
+  "train_suites": ["train.yaml"],
+  "validation_suites": ["validation.yaml"],
+  "acceptance_suites": ["acceptance.yaml"],
+  "primary_metrics": ["avg_total_score"],
+  "guard_metrics": ["parse_error_rate", "timeout_rate"],
+  "qualitative_veto_checks": [],
+  "max_rounds": 1,
+  "max_candidate_attempts_per_round": 1,
+  "timeout_policy": { "seconds": 900 },
+  "promotion_policy": { "mode": "manual" }
+}
+```
+
+Batch 1 的 suite 也要额外满足：
+
+- 每个 run 只能覆盖 contract 指定的单个 task
+- `backend` 必须是 `codex`
+- `judge_backend` 必须是 `codex`
+- `prompt_file` 若显式写出，必须解析到 `target_prompt_path`
+
+推荐最小 suite 形态：
+
+```yaml
+version: 1
+defaults:
+  backend: codex
+  judge_backend: codex
+  with_eval: true
+runs:
+  - repo: /abs/path/to/.exrepos/typer
+    task: context-routing
+    prompt_file: /abs/path/to/repo/toolchain/scripts/research/tasks/context-routing-skill-prompt.md
+```
+
 ## 四、推荐执行顺序
 
 先刷新 contract 的 fresh `run_id`：
@@ -198,7 +282,22 @@ python3 toolchain/scripts/research/run_autoresearch.py \
   --contract /abs/path/to/contract.json
 ```
 
-## 五、这次实跑确认的两个坑
+如果当前 contract 带有 `target_task` / `target_prompt_path`，要注意命令分层：
+
+- 会执行 P2 preflight：
+  - `init`
+  - `baseline`
+  - `prepare-round`
+  - `run-round`
+- 不会执行 P2 preflight：
+  - `decide-round`
+  - `promote-round`
+  - `discard-round`
+  - `cleanup-round`
+
+后者刻意保留为 recovery/post-eval 命令，避免已经跑完评测的 round 因 suite 文件后续变动而无法收尾。
+
+## 五、这次实跑确认的三个坑
 
 ### 1. suite 里的 `repo` 要写绝对路径
 
@@ -254,6 +353,17 @@ mutable_paths and frozen_paths overlap
 ```text
 product/memory-side/adapters/claude/skills/context-routing-skill/SKILL.md
 ```
+
+### 3. Batch 1 的单 Prompt P2 profile 不是自由组合
+
+如果 contract 进入了 Batch 1 的 P2 profile，当前实现不是“任意 task + 任意 prompt_file”的宽松模式，而是固定约束：
+
+- `target_task` 只能是四个已登记的 skill
+- `target_prompt_path` 必须精确匹配固定映射
+- `mutable_paths` 必须只剩这个 prompt 文件
+- suite 必须是单 task 且 `codex -> codex`
+
+只要其中一项不满足，`init / baseline / prepare-round / run-round` 就会直接失败。
 
 ## 六、一轮流程会产出什么
 

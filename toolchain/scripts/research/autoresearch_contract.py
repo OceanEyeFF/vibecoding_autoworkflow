@@ -25,6 +25,20 @@ HISTORY_COLUMNS = [
     "notes",
 ]
 
+P2_TARGET_TASK_TO_RUNNER_TASK = {
+    "context-routing-skill": "context-routing",
+    "knowledge-base-skill": "knowledge-base",
+    "task-contract-skill": "task-contract",
+    "writeback-cleanup-skill": "writeback-cleanup",
+}
+P2_RUNNER_TASK_TO_TARGET_TASK = {value: key for key, value in P2_TARGET_TASK_TO_RUNNER_TASK.items()}
+P2_TARGET_TASK_TO_PROMPT_PATH = {
+    "context-routing-skill": "toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+    "knowledge-base-skill": "toolchain/scripts/research/tasks/knowledge-base-skill-prompt.md",
+    "task-contract-skill": "toolchain/scripts/research/tasks/task-contract-skill-prompt.md",
+    "writeback-cleanup-skill": "toolchain/scripts/research/tasks/writeback-cleanup-skill-prompt.md",
+}
+
 
 @dataclass(frozen=True)
 class AutoresearchContract:
@@ -36,6 +50,8 @@ class AutoresearchContract:
     acceptance_suites: list[str]
     mutable_paths: list[str]
     frozen_paths: list[str]
+    target_task: str | None = None
+    target_prompt_path: str | None = None
 
 
 def history_header() -> str:
@@ -121,6 +137,52 @@ def validate_path_boundaries(contract: AutoresearchContract, *, repo_root: Path 
                 )
 
 
+def normalize_p2_target_task(value: str) -> str:
+    task = str(value or "").strip()
+    if task not in P2_TARGET_TASK_TO_RUNNER_TASK:
+        supported = ", ".join(sorted(P2_TARGET_TASK_TO_RUNNER_TASK))
+        raise ValueError(f"P2 target_task must be one of: {supported}")
+    return task
+
+
+def expected_p2_target_prompt_path(target_task: str) -> PurePosixPath:
+    normalized_task = normalize_p2_target_task(target_task)
+    return PurePosixPath(P2_TARGET_TASK_TO_PROMPT_PATH[normalized_task])
+
+
+def resolve_p2_contract_target(
+    contract: AutoresearchContract,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> tuple[str, PurePosixPath] | None:
+    target_task = contract.target_task
+    target_prompt_path = contract.target_prompt_path
+    if target_task is None and target_prompt_path is None:
+        return None
+    if not target_task or not target_prompt_path:
+        raise ValueError("P2 contract requires both target_task and target_prompt_path.")
+
+    normalized_task = normalize_p2_target_task(target_task)
+    normalized_prompt = normalize_repo_path(target_prompt_path, repo_root)
+    expected_prompt = expected_p2_target_prompt_path(normalized_task)
+    if normalized_prompt != expected_prompt:
+        raise ValueError(
+            "P2 target_prompt_path must match the fixed task mapping: "
+            f"{normalized_task} -> {expected_prompt.as_posix()}"
+        )
+
+    mutable = sorted(
+        {normalize_repo_path(value, repo_root) for value in contract.mutable_paths},
+        key=lambda item: item.as_posix(),
+    )
+    if mutable != [expected_prompt]:
+        raise ValueError(
+            "P2 mutable_paths must normalize to only target_prompt_path: "
+            f"{expected_prompt.as_posix()}"
+        )
+    return normalized_task, expected_prompt
+
+
 def load_contract(path: Path, *, repo_root: Path = REPO_ROOT) -> AutoresearchContract:
     source = path.expanduser().resolve()
     payload = _load_json(source)
@@ -134,6 +196,12 @@ def load_contract(path: Path, *, repo_root: Path = REPO_ROOT) -> AutoresearchCon
         acceptance_suites=[str(item) for item in payload["acceptance_suites"]],
         mutable_paths=[str(item) for item in payload["mutable_paths"]],
         frozen_paths=[str(item) for item in payload["frozen_paths"]],
+        target_task=str(payload["target_task"]).strip() if payload.get("target_task") is not None else None,
+        target_prompt_path=(
+            str(normalize_repo_path(str(payload["target_prompt_path"]), repo_root).as_posix())
+            if payload.get("target_prompt_path") is not None
+            else None
+        ),
     )
     resolve_suite_files(contract)
     validate_path_boundaries(contract, repo_root=repo_root)

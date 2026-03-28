@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from autoresearch_contract import AutoresearchContract, normalize_repo_path, paths_overlap
+from autoresearch_contract import AutoresearchContract, normalize_repo_path, paths_overlap, resolve_p2_contract_target
 from common import REPO_ROOT, SCHEMAS_ROOT
 
 
@@ -272,6 +272,14 @@ def canonicalize_mutation_entry(
 
     contract_mutable = _normalize_paths([str(value) for value in contract.mutable_paths], repo_root=repo_root)
     contract_frozen = _normalize_paths([str(value) for value in contract.frozen_paths], repo_root=repo_root)
+    p2_target = resolve_p2_contract_target(contract, repo_root=repo_root)
+    if p2_target is not None:
+        _target_task, target_prompt_path = p2_target
+        if target_paths != [target_prompt_path]:
+            raise ValueError(
+                "P2 registry entry target_paths must be exactly [contract.target_prompt_path]: "
+                f"{target_prompt_path.as_posix()}"
+            )
     for target_path in target_paths:
         if not any(_posix_is_under(base=mutable_path, target=target_path) for mutable_path in contract_mutable):
             raise ValueError(

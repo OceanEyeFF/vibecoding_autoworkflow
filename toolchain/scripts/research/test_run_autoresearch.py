@@ -16,13 +16,21 @@ from autoresearch_contract import load_contract
 from autoresearch_mutation_registry import compute_contract_fingerprint, load_mutation_registry
 
 
-def build_contract_payload(train_suite: str, validation_suite: str, acceptance_suite: str) -> dict[str, object]:
-    return {
+def build_contract_payload(
+    train_suite: str,
+    validation_suite: str,
+    acceptance_suite: str,
+    *,
+    mutable_paths: list[str] | None = None,
+    target_task: str | None = None,
+    target_prompt_path: str | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
         "run_id": "demo-run",
         "label": "Demo",
         "objective": "Baseline aggregation",
         "target_surface": "memory-side",
-        "mutable_paths": ["product/memory-side/skills"],
+        "mutable_paths": mutable_paths or ["product/memory-side/skills"],
         "frozen_paths": ["docs/knowledge"],
         "train_suites": [train_suite],
         "validation_suites": [validation_suite],
@@ -35,6 +43,46 @@ def build_contract_payload(train_suite: str, validation_suite: str, acceptance_s
         "timeout_policy": {"seconds": 120},
         "promotion_policy": {"mode": "manual"},
     }
+    if target_task is not None:
+        payload["target_task"] = target_task
+    if target_prompt_path is not None:
+        payload["target_prompt_path"] = target_prompt_path
+    return payload
+
+
+def init_p2_prompt_tree(root: Path) -> None:
+    prompt_dir = root / "toolchain" / "scripts" / "research" / "tasks"
+    prompt_dir.mkdir(parents=True, exist_ok=True)
+    for name in (
+        "context-routing-skill-prompt.md",
+        "knowledge-base-skill-prompt.md",
+        "task-contract-skill-prompt.md",
+        "writeback-cleanup-skill-prompt.md",
+    ):
+        (prompt_dir / name).write_text(f"{name}\n", encoding="utf-8")
+
+
+def write_suite_manifest(
+    path: Path,
+    *,
+    task: str,
+    backend: str,
+    judge_backend: str,
+    prompt_file: str | None = None,
+) -> None:
+    prompt_line = f"    prompt_file: {prompt_file}\n" if prompt_file is not None else ""
+    path.write_text(
+        "version: 1\n"
+        "defaults:\n"
+        f"  backend: {backend}\n"
+        f"  judge_backend: {judge_backend}\n"
+        "  with_eval: true\n"
+        "runs:\n"
+        "  - repo: .\n"
+        f"    task: {task}\n"
+        f"{prompt_line}",
+        encoding="utf-8",
+    )
 
 
 def build_mutation_payload(round_number: int = 1, mutation_id: str = "mut-001") -> dict[str, object]:
@@ -137,6 +185,84 @@ class RunAutoresearchTest(unittest.TestCase):
             self.assertTrue((run_dir / "runtime.json").is_file())
             history = (run_dir / "history.tsv").read_text(encoding="utf-8")
             self.assertIn("round\tkind\tbase_sha", history)
+
+    def test_init_accepts_valid_p2_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            init_p2_prompt_tree(root)
+            write_suite_manifest(root / "train.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            write_suite_manifest(root / "validation.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            write_suite_manifest(root / "acceptance.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            contract = build_contract_payload(
+                "train.yaml",
+                "validation.yaml",
+                "acceptance.yaml",
+                mutable_paths=["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+                target_task="context-routing-skill",
+                target_prompt_path="toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+            )
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                exit_code = run_autoresearch.main(["init", "--contract", str(contract_path)])
+
+            self.assertEqual(exit_code, 0)
+
+    def test_init_rejects_p2_suite_backend_not_codex(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            init_p2_prompt_tree(root)
+            write_suite_manifest(root / "train.yaml", task="context-routing", backend="claude", judge_backend="codex")
+            write_suite_manifest(root / "validation.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            write_suite_manifest(root / "acceptance.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            contract = build_contract_payload(
+                "train.yaml",
+                "validation.yaml",
+                "acceptance.yaml",
+                mutable_paths=["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+                target_task="context-routing-skill",
+                target_prompt_path="toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+            )
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                exit_code = run_autoresearch.main(["init", "--contract", str(contract_path)])
+
+            self.assertEqual(exit_code, 1)
+
+    def test_init_rejects_p2_suite_task_outside_target_task(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            init_p2_prompt_tree(root)
+            write_suite_manifest(root / "train.yaml", task="knowledge-base", backend="codex", judge_backend="codex")
+            write_suite_manifest(root / "validation.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            write_suite_manifest(root / "acceptance.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            contract = build_contract_payload(
+                "train.yaml",
+                "validation.yaml",
+                "acceptance.yaml",
+                mutable_paths=["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+                target_task="context-routing-skill",
+                target_prompt_path="toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+            )
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                exit_code = run_autoresearch.main(["init", "--contract", str(contract_path)])
+
+            self.assertEqual(exit_code, 1)
 
     def test_baseline_delegates_to_runner_and_writes_scoreboard(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -496,6 +622,178 @@ class RunAutoresearchTest(unittest.TestCase):
                 discard_code = run_autoresearch.main(["discard-round", "--contract", str(contract_path)])
 
             self.assertEqual(discard_code, 0)
+            runtime = json.loads((root / ".autoworkflow" / "demo-run" / "runtime.json").read_text(encoding="utf-8"))
+            self.assertIsNone(runtime["active_round"])
+            self.assertFalse(candidate_worktree.exists())
+
+    def test_discard_round_allows_p2_recovery_even_if_suite_manifests_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            init_p2_prompt_tree(root)
+            write_suite_manifest(root / "train.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            write_suite_manifest(root / "validation.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            write_suite_manifest(root / "acceptance.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            contract = build_contract_payload(
+                "train.yaml",
+                "validation.yaml",
+                "acceptance.yaml",
+                mutable_paths=["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+                target_task="context-routing-skill",
+                target_prompt_path="toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+            )
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+            scoreboard = {
+                "run_id": "demo-run",
+                "generated_at": "2026-03-26T00:00:00+00:00",
+                "baseline_sha": current_head_sha(root),
+                "rounds_completed": 0,
+                "best_round": 0,
+                "lanes": [
+                    {"lane_name": "train", "avg_total_score": 9.0},
+                    {"lane_name": "validation", "avg_total_score": 8.0},
+                ],
+                "repo_tasks": [],
+            }
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                self.assertEqual(run_autoresearch.main(["init", "--contract", str(contract_path)]), 0)
+                run_dir = root / ".autoworkflow" / "demo-run"
+                (run_dir / "scoreboard.json").write_text(json.dumps(scoreboard), encoding="utf-8")
+                contract_obj = load_contract(contract_path, repo_root=root)
+                mutation_key = "text_rephrase:demo:intro-tighten-v1"
+                registry_payload = {
+                    "run_id": contract_obj.run_id,
+                    "registry_version": 1,
+                    "contract_fingerprint": compute_contract_fingerprint(contract_obj),
+                    "entries": [
+                        {
+                            "mutation_key": mutation_key,
+                            "kind": "text_rephrase",
+                            "status": "active",
+                            "target_paths": ["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+                            "allowed_actions": ["edit"],
+                            "instruction_seed": "Tighten skill wording.",
+                            "expected_effect": {
+                                "hypothesis": "Improve train score without validation regression.",
+                                "primary_metrics": ["avg_total_score"],
+                                "guard_metrics": ["parse_error_rate"],
+                            },
+                            "guardrails": {
+                                "require_non_empty_diff": True,
+                                "max_files_touched": 1,
+                                "extra_frozen_paths": [],
+                            },
+                            "origin": {"type": "manual_seed", "ref": "test"},
+                            "attempts": 0,
+                            "last_selected_round": None,
+                            "last_decision": None,
+                        }
+                    ],
+                }
+                (run_dir / "mutation-registry.json").write_text(
+                    json.dumps(registry_payload, ensure_ascii=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                self.assertEqual(
+                    run_autoresearch.main(["prepare-round", "--contract", str(contract_path), "--mutation-key", mutation_key]),
+                    0,
+                )
+                candidate_worktree = run_dir / "worktrees" / "round-001"
+                write_suite_manifest(root / "train.yaml", task="context-routing", backend="claude", judge_backend="claude")
+
+                discard_code = run_autoresearch.main(["discard-round", "--contract", str(contract_path)])
+
+            self.assertEqual(discard_code, 0)
+            runtime = json.loads((root / ".autoworkflow" / "demo-run" / "runtime.json").read_text(encoding="utf-8"))
+            self.assertIsNone(runtime["active_round"])
+            self.assertFalse(candidate_worktree.exists())
+
+    def test_cleanup_round_allows_p2_recovery_even_if_suite_manifests_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            init_p2_prompt_tree(root)
+            write_suite_manifest(root / "train.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            write_suite_manifest(root / "validation.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            write_suite_manifest(root / "acceptance.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            contract = build_contract_payload(
+                "train.yaml",
+                "validation.yaml",
+                "acceptance.yaml",
+                mutable_paths=["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+                target_task="context-routing-skill",
+                target_prompt_path="toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+            )
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+            scoreboard = {
+                "run_id": "demo-run",
+                "generated_at": "2026-03-26T00:00:00+00:00",
+                "baseline_sha": current_head_sha(root),
+                "rounds_completed": 0,
+                "best_round": 0,
+                "lanes": [
+                    {"lane_name": "train", "avg_total_score": 9.0},
+                    {"lane_name": "validation", "avg_total_score": 8.0},
+                ],
+                "repo_tasks": [],
+            }
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                self.assertEqual(run_autoresearch.main(["init", "--contract", str(contract_path)]), 0)
+                run_dir = root / ".autoworkflow" / "demo-run"
+                (run_dir / "scoreboard.json").write_text(json.dumps(scoreboard), encoding="utf-8")
+                contract_obj = load_contract(contract_path, repo_root=root)
+                mutation_key = "text_rephrase:demo:intro-tighten-v1"
+                registry_payload = {
+                    "run_id": contract_obj.run_id,
+                    "registry_version": 1,
+                    "contract_fingerprint": compute_contract_fingerprint(contract_obj),
+                    "entries": [
+                        {
+                            "mutation_key": mutation_key,
+                            "kind": "text_rephrase",
+                            "status": "active",
+                            "target_paths": ["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+                            "allowed_actions": ["edit"],
+                            "instruction_seed": "Tighten skill wording.",
+                            "expected_effect": {
+                                "hypothesis": "Improve train score without validation regression.",
+                                "primary_metrics": ["avg_total_score"],
+                                "guard_metrics": ["parse_error_rate"],
+                            },
+                            "guardrails": {
+                                "require_non_empty_diff": True,
+                                "max_files_touched": 1,
+                                "extra_frozen_paths": [],
+                            },
+                            "origin": {"type": "manual_seed", "ref": "test"},
+                            "attempts": 0,
+                            "last_selected_round": None,
+                            "last_decision": None,
+                        }
+                    ],
+                }
+                (run_dir / "mutation-registry.json").write_text(
+                    json.dumps(registry_payload, ensure_ascii=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                self.assertEqual(
+                    run_autoresearch.main(["prepare-round", "--contract", str(contract_path), "--mutation-key", mutation_key]),
+                    0,
+                )
+                candidate_worktree = run_dir / "worktrees" / "round-001"
+                write_suite_manifest(root / "train.yaml", task="context-routing", backend="claude", judge_backend="claude")
+
+                cleanup_code = run_autoresearch.main(["cleanup-round", "--contract", str(contract_path)])
+
+            self.assertEqual(cleanup_code, 0)
             runtime = json.loads((root / ".autoworkflow" / "demo-run" / "runtime.json").read_text(encoding="utf-8"))
             self.assertIsNone(runtime["active_round"])
             self.assertFalse(candidate_worktree.exists())

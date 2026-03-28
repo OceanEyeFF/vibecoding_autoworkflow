@@ -112,6 +112,14 @@
     },
     "promotion_policy": {
       "type": "object"
+    },
+    "target_task": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_prompt_path": {
+      "type": "string",
+      "minLength": 1
     }
   }
 }
