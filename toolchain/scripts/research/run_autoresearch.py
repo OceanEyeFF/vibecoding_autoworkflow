@@ -44,6 +44,7 @@ from exrepo_routing_entry import (
     prompt_allows_exrepo_routing_fallback,
     write_context_routing_capability_report,
 )
+from exrepo_runtime import materialize_suite
 from worktree_manager import read_json
 from common import REPO_ROOT, slugify
 from run_skill_suite import load_suite_manifest, main as run_skill_suite_main, resolve_path_override
@@ -339,6 +340,15 @@ def run_lane_suites(suite_files: list[Path], save_dir: Path, *, timeout_seconds:
     return summaries
 
 
+def materialize_lane_suites(
+    suite_files: list[Path],
+    output_dir: Path,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> list[Path]:
+    return [materialize_suite(suite_file, output_dir, repo_root=repo_root) for suite_file in suite_files]
+
+
 def _run_context_routing_exrepo_preflight(
     contract,
     *,
@@ -437,13 +447,24 @@ def cmd_baseline(contract_path: Path) -> int:
         suite_files=[*suites["train"], *suites["validation"]],
         run_dir=run_dir,
     )
-    train_summaries = run_lane_suites(
+    materialized_root = run_dir / "baseline" / "materialized-suites"
+    materialized_train_suites = materialize_lane_suites(
         suites["train"],
+        materialized_root / "train",
+        repo_root=REPO_ROOT,
+    )
+    materialized_validation_suites = materialize_lane_suites(
+        suites["validation"],
+        materialized_root / "validation",
+        repo_root=REPO_ROOT,
+    )
+    train_summaries = run_lane_suites(
+        materialized_train_suites,
         run_dir / "baseline" / "train",
         timeout_seconds=timeout_seconds,
     )
     validation_summaries = run_lane_suites(
-        suites["validation"],
+        materialized_validation_suites,
         run_dir / "baseline" / "validation",
         timeout_seconds=timeout_seconds,
     )

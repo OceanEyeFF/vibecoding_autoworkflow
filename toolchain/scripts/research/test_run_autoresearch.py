@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_autoresearch
 from autoresearch_contract import history_header, load_contract
 from autoresearch_mutation_registry import compute_contract_fingerprint, load_mutation_registry
+from exrepo_runtime import resolve_materialized_suite_path
 from exrepo_routing_entry import (
     ROUTING_ENTRY_FALLBACK_MARKER,
     STATUS_USABLE,
@@ -331,26 +332,41 @@ class RunAutoresearchTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_git_repo(root)
-            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            write_suite_manifest(root / "train.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            write_suite_manifest(root / "validation.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            write_suite_manifest(root / "acceptance.yaml", task="context-routing", backend="codex", judge_backend="codex")
             contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
             contract_path = root / "contract.json"
             contract_path.write_text(json.dumps(contract), encoding="utf-8")
 
             call_counter = {"count": 0}
+            invoked_suite_paths: list[Path] = []
+            preflight_calls: list[tuple[list[Path], Path]] = []
 
             def fake_runner(argv: list[str]) -> int:
                 call_counter["count"] += 1
                 self.assertEqual(argv[argv.index("--timeout") + 1], "120")
+                invoked_suite_paths.append(Path(argv[argv.index("--suite") + 1]).resolve(strict=False))
                 save_dir = Path(argv[argv.index("--save-dir") + 1])
                 label = "train" if "baseline/train" in str(save_dir) else "validation"
                 write_summary(save_dir, label, 9 if label == "train" else 8)
                 return 0
 
+            def fake_preflight(
+                _contract: object,
+                *,
+                suite_files: list[Path],
+                run_dir: Path,
+            ) -> None:
+                preflight_calls.append((list(suite_files), run_dir))
+
             with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
                 run_autoresearch, "REPO_ROOT", root
-            ), mock.patch.object(run_autoresearch, "run_skill_suite_main", side_effect=fake_runner):
+            ), mock.patch.object(run_autoresearch, "run_skill_suite_main", side_effect=fake_runner), mock.patch.object(
+                run_autoresearch,
+                "_run_context_routing_exrepo_preflight",
+                side_effect=fake_preflight,
+            ):
                 head_sha = subprocess.run(
                     ["git", "rev-parse", "HEAD"],
                     cwd=root,
@@ -363,6 +379,29 @@ class RunAutoresearchTest(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertEqual(call_counter["count"], 2)
             run_dir = root / ".autoworkflow" / "demo-run"
+            expected_train_source = (root / "train.yaml").resolve(strict=False)
+            expected_validation_source = (root / "validation.yaml").resolve(strict=False)
+            expected_train_materialized = resolve_materialized_suite_path(
+                expected_train_source,
+                run_dir / "baseline" / "materialized-suites" / "train",
+            ).resolve(strict=False)
+            expected_validation_materialized = resolve_materialized_suite_path(
+                expected_validation_source,
+                run_dir / "baseline" / "materialized-suites" / "validation",
+            ).resolve(strict=False)
+            self.assertEqual(
+                sorted(path.as_posix() for path in invoked_suite_paths),
+                sorted([expected_train_materialized.as_posix(), expected_validation_materialized.as_posix()]),
+            )
+            self.assertTrue(expected_train_materialized.is_file())
+            self.assertTrue(expected_validation_materialized.is_file())
+            self.assertEqual(len(preflight_calls), 1)
+            preflight_suite_files, preflight_run_dir = preflight_calls[0]
+            self.assertEqual(
+                [path.resolve(strict=False) for path in preflight_suite_files],
+                [expected_train_source, expected_validation_source],
+            )
+            self.assertEqual(preflight_run_dir.resolve(strict=False), run_dir.resolve(strict=False))
             self.assertTrue((run_dir / "scoreboard.json").is_file())
             scoreboard = json.loads((run_dir / "scoreboard.json").read_text(encoding="utf-8"))
             runtime = json.loads((run_dir / "runtime.json").read_text(encoding="utf-8"))
@@ -590,9 +629,9 @@ class RunAutoresearchTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_git_repo(root)
-            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            write_suite_manifest(root / "train.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            write_suite_manifest(root / "validation.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            write_suite_manifest(root / "acceptance.yaml", task="context-routing", backend="codex", judge_backend="codex")
             contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
             contract_path = root / "contract.json"
             contract_path.write_text(json.dumps(contract), encoding="utf-8")
@@ -652,9 +691,9 @@ class RunAutoresearchTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_git_repo(root)
-            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            write_suite_manifest(root / "train.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            write_suite_manifest(root / "validation.yaml", task="context-routing", backend="codex", judge_backend="codex")
+            write_suite_manifest(root / "acceptance.yaml", task="context-routing", backend="codex", judge_backend="codex")
             contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
             contract_path = root / "contract.json"
             contract_path.write_text(json.dumps(contract), encoding="utf-8")

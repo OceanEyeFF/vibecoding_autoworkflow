@@ -48,6 +48,7 @@ from autoresearch_worker_contract import (
     validate_legacy_worker_contract_consistency,
     write_worker_contract,
 )
+from exrepo_runtime import materialize_suite
 from common import REPO_ROOT
 from worktree_manager import AUTORESEARCH_ROOT, WorktreeManager, candidate_branch_name, champion_branch_name, read_json, write_json
 from run_skill_suite import load_suite_manifest, resolve_path_override
@@ -1125,14 +1126,20 @@ class AutoresearchRoundManager:
         save_dir.mkdir(parents=True, exist_ok=True)
         summaries: list[dict[str, Any]] = []
         timeout_seconds = resolve_timeout_seconds(contract)
+        materialized_output_dir = save_dir.parent / "materialized-suites" / save_dir.name
         for suite_file in suite_files:
             before = {path for path in save_dir.iterdir() if path.is_dir()}
             resolved_suite = self._resolve_candidate_suite(candidate_worktree, suite_file)
+            materialized_suite = materialize_suite(
+                resolved_suite,
+                materialized_output_dir,
+                repo_root=self.repo_root,
+            )
             cmd = [
                 self.python_executable,
                 str(candidate_worktree / "toolchain" / "scripts" / "research" / "run_skill_suite.py"),
                 "--suite",
-                str(resolved_suite),
+                str(materialized_suite),
                 "--save-dir",
                 str(save_dir),
                 "--timeout",
@@ -1147,7 +1154,7 @@ class AutoresearchRoundManager:
             )
             if completed.returncode != 0:
                 stderr = completed.stderr.strip()
-                raise RuntimeError(f"Candidate suite failed: {resolved_suite}\n{stderr}")
+                raise RuntimeError(f"Candidate suite failed: {materialized_suite}\n{stderr}")
             summary_path = _capture_new_summary(save_dir, before)
             summaries.append(load_run_summary(summary_path))
         return summaries

@@ -21,6 +21,7 @@ from autoresearch_mutation_registry import (
     load_mutation_registry,
     write_mutation_registry,
 )
+from exrepo_runtime import resolve_materialized_suite_path, resolve_tmp_exrepos_root
 from autoresearch_round import AutoresearchRoundManager
 from autoresearch_scoreboard import write_scoreboard
 from autoresearch_stop import AutoresearchStop
@@ -30,6 +31,7 @@ from autoresearch_worker_contract import (
     compute_worker_contract_sha256,
     write_worker_contract,
 )
+from run_skill_suite import load_suite_manifest
 from worktree_manager import WorktreeManager, champion_branch_name, read_json
 
 
@@ -418,6 +420,18 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         self.assertEqual(scoreboard["lanes"][1]["avg_total_score"], 8.5)
 
     def test_run_lane_suites_passes_contract_timeout_to_runner(self) -> None:
+        source_suite = self.repo_root / "train.yaml"
+        source_suite.write_text(
+            "version: 1\n"
+            "defaults:\n"
+            "  backend: codex\n"
+            "  judge_backend: codex\n"
+            "  with_eval: false\n"
+            "runs:\n"
+            "  - repo: typer\n"
+            "    task: context-routing\n",
+            encoding="utf-8",
+        )
         save_dir = self.run_dir / "lane-timeout-check"
         captured: dict[str, object] = {}
 
@@ -445,7 +459,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             summaries = self.round_manager._run_lane_suites(
                 candidate_worktree=self.repo_root,
                 contract=self.contract,
-                suite_files=[self.repo_root / "train.yaml"],
+                suite_files=[source_suite],
                 save_dir=save_dir,
             )
 
@@ -453,6 +467,156 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         self.assertIn("--timeout", captured["cmd"])
         timeout_index = captured["cmd"].index("--timeout")
         self.assertEqual(captured["cmd"][timeout_index + 1], "120")
+        expected_materialized_suite = resolve_materialized_suite_path(
+            source_suite,
+            save_dir.parent / "materialized-suites" / save_dir.name,
+        ).resolve(strict=False)
+        self.assertEqual(
+            Path(captured["cmd"][captured["cmd"].index("--suite") + 1]).resolve(strict=False),
+            expected_materialized_suite,
+        )
+
+    def test_run_lane_suites_materializes_round_and_replay_lanes_without_candidate_exrepos(self) -> None:
+        source_suite = self.repo_root / "train.yaml"
+        source_suite.write_text(
+            "version: 1\n"
+            "defaults:\n"
+            "  backend: codex\n"
+            "  judge_backend: codex\n"
+            "  with_eval: false\n"
+            "runs:\n"
+            "  - repo: typer\n"
+            "    task: context-routing\n",
+            encoding="utf-8",
+        )
+        self.assertFalse((self.repo_root / ".exrepos").exists())
+        round_save_dir = self.worktree_manager.round_dir(self.contract.run_id, 1) / "train"
+        replay_save_dir = self.round_manager.replay_dir(self.contract.run_id, 1) / "train"
+        invoked_suite_paths: list[Path] = []
+
+        def fake_subprocess_run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
+            suite_path = Path(cmd[cmd.index("--suite") + 1]).resolve(strict=False)
+            invoked_suite_paths.append(suite_path)
+            save_dir = Path(cmd[cmd.index("--save-dir") + 1])
+            run_output = save_dir / f"20260326T000000Z-{save_dir.parent.name}-{save_dir.name}-{len(invoked_suite_paths)}"
+            run_output.mkdir(parents=True, exist_ok=True)
+            (run_output / "run-summary.json").write_text(
+                json.dumps(
+                    {
+                        "runner": "run_skill_suite.py",
+                        "generated_at": "2026-03-26T00:00:00+00:00",
+                        "suite_file": str(suite_path),
+                        "results": [],
+                    },
+                    ensure_ascii=True,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+
+        with mock.patch("autoresearch_round.subprocess.run", side_effect=fake_subprocess_run):
+            round_summaries = self.round_manager._run_lane_suites(
+                candidate_worktree=self.repo_root,
+                contract=self.contract,
+                suite_files=[source_suite],
+                save_dir=round_save_dir,
+            )
+            replay_summaries = self.round_manager._run_lane_suites(
+                candidate_worktree=self.repo_root,
+                contract=self.contract,
+                suite_files=[source_suite],
+                save_dir=replay_save_dir,
+            )
+
+        self.assertEqual(len(round_summaries), 1)
+        self.assertEqual(len(replay_summaries), 1)
+        expected_round_suite = resolve_materialized_suite_path(
+            source_suite,
+            round_save_dir.parent / "materialized-suites" / round_save_dir.name,
+        ).resolve(strict=False)
+        expected_replay_suite = resolve_materialized_suite_path(
+            source_suite,
+            replay_save_dir.parent / "materialized-suites" / replay_save_dir.name,
+        ).resolve(strict=False)
+        self.assertEqual(
+            [path.as_posix() for path in invoked_suite_paths],
+            [expected_round_suite.as_posix(), expected_replay_suite.as_posix()],
+        )
+        self.assertTrue(expected_round_suite.is_file())
+        self.assertTrue(expected_replay_suite.is_file())
+        expected_repo = str((resolve_tmp_exrepos_root(repo_root=self.repo_root) / "typer").resolve(strict=False))
+        self.assertEqual(load_suite_manifest(expected_round_suite)["runs"][0]["repo"], expected_repo)
+        self.assertEqual(load_suite_manifest(expected_replay_suite)["runs"][0]["repo"], expected_repo)
+
+    def test_run_lane_suites_materializes_candidate_resolved_suite(self) -> None:
+        source_suite = self.repo_root / "train.yaml"
+        source_suite.write_text(
+            "version: 1\n"
+            "defaults:\n"
+            "  backend: codex\n"
+            "  judge_backend: codex\n"
+            "  with_eval: false\n"
+            "runs:\n"
+            "  - repo: source-repo\n"
+            "    task: context-routing\n",
+            encoding="utf-8",
+        )
+        candidate_worktree = self.root / "candidate-worktree"
+        candidate_worktree.mkdir(parents=True, exist_ok=True)
+        candidate_suite = candidate_worktree / "train.yaml"
+        candidate_suite.write_text(
+            "version: 1\n"
+            "defaults:\n"
+            "  backend: codex\n"
+            "  judge_backend: codex\n"
+            "  with_eval: false\n"
+            "runs:\n"
+            "  - repo: candidate-repo\n"
+            "    task: context-routing\n",
+            encoding="utf-8",
+        )
+        save_dir = self.run_dir / "candidate-suite-resolution" / "train"
+        captured_suite: list[Path] = []
+
+        def fake_subprocess_run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
+            suite_path = Path(cmd[cmd.index("--suite") + 1]).resolve(strict=False)
+            captured_suite.append(suite_path)
+            run_output = save_dir / "20260326T000000Z-train"
+            run_output.mkdir(parents=True, exist_ok=True)
+            (run_output / "run-summary.json").write_text(
+                json.dumps(
+                    {
+                        "runner": "run_skill_suite.py",
+                        "generated_at": "2026-03-26T00:00:00+00:00",
+                        "suite_file": str(suite_path),
+                        "results": [],
+                    },
+                    ensure_ascii=True,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+
+        with mock.patch("autoresearch_round.subprocess.run", side_effect=fake_subprocess_run):
+            summaries = self.round_manager._run_lane_suites(
+                candidate_worktree=candidate_worktree,
+                contract=self.contract,
+                suite_files=[source_suite],
+                save_dir=save_dir,
+            )
+
+        self.assertEqual(len(summaries), 1)
+        expected_materialized_suite = resolve_materialized_suite_path(
+            candidate_suite,
+            save_dir.parent / "materialized-suites" / save_dir.name,
+        ).resolve(strict=False)
+        self.assertEqual(captured_suite, [expected_materialized_suite])
+        expected_repo = str((resolve_tmp_exrepos_root(repo_root=self.repo_root) / "candidate-repo").resolve(strict=False))
+        self.assertEqual(load_suite_manifest(expected_materialized_suite)["runs"][0]["repo"], expected_repo)
 
     def test_prepare_round_requires_baseline_scoreboard(self) -> None:
         (self.run_dir / "scoreboard.json").unlink()

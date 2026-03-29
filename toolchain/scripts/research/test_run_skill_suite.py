@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import argparse
+import json
+import tempfile
 import time
 import unittest
 from pathlib import Path
 from unittest import mock
 
 from common import RunResult, RunSpec
-from run_skill_suite import coerce_process_output, execute_specs, parse_args, validate_args
+from exrepo_runtime import materialize_suite, resolve_tmp_exrepos_root
+from run_skill_suite import coerce_process_output, execute_specs, parse_args, resolve_suite_specs, validate_args
 
 
 class RunSkillSuiteTest(unittest.TestCase):
@@ -80,6 +83,81 @@ class RunSkillSuiteTest(unittest.TestCase):
             [result.task for result, _ in results],
             ["context-routing", "knowledge-base", "task-contract"],
         )
+
+    def test_resolve_suite_specs_consumes_materialized_yaml_suite_with_absolute_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            suite_dir = root / "suites"
+            prompt_dir = suite_dir / "prompts"
+            prompt_dir.mkdir(parents=True, exist_ok=True)
+            prompt_path = prompt_dir / "task.md"
+            eval_prompt_path = prompt_dir / "eval.md"
+            prompt_path.write_text("prompt\n", encoding="utf-8")
+            eval_prompt_path.write_text("eval\n", encoding="utf-8")
+            source_suite = suite_dir / "train.yaml"
+            source_suite.write_text(
+                "version: 1\n"
+                "defaults:\n"
+                "  backend: codex\n"
+                "  judge_backend: codex\n"
+                "  with_eval: true\n"
+                "runs:\n"
+                "  - repo: typer\n"
+                "    task: context-routing\n"
+                "    prompt_file: prompts/task.md\n"
+                "    eval_prompt_file: prompts/eval.md\n",
+                encoding="utf-8",
+            )
+            exrepo_root = resolve_tmp_exrepos_root(repo_root=root / "repo-root", temp_root=root / "os-tmp")
+            repo_path = exrepo_root / "typer"
+            repo_path.mkdir(parents=True, exist_ok=True)
+
+            materialized = materialize_suite(source_suite, root / "artifacts", exrepo_root=exrepo_root)
+
+            specs, suite_path, run_label = resolve_suite_specs(argparse.Namespace(suite=str(materialized)))
+
+            self.assertEqual(suite_path, materialized.resolve(strict=False))
+            self.assertEqual(run_label, materialized.stem)
+            self.assertEqual(len(specs), 1)
+            self.assertEqual(specs[0].repo_path, repo_path.resolve(strict=False))
+            self.assertEqual(specs[0].prompt_file, prompt_path.resolve(strict=False))
+            self.assertEqual(specs[0].eval_prompt_file, eval_prompt_path.resolve(strict=False))
+
+    def test_resolve_suite_specs_consumes_materialized_json_suite_with_absolute_repo_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            suite_dir = root / "json-suite"
+            suite_dir.mkdir(parents=True, exist_ok=True)
+            source_suite = suite_dir / "validation.json"
+            source_suite.write_text(
+                json.dumps(
+                    {
+                        "version": 1,
+                        "defaults": {
+                            "backend": "codex",
+                            "judge_backend": "codex",
+                            "with_eval": False,
+                        },
+                        "runs": [
+                            {
+                                "repo": ".",
+                                "task": "context-routing",
+                            }
+                        ],
+                    },
+                    ensure_ascii=True,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            materialized = materialize_suite(source_suite, root / "artifacts", exrepo_root=root / "tmp-exrepos")
+
+            specs, _, _ = resolve_suite_specs(argparse.Namespace(suite=str(materialized)))
+
+            self.assertEqual(len(specs), 1)
+            self.assertEqual(specs[0].repo_path, suite_dir.resolve(strict=False))
 
     @staticmethod
     def _make_spec(task: str) -> RunSpec:
