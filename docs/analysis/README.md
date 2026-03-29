@@ -15,7 +15,7 @@
 | Research / Eval 边界 | `active` | 2 | 固定 research runner、eval 与 observability 合同 |
 | Autoresearch 阶段合同与设计边界 | `active` | 8 | 固定 phase contract、代码复核与当前设计基线 |
 | 当前执行规划 | `active` | 1 | 当前仍用于直接驱动实现的任务清单 |
-| 历史执行规划 | `superseded` | 3 | 保留 lineage，不作为默认执行入口 |
+| 历史执行规划 | `superseded` | 4 | 保留 lineage，不作为默认执行入口 |
 
 ## 当前研究文档
 
@@ -34,13 +34,15 @@
 
 ## 当前执行规划
 
-- [autoresearch-p2-exrepo-input-hygiene-task-plan.md](./autoresearch-p2-exrepo-input-hygiene-task-plan.md)  
-  当前仍在驱动 `single-prompt + codex-only + continuous loop` 的修复与稳定化施工。
+- [autoresearch-p2-tmp-exrepo-runtime-task-plan.md](./autoresearch-p2-tmp-exrepo-runtime-task-plan.md)  
+  当前用于驱动 `tmp exrepo + materialized suite + maintenance script` 两阶段施工。
 
 ## 历史执行规划
 
 - [autoresearch-p1-final-followup-task-plan.md](./autoresearch-p1-final-followup-task-plan.md)  
   保留为 P1 follow-up lineage，不再作为当前执行入口。
+- [autoresearch-p2-exrepo-input-hygiene-task-plan.md](./autoresearch-p2-exrepo-input-hygiene-task-plan.md)  
+  已被更收敛的 TMP exrepo 运行时迁移规划取代，保留为上一版 exrepo 输入面修复记录。
 - [autoresearch-p2-lightweight-single-prompt-codex-task-plan.md](./autoresearch-p2-lightweight-single-prompt-codex-task-plan.md)  
   已被更收窄的 P2 施工计划取代，保留为原始任务拆解记录。
 - [autoresearch-p2-batch3-prereq-task-plan.md](./autoresearch-p2-batch3-prereq-task-plan.md)  
