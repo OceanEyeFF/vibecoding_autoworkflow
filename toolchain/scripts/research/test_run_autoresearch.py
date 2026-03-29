@@ -14,6 +14,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_autoresearch
 from autoresearch_contract import history_header, load_contract
 from autoresearch_mutation_registry import compute_contract_fingerprint, load_mutation_registry
+from exrepo_routing_entry import (
+    ROUTING_ENTRY_FALLBACK_MARKER,
+    STATUS_USABLE,
+    classify_context_routing_repo_skill,
+)
 
 
 def build_contract_payload(
@@ -69,6 +74,7 @@ def write_suite_manifest(
     backend: str,
     judge_backend: str,
     prompt_file: str | None = None,
+    repo: str = ".",
 ) -> None:
     prompt_line = f"    prompt_file: {prompt_file}\n" if prompt_file is not None else ""
     path.write_text(
@@ -78,7 +84,7 @@ def write_suite_manifest(
         f"  judge_backend: {judge_backend}\n"
         "  with_eval: true\n"
         "runs:\n"
-        "  - repo: .\n"
+        f"  - repo: {repo}\n"
         f"    task: {task}\n"
         f"{prompt_line}",
         encoding="utf-8",
@@ -185,6 +191,41 @@ def write_history_rows(run_dir: Path, rows: list[dict[str, str]]) -> None:
 
 
 class RunAutoresearchTest(unittest.TestCase):
+    def test_classify_context_routing_repo_skill_reports_usable_wrapper(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            exrepo = root / ".exrepos" / "fmt"
+            skill_dir = exrepo / ".agents" / "skills" / "context-routing-skill"
+            skill_dir.mkdir(parents=True, exist_ok=True)
+            (exrepo / "product" / "memory-side" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
+            (exrepo / "docs" / "knowledge" / "memory-side").mkdir(parents=True, exist_ok=True)
+            (exrepo / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
+                "canonical\n",
+                encoding="utf-8",
+            )
+            (exrepo / "product" / "memory-side" / "skills" / "context-routing-skill" / "references").mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+            (exrepo / "product" / "memory-side" / "skills" / "context-routing-skill" / "references" / "entrypoints.md").write_text(
+                "entrypoints\n",
+                encoding="utf-8",
+            )
+            (exrepo / "docs" / "knowledge" / "memory-side" / "overview.md").write_text("overview\n", encoding="utf-8")
+            (skill_dir / "SKILL.md").write_text(
+                "## Canonical Sources\n"
+                "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
+                "2. `product/memory-side/skills/context-routing-skill/references/entrypoints.md`\n"
+                "3. `docs/knowledge/memory-side/overview.md`\n",
+                encoding="utf-8",
+            )
+
+            capability = classify_context_routing_repo_skill(exrepo, repo_root=root)
+
+            self.assertIsNotNone(capability)
+            self.assertEqual(capability["status"], STATUS_USABLE)
+            self.assertEqual(capability["missing_paths"], [])
+
     def test_init_writes_contract_and_history(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -301,6 +342,7 @@ class RunAutoresearchTest(unittest.TestCase):
 
             def fake_runner(argv: list[str]) -> int:
                 call_counter["count"] += 1
+                self.assertEqual(argv[argv.index("--timeout") + 1], "120")
                 save_dir = Path(argv[argv.index("--save-dir") + 1])
                 label = "train" if "baseline/train" in str(save_dir) else "validation"
                 write_summary(save_dir, label, 9 if label == "train" else 8)
@@ -347,6 +389,202 @@ class RunAutoresearchTest(unittest.TestCase):
                 ).stdout.strip(),
                 head_sha,
             )
+
+    def test_baseline_rejects_invalid_exrepo_routing_entry_without_fallback_marker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            init_p2_prompt_tree(root)
+            exrepo = root / ".exrepos" / "typer"
+            skill_dir = exrepo / ".agents" / "skills" / "context-routing-skill"
+            skill_dir.mkdir(parents=True, exist_ok=True)
+            skill_path = skill_dir / "SKILL.md"
+            skill_path.write_text(
+                "## Canonical Sources\n"
+                "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
+                "2. `docs/knowledge/memory-side/overview.md`\n",
+                encoding="utf-8",
+            )
+            write_suite_manifest(
+                root / "train.yaml",
+                task="context-routing",
+                backend="codex",
+                judge_backend="codex",
+                repo=str(exrepo),
+            )
+            write_suite_manifest(
+                root / "validation.yaml",
+                task="context-routing",
+                backend="codex",
+                judge_backend="codex",
+                repo=str(exrepo),
+            )
+            write_suite_manifest(
+                root / "acceptance.yaml",
+                task="context-routing",
+                backend="codex",
+                judge_backend="codex",
+                repo=str(exrepo),
+            )
+            contract = build_contract_payload(
+                "train.yaml",
+                "validation.yaml",
+                "acceptance.yaml",
+                mutable_paths=["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+                target_task="context-routing-skill",
+                target_prompt_path="toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+            )
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ), mock.patch.object(run_autoresearch, "run_skill_suite_main") as mocked_runner:
+                stderr = io.StringIO()
+                with mock.patch("sys.stderr", stderr):
+                    exit_code = run_autoresearch.main(["baseline", "--contract", str(contract_path)])
+
+            self.assertEqual(exit_code, 1)
+            mocked_runner.assert_not_called()
+            self.assertIn("invalid_repo_skill_wrapper", stderr.getvalue())
+            run_dir = root / ".autoworkflow" / "demo-run"
+            report = json.loads((run_dir / "routing-entry-capability.json").read_text(encoding="utf-8"))
+            self.assertFalse(report["prompt_allows_repo_skill_fallback"])
+            self.assertEqual(report["capabilities"][0]["status"], "invalid_repo_skill_wrapper")
+
+    def test_baseline_allows_reported_exrepo_routing_issues_when_prompt_has_fallback_marker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            init_p2_prompt_tree(root)
+            prompt_path = root / "toolchain" / "scripts" / "research" / "tasks" / "context-routing-skill-prompt.md"
+            prompt_path.write_text(
+                ROUTING_ENTRY_FALLBACK_MARKER + "\n"
+                "Use repo-local skill conditionally.\n",
+                encoding="utf-8",
+            )
+            exrepo = root / ".exrepos" / "trackers"
+            exrepo.mkdir(parents=True, exist_ok=True)
+            write_suite_manifest(
+                root / "train.yaml",
+                task="context-routing",
+                backend="codex",
+                judge_backend="codex",
+                repo=str(exrepo),
+            )
+            write_suite_manifest(
+                root / "validation.yaml",
+                task="context-routing",
+                backend="codex",
+                judge_backend="codex",
+                repo=str(exrepo),
+            )
+            write_suite_manifest(
+                root / "acceptance.yaml",
+                task="context-routing",
+                backend="codex",
+                judge_backend="codex",
+                repo=str(exrepo),
+            )
+            contract = build_contract_payload(
+                "train.yaml",
+                "validation.yaml",
+                "acceptance.yaml",
+                mutable_paths=["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+                target_task="context-routing-skill",
+                target_prompt_path="toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+            )
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+
+            def fake_runner(argv: list[str]) -> int:
+                save_dir = Path(argv[argv.index("--save-dir") + 1])
+                label = "train" if "baseline/train" in str(save_dir) else "validation"
+                write_summary(save_dir, label, 9 if label == "train" else 8)
+                return 0
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ), mock.patch.object(run_autoresearch, "run_skill_suite_main", side_effect=fake_runner):
+                exit_code = run_autoresearch.main(["baseline", "--contract", str(contract_path)])
+
+            self.assertEqual(exit_code, 0)
+            run_dir = root / ".autoworkflow" / "demo-run"
+            report = json.loads((run_dir / "routing-entry-capability.json").read_text(encoding="utf-8"))
+            self.assertTrue(report["prompt_allows_repo_skill_fallback"])
+            self.assertEqual(report["capabilities"][0]["status"], "missing_repo_skill")
+
+    def test_baseline_preflight_ignores_acceptance_only_exrepo_capability_issues(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            init_p2_prompt_tree(root)
+            train_repo = root / ".exrepos" / "fmt"
+            train_skill_dir = train_repo / ".agents" / "skills" / "context-routing-skill"
+            train_skill_dir.mkdir(parents=True, exist_ok=True)
+            (train_repo / "product" / "memory-side" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
+            (train_repo / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
+                "canonical\n",
+                encoding="utf-8",
+            )
+            (train_repo / "docs" / "knowledge" / "memory-side").mkdir(parents=True, exist_ok=True)
+            (train_skill_dir / "SKILL.md").write_text(
+                "## Canonical Sources\n"
+                "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
+                "2. `docs/knowledge/memory-side/`\n",
+                encoding="utf-8",
+            )
+
+            acceptance_repo = root / ".exrepos" / "JUCE"
+            acceptance_repo.mkdir(parents=True, exist_ok=True)
+
+            write_suite_manifest(
+                root / "train.yaml",
+                task="context-routing",
+                backend="codex",
+                judge_backend="codex",
+                repo=str(train_repo),
+            )
+            write_suite_manifest(
+                root / "validation.yaml",
+                task="context-routing",
+                backend="codex",
+                judge_backend="codex",
+                repo=str(train_repo),
+            )
+            write_suite_manifest(
+                root / "acceptance.yaml",
+                task="context-routing",
+                backend="codex",
+                judge_backend="codex",
+                repo=str(acceptance_repo),
+            )
+            contract = build_contract_payload(
+                "train.yaml",
+                "validation.yaml",
+                "acceptance.yaml",
+                mutable_paths=["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+                target_task="context-routing-skill",
+                target_prompt_path="toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+            )
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+
+            def fake_runner(argv: list[str]) -> int:
+                save_dir = Path(argv[argv.index("--save-dir") + 1])
+                label = "train" if "baseline/train" in str(save_dir) else "validation"
+                write_summary(save_dir, label, 9 if label == "train" else 8)
+                return 0
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ), mock.patch.object(run_autoresearch, "run_skill_suite_main", side_effect=fake_runner):
+                exit_code = run_autoresearch.main(["baseline", "--contract", str(contract_path)])
+
+            self.assertEqual(exit_code, 0)
+            run_dir = root / ".autoworkflow" / "demo-run"
+            report = json.loads((run_dir / "routing-entry-capability.json").read_text(encoding="utf-8"))
+            self.assertEqual([item["repo"] for item in report["capabilities"]], ["fmt"])
 
     def test_baseline_refreshes_champion_branch_after_head_advanced(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1275,8 +1513,8 @@ class RunAutoresearchTest(unittest.TestCase):
                     ["prepare-round", "--contract", str(contract_path), "--mutation-key", mutation_key]
                 )
                 first_discard = run_autoresearch.main(["discard-round", "--contract", str(contract_path)])
-                stderr = io.StringIO()
-                with mock.patch("sys.stderr", stderr):
+                stdout = io.StringIO()
+                with mock.patch("sys.stdout", stdout):
                     second_prepare = run_autoresearch.main(
                         ["prepare-round", "--contract", str(contract_path), "--mutation-key", mutation_key]
                     )
@@ -1284,8 +1522,11 @@ class RunAutoresearchTest(unittest.TestCase):
             self.assertEqual(init_code, 0)
             self.assertEqual(first_prepare, 0)
             self.assertEqual(first_discard, 0)
-            self.assertEqual(second_prepare, 1)
-            self.assertIn("all active mutation families have been tried at least once", stderr.getvalue())
+            self.assertEqual(second_prepare, 0)
+            stdout_value = stdout.getvalue()
+            self.assertIn("prepare_round_status: stopped", stdout_value)
+            self.assertIn("stop_kind: mutation_families_exhausted_without_keep", stdout_value)
+            self.assertIn("all active mutation families have been tried at least once", stdout_value)
             registry_after = json.loads((root / ".autoworkflow" / "demo-run" / "mutation-registry.json").read_text(encoding="utf-8"))
             self.assertEqual(registry_after["entries"][0]["attempts"], 1)
             self.assertEqual(registry_after["entries"][0]["last_selected_round"], 1)
@@ -1347,20 +1588,22 @@ class RunAutoresearchTest(unittest.TestCase):
                     ],
                 }
                 (run_dir / "mutation-registry.json").write_text(json.dumps(registry, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
-                stderr = io.StringIO()
-                with mock.patch("sys.stderr", stderr), mock.patch.object(
+                stdout = io.StringIO()
+                with mock.patch("sys.stdout", stdout), mock.patch.object(
                     run_autoresearch, "select_next_mutation_entry", side_effect=AssertionError("selector should not run")
                 ):
                     code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
 
-        self.assertEqual(code, 1)
-        stderr_value = stderr.getvalue()
+        self.assertEqual(code, 0)
+        stdout_value = stdout.getvalue()
         stop_message = (
             "Stop gate triggered: all active mutation families have been tried at least once "
             "and the run has no final keep."
         )
-        self.assertIn(stop_message, stderr_value)
-        self.assertNotIn("No selectable mutation entries found", stderr_value)
+        self.assertIn("prepare_round_status: stopped", stdout_value)
+        self.assertIn("stop_kind: mutation_families_exhausted_without_keep", stdout_value)
+        self.assertIn(stop_message, stdout_value)
+        self.assertNotIn("No selectable mutation entries found", stdout_value)
 
     def test_prepare_round_reports_selector_error_when_no_active_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1516,12 +1759,15 @@ class RunAutoresearchTest(unittest.TestCase):
                         },
                     ],
                 )
-                stderr = io.StringIO()
-                with mock.patch("sys.stderr", stderr):
+                stdout = io.StringIO()
+                with mock.patch("sys.stdout", stdout):
                     prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
 
-            self.assertEqual(prepare_code, 1)
-            self.assertIn("3 consecutive completed rounds without a new validation champion", stderr.getvalue())
+            self.assertEqual(prepare_code, 0)
+            stdout_value = stdout.getvalue()
+            self.assertIn("prepare_round_status: stopped", stdout_value)
+            self.assertIn("stop_kind: no_new_validation_champion", stdout_value)
+            self.assertIn("3 consecutive completed rounds without a new validation champion", stdout_value)
 
     def test_prepare_round_stops_when_all_active_entries_tried_once_without_keep(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1639,12 +1885,128 @@ class RunAutoresearchTest(unittest.TestCase):
                     json.dumps(registry_payload, ensure_ascii=True, indent=2) + "\n",
                     encoding="utf-8",
                 )
-                stderr = io.StringIO()
-                with mock.patch("sys.stderr", stderr):
+                stdout = io.StringIO()
+                with mock.patch("sys.stdout", stdout), mock.patch.object(
+                    run_autoresearch.WorktreeManager,
+                    "next_round_number",
+                    return_value=2,
+                ):
                     prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
 
-            self.assertEqual(prepare_code, 1)
-            self.assertIn("all active mutation families have been tried at least once", stderr.getvalue())
+            self.assertEqual(prepare_code, 0)
+            stdout_value = stdout.getvalue()
+            self.assertIn("prepare_round_status: stopped", stdout_value)
+            self.assertIn("stop_kind: mutation_families_exhausted_without_keep", stdout_value)
+            self.assertIn("all active mutation families have been tried at least once", stdout_value)
+
+    def test_prepare_round_stops_normally_when_max_rounds_reached(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
+            contract["max_rounds"] = 1
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+            baseline_sha = current_head_sha(root)
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                self.assertEqual(run_autoresearch.main(["init", "--contract", str(contract_path)]), 0)
+                run_dir = root / ".autoworkflow" / "demo-run"
+                (run_dir / "scoreboard.json").write_text(
+                    json.dumps(
+                        {
+                            "run_id": "demo-run",
+                            "generated_at": "2026-03-26T00:00:00+00:00",
+                            "baseline_sha": baseline_sha,
+                            "rounds_completed": 1,
+                            "best_round": 1,
+                            "lanes": [],
+                            "repo_tasks": [],
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                write_history_rows(
+                    run_dir,
+                    [
+                        {
+                            "round": "0",
+                            "kind": "baseline",
+                            "base_sha": baseline_sha,
+                            "candidate_sha": "-",
+                            "train_score": "9.000000",
+                            "validation_score": "8.000000",
+                            "train_parse_error_rate": "0.000000",
+                            "validation_parse_error_rate": "0.000000",
+                            "decision": "baseline",
+                            "notes": "",
+                        },
+                        {
+                            "round": "1",
+                            "kind": "text_rephrase",
+                            "base_sha": baseline_sha,
+                            "candidate_sha": "sha-round-1",
+                            "train_score": "9.500000",
+                            "validation_score": "8.000000",
+                            "train_parse_error_rate": "0.000000",
+                            "validation_parse_error_rate": "0.000000",
+                            "decision": "keep",
+                            "notes": "mutation_id=a",
+                        },
+                    ],
+                )
+                contract_obj = load_contract(contract_path, repo_root=root)
+                registry_payload = {
+                    "run_id": contract_obj.run_id,
+                    "registry_version": 1,
+                    "contract_fingerprint": compute_contract_fingerprint(contract_obj),
+                    "entries": [
+                        {
+                            "mutation_key": "text_rephrase:demo:intro-tighten-v1",
+                            "kind": "text_rephrase",
+                            "status": "active",
+                            "target_paths": ["product/memory-side/skills"],
+                            "allowed_actions": ["edit"],
+                            "instruction_seed": "Tighten wording.",
+                            "expected_effect": {
+                                "hypothesis": "Improve train score without validation regression.",
+                                "primary_metrics": ["avg_total_score"],
+                                "guard_metrics": ["parse_error_rate"],
+                            },
+                            "guardrails": {
+                                "require_non_empty_diff": True,
+                                "max_files_touched": 1,
+                                "extra_frozen_paths": [],
+                            },
+                            "origin": {"type": "manual_seed", "ref": "test"},
+                            "attempts": 0,
+                            "last_selected_round": None,
+                            "last_decision": None,
+                        }
+                    ],
+                }
+                (run_dir / "mutation-registry.json").write_text(
+                    json.dumps(registry_payload, ensure_ascii=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                stdout = io.StringIO()
+                with mock.patch("sys.stdout", stdout), mock.patch.object(
+                    run_autoresearch.WorktreeManager,
+                    "next_round_number",
+                    return_value=2,
+                ):
+                    prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
+
+            self.assertEqual(prepare_code, 0)
+            stdout_value = stdout.getvalue()
+            self.assertIn("prepare_round_status: stopped", stdout_value)
+            self.assertIn("stop_kind: max_rounds_reached", stdout_value)
+            self.assertIn("max_rounds=1", stdout_value)
 
     def test_prepare_round_auto_selects_next_entry_from_registry(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1964,10 +2326,10 @@ class RunAutoresearchTest(unittest.TestCase):
                 "repo_tasks": [],
             }
 
-            stderr = io.StringIO()
+            stdout = io.StringIO()
             with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
                 run_autoresearch, "REPO_ROOT", root
-            ), mock.patch("sys.stderr", stderr):
+            ), mock.patch("sys.stdout", stdout):
                 init_code = run_autoresearch.main(["init", "--contract", str(contract_path)])
                 run_dir = root / ".autoworkflow" / "demo-run"
                 (run_dir / "scoreboard.json").write_text(json.dumps(scoreboard), encoding="utf-8")
@@ -2010,8 +2372,11 @@ class RunAutoresearchTest(unittest.TestCase):
                 prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
 
             self.assertEqual(init_code, 0)
-            self.assertEqual(prepare_code, 1)
-            self.assertIn("all active mutation families have been tried at least once", stderr.getvalue())
+            self.assertEqual(prepare_code, 0)
+            stdout_value = stdout.getvalue()
+            self.assertIn("prepare_round_status: stopped", stdout_value)
+            self.assertIn("stop_kind: mutation_families_exhausted_without_keep", stdout_value)
+            self.assertIn("all active mutation families have been tried at least once", stdout_value)
 
     def test_prepare_round_missing_registry_does_not_initialize_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

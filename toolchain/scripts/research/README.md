@@ -57,11 +57,13 @@
 - 在没有 active round 时，`prepare-round` 还会先执行最小 stop gate：
   - 连续 `3` 轮已完成 round 都没有产生新的 validation champion，则停止创建新 round
   - 所有 `active` mutation family 都至少尝试过 `1` 次，且当前 run 没有任何最终 `keep`，则停止创建新 round
+- 命中 stop gate 或 `max_rounds` 时，`prepare-round` 现在会以正常完成退出并输出 `prepare_round_status: stopped`、`stop_kind`、`stop_reason`；只有真实异常才返回失败
 - `run-round`：要求 `agent-report.md` 已写入 round 目录；脚本会重新读取并校验 round 目录里的 `mutation.json`，然后校验 candidate 改动只能触达 `target_paths` 的同级或更窄子路径、且动作类型符合 `allowed_actions`，再提交 candidate 改动、从 candidate worktree 运行 train / validation suites，并写 round 级 `scoreboard.json`
 - `decide-round`：读取“当前比较基线 scoreboard”和本轮 scoreboard，按固定规则先计算 provisional `keep / discard`，必要时在当前 round 下执行 replay，再写 `decision.json`，产出 round 级 `feedback-distill.json` 和 run 级 `feedback-ledger.jsonl`，然后调用 promote 或 discard；fixed rule 同时约束 score、parse_error、timeout 与 hard-fail/pass_rate 非回退
 - `promote-round`：只允许 fast-forward 语义，把 `champion/<run-id>` 前进到 active candidate commit，然后清理 candidate branch/worktree
 - `discard-round`：直接删除 active candidate branch/worktree，不走 `git revert`
 - `cleanup-round`：按 `.autoworkflow/autoresearch/<run-id>/runtime.json` 回收中断残留的 active candidate
+- `run_autoresearch_loop.py`：自动重复 `prepare-round -> Codex worker -> run-round -> decide-round`；命中 stop 时正常退出 `0`，并输出 `loop_status: stopped`、`stop_kind`、`stop_reason`
 - P0.3 仍不实现自动 mutation 搜索、多角色 planner / proposer / critic、或 acceptance 每轮必跑
 - candidate 内容改动与 `agent-report.md` 仍由 Codex / subagent 完成；脚本只负责 git 生命周期、评测与 keep / discard
 
@@ -583,7 +585,8 @@ python3 -m unittest \
   - legacy P1 路径由 `test_autoresearch_p1_1_smoke.py` 与 `test_autoresearch_p1_3_smoke.py` 固定
   - `init -> baseline -> prepare-round(auto select) -> run-round -> decide-round`
   - `prepare-round --mutation-key` 显式覆盖自动选择
-  - all-unselectable 时 `prepare-round` 失败
+  - stop gate / `max_rounds` 命中时 `prepare-round` 正常停止，不再伪装成失败
+  - all-unselectable 时 `prepare-round` 仍然失败
   - tamper `worker-contract.json` 时 `run-round` 失败
   - pending duplicate fingerprint 会在 auto select 时被跳过
   - `decide-round` 会写出 `feedback-distill.json` 和 `feedback-ledger.jsonl`

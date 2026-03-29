@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -22,6 +23,7 @@ from autoresearch_mutation_registry import (
 )
 from autoresearch_round import AutoresearchRoundManager
 from autoresearch_scoreboard import write_scoreboard
+from autoresearch_stop import AutoresearchStop
 from autoresearch_worker_contract import (
     build_comparison_baseline,
     build_worker_contract_payload,
@@ -302,7 +304,13 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             encoding="utf-8",
         )
 
-        def fake_lane_runner(*, candidate_worktree: Path, suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+        def fake_lane_runner(
+            *,
+            candidate_worktree: Path,
+            contract,
+            suite_files: list[Path],
+            save_dir: Path,
+        ) -> list[dict[str, object]]:
             if "train" in str(save_dir):
                 return [{"suite_file": "train.yaml", "results": [self._eval_result(10.0)]}]
             return [{"suite_file": "validation.yaml", "results": [self._eval_result(8.5)]}]
@@ -328,7 +336,13 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         tampered_scoreboard = build_scoreboard(99.0, 99.0, baseline_sha=self._git_output("rev-parse", "HEAD"))
         write_scoreboard(self.run_dir / "scoreboard.json", tampered_scoreboard)
 
-        def fake_lane_runner(*, candidate_worktree: Path, suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+        def fake_lane_runner(
+            *,
+            candidate_worktree: Path,
+            contract,
+            suite_files: list[Path],
+            save_dir: Path,
+        ) -> list[dict[str, object]]:
             if "train" in str(save_dir):
                 return [{"suite_file": "train.yaml", "results": [self._eval_result(10.0)]}]
             return [{"suite_file": "validation.yaml", "results": [self._eval_result(8.5)]}]
@@ -382,7 +396,13 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         round_payload.pop("worker_contract_sha256", None)
         round_path.write_text(json.dumps(round_payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
 
-        def fake_lane_runner(*, candidate_worktree: Path, suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+        def fake_lane_runner(
+            *,
+            candidate_worktree: Path,
+            contract,
+            suite_files: list[Path],
+            save_dir: Path,
+        ) -> list[dict[str, object]]:
             if "train" in str(save_dir):
                 return [{"suite_file": "train.yaml", "results": [self._eval_result(10.0)]}]
             return [{"suite_file": "validation.yaml", "results": [self._eval_result(8.5)]}]
@@ -396,6 +416,43 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         self.assertEqual(refreshed_round["state"], "evaluated")
         self.assertEqual(scoreboard["lanes"][0]["avg_total_score"], 10.0)
         self.assertEqual(scoreboard["lanes"][1]["avg_total_score"], 8.5)
+
+    def test_run_lane_suites_passes_contract_timeout_to_runner(self) -> None:
+        save_dir = self.run_dir / "lane-timeout-check"
+        captured: dict[str, object] = {}
+
+        def fake_subprocess_run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
+            captured["cmd"] = cmd
+            run_output = save_dir / "20260326T000000Z-train"
+            run_output.mkdir(parents=True, exist_ok=True)
+            (run_output / "run-summary.json").write_text(
+                json.dumps(
+                    {
+                        "runner": "run_skill_suite.py",
+                        "generated_at": "2026-03-26T00:00:00+00:00",
+                        "suite_file": str(self.repo_root / "train.yaml"),
+                        "results": [],
+                    },
+                    ensure_ascii=True,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+
+        with mock.patch("autoresearch_round.subprocess.run", side_effect=fake_subprocess_run):
+            summaries = self.round_manager._run_lane_suites(
+                candidate_worktree=self.repo_root,
+                contract=self.contract,
+                suite_files=[self.repo_root / "train.yaml"],
+                save_dir=save_dir,
+            )
+
+        self.assertEqual(len(summaries), 1)
+        self.assertIn("--timeout", captured["cmd"])
+        timeout_index = captured["cmd"].index("--timeout")
+        self.assertEqual(captured["cmd"][timeout_index + 1], "120")
 
     def test_prepare_round_requires_baseline_scoreboard(self) -> None:
         (self.run_dir / "scoreboard.json").unlink()
@@ -432,6 +489,25 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "exactly \\[contract.target_prompt_path\\]"):
             self.round_manager.ensure_prepare_allowed(self.contract, mutation_payload)
+
+    def test_prepare_round_stops_when_next_round_exceeds_max_rounds(self) -> None:
+        contract_payload = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
+        contract_payload["max_rounds"] = 1
+        self.contract_path.write_text(json.dumps(contract_payload), encoding="utf-8")
+        self.contract = load_contract(self.contract_path, repo_root=self.repo_root)
+        (self.run_dir / "contract.json").write_text(json.dumps(contract_payload), encoding="utf-8")
+
+        first_mutation = build_mutation_payload(round_number=1)
+        self.round_manager.ensure_prepare_allowed(self.contract, first_mutation)
+        self.worktree_manager.prepare_round(self.contract.run_id)
+        self.worktree_manager.discard_round(self.contract.run_id)
+
+        second_mutation = build_mutation_payload(round_number=2, mutation_id="mut-002")
+        with self.assertRaises(AutoresearchStop) as raised:
+            self.round_manager.ensure_prepare_allowed(self.contract, second_mutation)
+
+        self.assertEqual(raised.exception.kind, "max_rounds_reached")
+        self.assertIn("max_rounds=1", str(raised.exception))
 
     def test_run_round_requires_agent_report(self) -> None:
         mutation_payload = build_mutation_payload()
@@ -853,7 +929,13 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             [{"suite_file": "validation.yaml", "results": [self._eval_result(9.1)]}],
         ]
 
-        def fake_replay_runner(*, candidate_worktree: Path, suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+        def fake_replay_runner(
+            *,
+            candidate_worktree: Path,
+            contract,
+            suite_files: list[Path],
+            save_dir: Path,
+        ) -> list[dict[str, object]]:
             self.assertIn("/replay/", save_dir.as_posix())
             self.assertFalse((save_dir / "stale.txt").exists())
             return lane_results.pop(0)
@@ -899,7 +981,13 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             [{"suite_file": "validation.yaml", "results": [self._eval_result(7.5)]}],
         ]
 
-        def fake_replay_runner(*, candidate_worktree: Path, suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+        def fake_replay_runner(
+            *,
+            candidate_worktree: Path,
+            contract,
+            suite_files: list[Path],
+            save_dir: Path,
+        ) -> list[dict[str, object]]:
             self.assertIn("/replay/", save_dir.as_posix())
             self.assertFalse((save_dir / "stale.txt").exists())
             return lane_results.pop(0)
@@ -941,7 +1029,13 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             [{"suite_file": "validation.yaml", "results": [self._eval_result(8.5)]}],
         ]
 
-        def fake_replay_runner(*, candidate_worktree: Path, suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+        def fake_replay_runner(
+            *,
+            candidate_worktree: Path,
+            contract,
+            suite_files: list[Path],
+            save_dir: Path,
+        ) -> list[dict[str, object]]:
             return lane_results.pop(0)
 
         self.round_manager._run_lane_suites = fake_replay_runner  # type: ignore[method-assign]
@@ -981,7 +1075,13 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             [{"suite_file": "validation.yaml", "results": [self._eval_result(9.5)]}],
         ]
 
-        def fake_replay_runner(*, candidate_worktree: Path, suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+        def fake_replay_runner(
+            *,
+            candidate_worktree: Path,
+            contract,
+            suite_files: list[Path],
+            save_dir: Path,
+        ) -> list[dict[str, object]]:
             self.assertIn("/replay/", save_dir.as_posix())
             return lane_results.pop(0)
 
@@ -1053,7 +1153,13 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
         replay_attempts: list[str] = []
 
-        def fake_replay_runner(*, candidate_worktree: Path, suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+        def fake_replay_runner(
+            *,
+            candidate_worktree: Path,
+            contract,
+            suite_files: list[Path],
+            save_dir: Path,
+        ) -> list[dict[str, object]]:
             replay_attempts.append(save_dir.as_posix())
             if len(replay_attempts) > 2:
                 raise AssertionError("replay should not run when P2 preflight fails")

@@ -140,7 +140,7 @@ python3 toolchain/scripts/research/refresh_manual_run_contract.py \
 如果跳过这一步而直接复用旧 `run_id`，最常见的失败是：
 
 - 旧的 `history.tsv` / `mutation-registry.json` / `feedback-ledger.jsonl` 污染新一轮
-- `prepare-round` 直接因为 `max_rounds` 或 attempts 已耗尽而失败
+- `prepare-round` 会因为旧的 history / registry 状态过早命中 stop gate，或者直接因 selector / registry 状态不一致而失败
 
 最小 `train.yaml` / `validation.yaml` 示例：
 
@@ -282,6 +282,27 @@ python3 toolchain/scripts/research/run_autoresearch.py \
 
 - 连续 `3` 轮已完成 round 都没有产生新的 validation champion，则直接停止创建新 round
 - 所有 `active` mutation family 都至少尝试过 `1` 次，且当前 run 还没有任何最终 `keep`，则直接停止创建新 round
+
+`prepare-round` 命中 stop gate 或 `max_rounds` 时，当前 CLI 会以正常完成返回 `0`，并输出：
+
+- `prepare_round_status: stopped`
+- `stop_kind: ...`
+- `stop_reason: ...`
+
+这类 stop 应被视为“本次 run 正常结束”，而不是执行失败。
+
+如果使用连续 loop 包装器：
+
+```bash
+python3 toolchain/scripts/research/run_autoresearch_loop.py \
+  --contract /abs/path/to/contract.json
+```
+
+那么命中同一类 stop 时也会正常返回 `0`，并输出：
+
+- `loop_status: stopped`
+- `stop_kind: ...`
+- `stop_reason: ...`
 
 然后执行：
 

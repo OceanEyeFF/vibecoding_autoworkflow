@@ -20,6 +20,7 @@ from autoresearch_contract import (
     P2_TARGET_TASK_TO_RUNNER_TASK,
     normalize_repo_path,
     paths_overlap,
+    resolve_timeout_seconds,
     resolve_p2_contract_target,
     resolve_suite_files,
 )
@@ -36,6 +37,7 @@ from autoresearch_feedback_distill import (
     write_feedback_distill,
 )
 from autoresearch_scoreboard import build_scoreboard, load_run_summary, merge_run_summaries, write_scoreboard
+from autoresearch_stop import AutoresearchStop
 from autoresearch_worker_contract import (
     build_comparison_baseline,
     build_worker_contract_payload,
@@ -604,8 +606,12 @@ class AutoresearchRoundManager:
             raise FileNotFoundError("Baseline scoreboard missing. Run baseline before prepare-round.")
         next_round = self.worktree_manager.next_round_number(contract.run_id)
         if next_round > int(contract.payload["max_rounds"]):
-            raise RuntimeError(
-                f"Next round {next_round} exceeds max_rounds={contract.payload['max_rounds']} for run {contract.run_id}"
+            raise AutoresearchStop(
+                kind="max_rounds_reached",
+                message=(
+                    f"Stop gate triggered: next round {next_round} exceeds "
+                    f"max_rounds={contract.payload['max_rounds']} for run {contract.run_id}."
+                ),
             )
         expected_round = int(mutation_payload["round"])
         if expected_round != next_round:
@@ -922,11 +928,13 @@ class AutoresearchRoundManager:
         suites = resolve_suite_files(contract)
         train_summaries = self._run_lane_suites(
             candidate_worktree=candidate_worktree,
+            contract=contract,
             suite_files=suites["train"],
             save_dir=round_dir / "train",
         )
         validation_summaries = self._run_lane_suites(
             candidate_worktree=candidate_worktree,
+            contract=contract,
             suite_files=suites["validation"],
             save_dir=round_dir / "validation",
         )
@@ -1057,11 +1065,13 @@ class AutoresearchRoundManager:
             suites = resolve_suite_files(contract)
             train_summaries = self._run_lane_suites(
                 candidate_worktree=candidate_worktree,
+                contract=contract,
                 suite_files=suites["train"],
                 save_dir=replay_dir / "train",
             )
             validation_summaries = self._run_lane_suites(
                 candidate_worktree=candidate_worktree,
+                contract=contract,
                 suite_files=suites["validation"],
                 save_dir=replay_dir / "validation",
             )
@@ -1108,11 +1118,13 @@ class AutoresearchRoundManager:
         self,
         *,
         candidate_worktree: Path,
+        contract: AutoresearchContract,
         suite_files: list[Path],
         save_dir: Path,
     ) -> list[dict[str, Any]]:
         save_dir.mkdir(parents=True, exist_ok=True)
         summaries: list[dict[str, Any]] = []
+        timeout_seconds = resolve_timeout_seconds(contract)
         for suite_file in suite_files:
             before = {path for path in save_dir.iterdir() if path.is_dir()}
             resolved_suite = self._resolve_candidate_suite(candidate_worktree, suite_file)
@@ -1123,6 +1135,8 @@ class AutoresearchRoundManager:
                 str(resolved_suite),
                 "--save-dir",
                 str(save_dir),
+                "--timeout",
+                str(timeout_seconds),
             ]
             completed = subprocess.run(
                 cmd,
