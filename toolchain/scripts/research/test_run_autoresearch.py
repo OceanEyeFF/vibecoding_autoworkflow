@@ -342,6 +342,7 @@ class RunAutoresearchTest(unittest.TestCase):
 
             def fake_runner(argv: list[str]) -> int:
                 call_counter["count"] += 1
+                self.assertEqual(argv[argv.index("--timeout") + 1], "120")
                 save_dir = Path(argv[argv.index("--save-dir") + 1])
                 label = "train" if "baseline/train" in str(save_dir) else "validation"
                 write_summary(save_dir, label, 9 if label == "train" else 8)
@@ -1512,8 +1513,8 @@ class RunAutoresearchTest(unittest.TestCase):
                     ["prepare-round", "--contract", str(contract_path), "--mutation-key", mutation_key]
                 )
                 first_discard = run_autoresearch.main(["discard-round", "--contract", str(contract_path)])
-                stderr = io.StringIO()
-                with mock.patch("sys.stderr", stderr):
+                stdout = io.StringIO()
+                with mock.patch("sys.stdout", stdout):
                     second_prepare = run_autoresearch.main(
                         ["prepare-round", "--contract", str(contract_path), "--mutation-key", mutation_key]
                     )
@@ -1521,8 +1522,11 @@ class RunAutoresearchTest(unittest.TestCase):
             self.assertEqual(init_code, 0)
             self.assertEqual(first_prepare, 0)
             self.assertEqual(first_discard, 0)
-            self.assertEqual(second_prepare, 1)
-            self.assertIn("all active mutation families have been tried at least once", stderr.getvalue())
+            self.assertEqual(second_prepare, 0)
+            stdout_value = stdout.getvalue()
+            self.assertIn("prepare_round_status: stopped", stdout_value)
+            self.assertIn("stop_kind: mutation_families_exhausted_without_keep", stdout_value)
+            self.assertIn("all active mutation families have been tried at least once", stdout_value)
             registry_after = json.loads((root / ".autoworkflow" / "demo-run" / "mutation-registry.json").read_text(encoding="utf-8"))
             self.assertEqual(registry_after["entries"][0]["attempts"], 1)
             self.assertEqual(registry_after["entries"][0]["last_selected_round"], 1)
@@ -1584,20 +1588,22 @@ class RunAutoresearchTest(unittest.TestCase):
                     ],
                 }
                 (run_dir / "mutation-registry.json").write_text(json.dumps(registry, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
-                stderr = io.StringIO()
-                with mock.patch("sys.stderr", stderr), mock.patch.object(
+                stdout = io.StringIO()
+                with mock.patch("sys.stdout", stdout), mock.patch.object(
                     run_autoresearch, "select_next_mutation_entry", side_effect=AssertionError("selector should not run")
                 ):
                     code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
 
-        self.assertEqual(code, 1)
-        stderr_value = stderr.getvalue()
+        self.assertEqual(code, 0)
+        stdout_value = stdout.getvalue()
         stop_message = (
             "Stop gate triggered: all active mutation families have been tried at least once "
             "and the run has no final keep."
         )
-        self.assertIn(stop_message, stderr_value)
-        self.assertNotIn("No selectable mutation entries found", stderr_value)
+        self.assertIn("prepare_round_status: stopped", stdout_value)
+        self.assertIn("stop_kind: mutation_families_exhausted_without_keep", stdout_value)
+        self.assertIn(stop_message, stdout_value)
+        self.assertNotIn("No selectable mutation entries found", stdout_value)
 
     def test_prepare_round_reports_selector_error_when_no_active_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1753,12 +1759,15 @@ class RunAutoresearchTest(unittest.TestCase):
                         },
                     ],
                 )
-                stderr = io.StringIO()
-                with mock.patch("sys.stderr", stderr):
+                stdout = io.StringIO()
+                with mock.patch("sys.stdout", stdout):
                     prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
 
-            self.assertEqual(prepare_code, 1)
-            self.assertIn("3 consecutive completed rounds without a new validation champion", stderr.getvalue())
+            self.assertEqual(prepare_code, 0)
+            stdout_value = stdout.getvalue()
+            self.assertIn("prepare_round_status: stopped", stdout_value)
+            self.assertIn("stop_kind: no_new_validation_champion", stdout_value)
+            self.assertIn("3 consecutive completed rounds without a new validation champion", stdout_value)
 
     def test_prepare_round_stops_when_all_active_entries_tried_once_without_keep(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1876,12 +1885,128 @@ class RunAutoresearchTest(unittest.TestCase):
                     json.dumps(registry_payload, ensure_ascii=True, indent=2) + "\n",
                     encoding="utf-8",
                 )
-                stderr = io.StringIO()
-                with mock.patch("sys.stderr", stderr):
+                stdout = io.StringIO()
+                with mock.patch("sys.stdout", stdout), mock.patch.object(
+                    run_autoresearch.WorktreeManager,
+                    "next_round_number",
+                    return_value=2,
+                ):
                     prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
 
-            self.assertEqual(prepare_code, 1)
-            self.assertIn("all active mutation families have been tried at least once", stderr.getvalue())
+            self.assertEqual(prepare_code, 0)
+            stdout_value = stdout.getvalue()
+            self.assertIn("prepare_round_status: stopped", stdout_value)
+            self.assertIn("stop_kind: mutation_families_exhausted_without_keep", stdout_value)
+            self.assertIn("all active mutation families have been tried at least once", stdout_value)
+
+    def test_prepare_round_stops_normally_when_max_rounds_reached(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
+            contract["max_rounds"] = 1
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+            baseline_sha = current_head_sha(root)
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                self.assertEqual(run_autoresearch.main(["init", "--contract", str(contract_path)]), 0)
+                run_dir = root / ".autoworkflow" / "demo-run"
+                (run_dir / "scoreboard.json").write_text(
+                    json.dumps(
+                        {
+                            "run_id": "demo-run",
+                            "generated_at": "2026-03-26T00:00:00+00:00",
+                            "baseline_sha": baseline_sha,
+                            "rounds_completed": 1,
+                            "best_round": 1,
+                            "lanes": [],
+                            "repo_tasks": [],
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                write_history_rows(
+                    run_dir,
+                    [
+                        {
+                            "round": "0",
+                            "kind": "baseline",
+                            "base_sha": baseline_sha,
+                            "candidate_sha": "-",
+                            "train_score": "9.000000",
+                            "validation_score": "8.000000",
+                            "train_parse_error_rate": "0.000000",
+                            "validation_parse_error_rate": "0.000000",
+                            "decision": "baseline",
+                            "notes": "",
+                        },
+                        {
+                            "round": "1",
+                            "kind": "text_rephrase",
+                            "base_sha": baseline_sha,
+                            "candidate_sha": "sha-round-1",
+                            "train_score": "9.500000",
+                            "validation_score": "8.000000",
+                            "train_parse_error_rate": "0.000000",
+                            "validation_parse_error_rate": "0.000000",
+                            "decision": "keep",
+                            "notes": "mutation_id=a",
+                        },
+                    ],
+                )
+                contract_obj = load_contract(contract_path, repo_root=root)
+                registry_payload = {
+                    "run_id": contract_obj.run_id,
+                    "registry_version": 1,
+                    "contract_fingerprint": compute_contract_fingerprint(contract_obj),
+                    "entries": [
+                        {
+                            "mutation_key": "text_rephrase:demo:intro-tighten-v1",
+                            "kind": "text_rephrase",
+                            "status": "active",
+                            "target_paths": ["product/memory-side/skills"],
+                            "allowed_actions": ["edit"],
+                            "instruction_seed": "Tighten wording.",
+                            "expected_effect": {
+                                "hypothesis": "Improve train score without validation regression.",
+                                "primary_metrics": ["avg_total_score"],
+                                "guard_metrics": ["parse_error_rate"],
+                            },
+                            "guardrails": {
+                                "require_non_empty_diff": True,
+                                "max_files_touched": 1,
+                                "extra_frozen_paths": [],
+                            },
+                            "origin": {"type": "manual_seed", "ref": "test"},
+                            "attempts": 0,
+                            "last_selected_round": None,
+                            "last_decision": None,
+                        }
+                    ],
+                }
+                (run_dir / "mutation-registry.json").write_text(
+                    json.dumps(registry_payload, ensure_ascii=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                stdout = io.StringIO()
+                with mock.patch("sys.stdout", stdout), mock.patch.object(
+                    run_autoresearch.WorktreeManager,
+                    "next_round_number",
+                    return_value=2,
+                ):
+                    prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
+
+            self.assertEqual(prepare_code, 0)
+            stdout_value = stdout.getvalue()
+            self.assertIn("prepare_round_status: stopped", stdout_value)
+            self.assertIn("stop_kind: max_rounds_reached", stdout_value)
+            self.assertIn("max_rounds=1", stdout_value)
 
     def test_prepare_round_auto_selects_next_entry_from_registry(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2201,10 +2326,10 @@ class RunAutoresearchTest(unittest.TestCase):
                 "repo_tasks": [],
             }
 
-            stderr = io.StringIO()
+            stdout = io.StringIO()
             with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
                 run_autoresearch, "REPO_ROOT", root
-            ), mock.patch("sys.stderr", stderr):
+            ), mock.patch("sys.stdout", stdout):
                 init_code = run_autoresearch.main(["init", "--contract", str(contract_path)])
                 run_dir = root / ".autoworkflow" / "demo-run"
                 (run_dir / "scoreboard.json").write_text(json.dumps(scoreboard), encoding="utf-8")
@@ -2247,8 +2372,11 @@ class RunAutoresearchTest(unittest.TestCase):
                 prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
 
             self.assertEqual(init_code, 0)
-            self.assertEqual(prepare_code, 1)
-            self.assertIn("all active mutation families have been tried at least once", stderr.getvalue())
+            self.assertEqual(prepare_code, 0)
+            stdout_value = stdout.getvalue()
+            self.assertIn("prepare_round_status: stopped", stdout_value)
+            self.assertIn("stop_kind: mutation_families_exhausted_without_keep", stdout_value)
+            self.assertIn("all active mutation families have been tried at least once", stdout_value)
 
     def test_prepare_round_missing_registry_does_not_initialize_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

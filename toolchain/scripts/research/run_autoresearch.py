@@ -17,6 +17,7 @@ from autoresearch_contract import (
     P2_TARGET_TASK_TO_PROMPT_PATH,
     history_header,
     load_contract,
+    resolve_timeout_seconds,
     resolve_p2_contract_target,
     resolve_suite_files,
 )
@@ -33,6 +34,7 @@ from autoresearch_mutation_registry import (
 )
 from autoresearch_selector import select_next_mutation_entry
 from autoresearch_feedback_distill import build_recent_feedback_excerpt, load_feedback_ledger
+from autoresearch_stop import AutoresearchStop, format_stop_status
 from autoresearch_worker_contract import build_comparison_baseline
 from exrepo_routing_entry import (
     STATUS_USABLE,
@@ -169,11 +171,14 @@ def _prepare_round_stop_reason(
     *,
     run_dir: Path,
     registry,
-) -> str | None:
+) -> tuple[str, str] | None:
     history_path = run_dir / "history.tsv"
     stale_rounds = _rounds_since_new_validation_champion(history_path)
     if stale_rounds >= 3:
-        return "Stop gate triggered: 3 consecutive completed rounds without a new validation champion."
+        return (
+            "no_new_validation_champion",
+            "Stop gate triggered: 3 consecutive completed rounds without a new validation champion.",
+        )
 
     if registry is None:
         return None
@@ -185,8 +190,9 @@ def _prepare_round_stop_reason(
     if active_entries and not _has_final_keep(history_path):
         if all(int(entry.get("attempts") or 0) > 0 for entry in active_entries):
             return (
+                "mutation_families_exhausted_without_keep",
                 "Stop gate triggered: all active mutation families have been tried at least once "
-                "and the run has no final keep."
+                "and the run has no final keep.",
             )
     return None
 
@@ -311,12 +317,21 @@ def _capture_new_summary(save_dir: Path, before: set[Path]) -> Path:
     return candidates[-1]
 
 
-def run_lane_suites(suite_files: list[Path], save_dir: Path) -> list[dict[str, object]]:
+def run_lane_suites(suite_files: list[Path], save_dir: Path, *, timeout_seconds: int) -> list[dict[str, object]]:
     save_dir.mkdir(parents=True, exist_ok=True)
     summaries: list[dict[str, object]] = []
     for suite_file in suite_files:
         before = {path for path in save_dir.iterdir() if path.is_dir()}
-        exit_code = run_skill_suite_main(["--suite", str(suite_file), "--save-dir", str(save_dir)])
+        exit_code = run_skill_suite_main(
+            [
+                "--suite",
+                str(suite_file),
+                "--save-dir",
+                str(save_dir),
+                "--timeout",
+                str(timeout_seconds),
+            ]
+        )
         if exit_code != 0:
             raise RuntimeError(f"Suite failed: {suite_file}")
         summary_path = _capture_new_summary(save_dir, before)
@@ -416,13 +431,22 @@ def cmd_baseline(contract_path: Path) -> int:
     sync_runtime_to_baseline(contract.run_id, base_sha)
 
     suites = resolve_suite_files(contract)
+    timeout_seconds = resolve_timeout_seconds(contract)
     _run_context_routing_exrepo_preflight(
         contract,
         suite_files=[*suites["train"], *suites["validation"]],
         run_dir=run_dir,
     )
-    train_summaries = run_lane_suites(suites["train"], run_dir / "baseline" / "train")
-    validation_summaries = run_lane_suites(suites["validation"], run_dir / "baseline" / "validation")
+    train_summaries = run_lane_suites(
+        suites["train"],
+        run_dir / "baseline" / "train",
+        timeout_seconds=timeout_seconds,
+    )
+    validation_summaries = run_lane_suites(
+        suites["validation"],
+        run_dir / "baseline" / "validation",
+        timeout_seconds=timeout_seconds,
+    )
     lane_summaries = {
         "train": merge_run_summaries(train_summaries),
         "validation": merge_run_summaries(validation_summaries),
@@ -476,9 +500,10 @@ def cmd_prepare_round(
     feedback_ledger = load_feedback_ledger(run_dir / "feedback-ledger.jsonl")
     runtime = read_runtime_if_present(manager, contract.run_id)
     if runtime is None or runtime.get("active_round") is None:
-        stop_reason = _prepare_round_stop_reason(run_dir=run_dir, registry=registry)
-        if stop_reason is not None:
-            raise RuntimeError(stop_reason)
+        stop_info = _prepare_round_stop_reason(run_dir=run_dir, registry=registry)
+        if stop_info is not None:
+            kind, stop_reason = stop_info
+            raise AutoresearchStop(kind=kind, message=stop_reason)
     selection = None
 
     if mutation_key is not None:
@@ -654,6 +679,11 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_discard_round(args.contract)
         if args.command == "cleanup-round":
             return cmd_cleanup_round(args.contract)
+    except AutoresearchStop as exc:
+        print(f"{format_stop_status(args.command)}: stopped")
+        print(f"stop_kind: {exc.kind}")
+        print(f"stop_reason: {exc.message}")
+        return 0
     except (FileNotFoundError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 import subprocess
 import sys
@@ -15,6 +16,7 @@ import run_autoresearch_loop
 from autoresearch_contract import load_contract
 from autoresearch_mutation_registry import compute_contract_fingerprint
 from autoresearch_round import AutoresearchRoundManager
+from autoresearch_stop import AutoresearchStop
 from worktree_manager import read_json, write_json
 
 
@@ -210,7 +212,7 @@ class RunAutoresearchLoopTest(unittest.TestCase):
                     prepare_calls.append((mutation_key, mutation_path))
                     if len(prepare_calls) == 1:
                         return original_prepare(contract_path_arg, mutation_key=mutation_key, mutation_path=mutation_path)
-                    raise RuntimeError("Stop gate triggered: synthetic test stop.")
+                    raise AutoresearchStop(kind="synthetic_stop", message="Stop gate triggered: synthetic test stop.")
 
                 def fake_worker(*, args, worker_contract_path: Path, worker_contract: dict[str, object]) -> str:
                     del args, worker_contract_path
@@ -223,9 +225,11 @@ class RunAutoresearchLoopTest(unittest.TestCase):
                     _self: AutoresearchRoundManager,
                     *,
                     candidate_worktree: Path,
+                    contract,
                     suite_files: list[Path],
                     save_dir: Path,
                 ) -> list[dict[str, object]]:
+                    del contract
                     del suite_files
                     self.assertTrue(candidate_worktree.is_dir())
                     if "replay" in str(save_dir):
@@ -237,19 +241,25 @@ class RunAutoresearchLoopTest(unittest.TestCase):
                 with mock.patch.object(run_autoresearch_loop, "cmd_prepare_round", side_effect=prepare_side_effect), mock.patch.object(
                     run_autoresearch_loop, "run_codex_worker", side_effect=fake_worker
                 ), mock.patch.object(AutoresearchRoundManager, "_run_lane_suites", new=fake_lane_runner):
-                    exit_code = run_autoresearch_loop.main(
-                        [
-                            "--contract",
-                            str(contract_path),
-                            "--registry-seed",
-                            str(seed_path),
-                            "--mutation-key",
-                            "text_rephrase:demo:first",
-                        ]
-                    )
+                    stdout = io.StringIO()
+                    with mock.patch("sys.stdout", stdout):
+                        exit_code = run_autoresearch_loop.main(
+                            [
+                                "--contract",
+                                str(contract_path),
+                                "--registry-seed",
+                                str(seed_path),
+                                "--mutation-key",
+                                "text_rephrase:demo:first",
+                            ]
+                        )
 
                 self.assertEqual(exit_code, 0)
                 self.assertEqual(prepare_calls, [("text_rephrase:demo:first", None), (None, None)])
+                stdout_value = stdout.getvalue()
+                self.assertIn("loop_status: stopped", stdout_value)
+                self.assertIn("stop_kind: synthetic_stop", stdout_value)
+                self.assertIn("rounds_completed_in_loop: 1", stdout_value)
                 round_dir = run_dir / "rounds" / "round-001"
                 agent_report = (round_dir / "agent-report.md").read_text(encoding="utf-8")
                 self.assertIn("Worker Summary", agent_report)
@@ -348,9 +358,11 @@ class RunAutoresearchLoopTest(unittest.TestCase):
                 _self: AutoresearchRoundManager,
                 *,
                 candidate_worktree: Path,
+                contract,
                 suite_files: list[Path],
                 save_dir: Path,
             ) -> list[dict[str, object]]:
+                del contract
                 del suite_files
                 self.assertTrue(candidate_worktree.is_dir())
                 score = 10.0 if save_dir.name == "train" else 9.0
@@ -394,21 +406,27 @@ class RunAutoresearchLoopTest(unittest.TestCase):
                 write_json(round_path, round_payload)
 
                 def stop_on_next_prepare(*_args, **_kwargs) -> int:
-                    raise RuntimeError("Stop gate triggered: synthetic test stop.")
+                    raise AutoresearchStop(kind="synthetic_stop", message="Stop gate triggered: synthetic test stop.")
 
                 with mock.patch.object(run_autoresearch_loop, "cmd_prepare_round", side_effect=stop_on_next_prepare), mock.patch.object(
                     run_autoresearch_loop, "run_codex_worker", side_effect=fake_worker
                 ), mock.patch.object(AutoresearchRoundManager, "_run_lane_suites", new=fake_lane_runner):
-                    exit_code = run_autoresearch_loop.main(
-                        [
-                            "--contract",
-                            str(contract_path),
-                            "--registry-seed",
-                            str(seed_path),
-                        ]
-                    )
+                    stdout = io.StringIO()
+                    with mock.patch("sys.stdout", stdout):
+                        exit_code = run_autoresearch_loop.main(
+                            [
+                                "--contract",
+                                str(contract_path),
+                                "--registry-seed",
+                                str(seed_path),
+                            ]
+                        )
 
                 self.assertEqual(exit_code, 0)
+                stdout_value = stdout.getvalue()
+                self.assertIn("loop_status: stopped", stdout_value)
+                self.assertIn("stop_kind: synthetic_stop", stdout_value)
+                self.assertIn("rounds_completed_in_loop: 1", stdout_value)
                 decision = json.loads((run_dir / "rounds" / "round-001" / "decision.json").read_text(encoding="utf-8"))
                 self.assertEqual(decision["decision"], "keep")
                 final_round_payload = read_json(round_path)

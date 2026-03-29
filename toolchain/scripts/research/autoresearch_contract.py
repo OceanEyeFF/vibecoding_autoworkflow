@@ -54,6 +54,16 @@ class AutoresearchContract:
     target_prompt_path: str | None = None
 
 
+def resolve_timeout_seconds(contract: AutoresearchContract, *, default: int = 300) -> int:
+    timeout_policy = contract.payload.get("timeout_policy")
+    if not isinstance(timeout_policy, dict):
+        return default
+    seconds = timeout_policy.get("seconds")
+    if isinstance(seconds, bool) or not isinstance(seconds, int) or seconds <= 0:
+        return default
+    return seconds
+
+
 def history_header() -> str:
     return "\t".join(HISTORY_COLUMNS)
 

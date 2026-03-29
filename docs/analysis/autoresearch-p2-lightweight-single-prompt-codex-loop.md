@@ -255,3 +255,80 @@ P2 preflight 需要同时校验：
 - 有最小停机规则
 
 这版边界更适合当前仓库的投入强度，也更容易得到可解释的 Prompt 微调结果。
+
+## 十三、2026-03-29 exrepos integration 试跑观察
+
+本轮在 integration worktree 上做了两次 live 验证：
+
+- 代表性 smoke：
+  - 命令：`python3 toolchain/scripts/research/run_skill_suite.py --repo /mnt/e/repos/wsl/personal/vibecoding_autoworkflow/.exrepos/typer --backend codex --task context-routing --with-eval --save-dir .autoworkflow/t-exr-003/smoke-typer`
+  - 结果：`typer` 成功完成 skill + eval，最终 `12/12`
+  - 产物：`.autoworkflow/t-exr-003/smoke-typer/20260329T052552Z-typer/`
+- continuous loop：
+  - contract：`.autoworkflow/manual-runs/context-routing-exrepos-codex-first-pass/contract-loop.json`
+  - run id：`manual-cr-exrepos-codex-loop-r000001-m020069`
+  - 产物：`.autoworkflow/autoresearch/manual-cr-exrepos-codex-loop-r000001-m020069/`
+
+### 直接结论
+
+- 旧的 `typer` routing-entry 路径假设问题没有复现；当前 prompt 在 `typer` 上能跳过无效 repo-local skill wrapper，并直接从 repo 证据完成 Route Card。
+- continuous loop 没有进入 `prepare-round` / `run-round`；它卡在 baseline validation，而不是卡在旧的 baseline train `typer` timeout。
+- 当前新的首要阻塞是 `vite-plus`：
+  - validation suite 中 `vite-plus` 的 skill phase `300s` 超时
+  - 最终 `03.vite-plus.context-routing.skill.codex.final.txt` 为空
+  - eval 因空输出被打成 `4/12`
+  - 整条 `validation.yaml` 因 suite failed 终止，baseline 未完成，所以没有 `scoreboard.json`，`history.tsv` 也没有 baseline 行
+
+### 重要附加发现
+
+- 当前 integration worktree 的 exrepo routing-entry preflight 没有真正覆盖这次 loop：
+  - 运行产物里没有生成 `routing-entry-capability.json`
+  - 代码上，`collect_context_routing_suite_repo_skill_report()` 只会收集位于 `REPO_ROOT/.exrepos` 下的 repo
+  - 这次 suite 使用的是主工作区的绝对路径 `.exrepos/*`
+  - 当 runner 从 integration worktree 执行时，这些绝对路径不在 integration worktree 的 `REPO_ROOT/.exrepos` 下，因此 capability report 为空，preflight 被静默跳过
+
+### 当前可复用判断
+
+- `T-EXR-001` 和 `T-EXR-002` 已经足够证明：旧的 repo-local wrapper 误导问题可以被 prompt + baseline guard 缓解。
+- `T-EXR-003` 的 live 结果说明：continuous loop 目前仍未健康启动，但新的主阻塞已经从 `typer` wrapper 冲突转移到：
+  - `vite-plus` 这类大 repo 的 routing timeout
+  - integration worktree 下绝对 exrepo 路径未被 preflight 纳入
+- 这轮任务到此应停止记录，不在本任务内继续扩边修复。
+
+## 十四、2026-03-29 core-only gating rerun
+
+随后做了两项最小收窄：
+
+- baseline / round / replay 统一把 `contract.timeout_policy.seconds` 下传到 `run_skill_suite.py`
+- continuous loop 的 gating split 改成：
+  - `train`: `typer`, `zustand`, `trackers`, `russh`
+  - `validation`: `fmt`
+  - `acceptance`: `JUCE`, `vite-plus`
+
+基于这版配置重新运行 continuous loop：
+
+- run id：`manual-cr-exrepos-codex-loop-r000002-m020070`
+- 产物：`.autoworkflow/autoresearch/manual-cr-exrepos-codex-loop-r000002-m020070/`
+
+结果：
+
+- baseline 完成
+- loop 进入 round，并连续完成 3 轮
+- stop 原因：`3 consecutive completed rounds without a new validation champion`
+
+关键分数：
+
+- baseline: train `11.5`, validation `12.0`
+- round 1: discard, train `11.75`, validation `11.0`
+- round 2: keep, train `11.75`, validation `12.0`
+- round 3: discard, train `11.75`, validation `12.0`
+
+本轮 winning mutation：
+
+- `text_rephrase:context-routing-skill:minimal-trace-and-direct-paths-v1#a001`
+
+这次 rerun 的意义很直接：
+
+- continuous loop 现在已经能在当前仓库里稳定启动并进入 round
+- 对当前阶段而言，把 heavyweight repo 从 gating loop 拿掉，比继续单纯放大 timeout 更有效
+- `timeout_policy` 的真实下传仍然值得保留，因为它修复了 contract 和实际 runner 行为不一致的问题

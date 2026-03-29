@@ -16,6 +16,7 @@ from autoresearch_mutation_registry import (
     canonicalize_mutation_entry,
     write_mutation_registry,
 )
+from autoresearch_stop import AutoresearchStop
 from autoresearch_worker_contract import load_worker_contract_payload
 from backends import build_backend
 from run_autoresearch import (
@@ -32,9 +33,6 @@ from run_autoresearch import (
 )
 from run_skill_suite import cleanup_backend_artifacts, coerce_process_output
 from worktree_manager import read_json, write_json
-
-
-STOP_GATE_PREFIX = "Stop gate triggered:"
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -418,14 +416,12 @@ def run_loop(args: argparse.Namespace) -> int:
                     mutation_key=args.mutation_key if first_prepare else None,
                     mutation_path=args.mutation if first_prepare else None,
                 )
-            except RuntimeError as exc:
-                message = str(exc)
-                if message.startswith(STOP_GATE_PREFIX):
-                    print(f"loop_status: stopped")
-                    print(f"stop_reason: {message}")
-                    print(f"rounds_completed_in_loop: {rounds_completed}")
-                    return 0
-                raise
+            except AutoresearchStop as exc:
+                print("loop_status: stopped")
+                print(f"stop_kind: {exc.kind}")
+                print(f"stop_reason: {exc.message}")
+                print(f"rounds_completed_in_loop: {rounds_completed}")
+                return 0
             first_prepare = False
             active_state = _read_active_round_state(contract)
         else:
