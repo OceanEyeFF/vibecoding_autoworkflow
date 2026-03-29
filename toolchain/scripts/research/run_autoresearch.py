@@ -34,6 +34,14 @@ from autoresearch_mutation_registry import (
 from autoresearch_selector import select_next_mutation_entry
 from autoresearch_feedback_distill import build_recent_feedback_excerpt, load_feedback_ledger
 from autoresearch_worker_contract import build_comparison_baseline
+from exrepo_routing_entry import (
+    STATUS_USABLE,
+    build_context_routing_capability_report_payload,
+    collect_context_routing_suite_repo_skill_report,
+    format_context_routing_capability_lines,
+    prompt_allows_exrepo_routing_fallback,
+    write_context_routing_capability_report,
+)
 from worktree_manager import read_json
 from common import REPO_ROOT, slugify
 from run_skill_suite import load_suite_manifest, main as run_skill_suite_main, resolve_path_override
@@ -316,6 +324,48 @@ def run_lane_suites(suite_files: list[Path], save_dir: Path) -> list[dict[str, o
     return summaries
 
 
+def _run_context_routing_exrepo_preflight(
+    contract,
+    *,
+    suite_files: list[Path],
+    run_dir: Path,
+) -> None:
+    resolved_target = resolve_p2_contract_target(contract)
+    if resolved_target is None:
+        return
+    target_task, target_prompt_path = resolved_target
+    if target_task != "context-routing-skill":
+        return
+
+    prompt_path = (REPO_ROOT / target_prompt_path).resolve()
+    capabilities = collect_context_routing_suite_repo_skill_report(suite_files, repo_root=REPO_ROOT)
+    if not capabilities:
+        return
+    report_payload = build_context_routing_capability_report_payload(
+        prompt_path=prompt_path,
+        capabilities=capabilities,
+    )
+    report_path = run_dir / "routing-entry-capability.json"
+    write_context_routing_capability_report(report_path, report_payload)
+    for line in format_context_routing_capability_lines(capabilities):
+        print(line)
+
+    if prompt_allows_exrepo_routing_fallback(prompt_path):
+        return
+
+    blocking = [
+        item
+        for item in capabilities
+        if str(item.get("status") or "").strip() != STATUS_USABLE
+    ]
+    if blocking:
+        details = ", ".join(f"{item['repo']}={item['status']}" for item in blocking)
+        raise RuntimeError(
+            "Exrepo routing-entry preflight failed: "
+            f"{details}. See {report_path}"
+        )
+
+
 def append_history_baseline_row(
     history_path: Path,
     *,
@@ -366,6 +416,11 @@ def cmd_baseline(contract_path: Path) -> int:
     sync_runtime_to_baseline(contract.run_id, base_sha)
 
     suites = resolve_suite_files(contract)
+    _run_context_routing_exrepo_preflight(
+        contract,
+        suite_files=[*suites["train"], *suites["validation"], *suites["acceptance"]],
+        run_dir=run_dir,
+    )
     train_summaries = run_lane_suites(suites["train"], run_dir / "baseline" / "train")
     validation_summaries = run_lane_suites(suites["validation"], run_dir / "baseline" / "validation")
     lane_summaries = {
