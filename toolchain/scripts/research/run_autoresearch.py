@@ -418,7 +418,7 @@ def cmd_baseline(contract_path: Path) -> int:
     suites = resolve_suite_files(contract)
     _run_context_routing_exrepo_preflight(
         contract,
-        suite_files=[*suites["train"], *suites["validation"], *suites["acceptance"]],
+        suite_files=[*suites["train"], *suites["validation"]],
         run_dir=run_dir,
     )
     train_summaries = run_lane_suites(suites["train"], run_dir / "baseline" / "train")

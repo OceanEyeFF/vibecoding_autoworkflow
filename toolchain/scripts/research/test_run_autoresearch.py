@@ -513,6 +513,78 @@ class RunAutoresearchTest(unittest.TestCase):
             self.assertTrue(report["prompt_allows_repo_skill_fallback"])
             self.assertEqual(report["capabilities"][0]["status"], "missing_repo_skill")
 
+    def test_baseline_preflight_ignores_acceptance_only_exrepo_capability_issues(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            init_p2_prompt_tree(root)
+            train_repo = root / ".exrepos" / "fmt"
+            train_skill_dir = train_repo / ".agents" / "skills" / "context-routing-skill"
+            train_skill_dir.mkdir(parents=True, exist_ok=True)
+            (train_repo / "product" / "memory-side" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
+            (train_repo / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
+                "canonical\n",
+                encoding="utf-8",
+            )
+            (train_repo / "docs" / "knowledge" / "memory-side").mkdir(parents=True, exist_ok=True)
+            (train_skill_dir / "SKILL.md").write_text(
+                "## Canonical Sources\n"
+                "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
+                "2. `docs/knowledge/memory-side/`\n",
+                encoding="utf-8",
+            )
+
+            acceptance_repo = root / ".exrepos" / "JUCE"
+            acceptance_repo.mkdir(parents=True, exist_ok=True)
+
+            write_suite_manifest(
+                root / "train.yaml",
+                task="context-routing",
+                backend="codex",
+                judge_backend="codex",
+                repo=str(train_repo),
+            )
+            write_suite_manifest(
+                root / "validation.yaml",
+                task="context-routing",
+                backend="codex",
+                judge_backend="codex",
+                repo=str(train_repo),
+            )
+            write_suite_manifest(
+                root / "acceptance.yaml",
+                task="context-routing",
+                backend="codex",
+                judge_backend="codex",
+                repo=str(acceptance_repo),
+            )
+            contract = build_contract_payload(
+                "train.yaml",
+                "validation.yaml",
+                "acceptance.yaml",
+                mutable_paths=["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+                target_task="context-routing-skill",
+                target_prompt_path="toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+            )
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+
+            def fake_runner(argv: list[str]) -> int:
+                save_dir = Path(argv[argv.index("--save-dir") + 1])
+                label = "train" if "baseline/train" in str(save_dir) else "validation"
+                write_summary(save_dir, label, 9 if label == "train" else 8)
+                return 0
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ), mock.patch.object(run_autoresearch, "run_skill_suite_main", side_effect=fake_runner):
+                exit_code = run_autoresearch.main(["baseline", "--contract", str(contract_path)])
+
+            self.assertEqual(exit_code, 0)
+            run_dir = root / ".autoworkflow" / "demo-run"
+            report = json.loads((run_dir / "routing-entry-capability.json").read_text(encoding="utf-8"))
+            self.assertEqual([item["repo"] for item in report["capabilities"]], ["fmt"])
+
     def test_baseline_refreshes_champion_branch_after_head_advanced(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
