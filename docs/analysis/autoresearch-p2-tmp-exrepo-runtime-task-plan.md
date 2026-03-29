@@ -1,9 +1,9 @@
 ---
 title: "Autoresearch P2：TMP Exrepo 运行时迁移与维护脚本任务规划"
 status: active
-updated: 2026-03-29
+updated: 2026-03-30
 owner: aw-kernel
-last_verified: 2026-03-29
+last_verified: 2026-03-30
 ---
 # Autoresearch P2：TMP Exrepo 运行时迁移与维护脚本任务规划
 
@@ -53,6 +53,22 @@ last_verified: 2026-03-29
 - 把维护步骤从 `autoresearch` 主流程里解耦出来，避免 runner 侧职责膨胀
 
 ## 三、任务清单
+
+### 当前进度（2026-03-30）
+
+- `T-001` 已完成并入库：
+  - 已新增 `toolchain/scripts/research/exrepo_runtime.py`
+  - 已补 `test_exrepo_runtime.py` 与 `test_run_skill_suite.py` 的 deterministic 覆盖
+  - helper contract 已冻结：稳定 `/tmp` exrepo 根目录、deterministic materialized suite 路径、`repo` 与 `prompt_file / eval_prompt_file` 的绝对路径重写、且不原地修改源 suite
+- `T-002` 已完成并入库：
+  - `baseline`、`run-round`、`replay` 已统一消费 materialized suite
+  - materialized suite 已落到 run-local artifact，而不是 authority 状态
+  - P2 preflight 仍锚定原始 contract suite
+  - `worktree_manager.py`、authority 字段、decision / replay 规则未改
+- 当前仍待完成：
+  - `T-003` deterministic 测试完备化
+  - `T-004` 文档入口与旧规划状态同步
+  - `T-101` TMP exrepo 维护脚本
 
 ### 任务ID：T-001
 任务名称：实现 TMP Exrepo 根目录与 suite 物化 helper

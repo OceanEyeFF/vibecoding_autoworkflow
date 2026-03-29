@@ -1,9 +1,9 @@
 ---
 title: "Autoresearch 最小闭环运行说明"
 status: active
-updated: 2026-03-28
+updated: 2026-03-30
 owner: aw-kernel
-last_verified: 2026-03-28
+last_verified: 2026-03-30
 ---
 # Autoresearch 最小闭环运行说明
 
@@ -79,6 +79,20 @@ last_verified: 2026-03-28
 
 而 `docs/analysis/autoresearch-p2-lightweight-single-prompt-codex-loop.md` 继续只保留设计背景和收窄理由。
 
+### 3. `2026-03-30` TMP exrepo runtime 与 materialized suite 接线已确认
+
+这一轮确认的是 T-001 / T-002 已落地后的代码与 deterministic 验收事实：
+
+- `toolchain/scripts/research/exrepo_runtime.py` 已提供稳定的 `/tmp` exrepo 根目录 helper 与 suite 物化 helper
+- `baseline`、`run-round`、`replay` 现在都会先把 source suite 物化成 materialized suite，再把物化结果交给 runner
+- `baseline` 的 preflight 仍然锚定原始 contract suite，不会把 preflight 迁移到 materialized suite
+- `run-round` / `replay` 会先解析 candidate source suite，再复用同一套 materialization 逻辑
+- candidate worktree 不再因为缺少本地 `.exrepos/<name>` 而成为 `run-round` / `replay` 的执行前提
+- materialized suite 当前落在 run-local artifact：
+  - `baseline/materialized-suites/<lane>/`
+  - `rounds/round-NNN/materialized-suites/<lane>/`
+  - `rounds/round-NNN/replay/materialized-suites/<lane>/`
+
 ## 三、最小输入
 
 最小闭环至少需要四个输入对象：
@@ -151,9 +165,11 @@ defaults:
   judge_backend: claude
   with_eval: true
 runs:
-  - repo: /abs/path/to/.exrepos/typer
+  - repo: typer
     task: context-routing
 ```
+
+对 autoresearch 主链来说，`repo` 现在可以继续写 bare repo name，也可以写显式绝对路径。`baseline / run-round / replay` 会在执行前把 suite 物化成绝对运行时路径；如果绕过 autoresearch，直接单独运行 `run_skill_suite.py --suite`，仍要自己保证 suite 在 runner 侧可解析。
 
 最小 `manual-mutation.json` 示例：
 
@@ -225,7 +241,7 @@ defaults:
   judge_backend: codex
   with_eval: true
 runs:
-  - repo: /abs/path/to/.exrepos/typer
+  - repo: typer
     task: context-routing
     prompt_file: /abs/path/to/repo/toolchain/scripts/research/tasks/context-routing-skill-prompt.md
 ```
@@ -367,29 +383,22 @@ python3 -m unittest \
 
 ## 五、这次实跑确认的三个坑
 
-### 1. suite 里的 `repo` 要写绝对路径
+### 1. autoresearch 会先物化 suite，但 direct runner 语义没有被改写
 
-在主工作树中，`run_skill_suite.py --repo typer` 可以通过 `.exrepos/typer` 正常解析。
+`baseline / run-round / replay` 现在都会先把 source suite 物化成 materialized suite：
 
-但 `run-round` 是在 candidate worktree 内再调用一次 `run_skill_suite.py --suite ...`。如果 suite manifest 里写的是：
+- bare repo name 会被改写到稳定的 `/tmp` exrepo 运行时根目录
+- `prompt_file / eval_prompt_file` 会被改写成绝对路径
+- 物化结果只落到 run-local artifact，不会写进 authority 状态
 
-```yaml
-runs:
-  - repo: typer
-```
+这意味着在 autoresearch 主链里，suite 不再需要为了 candidate worktree 补一份本地 `.exrepos/<name>`。
 
-candidate worktree 下通常没有 `.exrepos/typer`，会直接失败：
+但 direct runner 语义没有一起改变。如果绕过 autoresearch，单独跑：
 
-```text
-Repository not found: typer
-```
+- `run_skill_suite.py --repo typer`
+- `run_skill_suite.py --suite <raw-suite>`
 
-因此当前最稳妥的写法是：
-
-```yaml
-runs:
-  - repo: /abs/path/to/.exrepos/typer
-```
+仍然要保证输入 repo / suite 本身在 runner 侧可解析；不要把 autoresearch 的 materialization 语义误当成所有入口的默认行为。
 
 ### 2. `mutable_paths` / `target_paths` 要写 canonical path，不要写 deploy target alias
 
@@ -462,12 +471,20 @@ run 根目录固定在：
 - `mutation.json`
 - `worker-contract.json`
 - `agent-report.md`
+- `materialized-suites/`
 - `train/`
 - `validation/`
 - `scoreboard.json`
 - `decision.json`
 - `feedback-distill.json`
 - `replay/scoreboard.json`（仅当 round 先命中 provisional `keep` 且触发 replay 时生成）
+
+如果当前 round 触发 replay，`replay/` 下还会包含：
+
+- `materialized-suites/`
+- `train/`
+- `validation/`
+- `scoreboard.json`
 
 `train/` 和 `validation/` 下还会继续落 runner artifact：
 

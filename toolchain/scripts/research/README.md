@@ -7,7 +7,7 @@
 - `run_skill_suite.py`：统一 runner，支持 direct run 和 suite run
 - `run_claude_skill_eval.py`：Claude 兼容壳，参数翻译后委托 `run_skill_suite.py`
 - `run_backend_acceptance_matrix.py`：live acceptance 入口，固定跑 `codex -> codex` 与 `claude -> codex` 两条矩阵
-- `run_autoresearch.py`：autoresearch P0.1/P0.2/P0.3/P1.1/P1.2/P1.3 入口，负责 baseline 数据面、worktree 控制壳、registry materialization、worker contract、feedback distillation 与 round 外环
+- `run_autoresearch.py`：autoresearch P0.1/P0.2/P0.3/P1.1/P1.2/P1.3 入口，负责 baseline 数据面、suite materialization、worktree 控制壳、registry materialization、worker contract、feedback distillation 与 round 外环
 - `refresh_manual_run_contract.py`：给手动单轮 contract 刷新一个 fresh `run_id`；使用单调 `serial` 加 `mod 100003` residue，避免复用旧 run 状态
 - `autoresearch_contract.py`：P0.1 contract 读取、schema 校验、suite/path 边界校验
 - `autoresearch_scoreboard.py`：P0.1 baseline scoreboard 聚合与校验
@@ -17,6 +17,7 @@
 - `autoresearch_selector.py`：P1.2/P1.3 selector，保留 deterministic 基线，并在有 distilled ledger 时按 family signal 做 feedback-aware priority
 - `autoresearch_feedback_distill.py`：P1.3 deterministic feedback distillation、ledger upsert 与 family signal helper
 - `worktree_manager.py`：P0.2 的 git worktree 生命周期管理器
+- `exrepo_runtime.py`：TMP exrepo 根目录解析与 suite 物化 helper；只重写运行时输入，不负责 clone / fetch / reset
 - `backends/`：backend registry、抽象 contract、以及 `claude / codex / opencode` 适配层
 - `common.py`：repo/task/suite/eval schema/artifact 的共享解析与写盘逻辑
 - `tasks/`：skill research prompt 模板
@@ -47,7 +48,7 @@
 `run_autoresearch.py` 当前覆盖 P0 到 P1.3 的最小边界：
 
 - `init`：读取并校验 contract，初始化 `.autoworkflow/autoresearch/<run-id>/contract.json` 与 `history.tsv`
-- `baseline`：按 contract 分开执行 train/validation suite，写 `scoreboard.json`、记录 baseline 历史行，并把 `runtime.json` 的 `champion_sha` 同步到这次 baseline 实际评测的 HEAD
+- `baseline`：按 contract 分开执行 train/validation suite；保留原始 suite preflight，再把 suite 物化到 run-local artifact 后执行，写 `scoreboard.json`、记录 baseline 历史行，并把 `runtime.json` 的 `champion_sha` 同步到这次 baseline 实际评测的 HEAD
 - baseline 只跑 train/validation；acceptance suite 仅作为 contract fixture 引用，不在 P0.1 默认 baseline 中执行
 - `prepare-round`：在不切换当前工作树的前提下创建 `candidate/<run-id>/rNNN` 和独立 worktree，并写 `runtime.json`、`round.json`、`worktree.json`
 - `prepare-round` 默认会从 run-local `mutation-registry.json` 自动选择下一条可用 entry；当前 selector 输入包含 registry、runtime、比较基线 scoreboard，以及可选的 `feedback-ledger.jsonl`，在没有 ledger 时保持 P1.2 的 deterministic 规则，有 ledger 时则按 family signal 做 feedback-aware priority，并对 validation / parse-error / timeout 回退信号施加 guardrail，再 materialize 本轮 `mutation.json` 并回写 `attempts / last_selected_round`
@@ -58,8 +59,8 @@
   - 连续 `3` 轮已完成 round 都没有产生新的 validation champion，则停止创建新 round
   - 所有 `active` mutation family 都至少尝试过 `1` 次，且当前 run 没有任何最终 `keep`，则停止创建新 round
 - 命中 stop gate 或 `max_rounds` 时，`prepare-round` 现在会以正常完成退出并输出 `prepare_round_status: stopped`、`stop_kind`、`stop_reason`；只有真实异常才返回失败
-- `run-round`：要求 `agent-report.md` 已写入 round 目录；脚本会重新读取并校验 round 目录里的 `mutation.json`，然后校验 candidate 改动只能触达 `target_paths` 的同级或更窄子路径、且动作类型符合 `allowed_actions`，再提交 candidate 改动、从 candidate worktree 运行 train / validation suites，并写 round 级 `scoreboard.json`
-- `decide-round`：读取“当前比较基线 scoreboard”和本轮 scoreboard，按固定规则先计算 provisional `keep / discard`，必要时在当前 round 下执行 replay，再写 `decision.json`，产出 round 级 `feedback-distill.json` 和 run 级 `feedback-ledger.jsonl`，然后调用 promote 或 discard；fixed rule 同时约束 score、parse_error、timeout 与 hard-fail/pass_rate 非回退
+- `run-round`：要求 `agent-report.md` 已写入 round 目录；脚本会重新读取并校验 round 目录里的 `mutation.json`，然后校验 candidate 改动只能触达 `target_paths` 的同级或更窄子路径、且动作类型符合 `allowed_actions`，再提交 candidate 改动、先选择 candidate source suite、再物化到 round-local artifact，随后从 candidate worktree 运行 train / validation suites，并写 round 级 `scoreboard.json`
+- `decide-round`：读取“当前比较基线 scoreboard”和本轮 scoreboard，按固定规则先计算 provisional `keep / discard`，必要时在当前 round 下执行 replay；replay 复用与 `run-round` 相同的 suite materialization 语义，再写 `decision.json`，产出 round 级 `feedback-distill.json` 和 run 级 `feedback-ledger.jsonl`，然后调用 promote 或 discard；fixed rule 同时约束 score、parse_error、timeout 与 hard-fail/pass_rate 非回退
 - `promote-round`：只允许 fast-forward 语义，把 `champion/<run-id>` 前进到 active candidate commit，然后清理 candidate branch/worktree
 - `discard-round`：直接删除 active candidate branch/worktree，不走 `git revert`
 - `cleanup-round`：按 `.autoworkflow/autoresearch/<run-id>/runtime.json` 回收中断残留的 active candidate
@@ -120,8 +121,11 @@ python3 toolchain/scripts/research/run_autoresearch.py \
 - `baseline`
   - 只运行 `train_suites` 和 `validation_suites`
   - 不运行 `acceptance_suites`
+  - 会先对原始 contract suite 做 preflight，再把 `train` / `validation` suite 物化到 run-local artifact
   - 会把 `runtime.json.champion_sha` 同步到本次 baseline 的 `baseline_sha`
   - 产物会写到：
+    - `.autoworkflow/autoresearch/<run-id>/baseline/materialized-suites/train/`
+    - `.autoworkflow/autoresearch/<run-id>/baseline/materialized-suites/validation/`
     - `.autoworkflow/autoresearch/<run-id>/baseline/train/`
     - `.autoworkflow/autoresearch/<run-id>/baseline/validation/`
   - 聚合后写：
@@ -345,7 +349,7 @@ P0.3 的脚本侧约束当前固定为：
 对于 P2 单 Prompt Codex profile，`decide-round` 还带有一个固定 replay 子步骤：
 
 - 只有当本轮 provisional `keep` 且 validation 严格高于当前 champion validation 时，才会触发 replay
-- replay 复用当前 round 已固定的 candidate commit 和同一套 train / validation suites
+- replay 复用当前 round 已固定的 candidate commit 和同一套 train / validation suite materialization 逻辑
 - replay 执行前会再次执行 P2 preflight
 - replay 目录如果已存在旧产物，会先清空，再重跑 train / validation
 - 若 replay validation 低于本轮 round validation，则最终决策会从 provisional `keep` 改写为 `discard`
@@ -413,6 +417,15 @@ runs:
 ```
 
 `--suite` 模式下，`--backend`、`--judge-backend`、`--task`、`--with-eval`、`--prompt-file`、`--eval-prompt-file` 都不再接受命令行覆盖。
+
+当前还提供一组独立 helper，用于把原始 suite 物化成新的 materialized suite：
+
+- `resolve_tmp_exrepos_root(repo_root=...)`：基于显式传入的仓库锚点返回稳定的 `/tmp` exrepo 运行时根目录
+- `resolve_materialized_suite_path()`：为物化后的 suite 生成确定性输出路径
+- `materialize_suite()`：要求显式传入 `exrepo_root` 或 `repo_root`；把 suite 中的 bare repo name 重写为 TMP exrepo 绝对路径，并把 `prompt_file` / `eval_prompt_file` 改写为基于源 suite 目录解析后的绝对路径
+- helper 不会原地修改源 suite，也不会把 `/tmp` 路径写进 authority 状态
+- `run_autoresearch.py baseline` 与 `autoresearch_round.py` 的 `run-round / replay` 已复用这组 helper；materialized suite 会落到 run-local artifact，而不是 authority 状态
+- `run_skill_suite.py` 的 direct `--repo` / `--suite` 模式本身没有被改成自动 materialize；如果绕过 autoresearch 主链，仍需保证输入 suite 在 runner 侧可解析
 
 ## Examples
 
