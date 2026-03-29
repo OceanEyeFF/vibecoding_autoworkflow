@@ -1,13 +1,15 @@
 ---
 title: "Autoresearch P2：Batch 3 前序任务规划"
-status: active
-updated: 2026-03-28
+status: superseded
+updated: 2026-03-29
 owner: aw-kernel
-last_verified: 2026-03-28
+last_verified: 2026-03-29
 ---
 # Autoresearch P2：Batch 3 前序任务规划
 
 > 说明：本文是 `autoresearch-p2-lightweight-single-prompt-codex-task-plan.md` 的补充执行文档，只覆盖 Batch 3 正式开始前必须先完成的 3 个小任务。目标不是扩展设计，而是降低 smoke 与回归实现时的假阳性和夹具返工。
+
+> 当前状态：本文仅保留为 Batch 3 开工前的历史规划；当前已验证的运行边界优先以 [docs/operations/autoresearch-minimal-loop.md](../operations/autoresearch-minimal-loop.md) 和 [autoresearch-p2-exrepo-input-hygiene-task-plan.md](./autoresearch-p2-exrepo-input-hygiene-task-plan.md) 为准。
 
 ## 一、规划目标
 

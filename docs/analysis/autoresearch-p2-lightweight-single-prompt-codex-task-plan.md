@@ -1,13 +1,15 @@
 ---
 title: "Autoresearch P2：单 Prompt、Codex-only 轻量迭代任务规划"
-status: active
-updated: 2026-03-28
+status: superseded
+updated: 2026-03-29
 owner: aw-kernel
-last_verified: 2026-03-28
+last_verified: 2026-03-29
 ---
 # Autoresearch P2：单 Prompt、Codex-only 轻量迭代任务规划
 
 > 说明：本文基于 `autoresearch-p2-lightweight-single-prompt-codex-loop.md`，把轻量方案拆成可直接交付执行 Agent 的任务单元。它属于 `analysis` 规划文档，不替代 `toolchain/` 当前实现入口，也不替代 `docs/operations/` 的已验证 runbook。
+
+> 当前状态：本文保留为 P2 原始任务拆解记录；当前持续施工优先以 [autoresearch-p2-exrepo-input-hygiene-task-plan.md](./autoresearch-p2-exrepo-input-hygiene-task-plan.md) 和 [docs/operations/autoresearch-minimal-loop.md](../operations/autoresearch-minimal-loop.md) 为准。
 
 ## 一、规划目标
 

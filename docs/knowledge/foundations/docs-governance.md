@@ -1,9 +1,9 @@
 ---
 title: "Docs 文档治理基线"
 status: active
-updated: 2026-03-26
+updated: 2026-03-29
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-03-29
 ---
 # Docs 文档治理基线
 
@@ -69,7 +69,30 @@ last_verified: 2026-03-26
   - `last_verified`
 - 必须有清晰单一作用域，不与同层其他文档重复争夺同一结论
 
-## 四、层级语义
+## 四、状态语义
+
+正文文档的 `status` 至少按下面语义使用：
+
+- `active`
+  - 当前有效，允许出现在默认入口或当前执行清单中。
+- `draft`
+  - 仍在整理或待验证，可以被引用，但不应冒充已验证主线。
+- `superseded`
+  - 已被更新文档、已完成任务或更窄规划替代；允许保留作 lineage，但必须移出默认当前入口。
+- `reference`
+  - 只用于 `docs/reference/`，表示外部参考，不参与主线断言。
+- `incubating`
+  - 只用于 `docs/ideas/incubating/`，表示仍在孵化的想法。
+- `archived`
+  - 用于 `docs/archive/` 与 `docs/ideas/archived/`，表示退役资料。
+
+对执行规划类文档额外要求：
+
+- task-plan 或 batch-plan 一旦完成、被替换或不再驱动当前施工，必须改成 `status: superseded`
+- `superseded` 规划文档必须保留去向说明，指出当前承接文档或仅说明“保留为 lineage”
+- `docs/analysis/README.md` 只默认暴露当前仍有效的研究和执行规划，不把 `superseded` 文档混进“当前状态”
+
+## 五、层级语义
 
 ### 1. `docs/knowledge/`
 
@@ -106,7 +129,7 @@ last_verified: 2026-03-26
 - 已退役资料
 - 默认不作为当前任务的执行入口
 
-## 五、研究固定与主线升格
+## 六、研究固定与主线升格
 
 `analysis/` 允许写“阶段性固定”，但必须区分它固定的到底是什么层级。
 
@@ -154,7 +177,7 @@ last_verified: 2026-03-26
 
 这三份文档当前属于“研究轨道的阶段合同”，不是自动覆盖全仓库主线的正式规则。
 
-## 六、新增或修改文档时的最小动作
+## 七、新增或修改文档时的最小动作
 
 每次往 `docs/` 新增或显著修改文档，至少完成下面动作：
 
@@ -164,8 +187,9 @@ last_verified: 2026-03-26
 4. 如果它属于主线知识目录，优先接到 `docs/knowledge/README.md` 或对应子目录 `README.md`。
 5. 如果新文档接管了旧作用域，补回链或退役旧文档，避免双份主线。
 6. 如果结论已经准入主线，不要只改 `analysis/`，要同步改承接层。
+7. 如果执行规划已经完成或被替换，把旧规划改成 `status: superseded`，并从默认当前入口移走。
 
-## 七、当前最小自动检查
+## 八、当前最小自动检查
 
 当前轻量治理检查至少覆盖：
 
@@ -174,14 +198,14 @@ last_verified: 2026-03-26
 - `knowledge` 主线入口存在且能继续回链到主要子入口
 - `path-governance` 与 `docs-governance` 的关键回链存在
 - 正文文档 frontmatter 齐全
-- `status` 与目录语义一致
-- `analysis/README.md` 能枚举当前 active 研究说明
+- `status` 与目录语义和生命周期规则一致
+- `analysis/README.md` 能枚举当前研究文档，并继续保留对历史执行规划的可达链接
 
 当前运行入口见：
 
 - [路径与文档治理检查运行说明](../../operations/path-governance-checks.md)
 
-## 八、相关文档
+## 九、相关文档
 
 - [Docs 模块入口](../../README.md)
 - [路径治理与 AI 告知](./path-governance-ai-routing.md)

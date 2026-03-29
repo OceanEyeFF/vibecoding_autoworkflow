@@ -1,9 +1,9 @@
 ---
 title: "路径与文档治理检查运行说明"
 status: active
-updated: 2026-03-26
+updated: 2026-03-29
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-03-29
 ---
 # 路径与文档治理检查运行说明
 
@@ -19,8 +19,8 @@ last_verified: 2026-03-26
 - `docs/knowledge/` 主线入口是否仍然完整
 - `.gitignore` 是否仍继续忽略关键 hidden layers
 - `docs/` 下正文文档的 frontmatter 是否齐全
-- `status` 是否仍和目录语义一致
-- `docs/analysis/README.md` 是否仍枚举当前研究说明
+- `status` 是否仍和目录语义、生命周期语义一致
+- `docs/analysis/README.md` 是否仍枚举当前研究文档，并保留对历史执行规划的入口
 
 它不替代人工审阅，也不检查所有 anchor 片段。
 
@@ -37,8 +37,8 @@ python3 toolchain/scripts/test/path_governance_check.py
 3. `docs/knowledge/foundations/path-governance-ai-routing.md` 与 `docs/knowledge/foundations/docs-governance.md` 是否仍被关键入口页显式引用
 4. `docs/knowledge/README.md` 与关键子入口是否仍存在，并继续链接 Foundations、Memory Side 与 Task Interface 主线
 5. `docs/` 下除 `README.md` 以外的正文文档是否仍保留最小 frontmatter
-6. `docs/reference/`、`docs/archive/` 与 `docs/ideas/*/` 的 `status` 是否仍匹配目录语义
-7. `docs/analysis/README.md` 是否仍回链当前分析文档
+6. `docs/reference/`、`docs/archive/`、`docs/ideas/*/` 以及 `docs/knowledge/`、`docs/operations/`、`docs/analysis/` 的 `status` 是否仍匹配目录与生命周期语义
+7. `docs/analysis/README.md` 是否仍回链当前分析文档，包括 `superseded` 的历史执行规划
 8. `.gitignore` 是否仍忽略：
    - `.agents/`
    - `.claude/`

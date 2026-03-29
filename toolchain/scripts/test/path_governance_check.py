@@ -161,9 +161,9 @@ STATUS_RULES = [
     ("docs/ideas/active/", {"active"}),
     ("docs/ideas/incubating/", {"incubating"}),
     ("docs/ideas/archived/", {"archived"}),
-    ("docs/knowledge/", {"active", "draft"}),
-    ("docs/operations/", {"active", "draft"}),
-    ("docs/analysis/", {"active", "draft"}),
+    ("docs/knowledge/", {"active", "draft", "superseded"}),
+    ("docs/operations/", {"active", "draft", "superseded"}),
+    ("docs/analysis/", {"active", "draft", "superseded"}),
 ]
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
