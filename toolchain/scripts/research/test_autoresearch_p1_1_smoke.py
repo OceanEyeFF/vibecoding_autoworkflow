@@ -86,6 +86,18 @@ def write_summary(save_dir: Path, label: str, score: float) -> None:
     (run_dir / "run-summary.json").write_text(json.dumps(payload) + "\n", encoding="utf-8")
 
 
+def write_minimal_suite(path: Path) -> None:
+    path.write_text(
+        "version: 1\n"
+        "defaults:\n"
+        "  backend: claude\n"
+        "runs:\n"
+        "  - repo: typer\n"
+        "    task: context-routing\n",
+        encoding="utf-8",
+    )
+
+
 def make_registry_entry(*, mutation_key: str, status: str = "active", attempts: int = 0) -> dict[str, object]:
     return {
         "mutation_key": mutation_key,
@@ -140,9 +152,9 @@ class AutoresearchP11SmokeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_git_repo(root)
-            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            write_minimal_suite(root / "train.yaml")
+            write_minimal_suite(root / "validation.yaml")
+            write_minimal_suite(root / "acceptance.yaml")
             contract_path = root / "contract.json"
             contract_path.write_text(
                 json.dumps(build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")),
@@ -159,10 +171,11 @@ class AutoresearchP11SmokeTest(unittest.TestCase):
                 _self: AutoresearchRoundManager,
                 *,
                 candidate_worktree: Path,
+                contract,
                 suite_files: list[Path],
                 save_dir: Path,
             ) -> list[dict[str, object]]:
-                del candidate_worktree, suite_files
+                del candidate_worktree, contract, suite_files
                 if save_dir.name == "train":
                     return [{"suite_file": "train.yaml", "results": [build_eval_result(10.0)]}]
                 return [{"suite_file": "validation.yaml", "results": [build_eval_result(8.0)]}]
@@ -218,9 +231,9 @@ class AutoresearchP11SmokeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_git_repo(root)
-            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            write_minimal_suite(root / "train.yaml")
+            write_minimal_suite(root / "validation.yaml")
+            write_minimal_suite(root / "acceptance.yaml")
             contract_path = root / "contract.json"
             contract_path.write_text(
                 json.dumps(build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")),
@@ -275,9 +288,9 @@ class AutoresearchP11SmokeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_git_repo(root)
-            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            write_minimal_suite(root / "train.yaml")
+            write_minimal_suite(root / "validation.yaml")
+            write_minimal_suite(root / "acceptance.yaml")
             contract_path = root / "contract.json"
             contract_path.write_text(
                 json.dumps(build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")),
@@ -290,11 +303,11 @@ class AutoresearchP11SmokeTest(unittest.TestCase):
                 write_summary(save_dir, label, 9.0 if label == "train" else 8.0)
                 return 0
 
-            stderr = io.StringIO()
+            stdout = io.StringIO()
             with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
                 run_autoresearch, "REPO_ROOT", root
             ), mock.patch.object(run_autoresearch, "run_skill_suite_main", side_effect=fake_baseline_runner), mock.patch(
-                "sys.stderr", stderr
+                "sys.stdout", stdout
             ):
                 run_autoresearch.main(["init", "--contract", str(contract_path)])
                 run_autoresearch.main(["baseline", "--contract", str(contract_path)])
@@ -315,16 +328,18 @@ class AutoresearchP11SmokeTest(unittest.TestCase):
                 )
                 prepare_code = run_autoresearch.main(["prepare-round", "--contract", str(contract_path)])
 
-            self.assertEqual(prepare_code, 1)
-            self.assertIn("No selectable mutation entries", stderr.getvalue())
+            self.assertEqual(prepare_code, 0)
+            stdout_value = stdout.getvalue()
+            self.assertIn("prepare_round_status: stopped", stdout_value)
+            self.assertIn("stop_kind: mutation_families_exhausted_without_keep", stdout_value)
 
     def test_run_round_rejects_tampered_worker_contract_in_smoke(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_git_repo(root)
-            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            write_minimal_suite(root / "train.yaml")
+            write_minimal_suite(root / "validation.yaml")
+            write_minimal_suite(root / "acceptance.yaml")
             contract_path = root / "contract.json"
             contract_path.write_text(
                 json.dumps(build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")),
