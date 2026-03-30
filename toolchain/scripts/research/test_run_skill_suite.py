@@ -147,7 +147,12 @@ class RunSkillSuiteTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             suite_dir = root / "json-suite"
-            suite_dir.mkdir(parents=True, exist_ok=True)
+            prompt_dir = suite_dir / "prompts"
+            prompt_dir.mkdir(parents=True, exist_ok=True)
+            prompt_path = prompt_dir / "task.md"
+            eval_prompt_path = prompt_dir / "eval.md"
+            prompt_path.write_text("prompt\n", encoding="utf-8")
+            eval_prompt_path.write_text("eval\n", encoding="utf-8")
             source_suite = suite_dir / "validation.json"
             source_suite.write_text(
                 json.dumps(
@@ -156,12 +161,14 @@ class RunSkillSuiteTest(unittest.TestCase):
                         "defaults": {
                             "backend": "codex",
                             "judge_backend": "codex",
-                            "with_eval": False,
+                            "with_eval": True,
                         },
                         "runs": [
                             {
                                 "repo": ".",
                                 "task": "context-routing",
+                                "prompt_file": "prompts/task.md",
+                                "eval_prompt_file": "prompts/eval.md",
                             }
                         ],
                     },
@@ -178,6 +185,8 @@ class RunSkillSuiteTest(unittest.TestCase):
 
             self.assertEqual(len(specs), 1)
             self.assertEqual(specs[0].repo_path, suite_dir.resolve(strict=False))
+            self.assertEqual(specs[0].prompt_file, prompt_path.resolve(strict=False))
+            self.assertEqual(specs[0].eval_prompt_file, eval_prompt_path.resolve(strict=False))
 
     @staticmethod
     def _make_spec(task: str) -> RunSpec:

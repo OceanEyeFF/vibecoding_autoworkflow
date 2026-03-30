@@ -14,12 +14,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_autoresearch
 from autoresearch_contract import history_header, load_contract
 from autoresearch_mutation_registry import compute_contract_fingerprint, load_mutation_registry
-from exrepo_runtime import resolve_materialized_suite_path
+from exrepo_runtime import resolve_materialized_suite_path, resolve_tmp_exrepos_root
 from exrepo_routing_entry import (
     ROUTING_ENTRY_FALLBACK_MARKER,
     STATUS_USABLE,
     classify_context_routing_repo_skill,
 )
+from run_skill_suite import load_suite_manifest
 
 
 def build_contract_payload(
@@ -428,6 +429,88 @@ class RunAutoresearchTest(unittest.TestCase):
                 ).stdout.strip(),
                 head_sha,
             )
+
+    def test_baseline_runner_consumes_materialized_suite_with_rewritten_repo_and_prompt_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            prompt_dir = root / "prompts"
+            prompt_dir.mkdir(parents=True, exist_ok=True)
+            prompt_path = prompt_dir / "task.md"
+            eval_prompt_path = prompt_dir / "eval.md"
+            prompt_path.write_text("prompt\n", encoding="utf-8")
+            eval_prompt_path.write_text("eval\n", encoding="utf-8")
+
+            suite_text = (
+                "version: 1\n"
+                "defaults:\n"
+                "  backend: codex\n"
+                "  judge_backend: codex\n"
+                "  with_eval: true\n"
+                "runs:\n"
+                "  - repo: typer\n"
+                "    task: context-routing\n"
+                "    prompt_file: prompts/task.md\n"
+                "    eval_prompt_file: prompts/eval.md\n"
+            )
+            for lane in ("train", "validation", "acceptance"):
+                (root / f"{lane}.yaml").write_text(suite_text, encoding="utf-8")
+
+            contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+
+            materialized_manifests: dict[str, dict[str, object]] = {}
+            preflight_calls: list[tuple[list[Path], Path]] = []
+            os_tmp_root = root / "os-tmp"
+
+            def fake_runner(argv: list[str]) -> int:
+                suite_path = Path(argv[argv.index("--suite") + 1]).resolve(strict=False)
+                save_dir = Path(argv[argv.index("--save-dir") + 1])
+                lane = save_dir.name
+                materialized_manifests[lane] = load_suite_manifest(suite_path)
+                write_summary(save_dir, lane, 9 if lane == "train" else 8)
+                return 0
+
+            def fake_preflight(
+                _contract: object,
+                *,
+                suite_files: list[Path],
+                run_dir: Path,
+            ) -> None:
+                preflight_calls.append((list(suite_files), run_dir))
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ), mock.patch("exrepo_runtime.TMP_EXREPO_OS_ROOT", os_tmp_root), mock.patch.object(
+                run_autoresearch, "run_skill_suite_main", side_effect=fake_runner
+            ), mock.patch.object(
+                run_autoresearch,
+                "_run_context_routing_exrepo_preflight",
+                side_effect=fake_preflight,
+            ):
+                exit_code = run_autoresearch.main(["baseline", "--contract", str(contract_path)])
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(sorted(materialized_manifests), ["train", "validation"])
+            expected_exrepo_root = resolve_tmp_exrepos_root(repo_root=root, temp_root=os_tmp_root)
+            for lane in ("train", "validation"):
+                run_entry = materialized_manifests[lane]["runs"][0]
+                self.assertEqual(run_entry["repo"], str((expected_exrepo_root / "typer").resolve(strict=False)))
+                self.assertEqual(run_entry["prompt_file"], str(prompt_path.resolve(strict=False)))
+                self.assertEqual(run_entry["eval_prompt_file"], str(eval_prompt_path.resolve(strict=False)))
+
+            self.assertEqual(len(preflight_calls), 1)
+            preflight_suite_files, _ = preflight_calls[0]
+            self.assertEqual(
+                [path.resolve(strict=False) for path in preflight_suite_files],
+                [
+                    (root / "train.yaml").resolve(strict=False),
+                    (root / "validation.yaml").resolve(strict=False),
+                ],
+            )
+            self.assertIn("repo: typer", (root / "train.yaml").read_text(encoding="utf-8"))
+            self.assertIn("prompt_file: prompts/task.md", (root / "train.yaml").read_text(encoding="utf-8"))
 
     def test_baseline_rejects_invalid_exrepo_routing_entry_without_fallback_marker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

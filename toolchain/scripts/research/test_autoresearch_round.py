@@ -478,21 +478,30 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_run_lane_suites_materializes_round_and_replay_lanes_without_candidate_exrepos(self) -> None:
         source_suite = self.repo_root / "train.yaml"
+        prompt_dir = self.repo_root / "prompts"
+        prompt_dir.mkdir(parents=True, exist_ok=True)
+        prompt_path = prompt_dir / "task.md"
+        eval_prompt_path = prompt_dir / "eval.md"
+        prompt_path.write_text("prompt\n", encoding="utf-8")
+        eval_prompt_path.write_text("eval\n", encoding="utf-8")
         source_suite.write_text(
             "version: 1\n"
             "defaults:\n"
             "  backend: codex\n"
             "  judge_backend: codex\n"
-            "  with_eval: false\n"
+            "  with_eval: true\n"
             "runs:\n"
             "  - repo: typer\n"
-            "    task: context-routing\n",
+            "    task: context-routing\n"
+            "    prompt_file: prompts/task.md\n"
+            "    eval_prompt_file: prompts/eval.md\n",
             encoding="utf-8",
         )
         self.assertFalse((self.repo_root / ".exrepos").exists())
         round_save_dir = self.worktree_manager.round_dir(self.contract.run_id, 1) / "train"
         replay_save_dir = self.round_manager.replay_dir(self.contract.run_id, 1) / "train"
         invoked_suite_paths: list[Path] = []
+        os_tmp_root = self.root / "os-tmp"
 
         def fake_subprocess_run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
             suite_path = Path(cmd[cmd.index("--suite") + 1]).resolve(strict=False)
@@ -516,7 +525,10 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             )
             return subprocess.CompletedProcess(cmd, 0, "", "")
 
-        with mock.patch("autoresearch_round.subprocess.run", side_effect=fake_subprocess_run):
+        with mock.patch("autoresearch_round.subprocess.run", side_effect=fake_subprocess_run), mock.patch(
+            "exrepo_runtime.TMP_EXREPO_OS_ROOT",
+            os_tmp_root,
+        ):
             round_summaries = self.round_manager._run_lane_suites(
                 candidate_worktree=self.repo_root,
                 contract=self.contract,
@@ -546,9 +558,17 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         )
         self.assertTrue(expected_round_suite.is_file())
         self.assertTrue(expected_replay_suite.is_file())
-        expected_repo = str((resolve_tmp_exrepos_root(repo_root=self.repo_root) / "typer").resolve(strict=False))
-        self.assertEqual(load_suite_manifest(expected_round_suite)["runs"][0]["repo"], expected_repo)
-        self.assertEqual(load_suite_manifest(expected_replay_suite)["runs"][0]["repo"], expected_repo)
+        expected_repo = str(
+            (resolve_tmp_exrepos_root(repo_root=self.repo_root, temp_root=os_tmp_root) / "typer").resolve(strict=False)
+        )
+        round_run_entry = load_suite_manifest(expected_round_suite)["runs"][0]
+        replay_run_entry = load_suite_manifest(expected_replay_suite)["runs"][0]
+        self.assertEqual(round_run_entry["repo"], expected_repo)
+        self.assertEqual(replay_run_entry["repo"], expected_repo)
+        self.assertEqual(round_run_entry["prompt_file"], str(prompt_path.resolve(strict=False)))
+        self.assertEqual(replay_run_entry["prompt_file"], str(prompt_path.resolve(strict=False)))
+        self.assertEqual(round_run_entry["eval_prompt_file"], str(eval_prompt_path.resolve(strict=False)))
+        self.assertEqual(replay_run_entry["eval_prompt_file"], str(eval_prompt_path.resolve(strict=False)))
 
     def test_run_lane_suites_materializes_candidate_resolved_suite(self) -> None:
         source_suite = self.repo_root / "train.yaml"
@@ -1166,6 +1186,53 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         self.assertEqual(result["decision"]["decision"], "discard")
         self.assertEqual(result["decision"]["replay"]["status"], "failed")
         self.assertEqual(result["decision"]["replay"]["reason"], "replay_validation_regression")
+        self.assertEqual(self._git_output("rev-parse", champion_branch_name(self.contract.run_id)), original_champion_sha)
+        self.assertEqual(baseline_scoreboard["baseline_sha"], original_champion_sha)
+        self.assertEqual(feedback_distill["decision"], "discard")
+
+    def test_decide_round_replay_execution_failure_discards_candidate_without_promotion(self) -> None:
+        candidate_worktree, _ = self._prepare_active_round()
+        original_champion_sha = self._git_output("rev-parse", champion_branch_name(self.contract.run_id))
+        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+            "candidate replay execution failure\n",
+            encoding="utf-8",
+        )
+        capture = self.worktree_manager.capture_candidate_commit(
+            self.contract.run_id,
+            message="candidate replay execution failure",
+        )
+        round_payload = capture["round"]
+        round_payload["state"] = "evaluated"
+        (self.worktree_manager.round_path(self.contract.run_id, 1)).write_text(
+            json.dumps(round_payload, ensure_ascii=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        write_scoreboard(self.round_manager.round_scoreboard_path(self.contract.run_id, 1), build_scoreboard(10.0, 9.0))
+
+        def fake_replay_runner(
+            *,
+            candidate_worktree: Path,
+            contract,
+            suite_files: list[Path],
+            save_dir: Path,
+        ) -> list[dict[str, object]]:
+            del candidate_worktree, contract, suite_files
+            self.assertIn("/replay/", save_dir.as_posix())
+            if save_dir.name == "train":
+                return [{"suite_file": "train.yaml", "results": [self._eval_result(10.5)]}]
+            raise RuntimeError("synthetic replay boom")
+
+        self.round_manager._run_lane_suites = fake_replay_runner  # type: ignore[method-assign]
+
+        result = self.round_manager.decide_round(self.contract)
+
+        baseline_scoreboard = read_json(self.run_dir / "scoreboard.json")
+        feedback_distill = read_json(self.round_manager.feedback_distill_path(self.contract.run_id, 1))
+        self.assertEqual(result["decision"]["provisional_decision"], "keep")
+        self.assertEqual(result["decision"]["decision"], "discard")
+        self.assertEqual(result["decision"]["replay"]["status"], "failed")
+        self.assertEqual(result["decision"]["replay"]["reason"], "replay_execution_failed")
+        self.assertIn("synthetic replay boom", result["decision"]["replay"]["error"])
         self.assertEqual(self._git_output("rev-parse", champion_branch_name(self.contract.run_id)), original_champion_sha)
         self.assertEqual(baseline_scoreboard["baseline_sha"], original_champion_sha)
         self.assertEqual(feedback_distill["decision"], "discard")

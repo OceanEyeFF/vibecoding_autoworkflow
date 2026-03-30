@@ -79,44 +79,46 @@ class ExrepoRuntimeTest(unittest.TestCase):
             self.assertEqual(run_entry["prompt_file"], str(prompt_path.resolve(strict=False)))
             self.assertEqual(run_entry["eval_prompt_file"], str(eval_prompt_path.resolve(strict=False)))
 
-    def test_materialize_json_suite_rewrites_path_like_repo_to_absolute_path(self) -> None:
+    def test_materialize_json_suite_rewrites_path_like_repo_and_relative_prompt_paths(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             suite_dir = root / "json-suite"
-            suite_dir.mkdir(parents=True, exist_ok=True)
-            prompt_path = root / "prompt.md"
+            prompt_dir = suite_dir / "prompts"
+            prompt_dir.mkdir(parents=True, exist_ok=True)
+            prompt_path = prompt_dir / "task.md"
+            eval_prompt_path = prompt_dir / "eval.md"
             prompt_path.write_text("prompt\n", encoding="utf-8")
+            eval_prompt_path.write_text("eval\n", encoding="utf-8")
             source_suite = suite_dir / "validation.json"
-            source_suite.write_text(
-                json.dumps(
+            source_payload = {
+                "version": 1,
+                "defaults": {
+                    "backend": "codex",
+                    "judge_backend": "codex",
+                    "with_eval": True,
+                },
+                "runs": [
                     {
-                        "version": 1,
-                        "defaults": {
-                            "backend": "codex",
-                            "judge_backend": "codex",
-                            "with_eval": False,
-                        },
-                        "runs": [
-                            {
-                                "repo": ".",
-                                "task": "context-routing",
-                                "prompt_file": str(prompt_path),
-                            }
-                        ],
-                    },
-                    ensure_ascii=True,
-                    indent=2,
-                )
-                + "\n",
+                        "repo": ".",
+                        "task": "context-routing",
+                        "prompt_file": "prompts/task.md",
+                        "eval_prompt_file": "prompts/eval.md",
+                    }
+                ],
+            }
+            source_suite.write_text(
+                json.dumps(source_payload, ensure_ascii=True, indent=2) + "\n",
                 encoding="utf-8",
             )
 
             materialized = materialize_suite(source_suite, root / "artifacts", exrepo_root=root / "tmp-exrepos")
 
+            self.assertEqual(json.loads(source_suite.read_text(encoding="utf-8")), source_payload)
             manifest = load_suite_manifest(materialized)
             run_entry = manifest["runs"][0]
             self.assertEqual(run_entry["repo"], str(suite_dir.resolve(strict=False)))
             self.assertEqual(run_entry["prompt_file"], str(prompt_path.resolve(strict=False)))
+            self.assertEqual(run_entry["eval_prompt_file"], str(eval_prompt_path.resolve(strict=False)))
 
     def test_materialize_suite_keeps_absolute_repo_absolute(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
