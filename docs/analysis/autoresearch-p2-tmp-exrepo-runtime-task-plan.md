@@ -70,9 +70,26 @@ last_verified: 2026-03-30
   - `test_run_skill_suite.py` 已覆盖 materialized suite 在 direct runner 侧的绝对路径消费
   - `test_run_autoresearch.py` 已覆盖 baseline 对 materialized suite 的消费与原始 contract suite preflight 锚点
   - `test_autoresearch_round.py` 已覆盖 round / replay lane 的 suite 物化，以及 replay 执行失败后的 discard 语义
+- `T-004` 已完成并入库：
+  - `docs/operations/autoresearch-minimal-loop.md`
+  - `docs/operations/research-cli-help.md`
+  - `toolchain/scripts/research/README.md`
+  - `docs/analysis/README.md`
+  - `docs/analysis/autoresearch-p2-exrepo-input-hygiene-task-plan.md`
+  - 已对齐 `/tmp exrepo + materialized suite` 的当前运行事实，并把旧的 hygiene 规划退役为 lineage
+- Phase 2 当前已有窄前体实现，但不等于任务合同已闭环：
+  - `toolchain/scripts/research/manage_tmp_exrepos.py` 已存在，并可按 `exrepo.txt` 执行 repo-list 驱动的 clone / pull / reset-then-pull
+  - `toolchain/scripts/research/test_manage_tmp_exrepos.py` 已存在，并覆盖 parse、clone、pull、reset-then-pull 与主入口失败返回码
+  - 这些现状只能证明 Phase 2 已有前体，不足以自动判定 `T-101` 或 `T-102` 已按本文任务合同完成
+- `T-103` 已完成并入库，但只承接当前已实现的维护脚本形状：
+  - 已新增 `docs/operations/tmp-exrepo-maintenance.md`
+  - 已更新 `docs/operations/README.md`
+  - 已更新 `docs/operations/research-cli-help.md`
+  - 已更新 `toolchain/scripts/research/README.md`
+  - 当前文档只描述 repo-list 驱动的真实 CLI，不把 `init / reset / prepare` 未来形状写成已完成事实
 - 当前仍待完成：
-  - `T-004` 文档入口与旧规划状态同步
-  - `T-101` TMP exrepo 维护脚本
+  - `T-101` TMP exrepo 维护脚本的 full-contract 收口
+  - `T-102` TMP exrepo 维护脚本的 git 安全与回归测试收口
 
 ### 任务ID：T-001
 任务名称：实现 TMP Exrepo 根目录与 suite 物化 helper
@@ -460,6 +477,23 @@ last_verified: 2026-03-30
 任务名称：实现 TMP Exrepo 维护脚本的 init/reset/prepare CLI
 任务类型（Task Type）：Implement
 
+#### 0. 当前状态（2026-03-30）
+
+- 仓库里已经有 `toolchain/scripts/research/manage_tmp_exrepos.py` 这个窄前体脚本。
+- 当前真实 CLI 形状仍是 repo-list 驱动同步：
+  - `--repo-list`
+  - `--repo-root`
+  - `--temp-root`
+- 当前真实行为是：
+  - 目标 repo 缺失时执行 clone
+  - 目标 repo 已存在时先尝试 `git pull`
+  - `git pull` 失败时执行 `git reset --hard` 后重试 `git pull`
+- 但当前实现还不能按本文合同宣称 `T-101` 已完成，因为下面这些点尚未被代码证明：
+  - `init / reset / prepare` 子命令形状
+  - 按 suite 清单推导 repo 集合
+  - “回到远端默认分支最新 HEAD” 这一更强 reset 语义
+  - 更明确的 `/tmp` 根路径保护 contract
+
 #### 1. 任务目标（Goal）
 
 - 新增一个独立维护脚本，能在 `/tmp` 下初始化 exrepo 根目录、为缺失 repo 做初始 clone，并把已有 repo reset 到远端默认分支的最新 HEAD。
@@ -558,6 +592,22 @@ last_verified: 2026-03-30
 任务名称：为 TMP Exrepo 维护脚本补齐 git 安全与回归测试
 任务类型（Task Type）：Implement
 
+#### 0. 当前状态（2026-03-30）
+
+- 仓库里已经有 `toolchain/scripts/research/test_manage_tmp_exrepos.py`。
+- 当前已被测试覆盖的真实行为包括：
+  - repo list 解析
+  - duplicate local target 拒绝
+  - 缺失 repo clone
+  - 已有 repo pull
+  - pull 失败后的 reset-then-pull
+  - 主入口在 repo sync 失败时返回非零
+- 但当前实现还不能按本文合同宣称 `T-102` 已完成，因为下面这些断言尚未被测试证明：
+  - suite-driven repo 选择
+  - 明确的 `/tmp` 路径保护
+  - `origin` 缺失或默认分支解析失败的 fail-closed 语义
+  - 与 `T-101` full-contract 目标一一对应的安全边界回归
+
 #### 1. 任务目标（Goal）
 
 - 为 `manage_tmp_exrepos.py` 补齐 deterministic 自动测试，覆盖 clone、reset、suite-driven repo 选择和路径保护。
@@ -642,6 +692,16 @@ last_verified: 2026-03-30
 ### 任务ID：T-103
 任务名称：为 TMP Exrepo 维护脚本补齐 runbook 与 CLI 文档
 任务类型（Task Type）：Document
+
+#### 0. 当前状态（2026-03-30）
+
+- 当前仓库已经在下面这些入口里提到 `manage_tmp_exrepos.py`：
+  - `docs/operations/tmp-exrepo-maintenance.md`
+  - `docs/operations/research-cli-help.md`
+  - `toolchain/scripts/research/README.md`
+- `docs/operations/README.md` 也已经把这份 runbook 挂到最近入口。
+- 因此，`T-103` 当前已承接“给现有维护脚本补 runbook 与入口文档”这一文档目标。
+- 但这不反向证明 `T-101` 或 `T-102` 已闭环；如果后续维护脚本 CLI 形状继续变化，`T-103` 仍需跟随同步。
 
 #### 1. 任务目标（Goal）
 

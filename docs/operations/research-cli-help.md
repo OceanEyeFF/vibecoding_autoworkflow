@@ -1,17 +1,17 @@
 ---
 title: "Research CLI 指令"
 status: active
-updated: 2026-03-26
+updated: 2026-03-30
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-03-30
 ---
 # Research CLI 指令
 
-> 目的：给当前仓库的 research runner 提供一份 repo-local 操作说明，并把 `run_skill_suite.py` 与 `run_claude_skill_eval.py` 的当前 CLI 形状、suite 限制、artifact 输出和 backend 状态固定到代码真实行为。
+> 目的：给当前仓库的 research runner 提供一份 repo-local 操作说明，并把 `run_skill_suite.py`、`run_claude_skill_eval.py`、`run_autoresearch.py`、`run_autoresearch_loop.py` 与 TMP exrepo 维护入口的当前 CLI 形状、suite 限制、artifact 输出和 backend 状态固定到代码真实行为。
 
 ## 一、当前入口
 
-当前 active 入口有两个：
+当前 active 入口包括：
 
 ```bash
 python3 toolchain/scripts/research/run_skill_suite.py
@@ -25,11 +25,26 @@ python3 toolchain/scripts/research/run_claude_skill_eval.py
 python3 toolchain/scripts/research/run_backend_acceptance_matrix.py
 ```
 
+```bash
+python3 toolchain/scripts/research/run_autoresearch.py
+```
+
+```bash
+python3 toolchain/scripts/research/run_autoresearch_loop.py
+```
+
+```bash
+python3 toolchain/scripts/research/manage_tmp_exrepos.py
+```
+
 当前定位：
 
 - `run_skill_suite.py`：统一主入口
 - `run_claude_skill_eval.py`：Claude 兼容壳
 - `run_backend_acceptance_matrix.py`：live acceptance 入口
+- `run_autoresearch.py`：autoresearch 的 `init / baseline / prepare-round / run-round / decide-round` 以及相关收尾命令入口
+- `run_autoresearch_loop.py`：连续 loop 包装器，自动重复 `prepare-round -> Codex worker -> run-round -> decide-round`
+- `manage_tmp_exrepos.py`：TMP exrepo 维护入口，只负责 `/tmp` 运行时 clone / pull / reset，不接管 autoresearch 主流程
 
 边界：
 
@@ -37,6 +52,8 @@ python3 toolchain/scripts/research/run_backend_acceptance_matrix.py
 - `run_skill_suite.py` 是唯一主实现
 - `run_claude_skill_eval.py` 只保留兼容用途，不扩成第二套主 CLI
 - `run_backend_acceptance_matrix.py` 也不是第二套 runner，它只是把固定矩阵组织成 suite 后委托统一 runner
+- `run_autoresearch_loop.py` 是 `run_autoresearch.py` 之上的连续 loop 包装器，不改变 round authority 或 decision 规则
+- `manage_tmp_exrepos.py` 是维护脚本，不会自动嵌进 `run_autoresearch.py`
 
 ## 二、统一主入口的当前用法
 
@@ -139,7 +156,7 @@ python3 toolchain/scripts/research/run_backend_acceptance_matrix.py \
 
 说明：
 
-- `--repo` 支持 `.exrepos/<name>` 下的仓库名，也支持显式路径
+- `--repo` 支持显式路径，也支持 bare repo name；bare name 会按共享 repo resolver 解析
 - `--suite` 支持显式路径；如果显式路径不存在，会继续尝试 `toolchain/evals/fixtures/suites/` 下的 `<name>`、`<name>.yaml`、`<name>.yml`、`<name>.json`
 
 ### 2. 直接 repo 模式
@@ -150,6 +167,14 @@ python3 toolchain/scripts/research/run_backend_acceptance_matrix.py \
 - `--task` 可省略，默认 `all`
 - `--judge-backend` 默认等于 `--backend`
 - `--with-eval` 不传时只跑 skill
+
+repo 解析顺序当前固定为：
+
+- 显式路径优先
+- 若不是显式路径，先尝试稳定 TMP exrepo 根下的 `<name>`
+- 再回退到仓库内 `.exrepos/<name>`
+
+这意味着 direct runner 现在也可以直接消费已经准备好的 TMP exrepo bare repo name；但这只是 repo 解析顺序变化，不等于 direct `--suite` 会自动 materialize 输入 manifest。
 
 当前 task 选择只有：
 
@@ -288,6 +313,53 @@ suite 中的 `repo`：
 
 - 先按普通 `resolve_repo()` 规则找
 - 找不到时，再尝试按 suite 文件所在目录的相对路径解析
+
+### 5. TMP exrepo 与 materialized suite 边界
+
+当前需要把两层语义分开：
+
+- direct `run_skill_suite.py --repo <name>` 会复用共享 `resolve_repo()` 解析：
+  - 显式路径
+  - 稳定 TMP exrepo 根
+  - 仓库内 `.exrepos/`
+- direct `run_skill_suite.py --suite <manifest>` 不会先替你 materialize suite
+- 但如果传入的 suite 已经是 materialized suite，且其中 `repo`、`prompt_file`、`eval_prompt_file` 都是可解析绝对路径，runner 会正常消费
+- autoresearch 主链中的 `baseline`、`run-round`、`replay` 才会先把 source suite 物化为 materialized suite，再委托统一 runner 执行
+- 这些 materialized suite 只落到 run-local artifact，不写回 authority 状态，也不把 `/tmp` 运行时路径提升成文档真相层
+
+当前 autoresearch 的 materialized suite artifact 落点是：
+
+- `.autoworkflow/autoresearch/<run-id>/baseline/materialized-suites/<lane>/`
+- `.autoworkflow/autoresearch/<run-id>/rounds/round-NNN/materialized-suites/<lane>/`
+- `.autoworkflow/autoresearch/<run-id>/rounds/round-NNN/replay/materialized-suites/<lane>/`
+
+### 6. TMP exrepo 维护入口
+
+`manage_tmp_exrepos.py` 当前是独立维护脚本，不属于 unified runner，也不是 autoresearch 主链的隐式前置步骤。
+
+当前 `--help` 只暴露：
+
+- `--repo-list`
+- `--repo-root`
+- `--temp-root`
+
+当前真实行为只包括：
+
+- 读取 repo list 中的 `owner/repo`
+- 计算稳定 TMP exrepo 根目录
+- 缺失 repo 时 clone
+- 已有 repo 时 pull
+- `git pull` 失败时执行 `git reset --hard` 后重试 `git pull`
+
+当前不要把它写成：
+
+- `init / reset / prepare` 子命令 CLI
+- suite-driven repo resolver
+- `run_autoresearch.py` 的自动前置步骤
+
+维护脚本的专用 runbook 见：
+
+- [TMP Exrepo 维护说明](./tmp-exrepo-maintenance.md)
 
 ## 五、Claude 兼容壳的真实行为
 
@@ -560,6 +632,7 @@ codex exec \
 - [Research 评测契约与边界](../analysis/research-eval-contracts.md)
 - [Research 评测观测与输出规范](../analysis/research-eval-observability.md)
 - [Autoresearch 最小闭环运行说明](./autoresearch-minimal-loop.md)
+- [TMP Exrepo 维护说明](./tmp-exrepo-maintenance.md)
 - [toolchain/scripts/research/README.md](../../toolchain/scripts/research/README.md)
 - [toolchain/evals/README.md](../../toolchain/evals/README.md)
 - [Codex Memory Side Repo-local Adapter 部署帮助](./memory-side/codex-deployment-help.md)

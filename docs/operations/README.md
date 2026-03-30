@@ -9,6 +9,7 @@
 - `path-governance-checks.md`
 - `research-cli-help.md`
 - `skill-deployment-maintenance.md`
+- `tmp-exrepo-maintenance.md`
 - `memory-side/codex-deployment-help.md`
 - `memory-side/claude-adaptation-help.md`
 - `memory-side/opencode-deployment-help.md`
