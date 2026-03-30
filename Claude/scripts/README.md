@@ -180,12 +180,13 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 | code-project-cleaner | code-project-cleaner.md | 项目清理 |
 | knowledge-researcher | knowledge-researcher.md | 知识研究与资料沉淀 |
 
-### Skills（2 个）
+### Skills（3 个）
 
 | Skill | 目录 | 功能 |
 |-------|------|------|
 | autodev | autodev/ | 完整自动化开发工作流 |
 | autodev-worktree | autodev-worktree/ | Git Worktree 并行开发 |
+| review-loop | review-loop/ | PR/commit/diff 代码审查与修复闭环 |
 
 ### 文档
 

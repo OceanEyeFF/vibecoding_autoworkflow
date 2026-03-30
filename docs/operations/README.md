@@ -7,3 +7,4 @@
 - `simple-subagent-workflow.md`：中小任务的轻量执行模板。
 - `strict-subagent-workflow.md`：跨模块/高风险任务的严格执行模板。
 - `execution-contract-template.md`：Step 1 固定中间产物模板。
+- `review-loop-code-review.md`：commit/PR 代码优先审查与修复闭环模板。

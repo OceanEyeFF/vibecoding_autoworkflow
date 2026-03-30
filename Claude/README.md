@@ -21,7 +21,9 @@ Claude/
 │   ├── autodev/                # 自动化开发流程
 │   │   ├── SKILL.md
 │   │   └── v0.1/
-│   └── autodev-worktree/       # Git worktree 管理
+│   ├── autodev-worktree/       # Git worktree 管理
+│   │   └── SKILL.md
+│   └── review-loop/            # PR/commit 审查修复闭环
 │       └── SKILL.md
 ├── assets/                     # 通用资源
 │   └── templates/              # 配置模板
@@ -112,6 +114,7 @@ bash Claude/scripts/install-global.sh --uninstall --namespace aw-kernel
 |-------|------|------|
 | **autodev** | `autodev/` | 自动化开发流程（需求分析 → 任务拆解 → 迭代开发） |
 | **autodev-worktree** | `autodev-worktree/` | Git worktree 并行开发管理 |
+| **review-loop** | `review-loop/` | commit/PR/diff 代码审查与修复闭环（含 integration worktree） |
 
 ## 开发说明
 

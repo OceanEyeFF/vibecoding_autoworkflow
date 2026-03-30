@@ -83,6 +83,7 @@ Claude/agents/aw-kernel/
 |-------|------|---------|----------|
 | **autodev** | [autodev/](Claude/skills/aw-kernel/autodev/SKILL.md) | 自动化开发流程 | 需求分析 → 任务拆解 → 迭代开发 → 交付 |
 | **autodev-worktree** | [autodev-worktree/](Claude/skills/aw-kernel/autodev-worktree/SKILL.md) | 并行开发管理 | Git worktree、隔离工作区、智能合并 |
+| **review-loop** | [review-loop/](Claude/skills/aw-kernel/review-loop/SKILL.md) | 代码评审修复闭环 | 审查→修复→复查→integration worktree 统一验证 |
 
 ### 位置
 ```
@@ -90,7 +91,9 @@ Claude/skills/aw-kernel/
 ├── autodev/                     # 自动化开发流程
 │   ├── SKILL.md
 │   └── v0.1/
-└── autodev-worktree/            # Worktree管理
+├── autodev-worktree/            # Worktree管理
+│   └── SKILL.md
+└── review-loop/                 # 代码审查修复闭环
     └── SKILL.md
 ```
 
@@ -200,7 +203,8 @@ AutoWorkflow/
 │   │
 │   ├── 📁 skills/aw-kernel/        # 【技术】Skills
 │   │   ├── autodev/
-│   │   └── autodev-worktree/
+│   │   ├── autodev-worktree/
+│   │   └── review-loop/
 │   │
 │   ├── 📁 assets/                  # 【通用】模板资源
 │   │   └── templates/
@@ -238,7 +242,8 @@ AutoWorkflow/
 │       └── 📁 prompt-templates/
 │           ├── simple-subagent-workflow.md
 │           ├── strict-subagent-workflow.md
-│           └── execution-contract-template.md
+│           ├── execution-contract-template.md
+│           └── review-loop-code-review.md
 │
 ├── 📁 archive/                    # 【归档】历史文档
 │   ├── work-docs/                 # 【归档】工作留档（阶段性记录）
