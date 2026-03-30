@@ -109,14 +109,16 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
 - Integration Gate 结果
 - 残留风险与后续建议
 
-## 部署路径（本仓库）
-源路径：
+## 多端部署路径（Claude / CodeX / OpenCode）
+源路径（仓库内）：
 - `Claude/skills/aw-kernel/task-list-workflow/SKILL.md`
 
-安装后（默认 namespace）：
-- `~/.claude/skills/aw-kernel/task-list-workflow/SKILL.md`
+部署目标（按端侧 Skills 根目录 + namespace 映射）：
+- Claude：`~/.claude/skills/<namespace>/task-list-workflow/SKILL.md`
+- CodeX：`~/.codex/skills/<namespace>/task-list-workflow/SKILL.md`
+- OpenCode：`~/.opencode/skills/<namespace>/task-list-workflow/SKILL.md`
 
-安装命令：
+Claude 端安装命令：
 ```bash
 bash Claude/scripts/install-global.sh --force
 # 或

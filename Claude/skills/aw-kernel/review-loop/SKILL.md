@@ -73,19 +73,27 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
    - Unfixed / Blocked Issues
    - Changed Files
    - Validation Per Fix
+   - Minimal Repro Test Per Issue（每个问题至少一个最小测试：修复前失败、修复后通过）
 4. SubAgent3 输出：
    - Missed-risk Hypotheses
    - Weak Review Areas
    - Next-round Checklist
    - Stop / Continue Recommendation
 
+### Phase B.5：验证关卡（必须）
+5. 在进入 Phase C 前统一执行：
+   - Static Code Check（lint/type/build check）
+   - Static Semantic Simulation（关键路径、边界条件、规则一致性静态模拟）
+   - White-box Tests（修复点白盒测试）
+6. 若 Phase B.5 任一项不通过，返回 Phase B 继续修复。
+
 ### Phase C：复查
-5. SubAgent1 读取上轮报告 + 修复结果 + 补查清单，执行定向复查：
+7. SubAgent1 读取上轮报告 + 修复结果 + 补查清单，执行定向复查：
    - 修复是否真正解决原问题
    - 是否引入新问题
    - 上轮漏查方向是否命中
    - 是否仍有高优先级代码问题
-6. You 判断是否进入下一轮。
+8. You 判断是否进入下一轮。
 
 ## Integration Phase（硬约束）
 - Fixer 改动不得直接作为最终交付提交。
@@ -118,17 +126,16 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
 - 残留风险
 - 终止理由
 
-## 本地化部署路径（适配安装脚本）
+## 多端部署路径（Claude / CodeX / OpenCode）
 源路径（仓库内）：
 - `Claude/skills/aw-kernel/review-loop/SKILL.md`
 
-安装后路径（默认命名空间）：
-- `~/.claude/skills/aw-kernel/review-loop/SKILL.md`
+部署目标（按端侧 Skills 根目录 + namespace 映射）：
+- Claude：`~/.claude/skills/<namespace>/review-loop/SKILL.md`
+- CodeX：`~/.codex/skills/<namespace>/review-loop/SKILL.md`
+- OpenCode：`~/.opencode/skills/<namespace>/review-loop/SKILL.md`
 
-安装后路径（自定义命名空间）：
-- `~/.claude/skills/<namespace>/review-loop/SKILL.md`
-
-推荐安装命令：
+Claude 端推荐安装命令：
 ```bash
 bash Claude/scripts/install-global.sh --force
 # 或自定义 namespace

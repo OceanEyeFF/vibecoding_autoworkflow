@@ -64,6 +64,7 @@ Phase B：并行处理
    - Unfixed / Blocked Issues
    - Changed Files
    - Validation Per Fix
+   - Minimal Repro Test Per Issue（每个问题的最小测试：修复前失败、修复后通过）
 
 4. SubAgent3 复盘 SubAgent1 的审查质量，输出：
    - Missed-risk Hypotheses
@@ -71,8 +72,15 @@ Phase B：并行处理
    - Next-round Checklist
    - Stop / Continue Recommendation
 
+Phase B.5：验证关卡（必须）
+5. 在 Phase B 完成后，统一执行以下验证：
+   - Static Code Check（lint / type / build check）
+   - Static Semantic Simulation（静态语义模拟：关键路径/边界条件/规则一致性检查）
+   - White-box Tests（针对修复点的白盒测试）
+6. 若 Phase B.5 任一项不通过，回到 Phase B 继续修复，不得进入 Phase C。
+
 Phase C：复查
-5. SubAgent1 读取：
+7. SubAgent1 读取：
    - 自己上一轮报告
    - SubAgent2 的修复结果
    - SubAgent3 的补查清单
@@ -83,7 +91,7 @@ Phase C：复查
    - 上一轮可能漏掉的方向
    - 是否还有高优先级代码问题未处理
 
-6. You 判断是否进入下一轮循环。
+8. You 判断是否进入下一轮循环。
 
 【终止条件】
 仅当以下条件同时满足时，允许结束循环：
