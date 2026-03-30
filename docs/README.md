@@ -15,3 +15,4 @@
 - [严格版：strict-subagent-workflow](operations/prompt-templates/strict-subagent-workflow.md)
 - [执行合同模板：execution-contract-template](operations/prompt-templates/execution-contract-template.md)
 - [代码审查闭环：review-loop-code-review](operations/prompt-templates/review-loop-code-review.md)
+- [任务规划合同：task-planning-contract](operations/prompt-templates/task-planning-contract.md)

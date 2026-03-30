@@ -243,7 +243,8 @@ AutoWorkflow/
 │           ├── simple-subagent-workflow.md
 │           ├── strict-subagent-workflow.md
 │           ├── execution-contract-template.md
-│           └── review-loop-code-review.md
+│           ├── review-loop-code-review.md
+│           └── task-planning-contract.md
 │
 ├── 📁 archive/                    # 【归档】历史文档
 │   ├── work-docs/                 # 【归档】工作留档（阶段性记录）
