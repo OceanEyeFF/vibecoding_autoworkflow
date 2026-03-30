@@ -18,6 +18,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
 - 这是一个 repo-side execution contract，不是新的编排平台。
 - 目标是对指定改动执行多轮代码审查与修复，优先解决代码问题，文档问题仅在影响代码交付时提升优先级。
 - 默认审查范围限定在：`commit / PR / diff range / target path` 与其直接影响文件。
+- 禁止静默降级：修复阶段不得自行 fallback 到不完整方案；如需降级必须先报告影响并等待确认。
 
 ## 输入
 用户必须提供至少一项：
@@ -63,6 +64,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
    - Evidence
    - Recommended Fix Scope
    - Deferred Doc Issues
+   - Risk Triage（Blocking Risks / Rework Risks）
 2. You 确认本轮修复范围（冻结）。
 
 ### Phase B：并行处理

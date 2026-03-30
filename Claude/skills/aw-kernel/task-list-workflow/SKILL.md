@@ -30,6 +30,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
 - 边界硬约束：每个子任务必须有 In-scope / Out-of-scope。
 - 先规划后执行：先产出 Task Execution Matrix，再进入执行。
 - 失败可控：任何关键阻塞都必须显式上报，不允许 silent fail。
+- 禁止静默降级：不得自行 fallback 到“简单但不完整”的方案；如需降级，必须先报告影响并等待确认。
 
 ## Phase 0：输入归一化
 输出 `Task Inventory`：
@@ -59,6 +60,11 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
 - 并行执行组
 - 高风险任务清单
 
+并在执行前增加 `Risk Triage`：
+- Blocking Risks：会直接阻塞推进的风险（依赖/权限/环境/接口）
+- Rework Risks：不提前处理会导致高频返工的风险（需求歧义/范围不清/测试口径冲突）
+- 每个风险标记处理策略：立即处理 / 延后处理（含理由）/ 请求人工决策
+
 ## Phase 2：分批执行（SubAgent）
 - 同一 Batch 内可并行执行；跨 Batch 必须串行。
 - 每个子任务执行前，必须回显本任务合同（Goal/Scope/Exit Criteria）。
@@ -84,6 +90,8 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
   2. Spec Gate（目标满足、非目标未违反）
   3. Static Gate（至少一次静态检查）
   4. Test Gate（可补则补，不可补需说明）
+     - 若本轮采用 strict 验收且可统计覆盖率，先询问覆盖率目标：90% / 100% / AI决定
+     - 若选择 AI决定，需在报告中写明推荐值与理由
   5. Smoke Gate（可跑则跑，不可跑需说明）
 
 ## 终止条件

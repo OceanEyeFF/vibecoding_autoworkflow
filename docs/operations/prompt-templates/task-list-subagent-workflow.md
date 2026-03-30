@@ -13,6 +13,7 @@
 - 识别并归一化任务列表
 - 生成可执行任务矩阵（每项含边界/依赖/验证/失败协议）
 - 分 Batch 执行并在 integration worktree 统一验收
+- 禁止未授权降级到不完整方案（若需 fallback 必须先报告并等待确认）
 
 【Step 0：任务检测】
 1. 读取任务文件并识别任务数量。
@@ -44,6 +45,7 @@
 - Batch 执行顺序
 - 可并行任务组
 - 高风险任务列表
+- 风险预分析：区分 Blocking Risks（阻塞）与 Rework Risks（高返工）
 
 【Step 3：分批执行】
 - 同 Batch 并行，跨 Batch 串行。
@@ -56,6 +58,7 @@
 2. Spec Gate
 3. Static Gate（至少一次）
 4. Test Gate（可补则补，不可补说明）
+   - 若本轮按 strict 验收且可统计覆盖率，先让使用者选择白盒覆盖率目标：90% / 100% / AI决定。
 5. Smoke Gate（可跑则跑，不可跑说明）
 
 【Step 5：失败协议】

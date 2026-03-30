@@ -30,12 +30,14 @@
 ### Validation Plan
 - Static Gate（静态检查）：
 - Test Gate（白盒测试）：
+  - 覆盖率目标（strict 可选）：90% / 100% / AI决定
 - Smoke Gate（最小运行烟测）：
 
 ### Exit Criteria
 - 满足以下条件才算完成：
 
 ### Risks
-- 已知风险：
+- Blocking Risks（阻塞执行）：
+- Rework Risks（返工高风险）：
 - 未验证点：
 - 需人工接手事项：

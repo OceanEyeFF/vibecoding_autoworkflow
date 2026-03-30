@@ -15,6 +15,7 @@
 - 不要把 review-loop 扩展成大范围重构。
 - 若遇到环境缺失、运行中断、范围冲突、修复越界，立即停下并报告。
 - 每轮都要留下结构化记录，便于下一轮复查。
+- 禁止静默降级：修复阶段不得自行 fallback 到简单但不完整方案；如需降级必须先说明影响并等待确认。
 
 【角色定义】
 
@@ -53,6 +54,7 @@ Phase A：首轮审查
    - Evidence
    - Recommended Fix Scope
    - Deferred Doc Issues
+   - Risk Triage（Blocking Risks / Rework Risks）
 
 2. You 根据 SubAgent1 的报告，确认进入本轮修复的问题范围。
 

@@ -62,9 +62,11 @@
    - 是否属于某个批次（Batch）
 
 8. 风险与不确定性（Risks）
-   - 潜在失败点
+   - Blocking Risks：会严重阻塞任务执行的风险
+   - Rework Risks：不提前处理会导致频繁返工的风险
    - 可能缺失的信息
    - 是否需要人工介入
+   - 每个风险的处理策略：立即处理 / 延后处理 / 请求人工决策
 
 9. 验证计划（Validation Plan）
    - Static：lint / type / build
