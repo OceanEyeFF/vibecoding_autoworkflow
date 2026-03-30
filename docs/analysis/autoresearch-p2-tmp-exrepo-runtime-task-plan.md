@@ -65,8 +65,12 @@ last_verified: 2026-03-30
   - materialized suite 已落到 run-local artifact，而不是 authority 状态
   - P2 preflight 仍锚定原始 contract suite
   - `worktree_manager.py`、authority 字段、decision / replay 规则未改
+- `T-003` 已完成并入库：
+  - `test_exrepo_runtime.py` 已覆盖 YAML / JSON suite 的路径重写与源 manifest 不变性
+  - `test_run_skill_suite.py` 已覆盖 materialized suite 在 direct runner 侧的绝对路径消费
+  - `test_run_autoresearch.py` 已覆盖 baseline 对 materialized suite 的消费与原始 contract suite preflight 锚点
+  - `test_autoresearch_round.py` 已覆盖 round / replay lane 的 suite 物化，以及 replay 执行失败后的 discard 语义
 - 当前仍待完成：
-  - `T-003` deterministic 测试完备化
   - `T-004` 文档入口与旧规划状态同步
   - `T-101` TMP exrepo 维护脚本
 

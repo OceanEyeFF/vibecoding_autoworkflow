@@ -435,6 +435,11 @@ runs:
 - helper 不会原地修改源 suite，也不会把 `/tmp` 路径写进 authority 状态
 - `run_autoresearch.py baseline` 与 `autoresearch_round.py` 的 `run-round / replay` 已复用这组 helper；materialized suite 会落到 run-local artifact，而不是 authority 状态
 - `run_skill_suite.py` 的 direct `--repo` / `--suite` 模式本身没有被改成自动 materialize；如果绕过 autoresearch 主链，仍需保证输入 suite 在 runner 侧可解析
+- deterministic 覆盖当前已固定到四个断言面：
+  - `test_exrepo_runtime.py`：helper 级 YAML / JSON 路径重写与源 manifest 不变性
+  - `test_run_skill_suite.py`：runner 对 materialized suite 的绝对路径消费
+  - `test_run_autoresearch.py`：baseline lane 对 materialized suite 的消费
+  - `test_autoresearch_round.py`：round / replay lane 物化与 replay 执行失败后的 discard 语义
 
 ## Examples
 
@@ -593,6 +598,8 @@ python3 -m py_compile \
   toolchain/scripts/research/test_autoresearch_mutation_registry.py \
   toolchain/scripts/research/test_autoresearch_worker_contract.py \
   toolchain/scripts/research/test_autoresearch_selector.py \
+  toolchain/scripts/research/test_exrepo_runtime.py \
+  toolchain/scripts/research/test_run_skill_suite.py \
   toolchain/scripts/research/test_autoresearch_round.py \
   toolchain/scripts/research/test_run_autoresearch.py \
   toolchain/scripts/research/test_autoresearch_p1_1_smoke.py \
@@ -608,6 +615,8 @@ python3 -m unittest \
   toolchain/scripts/research/test_autoresearch_mutation_registry.py \
   toolchain/scripts/research/test_autoresearch_worker_contract.py \
   toolchain/scripts/research/test_autoresearch_selector.py \
+  toolchain/scripts/research/test_exrepo_runtime.py \
+  toolchain/scripts/research/test_run_skill_suite.py \
   toolchain/scripts/research/test_autoresearch_round.py \
   toolchain/scripts/research/test_run_autoresearch.py \
   toolchain/scripts/research/test_autoresearch_p1_1_smoke.py \
