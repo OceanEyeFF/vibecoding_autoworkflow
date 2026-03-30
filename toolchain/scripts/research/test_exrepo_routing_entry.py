@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import sys
 
@@ -109,6 +110,66 @@ class ExrepoRoutingEntryTest(unittest.TestCase):
 
             self.assertEqual(len(report), 1)
             self.assertEqual(report[0]["repo"], "fmt")
+
+    def test_classify_accepts_repo_under_tmp_exrepos_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            tmp_exrepos_root = root / "tmp-exrepos"
+            repo = tmp_exrepos_root / "typer"
+            (repo / "product" / "memory-side" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
+            (repo / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
+                "canonical\n",
+                encoding="utf-8",
+            )
+            (repo / "docs" / "knowledge" / "memory-side").mkdir(parents=True, exist_ok=True)
+            write_skill_wrapper(
+                repo / ".agents" / "skills" / "context-routing-skill" / "SKILL.md",
+                "## Canonical Sources\n"
+                "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
+                "2. `docs/knowledge/memory-side/`\n",
+            )
+
+            payload = classify_context_routing_repo_skill(
+                repo,
+                repo_root=root,
+                tmp_exrepos_root=tmp_exrepos_root,
+            )
+
+            assert payload is not None
+            self.assertEqual(payload["status"], STATUS_USABLE)
+            self.assertEqual(payload["repo"], "typer")
+
+    def test_collect_suite_report_includes_tmp_exrepos_for_bare_repo_names(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            tmp_exrepos_root = root / "tmp-exrepos"
+            repo = tmp_exrepos_root / "typer"
+            repo.mkdir(parents=True, exist_ok=True)
+            suite = root / "train.yaml"
+            suite.write_text(
+                "version: 1\n"
+                "defaults:\n"
+                "  backend: codex\n"
+                "  judge_backend: codex\n"
+                "  with_eval: true\n"
+                "runs:\n"
+                "  - repo: typer\n"
+                "    task: context-routing\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch("common.TMP_EXREPOS_ROOT", tmp_exrepos_root), mock.patch(
+                "common.EXREPOS_ROOT",
+                root / ".exrepos",
+            ):
+                report = collect_context_routing_suite_repo_skill_report(
+                    [suite],
+                    repo_root=root,
+                    tmp_exrepos_root=tmp_exrepos_root,
+                )
+
+            self.assertEqual(len(report), 1)
+            self.assertEqual(report[0]["repo"], "typer")
 
     def test_prompt_fallback_marker_detection(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

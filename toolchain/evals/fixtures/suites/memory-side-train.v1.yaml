@@ -1,8 +1,8 @@
 version: 1
 defaults:
-  backend: claude
-  judge_backend: claude
+  backend: codex
+  judge_backend: codex
   with_eval: true
 runs:
   - repo: typer
-    task: all
+    task: context-routing

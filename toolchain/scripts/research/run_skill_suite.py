@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from backends import BACKEND_IDS, build_backend
+from backends import BACKEND_IDS, CODEX_REASONING_EFFORTS, build_backend
 from common import (
     EVAL_SCORE_DIMENSIONS,
     RUN_SUMMARY_SCHEMA_PATH,
@@ -147,6 +147,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         default=True,
         help="Use Codex full-auto mode. Defaults to enabled.",
+    )
+    parser.add_argument(
+        "--codex-reasoning-effort",
+        choices=CODEX_REASONING_EFFORTS,
+        default="high",
+        help="Codex reasoning effort. Defaults to high.",
     )
     parser.add_argument(
         "--opencode-bin",

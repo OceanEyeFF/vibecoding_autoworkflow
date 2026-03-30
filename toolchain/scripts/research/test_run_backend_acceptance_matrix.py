@@ -45,6 +45,7 @@ class BackendAcceptanceMatrixTest(unittest.TestCase):
         self.assertNotIn("--eval-model", forwarded)
         self.assertNotIn("--eval-timeout", forwarded)
         self.assertNotIn("--save-dir", forwarded)
+        self.assertEqual(forwarded[forwarded.index("--codex-reasoning-effort") + 1], "high")
         self.assertIn("--full-auto", forwarded)
         self.assertNotIn("--no-full-auto", forwarded)
 
@@ -75,6 +76,8 @@ class BackendAcceptanceMatrixTest(unittest.TestCase):
                 "codex-dev",
                 "--sandbox",
                 "danger-full-access",
+                "--codex-reasoning-effort",
+                "medium",
                 "--no-full-auto",
             ]
         )
@@ -85,6 +88,7 @@ class BackendAcceptanceMatrixTest(unittest.TestCase):
         self.assertIn("--eval-model", forwarded)
         self.assertIn("--eval-timeout", forwarded)
         self.assertIn("--save-dir", forwarded)
+        self.assertEqual(forwarded[forwarded.index("--codex-reasoning-effort") + 1], "medium")
         self.assertIn("--no-full-auto", forwarded)
         self.assertNotIn("--full-auto", forwarded)
         self.assertEqual(forwarded[forwarded.index("--jobs") + 1], "2")

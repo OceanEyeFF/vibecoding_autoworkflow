@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from common import REPO_ROOT
+from exrepo_runtime import resolve_tmp_exrepos_root
 from run_skill_suite import load_suite_manifest, resolve_suite_repo
 
 
@@ -69,10 +70,19 @@ def classify_context_routing_repo_skill(
     repo_path: Path,
     *,
     repo_root: Path = REPO_ROOT,
+    tmp_exrepos_root: Path | None = None,
 ) -> dict[str, Any] | None:
     resolved_repo = repo_path.expanduser().resolve()
     exrepos_root = (repo_root / ".exrepos").resolve()
-    if not _is_under(resolved_repo, exrepos_root):
+    resolved_tmp_root = (
+        tmp_exrepos_root.expanduser().resolve()
+        if tmp_exrepos_root is not None
+        else resolve_tmp_exrepos_root(repo_root=repo_root)
+    )
+    if not any(
+        _is_under(resolved_repo, base_root)
+        for base_root in (exrepos_root, resolved_tmp_root)
+    ):
         return None
 
     skill_path = resolved_repo / CONTEXT_ROUTING_SKILL_RELATIVE_PATH
@@ -107,6 +117,7 @@ def collect_context_routing_suite_repo_skill_report(
     suite_files: list[Path],
     *,
     repo_root: Path = REPO_ROOT,
+    tmp_exrepos_root: Path | None = None,
 ) -> list[dict[str, Any]]:
     seen: set[Path] = set()
     report: list[dict[str, Any]] = []
@@ -126,7 +137,11 @@ def collect_context_routing_suite_repo_skill_report(
             if resolved_repo in seen:
                 continue
             seen.add(resolved_repo)
-            capability = classify_context_routing_repo_skill(resolved_repo, repo_root=repo_root)
+            capability = classify_context_routing_repo_skill(
+                resolved_repo,
+                repo_root=repo_root,
+                tmp_exrepos_root=tmp_exrepos_root,
+            )
             if capability is not None:
                 report.append(capability)
     return sorted(report, key=lambda item: (str(item.get("status") or ""), str(item.get("repo") or "")))

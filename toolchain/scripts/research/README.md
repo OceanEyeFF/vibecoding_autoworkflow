@@ -9,6 +9,7 @@
 - `run_backend_acceptance_matrix.py`：live acceptance 入口，固定跑 `codex -> codex` 与 `claude -> codex` 两条矩阵
 - `run_autoresearch.py`：autoresearch P0.1/P0.2/P0.3/P1.1/P1.2/P1.3 入口，负责 baseline 数据面、suite materialization、worktree 控制壳、registry materialization、worker contract、feedback distillation 与 round 外环
 - `refresh_manual_run_contract.py`：给手动单轮 contract 刷新一个 fresh `run_id`；使用单调 `serial` 加 `mod 100003` residue，避免复用旧 run 状态
+- `manage_tmp_exrepos.py`：读取 `exrepo.txt` 里的 `owner/repo` 清单，把 bare repo name 对应的 tmp exrepo clone / pull 到稳定 `/tmp` 根；`git pull` 失败时会先 `git reset --hard` 再重试 `git pull`
 - `autoresearch_contract.py`：P0.1 contract 读取、schema 校验、suite/path 边界校验
 - `autoresearch_scoreboard.py`：P0.1 baseline scoreboard 聚合与校验
 - `autoresearch_round.py`：P0.3 round 生命周期与 P1.2 的 mutation / worker-contract authority 校验、round scoreboard / decision 聚合
@@ -18,6 +19,7 @@
 - `autoresearch_feedback_distill.py`：P1.3 deterministic feedback distillation、ledger upsert 与 family signal helper
 - `worktree_manager.py`：P0.2 的 git worktree 生命周期管理器
 - `exrepo_runtime.py`：TMP exrepo 根目录解析与 suite 物化 helper；只重写运行时输入，不负责 clone / fetch / reset
+- `exrepo.txt`：tmp exrepo 的 GitHub repo 清单，一行一个 `owner/repo`
 - `backends/`：backend registry、抽象 contract、以及 `claude / codex / opencode` 适配层
 - `common.py`：repo/task/suite/eval schema/artifact 的共享解析与写盘逻辑
 - `tasks/`：skill research prompt 模板
@@ -31,6 +33,13 @@
 - `--with-eval`：每个 skill run 后追加对应 eval run；judge backend 默认继承 `--backend`
 - `--save-dir`：可选；runner 会在该目录下创建一个 `UTC 时间戳 + slug(label)` 的 run 子目录
 - `--jobs`：可选；按 spec pipeline 并发执行。每条 pipeline 内仍保持 `skill -> eval` 顺序，默认 `1`
+- `--timeout`：单个 phase 的 timeout，默认 `300` 秒；它约束的是一次 skill run 或一次 eval run，不是整条 live smoke 的总墙钟时间
+
+live Codex smoke 的预算口径当前建议固定为：
+
+- direct `single run`：至少沿用默认 `300s` phase budget，不要用 `120s` 这类紧预算作为健康门槛
+- `run + eval` 或 suite live smoke：按 `skill + eval` 两段累计看待，单 repo lane 的总墙钟预算建议预留 `5` 到 `10` 分钟
+- 如果想做更便宜的快速回归，优先跑 deterministic/unit tests；不要把过紧的 live backend timeout 当成脚本故障证据
 
 兼容入口 `run_claude_skill_eval.py` 只保留 Claude 旧调用方式：
 
@@ -448,6 +457,18 @@ python3 toolchain/scripts/research/run_skill_suite.py \
   --with-eval \
   --judge-backend claude \
   --save-dir /tmp/skill-evals
+```
+
+live smoke 若要贴近日常使用，建议保留默认 `--timeout 300`，或按需要显式放宽：
+
+```bash
+python3 toolchain/scripts/research/run_skill_suite.py \
+  --repo typer \
+  --backend codex \
+  --task context-routing \
+  --with-eval \
+  --save-dir /tmp/skill-evals \
+  --timeout 300
 ```
 
 单 repo，全量 task 并发跑四个 skills：

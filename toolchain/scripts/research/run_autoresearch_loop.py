@@ -18,7 +18,7 @@ from autoresearch_mutation_registry import (
 )
 from autoresearch_stop import AutoresearchStop
 from autoresearch_worker_contract import load_worker_contract_payload
-from backends import build_backend
+from backends import CODEX_REASONING_EFFORTS, build_backend
 from run_autoresearch import (
     REPO_ROOT,
     build_worktree_manager,
@@ -82,6 +82,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         default=True,
         help="Use Codex full-auto mode. Defaults to enabled.",
+    )
+    parser.add_argument(
+        "--codex-reasoning-effort",
+        choices=CODEX_REASONING_EFFORTS,
+        default="high",
+        help="Codex reasoning effort. Defaults to high.",
     )
     return parser.parse_args(argv if argv is not None else sys.argv[1:])
 

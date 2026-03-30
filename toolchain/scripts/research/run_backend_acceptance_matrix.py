@@ -9,6 +9,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+from backends import CODEX_REASONING_EFFORTS
 from run_skill_suite import main as run_skill_suite_main
 
 
@@ -96,6 +97,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=True,
         help="Use Codex full-auto mode. Defaults to enabled.",
     )
+    parser.add_argument(
+        "--codex-reasoning-effort",
+        choices=CODEX_REASONING_EFFORTS,
+        default="high",
+        help="Codex reasoning effort. Defaults to high.",
+    )
     return parser.parse_args(argv)
 
 
@@ -146,6 +153,8 @@ def build_forward_args(args: argparse.Namespace, suite_path: Path) -> list[str]:
         args.codex_bin,
         "--sandbox",
         args.sandbox,
+        "--codex-reasoning-effort",
+        args.codex_reasoning_effort,
         "--full-auto" if args.full_auto else "--no-full-auto",
     ]
     if args.model:

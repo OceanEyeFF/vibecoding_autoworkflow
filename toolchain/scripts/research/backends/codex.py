@@ -8,6 +8,8 @@ from pathlib import Path
 
 from .base import BackendInvocation, ResearchBackend
 
+CODEX_REASONING_EFFORTS = ("low", "medium", "high", "xhigh")
+
 
 class CodexBackend(ResearchBackend):
     backend_id = "codex"
@@ -16,10 +18,17 @@ class CodexBackend(ResearchBackend):
     supports_output_file = True
     supports_json_schema = True
 
-    def __init__(self, executable: str, sandbox: str, full_auto: bool) -> None:
+    def __init__(
+        self,
+        executable: str,
+        sandbox: str,
+        full_auto: bool,
+        reasoning_effort: str | None,
+    ) -> None:
         super().__init__(executable=executable)
         self.sandbox = sandbox
         self.full_auto = full_auto
+        self.reasoning_effort = reasoning_effort
 
     def build_skill_command(self, prompt_text: str, repo_path: Path, model: str | None) -> BackendInvocation:
         return self._build_command(
@@ -69,6 +78,8 @@ class CodexBackend(ResearchBackend):
             "--output-last-message",
             str(final_message_path),
         ]
+        if self.reasoning_effort:
+            command.extend(["-c", f'model_reasoning_effort="{self.reasoning_effort}"'])
         if self.full_auto:
             command.append("--full-auto")
         if model:
@@ -83,4 +94,3 @@ class CodexBackend(ResearchBackend):
             final_message_path=final_message_path,
             cleanup_paths=[final_message_path],
         )
-

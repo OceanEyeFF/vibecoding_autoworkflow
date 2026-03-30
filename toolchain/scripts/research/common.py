@@ -11,9 +11,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from exrepo_runtime import resolve_tmp_exrepos_root
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 EXREPOS_ROOT = REPO_ROOT / ".exrepos"
+TMP_EXREPOS_ROOT = resolve_tmp_exrepos_root(repo_root=REPO_ROOT)
 SCRIPT_ROOT = Path(__file__).resolve().parent
 TASKS_ROOT = SCRIPT_ROOT / "tasks"
 EVAL_PROMPTS_ROOT = REPO_ROOT / "toolchain" / "evals" / "prompts"
@@ -108,6 +111,10 @@ class RunResult:
 
 def resolve_repo(repo_value: str) -> Path:
     repo_path = Path(repo_value).expanduser()
+    if repo_path.exists():
+        return repo_path.resolve()
+
+    repo_path = TMP_EXREPOS_ROOT / repo_value
     if repo_path.exists():
         return repo_path.resolve()
 

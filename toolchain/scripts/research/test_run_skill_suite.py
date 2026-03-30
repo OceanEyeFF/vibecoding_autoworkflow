@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import tempfile
 import time
 import unittest
 from pathlib import Path
 from unittest import mock
 
-from common import RunResult, RunSpec
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from common import RunResult, RunSpec, resolve_repo
 from exrepo_runtime import materialize_suite, resolve_tmp_exrepos_root
 from run_skill_suite import coerce_process_output, execute_specs, parse_args, resolve_suite_specs, validate_args
 
@@ -27,6 +30,7 @@ class RunSkillSuiteTest(unittest.TestCase):
         args = parse_args(["--repo", "typer", "--backend", "codex"])
 
         self.assertEqual(args.jobs, 1)
+        self.assertEqual(args.codex_reasoning_effort, "high")
 
     def test_validate_args_rejects_non_positive_jobs(self) -> None:
         args = argparse.Namespace(
@@ -50,11 +54,27 @@ class RunSkillSuiteTest(unittest.TestCase):
             codex_bin="codex",
             sandbox="workspace-write",
             full_auto=True,
+            codex_reasoning_effort="high",
             opencode_bin="opencode",
         )
 
         with self.assertRaisesRegex(ValueError, "--jobs must be at least 1."):
             validate_args(args)
+
+    def test_resolve_repo_accepts_bare_repo_from_tmp_exrepos_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            tmp_exrepos_root = root / "tmp-exrepos"
+            repo_path = tmp_exrepos_root / "typer"
+            repo_path.mkdir(parents=True, exist_ok=True)
+
+            with mock.patch("common.TMP_EXREPOS_ROOT", tmp_exrepos_root), mock.patch(
+                "common.EXREPOS_ROOT",
+                root / ".exrepos",
+            ):
+                resolved = resolve_repo("typer")
+
+            self.assertEqual(resolved, repo_path.resolve(strict=False))
 
     def test_execute_specs_parallelizes_spec_pipelines_but_preserves_result_order(self) -> None:
         specs = [
