@@ -86,6 +86,18 @@ def write_summary(save_dir: Path, label: str, score: float) -> None:
     (run_dir / "run-summary.json").write_text(json.dumps(payload) + "\n", encoding="utf-8")
 
 
+def write_minimal_suite(path: Path) -> None:
+    path.write_text(
+        "version: 1\n"
+        "defaults:\n"
+        "  backend: claude\n"
+        "runs:\n"
+        "  - repo: typer\n"
+        "    task: context-routing\n",
+        encoding="utf-8",
+    )
+
+
 def build_eval_result(score: float) -> dict[str, object]:
     return {
         "repo_path": "/tmp/repo",
@@ -140,9 +152,9 @@ class AutoresearchP13SmokeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_git_repo(root)
-            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            write_minimal_suite(root / "train.yaml")
+            write_minimal_suite(root / "validation.yaml")
+            write_minimal_suite(root / "acceptance.yaml")
             contract_path = root / "contract.json"
             contract_path.write_text(
                 json.dumps(build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")),
@@ -159,10 +171,11 @@ class AutoresearchP13SmokeTest(unittest.TestCase):
                 _self: AutoresearchRoundManager,
                 *,
                 candidate_worktree: Path,
+                contract,
                 suite_files: list[Path],
                 save_dir: Path,
             ) -> list[dict[str, object]]:
-                del candidate_worktree, suite_files
+                del candidate_worktree, contract, suite_files
                 if save_dir.name == "train":
                     return [{"suite_file": "train.yaml", "results": [build_eval_result(10.0)]}]
                 return [{"suite_file": "validation.yaml", "results": [build_eval_result(8.0)]}]
@@ -221,9 +234,9 @@ class AutoresearchP13SmokeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_git_repo(root)
-            (root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
-            (root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            write_minimal_suite(root / "train.yaml")
+            write_minimal_suite(root / "validation.yaml")
+            write_minimal_suite(root / "acceptance.yaml")
             contract_path = root / "contract.json"
             contract_path.write_text(
                 json.dumps(build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")),
