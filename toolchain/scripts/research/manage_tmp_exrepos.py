@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 
 from common import REPO_ROOT
 from exrepo_runtime import resolve_tmp_exrepos_root
@@ -129,11 +131,85 @@ def run_git(args: list[str], *, cwd: Path | None = None) -> subprocess.Completed
     )
 
 
+def _normalize_repo_identity(value: str) -> str:
+    return value.strip().strip("/").removesuffix(".git").casefold()
+
+
+def _extract_github_repo_identity(remote_url: str) -> str | None:
+    value = remote_url.strip()
+    if not value:
+        return None
+
+    ssh_match = re.match(r"^git@github\.com:(?P<path>.+)$", value, flags=re.IGNORECASE)
+    if ssh_match:
+        path_value = ssh_match.group("path")
+    else:
+        parsed = urlparse(value)
+        host = (parsed.hostname or "").casefold()
+        if host not in {"github.com", "www.github.com"}:
+            return None
+        path_value = parsed.path
+
+    parts = [part for part in path_value.strip("/").split("/") if part]
+    if len(parts) != 2:
+        return None
+    owner, repo = parts
+    return _normalize_repo_identity(f"{owner}/{repo}")
+
+
+def _read_remote_origin_identity(spec: ExrepoSpec, target_dir: Path) -> str:
+    origin_result = run_git(["remote", "get-url", "origin"], cwd=target_dir)
+    if origin_result.returncode != 0:
+        raise RuntimeError(_format_git_failure("git remote get-url origin", spec, target_dir, origin_result))
+    origin_identity = _extract_github_repo_identity(origin_result.stdout)
+    if origin_identity is None:
+        raise RuntimeError(
+            f"Existing repo origin is not a supported GitHub remote for {spec.raw}: {origin_result.stdout.strip()!r}"
+        )
+    return origin_identity
+
+
+def _resolve_origin_head(spec: ExrepoSpec, target_dir: Path) -> str:
+    origin_head = run_git(["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"], cwd=target_dir)
+    if origin_head.returncode != 0 or not origin_head.stdout.strip():
+        raise RuntimeError(
+            _format_git_failure("git symbolic-ref --quiet --short refs/remotes/origin/HEAD", spec, target_dir, origin_head)
+        )
+    return origin_head.stdout.strip()
+
+
+def _resolve_current_upstream(spec: ExrepoSpec, target_dir: Path) -> str:
+    upstream = run_git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], cwd=target_dir)
+    if upstream.returncode != 0 or not upstream.stdout.strip():
+        raise RuntimeError(
+            _format_git_failure("git rev-parse --abbrev-ref --symbolic-full-name @{u}", spec, target_dir, upstream)
+        )
+    return upstream.stdout.strip()
+
+
+def _assert_existing_repo_matches_target(spec: ExrepoSpec, target_dir: Path) -> None:
+    expected_identity = _normalize_repo_identity(spec.raw)
+    origin_identity = _read_remote_origin_identity(spec, target_dir)
+    if origin_identity != expected_identity:
+        raise RuntimeError(
+            f"Existing repo origin mismatch for {spec.raw} -> {target_dir}: {origin_identity}"
+        )
+
+    expected_upstream = _resolve_origin_head(spec, target_dir)
+    current_upstream = _resolve_current_upstream(spec, target_dir)
+    if current_upstream != expected_upstream:
+        raise RuntimeError(
+            "Existing repo is not tracking the default upstream "
+            f"for {spec.raw} -> {target_dir}: expected {expected_upstream}, got {current_upstream}"
+        )
+
+
 def sync_exrepo(spec: ExrepoSpec, exrepo_root: Path) -> str:
     target_dir = _resolve_target_dir(spec, exrepo_root)
     if target_dir.exists():
         if not (target_dir / ".git").is_dir():
             raise RuntimeError(f"Target exists but is not a git repo: {target_dir}")
+        _assert_existing_repo_matches_target(spec, target_dir)
 
         pull_result = run_git(["pull"], cwd=target_dir)
         if pull_result.returncode == 0:
@@ -179,10 +255,11 @@ def main(argv: list[str] | None = None) -> int:
 
     failures: list[str] = []
     for spec in specs:
-        target_dir = _resolve_target_dir(spec, exrepo_root)
         try:
+            target_dir = _resolve_target_dir(spec, exrepo_root)
             action = sync_exrepo(spec, exrepo_root)
         except RuntimeError as exc:
+            target_dir = exrepo_root / spec.target_dirname
             message = f"failed: {spec.raw} -> {target_dir} :: {exc}"
             failures.append(message)
             print(message, file=sys.stderr)
