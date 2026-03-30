@@ -14,6 +14,7 @@ from exrepo_runtime import resolve_tmp_exrepos_root
 
 
 DEFAULT_REPO_LIST = Path(__file__).with_name("exrepo.txt")
+INVALID_TARGET_DIRNAMES = {".", ".."}
 
 
 @dataclass(frozen=True)
@@ -29,6 +30,28 @@ class ExrepoSpec:
     @property
     def target_dirname(self) -> str:
         return self.name
+
+
+def _validate_target_dirname(name: str, *, line_number: int, raw_value: str) -> str:
+    if not name or name in INVALID_TARGET_DIRNAMES or "\\" in name or "/" in name:
+        raise ValueError(
+            "Invalid local repo target "
+            f"{name!r} at line {line_number}: {raw_value!r}."
+        )
+    return name
+
+
+def _resolve_target_dir(spec: ExrepoSpec, exrepo_root: Path) -> Path:
+    resolved_root = exrepo_root.expanduser().resolve(strict=False)
+    target_dir = (resolved_root / spec.target_dirname).resolve(strict=False)
+    try:
+        target_dir.relative_to(resolved_root)
+    except ValueError as exc:
+        raise RuntimeError(
+            "Refusing to operate outside tmp exrepo root: "
+            f"{spec.raw} -> {target_dir}"
+        ) from exc
+    return target_dir
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -76,7 +99,12 @@ def load_exrepo_specs(path: Path) -> list[ExrepoSpec]:
                 f"Invalid repo entry at line {line_number}: {value!r}. Expected 'owner/repo'."
             )
 
-        spec = ExrepoSpec(raw=value, owner=owner.strip(), name=repo_name.strip())
+        target_name = _validate_target_dirname(
+            repo_name.strip(),
+            line_number=line_number,
+            raw_value=value,
+        )
+        spec = ExrepoSpec(raw=value, owner=owner.strip(), name=target_name)
         previous_line = seen_local_names.get(spec.target_dirname)
         if previous_line is not None:
             raise ValueError(
@@ -102,7 +130,7 @@ def run_git(args: list[str], *, cwd: Path | None = None) -> subprocess.Completed
 
 
 def sync_exrepo(spec: ExrepoSpec, exrepo_root: Path) -> str:
-    target_dir = exrepo_root / spec.target_dirname
+    target_dir = _resolve_target_dir(spec, exrepo_root)
     if target_dir.exists():
         if not (target_dir / ".git").is_dir():
             raise RuntimeError(f"Target exists but is not a git repo: {target_dir}")
@@ -151,7 +179,7 @@ def main(argv: list[str] | None = None) -> int:
 
     failures: list[str] = []
     for spec in specs:
-        target_dir = exrepo_root / spec.target_dirname
+        target_dir = _resolve_target_dir(spec, exrepo_root)
         try:
             action = sync_exrepo(spec, exrepo_root)
         except RuntimeError as exc:

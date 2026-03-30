@@ -47,6 +47,17 @@ class ManageTmpExreposTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Duplicate local repo target"):
                 load_exrepo_specs(repo_list)
 
+    def test_load_exrepo_specs_rejects_target_dir_escape(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_list = Path(tmp) / "exrepo.txt"
+            repo_list.write_text(
+                "evil/..\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "Invalid local repo target"):
+                load_exrepo_specs(repo_list)
+
     def test_sync_exrepo_clones_missing_repo(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -102,6 +113,21 @@ class ManageTmpExreposTest(unittest.TestCase):
                     mock.call(["pull"], cwd=target),
                 ],
             )
+
+    def test_sync_exrepo_rejects_target_that_resolves_outside_tmp_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "tmp-exrepos"
+            root.mkdir(parents=True, exist_ok=True)
+            external_repo = Path(tmp) / "external-repo"
+            (external_repo / ".git").mkdir(parents=True, exist_ok=True)
+            (root / "typer").symlink_to(external_repo, target_is_directory=True)
+            spec = ExrepoSpec(raw="fastapi/typer", owner="fastapi", name="typer")
+
+            with mock.patch.object(manage_tmp_exrepos, "run_git") as run_git:
+                with self.assertRaisesRegex(RuntimeError, "outside tmp exrepo root"):
+                    sync_exrepo(spec, root)
+
+            run_git.assert_not_called()
 
     def test_main_returns_nonzero_when_a_repo_sync_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
