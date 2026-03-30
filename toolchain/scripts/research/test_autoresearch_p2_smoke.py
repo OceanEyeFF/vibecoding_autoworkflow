@@ -230,9 +230,11 @@ class AutoresearchP2OrchestrationSmokeTest(unittest.TestCase):
                     _self: AutoresearchRoundManager,
                     *,
                     candidate_worktree: Path,
+                    contract,
                     suite_files: list[Path],
                     save_dir: Path,
                 ) -> list[dict[str, object]]:
+                    del contract
                     del suite_files
                     self.assertEqual(candidate_worktree.resolve(), expected_candidate_worktree.resolve())
                     lane_calls.append(save_dir)
