@@ -9,7 +9,7 @@
 - `run_backend_acceptance_matrix.py`：live acceptance 入口，固定跑 `codex -> codex` 与 `claude -> codex` 两条矩阵
 - `run_autoresearch.py`：autoresearch P0.1/P0.2/P0.3/P1.1/P1.2/P1.3 入口，负责 baseline 数据面、suite materialization、worktree 控制壳、registry materialization、worker contract、feedback distillation 与 round 外环
 - `refresh_manual_run_contract.py`：给手动单轮 contract 刷新一个 fresh `run_id`；使用单调 `serial` 加 `mod 100003` residue，避免复用旧 run 状态
-- `manage_tmp_exrepos.py`：读取 `exrepo.txt` 里的 `owner/repo` 清单，把 bare repo name 对应的 tmp exrepo clone / pull 到稳定 `/tmp` 根；`git pull` 失败时会先 `git reset --hard` 再重试 `git pull`
+- `manage_tmp_exrepos.py`：TMP exrepo 维护入口；读取 `exrepo.txt` 或显式 `--repo-list`，用 `resolve_tmp_exrepos_root()` 计算稳定 runtime 根目录，并以 `init / reset / prepare` 维护整个 catalog、显式 `--repo`，或由 `--suite` 派生出的 repo 子集；路径越界、非 GitHub remote、origin mismatch 和非 git target 都会 fail closed；它不属于 unified runner，也不会自动嵌进 autoresearch 主链
 - `autoresearch_contract.py`：P0.1 contract 读取、schema 校验、suite/path 边界校验
 - `autoresearch_scoreboard.py`：P0.1 baseline scoreboard 聚合与校验
 - `autoresearch_round.py`：P0.3 round 生命周期与 P1.2 的 mutation / worker-contract authority 校验、round scoreboard / decision 聚合
@@ -53,6 +53,12 @@ live Codex smoke 的预算口径当前建议固定为：
 - 固定矩阵是 `codex -> codex` 与 `claude -> codex`
 - 每条 lane 都跑 `task: all`，因此会覆盖四个 skills
 - 这是高成本、真实 backend 的系统级验收，不是普通 deterministic regression
+
+`manage_tmp_exrepos.py` 则处在这些 runner 旁边：
+
+- 它只维护共享 TMP exrepo 运行时输入
+- direct runner 与 autoresearch 后续可以消费这些路径，但不会自动调用维护脚本
+- TMP exrepo 根目录只是 runtime helper 结果，不是文档 authority
 
 `run_autoresearch.py` 当前覆盖 P0 到 P1.3 的最小边界：
 

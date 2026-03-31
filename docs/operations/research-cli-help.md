@@ -1,9 +1,9 @@
 ---
 title: "Research CLI 指令"
 status: active
-updated: 2026-03-30
+updated: 2026-03-31
 owner: aw-kernel
-last_verified: 2026-03-30
+last_verified: 2026-03-31
 ---
 # Research CLI 指令
 
@@ -44,7 +44,7 @@ python3 toolchain/scripts/research/manage_tmp_exrepos.py
 - `run_backend_acceptance_matrix.py`：live acceptance 入口
 - `run_autoresearch.py`：autoresearch 的 `init / baseline / prepare-round / run-round / decide-round` 以及相关收尾命令入口
 - `run_autoresearch_loop.py`：连续 loop 包装器，自动重复 `prepare-round -> Codex worker -> run-round -> decide-round`
-- `manage_tmp_exrepos.py`：TMP exrepo 维护入口，只负责 `/tmp` 运行时 clone / pull / reset，不接管 autoresearch 主流程
+- `manage_tmp_exrepos.py`：TMP exrepo 维护入口；顶层暴露 shared root options 与 `init / reset / prepare`，legacy flat mode 兼容整个 catalog 的 `prepare`，子命令可通过 `--repo` 或 `--suite` 选择 repo 子集，但不接管 autoresearch 主流程
 
 边界：
 
@@ -337,25 +337,43 @@ suite 中的 `repo`：
 
 `manage_tmp_exrepos.py` 当前是独立维护脚本，不属于 unified runner，也不是 autoresearch 主链的隐式前置步骤。
 
-当前 `--help` 只暴露：
+顶层 `--help` 当前暴露：
 
 - `--repo-list`
 - `--repo-root`
 - `--temp-root`
+- `init`
+- `reset`
+- `prepare`
 
-当前真实行为只包括：
+子命令 `init / reset / prepare` 当前共同暴露：
 
-- 读取 repo list 中的 `owner/repo`
-- 计算稳定 TMP exrepo 根目录
-- 缺失 repo 时 clone
-- 已有 repo 时 pull
-- `git pull` 失败时执行 `git reset --hard` 后重试 `git pull`
+- `--repo`
+- `--suite`
+
+说明：
+
+- `--repo` 与 `--suite` 当前互斥
+- 这两个选择器只存在于子命令模式
+- 不带子命令时，legacy flat mode 会兼容为“整个 catalog 的 `prepare`”
+
+当前真实行为包括：
+
+- 读取 repo list 中的 `owner/repo`，并用 `repo` 名称作为 local target
+- 用 `resolve_tmp_exrepos_root()` 计算稳定 TMP exrepo 根目录
+- `init`：缺失 repo clone；已有且 origin 匹配的 git repo 直接 `kept`
+- `reset`：只处理已存在 repo；`fetch origin`、解析 `origin/HEAD`、`reset --hard <origin/HEAD>`，再 `checkout -B <default-branch> <origin/HEAD>`
+- `prepare`：缺失 repo 先 clone，再执行完整 reset；已有 repo 直接执行完整 reset
+- 子命令可以按整个 catalog、显式 `--repo`，或 `--suite` 派生的 repo 集合运行
+- `--suite` 当前只接受 catalog 名称，或解析到 TMP exrepo 根目录直系子目录的 repo path；越界路径和 basename 不在 catalog 的 repo 都会 fail closed
+- destructive git 动作只会落在解析后仍位于 TMP exrepo 根目录内的 target dir
 
 当前不要把它写成：
 
-- `init / reset / prepare` 子命令 CLI
-- suite-driven repo resolver
 - `run_autoresearch.py` 的自动前置步骤
+- materialized suite 生成器
+- `.exrepos/` 维护脚本
+- `/tmp` authority 写回入口
 
 维护脚本的专用 runbook 见：
 
