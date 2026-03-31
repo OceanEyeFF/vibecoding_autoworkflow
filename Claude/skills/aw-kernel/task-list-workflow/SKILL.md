@@ -32,6 +32,24 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
 - 失败可控：任何关键阻塞都必须显式上报，不允许 silent fail。
 - 禁止静默降级：不得自行 fallback 到“简单但不完整”的方案；如需降级，必须先报告影响并等待确认。
 
+## Harness Coding：项目状态管控（新增）
+为避免多任务批处理过程中的状态丢失与并行冲突，必须维护状态文件：
+- `.autoworkflow/state/harness-task-list.json`
+
+最小状态字段：
+- `workflow_id`
+- `status`（inventory / planning / batching / executing / validating / integrated / blocked / done）
+- `current_batch`
+- `task_status_table`
+- `active_worktrees`
+- `risk_summary`
+- `last_updated`
+
+执行约束：
+- 每次 Batch 开始/结束、每次 Gate 执行后，必须刷新状态文件。
+- 若发现另一个非终态实例占用同一任务文件，必须停止并请求人工决策（继续/接管/终止）。
+- 任务结束后将状态写为 `done`，并附 Integration Gate 摘要。
+
 ## Phase 0：输入归一化
 输出 `Task Inventory`：
 - Task ID

@@ -29,6 +29,23 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
 
 若输入不足以定位范围，立即 BLOCKED 并请求补充。
 
+## Harness Coding：项目状态管控（新增）
+为避免多轮审查过程中状态漂移，必须维护状态文件：
+- ` .autoworkflow/state/harness-review-loop.json`
+
+最小状态字段：
+- `workflow_id`
+- `status`（planning / fixing / validating / reviewing / integrated / blocked / done）
+- `current_phase`
+- `active_worktrees`
+- `risk_summary`
+- `last_updated`
+
+执行约束：
+- 每次进入新 Phase 前后都要更新状态文件。
+- 若检测到已有 `status` 为非终态（非 blocked/done）且属于其他运行实例，必须先停止并请求人工决策（继续/接管/终止）。
+- 最终交付后将状态写为 `done`，并记录 integration 结果摘要。
+
 ## 角色与职责
 
 ### You（Loop Controller）

@@ -14,6 +14,7 @@
 - 生成可执行任务矩阵（每项含边界/依赖/验证/失败协议）
 - 分 Batch 执行并在 integration worktree 统一验收
 - 禁止未授权降级到不完整方案（若需 fallback 必须先报告并等待确认）
+- 启用 Harness 状态管控：在批次执行中持续更新 `.autoworkflow/state/harness-task-list.json`
 
 【Step 0：任务检测】
 1. 读取任务文件并识别任务数量。

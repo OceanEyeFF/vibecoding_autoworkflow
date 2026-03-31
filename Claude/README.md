@@ -141,6 +141,8 @@ bash Claude/scripts/install-global.sh --uninstall --namespace aw-kernel
 bash Claude/scripts/install-global.sh --force
 ```
 
+> `review-loop` 与 `task-list-workflow` 已内置 Harness 状态管控，运行时会写入 `.autoworkflow/state/` 下的状态文件用于流程恢复与并发冲突保护。
+
 ## 相关链接
 
 - [主 README](../README.md)
