@@ -16,6 +16,11 @@
 - 禁止未授权降级到不完整方案（若需 fallback 必须先报告并等待确认）
 - 启用 Harness 状态管控：在批次执行中持续更新 `.autoworkflow/state/harness-task-list.json`
 
+【Harness 必选项（A/B/C）】
+- A. Contract 文件结构化：维护 `.autoworkflow/contracts/<workflow_id>.json`（可参考 `harness-contract-template.json`）。
+- B. Scope Gate 自动检查：执行 `python tools/scope_gate_check.py ...`，有 violations 不得进入交付阶段。
+- C. Gate 状态回填：每个 Gate 后执行 `python tools/gate_status_backfill.py ...` 回填状态。
+
 【Step 0：任务检测】
 1. 读取任务文件并识别任务数量。
 2. 若仅 1 个任务：降级到单任务 workflow（simple/strict）。

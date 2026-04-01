@@ -50,6 +50,23 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
 - 若发现另一个非终态实例占用同一任务文件，必须停止并请求人工决策（继续/接管/终止）。
 - 任务结束后将状态写为 `done`，并附 Integration Gate 摘要。
 
+### A. Contract 文件结构化
+- 每轮必须维护：`.autoworkflow/contracts/<workflow_id>.json`
+- 结构基于：`docs/operations/prompt-templates/harness-contract-template.json`
+
+### B. Scope Gate 自动检查
+- 在 Integration Gate 前执行：
+  ```bash
+  python tools/scope_gate_check.py --contract .autoworkflow/contracts/<workflow_id>.json --base <base_ref> --head <head_ref>
+  ```
+- 有 violations 则回到执行阶段处理，不得直接交付。
+
+### C. Gate 状态回填
+- 每个 Gate 完成后回填状态到 harness state：
+  ```bash
+  python tools/gate_status_backfill.py --state .autoworkflow/state/harness-task-list.json --gate scope --status pass --evidence \"<cmd-or-log-ref>\"
+  ```
+
 ## Phase 0：输入归一化
 输出 `Task Inventory`：
 - Task ID

@@ -247,6 +247,7 @@ AutoWorkflow/
 │           ├── simple-subagent-workflow.md
 │           ├── strict-subagent-workflow.md
 │           ├── execution-contract-template.md
+│           ├── harness-contract-template.json
 │           ├── review-loop-code-review.md
 │           ├── task-planning-contract.md
 │           └── task-list-subagent-workflow.md

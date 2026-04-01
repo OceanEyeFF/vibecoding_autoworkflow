@@ -46,6 +46,23 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
 - 若检测到已有 `status` 为非终态（非 blocked/done）且属于其他运行实例，必须先停止并请求人工决策（继续/接管/终止）。
 - 最终交付后将状态写为 `done`，并记录 integration 结果摘要。
 
+### A. Contract 文件结构化
+- 每轮必须维护：`.autoworkflow/contracts/<workflow_id>.json`
+- 结构基于：`docs/operations/prompt-templates/harness-contract-template.json`
+
+### B. Scope Gate 自动检查
+- 在 Phase B.5 前执行：
+  ```bash
+  python tools/scope_gate_check.py --contract .autoworkflow/contracts/<workflow_id>.json --base <base_ref> --head <head_ref>
+  ```
+- 有 violations 则禁止进入下一阶段。
+
+### C. Gate 状态回填
+- 每个 Gate 完成后回填状态到 harness state：
+  ```bash
+  python tools/gate_status_backfill.py --state .autoworkflow/state/harness-review-loop.json --gate scope --status pass --evidence \"<cmd-or-log-ref>\"
+  ```
+
 ## 角色与职责
 
 ### You（Loop Controller）

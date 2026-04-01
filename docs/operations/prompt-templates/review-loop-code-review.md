@@ -18,6 +18,11 @@
 - 禁止静默降级：修复阶段不得自行 fallback 到简单但不完整方案；如需降级必须先说明影响并等待确认。
 - 启用 Harness 状态管控：每轮阶段切换前后更新 `.autoworkflow/state/harness-review-loop.json`。
 
+【Harness 必选项（A/B/C）】
+- A. Contract 文件结构化：维护 `.autoworkflow/contracts/<workflow_id>.json`（可参考 `harness-contract-template.json`）。
+- B. Scope Gate 自动检查：执行 `python tools/scope_gate_check.py ...`，有 violations 不得进入下一阶段。
+- C. Gate 状态回填：每个 Gate 后执行 `python tools/gate_status_backfill.py ...` 回填状态。
+
 【角色定义】
 
 You（Loop Controller）
