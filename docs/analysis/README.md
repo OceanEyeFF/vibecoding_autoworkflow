@@ -14,7 +14,7 @@
 | --- | --- | ---: | --- |
 | Research / Eval 边界 | `active` | 2 | 固定 research runner、eval 与 observability 合同 |
 | Autoresearch 阶段合同与设计边界 | `active` | 8 | 固定 phase contract、代码复核与当前设计基线 |
-| 当前执行规划 | `active` | 1 | 当前仍用于直接驱动实现的任务清单 |
+| 当前执行规划 | `active` | 2 | 当前仍用于直接驱动实现的任务清单与平台期规划 |
 | 历史执行规划 | `superseded` | 4 | 保留 lineage，不作为默认执行入口 |
 
 ## 当前研究文档
@@ -36,6 +36,8 @@
 
 - [autoresearch-p2-tmp-exrepo-runtime-task-plan.md](./autoresearch-p2-tmp-exrepo-runtime-task-plan.md)  
   当前用于驱动 `tmp exrepo + materialized suite + maintenance script` 两阶段施工。
+- [autoresearch-p2-stage-closeout-and-next-stage-platform-plan.md](./autoresearch-p2-stage-closeout-and-next-stage-platform-plan.md)  
+  当前用于结束本阶段并开启下一阶段前的平台期：总结本阶段、规划文档与缓存清理、审计暴露问题，并收敛下一阶段 implementation 入口。
 
 ## 历史执行规划
 
