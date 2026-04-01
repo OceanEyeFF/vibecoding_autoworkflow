@@ -9,7 +9,7 @@ Constraints:
 - Do not ask follow-up questions.
 - Do not turn this into an execution plan.
 - Use repository evidence only.
-- Output only these `Route Card` fields, in this exact order:
+- Output only these `Route Card` fields, in this exact order, and nothing else:
   - `task_type`
   - `goal`
   - `read_first`
@@ -18,6 +18,8 @@ Constraints:
   - `do_not_read_yet`
   - `stop_reading_when`
   - `open_questions`
+- Penalize any extra headings, alternate section names, or additional text outside the ordered fields.
+- Each field must appear exactly once, in order, using the exact field name as written.
 - Use exact repo-relative paths, not prose labels, whenever repository evidence is available.
 - Keep `read_next` to the smallest unresolved local dependency trace that explains module boundaries.
 - Prefer the shortest file chain that identifies entrypoints and immediate dependencies; do not broaden into secondary scans unless the current evidence cannot explain the local module graph.
