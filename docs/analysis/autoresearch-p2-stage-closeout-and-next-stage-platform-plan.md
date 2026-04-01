@@ -1,13 +1,18 @@
 ---
 title: "Autoresearch P2：阶段收口与下一阶段平台期规划"
-status: active
-updated: 2026-04-01
+status: superseded
+updated: 2026-04-02
 owner: aw-kernel
-last_verified: 2026-04-01
+last_verified: 2026-04-02
 ---
 # Autoresearch P2：阶段收口与下一阶段平台期规划
 
-> 说明：本文只固定当前阶段结束后的平台期工作规划，不直接驱动新的功能施工，也不替代 `docs/operations/` 的现行 runbook。目标是先把本阶段产出、清理边界、暴露问题和下一阶段入口收拢成一份受控计划，再决定下一轮 implementation contract。
+> 当前状态：本文已被更明确的收口治理双文档取代，当前治理执行入口改为：
+>
+> - [Autoresearch：收口治理目标](./autoresearch-closeout-governance-goals.md)
+> - [Autoresearch：收口治理任务清单](./autoresearch-closeout-governance-task-list.md)
+>
+> 本文保留为上一版宽口径平台期规划的 lineage 记录，不再作为当前治理执行入口。
 
 ## 一、当前定位
 
