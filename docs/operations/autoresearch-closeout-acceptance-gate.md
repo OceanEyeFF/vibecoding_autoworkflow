@@ -36,7 +36,8 @@ last_verified: 2026-04-02
 说明：
 
 - `toolchain/scripts/test/` 承载真逻辑
-- 当前 closeout gate 不再引入额外根目录 shim；命令入口统一收敛到 `toolchain/scripts/test/`
+- 根目录 `tools/` 保留兼容入口，内部委托到 `toolchain/scripts/test/` 的真实实现
+- review-loop / harness 若要求执行 `python tools/...`，应走这些兼容入口；真实逻辑仍以 `toolchain/scripts/test/` 为准
 
 ## 三、推荐顺序
 
@@ -60,7 +61,7 @@ last_verified: 2026-04-02
 每个 gate 完成后，都应调用：
 
 ```bash
-python toolchain/scripts/test/gate_status_backfill.py \
+python tools/gate_status_backfill.py \
   --workflow-id autoresearch-closeout-governance-task-list-20260402 \
   --gate <gate> \
   --status <status> \

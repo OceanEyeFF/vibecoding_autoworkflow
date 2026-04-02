@@ -59,17 +59,19 @@ def write_json(path: Path, payload: dict, dry_run: bool) -> None:
 
 
 def update_state(state: dict, gate: str, status: str, details: dict, workflow_id: str) -> dict:
-    state.setdefault("workflow_id", workflow_id)
-    state.setdefault("gates", {})
-    state["gates"][gate] = status
-    state["last_backfill"] = {
+    same_workflow = state.get("workflow_id") in (None, workflow_id)
+    updated_state = dict(state) if same_workflow else {}
+    updated_state["workflow_id"] = workflow_id
+    updated_state["gates"] = dict(state.get("gates", {})) if same_workflow else {}
+    updated_state["gates"][gate] = status
+    updated_state["last_backfill"] = {
         "workflow_id": workflow_id,
         "gate": gate,
         "status": status,
         "details": details,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
-    return state
+    return updated_state
 
 
 def main() -> int:

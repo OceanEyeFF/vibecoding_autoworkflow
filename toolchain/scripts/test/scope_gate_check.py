@@ -20,6 +20,9 @@ DEFAULT_ALLOWED_PREFIXES = (
     "docs/analysis/autoresearch-closeout-governance-task-list.md",
     "docs/operations/",
     "toolchain/scripts/test/",
+    "tools/closeout_acceptance_gate.py",
+    "tools/gate_status_backfill.py",
+    "tools/scope_gate_check.py",
 )
 
 

@@ -48,7 +48,7 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
     return run_command(
         [
             python,
-            str(repo_root / "toolchain" / "scripts" / "test" / "scope_gate_check.py"),
+            str(repo_root / "tools" / "scope_gate_check.py"),
             "--repo-root",
             str(repo_root),
             "--json",
@@ -147,6 +147,15 @@ def run_smoke_gate(repo_root: Path, python: str, workflow_id: str) -> dict:
     runtime_checks = []
     runtime_passed = True
     for runtime_path in retained_runtime_paths:
+        if not runtime_path.exists():
+            check = {
+                "path": str(runtime_path),
+                "missing": True,
+                "passed": False,
+            }
+            runtime_checks.append(check)
+            runtime_passed = False
+            continue
         payload = json.loads(runtime_path.read_text(encoding="utf-8"))
         active_round = payload.get("active_round")
         check = {
@@ -160,7 +169,7 @@ def run_smoke_gate(repo_root: Path, python: str, workflow_id: str) -> dict:
     backfill_smoke = run_command(
         [
             python,
-            str(repo_root / "toolchain" / "scripts" / "test" / "gate_status_backfill.py"),
+            str(repo_root / "tools" / "gate_status_backfill.py"),
             "--workflow-id",
             workflow_id,
             "--gate",
@@ -205,7 +214,7 @@ def main() -> int:
         GateStep(gate="scope_gate"),
         GateStep(gate="spec_gate"),
         GateStep(gate="static_gate"),
-        GateStep(gate="test_gate", required=False),
+        GateStep(gate="test_gate"),
         GateStep(gate="smoke_gate"),
     ]
 
@@ -219,7 +228,7 @@ def main() -> int:
         backfill = subprocess.run(
             [
                 python,
-                str(repo_root / "toolchain" / "scripts" / "test" / "gate_status_backfill.py"),
+                str(repo_root / "tools" / "gate_status_backfill.py"),
                 "--workflow-id",
                 args.workflow_id,
                 "--gate",
