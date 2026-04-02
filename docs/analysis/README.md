@@ -39,14 +39,26 @@
 
 说明：
 
-- 本节仍是 `analysis/` 层目录页分流，不把下面的正文页提升成并列默认入口。
+- 本节只承担 `analysis/` 层的目录页分流。
+- 当前 closeout 的唯一默认入口就是本页的这个分流块；下面链接到的 goals、task list、runbook 和 gate 都只是叶子页，不再并列承担入口职责。
+
+### Closeout 分流
+
+- [autoresearch-closeout-governance-goals.md](./autoresearch-closeout-governance-goals.md)  
+  当前 closeout 的目标正文叶子页，只负责目标与完成判断，不承担默认入口。
+- [autoresearch-closeout-governance-task-list.md](./autoresearch-closeout-governance-task-list.md)  
+  当前 closeout 的任务正文叶子页，只负责任务拆解与执行顺序，不承担默认入口。
+- [../operations/autoresearch-closeout-decision-rules.md](../operations/autoresearch-closeout-decision-rules.md)  
+  当前 closeout 的边界与例外口径承接位。
+- [../operations/autoresearch-artifact-hygiene.md](../operations/autoresearch-artifact-hygiene.md)  
+  当前 closeout 的 artifact 留删承接位。
+- [../operations/autoresearch-closeout-entry-layering.md](../operations/autoresearch-closeout-entry-layering.md)  
+  当前 closeout 的入口层级口径承接位。
+
+### 其他执行规划
 
 - [autoresearch-p2-tmp-exrepo-runtime-task-plan.md](./autoresearch-p2-tmp-exrepo-runtime-task-plan.md)  
   当前用于驱动 `tmp exrepo + materialized suite + maintenance script` 两阶段施工。
-- [autoresearch-closeout-governance-goals.md](./autoresearch-closeout-governance-goals.md)  
-  当前 closeout 的目标正文叶子页；默认分流入口仍以本页为准。
-- [autoresearch-closeout-governance-task-list.md](./autoresearch-closeout-governance-task-list.md)  
-  当前 closeout 的任务正文叶子页；默认分流入口仍以本页为准。
 
 ## 历史执行规划
 

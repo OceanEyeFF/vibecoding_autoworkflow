@@ -9,7 +9,7 @@ last_verified: 2026-04-02
 
 > 说明：本文是当前 `autoresearch` 收口治理期的执行任务清单。本版按 `2026-04-02` 的复审结果收缩任务，只保留会改变当前仓库状态、入口结构或验收结论的主任务；不再把同一问题拆成多个文档导向工单。
 
-> 入口位说明：本文是当前 closeout 的任务正文叶子页，不单独承担默认入口；当前 `analysis/` 层分流入口仍以 [Analysis README](./README.md) 为准。
+> 入口位说明：本文是当前 closeout 的任务正文叶子页，只承接任务拆解与执行顺序，不承担默认入口；当前 closeout 的唯一目录页型入口是 [Analysis README](./README.md) 的 closeout 分流块。
 
 ## 一、任务收缩原则
 
@@ -52,9 +52,9 @@ last_verified: 2026-04-02
 
 当前统计：
 
-- `已完成`：`3 / 7`
-- `部分完成`：`3 / 7`
-- `未开始`：`1 / 7`
+- `已完成`：`7 / 7`
+- `部分完成`：`0 / 7`
+- `未开始`：`0 / 7`
 
 当前可直接复核的证据快照：
 
@@ -64,12 +64,13 @@ last_verified: 2026-04-02
 - `docs/operations/autoresearch-closeout-decision-rules.md` 已冻结当前 closeout 的 `允许 / 不允许 / 需要显式特批` 判定口径，并把最小 authority 与例外处理口径收进同一承接位。
 - `docs/operations/autoresearch-artifact-hygiene.md` 已把 `.autoworkflow/autoresearch/`、`.autoworkflow/autoresearch-archive/`、`.autoworkflow/manual-runs/` 及特殊子目录的最小 `保留 / 归档 / 删除` 规则收成正式 runbook。
 - `docs/operations/autoresearch-closeout-entry-layering.md` 已冻结“目录页型入口 vs 叶子页正文”的 closeout 口径，并明确当前由 `docs/analysis/README.md` 承担 `analysis/` 层目录页分流。
+- `docs/operations/autoresearch-closeout-cleanup-and-retained-index.md` 已把本轮真实清理记录和 retained index 收进同一承接位，当前已能回答“处置了什么、为什么、是否可恢复、由谁判断”和“哪些对象刻意保留”。
+- `docs/operations/autoresearch-closeout-acceptance-gate.md` 已把 closeout gate 链收成正式 runbook，`toolchain/scripts/test/closeout_acceptance_gate.py`、`scope_gate_check.py` 与 `gate_status_backfill.py` 也已落盘。
 - `.autoworkflow/autoresearch-archive/20260401T105205/` 已存在一次真实归档结果，说明收口清理不只是纸面动作。
+- `.autoworkflow/closeout/autoresearch-closeout-governance-task-list-20260402/integration-acceptance.json` 已记录本轮 integration worktree 的统一验收结果。
 - 当前保留的两条 autoresearch 主 run：`.autoworkflow/autoresearch/manual-cr-codex-loop-3round-r000001-m000642/runtime.json` 和 `.autoworkflow/autoresearch/manual-cr-codex-loop-6-3-3-r000001-m046830/runtime.json` 都显示 `active_round: null`。
-- 部分手工 run 包已经带本地 `README.md` 或 `run-summary.json`，说明 retained artifact 的局部说明位已经存在，但还没有 central retained index。
-- `docs/operations/` 里现在已经有 closeout 专用的 artifact hygiene runbook；但 retained index 和 acceptance gate 文档仍未落盘，相关承接位仍然缺失。
-- 当前 closeout 正文虽然已经退回 leaf page，但仓库里仍没有单独承担 closeout 分流职责的唯一目录页型入口；当前仍借 `docs/analysis/README.md` 临时分流。
 - 五份 `status: superseded` 的历史 planning 页都已补“不是当前默认入口”的页首说明，并回跳到 `Analysis README` 或仍 active 的承接文档。
+- 当前 closeout 只通过 `docs/analysis/README.md` 的 closeout 分流块承担默认入口；goals、task list 和 runbook/gate 均已退回叶子页或承接页地位。
 
 #### A. 当前跟踪结果：收口边界与决策口径
 
@@ -78,20 +79,20 @@ last_verified: 2026-04-02
 #### B. 当前跟踪结果：artifact 留删与实清理
 
 - `G-101`：`已完成`。`docs/operations/autoresearch-artifact-hygiene.md` 已把当前 closeout 真会触碰的热区对象收成最小 `保留 / 归档 / 删除` 规则，并覆盖 `.autoworkflow/autoresearch/`、`.autoworkflow/autoresearch-archive/`、`.autoworkflow/manual-runs/`、`acceptance-runs/`、`acceptance-worktrees/`、`worktrees/`、`.run-id-state/` 与临时控制文件的默认动作。
-- `G-105`：`部分完成`。仓库里已经发生过一次真实归档，但这轮动作还没有和正式留删规则、最小记录模板绑定；当前也还看不到一个能直接回答“处置了什么、为什么、是否可恢复、由谁判断”的正式记录位。
+- `G-105`：`已完成`。当前已按规则删除空 `worktrees/`、空 `acceptance-worktrees/` 和临时控制文件，并把最小 cleanup 记录收进 `docs/operations/autoresearch-closeout-cleanup-and-retained-index.md`。
 
 #### C. 当前跟踪结果：入口层级与 closeout surface
 
 - `G-201`：`已完成`。`docs/operations/autoresearch-closeout-entry-layering.md` 已把“目录页型入口 vs 叶子页正文”的 closeout 口径冻结成正式规则；`docs/analysis/README.md` 已明确承担目录页分流，历史 planning 也已退回叶子页并补齐非默认入口提示。
-- `G-205`：`未开始`。当前目录页与叶子页关系虽然已经澄清，但仓库里还没有一个单独承担 closeout 分流职责的唯一目录页型入口；当前仍借 `docs/analysis/README.md` 临时分流。
+- `G-205`：`已完成`。当前已由 `docs/analysis/README.md` 的 closeout 分流块承担唯一目录页型默认入口；goals、task list 和相关承接页都已明确退回叶子页或承接位。
 
 #### D. 当前跟踪结果：保留证据登记
 
-- `G-301`：`部分完成`。局部 run 包已有 `README.md` 或 `run-summary.json`，但还没有一个只登记“本轮明确保留对象”的 retained index；当前仍需要分别进入 manual run 包或 acceptance artifact 目录才能解释“为什么还在”。
+- `G-301`：`已完成`。`docs/operations/autoresearch-closeout-cleanup-and-retained-index.md` 已建立 central retained index，当前明确保留对象都能在统一入口回答“为什么还在”。
 
 #### E. 当前跟踪结果：收口验收
 
-- `G-401`：`部分完成`。`path_governance_check.py`、三路 `adapter_deploy.py verify` 和 retained run 的 runtime 状态都能提供局部证据，但还没有把这些检查收成统一的 closeout acceptance gate，也还没有正式验收记录。
+- `G-401`：`已完成`。当前已把 Scope/Spec/Static/Test/Smoke Gate 收成统一 gate 链，并在 integration worktree 完成一次正式验收记录。
 
 ## 四、主任务清单
 
@@ -183,10 +184,10 @@ last_verified: 2026-04-02
 ### 当前里程碑状态（2026-04-02）
 
 - `Milestone 1：Freeze`：`达标`。当前 closeout 的边界、默认判定、最小 authority 和例外口径都已经冻结到统一承接位。
-- `Milestone 2：Retention & Cleanup`：`部分推进`。最小留删规则已经冻结，也已经发生过一次真实归档；当前剩余缺口主要是按规则执行一次真实清理并留下最小记录。
-- `Milestone 3：Closeout Surface`：`部分推进`。目录页型入口原则已经冻结，历史 planning 也已退回叶子页；当前剩余缺口主要是把 closeout 收敛成唯一默认入口。
-- `Milestone 4：Retained Evidence`：`早期推进`。局部 README / manifest 已存在，但 central retained index 还没有建立。
-- `Milestone 5：Gate`：`早期推进`。已有可复用检查组件，但还没有统一的 closeout acceptance gate 和验收记录。
+- `Milestone 2：Retention & Cleanup`：`达标`。当前已按规则做过一次真实清理，并留下最小 cleanup 记录。
+- `Milestone 3：Closeout Surface`：`达标`。当前 closeout 只保留一个目录页型默认入口，相关正文页都已退回叶子页地位。
+- `Milestone 4：Retained Evidence`：`达标`。本轮明确保留对象已集中登记进 retained index。
+- `Milestone 5：Gate`：`达标`。当前 closeout acceptance gate 已可重复执行，并已有 integration worktree 的正式验收记录。
 
 ### Milestone 1：Freeze
 

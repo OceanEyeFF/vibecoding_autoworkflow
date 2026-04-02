@@ -5,7 +5,9 @@
 当前主线：
 
 - `autoresearch-artifact-hygiene.md`
+- `autoresearch-closeout-cleanup-and-retained-index.md`
 - `autoresearch-closeout-entry-layering.md`
+- `autoresearch-closeout-acceptance-gate.md`
 - `autoresearch-minimal-loop.md`
 - `autoresearch-closeout-decision-rules.md`
 - `deploy-runbook.md`

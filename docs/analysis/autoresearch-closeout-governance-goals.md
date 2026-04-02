@@ -9,7 +9,7 @@ last_verified: 2026-04-02
 
 > 说明：本文固定当前 `autoresearch` 阶段收口治理期的目标、边界与完成判断，用来约束“这段时间为什么做治理、治理做到什么算完成”。它不是下一阶段 implementation 规划；当本轮收口完成后，本文可作为后续治理维护文档的升级基线。
 
-> 入口位说明：本文是当前 closeout 的目标正文叶子页，不单独承担默认入口；当前 `analysis/` 层分流入口仍以 [Analysis README](./README.md) 为准。
+> 入口位说明：本文是当前 closeout 的目标正文叶子页，只承接目标与完成判断，不承担默认入口；当前 closeout 的唯一目录页型入口是 [Analysis README](./README.md) 的 closeout 分流块。
 
 ## 一、当前定位
 
