@@ -11,7 +11,7 @@
 
 ## 当前结构
 
-- `knowledge/`：canonical truth、基础治理与文档治理基线
+- `knowledge/`：canonical truth、基础治理、文档治理基线与稳定模块入口
 - `operations/`：repo-local runbook、部署和维护说明
 - `analysis/`：benchmark、评测、研究闭环与阶段性研究边界
 - `reference/`：外部导入资料
@@ -26,7 +26,7 @@
 4. `knowledge/foundations/path-governance-ai-routing.md`
 5. `knowledge/foundations/docs-governance.md`
 6. `knowledge/foundations/toolchain-layering.md`
-7. 目标领域入口，例如 `knowledge/memory-side/README.md` 或 `knowledge/task-interface/README.md`
+7. 目标领域入口，例如 `knowledge/memory-side/README.md`、`knowledge/task-interface/README.md` 或 `knowledge/autoresearch/README.md`
 8. 需要实际部署或评测时，再读 `operations/` 与 `analysis/`
 
 ## 文档治理规则

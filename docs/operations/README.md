@@ -5,6 +5,7 @@
 当前主线：
 
 - `autoresearch-minimal-loop.md`
+- `autoresearch-closeout-decision-rules.md`
 - `deploy-runbook.md`
 - `path-governance-checks.md`
 - `research-cli-help.md`

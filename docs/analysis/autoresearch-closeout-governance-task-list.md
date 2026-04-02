@@ -50,40 +50,43 @@ last_verified: 2026-04-02
 
 当前统计：
 
-- `已完成`：`0 / 7`
-- `部分完成`：`6 / 7`
+- `已完成`：`1 / 7`
+- `部分完成`：`5 / 7`
 - `未开始`：`1 / 7`
 
 当前可直接复核的证据快照：
 
 - `docs/analysis/README.md` 已区分“当前执行规划”和“历史执行规划”。
-- `python3 toolchain/scripts/test/path_governance_check.py` 已通过，说明当前文档入口与生命周期状态没有明显结构性回退。
-- `docs/operations/skill-deployment-maintenance.md` 已固定 `adapter_deploy.py verify` 的 deploy sync 检查口径。
+- `python3 toolchain/scripts/test/path_governance_check.py` 在本次复核中已通过，说明当前文档入口与生命周期状态没有明显结构性回退。
+- `python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents|claude|opencode` 在本次复核中都已通过，说明当前 repo-local deploy target 没有明显 drift。
+- `docs/operations/autoresearch-closeout-decision-rules.md` 已冻结当前 closeout 的 `允许 / 不允许 / 需要显式特批` 判定口径，并把最小 authority 与例外处理口径收进同一承接位。
 - `.autoworkflow/autoresearch-archive/20260401T105205/` 已存在一次真实归档结果，说明收口清理不只是纸面动作。
 - 当前保留的两条 autoresearch 主 run：`.autoworkflow/autoresearch/manual-cr-codex-loop-3round-r000001-m000642/runtime.json` 和 `.autoworkflow/autoresearch/manual-cr-codex-loop-6-3-3-r000001-m046830/runtime.json` 都显示 `active_round: null`。
-- 部分手工 run 包已经带本地 `README.md` 或 `last-run-summary.json`，说明 retained artifact 的局部说明位已经存在，但还没有 central retained index。
+- 部分手工 run 包已经带本地 `README.md` 或 `run-summary.json`，说明 retained artifact 的局部说明位已经存在，但还没有 central retained index。
+- `docs/operations/` 里当前仍未出现 closeout 专用的 artifact hygiene runbook、retained index 或 acceptance gate 文档；相关承接位仍然缺失。
+- 当前 `docs/analysis/` 中与 closeout 直接相关的 active 文档仍只有 goals 和 task list 两页，说明唯一目录页型入口还没有收敛出来。
 
 #### A. 当前跟踪结果：收口边界与决策口径
 
-- `G-001`：`部分完成`。`autoresearch-closeout-governance-goals.md` 已冻结本轮 closeout 的目标、非目标和完成判断，但仓库内还没有把 `allowed / forbidden`、默认判定、最小 authority 和例外规则收成同一承接位。
+- `G-001`：`已完成`。`docs/operations/autoresearch-closeout-decision-rules.md` 已把 `allowed / forbidden`、默认判定、最小 authority 和例外规则冻结到同一份 repo-local 承接文档，不再需要继续拆 `authority matrix` 或 `waiver` 子任务。
 
 #### B. 当前跟踪结果：artifact 留删与实清理
 
-- `G-101`：`部分完成`。上一版平台期规划已提出 `必留 / 可归档 / 可删除` 的三层口径，但还没有收成 `docs/operations/` 下的最小 artifact hygiene runbook。
-- `G-105`：`部分完成`。仓库里已经发生过一次真实归档，但这轮动作还没有建立在正式留删规则和最小记录模板之上。
+- `G-101`：`部分完成`。上一版平台期规划已提出 `必留 / 可归档 / 可删除` 的三层口径，实际热区目录也已经稳定暴露出来，但还没有收成 `docs/operations/` 下覆盖 `.autoworkflow/autoresearch/`、`.autoworkflow/autoresearch-archive/`、`.autoworkflow/manual-runs/` 和 `acceptance-worktrees/` 的最小 artifact hygiene runbook。
+- `G-105`：`部分完成`。仓库里已经发生过一次真实归档，但这轮动作还没有和正式留删规则、最小记录模板绑定；当前也还看不到一个能直接回答“处置了什么、为什么、是否可恢复、由谁判断”的正式记录位。
 
 #### C. 当前跟踪结果：入口层级与 closeout surface
 
 - `G-201`：`部分完成`。`docs/analysis/README.md` 已完成 bucket 区分，旧 planning 文档也已补 `superseded` 与 lineage 说明；但“目录页型入口 vs 叶子页正文”的原则还没有被明确写成 closeout 口径。
-- `G-205`：`未开始`。当前 closeout 默认入口仍分散在 goals、task list 和 `analysis/README.md` 三处，尚未收成唯一目录页型入口。
+- `G-205`：`未开始`。当前 closeout 默认入口仍分散在 goals、task list 和 `analysis/README.md` 三处；仓库里还没有一个单独承担分流职责的唯一目录页型入口。
 
 #### D. 当前跟踪结果：保留证据登记
 
-- `G-301`：`部分完成`。局部 run 包已有 `README.md`、`manifest.json` 或 `last-run-summary.json`，但还没有一个只登记“本轮明确保留对象”的 retained index。
+- `G-301`：`部分完成`。局部 run 包已有 `README.md` 或 `run-summary.json`，但还没有一个只登记“本轮明确保留对象”的 retained index；当前仍需要分别进入 manual run 包或 acceptance artifact 目录才能解释“为什么还在”。
 
 #### E. 当前跟踪结果：收口验收
 
-- `G-401`：`部分完成`。`path_governance_check.py`、`adapter_deploy.py verify` 和 retained run 的 runtime 状态都能提供局部证据，但还没有统一的 closeout acceptance gate 和正式验收记录。
+- `G-401`：`部分完成`。`path_governance_check.py`、三路 `adapter_deploy.py verify` 和 retained run 的 runtime 状态都能提供局部证据，但还没有把这些检查收成统一的 closeout acceptance gate，也还没有正式验收记录。
 
 ## 四、主任务清单
 
@@ -174,7 +177,7 @@ last_verified: 2026-04-02
 
 ### 当前里程碑状态（2026-04-02）
 
-- `Milestone 1：Freeze`：`未达标`。目标和完成判断已冻结，但 `G-001` 还没有收成同一承接位。
+- `Milestone 1：Freeze`：`达标`。当前 closeout 的边界、默认判定、最小 authority 和例外口径都已经冻结到统一承接位。
 - `Milestone 2：Retention & Cleanup`：`部分推进`。已有高层留删口径，也已经发生过一次真实归档，但还没有正式的最小规则和记录要求。
 - `Milestone 3：Closeout Surface`：`部分推进`。历史 planning 基本已退回 lineage，但目录页型入口原则和唯一 closeout 入口还没有收口。
 - `Milestone 4：Retained Evidence`：`早期推进`。局部 README / manifest 已存在，但 central retained index 还没有建立。
@@ -217,5 +220,6 @@ last_verified: 2026-04-02
 ## 八、相关文档
 
 - [Autoresearch：收口治理目标](./autoresearch-closeout-governance-goals.md)
+- [Autoresearch 收口边界与例外决策规则](../operations/autoresearch-closeout-decision-rules.md)
 - [Autoresearch P2：TMP Exrepo 运行时迁移与维护脚本任务规划](./autoresearch-p2-tmp-exrepo-runtime-task-plan.md)
 - [Analysis README](./README.md)

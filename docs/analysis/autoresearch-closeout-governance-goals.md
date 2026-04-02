@@ -135,5 +135,6 @@ last_verified: 2026-04-02
 ## 六、相关文档
 
 - [Autoresearch：收口治理任务清单](./autoresearch-closeout-governance-task-list.md)
+- [Autoresearch 收口边界与例外决策规则](../operations/autoresearch-closeout-decision-rules.md)
 - [Autoresearch P2：TMP Exrepo 运行时迁移与维护脚本任务规划](./autoresearch-p2-tmp-exrepo-runtime-task-plan.md)
 - [Analysis README](./README.md)
