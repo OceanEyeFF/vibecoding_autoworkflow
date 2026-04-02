@@ -53,14 +53,14 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, 
 ### B. Scope Gate 自动检查
 - 在 Phase B.5 前执行：
   ```bash
-  python tools/scope_gate_check.py --contract .autoworkflow/contracts/<workflow_id>.json --base <base_ref> --head <head_ref>
+  python Claude/skills/aw-kernel/review-loop/tools/scope_gate_check.py --contract .autoworkflow/contracts/<workflow_id>.json --base <base_ref> --head <head_ref>
   ```
 - 有 violations 则禁止进入下一阶段。
 
 ### C. Gate 状态回填
 - 每个 Gate 完成后回填状态到 harness state：
   ```bash
-  python tools/gate_status_backfill.py --state .autoworkflow/state/harness-review-loop.json --gate scope --status pass --evidence \"<cmd-or-log-ref>\"
+  python Claude/skills/aw-kernel/review-loop/tools/gate_status_backfill.py --state .autoworkflow/state/harness-review-loop.json --gate scope --status pass --evidence \"<cmd-or-log-ref>\"
   ```
 
 ## 角色与职责

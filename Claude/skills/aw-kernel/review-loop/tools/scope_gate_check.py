@@ -1,24 +1,52 @@
 #!/usr/bin/env python3
-import argparse, json, subprocess, sys
-from pathlib import Path
+import argparse
+import fnmatch
+import json
+import subprocess
+import sys
+from pathlib import PurePosixPath, Path
+
 
 def load_changed(base: str, head: str):
     out = subprocess.check_output(["git", "diff", "--name-only", f"{base}...{head}"], text=True)
     return [line.strip() for line in out.splitlines() if line.strip()]
 
+
+def normalize_path(path: str) -> str:
+    return PurePosixPath(path).as_posix().lstrip("./")
+
+
+def normalize_pattern(pattern: str) -> str:
+    return pattern.replace("\\", "/").lstrip("./")
+
+
+def glob_match(path: str, pattern: str) -> bool:
+    path_norm = normalize_path(path)
+    pat_norm = normalize_pattern(pattern)
+
+    if not pat_norm:
+        return False
+
+    if pat_norm.endswith("/**"):
+        base = pat_norm[:-3].rstrip("/")
+        return path_norm == base or path_norm.startswith(f"{base}/")
+
+    if pat_norm.endswith("/"):
+        base = pat_norm.rstrip("/")
+        return path_norm == base or path_norm.startswith(f"{base}/")
+
+    return fnmatch.fnmatchcase(path_norm, pat_norm)
+
+
 def match(path: str, patterns):
-    p = Path(path)
     for raw in patterns:
-        pat = raw.strip()
+        pat = str(raw).strip()
         if not pat:
             continue
-        if pat.endswith("/") and path.startswith(pat):
-            return True
-        if pat in path:
-            return True
-        if p.match(pat):
+        if glob_match(path, pat):
             return True
     return False
+
 
 def main():
     ap = argparse.ArgumentParser(description="Harness Scope Gate checker")
@@ -42,6 +70,7 @@ def main():
 
     print(json.dumps({"changed_files": changed, "violations": violations}, ensure_ascii=False, indent=2))
     return 1 if violations else 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
