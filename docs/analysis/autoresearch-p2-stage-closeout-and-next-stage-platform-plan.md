@@ -7,12 +7,14 @@ last_verified: 2026-04-02
 ---
 # Autoresearch P2：阶段收口与下一阶段平台期规划
 
-> 当前状态：本文已被更明确的收口治理双文档取代，当前治理执行入口改为：
+> 当前状态：本文保留为上一版宽口径平台期规划的 lineage 叶子页，不是当前默认入口。
+>
+> 当前 `analysis/` 层分流入口请先回到 [Analysis README](./README.md)；当前治理执行入口改为：
 >
 > - [Autoresearch：收口治理目标](./autoresearch-closeout-governance-goals.md)
 > - [Autoresearch：收口治理任务清单](./autoresearch-closeout-governance-task-list.md)
 >
-> 本文保留为上一版宽口径平台期规划的 lineage 记录，不再作为当前治理执行入口。
+> 本文继续保留为上一版宽口径平台期规划的 lineage 记录，不再作为当前治理执行入口。
 
 ## 一、当前定位
 

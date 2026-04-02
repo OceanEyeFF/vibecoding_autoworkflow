@@ -1,13 +1,15 @@
 ---
 title: "Autoresearch P2：Exrepo 输入卫生与连续 Loop 稳定化任务清单"
 status: superseded
-updated: 2026-03-29
+updated: 2026-04-02
 owner: aw-kernel
-last_verified: 2026-03-29
+last_verified: 2026-04-02
 ---
 # Autoresearch P2：Exrepo 输入卫生与连续 Loop 稳定化任务清单
 
-> 说明：本文保留为上一版 exrepo 输入卫生施工记录。
+> 说明：本文保留为上一版 exrepo 输入卫生施工记录叶子页，不是当前默认入口。
+>
+> 当前 `analysis/` 层分流入口请先回到 [Analysis README](./README.md)。
 >
 > 当前执行入口已切换为：
 > [autoresearch-p2-tmp-exrepo-runtime-task-plan.md](./autoresearch-p2-tmp-exrepo-runtime-task-plan.md)

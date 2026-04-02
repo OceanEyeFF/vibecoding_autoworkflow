@@ -5,7 +5,10 @@
 ## 当前入口规则
 
 - 默认只把“当前研究文档”和“当前仍在驱动实现的执行规划”暴露为入口。
+- 能承担默认入口的只能是“目录页型文件”；具体层级口径见 [../operations/autoresearch-closeout-entry-layering.md](../operations/autoresearch-closeout-entry-layering.md)。
+- 当前 `docs/analysis/README.md` 负责 `analysis/` 层分流；本目录中的 goals、task list 和其他正文页都属于叶子页，不单独承担默认入口。
 - 已完成、已替换或只保留 lineage 的 task-plan 文档，必须改成 `status: superseded`，并移出默认当前状态清单。
+- 历史 planning 必须在页首明确“本文不是当前默认入口”，并前跳回目录页或仍 active 的正文。
 - 研究结论一旦被主线接受，仍必须承接到 `docs/knowledge/`、`docs/operations/`、`toolchain/` 或 `product/`。
 
 ## 文档盘点
@@ -34,14 +37,22 @@
 
 ## 当前执行规划
 
+说明：
+
+- 本节仍是 `analysis/` 层目录页分流，不把下面的正文页提升成并列默认入口。
+
 - [autoresearch-p2-tmp-exrepo-runtime-task-plan.md](./autoresearch-p2-tmp-exrepo-runtime-task-plan.md)  
   当前用于驱动 `tmp exrepo + materialized suite + maintenance script` 两阶段施工。
 - [autoresearch-closeout-governance-goals.md](./autoresearch-closeout-governance-goals.md)  
-  当前用于固定收口治理期的目标、边界、完成判断，以及后续升级到治理维护文档的基线。
+  当前 closeout 的目标正文叶子页；默认分流入口仍以本页为准。
 - [autoresearch-closeout-governance-task-list.md](./autoresearch-closeout-governance-task-list.md)  
-  当前用于驱动收口治理工程期间的具体行动、依赖顺序和里程碑。
+  当前 closeout 的任务正文叶子页；默认分流入口仍以本页为准。
 
 ## 历史执行规划
+
+说明：
+
+- 下列文档都只保留为 lineage 叶子页，不作为默认入口。
 
 - [autoresearch-p2-stage-closeout-and-next-stage-platform-plan.md](./autoresearch-p2-stage-closeout-and-next-stage-platform-plan.md)  
   已被更明确的收口治理目标文档与治理任务清单取代，保留为上一版宽口径平台期规划 lineage。

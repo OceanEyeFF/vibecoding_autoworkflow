@@ -1,15 +1,17 @@
 ---
 title: "Autoresearch P1.Final：后续任务规划"
 status: superseded
-updated: 2026-03-29
+updated: 2026-04-02
 owner: aw-kernel
-last_verified: 2026-03-29
+last_verified: 2026-04-02
 ---
 # Autoresearch P1.Final：后续任务规划
 
 > 说明：本文把 `autoresearch-p1-final-code-audit-and-followups.md` 中仍成立的问题拆成可执行任务，用于后续实现排期。它属于 `analysis` 规划文档，不替代 `toolchain/` 当前实现入口，也不替代 `docs/operations/` 的 runbook。
 
-> 当前状态：本文仅保留为 P1 follow-up lineage；当前可验证边界优先以 [autoresearch-p1-final-code-audit-and-followups.md](./autoresearch-p1-final-code-audit-and-followups.md) 和 [toolchain/scripts/research/README.md](../../toolchain/scripts/research/README.md) 为准。
+> 当前状态：本文仅保留为 P1 follow-up lineage 叶子页，不是当前默认入口。
+>
+> 当前 `analysis/` 层分流入口请先回到 [Analysis README](./README.md)；与本文最接近的现行承接位优先以 [autoresearch-p1-final-code-audit-and-followups.md](./autoresearch-p1-final-code-audit-and-followups.md) 和 [toolchain/scripts/research/README.md](../../toolchain/scripts/research/README.md) 为准。
 
 ## 一、规划目标
 

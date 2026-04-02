@@ -9,6 +9,8 @@ last_verified: 2026-04-02
 
 > 说明：本文固定当前 `autoresearch` 阶段收口治理期的目标、边界与完成判断，用来约束“这段时间为什么做治理、治理做到什么算完成”。它不是下一阶段 implementation 规划；当本轮收口完成后，本文可作为后续治理维护文档的升级基线。
 
+> 入口位说明：本文是当前 closeout 的目标正文叶子页，不单独承担默认入口；当前 `analysis/` 层分流入口仍以 [Analysis README](./README.md) 为准。
+
 ## 一、当前定位
 
 当前收口治理期只回答三件事：
@@ -136,5 +138,7 @@ last_verified: 2026-04-02
 
 - [Autoresearch：收口治理任务清单](./autoresearch-closeout-governance-task-list.md)
 - [Autoresearch 收口边界与例外决策规则](../operations/autoresearch-closeout-decision-rules.md)
+- [Autoresearch closeout 入口层级规则](../operations/autoresearch-closeout-entry-layering.md)
+- [Autoresearch artifact 最小留删规则](../operations/autoresearch-artifact-hygiene.md)
 - [Autoresearch P2：TMP Exrepo 运行时迁移与维护脚本任务规划](./autoresearch-p2-tmp-exrepo-runtime-task-plan.md)
 - [Analysis README](./README.md)
