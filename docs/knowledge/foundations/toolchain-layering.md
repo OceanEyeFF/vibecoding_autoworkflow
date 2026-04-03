@@ -113,6 +113,7 @@ toolchain/
 - `product/` 提供业务源码
 - `docs/` 提供知识真相和规则边界
 - `toolchain/` 提供执行这些源码与规则所需的工具入口
+- 根目录 `tools/` 只保留 compatibility shim；它不定义真逻辑，只委托到 `toolchain/scripts/test/`
 
 ### 3. 输出落点规则
 

@@ -71,6 +71,82 @@ def test_root_tool_shims_dispatch() -> None:
         assert completed.returncode == 0
 
 
+def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+        captured["command"] = command
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_scope_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is True
+    command = captured["command"]
+    assert "docs/knowledge/foundations/path-governance-ai-routing.md" in command
+    assert "docs/knowledge/foundations/root-directory-layering.md" in command
+    assert "docs/knowledge/foundations/toolchain-layering.md" in command
+
+
+def test_run_spec_gate_includes_folder_logic(monkeypatch, tmp_path) -> None:
+    commands: list[list[str]] = []
+
+    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+        commands.append(command)
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_spec_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is True
+    assert [item["name"] for item in result["subchecks"]] == [
+        "folder_logic",
+        "path_governance",
+        "governance_semantic",
+    ]
+    assert any(command[-2:] == ["--repo-root", str(tmp_path)] for command in commands)
+    assert any("folder_logic_check.py" in command[1] for command in commands)
+
+
+def test_run_test_gate_includes_folder_logic_tests(monkeypatch, tmp_path) -> None:
+    commands: list[list[str]] = []
+
+    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+        commands.append(command)
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is True
+    assert [item["name"] for item in result["subchecks"][:2]] == [
+        "gate_tool_tests",
+        "folder_logic_tests",
+    ]
+    assert any(command[-1] == "toolchain/scripts/test/test_folder_logic_check.py" for command in commands)
+
+
 def test_closeout_gate_fails_closed_on_test_gate_failure(monkeypatch, tmp_path, capsys) -> None:
     class Args:
         repo_root = tmp_path

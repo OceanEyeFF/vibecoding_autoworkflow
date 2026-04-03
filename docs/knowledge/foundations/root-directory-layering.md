@@ -1,9 +1,9 @@
 ---
 title: "根目录分层"
 status: active
-updated: 2026-03-26
+updated: 2026-04-03
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-04-03
 ---
 # 根目录分层
 
@@ -22,7 +22,9 @@ last_verified: 2026-03-26
 - `.claude/`、`.agents/`、`.opencode/`：repo-local mount / deploy target
 - `.autoworkflow/`、`.spec-workflow/`、`.serena/`：repo-local state
 - `.nav/`：兼容导航层
-- `.git*` 等基础设施文件
+- `tools/`：根目录兼容 shim；只保留少量委托到 `toolchain/scripts/test/` 的包装脚本
+- `.pytest_cache/`：本地 ephemeral cache，可存在但不得入库
+- `.git*`、`LICENSE`、`.claudeignore` 等基础设施文件
 
 ## 二、根目录层级
 
@@ -33,9 +35,11 @@ last_verified: 2026-03-26
 | Truth Layer | `docs/` | 项目真相、知识基线、研究约束、归档 | 部署结果、本地挂载点、运行状态 |
 | Toolchain Layer | `toolchain/` | 脚本、评测、测试、打包、部署工具 | 业务源码真相、repo-local 手工维护 wrapper |
 | Repo-local Mount Layer | `.claude/` `.agents/` `.opencode/` | 本地测试挂载点、repo-local deploy target | 业务源码真相、长期规则正文 |
-| Repo-local State Layer | `.autoworkflow/` `.spec-workflow/` `.serena/` | 运行产物、审批状态、工具配置与记忆；其中 `.serena/` 可保留受控入库的项目级配置 | 当前主线入口、业务源码 |
+| Repo-local State Layer | `.autoworkflow/` `.spec-workflow/` `.serena/` | 运行产物、审批状态、工具配置与记忆；其中 `.serena/` 可保留受控入库的项目级配置与记忆白名单 | 当前主线入口、业务源码 |
 | Compatibility Navigation Layer | `.nav/` | 辅助导航和兼容跳转 | 主线规则、真实结构定义 |
-| Repo Infra Layer | `.git/` `.gitignore` `.gitattributes` `.claudeignore` | 版本控制和仓库级基础配置 | 业务规则和知识层内容 |
+| Compatibility Shim Layer | `tools/` | 给 legacy gate / harness 保留最小兼容入口，真逻辑仍在 `toolchain/scripts/test/` | canonical 源码、缓存、运行产物 |
+| Local Ephemeral Cache Layer | `.pytest_cache/` | 本地测试缓存 | tracked 内容、主线规则 |
+| Repo Infra Layer | `.git/` `.gitignore` `.gitattributes` `.claudeignore` `LICENSE` | 版本控制和仓库级基础配置 | 业务规则和知识层内容 |
 
 ## 三、三块正式内容区
 
@@ -111,7 +115,39 @@ last_verified: 2026-03-26
 - 不作为 source of truth
 - 不在这里手工维护规则正文
 
-## 五、根目录放置规则
+## 五、受控例外与兼容层
+
+### 1. `tools/`
+
+- `tools/` 是根目录 compatibility shim，不是 `toolchain/` 的第二份源码层
+- 只允许保留少量 tracked wrapper：
+  - `tools/closeout_acceptance_gate.py`
+  - `tools/gate_status_backfill.py`
+  - `tools/scope_gate_check.py`
+- 真逻辑必须继续落在 `toolchain/scripts/test/`
+
+### 2. `.serena/`
+
+- `.serena/` 仍属于 repo-local state/config
+- 允许 tracked 的白名单当前固定为：
+  - `.serena/.gitignore`
+  - `.serena/project.yml`
+  - `.serena/memories/Claude-Workspace-Architecture.md`
+- 除白名单外，`.serena/` 里的 tracked 内容都视为结构违规
+
+### 3. `.nav/`
+
+- `.nav/` 只允许 `README.md`、`@docs`、`@skills`
+- `@docs` 与 `@skills` 必须是 symlink
+- `@docs` 必须解析到 `docs/`
+- `@skills` 必须解析到 `product/memory-side/skills/`
+
+### 4. `.pytest_cache/`
+
+- `.pytest_cache/` 是本地 ephemeral cache
+- 可存在于根目录，但不得有 tracked 内容
+
+## 六、根目录放置规则
 
 新增根目录对象前，先回答下面问题：
 
@@ -130,7 +166,7 @@ last_verified: 2026-03-26
 - “只是这个 Prompt 需要一个目录”
 - “现在还没想清楚 owner”
 
-## 六、当前收口形态
+## 七、当前收口形态
 
 ```text
 .
@@ -149,15 +185,17 @@ last_verified: 2026-03-26
 ├── .spec-workflow/       # repo-local state
 ├── .serena/              # repo-local state
 ├── .nav/                 # compatibility navigation
+├── tools/                # compatibility shim
+├── .pytest_cache/        # local ephemeral cache
 └── repo infra files
 ```
 
-## 七、当前已知问题
+## 八、当前已知问题
 
 - `.nav/` 仍然带有旧时代导航假设，部分入口只属于兼容层
 - `docs/archive/` 和 `docs/ideas/incubating/` 当前仍然很轻，但它们的职责已经明确
 
-## 八、相关文档
+## 九、相关文档
 
 - [Docs 模块入口](../../README.md)
 - [路径治理与 AI 告知](./path-governance-ai-routing.md)

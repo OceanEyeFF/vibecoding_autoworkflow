@@ -30,6 +30,8 @@ last_verified: 2026-04-03
 ## 二、脚本入口
 
 ```bash
+python3 toolchain/scripts/test/folder_logic_check.py
+
 python3 toolchain/scripts/test/path_governance_check.py
 
 python3 toolchain/scripts/test/governance_semantic_check.py
@@ -37,57 +39,78 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 
 ## 三、脚本当前会检查什么
 
-1. `path_governance_check.py`
-2. 根入口与文档主线入口是否存在
-3. `docs/`、`product/`、`toolchain/`、根入口页和 `.nav/README.md` 内的 markdown 相对链接是否指向存在路径
-4. `docs/knowledge/foundations/path-governance-ai-routing.md` 与 `docs/knowledge/foundations/docs-governance.md` 是否仍被关键入口页显式引用
-5. `docs/knowledge/README.md` 与关键子入口是否仍存在，并继续链接 Foundations、Memory Side 与 Task Interface 主线
-6. `docs/` 下除 `README.md` 以外的正文文档是否仍保留最小 frontmatter
-7. `docs/reference/`、`docs/archive/`、`docs/ideas/*/` 以及 `docs/knowledge/`、`docs/operations/`、`docs/analysis/` 的 `status` 是否仍匹配目录与生命周期语义
-8. `docs/analysis/README.md` 是否仍回链当前分析文档，包括 `superseded` 的历史执行规划
-9. `.gitignore` 是否仍忽略：
+1. `folder_logic_check.py`
+2. 根目录对象是否仍落在声明的 allowlist 内：
+   - 正式内容区：`product/`、`docs/`、`toolchain/`
+   - mount / state / navigation：`.agents/`、`.claude/`、`.opencode/`、`.autoworkflow/`、`.spec-workflow/`、`.serena/`、`.nav/`
+   - compatibility shim：`tools/`
+   - local ephemeral cache：`.pytest_cache/`
+   - entry / infra：`README.md`、`INDEX.md`、`GUIDE.md`、`ROADMAP.md`、`AGENTS.md`、`.git*`、`.claudeignore`、`LICENSE`
+3. `product/`、`docs/`、`toolchain/` 的一级子目录是否仍符合 allowlist
+4. 典型错放内容是否仍被拦截：
+   - `product/` 中的 runbook、缓存、logs、state/runtimes
+   - `docs/` 中的脚本、可执行文件、运行产物、缓存
+   - `toolchain/` 中的 canonical 业务源码目录、repo-local mount/state 内容、运行日志
+5. hidden/state/mount 层的 tracked 真实状态是否仍受控：
+   - `.agents/`、`.claude/`、`.opencode/` 默认不允许 tracked 内容
+   - `.serena/` 只允许显式白名单 tracked 文件
+   - `tools/` 只允许显式 compat shim tracked 文件
+   - `.pytest_cache/` 允许本地存在，但 tracked 时失败
+6. `.nav/` 是否仍只包含 `README.md`、`@docs`、`@skills`
+7. `.nav/@docs` 与 `.nav/@skills` 是否仍为 symlink，并在标准化后解析到合法目标
+8. `path_governance_check.py`
+9. 根入口与文档主线入口是否存在
+10. `docs/`、`product/`、`toolchain/`、根入口页和 `.nav/README.md` 内的 markdown 相对链接是否指向存在路径
+11. `docs/knowledge/foundations/path-governance-ai-routing.md` 与 `docs/knowledge/foundations/docs-governance.md` 是否仍被关键入口页显式引用
+12. `docs/knowledge/README.md` 与关键子入口是否仍存在，并继续链接 Foundations、Memory Side 与 Task Interface 主线
+13. `docs/` 下除 `README.md` 以外的正文文档是否仍保留最小 frontmatter
+14. `docs/reference/`、`docs/archive/`、`docs/ideas/*/` 以及 `docs/knowledge/`、`docs/operations/`、`docs/analysis/` 的 `status` 是否仍匹配目录与生命周期语义
+15. `docs/analysis/README.md` 是否仍回链当前分析文档，包括 `superseded` 的历史执行规划
+16. `.gitignore` 是否仍忽略：
    - `.agents/`
    - `.claude/`
    - `.opencode/`
    - `.autoworkflow/`
    - `.spec-workflow/`
-10. `governance_semantic_check.py`
-11. foundations 最小模板集是否仍存在：
+17. `governance_semantic_check.py`
+18. foundations 最小模板集是否仍存在：
    - `task-contract-template.md`
    - `context-entry-template.md`
    - `writeback-log-template.md`
    - `decision-record-template.md`
    - `module-entry-template.md`
-12. 关键承接关系是否仍存在：
+19. 关键承接关系是否仍存在：
    - `toolchain-layering.md -> toolchain/scripts/README.md`
    - `toolchain-layering.md -> toolchain/evals/README.md`
    - `context-routing.md -> context-entry-template.md`
    - `writeback-cleanup.md -> writeback-log-template.md`
    - 模块入口 README -> `module-entry-template.md`
-13. foundations 权威文档是否出现同名前缀 shadow 文件
-14. 关键入口文档是否重新出现已退役的“预留位 / 占位”口径
+20. foundations 权威文档是否出现同名前缀 shadow 文件
+21. 关键入口文档是否重新出现已退役的“预留位 / 占位”口径
 
 说明：
 
 - `.serena/` 当前不在这组忽略项里，因为本仓库允许受控保留项目级 Serena 配置与记忆
 - `.opencode/` 与 `.agents/`、`.claude/` 一样，属于 repo-local mount/deploy target，运行说明只负责确认它仍然被忽略，不承担它的生成逻辑
+- `folder_logic_check.py` 使用 `git ls-files` 的真实 tracked 状态，而不只看 `.gitignore`
 
 ## 四、什么时候运行
 
 - 调整主入口或 foundations 文档后
 - 新增模块入口页后
 - 清理 `.nav/` 或 hidden-layer 说明后
+- 调整根目录对象分类、tracked 白名单或 compat shim 后
 - 准备让其他 AI 后端复用当前入口体系前
 
 ## 五、如何理解结果
 
 - 返回码 `0`：当前最小治理检查通过
-- 返回码非 `0`：存在坏链、缺失入口、缺失回链或 `.gitignore` 边界回退
+- 返回码非 `0`：存在结构违规、坏链、缺失入口、缺失回链或 `.gitignore` 边界回退
 
-失败时脚本会直接列出具体问题，优先按输出顺序修复。
+失败时脚本会直接列出具体问题；`folder_logic_check.py` 还会输出稳定 issue code，便于 gate 和测试锁定。
 
 ## 六、当前限制
 
 - 不检查 markdown anchor 是否存在
 - 不检查完整文案语义是否自洽；当前只做固定规则的最小语义检查
-- 不判断 `.nav/` 的历史软链是否应删除，只验证文档和主入口是否仍受控
+- 不验证 `.nav/` 目标页面的语义是否正确；当前只检查 slot、symlink 形态和目标集合是否合法

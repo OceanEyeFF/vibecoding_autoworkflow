@@ -52,6 +52,12 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
             "--repo-root",
             str(repo_root),
             "--json",
+            "--allowed-prefix",
+            "docs/knowledge/foundations/path-governance-ai-routing.md",
+            "--allowed-prefix",
+            "docs/knowledge/foundations/root-directory-layering.md",
+            "--allowed-prefix",
+            "docs/knowledge/foundations/toolchain-layering.md",
         ],
         cwd=repo_root,
     )
@@ -59,6 +65,18 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
 
 def run_spec_gate(repo_root: Path, python: str) -> dict:
     subchecks = [
+        (
+            "folder_logic",
+            run_command(
+                [
+                    python,
+                    str(repo_root / "toolchain" / "scripts" / "test" / "folder_logic_check.py"),
+                    "--repo-root",
+                    str(repo_root),
+                ],
+                cwd=repo_root,
+            ),
+        ),
         (
             "path_governance",
             run_command(
@@ -107,6 +125,10 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
         (
             "gate_tool_tests",
             run_command([python, "-m", "pytest", "toolchain/scripts/test/test_closeout_gate_tools.py"], cwd=repo_root),
+        ),
+        (
+            "folder_logic_tests",
+            run_command([python, "-m", "pytest", "toolchain/scripts/test/test_folder_logic_check.py"], cwd=repo_root),
         ),
         (
             "deploy_verify_agents",

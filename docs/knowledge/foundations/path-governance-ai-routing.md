@@ -1,9 +1,9 @@
 ---
 title: "路径治理与 AI 告知"
 status: active
-updated: 2026-03-26
+updated: 2026-04-03
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-04-03
 ---
 # 路径治理与 AI 告知
 
@@ -32,8 +32,10 @@ last_verified: 2026-03-26
 - `.autoworkflow/`、`.spec-workflow/`：repo-local state
 - `.serena/`：repo-local state/config，可保留受控入库的项目级配置与记忆
 - `.nav/`：compatibility navigation
+- `tools/`：compatibility shim，只保留少量委托到 `toolchain/scripts/test/` 的 wrapper
+- `.pytest_cache/`：local ephemeral cache，可存在但不得 tracked
 - `README.md`、`INDEX.md`、`GUIDE.md`、`ROADMAP.md`、`AGENTS.md`：Entry Layer
-- `.git*`：Repo Infra
+- `.git*`、`.claudeignore`、`LICENSE`：Repo Infra
 
 ## 三、根级 Route Contract
 
@@ -182,13 +184,36 @@ last_verified: 2026-03-26
 - 这是 repo-local state/config
 - `.autoworkflow/` 与 `.spec-workflow/` 承载运行结果、审批状态和工具状态
 - `.serena/` 可保留受控入库的项目级配置与记忆，但不属于主线真相层
+- `.serena/` 当前允许 tracked 的白名单固定为：
+  - `.serena/.gitignore`
+  - `.serena/project.yml`
+  - `.serena/memories/Claude-Workspace-Architecture.md`
 - 默认不进入，只有任务明确要求读取运行结果、审批状态或 Serena 项目配置时才进入
 
 ### 3. `.nav/`
 
 - 这是 compatibility navigation
 - 只服务兼容跳转，不服务结构定义
+- 只允许 `README.md`、`@docs`、`@skills`
+- `@docs` 与 `@skills` 必须是 symlink
+- `@docs` 必须解析到 `docs/`
+- `@skills` 必须解析到 `product/memory-side/skills/`
 - 默认不作为 AI 的执行入口
+
+### 4. `tools/`
+
+- 这是 compatibility shim，不是新的正式内容区
+- 只允许保留：
+  - `tools/closeout_acceptance_gate.py`
+  - `tools/gate_status_backfill.py`
+  - `tools/scope_gate_check.py`
+- 真逻辑继续以 `toolchain/scripts/test/` 为准
+
+### 5. `.pytest_cache/`
+
+- 这是本地 ephemeral cache
+- 可以存在于根目录
+- 一旦被 tracked，就视为路径治理失败
 
 ## 六、什么时候允许扩读到次级文档层
 
