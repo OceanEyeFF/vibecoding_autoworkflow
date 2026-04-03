@@ -12,7 +12,7 @@
 
 - `prompts/` 当前承载 repo-local 的 eval prompt 模板，按 task 分文件保存，供 `toolchain/scripts/research/run_skill_suite.py` 在 eval 阶段读取。
 - `fixtures/` 当前承载稳定的 fixture 资产，主要是 schema 参考与 suite manifest。
-- `memory-side/` 当前只保留占位入口，不承载 active 的 `program / scenarios / scoring database` 一类资产。
+- `memory-side/` 当前承载已准入主题的 eval 入口；它依然不等于完整的 `program / scenarios / scoring database` 平台，但也不是“未来再说”的纯占位目录。
 
 这里还需要和 live acceptance 区分：
 

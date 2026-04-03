@@ -4,9 +4,9 @@
 
 当前分层：
 
-- `deploy/`：部署与安装
-- `research/`：预留给后续准入的最小研究脚本
-- `test/`：轻量治理检查入口
+- `deploy/`：部署与同步
+- `research/`：已准入的研究 runner、实验 orchestration 与 live acceptance 入口
+- `test/`：治理检查、gate 与轻量测试入口
 
 不要把下面这些东西放进这里：
 

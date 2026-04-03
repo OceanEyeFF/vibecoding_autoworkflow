@@ -1,9 +1,9 @@
 ---
 title: "Toolchain 分层"
 status: active
-updated: 2026-03-26
+updated: 2026-04-03
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-04-03
 ---
 # Toolchain 分层
 
@@ -15,9 +15,10 @@ last_verified: 2026-03-26
 
 它只承载下面这些内容：
 
-- 部署脚本
-- 测试入口
-- 按需准入的测量资产
+- 部署与同步脚本
+- 治理检查与 gate 入口
+- 已准入的 research runner 与实验 orchestration
+- 已准入的 eval / fixture / prompt 资产
 - 打包与分发工具
 
 它不承载下面这些内容：
@@ -47,13 +48,16 @@ toolchain/
 
 当前内容：
 
-- `deploy/adapter_deploy.py`
-- `test/path_governance_check.py`
+- `deploy/`
+- `research/`
+- `test/`
 
 说明：
 
-- `deploy/adapter_deploy.py` 当前是 active 的 deploy / verify 统一入口
-- `research/` 目录当前只保留占位入口，不承载 active runner；其中 `OpenCode` 仍是 research backend 预留位
+- `deploy/` 当前承接 active 的 deploy / verify / sync 动作入口
+- `research/` 当前已经是已准入的 active 研究工具层，承接 runner、autoresearch 外环、backend acceptance 入口与相关实验 orchestration
+- `test/` 当前承接轻量治理检查与 closeout gate 等验证入口
+- 具体入口和对象说明以下游 README 为准：[`toolchain/scripts/README.md`](../../../toolchain/scripts/README.md)
 
 硬规则：
 
@@ -63,25 +67,29 @@ toolchain/
 
 当前子层级：
 
-- `scripts/deploy/`：部署与安装入口
-- `scripts/research/`：预留给后续准入的最小研究脚本
-- `scripts/test/`：轻量治理检查入口
+- `scripts/deploy/`：部署与同步入口
+- `scripts/research/`：已准入的研究 runner 和实验 orchestration
+- `scripts/test/`：治理检查、验收 gate 与轻量测试入口
 
 ### 2. `toolchain/evals/`
 
 职责：
 
-- 保存被明确准入的最小测量资产
+- 保存被明确准入、可复用的 eval 资产入口
+- 为 active runner 提供稳定的 prompt、fixture、schema 与 topic-scoped eval 入口
 
 当前内容：
 
+- `prompts/`
 - `fixtures/`
 - `memory-side/`
 
-其中：
+说明：
 
-- `fixtures/` 当前只保留目录占位
-- `memory-side/` 当前只保留目录占位
+- `prompts/` 当前承接 repo-local 的 eval prompt 模板
+- `fixtures/` 当前承接稳定的 schema 与 suite manifest 等 fixture 资产
+- `memory-side/` 当前承接已准入主题的 eval 入口，而不是“未来再定”的纯占位目录
+- 具体对象与边界以下游 README 为准：[`toolchain/evals/README.md`](../../../toolchain/evals/README.md)
 
 硬规则：
 
@@ -134,8 +142,8 @@ toolchain/
    - `scripts/test/`
 3. 只有当测试资产需要独立沉淀时，再新增 `toolchain/tests/`
 
-当前阶段的 active 入口只有 `deploy/` 和 `test/`。
-`research/` 与 `evals/` 保留为预留位，只有在方案重新准入后才继续扩展。
+当前阶段的 active 入口不只包含 `deploy/` 和 `test/`。
+`research/` 已经是 active 的研究执行层，`evals/` 也是已准入的稳定评测资产层；后续扩展应继续沿这两个已准入层演进，而不是把它们当成纯预留位。
 
 ## 五、命名规则
 
@@ -161,4 +169,6 @@ toolchain/
 ## 七、相关文档
 
 - [根目录分层](./root-directory-layering.md)
+- [Scripts 入口总览](../../../toolchain/scripts/README.md)
+- [Evals 入口总览](../../../toolchain/evals/README.md)
 - [Memory Side 层级边界](../memory-side/layer-boundary.md)

@@ -6,6 +6,10 @@
 
 - [overview.md](./overview.md)
 
+补充模板：
+
+- [Module Entry 模板](../foundations/module-entry-template.md)
+
 建议阅读顺序：
 
 1. [overview.md](./overview.md)
@@ -22,6 +26,7 @@
 - `autoresearch` 的模块边界
 - 稳定入口与跨层映射
 - “去哪一层找什么”的主线说明
+- 复用 [Module Entry 模板](../foundations/module-entry-template.md) 的模块入口
 
 这里不适合放：
 

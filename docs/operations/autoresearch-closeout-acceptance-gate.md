@@ -1,9 +1,9 @@
 ---
 title: "Autoresearch closeout acceptance gate"
 status: active
-updated: 2026-04-02
+updated: 2026-04-03
 owner: aw-kernel
-last_verified: 2026-04-02
+last_verified: 2026-04-03
 ---
 # Autoresearch closeout acceptance gate
 
@@ -32,6 +32,7 @@ last_verified: 2026-04-02
 - `toolchain/scripts/test/closeout_acceptance_gate.py`
 - `toolchain/scripts/test/scope_gate_check.py`
 - `toolchain/scripts/test/gate_status_backfill.py`
+- `toolchain/scripts/test/governance_semantic_check.py`
 
 说明：
 
@@ -51,7 +52,7 @@ last_verified: 2026-04-02
 ## 四、判定口径
 
 - `Scope Gate`：确认当前工作区没有越界修改
-- `Spec Gate`：确认 doc/entrypoint 结构没有偏离当前治理主线
+- `Spec Gate`：先确认 doc/entrypoint 结构没有偏离当前治理主线，再确认关键模板、承接关系和 foundations 权威位没有发生最小语义回退
 - `Static Gate`：确认新增脚本至少能被 Python 解析
 - `Test Gate`：确认针对 gate/backfill 的最小测试仍然通过，并完成三路 `adapter_deploy.py verify --target local`
 - `Smoke Gate`：确认 retained run 的 `runtime.json` 没有残留 `active_round`，并对 `gate_status_backfill.py` 做一次 `--dry-run` smoke，确认真入口和参数解析可重复执行

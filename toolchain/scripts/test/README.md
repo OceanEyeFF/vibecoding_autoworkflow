@@ -5,6 +5,7 @@
 当前主线：
 
 - `path_governance_check.py`：检查 markdown 相对链接、关键主入口、路径/文档治理回链、`docs/knowledge/` 主线入口完整性、正文文档 frontmatter、目录状态约束和 `.gitignore` 中的关键 hidden-layer 忽略项
+- `governance_semantic_check.py`：检查关键模板是否存在、关键知识页是否回链承接模板、foundations 权威文档是否出现影子文件，以及已退役的占位口径是否回流
 
 适用场景：
 

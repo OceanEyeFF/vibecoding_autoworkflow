@@ -10,6 +10,10 @@
 - [toolchain-layering.md](./toolchain-layering.md)
 - [partition-model.md](./partition-model.md)
 - [task-contract-template.md](./task-contract-template.md)
+- [context-entry-template.md](./context-entry-template.md)
+- [writeback-log-template.md](./writeback-log-template.md)
+- [decision-record-template.md](./decision-record-template.md)
+- [module-entry-template.md](./module-entry-template.md)
 
 建议阅读顺序：
 
@@ -19,6 +23,10 @@
 4. [toolchain-layering.md](./toolchain-layering.md)
 5. [partition-model.md](./partition-model.md)
 6. [task-contract-template.md](./task-contract-template.md)
+7. [context-entry-template.md](./context-entry-template.md)
+8. [writeback-log-template.md](./writeback-log-template.md)
+9. [decision-record-template.md](./decision-record-template.md)
+10. [module-entry-template.md](./module-entry-template.md)
 
 这里适合放：
 

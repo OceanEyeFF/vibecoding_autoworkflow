@@ -58,21 +58,44 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
 
 
 def run_spec_gate(repo_root: Path, python: str) -> dict:
-    return run_command(
-        [
-            python,
-            str(repo_root / "toolchain" / "scripts" / "test" / "path_governance_check.py"),
-            "--repo-root",
-            str(repo_root),
-            "--scan-path",
-            "docs/analysis",
-            "--scan-path",
-            "docs/operations",
-            "--scan-path",
-            ".autoworkflow/closeout",
-        ],
-        cwd=repo_root,
-    )
+    subchecks = [
+        (
+            "path_governance",
+            run_command(
+                [
+                    python,
+                    str(repo_root / "toolchain" / "scripts" / "test" / "path_governance_check.py"),
+                    "--repo-root",
+                    str(repo_root),
+                    "--scan-path",
+                    "docs/analysis",
+                    "--scan-path",
+                    "docs/operations",
+                    "--scan-path",
+                    ".autoworkflow/closeout",
+                ],
+                cwd=repo_root,
+            ),
+        ),
+        (
+            "governance_semantic",
+            run_command(
+                [
+                    python,
+                    str(repo_root / "toolchain" / "scripts" / "test" / "governance_semantic_check.py"),
+                    "--repo-root",
+                    str(repo_root),
+                ],
+                cwd=repo_root,
+            ),
+        ),
+    ]
+    passed = all(result["passed"] for _, result in subchecks)
+    return {
+        "passed": passed,
+        "returncode": 0 if passed else 1,
+        "subchecks": [{**result, "name": name} for name, result in subchecks],
+    }
 
 
 def run_static_gate(repo_root: Path, python: str) -> dict:

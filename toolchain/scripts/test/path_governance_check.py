@@ -43,6 +43,10 @@ REQUIRED_ENTRY_PATHS = [
     PATH_GOVERNANCE_DOC,
     "docs/knowledge/foundations/root-directory-layering.md",
     "docs/knowledge/foundations/toolchain-layering.md",
+    "docs/knowledge/foundations/context-entry-template.md",
+    "docs/knowledge/foundations/writeback-log-template.md",
+    "docs/knowledge/foundations/decision-record-template.md",
+    "docs/knowledge/foundations/module-entry-template.md",
     "product/README.md",
     "product/memory-side/README.md",
     "product/memory-side/skills/README.md",
@@ -118,6 +122,10 @@ ENTRYPOINT_LINK_RULES = {
         "docs/knowledge/foundations/toolchain-layering.md",
         "docs/knowledge/foundations/partition-model.md",
         "docs/knowledge/foundations/task-contract-template.md",
+        "docs/knowledge/foundations/context-entry-template.md",
+        "docs/knowledge/foundations/writeback-log-template.md",
+        "docs/knowledge/foundations/decision-record-template.md",
+        "docs/knowledge/foundations/module-entry-template.md",
     ],
     "docs/knowledge/memory-side/README.md": [
         "docs/knowledge/memory-side/overview.md",
@@ -145,6 +153,7 @@ ENTRYPOINT_LINK_RULES = {
 REQUIRED_GITIGNORE_ENTRIES = [
     ".agents/",
     ".claude/",
+    ".opencode/",
     ".autoworkflow/",
     ".spec-workflow/",
 ]
