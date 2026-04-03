@@ -1,13 +1,13 @@
 ---
 title: "Autoresearch：收口治理目标"
 status: active
-updated: 2026-04-02
+updated: 2026-04-03
 owner: aw-kernel
-last_verified: 2026-04-02
+last_verified: 2026-04-03
 ---
 # Autoresearch：收口治理目标
 
-> 说明：本文固定当前 `autoresearch` 阶段收口治理期的目标、边界与完成判断，用来约束“这段时间为什么做治理、治理做到什么算完成”。它不是下一阶段 implementation 规划；当本轮收口完成后，本文可作为后续治理维护文档的升级基线。
+> 说明：本文固定当前 `autoresearch` 阶段收口治理期的目标、边界与完成判断，用来约束“这段时间为什么做治理、治理做到什么算完成”。它不是下一阶段 implementation 规划；当前这轮 closeout 已达成本文定义的完成判断，因此本文保留为本轮 closeout 的目标基线与 lineage 入口。
 
 > 入口位说明：本文是当前 closeout 的目标正文叶子页，只承接目标与完成判断，不承担默认入口；当前 closeout 的唯一目录页型入口是 [Analysis README](./README.md) 的 closeout 分流块。
 
@@ -115,6 +115,15 @@ last_verified: 2026-04-02
 - 被保留的代表性 runs 已登记进 manifest，并带有最小 retention metadata
 - closeout gate 能检查关键残留状态，并留下正式验收记录
 
+### 当前状态（2026-04-02）
+
+截至 `2026-04-02`，上面的完成判断已满足：
+
+- 当前 closeout 的边界、默认判定、最小 authority 与例外口径已冻结到 [`../operations/autoresearch-closeout-decision-rules.md`](../operations/autoresearch-closeout-decision-rules.md)。
+- `docs/analysis/README.md` 已承担唯一目录页型默认入口，历史 planning 已退回叶子页并补齐非默认入口提示。
+- `.autoworkflow` 热区对象的最小 `保留 / 归档 / 删除` 规则已落到 [`../operations/autoresearch-artifact-hygiene.md`](../operations/autoresearch-artifact-hygiene.md)，真实清理记录与 retained index 已落到 [`../operations/autoresearch-closeout-cleanup-and-retained-index.md`](../operations/autoresearch-closeout-cleanup-and-retained-index.md)。
+- closeout gate 已承接到 [`../operations/autoresearch-closeout-acceptance-gate.md`](../operations/autoresearch-closeout-acceptance-gate.md)，并已有 `.autoworkflow/closeout/autoresearch-closeout-governance-task-list-20260402/integration-acceptance.json` 作为正式验收记录。
+
 ## 四、明确不做
 
 - 不写下一阶段 implementation task plan
@@ -125,14 +134,10 @@ last_verified: 2026-04-02
 
 ## 五、升级路径
 
-当前阶段：
+当前状态：
 
-- 本文是收口治理目标文档，负责约束治理动作的目标、边界和完成判断
-
-收口完成后：
-
-- 稳定下来的维护规则应承接到 `docs/operations/` 的治理维护文档
-- 本文保留为本轮 closeout 目标基线和 lineage 入口
+- 本轮 closeout 已完成；稳定下来的维护规则已经承接到 `docs/operations/` 的治理维护文档。
+- 本文继续保留为本轮 closeout 的目标基线和 lineage 入口，不承担默认入口或运行规则承接位。
 
 ## 六、相关文档
 
