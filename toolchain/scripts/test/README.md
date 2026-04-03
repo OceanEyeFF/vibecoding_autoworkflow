@@ -4,13 +4,19 @@
 
 当前主线：
 
+- `folder_logic_check.py`：检查根目录分层、一级目录白名单、hidden/state/mount layer 例外白名单，以及 `docs/` / `toolchain/` 下的错位内容
 - `path_governance_check.py`：检查 markdown 相对链接、关键主入口、路径/文档治理回链、`docs/knowledge/` 主线入口完整性、正文文档 frontmatter、目录状态约束和 `.gitignore` 中的关键 hidden-layer 忽略项
 - `governance_semantic_check.py`：检查关键模板是否存在、关键知识页是否回链承接模板、foundations 权威文档是否出现影子文件，以及已退役的占位口径是否回流
+- `scope_gate_check.py`：按 contract 中的 `in_scope` / `out_of_scope` 规则校验本轮改动是否越界
+- `gate_status_backfill.py`：把 gate 结果回填到 `.autoworkflow/state/` 和 closeout 摘要
+- `governance_assess.py`：对 `rule / folders / document / code` 四维输入做最小治理收口评估
+- `repo_governance_eval.py`：对五维 repo maintainability 输入做总分、评级和 AI compatibility 评估
 
 适用场景：
 
 - 文档入口刚调整过
 - foundations 合同刚更新过
+- 需要给 harness closeout 或 repo audit 生成结构化治理评估
 - 想快速确认 AI 的默认读取主线没有被新改动破坏
 
 不要把下面这些东西放进这里：
