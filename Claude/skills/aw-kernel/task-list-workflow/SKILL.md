@@ -1,0 +1,178 @@
+---
+name: task-list-workflow
+version: 1.0.0
+created: 2026-03-27
+updated: 2026-03-27
+description: >
+  任务列表执行工作流。用于处理“一个任务文件中包含多个任务”的场景，
+  自动完成任务识别、依赖分组、分批执行、逐任务验收与汇总交付。
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, TodoWrite, AskUserQuestion, Task
+---
+
+# Task List SubAgent Workflow（多任务清单执行）
+
+你现在进入 **task-list-workflow** 模式。
+
+## 适用场景
+- 输入是任务文件（markdown/txt/yaml/json）且包含多个任务。
+- 原有单任务 workflow 无法稳定处理多任务依赖与并行关系。
+
+## 触发判定（必须执行）
+1. 读取传入任务文件。
+2. 检测任务数量（按标题、编号、清单项、结构化字段综合判断）。
+3. 若任务数 <= 1：
+   - 直接降级为单任务流程（simple/strict workflow）。
+4. 若任务数 >= 2：
+   - 进入本 workflow 的 Task List 模式。
+
+## 总原则
+- 任务单位最小化：每个子任务必须可独立验证。
+- 边界硬约束：每个子任务必须有 In-scope / Out-of-scope。
+- 先规划后执行：先产出 Task Execution Matrix，再进入执行。
+- 失败可控：任何关键阻塞都必须显式上报，不允许 silent fail。
+- 禁止静默降级：不得自行 fallback 到“简单但不完整”的方案；如需降级，必须先报告影响并等待确认。
+
+## Harness Coding：项目状态管控（新增）
+为避免多任务批处理过程中的状态丢失与并行冲突，必须维护状态文件：
+- `.autoworkflow/state/harness-task-list.json`
+
+最小状态字段：
+- `workflow_id`
+- `status`（inventory / planning / batching / executing / validating / integrated / blocked / done）
+- `current_batch`
+- `task_status_table`
+- `active_worktrees`
+- `risk_summary`
+- `last_updated`
+
+执行约束：
+- 每次 Batch 开始/结束、每次 Gate 执行后，必须刷新状态文件。
+- 若发现另一个非终态实例占用同一任务文件，必须停止并请求人工决策（继续/接管/终止）。
+- 任务结束后将状态写为 `done`，并附 Integration Gate 摘要。
+
+### A. Contract 文件结构化
+- 每轮必须维护：`.autoworkflow/contracts/<workflow_id>.json`
+- 结构基于：`docs/operations/prompt-templates/harness-contract-template.json`
+
+### B. Scope Gate 自动检查
+- 在 Integration Gate 前执行：
+  ```bash
+  python tools/scope_gate_check.py --contract .autoworkflow/contracts/<workflow_id>.json --base <base_ref> --head <head_ref>
+  ```
+- 有 violations 则回到执行阶段处理，不得直接交付。
+
+### C. Gate 状态回填
+- 每个 Gate 完成后回填状态到 harness state：
+  ```bash
+  python tools/gate_status_backfill.py --state .autoworkflow/state/harness-task-list.json --gate scope --status pass --evidence \"<cmd-or-log-ref>\"
+  ```
+
+### 收口节点：项目治理度评估（Governance）
+在最终 Integration Gate 后，必须执行治理度评估（rule/folders/document/code）：
+- 输出等级仅允许：`通过` / `有条件通过` / `不通过`
+- 推荐命令：
+  ```bash
+  python tools/governance_assess.py --input .autoworkflow/state/governance-input.json --output .autoworkflow/state/governance-report.json
+  ```
+- 若 `code` 维度为 `不通过`，整体不得评为 `通过`。
+- 必须给出后续整理方向与有效性复核建议，避免伪闭环（评分高但项目质量差）。
+- 过渡期允许“有条件通过”，但必须附明确整改触发条件。
+- 可选执行 Repo 治理评估模板（五维度）：
+  - 参考：`docs/operations/prompt-templates/repo-governance-evaluation.md`
+  - 命令：
+    ```bash
+    python tools/repo_governance_eval.py --input .autoworkflow/state/governance-input.json --output .autoworkflow/state/governance-report.json
+    ```
+
+## Phase 0：输入归一化
+输出 `Task Inventory`：
+- Task ID
+- Task 标题
+- 来源位置（文件+行区间）
+- 初始优先级（P0/P1/P2）
+- 初始类型（Implement/Refactor/Debug/Review/Document）
+
+若任务描述缺失关键字段（目标、范围、验收），标记为 `Needs Clarification`，先不执行。
+
+## Phase 1：任务规划（Task Execution Matrix）
+为每个任务生成执行矩阵字段：
+- Goal
+- Non-goals
+- In-scope / Out-of-scope
+- Context（必读/可选/禁读）
+- Execution Profile（模型 + 推理等级 + 理由）
+- Dependencies（前置任务 / 可并行任务 / Batch）
+- Validation Plan（Static/Test/Smoke）
+- Exit Criteria
+- Failure Handling
+
+输出物：
+- 任务依赖图（文字版）
+- Batch 划分
+- 并行执行组
+- 高风险任务清单
+
+并在执行前增加 `Risk Triage`：
+- Blocking Risks：会直接阻塞推进的风险（依赖/权限/环境/接口）
+- Rework Risks：不提前处理会导致高频返工的风险（需求歧义/范围不清/测试口径冲突）
+- 每个风险标记处理策略：立即处理 / 延后处理（含理由）/ 请求人工决策
+
+## Phase 2：分批执行（SubAgent）
+- 同一 Batch 内可并行执行；跨 Batch 必须串行。
+- 每个子任务执行前，必须回显本任务合同（Goal/Scope/Exit Criteria）。
+- 每个子任务执行后，必须产出：
+  - 状态：Done / Partial / Blocked
+  - 变更文件
+  - 验证结果（Static/Test/Smoke）
+  - 残留风险
+
+## Phase 3：多任务 Review Loop（可选但推荐）
+当满足任一条件时触发 review-loop：
+- 存在 P0/P1 代码风险
+- 任意子任务为 Partial/Blocked
+- 多任务合并后出现冲突或回归迹象
+
+触发后使用 `review-loop` 规则做 Inspector/Fixer/Meta-Reviewer 复查。
+
+## Phase 4：Integration Gate（必须）
+- 所有子任务不得直接视为最终交付。
+- 必须在 integration worktree 汇总并统一验证。
+- 至少执行：
+  1. Scope Gate（无未授权扩边）
+  2. Spec Gate（目标满足、非目标未违反）
+  3. Static Gate（至少一次静态检查）
+  4. Test Gate（可补则补，不可补需说明）
+     - 若本轮采用 strict 验收且可统计覆盖率，先询问覆盖率目标：90% / 100% / AI决定
+     - 若选择 AI决定，需在报告中写明推荐值与理由
+  5. Smoke Gate（可跑则跑，不可跑需说明）
+
+## 终止条件
+仅在以下条件同时满足时结束：
+- 所有 Batch 已处理完成。
+- 所有任务状态明确（Done / Partial / Blocked）。
+- Integration Gate 完成并有证据。
+- 已输出残留风险与人工接手建议。
+
+## 最终输出格式
+- Task Inventory 摘要
+- Task Execution Matrix 摘要
+- Batch 执行结果
+- 任务状态总表（Done/Partial/Blocked）
+- Integration Gate 结果
+- 残留风险与后续建议
+
+## 多端部署路径（Claude / CodeX / OpenCode）
+源路径（仓库内）：
+- `Claude/skills/aw-kernel/task-list-workflow/SKILL.md`
+
+部署目标（按端侧 Skills 根目录 + namespace 映射）：
+- Claude：`~/.claude/skills/<namespace>/task-list-workflow/SKILL.md`
+- CodeX：`~/.codex/skills/<namespace>/task-list-workflow/SKILL.md`
+- OpenCode：`~/.opencode/skills/<namespace>/task-list-workflow/SKILL.md`
+
+Claude 端安装命令：
+```bash
+bash Claude/scripts/install-global.sh --force
+# 或
+bash Claude/scripts/install-global.sh --force --namespace <namespace>
+```

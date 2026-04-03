@@ -69,11 +69,13 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 |-------|---------|---------|
 | **autodev** | 自动化开发流程 | 需求分析 → 任务拆解 → 迭代开发 → 交付 |
 | **autodev-worktree** | 并行开发管理 | Git worktree、隔离工作区、智能合并 |
+| **review-loop** | 代码审查修复闭环 | PR/commit/diff 的多轮审查、修复与集成交付 |
+| **task-list-workflow** | 多任务清单执行 | 任务检测→分批执行→integration gate 的多任务工作流 |
 
 ## 📊 核心成就
 
 - ✅ 7 个 aw-kernel Agents：`Claude/agents/aw-kernel/`
-- ✅ 2 个核心 Skills：`autodev` / `autodev-worktree`（`Claude/skills/aw-kernel/`）
+- ✅ 4 个核心 Skills：`autodev` / `autodev-worktree` / `review-loop` / `task-list-workflow`（`Claude/skills/aw-kernel/`）
 - ✅ 可选 `.autoworkflow` 工具链：见 [TOOLCHAIN.md](Claude/docs/aw-kernel/TOOLCHAIN.md)
 
 ## 📚 文档导航
@@ -87,6 +89,7 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 - **[Agent文档](Claude/agents/aw-kernel/)** - 7个专业Agent详细说明
 - **[Skill文档](Claude/skills/aw-kernel/)** - 工作流编排详细说明
 - **[安装脚本](Claude/scripts/README.md)** - 详细安装选项
+- **[Prompt 模板（repo-side contract）](docs/operations/prompt-templates/)** - 任务规划、单任务/多任务执行、review-loop 与执行合同模板
 
 ### 设计文档
 - **[设计基线](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md)** - 设计理念与架构
@@ -115,6 +118,7 @@ powershell -ExecutionPolicy Bypass -File Claude\scripts\install-global.ps1
 - **完整目录结构** → [INDEX.md#目录结构](INDEX.md#目录结构)
 - **安装详细选项** → [Claude/scripts/README.md](Claude/scripts/README.md)
 - **设计理念** → [ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md](ClaudeCodeAgentDocuments/01_DesignBaseLines/README.md)
+- **文档入口** → [docs/README.md](docs/README.md)
 
 ---
 

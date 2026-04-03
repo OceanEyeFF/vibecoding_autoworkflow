@@ -1,0 +1,40 @@
+{
+  "workflow_id": "wf-2026-xxxx",
+  "workflow_type": "review-loop | task-list-workflow",
+  "task_ref": "<commit|pr|task-file>",
+  "scope": {
+    "in_scope": [
+      "src/**",
+      "docs/operations/prompt-templates/**"
+    ],
+    "out_of_scope": [
+      ".autoworkflow/",
+      ".spec-workflow/",
+      ".serena/",
+      ".nav/",
+      ".agents/",
+      ".claude/"
+    ]
+  },
+  "gates": {
+    "scope": "pending",
+    "static": "pending",
+    "semantic": "pending",
+    "white_box": "pending",
+    "smoke": "pending"
+  },
+  "risk_triage": {
+    "blocking_risks": [],
+    "rework_risks": []
+  },
+  "governance": {
+    "rule": "pending",
+    "folders": "pending",
+    "document": "pending",
+    "code": "pending",
+    "overall": "pending",
+    "improvement_suggestions": []
+  },
+  "status": "planning",
+  "last_updated": "2026-04-01T00:00:00Z"
+}

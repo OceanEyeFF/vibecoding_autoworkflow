@@ -19,6 +19,7 @@
 - [快速开始](README.md#快速开始) - 5分钟上手
 - [Agent 列表](#agents) - 选择合适工具
 - [Skill 列表](#skills) - 了解工作流
+- [Prompt 模板](docs/operations/prompt-templates/) - repo-side contract 执行模板
 
 **🔧 开发者**
 - [源资产目录](Claude/README.md) - 了解目录结构
@@ -82,6 +83,8 @@ Claude/agents/aw-kernel/
 |-------|------|---------|----------|
 | **autodev** | [autodev/](Claude/skills/aw-kernel/autodev/SKILL.md) | 自动化开发流程 | 需求分析 → 任务拆解 → 迭代开发 → 交付 |
 | **autodev-worktree** | [autodev-worktree/](Claude/skills/aw-kernel/autodev-worktree/SKILL.md) | 并行开发管理 | Git worktree、隔离工作区、智能合并 |
+| **review-loop** | [review-loop/](Claude/skills/aw-kernel/review-loop/SKILL.md) | 代码评审修复闭环 | 审查→修复→复查→integration worktree 统一验证 |
+| **task-list-workflow** | [task-list-workflow/](Claude/skills/aw-kernel/task-list-workflow/SKILL.md) | 多任务清单执行 | 任务检测→Batch 执行→Integration Gate |
 
 ### 位置
 ```
@@ -89,7 +92,11 @@ Claude/skills/aw-kernel/
 ├── autodev/                     # 自动化开发流程
 │   ├── SKILL.md
 │   └── v0.1/
-└── autodev-worktree/            # Worktree管理
+├── autodev-worktree/            # Worktree管理
+│   └── SKILL.md
+├── review-loop/                 # 代码审查修复闭环
+│   └── SKILL.md
+└── task-list-workflow/          # 多任务清单执行
     └── SKILL.md
 ```
 
@@ -199,7 +206,9 @@ AutoWorkflow/
 │   │
 │   ├── 📁 skills/aw-kernel/        # 【技术】Skills
 │   │   ├── autodev/
-│   │   └── autodev-worktree/
+│   │   ├── autodev-worktree/
+│   │   ├── review-loop/
+│   │   └── task-list-workflow/
 │   │
 │   ├── 📁 assets/                  # 【通用】模板资源
 │   │   └── templates/
@@ -227,10 +236,22 @@ AutoWorkflow/
 │   └── 📁 00_TempFiles/           # 临时文件
 │
 ├── 📁 docs/                       # 【用户】附加文档
+│   ├── README.md                  # docs 目录入口
 │   ├── AI高效使用指南.md
-│   └── 📁 analysis/               # 【分析】精华沉淀
+│   ├── 📁 analysis/               # 【分析】精华沉淀
 │       ├── README.md
 │       └── autodev-insights.md
+│   └── 📁 operations/             # 【运行】runbook 与执行模板
+│       ├── README.md
+│       └── 📁 prompt-templates/
+│           ├── simple-subagent-workflow.md
+│           ├── strict-subagent-workflow.md
+│           ├── execution-contract-template.md
+│           ├── harness-contract-template.json
+│           ├── review-loop-code-review.md
+│           ├── repo-governance-evaluation.md
+│           ├── task-planning-contract.md
+│           └── task-list-subagent-workflow.md
 │
 ├── 📁 archive/                    # 【归档】历史文档
 │   ├── work-docs/                 # 【归档】工作留档（阶段性记录）
