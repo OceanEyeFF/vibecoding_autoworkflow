@@ -15,11 +15,14 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 ROOT_ALLOWED_NAMES = {
     "AGENTS.md",
+    "CONTRIBUTING.md",
     "GUIDE.md",
     "INDEX.md",
     "LICENSE",
     "README.md",
     "ROADMAP.md",
+    ".github",
+    ".codex",
     "docs",
     "product",
     "toolchain",
@@ -49,11 +52,17 @@ TOOLS_TRACKED_ALLOWLIST = {
     "tools/gate_status_backfill.py",
     "tools/scope_gate_check.py",
 }
+CODEX_TRACKED_ALLOWLIST = {
+    ".codex/config.toml",
+    ".codex/rules/repo.rules",
+}
 SERENA_TRACKED_ALLOWLIST = {
     ".serena/.gitignore",
     ".serena/memories/Claude-Workspace-Architecture.md",
     ".serena/project.yml",
 }
+CODEX_ALLOWED_ENTRIES = {"config.toml", "rules"}
+CODEX_RULES_ALLOWED_ENTRIES = {"repo.rules"}
 NAV_ALLOWED_ENTRIES = {"README.md", "@docs", "@skills"}
 NAV_REQUIRED_SLOTS = tuple(NAV_SLOT_TARGETS)
 PRODUCT_STATE_FILENAMES = {"runtime.json", "runtime.yaml", "runtime.yml", "state.json", "state.yaml", "state.yml"}
@@ -110,6 +119,7 @@ class FolderRules:
         default_factory=lambda: {key: set(value) for key, value in FIRST_LEVEL_ALLOWLIST.items()}
     )
     tools_tracked_allowlist: set[str] = field(default_factory=lambda: set(TOOLS_TRACKED_ALLOWLIST))
+    codex_tracked_allowlist: set[str] = field(default_factory=lambda: set(CODEX_TRACKED_ALLOWLIST))
     serena_tracked_allowlist: set[str] = field(default_factory=lambda: set(SERENA_TRACKED_ALLOWLIST))
 
 
@@ -232,6 +242,50 @@ def check_first_level_allowlist(repo_root: Path, report: FolderLogicReport, rule
     report.add_info(f"checked {checked} first-level entries under product/, docs/, and toolchain/")
 
 
+def check_codex_layer(repo_root: Path, tracked_paths: set[str], report: FolderLogicReport, rules: FolderRules) -> None:
+    codex_dir = repo_root / ".codex"
+    if not codex_dir.exists():
+        report.add_info("checked .codex execution config layer: directory not present")
+        return
+    if not codex_dir.is_dir():
+        report.add_issue("FL015", ".codex", "execution config layer must be a directory when present")
+        return
+
+    checked = 0
+    entries = {entry.name: entry for entry in codex_dir.iterdir()}
+    for name in sorted(entries):
+        checked += 1
+        if name not in CODEX_ALLOWED_ENTRIES:
+            issue_code = "FL016" if is_tracked_path(f".codex/{name}", tracked_paths) else "FL015"
+            report.add_issue(issue_code, f".codex/{name}", ".codex only allows config.toml and rules/")
+
+    config_path = codex_dir / "config.toml"
+    if not config_path.exists():
+        report.add_issue("FL015", ".codex/config.toml", "execution config layer must provide config.toml")
+    elif not config_path.is_file():
+        report.add_issue("FL015", ".codex/config.toml", "execution config layer config.toml must be a file")
+
+    rules_dir = codex_dir / "rules"
+    if not rules_dir.exists():
+        report.add_issue("FL015", ".codex/rules", "execution config layer must provide rules/")
+    elif not rules_dir.is_dir():
+        report.add_issue("FL015", ".codex/rules", "execution config layer rules/ must be a directory")
+    else:
+        rule_entries = {entry.name: entry for entry in rules_dir.iterdir()}
+        for name in sorted(rule_entries):
+            checked += 1
+            if name not in CODEX_RULES_ALLOWED_ENTRIES:
+                issue_code = "FL016" if is_tracked_path(f".codex/rules/{name}", tracked_paths) else "FL015"
+                report.add_issue(issue_code, f".codex/rules/{name}", "rules/ only allows repo.rules")
+        repo_rules = rules_dir / "repo.rules"
+        if not repo_rules.exists():
+            report.add_issue("FL015", ".codex/rules/repo.rules", "execution config layer must provide repo.rules")
+        elif not repo_rules.is_file():
+            report.add_issue("FL015", ".codex/rules/repo.rules", "rules file must be a regular file")
+
+    report.add_info(f"checked {checked} .codex entries against the execution config layer")
+
+
 def check_product_patterns(repo_root: Path, report: FolderLogicReport) -> None:
     checked = 0
     for relative_path in iter_relative_paths(repo_root / "product", repo_root):
@@ -293,6 +347,10 @@ def check_tracked_exceptions(tracked_paths: set[str], report: FolderLogicReport,
             if tracked_path not in rules.tools_tracked_allowlist:
                 report.add_issue("FL014", tracked_path, "tools/ only allows declared compatibility shims")
             continue
+        if tracked_path.startswith(".codex/"):
+            if tracked_path not in rules.codex_tracked_allowlist:
+                report.add_issue("FL016", tracked_path, ".codex/ only allows the explicit tracked whitelist")
+            continue
         if tracked_path.startswith((".agents/", ".claude/", ".opencode/")):
             report.add_issue("FL007", tracked_path, "repo-local mount layers must not contain tracked content")
             continue
@@ -343,6 +401,7 @@ def run_checks(repo_root: Path, rules: FolderRules | None = None) -> FolderLogic
 
     check_root_allowlist(repo_root, tracked_paths, report, effective_rules)
     check_first_level_allowlist(repo_root, report, effective_rules)
+    check_codex_layer(repo_root, tracked_paths, report, effective_rules)
     check_product_patterns(repo_root, report)
     check_docs_patterns(repo_root, report)
     check_toolchain_patterns(repo_root, report)

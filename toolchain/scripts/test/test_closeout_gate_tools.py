@@ -15,13 +15,22 @@ from gate_status_backfill import update_state
 def test_check_scope_accepts_allowed_prefixes() -> None:
     result = check_scope(
         [
+            "AGENTS.md",
+            "CONTRIBUTING.md",
+            ".codex/config.toml",
+            ".github/workflows/ci.yml",
             "docs/analysis/README.md",
             "docs/operations/autoresearch-closeout-acceptance-gate.md",
+            "docs/operations/review-verify-handbook.md",
             ".autoworkflow/closeout/demo/summary.json",
             "toolchain/scripts/test/scope_gate_check.py",
             "tools/scope_gate_check.py",
         ],
         (
+            "AGENTS.md",
+            "CONTRIBUTING.md",
+            ".codex/",
+            ".github/",
             ".autoworkflow/closeout/",
             "docs/analysis/README.md",
             "docs/operations/",
@@ -90,9 +99,14 @@ def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path
 
     assert result["passed"] is True
     command = captured["command"]
+    assert "AGENTS.md" in command
+    assert "CONTRIBUTING.md" in command
+    assert ".codex/" in command
+    assert ".github/" in command
     assert "docs/knowledge/foundations/path-governance-ai-routing.md" in command
     assert "docs/knowledge/foundations/root-directory-layering.md" in command
     assert "docs/knowledge/foundations/toolchain-layering.md" in command
+    assert "docs/operations/review-verify-handbook.md" in command
 
 
 def test_run_spec_gate_includes_folder_logic(monkeypatch, tmp_path) -> None:

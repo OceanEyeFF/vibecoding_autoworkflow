@@ -21,10 +21,11 @@ last_verified: 2026-04-03
 
 - `.claude/`、`.agents/`、`.opencode/`：repo-local mount / deploy target
 - `.autoworkflow/`、`.spec-workflow/`、`.serena/`：repo-local state
+- `.codex/`：repo-local execution config layer
 - `.nav/`：兼容导航层
 - `tools/`：根目录兼容 shim；只保留少量委托到 `toolchain/scripts/test/` 的包装脚本
 - `.pytest_cache/`：本地 ephemeral cache，可存在但不得入库
-- `.git*`、`LICENSE`、`.claudeignore` 等基础设施文件
+- `.github/`、`.git*`、`LICENSE`、`CONTRIBUTING.md`、`.claudeignore` 等基础设施文件
 
 ## 二、根目录层级
 
@@ -36,10 +37,11 @@ last_verified: 2026-04-03
 | Toolchain Layer | `toolchain/` | 脚本、评测、测试、打包、部署工具 | 业务源码真相、repo-local 手工维护 wrapper |
 | Repo-local Mount Layer | `.claude/` `.agents/` `.opencode/` | 本地测试挂载点、repo-local deploy target | 业务源码真相、长期规则正文 |
 | Repo-local State Layer | `.autoworkflow/` `.spec-workflow/` `.serena/` | 运行产物、审批状态、工具配置与记忆；其中 `.serena/` 可保留受控入库的项目级配置与记忆白名单 | 当前主线入口、业务源码 |
+| Repo-local Execution Config Layer | `.codex/` | Codex 的 repo-local 执行配置、规则与默认约束 | 长期真相正文、业务源码、运行产物 |
 | Compatibility Navigation Layer | `.nav/` | 辅助导航和兼容跳转 | 主线规则、真实结构定义 |
 | Compatibility Shim Layer | `tools/` | 给 legacy gate / harness 保留最小兼容入口，真逻辑仍在 `toolchain/scripts/test/` | canonical 源码、缓存、运行产物 |
 | Local Ephemeral Cache Layer | `.pytest_cache/` | 本地测试缓存 | tracked 内容、主线规则 |
-| Repo Infra Layer | `.git/` `.gitignore` `.gitattributes` `.claudeignore` `LICENSE` | 版本控制和仓库级基础配置 | 业务规则和知识层内容 |
+| Repo Infra Layer | `.github/` `.git/` `.gitignore` `.gitattributes` `.claudeignore` `LICENSE` `CONTRIBUTING.md` | 版本控制和仓库级基础配置 | 业务规则和知识层内容 |
 
 ## 三、三块正式内容区
 
@@ -142,7 +144,16 @@ last_verified: 2026-04-03
 - `@docs` 必须解析到 `docs/`
 - `@skills` 必须解析到 `product/memory-side/skills/`
 
-### 4. `.pytest_cache/`
+### 4. `.codex/`
+
+- `.codex/` 仍属于 repo-local execution config layer
+- 允许 tracked 的白名单当前固定为：
+  - `.codex/config.toml`
+  - `.codex/rules/repo.rules`
+- 除白名单外，`.codex/` 里的 tracked 内容都视为结构违规
+- `.codex/` 不承载长期真相正文，也不承载业务源码
+
+### 5. `.pytest_cache/`
 
 - `.pytest_cache/` 是本地 ephemeral cache
 - 可存在于根目录，但不得有 tracked 内容
@@ -175,6 +186,9 @@ last_verified: 2026-04-03
 ├── GUIDE.md
 ├── ROADMAP.md
 ├── AGENTS.md
+├── CONTRIBUTING.md
+├── .github/            # repo infra (PR/CI)
+├── .codex/              # repo-local execution config
 ├── product/              # 业务代码
 ├── docs/                 # 文档真相
 ├── toolchain/            # 脚本、评测、部署工具

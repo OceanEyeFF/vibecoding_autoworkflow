@@ -42,10 +42,11 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 1. `folder_logic_check.py`
 2. 根目录对象是否仍落在声明的 allowlist 内：
    - 正式内容区：`product/`、`docs/`、`toolchain/`
+   - repo-local execution config：`.codex/`
    - mount / state / navigation：`.agents/`、`.claude/`、`.opencode/`、`.autoworkflow/`、`.spec-workflow/`、`.serena/`、`.nav/`
    - compatibility shim：`tools/`
    - local ephemeral cache：`.pytest_cache/`
-   - entry / infra：`README.md`、`INDEX.md`、`GUIDE.md`、`ROADMAP.md`、`AGENTS.md`、`.git*`、`.claudeignore`、`LICENSE`
+   - entry / infra：`README.md`、`INDEX.md`、`GUIDE.md`、`ROADMAP.md`、`AGENTS.md`、`CONTRIBUTING.md`、`.github/`、`.git*`、`.claudeignore`、`LICENSE`
 3. `product/`、`docs/`、`toolchain/` 的一级子目录是否仍符合 allowlist
 4. 典型错放内容是否仍被拦截：
    - `product/` 中的 runbook、缓存、logs、state/runtimes
@@ -54,6 +55,7 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 5. hidden/state/mount 层的 tracked 真实状态是否仍受控：
    - `.agents/`、`.claude/`、`.opencode/` 默认不允许 tracked 内容
    - `.serena/` 只允许显式白名单 tracked 文件
+   - `.codex/` 只允许 `config.toml` 与 `rules/repo.rules`
    - `tools/` 只允许显式 compat shim tracked 文件
    - `.pytest_cache/` 允许本地存在，但 tracked 时失败
 6. `.nav/` 是否仍只包含 `README.md`、`@docs`、`@skills`

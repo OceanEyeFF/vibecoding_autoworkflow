@@ -1,233 +1,262 @@
 ---
-title: "Autoresearch：收口治理任务清单"
+title: "Autoresearch：收口后中期治理任务清单"
 status: active
-updated: 2026-04-02
+updated: 2026-04-03
 owner: aw-kernel
-last_verified: 2026-04-02
+last_verified: 2026-04-03
 ---
-# Autoresearch：收口治理任务清单
+# Autoresearch：收口后中期治理任务清单
 
-> 说明：本文是当前 `autoresearch` 收口治理期的执行任务清单。本版按 `2026-04-02` 的复审结果收缩任务，只保留会改变当前仓库状态、入口结构或验收结论的主任务；不再把同一问题拆成多个文档导向工单。
+> 说明：本文承接本轮 `autoresearch` closeout 完成后的中期治理维护任务。它不再追踪“收口是否成立”本身，而是追踪如何把已经收成的治理语言继续压缩为更短的长期事实、更硬的执行约束和更稳定的自动检查。
 
-> 入口位说明：本文是当前 closeout 的任务正文叶子页，只承接任务拆解与执行顺序，不承担默认入口；当前 closeout 的唯一目录页型入口是 [Analysis README](./README.md) 的 closeout 分流块。
+> 入口位说明：本文仍是当前 closeout lineage 下的任务正文叶子页，只承接中期治理工作拆解与执行顺序，不承担默认入口；当前默认目录页型入口仍是 [Analysis README](./README.md) 的 closeout 分流块。
 
-## 一、任务收缩原则
+## 一、当前阶段定位
 
-- 只保留当前 closeout 的真实 blocker，不为“看起来完整”补治理制度。
-- 如果某条内容只是另一主任务里的章节、判断规则或输出要求，不再单列任务。
-- `authority`、`waiver`、`cleanup log`、`retention metadata` 这类内容，只有在它们单独构成阻塞时才拆出；否则吸收到主任务。
-- 能作为默认入口的文件，必须是“目录页型文件”：
-  - 只负责说明本层语义，并链接下一级正文。
-  - 非目录页正文可以被链接，但不能和目录页竞争同层默认入口地位。
+当前阶段不再解决 closeout 是否成立。
 
-## 二、执行顺序
+这个问题已经由下列承接位和验收链回答：
+
+- [`../operations/autoresearch-closeout-decision-rules.md`](../operations/autoresearch-closeout-decision-rules.md)
+- [`../operations/autoresearch-artifact-hygiene.md`](../operations/autoresearch-artifact-hygiene.md)
+- [`../operations/autoresearch-closeout-entry-layering.md`](../operations/autoresearch-closeout-entry-layering.md)
+- [`../operations/autoresearch-closeout-cleanup-and-retained-index.md`](../operations/autoresearch-closeout-cleanup-and-retained-index.md)
+- [`../operations/autoresearch-closeout-acceptance-gate.md`](../operations/autoresearch-closeout-acceptance-gate.md)
+- `.autoworkflow/closeout/autoresearch-closeout-governance-task-list-20260402/integration-acceptance.json`
+
+当前阶段回答的是另一组问题：
+
+- 哪些治理信息应该继续留在 `docs/knowledge/` 或 `docs/operations/` 作为长期事实
+- 哪些治理信息应该前移到 `AGENTS.md` 作为 agent-facing 执行手册
+- 哪些行为约束应该继续下沉为 `.codex/config.toml`、rules、skills 或 gate
+- 哪些“变更说明”可以从执行证据、测试结果和回写模板自动沉淀，而不是继续写成长文
+
+一句话概括：
+
+- 当前主任务不是“继续补治理文档”，而是“把治理从阅读型进一步压成执行型”
+
+## 二、当前工作原则
+
+### 1. 长期事实保持短而稳定
+
+- `docs/knowledge/` 只保留长期有效的 truth boundary、分层口径、模板和主线说明
+- `docs/operations/` 只承接 repo-local runbook、gate、兼容层和维护动作
+- 不把本来应该由工具执行的行为规则继续膨胀成说明文档
+
+### 2. 执行规则前移到 agent-facing 入口
+
+- [AGENTS.md](../../AGENTS.md) 继续作为本仓库 agent-facing 的最小执行入口
+- 需要被 Codex/Claude/OpenCode 一致遵循的默认流程，应优先写成短规则，而不是藏在长文里
+- 如果规则已经稳定到需要被工具读取或直接影响执行，应继续下沉到配置、rules、skills 或脚本
+
+### 3. 先定义执行层 owner，再补配置层
+
+- 只有先在 foundations 里承认某个执行层对象属于哪一层，才能把它真正接入检查链
+- 例如如果要正式引入 `.codex/`，必须先处理根目录分层、folder logic allowlist 与 gate 的同步问题
+
+### 4. 变更说明最小化，执行证据优先
+
+- 能从 diff、测试结果、gate 结果、writeback 模板和 retained record 自动回答的问题，不再单独补成长文说明
+- 文档应更多回答“长期事实是什么”，而不是重复记录“这次具体做了什么”
+
+### 5. 多 agent 只作为编排能力
+
+- subagent 仍然只在显式需要时使用
+- 中期治理的重点是任务拆分、权限边界、验证链和收口定义，不是 agent 数量
+
+## 三、执行顺序
 
 当前建议按下面顺序推进：
 
-1. `G-001`：冻结 closeout 边界与例外决策口径
-2. `G-101`：固定当前 autoresearch artifact 的最小留删规则
-3. `G-201`：固定 closeout 入口页层级规则，并把历史 planning 退回叶子页地位
-4. `G-105`：按规则执行一次真实清理并留下最小记录
-5. `G-205`：收敛唯一 closeout 入口页
-6. `G-301`：登记 closeout 期明确保留的代表性 artifact
-7. `G-401`：执行一次可重复的 closeout acceptance gate
+1. `M-001`：冻结执行型治理的承接位与根目录层级口径
+2. `M-101`：把 `AGENTS.md` 收成更短的 Execution Handbook
+3. `M-201`：补齐 Codex project config / rules adapter layer
+4. `M-301`：把 review / verify loop 收成固定 checklist、skill 或检查入口
+5. `M-401`：把 writeback 与变更说明继续压成证据优先的最小输出
+6. `M-501`：把上述执行层对象接入 folder logic 与 acceptance gate
 
 说明：
 
-- `G-101` 和 `G-201` 都依赖 `G-001`，但两者可以并行推进。
-- `G-105` 必须建立在 `G-101` 已基本稳定之后。
-- `G-205` 必须建立在 `G-201` 已明确“目录页型入口 vs 叶子页正文”之后。
-- `G-301` 应建立在 `G-105` 之后，不先给“还没决定留不留”的对象做 central index。
-- `G-401` 只在最后收尾，用来证明当前阶段已可信收口。
+- `M-001` 是后续任务的共同前置条件
+- `M-101` 和 `M-301` 可以并行推进
+- `M-201` 只有在 `.codex/` 的层级归属被正式接纳后才应落地
+- `M-401` 应建立在模板和 writeback skill 已稳定的基础上
+- `M-501` 最后负责把前面任务真正锁进自动检查，而不是只留在文档层
 
-## 三、当前进度（2026-04-02）
+## 四、本轮收口标准
 
-本节按收缩后的 `7` 条主任务重新计数，不继承旧版 `22` 条拆分工单的统计。
+本轮中期治理任务只有在所有工作完成后，统一通过下面这条检查链，才算收口：
 
-当前跟踪口径：
+1. `python toolchain/scripts/test/folder_logic_check.py`
+2. `python toolchain/scripts/test/path_governance_check.py`
+3. `python toolchain/scripts/test/governance_semantic_check.py`
+4. `python -m pytest toolchain/scripts/test/test_folder_logic_check.py`
+5. `python -m pytest toolchain/scripts/test/test_closeout_gate_tools.py`
+6. `python toolchain/scripts/test/closeout_acceptance_gate.py --json`
 
-- `已完成`：仓库内已经有稳定承接位，且基本满足本版主任务的完成标准。
-- `部分完成`：已有局部规则、局部动作或可复核证据，但还没有收成正式承接位。
-- `未开始`：尚未看到满足本版主任务完成标准的正式落点。
+补充判断：
+
+- 根目录、hidden/state/config layer 不得出现未声明对象或未建模 tracked 例外
+- `AGENTS.md`、review/verify 承接位、`.codex/` 配置层如果被准入，必须同时进入文档说明和检查链
+- 任何一项失败，都按“未收口”处理，不以局部通过替代整体验收
+
+## 五、当前进度（2026-04-03）
 
 当前统计：
 
-- `已完成`：`7 / 7`
-- `部分完成`：`0 / 7`
-- `未开始`：`0 / 7`
+- `已完成`：`5 / 6`
+- `部分完成`：`1 / 6`
+- `未开始`：`0 / 6`
 
-当前可直接复核的证据快照：
+当前可直接复核的基线：
 
-- `docs/analysis/README.md` 已区分“当前执行规划”和“历史执行规划”。
-- `python3 toolchain/scripts/test/path_governance_check.py` 在本次复核中已通过，说明当前文档入口与生命周期状态没有明显结构性回退。
-- `python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents|claude|opencode` 在本次复核中都已通过，说明当前 repo-local deploy target 没有明显 drift。
-- `docs/operations/autoresearch-closeout-decision-rules.md` 已冻结当前 closeout 的 `允许 / 不允许 / 需要显式特批` 判定口径，并把最小 authority 与例外处理口径收进同一承接位。
-- `docs/operations/autoresearch-artifact-hygiene.md` 已把 `.autoworkflow/autoresearch/`、`.autoworkflow/autoresearch-archive/`、`.autoworkflow/manual-runs/` 及特殊子目录的最小 `保留 / 归档 / 删除` 规则收成正式 runbook。
-- `docs/operations/autoresearch-closeout-entry-layering.md` 已冻结“目录页型入口 vs 叶子页正文”的 closeout 口径，并明确当前由 `docs/analysis/README.md` 承担 `analysis/` 层目录页分流。
-- `docs/operations/autoresearch-closeout-cleanup-and-retained-index.md` 已把本轮真实清理记录和 retained index 收进同一承接位，当前已能回答“处置了什么、为什么、是否可恢复、由谁判断”和“哪些对象刻意保留”。
-- `docs/operations/autoresearch-closeout-acceptance-gate.md` 已把 closeout gate 链收成正式 runbook，`toolchain/scripts/test/closeout_acceptance_gate.py`、`scope_gate_check.py` 与 `gate_status_backfill.py` 也已落盘。
-- `.autoworkflow/autoresearch-archive/20260401T105205/` 已存在一次真实归档结果，说明收口清理不只是纸面动作。
-- `.autoworkflow/closeout/autoresearch-closeout-governance-task-list-20260402/integration-acceptance.json` 已记录本轮 integration worktree 的统一验收结果。
-- 当前保留的两条 autoresearch 主 run：`.autoworkflow/autoresearch/manual-cr-codex-loop-3round-r000001-m000642/runtime.json` 和 `.autoworkflow/autoresearch/manual-cr-codex-loop-6-3-3-r000001-m046830/runtime.json` 都显示 `active_round: null`。
-- 五份 `status: superseded` 的历史 planning 页都已补“不是当前默认入口”的页首说明，并回跳到 `Analysis README` 或仍 active 的承接文档。
-- 当前 closeout 只通过 `docs/analysis/README.md` 的 closeout 分流块承担默认入口；goals、task list 和 runbook/gate 均已退回叶子页或承接页地位。
+- [AGENTS.md](../../AGENTS.md) 已收成更短的 execution handbook，并明确默认流程 `plan -> implement -> verify -> review -> writeback`。
+- [review-verify-handbook.md](../operations/review-verify-handbook.md) 已作为 repo-local review / verify 承接位落盘，并由 [docs/operations/README.md](../operations/README.md) 承接。
+- [root-directory-layering.md](../knowledge/foundations/root-directory-layering.md) 与 [folder_logic_check.py](../../toolchain/scripts/test/folder_logic_check.py) 已正式接纳 `.codex/` 为 repo-local execution config layer。
+- [path-governance-checks.md](../operations/path-governance-checks.md)、[closeout_acceptance_gate.py](../../toolchain/scripts/test/closeout_acceptance_gate.py) 与相关测试，已经把 `AGENTS.md`、`.codex/`、folder/path/semantic 三类治理检查接进统一 gate。
+- `.codex/config.toml` 与 `.codex/rules/repo.rules` 已作为最小 Codex project config / rules adapter layer 落地。
+- `task-contract`、`context-entry`、`writeback-log`、`decision-record`、`module-entry` 模板已经存在，说明 writeback 与接口对象已经有结构化承接位。
 
-#### A. 当前跟踪结果：收口边界与决策口径
+### A. 当前跟踪结果：执行层承接位
 
-- `G-001`：`已完成`。`docs/operations/autoresearch-closeout-decision-rules.md` 已把 `allowed / forbidden`、默认判定、最小 authority 和例外规则冻结到同一份 repo-local 承接文档，不再需要继续拆 `authority matrix` 或 `waiver` 子任务。
+- `M-001`：`已完成`
+- foundations 已明确 `docs / product / toolchain / tools / hidden layers / .codex` 的分层、owner 与 folder allowlist。
 
-#### B. 当前跟踪结果：artifact 留删与实清理
+### B. 当前跟踪结果：Execution Handbook
 
-- `G-101`：`已完成`。`docs/operations/autoresearch-artifact-hygiene.md` 已把当前 closeout 真会触碰的热区对象收成最小 `保留 / 归档 / 删除` 规则，并覆盖 `.autoworkflow/autoresearch/`、`.autoworkflow/autoresearch-archive/`、`.autoworkflow/manual-runs/`、`acceptance-runs/`、`acceptance-worktrees/`、`worktrees/`、`.run-id-state/` 与临时控制文件的默认动作。
-- `G-105`：`已完成`。当前已按规则删除空 `worktrees/`、空 `acceptance-worktrees/` 和临时控制文件，并把最小 cleanup 记录收进 `docs/operations/autoresearch-closeout-cleanup-and-retained-index.md`。
+- `M-101`：`已完成`
+- 根级 [AGENTS.md](../../AGENTS.md) 已收成执行手册，并显式承接默认流程、必要同步项与最小 verify / review 入口。
 
-#### C. 当前跟踪结果：入口层级与 closeout surface
+### C. 当前跟踪结果：Codex adapter layer
 
-- `G-201`：`已完成`。`docs/operations/autoresearch-closeout-entry-layering.md` 已把“目录页型入口 vs 叶子页正文”的 closeout 口径冻结成正式规则；`docs/analysis/README.md` 已明确承担目录页分流，历史 planning 也已退回叶子页并补齐非默认入口提示。
-- `G-205`：`已完成`。当前已由 `docs/analysis/README.md` 的 closeout 分流块承担唯一目录页型默认入口；goals、task list 和相关承接页都已明确退回叶子页或承接位。
+- `M-201`：`已完成`
+- 当前仓库已落地 `.codex/config.toml` 与 `.codex/rules/repo.rules`，并正式纳入根目录治理和 folder logic 检查。
 
-#### D. 当前跟踪结果：保留证据登记
+### D. 当前跟踪结果：Review / Verify loop
 
-- `G-301`：`已完成`。`docs/operations/autoresearch-closeout-cleanup-and-retained-index.md` 已建立 central retained index，当前明确保留对象都能在统一入口回答“为什么还在”。
+- `M-301`：`已完成`
+- `docs/operations/review-verify-handbook.md` 已把 review / verify loop 收成固定承接位，`AGENTS.md` 也已引用这条复核入口。
 
-#### E. 当前跟踪结果：收口验收
+### E. 当前跟踪结果：证据优先写回
 
-- `G-401`：`已完成`。当前已把 Scope/Spec/Static/Test/Smoke Gate 收成统一 gate 链，并在 integration worktree 完成一次正式验收记录。
+- `M-401`：`部分完成`
+- writeback 模板和 closeout 记录已经存在，但“什么必须写文档、什么只需留 gate/test/backfill 证据”的边界还没有在执行层收成短规则。
 
-## 四、主任务清单
+### F. 当前跟踪结果：执行层入 gate
 
-### A. 收口边界与决策口径
+- `M-501`：`已完成`
+- 现有 gate 已覆盖 `AGENTS.md`、`.codex/`、review / verify 承接位，以及 folder/path/semantic 三类治理检查。
 
-#### G-001：冻结 closeout 边界与例外决策口径
+## 六、主任务清单
 
-- 要做什么：把 closeout 允许项、禁止项、默认判定规则写清，并在同一承接位里补最小 authority 口径和例外处理口径。
+### A. 执行层承接位
+
+#### M-001：冻结执行型治理的承接位与根目录层级口径
+
+- 要做什么：明确“长期事实 / agent-facing 手册 / project config / rules / gate”分别由谁承接，并把 `.codex/` 是否准入根目录、属于哪一层写清。
 - 依赖：无
-- 完成标准：任何变更请求都能直接判断成 `允许 / 不允许 / 需要显式特批`，不再继续拆成单独的 `authority matrix` 任务和 `waiver` 任务。
+- 完成标准：
+  - foundations 明确 `.codex/` 是否属于正式受控对象
+  - 如果准入，`folder_logic_check.py`、相关 README 和 gate 必须同步更新
+  - 如果暂不准入，文档必须明确当前不承接 project-level Codex config
 
-### B. Artifact 留删与实清理
+### B. Execution Handbook
 
-#### G-101：固定当前 autoresearch artifact 的最小留删规则
+#### M-101：把 `AGENTS.md` 收成更短的 Execution Handbook
 
-- 要做什么：只对当前 closeout 会真正触碰的热区目录写最小留删规则，至少覆盖：
-  - `.autoworkflow/autoresearch/`
-  - `.autoworkflow/autoresearch-archive/`
-  - `.autoworkflow/manual-runs/`
-  - 必要时补 `acceptance-worktrees/` 这类特殊子目录
-- 依赖：`G-001`
-- 完成标准：当前会被清理的对象都能回答 `保留 / 归档 / 删除，为什么`。
-- 说明：目录级细化和 runbook 承接位都并入本任务；不再把“基线”和“runbook 落盘”拆成两条任务。
+- 要做什么：把当前 `AGENTS.md` 收成更接近执行手册的结构，至少显式回答：
+  - 默认工作流是什么
+  - 哪些任务先 plan、再实施、再验证
+  - 哪些改动必须同步更新文档或检查
+  - 退出前至少要跑什么
+- 依赖：`M-001`
+- 完成标准：
+  - `AGENTS.md` 更短、更硬，减少背景解释性 prose
+  - agent 进入仓库后，只读根级 `AGENTS.md` 就能知道默认执行流程和收口动作
+  - 不再把需要工具执行的细节继续堆进长文
 
-#### G-105：按规则执行一次真实清理并留下最小记录
+### C. Codex adapter layer
 
-- 要做什么：按 `G-101` 的规则执行一次真实清理，并留下最小记录，至少说明：
-  - 处置了什么
-  - 为什么这样处置
-  - 是否可恢复
-  - 由谁判断
-- 依赖：`G-101`
-- 完成标准：规则已经改变了当前仓库状态，而不只是停留在纸面说明。
-- 说明：最小记录要求直接并入本任务；不再单列“cleanup log 规则”。
+#### M-201：补齐 Codex project config / rules adapter layer
 
-### C. 入口层级与 Closeout Surface
+- 要做什么：在 `M-001` 允许的前提下，为 Codex 增加 repo-local project config 与 rules，承接执行层约束，例如：
+  - project-scoped `config.toml`
+  - command approval / sandbox rules
+  - fallback filenames
+  - 可复用的 review / check 行为默认值
+- 依赖：`M-001`
+- 完成标准：
+  - 当前仓库不再只靠文档告诉 Codex 怎么做
+  - 至少有一层 project-level Codex config / rules 在本仓库内可复用
+  - 新增对象已进入 folder logic 与相关运行说明
 
-#### G-201：固定 closeout 入口页层级规则，并把历史 planning 退回叶子页地位
+### D. Review / Verify loop
 
-- 要做什么：把“目录页型入口 vs 叶子页正文”的层级规则写清，并确保历史 planning 只保留 lineage，不再和目录页竞争同层默认入口地位。
-- 依赖：`G-001`
-- 完成标准：默认入口只由目录页型文件承担；历史 planning 虽然仍可读，但已经退回叶子页地位。
-- 说明：历史 planning 的退役说明、非默认入口提示都并入本任务；阶段复盘只在已有稳定事实缺少落点时补，不再作为 closeout 主清单 blocker。
+#### M-301：把 review / verify loop 收成固定 checklist、skill 或检查入口
 
-#### G-205：收敛唯一 closeout 入口页
+- 要做什么：把“计划、实现、验证、review、writeback”的最小回路收成固定承接位，而不是继续依赖口头提醒。
+- 依赖：`M-101`
+- 完成标准：
+  - 至少存在一个 repo-local review 指令入口，例如 `code_review.md`、skill、checklist 或等价承接位
+  - `AGENTS.md` 明确何时必须 review、何时必须跑测试、何时需要回写
+  - review 行为可以被 agent 稳定复用，而不是每次重写提示词
 
-- 要做什么：为当前 closeout 收敛唯一默认入口；它可以是目录页型 summary entry，也可以是 `docs/analysis/README.md` 里的唯一 closeout block，但不能再让多个正文页并列承担入口职责。
-- 依赖：`G-201`
-- 完成标准：新进入者只需先看一个目录页型入口，就能分流到 goals、task list、runbook 和 gate。
-- 说明：“补承接回链”和“审视最短路径”都属于本任务的验收要求，不再单列。
+### E. 证据优先写回
 
-### D. 保留证据登记
+#### M-401：把 writeback 与变更说明继续压成证据优先的最小输出
 
-#### G-301：登记 closeout 期明确保留的代表性 artifact
+- 要做什么：明确哪些结果必须写回文档，哪些结果只要留下 gate/backfill/test/evidence 即可，不再把变更级说明继续膨胀成长文。
+- 依赖：`M-101`、`M-301`
+- 完成标准：
+  - writeback 模板与技能的使用边界更清楚
+  - 对同一类变更，不再同时要求“长文说明 + gate 结果 + 手工摘要”三份重复输出
+  - 当前仓库能回答“长期事实写哪里，执行证据留哪里”
 
-- 要做什么：建立一个 retained index，只记录本轮明确决定保留的 run / archive 及其保留原因，不追求全量 `.autoworkflow` 编目。
-- 依赖：`G-105`
-- 完成标准：任何被刻意保留的对象，都能在统一入口回答“为什么还在”。
-- 说明：代表性保留对象和最小保留说明都并入本任务；不再单列命名 / 标签制度。
+### F. 执行层入 Gate
 
-### E. 收口验收
+#### M-501：把执行型治理对象接入 folder logic 与 acceptance gate
 
-#### G-401：执行一次可重复的 closeout acceptance gate
+- 要做什么：把 `M-001/M-101/M-201/M-301/M-401` 产生的对象接入自动检查，包括：
+  - root / first-level allowlist
+  - tracked exception 白名单
+  - 必要的存在性检查
+  - review / config / rule 承接位的最小 completeness check
+- 依赖：`M-001`、`M-201`、`M-301`
+- 完成标准：
+  - 执行型治理对象不只是“文档里提到”，而是能被 gate 和测试发现回退
+  - closeout acceptance gate 或后续治理 gate 能复跑并稳定失败于结构违规
 
-- 要做什么：统一执行：
-  - 文档入口检查
-  - deploy sync verify
-  - autoresearch runtime 残留检查
-  - 一次正式验收结果落盘
-- 依赖：`G-105`、`G-205`、`G-301`
-- 完成标准：可以重复证明“当前已可信收口”，而不是靠口头确认。
-- 说明：检查项和 summary 输出都属于 gate 的组成部分，不再拆成两条后续工单。
+## 七、当前明确不纳入本清单
 
-## 五、本轮明确不再单列
+- 下一阶段 `autoresearch` runtime、round、mutation、prompt、feedback 等实现重构
+- 新一轮 P2 / P3 功能开发计划
+- 继续扩写 closeout 背景说明文档
+- 为了“看起来完整”补新的大总纲文档
+- 无明确 owner 的新根目录对象
+- 以“多 agent 更多”作为治理成熟度目标
 
-- authority / exception 规则：并入 `G-001`，不再单列。
-- 目录级留删细化、runbook 承接位：并入 `G-101`，不再拆开。
-- cleanup log：并入 `G-105` 的最小记录要求。
-- 容量预算与超限提醒：删除；当前 closeout 的真实 blocker 不是容量预算，而是没有最小留删规则。
-- 历史 planning 的退役说明、非默认入口提示：并入 `G-201`。
-- 阶段复盘：降级为备注；只有在已有稳定事实缺少落点时才补，不再作为关键路径任务。
-- 最短路径审视与承接回链：并入 `G-205`。
-- 独立的 manual run 命名 / 标签制度：删除；fresh `run_id` 规则已经存在，不是当前 closeout blocker。
-- 代表性保留对象说明与 retention metadata：并入 `G-301`。
-- gate 检查项和 readable summary：并入 `G-401`。
+## 八、已完成的 closeout 基线
 
-## 六、最小里程碑
+下面这些 closeout 任务已完成，不再作为本清单的 active blocker：
 
-### 当前里程碑状态（2026-04-02）
+- `G-001`：收口边界与例外决策口径
+- `G-101`：artifact 最小留删规则
+- `G-105`：一次真实清理与最小记录
+- `G-201`：目录页型入口与历史 planning 退位
+- `G-205`：唯一 closeout 默认入口
+- `G-301`：retained artifact 统一登记
+- `G-401`：可重复 closeout acceptance gate
 
-- `Milestone 1：Freeze`：`达标`。当前 closeout 的边界、默认判定、最小 authority 和例外口径都已经冻结到统一承接位。
-- `Milestone 2：Retention & Cleanup`：`达标`。当前已按规则做过一次真实清理，并留下最小 cleanup 记录。
-- `Milestone 3：Closeout Surface`：`达标`。当前 closeout 只保留一个目录页型默认入口，相关正文页都已退回叶子页地位。
-- `Milestone 4：Retained Evidence`：`达标`。本轮明确保留对象已集中登记进 retained index。
-- `Milestone 5：Gate`：`达标`。当前 closeout acceptance gate 已可重复执行，并已有 integration worktree 的正式验收记录。
+这些内容继续由各自的 `docs/operations/` 承接位和验收记录负责，不再在本页重复展开。
 
-### Milestone 1：Freeze
-
-- 包含任务：`G-001`
-- 达标判断：closeout 边界、默认判定和最小例外口径已冻结。
-
-### Milestone 2：Retention & Cleanup
-
-- 包含任务：`G-101`、`G-105`
-- 达标判断：当前热区目录的留删规则已经成形，并且已经按规则做过一次真实清理。
-
-### Milestone 3：Closeout Surface
-
-- 包含任务：`G-201`、`G-205`
-- 达标判断：默认入口只由目录页型文件承担，历史 planning 已退回叶子页地位，closeout 入口只剩一个默认落点。
-
-### Milestone 4：Retained Evidence
-
-- 包含任务：`G-301`
-- 达标判断：本轮刻意保留的对象已有统一登记入口，不再靠个人记忆解释。
-
-### Milestone 5：Gate
-
-- 包含任务：`G-401`
-- 达标判断：closeout acceptance gate 能正式证明当前阶段已可信收口。
-
-## 七、明确不纳入本清单
-
-- 下一阶段 implementation task plan
-- P2 问题审计、低分 taxonomy、瓶颈排序
-- `feedback contract`、`mutation`、prompt 改写和其他开发准备
-- 下一阶段 canary 和验证体系重构
-- 容量预算与超限提醒
-- 独立的 manual run 命名 / 标签制度
-
-## 八、相关文档
+## 九、相关文档
 
 - [Autoresearch：收口治理目标](./autoresearch-closeout-governance-goals.md)
+- [Analysis README](./README.md)
+- [根目录分层](../knowledge/foundations/root-directory-layering.md)
+- [路径与文档治理检查运行说明](../operations/path-governance-checks.md)
 - [Autoresearch 收口边界与例外决策规则](../operations/autoresearch-closeout-decision-rules.md)
 - [Autoresearch closeout 入口层级规则](../operations/autoresearch-closeout-entry-layering.md)
 - [Autoresearch artifact 最小留删规则](../operations/autoresearch-artifact-hygiene.md)
-- [Autoresearch P2：TMP Exrepo 运行时迁移与维护脚本任务规划](./autoresearch-p2-tmp-exrepo-runtime-task-plan.md)
-- [Analysis README](./README.md)
+- [Autoresearch closeout cleanup and retained index](../operations/autoresearch-closeout-cleanup-and-retained-index.md)
+- [Autoresearch closeout acceptance gate](../operations/autoresearch-closeout-acceptance-gate.md)

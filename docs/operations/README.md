@@ -11,6 +11,8 @@
 - `autoresearch-minimal-loop.md`
 - `autoresearch-closeout-decision-rules.md`
 - `deploy-runbook.md`
+- `branch-pr-governance.md`
+- `review-verify-handbook.md`
 - `path-governance-checks.md`
 - `research-cli-help.md`
 - `skill-deployment-maintenance.md`

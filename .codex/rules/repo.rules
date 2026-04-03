@@ -1,0 +1,21 @@
+# Prompt before publishing repository changes.
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "prompt",
+    justification = "Publishing repository changes must stay explicit in this repository.",
+    match = [
+        "git push",
+        "git push origin main",
+    ],
+)
+
+# Prompt before opening pull requests from this repository.
+prefix_rule(
+    pattern = ["gh", "pr", "create"],
+    decision = "prompt",
+    justification = "Opening pull requests should remain an explicit review action.",
+    match = [
+        "gh pr create",
+        "gh pr create --draft",
+    ],
+)

@@ -51,6 +51,7 @@ def create_valid_repo(tmp_path: Path) -> Path:
         write_file(path, path.name)
 
     for directory in (
+        ".codex/rules",
         "product/memory-side/skills",
         "product/task-interface",
         "docs/knowledge",
@@ -77,6 +78,15 @@ def create_valid_repo(tmp_path: Path) -> Path:
     write_file(repo_root / ".serena/project.yml", "project: demo\n")
     write_file(repo_root / ".serena/memories/Claude-Workspace-Architecture.md", "# memory\n")
 
+    write_file(
+        repo_root / ".codex/config.toml",
+        "approval_policy = \"on-request\"\nsandbox_mode = \"workspace-write\"\npersonality = \"pragmatic\"\nmodel_reasoning_effort = \"high\"\nweb_search = \"cached\"\n\n[features]\nmulti_agent = true\n",
+    )
+    write_file(
+        repo_root / ".codex/rules/repo.rules",
+        "prefix_rule(\n    pattern = [\"git\", \"push\"],\n    decision = \"prompt\",\n    justification = \"Publishing repository changes must stay explicit in this repository.\",\n    match = [\"git push\", \"git push origin main\"],\n)\n",
+    )
+
     (repo_root / ".nav").mkdir(parents=True, exist_ok=True)
     write_file(repo_root / ".nav/README.md", "# nav\n")
     create_nav_symlink(repo_root / ".nav/@docs", repo_root / "docs")
@@ -95,7 +105,7 @@ def create_valid_repo(tmp_path: Path) -> Path:
         ".claudeignore",
         force=True,
     )
-    git(repo_root, "add", "product", "docs", "toolchain", "tools", ".serena", ".nav", force=True)
+    git(repo_root, "add", "product", "docs", "toolchain", "tools", ".serena", ".nav", ".codex", force=True)
     return repo_root
 
 
@@ -144,6 +154,36 @@ def test_pytest_cache_untracked_passes_but_tracked_fails(tmp_path: Path) -> None
     tracked_report = run_checks(repo_root)
 
     assert "FL013" in issue_codes(tracked_report)
+
+
+def test_codex_layer_passes_when_config_and_rules_are_present(tmp_path: Path) -> None:
+    repo_root = create_valid_repo(tmp_path)
+
+    report = run_checks(repo_root)
+
+    assert "FL015" not in issue_codes(report)
+    assert "FL016" not in issue_codes(report)
+
+
+def test_codex_unknown_entry_fails(tmp_path: Path) -> None:
+    repo_root = create_valid_repo(tmp_path)
+    write_file(repo_root / ".codex/cache.json", "{}\n")
+
+    report = run_checks(repo_root)
+
+    assert "FL015" in issue_codes(report)
+    assert ".codex/cache.json" in issue_paths(report)
+
+
+def test_codex_tracked_non_whitelist_fails(tmp_path: Path) -> None:
+    repo_root = create_valid_repo(tmp_path)
+    write_file(repo_root / ".codex/notes.md", "# notes\n")
+    git(repo_root, "add", ".codex/notes.md", force=True)
+
+    report = run_checks(repo_root)
+
+    assert "FL016" in issue_codes(report)
+    assert ".codex/notes.md" in issue_paths(report)
 
 
 def test_serena_whitelist_passes_and_non_whitelist_tracked_fails(tmp_path: Path) -> None:
