@@ -47,12 +47,34 @@ PR 阶段必须通过以下最小链：
 3. `python toolchain/scripts/test/governance_semantic_check.py`
 4. `python -m pytest toolchain/scripts/test/test_folder_logic_check.py toolchain/scripts/test/test_closeout_gate_tools.py`
 
-## 六、例外与特批
+## 六、远端保护规则（Branch Protection Ruleset）
+
+必须在 GitHub 使用 Branch Protection Ruleset 强制执行：
+
+- 仅允许通过 PR 合并到 `main`
+- 必须通过 CI 最小检查链
+- 必须满足 `CODEOWNERS` review
+- 禁止 force push、禁止删除受保护分支
+
+规则集匹配目标：`main` 分支。
+
+## 七、本地 pre-push hook
+
+本地必须启用 hook，阻断直接 push 到 `main`：
+
+```bash
+git config core.hooksPath toolchain/scripts/git-hooks
+chmod +x toolchain/scripts/git-hooks/pre-push
+```
+
+说明：本地 hook 只是额外保险，不能替代远端规则集。
+
+## 八、例外与特批
 
 - 若需要跳过上述检查，必须在 PR 中说明原因并获得显式批准。
 - 不允许为了“过关”降低检查标准或替换证据。
 
-## 七、相关文档
+## 九、相关文档
 
 - `AGENTS.md`
 - `docs/operations/review-verify-handbook.md`

@@ -49,6 +49,7 @@ toolchain/
 当前内容：
 
 - `deploy/`
+- `git-hooks/`
 - `research/`
 - `test/`
 
@@ -68,6 +69,7 @@ toolchain/
 当前子层级：
 
 - `scripts/deploy/`：部署与同步入口
+- `scripts/git-hooks/`：本地 git hooks 入口（阻断违规 push）
 - `scripts/research/`：已准入的研究 runner 和实验 orchestration
 - `scripts/test/`：治理检查、验收 gate 与轻量测试入口
 

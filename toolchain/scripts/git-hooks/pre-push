@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+blocked_branch="main"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [[ "${remote_ref}" == "refs/heads/${blocked_branch}" ]]; then
+    echo "pre-push: direct push to ${blocked_branch} is blocked. Open a PR instead." >&2
+    exit 1
+  fi
+done
+
+exit 0
