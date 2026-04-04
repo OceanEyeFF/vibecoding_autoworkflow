@@ -12,6 +12,25 @@ DIMENSIONS = ("rule", "folders", "document", "code")
 GRADE_ORDER = {"不通过": 0, "有条件通过": 1, "通过": 2}
 
 
+def coerce_int(value: object, label: str, *, context: str) -> int:
+    if value is None:
+        raise SystemExit(f"invalid {context} '{label}': null is not allowed, expected number")
+    if isinstance(value, bool):
+        raise SystemExit(f"invalid {context} '{label}': boolean is not allowed, expected number")
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"invalid {context} '{label}': expected number, got {value!r}") from exc
+
+
+def score_from(scores: dict[str, object], dimension: str) -> int:
+    if dimension in scores:
+        value = scores[dimension]
+    else:
+        value = 0
+    return coerce_int(value, dimension, context="score")
+
+
 def grade(score: int) -> str:
     if score >= 80:
         return "通过"
@@ -34,11 +53,11 @@ def suggest(dimension: str, result_grade: str) -> str:
     return "按最小改动补齐风险项。"
 
 
-def evaluate_governance(scores: dict[str, int]) -> dict:
+def evaluate_governance(scores: dict[str, object]) -> dict:
     result = {"dimensions": {}, "overall": "通过", "suggestions": [], "guardrails": []}
     overall_rank = GRADE_ORDER["通过"]
     for dimension in DIMENSIONS:
-        score = int(scores.get(dimension, 0))
+        score = score_from(scores, dimension)
         result_grade = grade(score)
         result["dimensions"][dimension] = {
             "score": score,
@@ -70,11 +89,17 @@ def parse_args() -> argparse.Namespace:
 
 def load_input_json(path: Path) -> dict:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        payload = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
         raise SystemExit(f"input file not found: {path}") from exc
     except json.JSONDecodeError as exc:
         raise SystemExit(f"invalid JSON in input file {path}: {exc.msg}") from exc
+    if not isinstance(payload, dict):
+        raise SystemExit("input JSON must be an object with score fields")
+    for dimension in DIMENSIONS:
+        if dimension in payload:
+            coerce_int(payload[dimension], dimension, context="score")
+    return payload
 
 
 def main() -> int:

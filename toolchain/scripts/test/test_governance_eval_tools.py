@@ -63,3 +63,37 @@ def test_load_input_json_reports_missing_file() -> None:
 
     with pytest.raises(SystemExit, match="input file not found"):
         load_repo_input_json(Path("/tmp/definitely-missing-repo-governance-input.json"))
+
+
+def test_governance_load_input_rejects_invalid_scores(tmp_path: Path) -> None:
+    non_object = tmp_path / "governance-non-object.json"
+    non_object.write_text("[1, 2, 3]", encoding="utf-8")
+    with pytest.raises(SystemExit, match="input JSON must be an object"):
+        load_governance_input_json(non_object)
+
+    null_score = tmp_path / "governance-null-score.json"
+    null_score.write_text('{"rule": null}', encoding="utf-8")
+    with pytest.raises(SystemExit, match="invalid score 'rule': null is not allowed"):
+        load_governance_input_json(null_score)
+
+    non_numeric = tmp_path / "governance-non-numeric.json"
+    non_numeric.write_text('{"folders": "bad"}', encoding="utf-8")
+    with pytest.raises(SystemExit, match="invalid score 'folders': expected number"):
+        load_governance_input_json(non_numeric)
+
+
+def test_repo_governance_load_input_rejects_invalid_values(tmp_path: Path) -> None:
+    non_object = tmp_path / "repo-non-object.json"
+    non_object.write_text('"oops"', encoding="utf-8")
+    with pytest.raises(SystemExit, match="input JSON must be an object"):
+        load_repo_input_json(non_object)
+
+    invalid_score = tmp_path / "repo-invalid-score.json"
+    invalid_score.write_text('{"scores":{"automation": "bad"}}', encoding="utf-8")
+    with pytest.raises(SystemExit, match="invalid score 'automation': expected number"):
+        load_repo_input_json(invalid_score)
+
+    invalid_readiness = tmp_path / "repo-invalid-readiness.json"
+    invalid_readiness.write_text('{"agent_readiness":{"safe_change": null}}', encoding="utf-8")
+    with pytest.raises(SystemExit, match="invalid agent_readiness 'safe_change': null is not allowed"):
+        load_repo_input_json(invalid_readiness)
