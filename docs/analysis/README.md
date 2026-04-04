@@ -17,7 +17,7 @@
 | --- | --- | ---: | --- |
 | Research / Eval 边界 | `active` | 2 | 固定 research runner、eval 与 observability 合同 |
 | Autoresearch 阶段合同与设计边界 | `active` | 8 | 固定 phase contract、代码复核与当前设计基线 |
-| 当前执行规划 | `active` | 3 | 当前仍用于直接驱动实现或收口治理的受控任务入口 |
+| 当前执行规划 | `active` | 4 | 当前仍用于直接驱动实现或收口治理的受控任务入口 |
 | 历史执行规划 | `superseded` | 5 | 保留 lineage，不作为默认执行入口 |
 
 ## 当前研究文档
@@ -59,6 +59,8 @@
 
 - [autoresearch-p2-tmp-exrepo-runtime-task-plan.md](./autoresearch-p2-tmp-exrepo-runtime-task-plan.md)  
   当前用于驱动 `tmp exrepo + materialized suite + maintenance script` 两阶段施工。
+- [autoresearch-p2-repo-prompt-guidance-task-plan.md](./autoresearch-p2-repo-prompt-guidance-task-plan.md)  
+  当前用于驱动 repo 级 prompt 改进建议与总建议蒸馏的两阶段施工。
 
 ## 历史执行规划
 
