@@ -165,6 +165,37 @@ def make_registry_entry(*, mutation_key: str) -> dict[str, object]:
 
 
 class RunAutoresearchLoopTest(unittest.TestCase):
+    def test_build_worker_prompt_renders_aggregate_guidance(self) -> None:
+        worker_contract = {
+            "round": 1,
+            "mutation_key": "text_rephrase:demo:first",
+            "objective": "P2 loop smoke",
+            "target_surface": "research prompt",
+            "instruction": "Tighten the prompt.",
+            "target_paths": ["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+            "comparison_baseline": {"train_score": 9.0, "validation_score": 8.0},
+            "recent_feedback_excerpt": ["round=1 | mutation=seed | decision=discard | signal=mixed"],
+            "aggregate_prompt_guidance": {
+                "aggregate_direction": "negative",
+                "aggregate_suggested_adjustments": [
+                    "tighten the initial read list and cap follow-up drilling after the first entrypoint pass"
+                ],
+                "top_regression_repos": ["typer"],
+                "top_improvement_repos": [],
+                "dominant_dimension_signals": [],
+                "generation_status": "generated",
+            },
+        }
+
+        prompt = run_autoresearch_loop.build_worker_prompt(Path("/tmp/worker-contract.json"), worker_contract)
+
+        self.assertIn("Aggregate prompt guidance:", prompt)
+        self.assertIn("- direction: negative", prompt)
+        self.assertIn(
+            "- next: tighten the initial read list and cap follow-up drilling after the first entrypoint pass",
+            prompt,
+        )
+
     def test_loop_runs_one_round_writes_agent_report_and_stops_on_stop_gate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

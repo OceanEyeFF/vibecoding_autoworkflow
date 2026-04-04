@@ -60,7 +60,7 @@
 - [autoresearch-p2-tmp-exrepo-runtime-task-plan.md](./autoresearch-p2-tmp-exrepo-runtime-task-plan.md)  
   当前用于驱动 `tmp exrepo + materialized suite + maintenance script` 两阶段施工。
 - [autoresearch-p2-repo-prompt-guidance-task-plan.md](./autoresearch-p2-repo-prompt-guidance-task-plan.md)  
-  当前用于驱动 repo 级 prompt 改进建议与总建议蒸馏的两阶段施工。
+  当前用于驱动 repo 级 prompt 改进建议、aggregate guidance 与 worker-facing 接线的两阶段施工；当前代码承接位已同步到 `toolchain/scripts/research/README.md` 和 `docs/operations/autoresearch-minimal-loop.md`。
 
 ## 历史执行规划
 

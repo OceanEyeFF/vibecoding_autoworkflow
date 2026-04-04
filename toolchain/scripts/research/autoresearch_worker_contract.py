@@ -150,6 +150,17 @@ def build_comparison_baseline(scoreboard: dict[str, Any] | None) -> dict[str, fl
     return comparison_baseline
 
 
+def default_aggregate_prompt_guidance(*, status: str = "no_prior_feedback") -> dict[str, Any]:
+    return {
+        "aggregate_direction": "mixed",
+        "aggregate_suggested_adjustments": [],
+        "top_regression_repos": [],
+        "top_improvement_repos": [],
+        "dominant_dimension_signals": [],
+        "generation_status": status,
+    }
+
+
 def build_worker_contract_payload(
     *,
     contract: AutoresearchContract,
@@ -158,6 +169,7 @@ def build_worker_contract_payload(
     agent_report_path: Path,
     comparison_baseline: dict[str, float | None] | None = None,
     recent_feedback_excerpt: list[str] | None = None,
+    aggregate_prompt_guidance: dict[str, Any] | None = None,
     materialized_at: str | None = None,
 ) -> dict[str, Any]:
     resolved_materialized_at = str(materialized_at or round_payload.get("worker_contract_materialized_at") or "").strip()
@@ -166,6 +178,7 @@ def build_worker_contract_payload(
     if comparison_baseline is None:
         raise ValueError("comparison_baseline is required to build worker-contract payload.")
     excerpt = [str(item).strip() for item in (recent_feedback_excerpt or []) if str(item).strip()]
+    aggregate_guidance = dict(aggregate_prompt_guidance or default_aggregate_prompt_guidance())
     # All paths are serialized as absolute strings to keep agent consumption independent of CWD.
     payload: dict[str, Any] = {
         "worker_contract_version": WORKER_CONTRACT_VERSION,
@@ -187,6 +200,7 @@ def build_worker_contract_payload(
         "target_surface": str(contract.payload["target_surface"]),
         "comparison_baseline": dict(comparison_baseline),
         "recent_feedback_excerpt": excerpt,
+        "aggregate_prompt_guidance": aggregate_guidance,
         "contract_fingerprint": compute_contract_fingerprint(contract),
         "mutation_fingerprint": str(mutation_payload["fingerprint"]),
         "materialized_at": resolved_materialized_at,
