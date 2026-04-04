@@ -198,7 +198,7 @@ def build_worker_prompt(worker_contract_path: Path, worker_contract: dict[str, A
         prompt_lines.append("")
         prompt_lines.append("Recent feedback excerpt:")
         prompt_lines.extend(f"- {item}" for item in recent_feedback_excerpt)
-    if aggregate_prompt_guidance:
+    if str(aggregate_prompt_guidance.get("generation_status") or "").strip() == "generated":
         prompt_lines.append("")
         prompt_lines.append("Aggregate prompt guidance:")
         direction = str(aggregate_prompt_guidance.get("aggregate_direction") or "").strip()

@@ -196,6 +196,31 @@ class RunAutoresearchLoopTest(unittest.TestCase):
             prompt,
         )
 
+    def test_build_worker_prompt_skips_placeholder_aggregate_guidance(self) -> None:
+        worker_contract = {
+            "round": 1,
+            "mutation_key": "text_rephrase:demo:first",
+            "objective": "P2 loop smoke",
+            "target_surface": "research prompt",
+            "instruction": "Tighten the prompt.",
+            "target_paths": ["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+            "comparison_baseline": {"train_score": 9.0, "validation_score": 8.0},
+            "recent_feedback_excerpt": [],
+            "aggregate_prompt_guidance": {
+                "aggregate_direction": "mixed",
+                "aggregate_suggested_adjustments": [],
+                "top_regression_repos": [],
+                "top_improvement_repos": [],
+                "dominant_dimension_signals": [],
+                "generation_status": "no_prior_feedback",
+            },
+        }
+
+        prompt = run_autoresearch_loop.build_worker_prompt(Path("/tmp/worker-contract.json"), worker_contract)
+
+        self.assertNotIn("Aggregate prompt guidance:", prompt)
+        self.assertNotIn("- direction: mixed", prompt)
+
     def test_loop_runs_one_round_writes_agent_report_and_stops_on_stop_gate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

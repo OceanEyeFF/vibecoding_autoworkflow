@@ -195,6 +195,7 @@ class AutoresearchFeedbackDistillTest(unittest.TestCase):
         repo_guidance = payload["repo_prompt_guidance"][0]
         self.assertEqual(repo_guidance["generation_status"], "generated")
         self.assertEqual(repo_guidance["dimension_signals"]["path_contraction"], "weaker")
+        self.assertEqual(repo_guidance["dimension_signals"]["entry_point_identification"], "stable")
         self.assertTrue(repo_guidance["prompt_adjustments"])
         self.assertTrue(repo_guidance["evidence_excerpt"])
         aggregate = payload["aggregate_prompt_guidance"]
@@ -278,7 +279,9 @@ class AutoresearchFeedbackDistillTest(unittest.TestCase):
 
         repo_guidance = payload["repo_prompt_guidance"][0]
         self.assertEqual(repo_guidance["signal_strength"], "mixed")
-        self.assertEqual(repo_guidance["dimension_signals"]["path_contraction"], "improved")
+        improved_dimensions = [name for name, signal in repo_guidance["dimension_signals"].items() if signal == "improved"]
+        self.assertEqual(len(improved_dimensions), 1)
+        self.assertEqual(repo_guidance["dimension_signals"]["path_contraction"], "stable")
         self.assertTrue(repo_guidance["evidence_excerpt"])
         self.assertTrue(
             any(
@@ -335,13 +338,55 @@ class AutoresearchFeedbackDistillTest(unittest.TestCase):
 
         repo_guidance = {row["repo"]: row for row in payload["repo_prompt_guidance"]}
         self.assertEqual(repo_guidance["typer"]["signal_strength"], "mixed")
-        self.assertEqual(repo_guidance["typer"]["dimension_signals"]["path_contraction"], "improved")
+        self.assertEqual(
+            len([name for name, signal in repo_guidance["typer"]["dimension_signals"].items() if signal == "improved"]),
+            1,
+        )
+        self.assertEqual(repo_guidance["typer"]["dimension_signals"]["path_contraction"], "stable")
         self.assertEqual(repo_guidance["zustand"]["signal_strength"], "negative")
-        self.assertEqual(repo_guidance["zustand"]["dimension_signals"]["path_contraction"], "weaker")
+        self.assertEqual(
+            len([name for name, signal in repo_guidance["zustand"]["dimension_signals"].items() if signal == "weaker"]),
+            1,
+        )
+        self.assertEqual(
+            len([name for name, signal in repo_guidance["zustand"]["dimension_signals"].items() if signal == "improved"]),
+            0,
+        )
         aggregate = payload["aggregate_prompt_guidance"]
         self.assertIn("zustand", aggregate["top_regression_repos"])
         self.assertNotIn("typer", aggregate["top_regression_repos"])
         self.assertFalse(aggregate["top_improvement_repos"])
+
+    def test_build_feedback_distill_payload_preserves_guardrail_fallback_adjustments_when_aggregate_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp) / "demo-run"
+            round_dir = run_dir / "rounds" / "round-001"
+            round_dir.mkdir(parents=True, exist_ok=True)
+            (round_dir / "decision.json").write_text("{}\n", encoding="utf-8")
+            (round_dir / "scoreboard.json").write_text("{}\n", encoding="utf-8")
+            (round_dir / "worker-contract.json").write_text("{}\n", encoding="utf-8")
+
+            payload = build_feedback_distill_payload(
+                run_dir=run_dir,
+                round_dir=round_dir,
+                mutation_payload={"mutation_key": "k", "mutation_id": "k#a001", "attempt": 1},
+                decision_payload={"run_id": "demo-run", "round": 1, "decision": "discard"},
+                baseline_scoreboard=build_scoreboard(train_score=9.0, validation_score=8.0, parse_error=0.0),
+                round_scoreboard=build_scoreboard(train_score=9.0, validation_score=8.0, parse_error=0.2),
+                distilled_at="2026-03-27T00:00:00+00:00",
+            )
+            ledger_path = run_dir / "feedback-ledger.jsonl"
+            upsert_feedback_ledger_entry(ledger_path, payload)
+            ledger = load_feedback_ledger(ledger_path)
+            excerpt = build_recent_feedback_excerpt(ledger, limit=1)
+
+        self.assertEqual(payload["aggregate_prompt_guidance"]["generation_status"], "no_repo_guidance")
+        self.assertIn("reduce formatting churn to avoid parse-error regressions", payload["suggested_adjustments"])
+        self.assertIn(
+            "reduce formatting churn to avoid parse-error regressions",
+            ledger[0]["aggregate_prompt_guidance"]["aggregate_suggested_adjustments"],
+        )
+        self.assertIn("next=reduce formatting churn to avoid parse-error regressions", excerpt[0])
 
     def test_build_feedback_distill_payload_surfaces_baseline_repo_missing_from_round(self) -> None:
         baseline_repo_tasks = [

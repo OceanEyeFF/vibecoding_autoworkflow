@@ -233,22 +233,6 @@ def _default_aggregate_prompt_guidance(*, status: str = "no_prior_feedback") -> 
     }
 
 
-def _dimension_signal_from_delta(score_delta: float) -> str:
-    if score_delta > EPSILON:
-        return "improved"
-    if score_delta < -EPSILON:
-        return "weaker"
-    return "stable"
-
-
-def _repo_signal_strength(score_delta: float) -> str:
-    if score_delta > EPSILON:
-        return "positive"
-    if score_delta < -EPSILON:
-        return "negative"
-    return "mixed"
-
-
 def _lane_guardrail_regression(
     *,
     lane_name: str,
@@ -285,6 +269,57 @@ def _repo_guidance_profile(
     if lane_guardrail_regression:
         return ("mixed", "stable", True, "weaker")
     return ("mixed", "stable", False, "improved")
+
+
+def _ranked_dimension_names(
+    *,
+    dimension_feedback: dict[str, dict[str, str]],
+    field: str,
+) -> list[str]:
+    ranked: list[tuple[int, str]] = []
+    for dimension, feedback in dimension_feedback.items():
+        text = str(feedback.get(field) or "").strip()
+        if not text:
+            continue
+        ranked.append((len(text), str(dimension)))
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    return [dimension for _length, dimension in ranked]
+
+
+def _derive_dimension_signals(
+    *,
+    dimension_feedback: dict[str, dict[str, str]],
+    score_delta: float,
+) -> dict[str, str]:
+    if not dimension_feedback:
+        return {}
+    signals = {
+        dimension: "stable"
+        for dimension in sorted(dimension_feedback)
+    }
+    if score_delta > EPSILON:
+        focus = _ranked_dimension_names(dimension_feedback=dimension_feedback, field="what_worked")[:1]
+        for dimension in focus:
+            signals[dimension] = "improved"
+        return signals
+    if score_delta < -EPSILON:
+        focus = _ranked_dimension_names(dimension_feedback=dimension_feedback, field="needs_improvement")[:1]
+        for dimension in focus:
+            signals[dimension] = "weaker"
+        return signals
+    return signals
+
+
+def _combine_adjustments(*groups: list[str]) -> list[str]:
+    combined: list[str] = []
+    for group in groups:
+        for item in group:
+            text = str(item).strip()
+            if text and text not in combined:
+                combined.append(text)
+            if len(combined) >= 3:
+                return combined
+    return combined
 
 
 def _dimension_feedback_map(row: dict[str, Any]) -> dict[str, dict[str, str]]:
@@ -332,7 +367,10 @@ def _repo_evidence_excerpt(
 ) -> list[str]:
     field = "needs_improvement" if prefer_needs_improvement else "what_worked"
     evidence: list[str] = []
-    for dimension in sorted(dimension_feedback):
+    ranked_dimensions = _ranked_dimension_names(dimension_feedback=dimension_feedback, field=field)
+    if not ranked_dimensions:
+        ranked_dimensions = sorted(dimension_feedback)
+    for dimension in ranked_dimensions:
         text = str(dimension_feedback[dimension].get(field) or "").strip()
         if not text:
             continue
@@ -422,14 +460,14 @@ def build_repo_prompt_guidance(
             lane_name=lane_name,
             regression_flags=regression_flags,
         )
-        repo_signal_strength, dimension_signal, prefer_needs_improvement, preferred_signal = _repo_guidance_profile(
+        repo_signal_strength, _, prefer_needs_improvement, preferred_signal = _repo_guidance_profile(
             score_delta=score_delta,
             lane_guardrail_regression=lane_guardrail_regression,
         )
-        dimension_signals = {
-            dimension: dimension_signal
-            for dimension in sorted(round_dimension_feedback)
-        }
+        dimension_signals = _derive_dimension_signals(
+            dimension_feedback=round_dimension_feedback,
+            score_delta=score_delta,
+        )
         guidance_rows.append(
             {
                 "lane_name": lane_name,
@@ -709,6 +747,10 @@ def load_feedback_ledger(path: Path) -> list[dict[str, Any]]:
 
 def build_feedback_ledger_entry(distill_payload: dict[str, Any]) -> dict[str, Any]:
     aggregate_prompt_guidance = dict(distill_payload.get("aggregate_prompt_guidance") or _default_aggregate_prompt_guidance())
+    if not list(aggregate_prompt_guidance.get("aggregate_suggested_adjustments") or []):
+        aggregate_prompt_guidance["aggregate_suggested_adjustments"] = list(
+            distill_payload.get("suggested_adjustments") or []
+        )[:3]
     payload = {
         "feedback_ledger_version": FEEDBACK_LEDGER_VERSION,
         "run_id": str(distill_payload["run_id"]),
@@ -828,6 +870,15 @@ def build_feedback_distill_payload(
         decision=decision,
         signal_strength=signal_strength,
     )
+    fallback_adjustments = _suggested_adjustments(
+        decision=decision,
+        regression_flags=regression_flags,
+        dimension_feedback_summary=dimension_feedback_summary,
+    )
+    suggested_adjustments = _combine_adjustments(
+        list(aggregate_prompt_guidance.get("aggregate_suggested_adjustments") or []),
+        fallback_adjustments,
+    )
     payload: dict[str, Any] = {
         "feedback_distill_version": FEEDBACK_DISTILL_VERSION,
         "run_id": str(decision_payload.get("run_id") or baseline_scoreboard.get("run_id") or ""),
@@ -843,7 +894,7 @@ def build_feedback_distill_payload(
         "signal_strength": signal_strength,
         "regression_flags": regression_flags,
         "dimension_feedback_summary": dimension_feedback_summary,
-        "suggested_adjustments": list(aggregate_prompt_guidance.get("aggregate_suggested_adjustments") or []),
+        "suggested_adjustments": suggested_adjustments,
         "repo_prompt_guidance": repo_prompt_guidance,
         "aggregate_prompt_guidance": aggregate_prompt_guidance,
         "scoreboard_ref": _relative_ref(round_dir / "scoreboard.json", run_dir=run_dir),
