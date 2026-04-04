@@ -23,9 +23,36 @@ RATING_BANDS = (
 )
 
 
-def evaluate_ai_compatible(readiness: dict[str, int]) -> str:
+def coerce_int(value: object, label: str, *, context: str) -> int:
+    if value is None:
+        raise SystemExit(f"invalid {context} '{label}': null is not allowed, expected number")
+    if isinstance(value, bool):
+        raise SystemExit(f"invalid {context} '{label}': boolean is not allowed, expected number")
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"invalid {context} '{label}': expected number, got {value!r}") from exc
+
+
+def readiness_value(readiness: dict[str, object], key: str) -> int:
+    if key in readiness:
+        value = readiness[key]
+    else:
+        value = 0
+    return coerce_int(value, key, context="agent_readiness")
+
+
+def score_value(scores: dict[str, object], key: str) -> int:
+    if key in scores:
+        value = scores[key]
+    else:
+        value = 0
+    return coerce_int(value, key, context="score")
+
+
+def evaluate_ai_compatible(readiness: dict[str, object]) -> str:
     keys = ("task_split", "local_context", "auto_validation", "safe_change")
-    values = [int(readiness.get(key, 0)) for key in keys]
+    values = [readiness_value(readiness, key) for key in keys]
     if min(values, default=0) >= 4:
         return "YES"
     average = sum(values) / len(values) if values else 0
@@ -39,7 +66,7 @@ def evaluate_repo_governance(data: dict) -> dict:
     dimensions: dict[str, dict] = {}
     total = 0
     for key, label in DIMENSIONS:
-        score = max(0, min(5, int(scores.get(key, 0))))
+        score = max(0, min(5, score_value(scores, key)))
         total += score
         dimensions[key] = {
             "label": label,
@@ -80,11 +107,29 @@ def parse_args() -> argparse.Namespace:
 
 def load_input_json(path: Path) -> dict:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        payload = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
         raise SystemExit(f"input file not found: {path}") from exc
     except json.JSONDecodeError as exc:
         raise SystemExit(f"invalid JSON in input file {path}: {exc.msg}") from exc
+    if not isinstance(payload, dict):
+        raise SystemExit("input JSON must be an object with governance fields")
+
+    scores = payload.get("scores", payload)
+    if not isinstance(scores, dict):
+        raise SystemExit("scores must be an object when provided")
+    for key, _label in DIMENSIONS:
+        if key in scores:
+            coerce_int(scores[key], key, context="score")
+
+    readiness = payload.get("agent_readiness", {})
+    if not isinstance(readiness, dict):
+        raise SystemExit("agent_readiness must be an object when provided")
+    for key in ("task_split", "local_context", "auto_validation", "safe_change"):
+        if key in readiness:
+            coerce_int(readiness[key], key, context="agent_readiness")
+
+    return payload
 
 
 def main() -> int:
