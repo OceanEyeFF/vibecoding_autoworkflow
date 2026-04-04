@@ -12,6 +12,7 @@ from autoresearch_feedback_distill import (
     build_feedback_distill_payload,
     build_recent_feedback_excerpt,
     feedback_family_priority,
+    latest_aggregate_prompt_guidance,
     load_feedback_ledger,
     upsert_feedback_ledger_entry,
 )
@@ -230,6 +231,66 @@ class AutoresearchFeedbackDistillTest(unittest.TestCase):
         self.assertEqual(payload["repo_prompt_guidance"][0]["generation_status"], "unsupported_task")
         self.assertEqual(payload["aggregate_prompt_guidance"]["generation_status"], "unsupported_task_only")
 
+    def test_build_feedback_distill_payload_guardrail_discard_does_not_emit_positive_repo_guidance(self) -> None:
+        baseline_repo_tasks = [
+            build_repo_task(lane_name="validation", repo="typer", task="context-routing", total_score=8.0),
+        ]
+        round_repo_tasks = [
+            build_repo_task(
+                lane_name="validation",
+                repo="typer",
+                task="context-routing",
+                total_score=8.5,
+                needs_improvement="Formatting churn made the route card harder to reuse safely.",
+            ),
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp) / "demo-run"
+            round_dir = run_dir / "rounds" / "round-001"
+            round_dir.mkdir(parents=True, exist_ok=True)
+            (round_dir / "decision.json").write_text("{}\n", encoding="utf-8")
+            (round_dir / "scoreboard.json").write_text("{}\n", encoding="utf-8")
+            (round_dir / "worker-contract.json").write_text("{}\n", encoding="utf-8")
+
+            payload = build_feedback_distill_payload(
+                run_dir=run_dir,
+                round_dir=round_dir,
+                mutation_payload={
+                    "mutation_key": "k",
+                    "mutation_id": "k#a001",
+                    "attempt": 1,
+                },
+                decision_payload={"run_id": "demo-run", "round": 1, "decision": "discard"},
+                baseline_scoreboard=build_scoreboard(
+                    train_score=9.0,
+                    validation_score=8.0,
+                    parse_error=0.0,
+                    repo_tasks=baseline_repo_tasks,
+                ),
+                round_scoreboard=build_scoreboard(
+                    train_score=9.0,
+                    validation_score=8.0,
+                    parse_error=0.2,
+                    repo_tasks=round_repo_tasks,
+                ),
+                distilled_at="2026-03-27T00:00:00+00:00",
+            )
+
+        repo_guidance = payload["repo_prompt_guidance"][0]
+        self.assertEqual(repo_guidance["signal_strength"], "negative")
+        self.assertEqual(repo_guidance["dimension_signals"]["path_contraction"], "weaker")
+        self.assertTrue(repo_guidance["evidence_excerpt"])
+        self.assertTrue(
+            any(
+                "Formatting churn made the route card harder to reuse safely." in excerpt
+                for excerpt in repo_guidance["evidence_excerpt"]
+            )
+        )
+        aggregate = payload["aggregate_prompt_guidance"]
+        self.assertEqual(aggregate["aggregate_direction"], "negative")
+        self.assertIn("typer", aggregate["top_regression_repos"])
+        self.assertFalse(aggregate["top_improvement_repos"])
+
     def test_upsert_feedback_ledger_replaces_same_round_entry(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ledger_path = Path(tmp) / "feedback-ledger.jsonl"
@@ -321,6 +382,36 @@ class AutoresearchFeedbackDistillTest(unittest.TestCase):
         self.assertIn("aggregate=positive", excerpt[0])
         self.assertIn("next=reuse the winning guidance pattern", excerpt[0])
         self.assertIn("flags=validation_drop", excerpt[1])
+
+    def test_latest_aggregate_prompt_guidance_skips_placeholder_entries(self) -> None:
+        actionable = build_ledger_entry(
+            mutation_key="k1",
+            round_number=1,
+            mutation_id="k1#a001",
+            decision="discard",
+            signal_strength="mixed",
+            regression_flags=["validation_drop"],
+        )
+        placeholder = build_ledger_entry(
+            mutation_key="k2",
+            round_number=2,
+            mutation_id="k2#a001",
+            decision="discard",
+            signal_strength="mixed",
+        )
+        placeholder["aggregate_prompt_guidance"] = {
+            "aggregate_direction": "mixed",
+            "aggregate_suggested_adjustments": [],
+            "top_regression_repos": [],
+            "top_improvement_repos": [],
+            "dominant_dimension_signals": [],
+            "generation_status": "no_repo_guidance",
+        }
+
+        aggregate = latest_aggregate_prompt_guidance([actionable, placeholder])
+
+        self.assertEqual(aggregate["generation_status"], "generated")
+        self.assertTrue(aggregate["aggregate_suggested_adjustments"])
 
     def test_load_feedback_ledger_accepts_legacy_v1_entry(self) -> None:
         legacy_entry = {

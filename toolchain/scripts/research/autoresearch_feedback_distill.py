@@ -249,6 +249,15 @@ def _repo_signal_strength(score_delta: float) -> str:
     return "mixed"
 
 
+def _lane_guardrail_regression(
+    *,
+    lane_name: str,
+    regression_flags: list[str],
+) -> bool:
+    lane_prefix = f"{lane_name}_"
+    return any(str(flag).startswith(lane_prefix) for flag in regression_flags)
+
+
 def _dimension_feedback_map(row: dict[str, Any]) -> dict[str, dict[str, str]]:
     feedback = row.get("dimension_feedback") or {}
     if not isinstance(feedback, dict):
@@ -267,13 +276,12 @@ def _dimension_feedback_map(row: dict[str, Any]) -> dict[str, dict[str, str]]:
 def _repo_prompt_adjustments(
     *,
     task: str,
-    score_delta: float,
+    preferred_signal: str,
     dimension_signals: dict[str, str],
 ) -> list[str]:
     if task != "context-routing":
         return []
     adjustments: list[str] = []
-    preferred_signal = "weaker" if score_delta < -EPSILON else "improved"
     fallback_signal = "improved" if preferred_signal == "weaker" else "weaker"
     for signal in (preferred_signal, fallback_signal):
         for dimension in sorted(dimension_signals):
@@ -290,10 +298,10 @@ def _repo_prompt_adjustments(
 
 def _repo_evidence_excerpt(
     *,
-    score_delta: float,
+    prefer_needs_improvement: bool,
     dimension_feedback: dict[str, dict[str, str]],
 ) -> list[str]:
-    field = "needs_improvement" if score_delta < -EPSILON else "what_worked"
+    field = "needs_improvement" if prefer_needs_improvement else "what_worked"
     evidence: list[str] = []
     for dimension in sorted(dimension_feedback):
         text = str(dimension_feedback[dimension].get(field) or "").strip()
@@ -309,6 +317,8 @@ def build_repo_prompt_guidance(
     *,
     baseline_scoreboard: dict[str, Any],
     round_scoreboard: dict[str, Any],
+    decision: str,
+    regression_flags: list[str],
 ) -> list[dict[str, Any]]:
     baseline_repo_tasks = _repo_task_map(baseline_scoreboard)
     round_repo_tasks = _repo_task_map(round_scoreboard)
@@ -359,7 +369,13 @@ def build_repo_prompt_guidance(
             continue
 
         round_dimension_feedback = _dimension_feedback_map(round_row)
-        dimension_signal = _dimension_signal_from_delta(score_delta)
+        lane_guardrail_regression = decision == "discard" and _lane_guardrail_regression(
+            lane_name=lane_name,
+            regression_flags=regression_flags,
+        )
+        dimension_signal = "weaker" if lane_guardrail_regression else _dimension_signal_from_delta(score_delta)
+        preferred_signal = "weaker" if lane_guardrail_regression or score_delta < -EPSILON else "improved"
+        repo_signal_strength = "negative" if lane_guardrail_regression else _repo_signal_strength(score_delta)
         dimension_signals = {
             dimension: dimension_signal
             for dimension in sorted(round_dimension_feedback)
@@ -372,15 +388,15 @@ def build_repo_prompt_guidance(
                 "baseline_total_score": baseline_total_score,
                 "round_total_score": round_total_score,
                 "score_delta": score_delta,
-                "signal_strength": _repo_signal_strength(score_delta),
+                "signal_strength": repo_signal_strength,
                 "dimension_signals": dimension_signals,
                 "prompt_adjustments": _repo_prompt_adjustments(
                     task=task,
-                    score_delta=score_delta,
+                    preferred_signal=preferred_signal,
                     dimension_signals=dimension_signals,
                 ),
                 "evidence_excerpt": _repo_evidence_excerpt(
-                    score_delta=score_delta,
+                    prefer_needs_improvement=lane_guardrail_regression or score_delta < -EPSILON,
                     dimension_feedback=round_dimension_feedback,
                 ),
                 "generation_status": "generated",
@@ -421,17 +437,26 @@ def build_aggregate_prompt_guidance(
     else:
         aggregate_direction = signal_strength if signal_strength in {"positive", "mixed", "negative"} else "mixed"
 
-    scored_rows = [
+    negative_rows = [
         (
             float(row.get("score_delta") or 0.0),
             str(row.get("repo") or ""),
-            row,
         )
         for row in generated
+        if str(row.get("signal_strength") or "") == "negative"
     ]
-    scored_rows.sort(key=lambda item: (item[0], item[1]))
-    top_regression_repos = [repo for delta, repo, _row in scored_rows if delta < -EPSILON][:3]
-    top_improvement_repos = [repo for delta, repo, _row in reversed(scored_rows) if delta > EPSILON][:3]
+    positive_rows = [
+        (
+            float(row.get("score_delta") or 0.0),
+            str(row.get("repo") or ""),
+        )
+        for row in generated
+        if str(row.get("signal_strength") or "") == "positive"
+    ]
+    negative_rows.sort(key=lambda item: (item[0], item[1]))
+    positive_rows.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    top_regression_repos = [repo for _delta, repo in negative_rows][:3]
+    top_improvement_repos = [repo for _delta, repo in positive_rows][:3]
 
     dominant_counter: Counter[tuple[str, str]] = Counter()
     repo_counter: dict[tuple[str, str], set[str]] = {}
@@ -506,7 +531,7 @@ def latest_aggregate_prompt_guidance(feedback_ledger: list[dict[str, Any]]) -> d
     )
     for entry in ordered:
         aggregate = entry.get("aggregate_prompt_guidance") or {}
-        if isinstance(aggregate, dict) and aggregate:
+        if isinstance(aggregate, dict) and str(aggregate.get("generation_status") or "") == "generated":
             return dict(aggregate)
         legacy_adjustments = [
             str(item).strip()
@@ -744,6 +769,8 @@ def build_feedback_distill_payload(
     repo_prompt_guidance = build_repo_prompt_guidance(
         baseline_scoreboard=baseline_scoreboard,
         round_scoreboard=round_scoreboard,
+        decision=decision,
+        regression_flags=regression_flags,
     )
     aggregate_prompt_guidance = build_aggregate_prompt_guidance(
         repo_prompt_guidance,
