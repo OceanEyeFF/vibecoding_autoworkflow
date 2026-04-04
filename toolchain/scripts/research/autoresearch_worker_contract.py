@@ -22,7 +22,8 @@ from common import SCHEMAS_ROOT
 
 
 AUTORESEARCH_WORKER_CONTRACT_SCHEMA_PATH = SCHEMAS_ROOT / "autoresearch-worker-contract.schema.json"
-WORKER_CONTRACT_VERSION = 2
+WORKER_CONTRACT_VERSION = 3
+COMPATIBLE_WORKER_CONTRACT_VERSION = 2
 LEGACY_WORKER_CONTRACT_VERSION = 1
 LEGACY_WORKER_CONTRACT_POLICY = "transition_compat_weak_checks"
 
@@ -71,7 +72,25 @@ def validate_worker_contract_payload(payload: dict[str, Any]) -> None:
         raise RuntimeError("jsonschema is required to validate autoresearch worker contracts.") from exc
 
     schema = json.loads(AUTORESEARCH_WORKER_CONTRACT_SCHEMA_PATH.read_text(encoding="utf-8"))
-    jsonschema.validate(instance=payload, schema=schema)
+    version = payload.get("worker_contract_version")
+    if version == WORKER_CONTRACT_VERSION:
+        jsonschema.validate(instance=payload, schema=schema)
+        return
+    if version == COMPATIBLE_WORKER_CONTRACT_VERSION:
+        legacy_v2_schema = json.loads(json.dumps(schema))
+        legacy_v2_schema["properties"]["worker_contract_version"]["const"] = COMPATIBLE_WORKER_CONTRACT_VERSION
+        legacy_v2_schema["required"] = [
+            field
+            for field in legacy_v2_schema.get("required", [])
+            if field != "aggregate_prompt_guidance"
+        ]
+        legacy_v2_schema["properties"].pop("aggregate_prompt_guidance", None)
+        jsonschema.validate(instance=payload, schema=legacy_v2_schema)
+        return
+    raise ValueError(
+        "worker_contract_version must be "
+        f"{WORKER_CONTRACT_VERSION} or {COMPATIBLE_WORKER_CONTRACT_VERSION} when using the hashed envelope path."
+    )
 
 
 def load_worker_contract_payload(path: Path) -> dict[str, Any]:
@@ -171,6 +190,7 @@ def build_worker_contract_payload(
     recent_feedback_excerpt: list[str] | None = None,
     aggregate_prompt_guidance: dict[str, Any] | None = None,
     materialized_at: str | None = None,
+    worker_contract_version: int = WORKER_CONTRACT_VERSION,
 ) -> dict[str, Any]:
     resolved_materialized_at = str(materialized_at or round_payload.get("worker_contract_materialized_at") or "").strip()
     if not resolved_materialized_at:
@@ -181,7 +201,7 @@ def build_worker_contract_payload(
     aggregate_guidance = dict(aggregate_prompt_guidance or default_aggregate_prompt_guidance())
     # All paths are serialized as absolute strings to keep agent consumption independent of CWD.
     payload: dict[str, Any] = {
-        "worker_contract_version": WORKER_CONTRACT_VERSION,
+        "worker_contract_version": worker_contract_version,
         "run_id": str(contract.run_id),
         "round": int(round_payload["round"]),
         "mutation_id": str(mutation_payload["mutation_id"]),
@@ -200,11 +220,17 @@ def build_worker_contract_payload(
         "target_surface": str(contract.payload["target_surface"]),
         "comparison_baseline": dict(comparison_baseline),
         "recent_feedback_excerpt": excerpt,
-        "aggregate_prompt_guidance": aggregate_guidance,
         "contract_fingerprint": compute_contract_fingerprint(contract),
         "mutation_fingerprint": str(mutation_payload["fingerprint"]),
         "materialized_at": resolved_materialized_at,
     }
+    if worker_contract_version == WORKER_CONTRACT_VERSION:
+        payload["aggregate_prompt_guidance"] = aggregate_guidance
+    elif worker_contract_version != COMPATIBLE_WORKER_CONTRACT_VERSION:
+        raise ValueError(
+            "worker_contract_version must be "
+            f"{WORKER_CONTRACT_VERSION} or {COMPATIBLE_WORKER_CONTRACT_VERSION} when building worker contracts."
+        )
     validate_worker_contract_payload(payload)
     return payload
 

@@ -900,6 +900,7 @@ class AutoresearchRoundManager:
             actual_worker_contract_sha256 = compute_worker_contract_sha256(worker_path)
             if actual_worker_contract_sha256 != recorded_worker_contract_sha256:
                 raise RuntimeError("worker-contract.json does not match hash recorded in round.json.")
+            worker_contract_version = int(worker_contract.get("worker_contract_version") or 0)
             expected_worker_contract = build_worker_contract_payload(
                 contract=contract,
                 mutation_payload=mutation_payload,
@@ -909,6 +910,7 @@ class AutoresearchRoundManager:
                 recent_feedback_excerpt=recent_feedback_excerpt,
                 aggregate_prompt_guidance=aggregate_prompt_guidance,
                 materialized_at=str(round_payload.get("worker_contract_materialized_at") or ""),
+                worker_contract_version=worker_contract_version,
             )
             if worker_contract != expected_worker_contract:
                 raise RuntimeError("worker-contract.json does not match authoritative round/mutation/worktree state.")

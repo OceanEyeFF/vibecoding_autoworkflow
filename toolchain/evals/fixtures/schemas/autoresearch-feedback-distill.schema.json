@@ -137,7 +137,10 @@
             ]
           },
           "round_total_score": {
-            "type": "number"
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "score_delta": {
             "type": [
@@ -183,7 +186,8 @@
             "enum": [
               "generated",
               "unsupported_task",
-              "missing_baseline_row"
+              "missing_baseline_row",
+              "missing_round_row"
             ]
           }
         }

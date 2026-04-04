@@ -354,6 +354,49 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
         self.assertEqual(result["round"]["state"], "evaluated")
 
+    def test_run_round_accepts_prepared_v2_worker_contract_with_round_hashes(self) -> None:
+        candidate_worktree, _ = self._prepare_active_round()
+        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+            "compat candidate change\n",
+            encoding="utf-8",
+        )
+
+        round_path = self.worktree_manager.round_path(self.contract.run_id, 1)
+        round_payload = read_json(round_path)
+        mutation_path = self.round_manager.mutation_path(self.contract.run_id, 1)
+        mutation_payload = read_json(mutation_path)
+        worker_path = self.round_manager.worker_contract_path(self.contract.run_id, 1)
+
+        worker_payload = build_worker_contract_payload(
+            contract=self.contract,
+            mutation_payload=mutation_payload,
+            round_payload=round_payload,
+            agent_report_path=self.round_manager.agent_report_path(self.contract.run_id, 1),
+            comparison_baseline=build_comparison_baseline(read_json(self.run_dir / "scoreboard.json")),
+            recent_feedback_excerpt=build_recent_feedback_excerpt(),
+            materialized_at=str(round_payload["worker_contract_materialized_at"]),
+            worker_contract_version=2,
+        )
+        write_worker_contract(worker_path, worker_payload)
+        round_payload["worker_contract_sha256"] = compute_worker_contract_sha256(worker_path)
+        round_path.write_text(json.dumps(round_payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+
+        def fake_lane_runner(
+            *,
+            candidate_worktree: Path,
+            contract,
+            suite_files: list[Path],
+            save_dir: Path,
+        ) -> list[dict[str, object]]:
+            if "train" in str(save_dir):
+                return [{"suite_file": "train.yaml", "results": [self._eval_result(10.0)]}]
+            return [{"suite_file": "validation.yaml", "results": [self._eval_result(8.5)]}]
+
+        self.round_manager._run_lane_suites = fake_lane_runner  # type: ignore[method-assign]
+        result = self.round_manager.run_round(self.contract)
+
+        self.assertEqual(result["round"]["state"], "evaluated")
+
     def test_run_round_accepts_legacy_worker_contract_without_round_hashes(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
         (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(

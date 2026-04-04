@@ -277,19 +277,113 @@ class AutoresearchFeedbackDistillTest(unittest.TestCase):
             )
 
         repo_guidance = payload["repo_prompt_guidance"][0]
-        self.assertEqual(repo_guidance["signal_strength"], "negative")
-        self.assertEqual(repo_guidance["dimension_signals"]["path_contraction"], "weaker")
+        self.assertEqual(repo_guidance["signal_strength"], "mixed")
+        self.assertEqual(repo_guidance["dimension_signals"]["path_contraction"], "improved")
         self.assertTrue(repo_guidance["evidence_excerpt"])
         self.assertTrue(
             any(
-                "Formatting churn made the route card harder to reuse safely." in excerpt
+                "Kept the initial read list narrow." in excerpt
                 for excerpt in repo_guidance["evidence_excerpt"]
             )
         )
         aggregate = payload["aggregate_prompt_guidance"]
         self.assertEqual(aggregate["aggregate_direction"], "negative")
-        self.assertIn("typer", aggregate["top_regression_repos"])
         self.assertFalse(aggregate["top_improvement_repos"])
+
+    def test_build_feedback_distill_payload_keeps_mixed_lane_regressions_repo_specific(self) -> None:
+        baseline_repo_tasks = [
+            build_repo_task(lane_name="validation", repo="typer", task="context-routing", total_score=8.0),
+            build_repo_task(lane_name="validation", repo="zustand", task="context-routing", total_score=8.0),
+        ]
+        round_repo_tasks = [
+            build_repo_task(lane_name="validation", repo="typer", task="context-routing", total_score=8.5),
+            build_repo_task(
+                lane_name="validation",
+                repo="zustand",
+                task="context-routing",
+                total_score=7.0,
+                needs_improvement="Broad scanning weakened the final route card.",
+            ),
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp) / "demo-run"
+            round_dir = run_dir / "rounds" / "round-001"
+            round_dir.mkdir(parents=True, exist_ok=True)
+            (round_dir / "decision.json").write_text("{}\n", encoding="utf-8")
+            (round_dir / "scoreboard.json").write_text("{}\n", encoding="utf-8")
+            (round_dir / "worker-contract.json").write_text("{}\n", encoding="utf-8")
+
+            payload = build_feedback_distill_payload(
+                run_dir=run_dir,
+                round_dir=round_dir,
+                mutation_payload={"mutation_key": "k", "mutation_id": "k#a001", "attempt": 1},
+                decision_payload={"run_id": "demo-run", "round": 1, "decision": "discard"},
+                baseline_scoreboard=build_scoreboard(
+                    train_score=9.0,
+                    validation_score=8.0,
+                    parse_error=0.0,
+                    repo_tasks=baseline_repo_tasks,
+                ),
+                round_scoreboard=build_scoreboard(
+                    train_score=9.0,
+                    validation_score=7.0,
+                    parse_error=0.2,
+                    repo_tasks=round_repo_tasks,
+                ),
+                distilled_at="2026-03-27T00:00:00+00:00",
+            )
+
+        repo_guidance = {row["repo"]: row for row in payload["repo_prompt_guidance"]}
+        self.assertEqual(repo_guidance["typer"]["signal_strength"], "mixed")
+        self.assertEqual(repo_guidance["typer"]["dimension_signals"]["path_contraction"], "improved")
+        self.assertEqual(repo_guidance["zustand"]["signal_strength"], "negative")
+        self.assertEqual(repo_guidance["zustand"]["dimension_signals"]["path_contraction"], "weaker")
+        aggregate = payload["aggregate_prompt_guidance"]
+        self.assertIn("zustand", aggregate["top_regression_repos"])
+        self.assertNotIn("typer", aggregate["top_regression_repos"])
+        self.assertFalse(aggregate["top_improvement_repos"])
+
+    def test_build_feedback_distill_payload_surfaces_baseline_repo_missing_from_round(self) -> None:
+        baseline_repo_tasks = [
+            build_repo_task(lane_name="validation", repo="typer", task="context-routing", total_score=8.0),
+            build_repo_task(lane_name="validation", repo="zustand", task="context-routing", total_score=8.5),
+        ]
+        round_repo_tasks = [
+            build_repo_task(lane_name="validation", repo="typer", task="context-routing", total_score=8.0),
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp) / "demo-run"
+            round_dir = run_dir / "rounds" / "round-001"
+            round_dir.mkdir(parents=True, exist_ok=True)
+            (round_dir / "decision.json").write_text("{}\n", encoding="utf-8")
+            (round_dir / "scoreboard.json").write_text("{}\n", encoding="utf-8")
+            (round_dir / "worker-contract.json").write_text("{}\n", encoding="utf-8")
+
+            payload = build_feedback_distill_payload(
+                run_dir=run_dir,
+                round_dir=round_dir,
+                mutation_payload={"mutation_key": "k", "mutation_id": "k#a001", "attempt": 1},
+                decision_payload={"run_id": "demo-run", "round": 1, "decision": "discard"},
+                baseline_scoreboard=build_scoreboard(
+                    train_score=9.0,
+                    validation_score=8.0,
+                    repo_tasks=baseline_repo_tasks,
+                ),
+                round_scoreboard=build_scoreboard(
+                    train_score=8.5,
+                    validation_score=7.5,
+                    parse_error=0.2,
+                    repo_tasks=round_repo_tasks,
+                ),
+                distilled_at="2026-03-27T00:00:00+00:00",
+            )
+
+        repo_guidance = {row["repo"]: row for row in payload["repo_prompt_guidance"]}
+        self.assertIn("zustand", repo_guidance)
+        self.assertEqual(repo_guidance["zustand"]["generation_status"], "missing_round_row")
+        self.assertEqual(repo_guidance["zustand"]["signal_strength"], "negative")
+        self.assertIsNone(repo_guidance["zustand"]["round_total_score"])
+        self.assertIn("zustand", payload["aggregate_prompt_guidance"]["top_regression_repos"])
 
     def test_upsert_feedback_ledger_replaces_same_round_entry(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
