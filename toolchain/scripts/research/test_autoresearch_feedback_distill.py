@@ -430,6 +430,65 @@ class AutoresearchFeedbackDistillTest(unittest.TestCase):
         self.assertIsNone(repo_guidance["zustand"]["round_total_score"])
         self.assertIn("zustand", payload["aggregate_prompt_guidance"]["top_regression_repos"])
 
+    def test_build_feedback_distill_payload_dedupes_repo_rankings_across_lanes(self) -> None:
+        baseline_repo_tasks = [
+            build_repo_task(lane_name="train", repo="typer", task="context-routing", total_score=9.0),
+            build_repo_task(lane_name="validation", repo="typer", task="context-routing", total_score=9.0),
+            build_repo_task(lane_name="validation", repo="zustand", task="context-routing", total_score=8.5),
+        ]
+        round_repo_tasks = [
+            build_repo_task(
+                lane_name="train",
+                repo="typer",
+                task="context-routing",
+                total_score=7.0,
+                needs_improvement="Formatting churn weakened the route card.",
+            ),
+            build_repo_task(
+                lane_name="validation",
+                repo="typer",
+                task="context-routing",
+                total_score=7.5,
+                needs_improvement="Formatting churn weakened the route card.",
+            ),
+            build_repo_task(
+                lane_name="validation",
+                repo="zustand",
+                task="context-routing",
+                total_score=7.5,
+                needs_improvement="Broad scanning weakened the final route card.",
+            ),
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp) / "demo-run"
+            round_dir = run_dir / "rounds" / "round-001"
+            round_dir.mkdir(parents=True, exist_ok=True)
+            (round_dir / "decision.json").write_text("{}\n", encoding="utf-8")
+            (round_dir / "scoreboard.json").write_text("{}\n", encoding="utf-8")
+            (round_dir / "worker-contract.json").write_text("{}\n", encoding="utf-8")
+
+            payload = build_feedback_distill_payload(
+                run_dir=run_dir,
+                round_dir=round_dir,
+                mutation_payload={"mutation_key": "k", "mutation_id": "k#a001", "attempt": 1},
+                decision_payload={"run_id": "demo-run", "round": 1, "decision": "discard"},
+                baseline_scoreboard=build_scoreboard(
+                    train_score=9.0,
+                    validation_score=8.5,
+                    parse_error=0.0,
+                    repo_tasks=baseline_repo_tasks,
+                ),
+                round_scoreboard=build_scoreboard(
+                    train_score=7.0,
+                    validation_score=7.5,
+                    parse_error=0.0,
+                    repo_tasks=round_repo_tasks,
+                ),
+                distilled_at="2026-03-27T00:00:00+00:00",
+            )
+
+        self.assertEqual(payload["aggregate_prompt_guidance"]["top_regression_repos"], ["typer", "zustand"])
+
     def test_upsert_feedback_ledger_replaces_same_round_entry(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ledger_path = Path(tmp) / "feedback-ledger.jsonl"
@@ -551,6 +610,32 @@ class AutoresearchFeedbackDistillTest(unittest.TestCase):
 
         self.assertEqual(aggregate["generation_status"], "generated")
         self.assertTrue(aggregate["aggregate_suggested_adjustments"])
+
+    def test_latest_aggregate_prompt_guidance_uses_placeholder_fallback_adjustments(self) -> None:
+        placeholder = build_ledger_entry(
+            mutation_key="k2",
+            round_number=2,
+            mutation_id="k2#a001",
+            decision="discard",
+            signal_strength="negative",
+        )
+        placeholder["aggregate_prompt_guidance"] = {
+            "aggregate_direction": "negative",
+            "aggregate_suggested_adjustments": ["reduce formatting churn to avoid parse-error regressions"],
+            "top_regression_repos": [],
+            "top_improvement_repos": [],
+            "dominant_dimension_signals": [],
+            "generation_status": "no_repo_guidance",
+        }
+
+        aggregate = latest_aggregate_prompt_guidance([placeholder])
+
+        self.assertEqual(aggregate["generation_status"], "generated")
+        self.assertEqual(
+            aggregate["aggregate_suggested_adjustments"],
+            ["reduce formatting churn to avoid parse-error regressions"],
+        )
+        self.assertEqual(aggregate["aggregate_direction"], "negative")
 
     def test_load_feedback_ledger_accepts_legacy_v1_entry(self) -> None:
         legacy_entry = {

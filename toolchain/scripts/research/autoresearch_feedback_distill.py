@@ -544,6 +544,8 @@ def build_aggregate_prompt_guidance(
     ]
     negative_rows.sort(key=lambda item: (item[0], item[1], item[2]))
     positive_rows.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    negative_rows = _dedupe_ranked_repos(negative_rows, repo_index=2)
+    positive_rows = _dedupe_ranked_repos(positive_rows, repo_index=1)
     top_regression_repos = [repo for _priority, _delta, repo in negative_rows][:3]
     top_improvement_repos = [repo for _delta, repo in positive_rows][:3]
 
@@ -612,6 +614,18 @@ def _latest_adjustments(entry: dict[str, Any]) -> list[str]:
     ]
 
 
+def _dedupe_ranked_repos(rows: list[tuple[Any, ...]], *, repo_index: int) -> list[tuple[Any, ...]]:
+    deduped: list[tuple[Any, ...]] = []
+    seen: set[str] = set()
+    for row in rows:
+        repo = str(row[repo_index] or "").strip()
+        if not repo or repo in seen:
+            continue
+        seen.add(repo)
+        deduped.append(row)
+    return deduped
+
+
 def latest_aggregate_prompt_guidance(feedback_ledger: list[dict[str, Any]]) -> dict[str, Any]:
     ordered = sorted(
         (entry for entry in feedback_ledger if isinstance(entry, dict)),
@@ -620,8 +634,24 @@ def latest_aggregate_prompt_guidance(feedback_ledger: list[dict[str, Any]]) -> d
     )
     for entry in ordered:
         aggregate = entry.get("aggregate_prompt_guidance") or {}
-        if isinstance(aggregate, dict) and str(aggregate.get("generation_status") or "") == "generated":
-            return dict(aggregate)
+        if isinstance(aggregate, dict):
+            aggregate_adjustments = [
+                str(item).strip()
+                for item in (aggregate.get("aggregate_suggested_adjustments") or [])
+                if str(item).strip()
+            ]
+            if str(aggregate.get("generation_status") or "") == "generated":
+                return dict(aggregate)
+            if aggregate_adjustments:
+                direction = str(aggregate.get("aggregate_direction") or entry.get("signal_strength") or "mixed").strip()
+                return {
+                    "aggregate_direction": direction if direction in {"positive", "mixed", "negative"} else "mixed",
+                    "aggregate_suggested_adjustments": aggregate_adjustments[:3],
+                    "top_regression_repos": [],
+                    "top_improvement_repos": [],
+                    "dominant_dimension_signals": [],
+                    "generation_status": "generated",
+                }
         legacy_adjustments = [
             str(item).strip()
             for item in (entry.get("suggested_adjustments") or [])
