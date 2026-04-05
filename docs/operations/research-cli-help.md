@@ -1,9 +1,9 @@
 ---
 title: "Research CLI 指令"
 status: active
-updated: 2026-03-31
+updated: 2026-04-04
 owner: aw-kernel
-last_verified: 2026-03-31
+last_verified: 2026-04-04
 ---
 # Research CLI 指令
 
@@ -258,6 +258,29 @@ repo 解析顺序当前固定为：
 - `--backend`
 - `--judge-backend`
 - `--task`
+
+## 五、Autoresearch 当前 feedback / worker contract 行为
+
+当前 `run_autoresearch.py` 与 `run_autoresearch_loop.py` 已固定下面这组 feedback artifact 行为：
+
+- round 级 `feedback-distill.json` 使用独立 round contract，不再与 run 级 ledger 同形
+- round payload 继续保留 lane 级 delta / flags，同时新增：
+  - `repo_prompt_guidance`
+  - `aggregate_prompt_guidance`
+- `repo_prompt_guidance` 当前只对 `context-routing` 做 deterministic 强保证；其他 task 显式落 `unsupported_task`
+- run 级 `feedback-ledger.jsonl` 只保留 compact aggregate guidance，用于 selector、excerpt 和下一轮 worker 上下文
+- `recent_feedback_excerpt` 继续从 ledger 生成短字符串，但优先复用 aggregate guidance，而不是 repo 明细
+- `worker-contract.json` 现在会额外冻结 structured `aggregate_prompt_guidance`
+- loop wrapper 渲染 worker prompt 时会同时显示：
+  - recent excerpt
+  - aggregate direction
+  - 最多 `2-3` 条 aggregate suggested adjustments
+
+当前兼容口径：
+
+- legacy v1 ledger entry 仍可读取
+- legacy v1 worker contract 仍只保留弱一致性校验
+- 新写出的 round distill / ledger entry / worker contract 都按当前 v2 contract 落盘
 - `--with-eval`
 - `--prompt-file`
 - `--eval-prompt-file`

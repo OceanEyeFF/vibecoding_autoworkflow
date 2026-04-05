@@ -16,7 +16,20 @@ from repo_governance_eval import (
 
 
 def test_evaluate_governance_caps_overall_when_code_fails() -> None:
-    result = evaluate_governance({"rule": 95, "folders": 90, "document": 85, "code": 30})
+    result = evaluate_governance(
+        {
+            "rule": 95,
+            "folders": 90,
+            "document": 85,
+            "code": 30,
+            "evidence": {
+                "rule": ["docs/operations/prompt-templates/review-loop-code-review.md"],
+                "folders": ["docs/knowledge/foundations/root-directory-layering.md"],
+                "document": ["docs/operations/review-verify-handbook.md"],
+                "code": ["toolchain/scripts/test/governance_assess.py"],
+            },
+        }
+    )
 
     assert result["dimensions"]["rule"]["grade"] == "通过"
     assert result["dimensions"]["code"]["grade"] == "不通过"
@@ -24,7 +37,20 @@ def test_evaluate_governance_caps_overall_when_code_fails() -> None:
 
 
 def test_evaluate_governance_marks_conditional_pass() -> None:
-    result = evaluate_governance({"rule": 65, "folders": 82, "document": 61, "code": 88})
+    result = evaluate_governance(
+        {
+            "rule": 65,
+            "folders": 82,
+            "document": 61,
+            "code": 88,
+            "evidence": {
+                "rule": ["docs/operations/prompt-templates/review-loop-code-review.md"],
+                "folders": ["docs/knowledge/foundations/root-directory-layering.md"],
+                "document": ["docs/operations/review-verify-handbook.md"],
+                "code": ["toolchain/scripts/test/governance_assess.py"],
+            },
+        }
+    )
 
     assert result["dimensions"]["rule"]["grade"] == "有条件通过"
     assert result["overall"] == "有条件通过"
@@ -48,7 +74,13 @@ def test_evaluate_repo_governance_applies_change_governance_cap() -> None:
                 "structural_clarity": 4,
                 "operational_maintainability": 4,
             },
-            "evidence": {"change_governance": ["docs/operations/branch-pr-governance.md"]},
+            "evidence": {
+                "baseline_hygiene": ["docs/README.md"],
+                "change_governance": ["docs/operations/branch-pr-governance.md"],
+                "automation": ["toolchain/scripts/test/README.md"],
+                "structural_clarity": ["docs/knowledge/foundations/root-directory-layering.md"],
+                "operational_maintainability": ["toolchain/scripts/test/repo_governance_eval.py"],
+            },
         }
     )
 
@@ -89,11 +121,24 @@ def test_repo_governance_load_input_rejects_invalid_values(tmp_path: Path) -> No
         load_repo_input_json(non_object)
 
     invalid_score = tmp_path / "repo-invalid-score.json"
-    invalid_score.write_text('{"scores":{"automation": "bad"}}', encoding="utf-8")
+    invalid_score.write_text(
+        '{"scores":{"baseline_hygiene": 5, "change_governance": 4, "automation": "bad", "structural_clarity": 4, "operational_maintainability": 4},'
+        '"evidence":{"baseline_hygiene":["docs/README.md"],"change_governance":["docs/operations/review-verify-handbook.md"],'
+        '"automation":["toolchain/scripts/test/README.md"],"structural_clarity":["docs/knowledge/foundations/root-directory-layering.md"],'
+        '"operational_maintainability":["toolchain/scripts/test/repo_governance_eval.py"]}}',
+        encoding="utf-8",
+    )
     with pytest.raises(SystemExit, match="invalid score 'automation': expected number"):
         load_repo_input_json(invalid_score)
 
     invalid_readiness = tmp_path / "repo-invalid-readiness.json"
-    invalid_readiness.write_text('{"agent_readiness":{"safe_change": null}}', encoding="utf-8")
+    invalid_readiness.write_text(
+        '{"scores":{"baseline_hygiene": 5, "change_governance": 4, "automation": 4, "structural_clarity": 4, "operational_maintainability": 4},'
+        '"evidence":{"baseline_hygiene":["docs/README.md"],"change_governance":["docs/operations/review-verify-handbook.md"],'
+        '"automation":["toolchain/scripts/test/README.md"],"structural_clarity":["docs/knowledge/foundations/root-directory-layering.md"],'
+        '"operational_maintainability":["toolchain/scripts/test/repo_governance_eval.py"]},'
+        '"agent_readiness":{"safe_change": null}}',
+        encoding="utf-8",
+    )
     with pytest.raises(SystemExit, match="invalid agent_readiness 'safe_change': null is not allowed"):
         load_repo_input_json(invalid_readiness)

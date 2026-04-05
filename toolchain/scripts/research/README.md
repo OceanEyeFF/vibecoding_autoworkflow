@@ -69,7 +69,7 @@ live Codex smoke 的预算口径当前建议固定为：
 - `prepare-round` 默认会从 run-local `mutation-registry.json` 自动选择下一条可用 entry；当前 selector 输入包含 registry、runtime、比较基线 scoreboard，以及可选的 `feedback-ledger.jsonl`，在没有 ledger 时保持 P1.2 的 deterministic 规则，有 ledger 时则按 family signal 做 feedback-aware priority，并对 validation / parse-error / timeout 回退信号施加 guardrail，再 materialize 本轮 `mutation.json` 并回写 `attempts / last_selected_round`
 - `prepare-round --mutation-key <key>`：显式覆盖自动选择，直接选中指定 entry（仍会校验 entry 可用性）
 - `prepare-round --mutation <path>`：兼容旧入口，但会先把手工 spec import/canonicalize 成 registry entry，再 materialize 本轮 `mutation.json`；不再直接把一次性 spec 原样写入 round 目录
-- `prepare-round` 会先冻结 round authority（registry entry、materialized mutation、frozen `comparison_baseline`、`recent_feedback_excerpt`），再写出 `worker-contract.json` 并回写 registry bookkeeping；若发现中断残留的 active round，会先按 frozen authority 修复 `mutation.json` / `worker-contract.json` 并对账 registry bookkeeping，再拒绝开启新 round；若 `mutation-registry.json` 已缺失，则会 fail closed 并要求先 `cleanup-round`
+- `prepare-round` 会先冻结 round authority（registry entry、materialized mutation、frozen `comparison_baseline`、`recent_feedback_excerpt`、latest `aggregate_prompt_guidance`），再写出 `worker-contract.json` 并回写 registry bookkeeping；若发现中断残留的 active round，会先按 frozen authority 修复 `mutation.json` / `worker-contract.json` 并对账 registry bookkeeping，再拒绝开启新 round；若 `mutation-registry.json` 已缺失，则会 fail closed 并要求先 `cleanup-round`
 - 在没有 active round 时，`prepare-round` 还会先执行最小 stop gate：
   - 连续 `3` 轮已完成 round 都没有产生新的 validation champion，则停止创建新 round
   - 所有 `active` mutation family 都至少尝试过 `1` 次，且当前 run 没有任何最终 `keep`，则停止创建新 round
@@ -315,13 +315,13 @@ P2 Batch 1 对 registry / round authority 的额外约束当前也已固定：
 - `round.json`：round 编号、`base_sha`、candidate 分支/worktree、当前状态
 - `worktree.json`：candidate worktree 路径、分支、`base_sha`、`candidate_sha`、清理时间
 - `mutation.json`：本轮 authority mutation spec，包含 `mutation_key`、`attempt`、`fingerprint`、`instruction`、`expected_effect`、`guardrails` 等字段
-- `worker-contract.json`：agent-facing 执行信封，压平 candidate worktree、instruction、target_paths、allowed_actions、frozen `comparison_baseline`、`recent_feedback_excerpt`、fingerprints、`materialized_at` 等本轮执行要点
+- `worker-contract.json`：agent-facing 执行信封，压平 candidate worktree、instruction、target_paths、allowed_actions、frozen `comparison_baseline`、`recent_feedback_excerpt`、structured `aggregate_prompt_guidance`、fingerprints、`materialized_at` 等本轮执行要点
 - `agent-report.md`：由 Codex / subagent 写出的本轮内容工作摘要；缺失时 `run-round` 会直接失败
 - `train/`：本轮 train suite 的 run artifacts
 - `validation/`：本轮 validation suite 的 run artifacts
 - `scoreboard.json`：本轮 train / validation 聚合结果
 - `decision.json`：固定 keep / discard 规则输出
-- `feedback-distill.json`：P1.3 的 round 级 deterministic distilled feedback，记录 delta、signal、flags 与 refs
+- `feedback-distill.json`：P1.3 的 round 级 deterministic distilled feedback，记录 lane delta、repo 级 prompt guidance、aggregate guidance 与 refs
 
 根目录还会持续维护：
 
@@ -329,7 +329,7 @@ P2 Batch 1 对 registry / round authority 的额外约束当前也已固定：
 - `runtime.json`
 - `history.tsv`
 - 顶层 `scoreboard.json`：作为“下一轮比较基线”；round 0 时是 baseline，`keep` 后会前移到当前 champion，并在 round 裁决后更新 `rounds_completed` 与 `best_round`
-- `feedback-ledger.jsonl`：P1.3 的 run 级 family feedback ledger；同一 `(run_id, round, mutation_id)` 会被 upsert，而不是盲目追加重复行
+- `feedback-ledger.jsonl`：P1.3 的 run 级 family feedback ledger；同一 `(run_id, round, mutation_id)` 会被 upsert，而不是盲目追加重复行；ledger 只保留 compact aggregate guidance，不保留完整 repo 明细
 
 ### Autoresearch P0.3 Guardrails
 
@@ -339,7 +339,7 @@ P0.3 的脚本侧约束当前固定为：
 - materialized `mutation.json` 与 `worker-contract.json` 的 hash 都会写入 `round.json`
 - `target_paths` 对 `contract.mutable_paths` 的校验现在是严格子集语义；更宽父路径会被拒绝
 - `run-round` 读取 round 目录里的 `mutation.json` 后会重新做同一套 scope 校验，因此不能通过“prepare 后手改 mutation spec”来扩大允许变更范围
-- `run-round` 还会校验 `worker-contract.json` 的存在性、hash 和关键 tracing 字段一致性；当前 v2 路径会直接复用 frozen `comparison_baseline` 与 `recent_feedback_excerpt` 重建期望 payload，legacy v1 则仅保留 `transition_compat_weak_checks` 弱校验兼容
+- `run-round` 还会校验 `worker-contract.json` 的存在性、hash 和关键 tracing 字段一致性；当前 v2 路径会直接复用 frozen `comparison_baseline`、`recent_feedback_excerpt` 与 `aggregate_prompt_guidance` 重建期望 payload，legacy v1 则仅保留 `transition_compat_weak_checks` 弱校验兼容
 - `run-round` 只允许在 round 状态为 `candidate_active` 时执行
 - `decide-round` 只允许在 round 状态为 `evaluated` 时执行
 - `run-round` 会同时校验两类 candidate 改动：
@@ -666,7 +666,7 @@ P1.2 worker-contract 形状当前固定为：
 - 身份：`run_id / round / mutation_id / mutation_key / attempt`
 - 执行面：`base_sha / candidate_branch / candidate_worktree / agent_report_path`
 - 变更边界：`target_paths / allowed_actions / guardrails / instruction / expected_effect`
-- 只读上下文：`objective / target_surface / comparison_baseline / recent_feedback_excerpt`
+- 只读上下文：`objective / target_surface / comparison_baseline / recent_feedback_excerpt / aggregate_prompt_guidance`
 - 校验锚点：`contract_fingerprint / mutation_fingerprint / materialized_at`
 
 P1.2 常见失败语义：

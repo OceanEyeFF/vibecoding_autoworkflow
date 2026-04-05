@@ -1,9 +1,9 @@
 ---
 title: "Autoresearch 最小闭环运行说明"
 status: active
-updated: 2026-03-30
+updated: 2026-04-04
 owner: aw-kernel
-last_verified: 2026-03-30
+last_verified: 2026-04-04
 ---
 # Autoresearch 最小闭环运行说明
 
@@ -463,6 +463,7 @@ run 根目录固定在：
 
 - 有既有 ledger 时，positive family 可以在第二轮优先于 fresh entry 被再次选择
 - 带 `validation_drop` 的 mixed family 会被 guardrail 降权，fresh family 会优先被选择
+- 下一轮 worker contract 会冻结 compact `aggregate_prompt_guidance`，而不是把 repo 明细原样塞进 prompt
 
 单轮 `rounds/round-001/` 下至少会有：
 
@@ -477,6 +478,7 @@ run 根目录固定在：
 - `scoreboard.json`
 - `decision.json`
 - `feedback-distill.json`
+- `feedback-ledger.jsonl` 只保留 compact aggregate guidance；round 级 `feedback-distill.json` 才保留 repo guidance 明细
 - `replay/scoreboard.json`（仅当 round 先命中 provisional `keep` 且触发 replay 时生成）
 
 如果当前 round 触发 replay，`replay/` 下还会包含：
@@ -515,6 +517,12 @@ run 根目录固定在：
 
 - `keep` 是“优化成功”
 - `discard` 仍然是“闭环成功”
+
+当前 feedback / worker contract 还有一条额外约束：
+
+- `worker-contract.json` 必须包含 `aggregate_prompt_guidance`
+- 这个字段来源于 run-level ledger 的最新 compact summary
+- 即使 legacy ledger 只有 v1 `suggested_adjustments`，prepare-round 也会先投影出一个最小 aggregate guidance 再冻结进 worker contract
 
 ## 八、这次验证到的真实结果
 
