@@ -322,6 +322,17 @@ def _combine_adjustments(*groups: list[str]) -> list[str]:
     return combined
 
 
+def _aggregate_adjustment_priority_groups(
+    *,
+    aggregate_direction: str,
+    fallback_adjustments: list[str],
+    aggregate_adjustments: list[str],
+) -> tuple[list[str], list[str]]:
+    if aggregate_direction == "negative" and fallback_adjustments:
+        return fallback_adjustments, aggregate_adjustments
+    return aggregate_adjustments, fallback_adjustments
+
+
 def _dimension_feedback_map(row: dict[str, Any]) -> dict[str, dict[str, str]]:
     feedback = row.get("dimension_feedback") or {}
     if not isinstance(feedback, dict):
@@ -777,10 +788,12 @@ def load_feedback_ledger(path: Path) -> list[dict[str, Any]]:
 
 def build_feedback_ledger_entry(distill_payload: dict[str, Any]) -> dict[str, Any]:
     aggregate_prompt_guidance = dict(distill_payload.get("aggregate_prompt_guidance") or _default_aggregate_prompt_guidance())
-    if not list(aggregate_prompt_guidance.get("aggregate_suggested_adjustments") or []):
-        aggregate_prompt_guidance["aggregate_suggested_adjustments"] = list(
-            distill_payload.get("suggested_adjustments") or []
-        )[:3]
+    persisted_adjustments = _combine_adjustments(
+        list(distill_payload.get("suggested_adjustments") or []),
+        list(aggregate_prompt_guidance.get("aggregate_suggested_adjustments") or []),
+    )
+    if persisted_adjustments:
+        aggregate_prompt_guidance["aggregate_suggested_adjustments"] = persisted_adjustments
     payload = {
         "feedback_ledger_version": FEEDBACK_LEDGER_VERSION,
         "run_id": str(distill_payload["run_id"]),
@@ -905,10 +918,15 @@ def build_feedback_distill_payload(
         regression_flags=regression_flags,
         dimension_feedback_summary=dimension_feedback_summary,
     )
-    suggested_adjustments = _combine_adjustments(
-        list(aggregate_prompt_guidance.get("aggregate_suggested_adjustments") or []),
-        fallback_adjustments,
+    aggregate_adjustments = list(aggregate_prompt_guidance.get("aggregate_suggested_adjustments") or [])
+    primary_adjustments, secondary_adjustments = _aggregate_adjustment_priority_groups(
+        aggregate_direction=str(aggregate_prompt_guidance.get("aggregate_direction") or ""),
+        fallback_adjustments=fallback_adjustments,
+        aggregate_adjustments=aggregate_adjustments,
     )
+    suggested_adjustments = _combine_adjustments(primary_adjustments, secondary_adjustments)
+    if suggested_adjustments:
+        aggregate_prompt_guidance["aggregate_suggested_adjustments"] = suggested_adjustments
     payload: dict[str, Any] = {
         "feedback_distill_version": FEEDBACK_DISTILL_VERSION,
         "run_id": str(decision_payload.get("run_id") or baseline_scoreboard.get("run_id") or ""),

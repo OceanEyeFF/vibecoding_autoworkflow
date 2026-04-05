@@ -388,6 +388,49 @@ class AutoresearchFeedbackDistillTest(unittest.TestCase):
         )
         self.assertIn("next=reduce formatting churn to avoid parse-error regressions", excerpt[0])
 
+    def test_build_feedback_distill_payload_merges_guardrail_fallback_into_negative_aggregate_guidance(self) -> None:
+        baseline_repo_tasks = [
+            build_repo_task(lane_name="validation", repo="typer", task="context-routing", total_score=8.0),
+            build_repo_task(lane_name="validation", repo="zustand", task="context-routing", total_score=8.0),
+        ]
+        round_repo_tasks = [
+            build_repo_task(lane_name="validation", repo="typer", task="context-routing", total_score=8.5),
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp) / "demo-run"
+            round_dir = run_dir / "rounds" / "round-001"
+            round_dir.mkdir(parents=True, exist_ok=True)
+            (round_dir / "decision.json").write_text("{}\n", encoding="utf-8")
+            (round_dir / "scoreboard.json").write_text("{}\n", encoding="utf-8")
+            (round_dir / "worker-contract.json").write_text("{}\n", encoding="utf-8")
+
+            payload = build_feedback_distill_payload(
+                run_dir=run_dir,
+                round_dir=round_dir,
+                mutation_payload={"mutation_key": "k", "mutation_id": "k#a001", "attempt": 1},
+                decision_payload={"run_id": "demo-run", "round": 1, "decision": "discard"},
+                baseline_scoreboard=build_scoreboard(
+                    train_score=9.0,
+                    validation_score=8.0,
+                    parse_error=0.0,
+                    repo_tasks=baseline_repo_tasks,
+                ),
+                round_scoreboard=build_scoreboard(
+                    train_score=9.0,
+                    validation_score=8.0,
+                    parse_error=0.2,
+                    repo_tasks=round_repo_tasks,
+                ),
+                distilled_at="2026-03-27T00:00:00+00:00",
+            )
+
+        aggregate_adjustments = payload["aggregate_prompt_guidance"]["aggregate_suggested_adjustments"]
+        self.assertEqual(payload["aggregate_prompt_guidance"]["aggregate_direction"], "negative")
+        self.assertTrue(aggregate_adjustments)
+        self.assertEqual(aggregate_adjustments[0], "reduce formatting churn to avoid parse-error regressions")
+        self.assertIn("reduce formatting churn to avoid parse-error regressions", payload["suggested_adjustments"])
+        self.assertGreaterEqual(len(aggregate_adjustments), 2)
+
     def test_build_feedback_distill_payload_surfaces_baseline_repo_missing_from_round(self) -> None:
         baseline_repo_tasks = [
             build_repo_task(lane_name="validation", repo="typer", task="context-routing", total_score=8.0),
@@ -636,6 +679,57 @@ class AutoresearchFeedbackDistillTest(unittest.TestCase):
             ["reduce formatting churn to avoid parse-error regressions"],
         )
         self.assertEqual(aggregate["aggregate_direction"], "negative")
+
+    def test_build_feedback_ledger_entry_preserves_fallback_adjustments_alongside_generated_aggregate(self) -> None:
+        baseline_repo_tasks = [
+            build_repo_task(lane_name="validation", repo="typer", task="context-routing", total_score=8.0),
+            build_repo_task(lane_name="validation", repo="zustand", task="context-routing", total_score=8.0),
+        ]
+        round_repo_tasks = [
+            build_repo_task(lane_name="validation", repo="typer", task="context-routing", total_score=8.5),
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp) / "demo-run"
+            round_dir = run_dir / "rounds" / "round-001"
+            round_dir.mkdir(parents=True, exist_ok=True)
+            (round_dir / "decision.json").write_text("{}\n", encoding="utf-8")
+            (round_dir / "scoreboard.json").write_text("{}\n", encoding="utf-8")
+            (round_dir / "worker-contract.json").write_text("{}\n", encoding="utf-8")
+
+            payload = build_feedback_distill_payload(
+                run_dir=run_dir,
+                round_dir=round_dir,
+                mutation_payload={"mutation_key": "k", "mutation_id": "k#a001", "attempt": 1},
+                decision_payload={"run_id": "demo-run", "round": 1, "decision": "discard"},
+                baseline_scoreboard=build_scoreboard(
+                    train_score=9.0,
+                    validation_score=8.0,
+                    parse_error=0.0,
+                    repo_tasks=baseline_repo_tasks,
+                ),
+                round_scoreboard=build_scoreboard(
+                    train_score=9.0,
+                    validation_score=8.0,
+                    parse_error=0.2,
+                    repo_tasks=round_repo_tasks,
+                ),
+                distilled_at="2026-03-27T00:00:00+00:00",
+            )
+            ledger_path = run_dir / "feedback-ledger.jsonl"
+            upsert_feedback_ledger_entry(ledger_path, payload)
+            ledger = load_feedback_ledger(ledger_path)
+            aggregate = latest_aggregate_prompt_guidance(ledger)
+            excerpt = build_recent_feedback_excerpt(ledger, limit=1)
+
+        self.assertIn(
+            "reduce formatting churn to avoid parse-error regressions",
+            ledger[0]["aggregate_prompt_guidance"]["aggregate_suggested_adjustments"],
+        )
+        self.assertEqual(
+            aggregate["aggregate_suggested_adjustments"],
+            ledger[0]["aggregate_prompt_guidance"]["aggregate_suggested_adjustments"],
+        )
+        self.assertIn("next=reduce formatting churn to avoid parse-error regressions", excerpt[0])
 
     def test_load_feedback_ledger_accepts_legacy_v1_entry(self) -> None:
         legacy_entry = {
