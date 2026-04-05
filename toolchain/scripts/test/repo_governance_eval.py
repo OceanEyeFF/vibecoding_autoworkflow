@@ -147,7 +147,7 @@ def evaluate_repo_governance(
     dimensions: dict[str, dict] = {}
     total = 0
     for key, label in DIMENSIONS:
-        score = scores[key]
+        score = scores.get(key, 0)
         total += score
         dimensions[key] = {
             "label": label,

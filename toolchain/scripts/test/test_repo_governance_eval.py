@@ -108,6 +108,34 @@ def test_evaluate_repo_governance_rejects_out_of_range_score() -> None:
         )
 
 
+def test_evaluate_repo_governance_accepts_partial_scores_when_allowed() -> None:
+    result = evaluate_repo_governance(
+        {
+            "repo_type": "long_term_product",
+            "scores": {
+                "baseline_hygiene": 5,
+                "change_governance": 4,
+            },
+            "evidence": {
+                "baseline_hygiene": ["docs/README.md"],
+                "change_governance": ["docs/operations/review-verify-handbook.md"],
+                "automation": ["toolchain/scripts/test/README.md"],
+                "structural_clarity": ["docs/knowledge/foundations/root-directory-layering.md"],
+                "operational_maintainability": ["toolchain/scripts/test/repo_governance_eval.py"],
+            },
+        },
+        require_evidence=True,
+        require_all_scores=False,
+    )
+
+    assert result["total"] == 9
+    assert result["dimensions"]["baseline_hygiene"]["score"] == 5
+    assert result["dimensions"]["change_governance"]["score"] == 4
+    assert result["dimensions"]["automation"]["score"] == 0
+    assert result["dimensions"]["structural_clarity"]["score"] == 0
+    assert result["dimensions"]["operational_maintainability"]["score"] == 0
+
+
 def test_evaluate_repo_governance_rejects_out_of_range_agent_readiness() -> None:
     with pytest.raises(
         SystemExit,
