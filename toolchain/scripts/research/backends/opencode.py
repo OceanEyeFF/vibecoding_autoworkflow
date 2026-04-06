@@ -67,6 +67,20 @@ class OpenCodeBackend(ResearchBackend):
                     if structured is not None:
                         structured_by_message[message_id] = structured
                 continue
+            if event_type == "text":
+                part = payload.get("part")
+                if not isinstance(part, dict):
+                    continue
+                message_id = str(part.get("messageID") or payload.get("messageID") or latest_assistant_message_id or "").strip()
+                if not message_id:
+                    continue
+                latest_assistant_message_id = message_id
+                part_id = str(part.get("id") or payload.get("partID") or f"text-{index}").strip()
+                key = (message_id, part_id)
+                text_parts[key] = str(part.get("text") or "")
+                if key not in part_order:
+                    part_order.append(key)
+                continue
             if event_type == "message.part.updated":
                 part = payload.get("part")
                 if not isinstance(part, dict):

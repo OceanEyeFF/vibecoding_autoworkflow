@@ -133,6 +133,38 @@ class OpenCodeBackendTest(unittest.TestCase):
 
         self.assertEqual(final_message, "hello world")
 
+    def test_extract_final_message_handles_jsonl_text_events(self) -> None:
+        backend = OpenCodeBackend(executable="opencode", output_format="json")
+        stdout = "\n".join(
+            [
+                json.dumps(
+                    {
+                        "type": "text",
+                        "part": {
+                            "id": "part-1",
+                            "messageID": "assistant-1",
+                            "text": "first line\n",
+                        },
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "text",
+                        "part": {
+                            "id": "part-2",
+                            "messageID": "assistant-1",
+                            "text": "second line",
+                        },
+                    }
+                ),
+                json.dumps({"type": "step_finish", "step": {"id": "done"}}),
+            ]
+        )
+
+        final_message = backend.extract_final_message(invocation=None, stdout=stdout)
+
+        self.assertEqual(final_message, "first line\nsecond line")
+
 
 if __name__ == "__main__":
     unittest.main()
