@@ -1,37 +1,33 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Autoresearch Worker Contract",
+  "title": "Autoresearch Feedback Ledger Entry",
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "worker_contract_version",
+    "feedback_ledger_version",
     "run_id",
     "round",
-    "mutation_id",
     "mutation_key",
+    "mutation_id",
     "attempt",
-    "base_sha",
-    "candidate_branch",
-    "candidate_worktree",
-    "agent_report_path",
-    "target_paths",
-    "allowed_actions",
-    "guardrails",
-    "instruction",
-    "expected_effect",
-    "objective",
-    "target_surface",
-    "comparison_baseline",
-    "recent_feedback_excerpt",
+    "decision",
+    "train_score_delta",
+    "validation_score_delta",
+    "parse_error_delta",
+    "timeout_rate_delta",
+    "signal_strength",
+    "regression_flags",
+    "dimension_feedback_summary",
     "aggregate_prompt_guidance",
-    "contract_fingerprint",
-    "mutation_fingerprint",
-    "materialized_at"
+    "scoreboard_ref",
+    "decision_ref",
+    "worker_contract_ref",
+    "distilled_at"
   ],
   "properties": {
-    "worker_contract_version": {
+    "feedback_ledger_version": {
       "type": "integer",
-      "const": 3
+      "const": 2
     },
     "run_id": {
       "type": "string",
@@ -41,11 +37,11 @@
       "type": "integer",
       "minimum": 1
     },
-    "mutation_id": {
+    "mutation_key": {
       "type": "string",
       "minLength": 1
     },
-    "mutation_key": {
+    "mutation_id": {
       "type": "string",
       "minLength": 1
     },
@@ -53,131 +49,45 @@
       "type": "integer",
       "minimum": 1
     },
-    "base_sha": {
+    "decision": {
       "type": "string",
-      "minLength": 1
+      "enum": [
+        "keep",
+        "discard"
+      ]
     },
-    "candidate_branch": {
+    "train_score_delta": {
+      "type": "number"
+    },
+    "validation_score_delta": {
+      "type": "number"
+    },
+    "parse_error_delta": {
+      "type": "number"
+    },
+    "timeout_rate_delta": {
+      "type": "number"
+    },
+    "signal_strength": {
       "type": "string",
-      "minLength": 1
+      "enum": [
+        "positive",
+        "mixed",
+        "negative"
+      ]
     },
-    "candidate_worktree": {
-      "type": "string",
-      "minLength": 1
-    },
-    "agent_report_path": {
-      "type": "string",
-      "minLength": 1
-    },
-    "target_paths": {
+    "regression_flags": {
       "type": "array",
-      "minItems": 1,
       "items": {
         "type": "string",
         "minLength": 1
       }
     },
-    "allowed_actions": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
+    "dimension_feedback_summary": {
+      "type": "object",
+      "additionalProperties": {
         "type": "string",
         "minLength": 1
-      }
-    },
-    "guardrails": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "require_non_empty_diff",
-        "max_files_touched",
-        "extra_frozen_paths"
-      ],
-      "properties": {
-        "require_non_empty_diff": {
-          "type": "boolean"
-        },
-        "max_files_touched": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "extra_frozen_paths": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      }
-    },
-    "instruction": {
-      "type": "string",
-      "minLength": 1
-    },
-    "expected_effect": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "hypothesis",
-        "primary_metrics",
-        "guard_metrics"
-      ],
-      "properties": {
-        "hypothesis": {
-          "type": "string",
-          "minLength": 1
-        },
-        "primary_metrics": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "guard_metrics": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      }
-    },
-    "objective": {
-      "type": "string",
-      "minLength": 1
-    },
-    "target_surface": {
-      "type": "string",
-      "minLength": 1
-    },
-    "comparison_baseline": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "train_score",
-        "validation_score"
-      ],
-      "properties": {
-        "train_score": {
-          "type": [
-            "number",
-            "null"
-          ]
-        },
-        "validation_score": {
-          "type": [
-            "number",
-            "null"
-          ]
-        }
-      }
-    },
-    "recent_feedback_excerpt": {
-      "type": "array",
-      "items": {
-        "type": "string"
       }
     },
     "aggregate_prompt_guidance": {
@@ -270,15 +180,19 @@
         }
       }
     },
-    "contract_fingerprint": {
+    "scoreboard_ref": {
       "type": "string",
       "minLength": 1
     },
-    "mutation_fingerprint": {
+    "decision_ref": {
       "type": "string",
       "minLength": 1
     },
-    "materialized_at": {
+    "worker_contract_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "distilled_at": {
       "type": "string",
       "minLength": 1
     }

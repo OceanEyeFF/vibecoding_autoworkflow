@@ -210,6 +210,7 @@ def _validate_worker_diff(worker_contract: dict[str, Any]) -> list[str]:
 def build_worker_prompt(worker_contract_path: Path, worker_contract: dict[str, Any]) -> str:
     comparison_baseline = dict(worker_contract.get("comparison_baseline") or {})
     recent_feedback_excerpt = [str(item).strip() for item in worker_contract.get("recent_feedback_excerpt") or [] if str(item).strip()]
+    aggregate_prompt_guidance = dict(worker_contract.get("aggregate_prompt_guidance") or {})
     target_paths = [str(path) for path in worker_contract.get("target_paths") or []]
     prompt_lines = [
         "You are executing one autoresearch worker round inside a candidate worktree.",
@@ -247,6 +248,19 @@ def build_worker_prompt(worker_contract_path: Path, worker_contract: dict[str, A
         prompt_lines.append("")
         prompt_lines.append("Recent feedback excerpt:")
         prompt_lines.extend(f"- {item}" for item in recent_feedback_excerpt)
+    if str(aggregate_prompt_guidance.get("generation_status") or "").strip() == "generated":
+        prompt_lines.append("")
+        prompt_lines.append("Aggregate prompt guidance:")
+        direction = str(aggregate_prompt_guidance.get("aggregate_direction") or "").strip()
+        if direction:
+            prompt_lines.append(f"- direction: {direction}")
+        adjustments = [
+            str(item).strip()
+            for item in (aggregate_prompt_guidance.get("aggregate_suggested_adjustments") or [])
+            if str(item).strip()
+        ]
+        if adjustments:
+            prompt_lines.extend(f"- next: {item}" for item in adjustments[:3])
     prompt_lines.extend(
         [
             "",

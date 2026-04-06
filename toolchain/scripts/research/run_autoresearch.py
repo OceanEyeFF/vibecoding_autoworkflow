@@ -34,7 +34,11 @@ from autoresearch_mutation_registry import (
     write_mutation_registry,
 )
 from autoresearch_selector import select_next_mutation_entry
-from autoresearch_feedback_distill import build_recent_feedback_excerpt, load_feedback_ledger
+from autoresearch_feedback_distill import (
+    build_recent_feedback_excerpt,
+    latest_aggregate_prompt_guidance,
+    load_feedback_ledger,
+)
 from autoresearch_stop import AutoresearchStop, format_stop_status
 from autoresearch_worker_contract import build_comparison_baseline
 from exrepo_routing_entry import (
@@ -608,6 +612,7 @@ def cmd_prepare_round(
     entry["last_selected_round"] = round_number
     comparison_baseline = build_comparison_baseline(baseline_scoreboard)
     recent_feedback_excerpt = build_recent_feedback_excerpt(feedback_ledger)
+    aggregate_prompt_guidance = latest_aggregate_prompt_guidance(feedback_ledger)
     round_manager.stage_round_authority(
         contract.run_id,
         round_number,
@@ -615,6 +620,7 @@ def cmd_prepare_round(
         mutation_payload=mutation_payload,
         comparison_baseline=comparison_baseline,
         recent_feedback_excerpt=recent_feedback_excerpt,
+        aggregate_prompt_guidance=aggregate_prompt_guidance,
     )
     print("[P1] authority_snapshot: round_authority staged for round {}".format(round_number))
     worker_contract_path = round_manager.stage_worker_contract(
@@ -623,6 +629,7 @@ def cmd_prepare_round(
         mutation_payload=mutation_payload,
         comparison_baseline=comparison_baseline,
         recent_feedback_excerpt=recent_feedback_excerpt,
+        aggregate_prompt_guidance=aggregate_prompt_guidance,
     )
     registry_payload = dict(registry.payload)
     registry_payload["entries"] = registry.entries

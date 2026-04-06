@@ -1489,7 +1489,7 @@ class RunAutoresearchTest(unittest.TestCase):
                 "repo_tasks": [],
             }
             feedback_entry = {
-                "feedback_distill_version": 1,
+                "feedback_ledger_version": 2,
                 "run_id": "demo-run",
                 "round": 1,
                 "mutation_key": "seed",
@@ -1503,7 +1503,21 @@ class RunAutoresearchTest(unittest.TestCase):
                 "signal_strength": "mixed",
                 "regression_flags": ["validation_drop"],
                 "dimension_feedback_summary": {"validation_score": "weaker"},
-                "suggested_adjustments": ["narrow the next retry to protect validation behavior"],
+                "aggregate_prompt_guidance": {
+                    "aggregate_direction": "negative",
+                    "aggregate_suggested_adjustments": ["narrow the next retry to protect validation behavior"],
+                    "top_regression_repos": ["typer"],
+                    "top_improvement_repos": [],
+                    "dominant_dimension_signals": [
+                        {
+                            "dimension": "path_contraction",
+                            "signal": "weaker",
+                            "count": 1,
+                            "repos": ["typer"],
+                        }
+                    ],
+                    "generation_status": "generated",
+                },
                 "scoreboard_ref": "rounds/round-001/scoreboard.json",
                 "decision_ref": "rounds/round-001/decision.json",
                 "worker_contract_ref": "rounds/round-001/worker-contract.json",
@@ -1566,6 +1580,11 @@ class RunAutoresearchTest(unittest.TestCase):
             )
             self.assertTrue(worker_payload["recent_feedback_excerpt"])
             self.assertIn("validation_drop", worker_payload["recent_feedback_excerpt"][0])
+            self.assertEqual(worker_payload["aggregate_prompt_guidance"]["aggregate_direction"], "negative")
+            self.assertIn(
+                "narrow the next retry to protect validation behavior",
+                worker_payload["aggregate_prompt_guidance"]["aggregate_suggested_adjustments"],
+            )
 
     def test_prepare_round_with_legacy_mutation_imports_into_registry(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
