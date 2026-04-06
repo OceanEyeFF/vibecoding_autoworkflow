@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from backend_runner import retry_policy_cli_args
 from autoresearch_contract import (
     HISTORY_COLUMNS,
     P2_RUNNER_TASK_TO_TARGET_TASK,
@@ -33,7 +34,11 @@ from autoresearch_mutation_registry import (
     write_mutation_registry,
 )
 from autoresearch_selector import select_next_mutation_entry
-from autoresearch_feedback_distill import build_recent_feedback_excerpt, load_feedback_ledger
+from autoresearch_feedback_distill import (
+    build_recent_feedback_excerpt,
+    latest_aggregate_prompt_guidance,
+    load_feedback_ledger,
+)
 from autoresearch_stop import AutoresearchStop, format_stop_status
 from autoresearch_worker_contract import build_comparison_baseline
 from exrepo_routing_entry import (
@@ -318,7 +323,13 @@ def _capture_new_summary(save_dir: Path, before: set[Path]) -> Path:
     return candidates[-1]
 
 
-def run_lane_suites(suite_files: list[Path], save_dir: Path, *, timeout_seconds: int) -> list[dict[str, object]]:
+def run_lane_suites(
+    suite_files: list[Path],
+    save_dir: Path,
+    *,
+    timeout_seconds: int,
+    retry_policy,
+) -> list[dict[str, object]]:
     save_dir.mkdir(parents=True, exist_ok=True)
     summaries: list[dict[str, object]] = []
     for suite_file in suite_files:
@@ -331,6 +342,7 @@ def run_lane_suites(suite_files: list[Path], save_dir: Path, *, timeout_seconds:
                 str(save_dir),
                 "--timeout",
                 str(timeout_seconds),
+                *retry_policy_cli_args(retry_policy),
             ]
         )
         if exit_code != 0:
@@ -442,6 +454,7 @@ def cmd_baseline(contract_path: Path) -> int:
 
     suites = resolve_suite_files(contract)
     timeout_seconds = resolve_timeout_seconds(contract)
+    retry_policy = contract.retry_policy
     _run_context_routing_exrepo_preflight(
         contract,
         suite_files=[*suites["train"], *suites["validation"]],
@@ -462,11 +475,13 @@ def cmd_baseline(contract_path: Path) -> int:
         materialized_train_suites,
         run_dir / "baseline" / "train",
         timeout_seconds=timeout_seconds,
+        retry_policy=retry_policy,
     )
     validation_summaries = run_lane_suites(
         materialized_validation_suites,
         run_dir / "baseline" / "validation",
         timeout_seconds=timeout_seconds,
+        retry_policy=retry_policy,
     )
     lane_summaries = {
         "train": merge_run_summaries(train_summaries),
@@ -597,6 +612,7 @@ def cmd_prepare_round(
     entry["last_selected_round"] = round_number
     comparison_baseline = build_comparison_baseline(baseline_scoreboard)
     recent_feedback_excerpt = build_recent_feedback_excerpt(feedback_ledger)
+    aggregate_prompt_guidance = latest_aggregate_prompt_guidance(feedback_ledger)
     round_manager.stage_round_authority(
         contract.run_id,
         round_number,
@@ -604,6 +620,7 @@ def cmd_prepare_round(
         mutation_payload=mutation_payload,
         comparison_baseline=comparison_baseline,
         recent_feedback_excerpt=recent_feedback_excerpt,
+        aggregate_prompt_guidance=aggregate_prompt_guidance,
     )
     print("[P1] authority_snapshot: round_authority staged for round {}".format(round_number))
     worker_contract_path = round_manager.stage_worker_contract(
@@ -612,6 +629,7 @@ def cmd_prepare_round(
         mutation_payload=mutation_payload,
         comparison_baseline=comparison_baseline,
         recent_feedback_excerpt=recent_feedback_excerpt,
+        aggregate_prompt_guidance=aggregate_prompt_guidance,
     )
     registry_payload = dict(registry.payload)
     registry_payload["entries"] = registry.entries

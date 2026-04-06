@@ -14,6 +14,7 @@
 - `branch-pr-governance.md`
 - `review-verify-handbook.md`
 - `path-governance-checks.md`
+- `prompt-templates/README.md`
 - `research-cli-help.md`
 - `skill-deployment-maintenance.md`
 - `tmp-exrepo-maintenance.md`
@@ -45,6 +46,7 @@ AI 先读什么：
 - 本仓库统一 deploy runbook
 - 本仓库部署步骤
 - repo-local 维护说明
+- repo-local prompt / contract 模板
 - runner 或 adapter 的使用帮助
 
 这里不适合放：

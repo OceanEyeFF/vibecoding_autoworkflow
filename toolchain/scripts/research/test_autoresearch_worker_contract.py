@@ -109,13 +109,61 @@ class AutoresearchWorkerContractTest(unittest.TestCase):
             write_worker_contract(worker_path, worker_payload)
             loaded = load_worker_contract_payload(worker_path)
             self.assertEqual(loaded["run_id"], contract.run_id)
+            self.assertEqual(loaded["worker_contract_version"], 3)
             self.assertEqual(loaded["mutation_key"], "k")
             self.assertEqual(loaded["objective"], "Worker contract")
             self.assertEqual(loaded["target_surface"], "memory-side")
             self.assertEqual(loaded["comparison_baseline"]["train_score"], 9.0)
             self.assertEqual(loaded["mutation_fingerprint"], "sha256:fp")
             self.assertEqual(len(loaded["recent_feedback_excerpt"]), 1)
+            self.assertIn("aggregate_prompt_guidance", loaded)
             self.assertTrue(compute_worker_contract_sha256(worker_path).startswith("sha256:"))
+
+    def test_load_worker_contract_accepts_hashed_v2_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "lane.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(build_contract_payload()), encoding="utf-8")
+            contract = load_contract(contract_path, repo_root=root)
+
+            worker_payload = build_worker_contract_payload(
+                contract=contract,
+                mutation_payload={
+                    "round": 1,
+                    "mutation_id": "k#a001",
+                    "mutation_key": "k",
+                    "attempt": 1,
+                    "fingerprint": "sha256:fp",
+                    "target_paths": ["product/memory-side/skills"],
+                    "allowed_actions": ["edit"],
+                    "instruction": "Do the thing.",
+                    "expected_effect": {
+                        "hypothesis": "Improve.",
+                        "primary_metrics": ["avg_total_score"],
+                        "guard_metrics": ["parse_error_rate"],
+                    },
+                    "guardrails": {"require_non_empty_diff": True, "max_files_touched": 1, "extra_frozen_paths": []},
+                },
+                round_payload={
+                    "round": 1,
+                    "base_sha": "base",
+                    "candidate_branch": "candidate/x/r001",
+                    "candidate_worktree": str(root / "wt"),
+                },
+                agent_report_path=root / "agent-report.md",
+                comparison_baseline=build_comparison_baseline(build_scoreboard()),
+                recent_feedback_excerpt=[],
+                materialized_at="2026-03-27T00:00:00+00:00",
+                worker_contract_version=2,
+            )
+            worker_path = root / "worker-contract.json"
+            write_worker_contract(worker_path, worker_payload)
+
+            loaded = load_worker_contract_payload(worker_path)
+
+        self.assertEqual(loaded["worker_contract_version"], 2)
+        self.assertNotIn("aggregate_prompt_guidance", loaded)
 
     def test_write_worker_contract_rejects_legacy_extra_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

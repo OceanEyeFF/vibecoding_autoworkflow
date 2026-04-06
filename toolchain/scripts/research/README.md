@@ -34,6 +34,7 @@
 - `--save-dir`：可选；runner 会在该目录下创建一个 `UTC 时间戳 + slug(label)` 的 run 子目录
 - `--jobs`：可选；按 spec pipeline 并发执行。每条 pipeline 内仍保持 `skill -> eval` 顺序，默认 `1`
 - `--timeout`：单个 phase 的 timeout，默认 `300` 秒；它约束的是一次 skill run 或一次 eval run，不是整条 live smoke 的总墙钟时间
+- `--max-attempts / --backoff-seconds / --retry-on`：统一 phase retry policy；默认 `max_attempts=3`、`backoff_seconds=3`、`retry_on=timeout,nonzero_returncode,empty_output_parse_error,transient_disconnect`
 
 live Codex smoke 的预算口径当前建议固定为：
 
@@ -69,7 +70,7 @@ live Codex smoke 的预算口径当前建议固定为：
 - `prepare-round` 默认会从 run-local `mutation-registry.json` 自动选择下一条可用 entry；当前 selector 输入包含 registry、runtime、比较基线 scoreboard，以及可选的 `feedback-ledger.jsonl`，在没有 ledger 时保持 P1.2 的 deterministic 规则，有 ledger 时则按 family signal 做 feedback-aware priority，并对 validation / parse-error / timeout 回退信号施加 guardrail，再 materialize 本轮 `mutation.json` 并回写 `attempts / last_selected_round`
 - `prepare-round --mutation-key <key>`：显式覆盖自动选择，直接选中指定 entry（仍会校验 entry 可用性）
 - `prepare-round --mutation <path>`：兼容旧入口，但会先把手工 spec import/canonicalize 成 registry entry，再 materialize 本轮 `mutation.json`；不再直接把一次性 spec 原样写入 round 目录
-- `prepare-round` 会先冻结 round authority（registry entry、materialized mutation、frozen `comparison_baseline`、`recent_feedback_excerpt`），再写出 `worker-contract.json` 并回写 registry bookkeeping；若发现中断残留的 active round，会先按 frozen authority 修复 `mutation.json` / `worker-contract.json` 并对账 registry bookkeeping，再拒绝开启新 round；若 `mutation-registry.json` 已缺失，则会 fail closed 并要求先 `cleanup-round`
+- `prepare-round` 会先冻结 round authority（registry entry、materialized mutation、frozen `comparison_baseline`、`recent_feedback_excerpt`、latest `aggregate_prompt_guidance`），再写出 `worker-contract.json` 并回写 registry bookkeeping；若发现中断残留的 active round，会先按 frozen authority 修复 `mutation.json` / `worker-contract.json` 并对账 registry bookkeeping，再拒绝开启新 round；若 `mutation-registry.json` 已缺失，则会 fail closed 并要求先 `cleanup-round`
 - 在没有 active round 时，`prepare-round` 还会先执行最小 stop gate：
   - 连续 `3` 轮已完成 round 都没有产生新的 validation champion，则停止创建新 round
   - 所有 `active` mutation family 都至少尝试过 `1` 次，且当前 run 没有任何最终 `keep`，则停止创建新 round
@@ -79,7 +80,7 @@ live Codex smoke 的预算口径当前建议固定为：
 - `promote-round`：只允许 fast-forward 语义，把 `champion/<run-id>` 前进到 active candidate commit，然后清理 candidate branch/worktree
 - `discard-round`：直接删除 active candidate branch/worktree，不走 `git revert`
 - `cleanup-round`：按 `.autoworkflow/autoresearch/<run-id>/runtime.json` 回收中断残留的 active candidate
-- `run_autoresearch_loop.py`：自动重复 `prepare-round -> Codex worker -> run-round -> decide-round`；命中 stop 时正常退出 `0`，并输出 `loop_status: stopped`、`stop_kind`、`stop_reason`
+- `run_autoresearch_loop.py`：自动重复 `prepare-round -> selected worker backend -> run-round -> decide-round`；worker 默认仍是 `codex`，但可由 contract 或 CLI 切到 `claude / codex / opencode`；命中 stop 时正常退出 `0`，并输出 `loop_status: stopped`、`stop_kind`、`stop_reason`
 - P0.3 仍不实现自动 mutation 搜索、多角色 planner / proposer / critic、或 acceptance 每轮必跑
 - candidate 内容改动与 `agent-report.md` 仍由 Codex / subagent 完成；脚本只负责 git 生命周期、评测与 keep / discard
 
@@ -269,7 +270,7 @@ P2 Batch 1 的命令边界当前固定为：
 补充语义：
 
 - `decide-round` 只有在“provisional keep 且 validation 严格高于当前 champion validation”时才会进入 replay
-- replay 执行前会复用同一套 P2 preflight，因此 replay-needed 路径不会绕开 `codex -> codex` 与单 prompt 约束
+- replay 执行前会复用同一套 P2 preflight，因此 replay-needed 路径不会绕开“单 prompt + contract 期望 backend pair”约束；未声明时默认仍是 `codex -> codex`
 - `promote-round` 当前显式受 P2 preflight 保护
 - `discard-round` / `cleanup-round` 仍保留 recovery 语义，不会因为 suite 漂移而 fail-stuck
 
@@ -298,7 +299,7 @@ P2 Batch 1 对 registry / round authority 的额外约束当前也已固定：
 当前没有承诺或未覆盖的范围是：
 
 - 同一 run 同时调多个 prompt
-- 在 P2 profile 下切换到非 `codex -> codex` backend/judge 组合
+- 在 P2 profile 下切换到未被 contract 声明的 backend/judge 组合
 - prompt 文本之外的参数搜索
 - 更丰富的 persisted family 状态模型
 
@@ -315,13 +316,13 @@ P2 Batch 1 对 registry / round authority 的额外约束当前也已固定：
 - `round.json`：round 编号、`base_sha`、candidate 分支/worktree、当前状态
 - `worktree.json`：candidate worktree 路径、分支、`base_sha`、`candidate_sha`、清理时间
 - `mutation.json`：本轮 authority mutation spec，包含 `mutation_key`、`attempt`、`fingerprint`、`instruction`、`expected_effect`、`guardrails` 等字段
-- `worker-contract.json`：agent-facing 执行信封，压平 candidate worktree、instruction、target_paths、allowed_actions、frozen `comparison_baseline`、`recent_feedback_excerpt`、fingerprints、`materialized_at` 等本轮执行要点
+- `worker-contract.json`：agent-facing 执行信封，压平 candidate worktree、instruction、target_paths、allowed_actions、frozen `comparison_baseline`、`recent_feedback_excerpt`、structured `aggregate_prompt_guidance`、fingerprints、`materialized_at` 等本轮执行要点
 - `agent-report.md`：由 Codex / subagent 写出的本轮内容工作摘要；缺失时 `run-round` 会直接失败
 - `train/`：本轮 train suite 的 run artifacts
 - `validation/`：本轮 validation suite 的 run artifacts
 - `scoreboard.json`：本轮 train / validation 聚合结果
 - `decision.json`：固定 keep / discard 规则输出
-- `feedback-distill.json`：P1.3 的 round 级 deterministic distilled feedback，记录 delta、signal、flags 与 refs
+- `feedback-distill.json`：P1.3 的 round 级 deterministic distilled feedback，记录 lane delta、repo 级 prompt guidance、aggregate guidance 与 refs
 
 根目录还会持续维护：
 
@@ -329,7 +330,7 @@ P2 Batch 1 对 registry / round authority 的额外约束当前也已固定：
 - `runtime.json`
 - `history.tsv`
 - 顶层 `scoreboard.json`：作为“下一轮比较基线”；round 0 时是 baseline，`keep` 后会前移到当前 champion，并在 round 裁决后更新 `rounds_completed` 与 `best_round`
-- `feedback-ledger.jsonl`：P1.3 的 run 级 family feedback ledger；同一 `(run_id, round, mutation_id)` 会被 upsert，而不是盲目追加重复行
+- `feedback-ledger.jsonl`：P1.3 的 run 级 family feedback ledger；同一 `(run_id, round, mutation_id)` 会被 upsert，而不是盲目追加重复行；ledger 只保留 compact aggregate guidance，不保留完整 repo 明细
 
 ### Autoresearch P0.3 Guardrails
 
@@ -339,7 +340,7 @@ P0.3 的脚本侧约束当前固定为：
 - materialized `mutation.json` 与 `worker-contract.json` 的 hash 都会写入 `round.json`
 - `target_paths` 对 `contract.mutable_paths` 的校验现在是严格子集语义；更宽父路径会被拒绝
 - `run-round` 读取 round 目录里的 `mutation.json` 后会重新做同一套 scope 校验，因此不能通过“prepare 后手改 mutation spec”来扩大允许变更范围
-- `run-round` 还会校验 `worker-contract.json` 的存在性、hash 和关键 tracing 字段一致性；当前 v2 路径会直接复用 frozen `comparison_baseline` 与 `recent_feedback_excerpt` 重建期望 payload，legacy v1 则仅保留 `transition_compat_weak_checks` 弱校验兼容
+- `run-round` 还会校验 `worker-contract.json` 的存在性、hash 和关键 tracing 字段一致性；当前 v2 路径会直接复用 frozen `comparison_baseline`、`recent_feedback_excerpt` 与 `aggregate_prompt_guidance` 重建期望 payload，legacy v1 则仅保留 `transition_compat_weak_checks` 弱校验兼容
 - `run-round` 只允许在 round 状态为 `candidate_active` 时执行
 - `decide-round` 只允许在 round 状态为 `evaluated` 时执行
 - `run-round` 会同时校验两类 candidate 改动：
@@ -399,7 +400,7 @@ P0.3 的脚本侧约束当前固定为：
 
 - `claude`：直接把 prompt 作为命令参数传入；支持 JSON schema judge
 - `codex`：通过 stdin 传 prompt，使用 `--output-last-message` 提取最终消息；支持 JSON schema judge
-- `opencode`：仅保留 backend slot，healthcheck 会明确返回未实现
+- `opencode`：已提供 MVP backend；透传 `model / --dir`，并把统一 runner 的 output format 归一化为 OpenCode 的 `default/json`；runner 会同时以 `cwd=repo_path` 启动子进程并显式传 `--dir <repo_path>`，这是按当前本地 `opencode run --help` 已验证的参数面；`extract_final_message()` 会优先消费 JSONL `text` 事件；不宣称 schema judge 支持，eval 继续走文本解析回退
 
 ## Eval Behavior
 
@@ -666,7 +667,7 @@ P1.2 worker-contract 形状当前固定为：
 - 身份：`run_id / round / mutation_id / mutation_key / attempt`
 - 执行面：`base_sha / candidate_branch / candidate_worktree / agent_report_path`
 - 变更边界：`target_paths / allowed_actions / guardrails / instruction / expected_effect`
-- 只读上下文：`objective / target_surface / comparison_baseline / recent_feedback_excerpt`
+- 只读上下文：`objective / target_surface / comparison_baseline / recent_feedback_excerpt / aggregate_prompt_guidance`
 - 校验锚点：`contract_fingerprint / mutation_fingerprint / materialized_at`
 
 P1.2 常见失败语义：

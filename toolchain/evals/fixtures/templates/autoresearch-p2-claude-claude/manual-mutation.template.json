@@ -1,0 +1,12 @@
+{
+  "mutation_id": "cr-route-card-tighten-v1",
+  "kind": "text_rephrase",
+  "target_paths": [
+    "toolchain/scripts/research/tasks/context-routing-skill-prompt.md"
+  ],
+  "allowed_actions": [
+    "edit"
+  ],
+  "instruction": "Tighten one wording cluster in the Route Card prompt while preserving the ordered output fields, the repo-evidence-only rule, and the no-extra-text constraint.",
+  "expected_effect": "Keep the output contract stable while reducing one source of wording redundancy."
+}

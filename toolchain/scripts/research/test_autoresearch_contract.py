@@ -17,6 +17,11 @@ def build_contract_payload(
     mutable_paths: list[str] | None = None,
     target_task: str | None = None,
     target_prompt_path: str | None = None,
+    worker_backend: str | None = None,
+    worker_model: str | None = None,
+    expected_backend: str | None = None,
+    expected_judge_backend: str | None = None,
+    retry_policy: dict[str, object] | None = None,
 ) -> dict[str, object]:
     payload: dict[str, object] = {
         "run_id": "p0-1-demo",
@@ -40,6 +45,16 @@ def build_contract_payload(
         payload["target_task"] = target_task
     if target_prompt_path is not None:
         payload["target_prompt_path"] = target_prompt_path
+    if worker_backend is not None:
+        payload["worker_backend"] = worker_backend
+    if worker_model is not None:
+        payload["worker_model"] = worker_model
+    if expected_backend is not None:
+        payload["expected_backend"] = expected_backend
+    if expected_judge_backend is not None:
+        payload["expected_judge_backend"] = expected_judge_backend
+    if retry_policy is not None:
+        payload["retry_policy"] = retry_policy
     return payload
 
 
@@ -117,6 +132,79 @@ class AutoresearchContractTest(unittest.TestCase):
                 contract.target_prompt_path,
                 "toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
             )
+
+    def test_load_contract_defaults_worker_backend_expected_backends_and_retry_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "lane.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(build_contract_payload()), encoding="utf-8")
+
+            contract = load_contract(contract_path, repo_root=root)
+
+            self.assertEqual(contract.worker_backend, "codex")
+            self.assertIsNone(contract.worker_model)
+            self.assertEqual(contract.expected_backend, "codex")
+            self.assertEqual(contract.expected_judge_backend, "codex")
+            self.assertEqual(contract.retry_policy.max_attempts, 3)
+            self.assertEqual(contract.retry_policy.backoff_seconds, 3.0)
+            self.assertEqual(
+                list(contract.retry_policy.retry_on),
+                ["timeout", "nonzero_returncode", "empty_output_parse_error", "transient_disconnect"],
+            )
+
+    def test_load_contract_accepts_explicit_backend_and_retry_policy_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "lane.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract_path = root / "contract.json"
+            contract_path.write_text(
+                json.dumps(
+                    build_contract_payload(
+                        worker_backend="claude",
+                        worker_model="claude-opus",
+                        expected_backend="claude",
+                        expected_judge_backend="claude",
+                        retry_policy={
+                            "max_attempts": 5,
+                            "backoff_seconds": 1,
+                            "retry_on": ["timeout", "transient_disconnect"],
+                        },
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+            contract = load_contract(contract_path, repo_root=root)
+
+            self.assertEqual(contract.worker_backend, "claude")
+            self.assertEqual(contract.worker_model, "claude-opus")
+            self.assertEqual(contract.expected_backend, "claude")
+            self.assertEqual(contract.expected_judge_backend, "claude")
+            self.assertEqual(contract.retry_policy.max_attempts, 5)
+            self.assertEqual(contract.retry_policy.backoff_seconds, 1.0)
+            self.assertEqual(list(contract.retry_policy.retry_on), ["timeout", "transient_disconnect"])
+
+    def test_load_contract_rejects_invalid_retry_policy_reason(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "lane.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
+            contract_path = root / "contract.json"
+            contract_path.write_text(
+                json.dumps(
+                    build_contract_payload(
+                        retry_policy={
+                            "max_attempts": 2,
+                            "backoff_seconds": 1,
+                            "retry_on": ["timeout", "not-real"],
+                        }
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(Exception, "retry_on"):
+                load_contract(contract_path, repo_root=root)
 
     def test_resolve_p2_contract_target_rejects_mismatched_prompt_mapping(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

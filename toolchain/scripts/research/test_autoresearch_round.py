@@ -43,6 +43,9 @@ def build_contract_payload(
     mutable_paths: list[str] | None = None,
     target_task: str | None = None,
     target_prompt_path: str | None = None,
+    expected_backend: str | None = None,
+    expected_judge_backend: str | None = None,
+    retry_policy: dict[str, object] | None = None,
 ) -> dict[str, object]:
     payload: dict[str, object] = {
         "run_id": "demo-run",
@@ -66,6 +69,12 @@ def build_contract_payload(
         payload["target_task"] = target_task
     if target_prompt_path is not None:
         payload["target_prompt_path"] = target_prompt_path
+    if expected_backend is not None:
+        payload["expected_backend"] = expected_backend
+    if expected_judge_backend is not None:
+        payload["expected_judge_backend"] = expected_judge_backend
+    if retry_policy is not None:
+        payload["retry_policy"] = retry_policy
     return payload
 
 
@@ -354,6 +363,49 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
         self.assertEqual(result["round"]["state"], "evaluated")
 
+    def test_run_round_accepts_prepared_v2_worker_contract_with_round_hashes(self) -> None:
+        candidate_worktree, _ = self._prepare_active_round()
+        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+            "compat candidate change\n",
+            encoding="utf-8",
+        )
+
+        round_path = self.worktree_manager.round_path(self.contract.run_id, 1)
+        round_payload = read_json(round_path)
+        mutation_path = self.round_manager.mutation_path(self.contract.run_id, 1)
+        mutation_payload = read_json(mutation_path)
+        worker_path = self.round_manager.worker_contract_path(self.contract.run_id, 1)
+
+        worker_payload = build_worker_contract_payload(
+            contract=self.contract,
+            mutation_payload=mutation_payload,
+            round_payload=round_payload,
+            agent_report_path=self.round_manager.agent_report_path(self.contract.run_id, 1),
+            comparison_baseline=build_comparison_baseline(read_json(self.run_dir / "scoreboard.json")),
+            recent_feedback_excerpt=build_recent_feedback_excerpt(),
+            materialized_at=str(round_payload["worker_contract_materialized_at"]),
+            worker_contract_version=2,
+        )
+        write_worker_contract(worker_path, worker_payload)
+        round_payload["worker_contract_sha256"] = compute_worker_contract_sha256(worker_path)
+        round_path.write_text(json.dumps(round_payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+
+        def fake_lane_runner(
+            *,
+            candidate_worktree: Path,
+            contract,
+            suite_files: list[Path],
+            save_dir: Path,
+        ) -> list[dict[str, object]]:
+            if "train" in str(save_dir):
+                return [{"suite_file": "train.yaml", "results": [self._eval_result(10.0)]}]
+            return [{"suite_file": "validation.yaml", "results": [self._eval_result(8.5)]}]
+
+        self.round_manager._run_lane_suites = fake_lane_runner  # type: ignore[method-assign]
+        result = self.round_manager.run_round(self.contract)
+
+        self.assertEqual(result["round"]["state"], "evaluated")
+
     def test_run_round_accepts_legacy_worker_contract_without_round_hashes(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
         (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
@@ -467,6 +519,9 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         self.assertIn("--timeout", captured["cmd"])
         timeout_index = captured["cmd"].index("--timeout")
         self.assertEqual(captured["cmd"][timeout_index + 1], "120")
+        self.assertIn("--max-attempts", captured["cmd"])
+        self.assertEqual(captured["cmd"][captured["cmd"].index("--max-attempts") + 1], "3")
+        self.assertIn("--retry-on", captured["cmd"])
         expected_materialized_suite = resolve_materialized_suite_path(
             source_suite,
             save_dir.parent / "materialized-suites" / save_dir.name,
@@ -475,6 +530,39 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             Path(captured["cmd"][captured["cmd"].index("--suite") + 1]).resolve(strict=False),
             expected_materialized_suite,
         )
+
+    def test_validate_p2_preflight_accepts_contract_backend_pair(self) -> None:
+        prompt_path = "toolchain/scripts/research/tasks/context-routing-skill-prompt.md"
+        (self.repo_root / prompt_path).parent.mkdir(parents=True, exist_ok=True)
+        (self.repo_root / prompt_path).write_text("prompt\n", encoding="utf-8")
+        for lane in ("train", "validation", "acceptance"):
+            (self.repo_root / f"{lane}.yaml").write_text(
+                "version: 1\n"
+                "defaults:\n"
+                "  backend: claude\n"
+                "  judge_backend: claude\n"
+                "  with_eval: true\n"
+                "runs:\n"
+                "  - repo: .\n"
+                "    task: context-routing\n",
+                encoding="utf-8",
+            )
+
+        contract_payload = build_contract_payload(
+            "train.yaml",
+            "validation.yaml",
+            "acceptance.yaml",
+            mutable_paths=[prompt_path],
+            target_task="context-routing-skill",
+            target_prompt_path=prompt_path,
+            expected_backend="claude",
+            expected_judge_backend="claude",
+        )
+        contract_path = self.repo_root / "p2-claude-contract.json"
+        contract_path.write_text(json.dumps(contract_payload), encoding="utf-8")
+        contract = load_contract(contract_path, repo_root=self.repo_root)
+
+        self.round_manager.validate_p2_preflight(contract)
 
     def test_run_lane_suites_materializes_round_and_replay_lanes_without_candidate_exrepos(self) -> None:
         source_suite = self.repo_root / "train.yaml"
@@ -1413,7 +1501,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             encoding="utf-8",
         )
 
-        with self.assertRaisesRegex(ValueError, "P2 suite must enforce codex -> codex"):
+        with self.assertRaisesRegex(ValueError, "P2 suite must enforce the contract backend pair"):
             self.round_manager.decide_round(self.contract)
 
         self.assertEqual(len(replay_attempts), 2)

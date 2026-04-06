@@ -10,7 +10,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from autoresearch_contract import resolve_p2_contract_target
+from backend_runner import (
+    PhaseExecutionRequest,
+    build_retry_policy,
+    parse_retry_on_values,
+    run_phase,
+)
+from autoresearch_contract import resolve_p2_contract_target, resolve_timeout_seconds
 from autoresearch_mutation_registry import (
     build_registry_payload,
     canonicalize_mutation_entry,
@@ -18,7 +24,7 @@ from autoresearch_mutation_registry import (
 )
 from autoresearch_stop import AutoresearchStop
 from autoresearch_worker_contract import load_worker_contract_payload
-from backends import CODEX_REASONING_EFFORTS, build_backend
+from backends import BACKEND_IDS, CODEX_REASONING_EFFORTS, build_backend, normalize_opencode_output_format
 from run_autoresearch import (
     REPO_ROOT,
     build_worktree_manager,
@@ -31,14 +37,13 @@ from run_autoresearch import (
     read_runtime_if_present,
     run_dir_for_id,
 )
-from run_skill_suite import cleanup_backend_artifacts, coerce_process_output
 from worktree_manager import read_json, write_json
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Run the lightweight P2 single-prompt Codex autoresearch loop continuously until "
+            "Run the lightweight P2 single-prompt autoresearch loop continuously until "
             "prepare-round stop gates or max_rounds halt further progress."
         )
     )
@@ -64,7 +69,32 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--model",
-        help="Optional model override passed to the Codex worker for prompt mutation.",
+        help="Deprecated alias for --worker-model.",
+    )
+    parser.add_argument(
+        "--worker-backend",
+        choices=BACKEND_IDS,
+        help="Optional worker backend override. Defaults to the contract worker_backend or codex.",
+    )
+    parser.add_argument(
+        "--worker-model",
+        help="Optional worker model override. Defaults to --model, then contract worker_model.",
+    )
+    parser.add_argument(
+        "--claude-bin",
+        default="claude",
+        help="Claude executable to invoke. Defaults to 'claude'.",
+    )
+    parser.add_argument(
+        "--permission-mode",
+        default="bypassPermissions",
+        help="Claude permission mode. Defaults to bypassPermissions.",
+    )
+    parser.add_argument(
+        "--output-format",
+        default="text",
+        choices=("text", "json", "stream-json"),
+        help="Backend output format for Claude/OpenCode. Defaults to text.",
     )
     parser.add_argument(
         "--codex-bin",
@@ -88,6 +118,26 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=CODEX_REASONING_EFFORTS,
         default="high",
         help="Codex reasoning effort. Defaults to high.",
+    )
+    parser.add_argument(
+        "--opencode-bin",
+        default="opencode",
+        help="OpenCode executable to invoke. Defaults to 'opencode'.",
+    )
+    parser.add_argument(
+        "--max-attempts",
+        type=int,
+        help="Optional worker retry max attempts override. Defaults to the contract retry policy.",
+    )
+    parser.add_argument(
+        "--backoff-seconds",
+        type=float,
+        help="Optional worker retry backoff override. Defaults to the contract retry policy.",
+    )
+    parser.add_argument(
+        "--retry-on",
+        action="append",
+        help="Optional worker retry reasons override, repeatable or comma-separated.",
     )
     return parser.parse_args(argv if argv is not None else sys.argv[1:])
 
@@ -160,6 +210,7 @@ def _validate_worker_diff(worker_contract: dict[str, Any]) -> list[str]:
 def build_worker_prompt(worker_contract_path: Path, worker_contract: dict[str, Any]) -> str:
     comparison_baseline = dict(worker_contract.get("comparison_baseline") or {})
     recent_feedback_excerpt = [str(item).strip() for item in worker_contract.get("recent_feedback_excerpt") or [] if str(item).strip()]
+    aggregate_prompt_guidance = dict(worker_contract.get("aggregate_prompt_guidance") or {})
     target_paths = [str(path) for path in worker_contract.get("target_paths") or []]
     prompt_lines = [
         "You are executing one autoresearch worker round inside a candidate worktree.",
@@ -197,6 +248,19 @@ def build_worker_prompt(worker_contract_path: Path, worker_contract: dict[str, A
         prompt_lines.append("")
         prompt_lines.append("Recent feedback excerpt:")
         prompt_lines.extend(f"- {item}" for item in recent_feedback_excerpt)
+    if str(aggregate_prompt_guidance.get("generation_status") or "").strip() == "generated":
+        prompt_lines.append("")
+        prompt_lines.append("Aggregate prompt guidance:")
+        direction = str(aggregate_prompt_guidance.get("aggregate_direction") or "").strip()
+        if direction:
+            prompt_lines.append(f"- direction: {direction}")
+        adjustments = [
+            str(item).strip()
+            for item in (aggregate_prompt_guidance.get("aggregate_suggested_adjustments") or [])
+            if str(item).strip()
+        ]
+        if adjustments:
+            prompt_lines.extend(f"- next: {item}" for item in adjustments[:3])
     prompt_lines.extend(
         [
             "",
@@ -214,32 +278,126 @@ def build_worker_prompt(worker_contract_path: Path, worker_contract: dict[str, A
     return "\n".join(prompt_lines).strip() + "\n"
 
 
-def run_codex_worker(*, args: argparse.Namespace, worker_contract_path: Path, worker_contract: dict[str, Any]) -> str:
-    backend = build_backend("codex", args)
+def resolve_worker_backend_config(args: argparse.Namespace, contract: Any) -> tuple[str, str | None]:
+    backend_id = args.worker_backend or getattr(contract, "worker_backend", None) or "codex"
+    worker_model = args.worker_model or args.model or getattr(contract, "worker_model", None)
+    return backend_id, worker_model
+
+
+def resolve_worker_retry_policy(args: argparse.Namespace, contract: Any):
+    retry_on = (
+        list(parse_retry_on_values(args.retry_on))
+        if args.retry_on is not None
+        else list(contract.retry_policy.retry_on)
+    )
+    return build_retry_policy(
+        max_attempts=args.max_attempts if args.max_attempts is not None else contract.retry_policy.max_attempts,
+        backoff_seconds=(
+            args.backoff_seconds if args.backoff_seconds is not None else contract.retry_policy.backoff_seconds
+        ),
+        retry_on=retry_on,
+    )
+
+
+def build_backend_context(args: argparse.Namespace, backend_id: str) -> dict[str, Any]:
+    if backend_id == "claude":
+        return {
+            "permission_mode": args.permission_mode,
+            "output_format": args.output_format,
+        }
+    if backend_id == "codex":
+        return {
+            "sandbox": args.sandbox,
+            "full_auto": bool(args.full_auto),
+            "codex_reasoning_effort": args.codex_reasoning_effort,
+        }
+    if backend_id == "opencode":
+        return {
+            "output_format": normalize_opencode_output_format(args.output_format),
+        }
+    return {}
+
+
+def write_worker_execution_artifacts(
+    *,
+    round_dir: Path,
+    prompt_text: str,
+    result,
+) -> None:
+    prompt_path = round_dir / "worker.prompt.txt"
+    final_path = round_dir / "worker.final.txt"
+    stdout_path = round_dir / "worker.raw.stdout.txt"
+    stderr_path = round_dir / "worker.raw.stderr.txt"
+    meta_path = round_dir / "worker.meta.json"
+
+    prompt_path.write_text(prompt_text + "\n", encoding="utf-8")
+    final_path.write_text(result.final_message + ("\n" if result.final_message else ""), encoding="utf-8")
+    stdout_path.write_text(result.raw_stdout, encoding="utf-8")
+    if result.raw_stderr:
+        stderr_path.write_text(result.raw_stderr, encoding="utf-8")
+
+    meta = {
+        "phase": "worker",
+        "backend": result.backend_id,
+        "command": result.command,
+        "returncode": result.returncode,
+        "timed_out": result.timed_out,
+        "elapsed_seconds": result.elapsed_seconds,
+        "started_at": result.started_at,
+        "finished_at": result.finished_at,
+        "failure_reason": result.failure_reason,
+        "attempt_count": result.attempt_count,
+        "final_attempt": result.final_attempt,
+        "attempts": [attempt.to_dict() for attempt in result.attempts],
+        "backend_context": result.backend_context,
+        "artifacts": {
+            "prompt": prompt_path.name,
+            "final": final_path.name,
+            "raw_stdout": stdout_path.name,
+            "meta": meta_path.name,
+            **({"raw_stderr": stderr_path.name} if result.raw_stderr else {}),
+        },
+    }
+    write_json(meta_path, meta)
+
+
+def execute_worker_phase(
+    *,
+    args: argparse.Namespace,
+    contract: Any,
+    worker_contract_path: Path,
+    worker_contract: dict[str, Any],
+):
+    backend_id, worker_model = resolve_worker_backend_config(args, contract)
+    backend = build_backend(backend_id, args)
     healthy, message = backend.healthcheck()
     if not healthy:
-        raise RuntimeError(f"codex backend unavailable: {message}")
+        raise RuntimeError(f"{backend_id} backend unavailable: {message}")
 
     candidate_worktree = Path(str(worker_contract["candidate_worktree"])).expanduser().resolve()
     prompt_text = build_worker_prompt(worker_contract_path, worker_contract)
-    invocation = backend.build_skill_command(prompt_text=prompt_text, repo_path=candidate_worktree, model=args.model)
-    try:
-        completed = subprocess.run(
-            invocation.command,
-            cwd=candidate_worktree,
-            input=invocation.stdin_text,
-            capture_output=True,
-            text=True,
-            check=False,
+    result = run_phase(
+        PhaseExecutionRequest(
+            phase="worker",
+            backend_id=backend_id,
+            backend=backend,
+            prompt_text=prompt_text,
+            repo_path=candidate_worktree,
+            model=worker_model,
+            timeout_seconds=resolve_timeout_seconds(contract),
+            retry_policy=resolve_worker_retry_policy(args, contract),
+            permission_args=build_backend_context(args, backend_id),
         )
-        raw_stdout = coerce_process_output(completed.stdout)
-        raw_stderr = coerce_process_output(completed.stderr)
-        if completed.returncode != 0:
-            stderr = raw_stderr.strip() or raw_stdout.strip() or f"exit code {completed.returncode}"
-            raise RuntimeError(f"Codex worker failed: {stderr}")
-        return backend.extract_final_message(invocation, raw_stdout)
-    finally:
-        cleanup_backend_artifacts(invocation.cleanup_paths)
+    )
+    write_worker_execution_artifacts(
+        round_dir=worker_contract_path.parent,
+        prompt_text=prompt_text,
+        result=result,
+    )
+    if result.failure_reason is not None or result.returncode not in (0, None) or result.timed_out:
+        detail = result.raw_stderr.strip() or result.raw_stdout.strip() or result.failure_reason or "worker failed"
+        raise RuntimeError(f"Worker phase failed after {result.attempt_count} attempt(s): {detail}")
+    return result
 
 
 def write_agent_report(
@@ -309,7 +467,7 @@ def _ensure_registry_seed(contract: Any, run_dir: Path, seed_path: Path | None) 
     write_mutation_registry(registry_path, registry_payload)
 
 
-def _execute_worker_for_active_round(args: argparse.Namespace, contract: Any) -> tuple[int, list[str]]:
+def _execute_worker_for_active_round(args: argparse.Namespace, contract: Any):
     manager = build_worktree_manager()
     active = manager.load_active_round(contract.run_id)
     round_payload = active["round"]
@@ -320,15 +478,20 @@ def _execute_worker_for_active_round(args: argparse.Namespace, contract: Any) ->
     round_dir = manager.round_dir(contract.run_id, round_number)
     worker_contract_path = round_dir / "worker-contract.json"
     worker_contract = load_worker_contract_payload(worker_contract_path)
-    worker_summary = run_codex_worker(args=args, worker_contract_path=worker_contract_path, worker_contract=worker_contract)
+    worker_result = execute_worker_phase(
+        args=args,
+        contract=contract,
+        worker_contract_path=worker_contract_path,
+        worker_contract=worker_contract,
+    )
     changed_files = _validate_worker_diff(worker_contract)
     write_agent_report(
         agent_report_path=Path(str(worker_contract["agent_report_path"])),
         worker_contract=worker_contract,
-        worker_summary=worker_summary,
+        worker_summary=worker_result.final_message,
         changed_files=changed_files,
     )
-    return round_number, changed_files
+    return round_number, changed_files, worker_result
 
 
 def _read_active_round_state(contract: Any) -> str | None:
@@ -437,8 +600,11 @@ def run_loop(args: argparse.Namespace) -> int:
             active_state = _recover_prepared_active_round(contract)
 
         if active_state == "candidate_active":
-            round_number, changed_files = _execute_worker_for_active_round(args, contract)
+            round_number, changed_files, worker_result = _execute_worker_for_active_round(args, contract)
             print(f"worker_round: {round_number}")
+            print(f"worker_backend: {worker_result.backend_id}")
+            print(f"worker_attempt_count: {worker_result.attempt_count}")
+            print(f"worker_final_attempt: {worker_result.final_attempt}")
             print("worker_changed_files: " + (", ".join(changed_files) if changed_files else "-"))
             cmd_run_round(args.contract)
             active_state = _read_active_round_state(contract)

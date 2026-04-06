@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import re
 import shlex
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -103,6 +103,11 @@ class RunResult:
     schema_file: Path | None = None
     structured_output: dict[str, Any] | None = None
     parse_error: str | None = None
+    failure_reason: str | None = None
+    attempt_count: int = 1
+    final_attempt: int = 1
+    attempts: list[dict[str, Any]] = field(default_factory=list)
+    backend_context: dict[str, Any] = field(default_factory=dict)
 
     @property
     def command_preview(self) -> str:

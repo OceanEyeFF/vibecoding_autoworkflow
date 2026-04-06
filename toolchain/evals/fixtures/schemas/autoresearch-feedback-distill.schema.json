@@ -19,6 +19,8 @@
     "regression_flags",
     "dimension_feedback_summary",
     "suggested_adjustments",
+    "repo_prompt_guidance",
+    "aggregate_prompt_guidance",
     "scoreboard_ref",
     "decision_ref",
     "worker_contract_ref",
@@ -27,7 +29,7 @@
   "properties": {
     "feedback_distill_version": {
       "type": "integer",
-      "const": 1
+      "const": 2
     },
     "run_id": {
       "type": "string",
@@ -95,6 +97,189 @@
       "items": {
         "type": "string",
         "minLength": 1
+      }
+    },
+    "repo_prompt_guidance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lane_name",
+          "repo",
+          "task",
+          "baseline_total_score",
+          "round_total_score",
+          "score_delta",
+          "signal_strength",
+          "dimension_signals",
+          "prompt_adjustments",
+          "evidence_excerpt",
+          "generation_status"
+        ],
+        "properties": {
+          "lane_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "repo": {
+            "type": "string",
+            "minLength": 1
+          },
+          "task": {
+            "type": "string",
+            "minLength": 1
+          },
+          "baseline_total_score": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "round_total_score": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "score_delta": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "signal_strength": {
+            "type": "string",
+            "enum": [
+              "positive",
+              "mixed",
+              "negative"
+            ]
+          },
+          "dimension_signals": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "stable",
+                "improved",
+                "weaker"
+              ]
+            }
+          },
+          "prompt_adjustments": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "evidence_excerpt": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "generation_status": {
+            "type": "string",
+            "enum": [
+              "generated",
+              "unsupported_task",
+              "missing_baseline_row",
+              "missing_round_row"
+            ]
+          }
+        }
+      }
+    },
+    "aggregate_prompt_guidance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aggregate_direction",
+        "aggregate_suggested_adjustments",
+        "top_regression_repos",
+        "top_improvement_repos",
+        "dominant_dimension_signals",
+        "generation_status"
+      ],
+      "properties": {
+        "aggregate_direction": {
+          "type": "string",
+          "enum": [
+            "positive",
+            "mixed",
+            "negative"
+          ]
+        },
+        "aggregate_suggested_adjustments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "top_regression_repos": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "top_improvement_repos": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "dominant_dimension_signals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "dimension",
+              "signal",
+              "count",
+              "repos"
+            ],
+            "properties": {
+              "dimension": {
+                "type": "string",
+                "minLength": 1
+              },
+              "signal": {
+                "type": "string",
+                "enum": [
+                  "improved",
+                  "weaker"
+                ]
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "repos": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        },
+        "generation_status": {
+          "type": "string",
+          "enum": [
+            "generated",
+            "no_repo_guidance",
+            "unsupported_task_only",
+            "missing_baseline_only"
+          ]
+        }
       }
     },
     "scoreboard_ref": {

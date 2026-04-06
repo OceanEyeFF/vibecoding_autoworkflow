@@ -23,6 +23,7 @@
     "target_surface",
     "comparison_baseline",
     "recent_feedback_excerpt",
+    "aggregate_prompt_guidance",
     "contract_fingerprint",
     "mutation_fingerprint",
     "materialized_at"
@@ -30,7 +31,7 @@
   "properties": {
     "worker_contract_version": {
       "type": "integer",
-      "const": 2
+      "const": 3
     },
     "run_id": {
       "type": "string",
@@ -177,6 +178,96 @@
       "type": "array",
       "items": {
         "type": "string"
+      }
+    },
+    "aggregate_prompt_guidance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aggregate_direction",
+        "aggregate_suggested_adjustments",
+        "top_regression_repos",
+        "top_improvement_repos",
+        "dominant_dimension_signals",
+        "generation_status"
+      ],
+      "properties": {
+        "aggregate_direction": {
+          "type": "string",
+          "enum": [
+            "positive",
+            "mixed",
+            "negative"
+          ]
+        },
+        "aggregate_suggested_adjustments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "top_regression_repos": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "top_improvement_repos": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "dominant_dimension_signals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "dimension",
+              "signal",
+              "count",
+              "repos"
+            ],
+            "properties": {
+              "dimension": {
+                "type": "string",
+                "minLength": 1
+              },
+              "signal": {
+                "type": "string",
+                "enum": [
+                  "improved",
+                  "weaker"
+                ]
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "repos": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        },
+        "generation_status": {
+          "type": "string",
+          "enum": [
+            "generated",
+            "no_repo_guidance",
+            "unsupported_task_only",
+            "missing_baseline_only",
+            "no_prior_feedback"
+          ]
+        }
       }
     },
     "contract_fingerprint": {

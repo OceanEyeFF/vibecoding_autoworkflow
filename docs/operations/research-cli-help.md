@@ -1,9 +1,9 @@
 ---
 title: "Research CLI 指令"
 status: active
-updated: 2026-03-31
+updated: 2026-04-06
 owner: aw-kernel
-last_verified: 2026-03-31
+last_verified: 2026-04-06
 ---
 # Research CLI 指令
 
@@ -43,7 +43,7 @@ python3 toolchain/scripts/research/manage_tmp_exrepos.py
 - `run_claude_skill_eval.py`：Claude 兼容壳
 - `run_backend_acceptance_matrix.py`：live acceptance 入口
 - `run_autoresearch.py`：autoresearch 的 `init / baseline / prepare-round / run-round / decide-round` 以及相关收尾命令入口
-- `run_autoresearch_loop.py`：连续 loop 包装器，自动重复 `prepare-round -> Codex worker -> run-round -> decide-round`
+- `run_autoresearch_loop.py`：连续 loop 包装器，自动重复 `prepare-round -> selected worker backend -> run-round -> decide-round`；默认 worker 仍是 `codex`
 - `manage_tmp_exrepos.py`：TMP exrepo 维护入口；顶层暴露 shared root options 与 `init / reset / prepare`，legacy flat mode 兼容整个 catalog 的 `prepare`，子命令可通过 `--repo` 或 `--suite` 选择 repo 子集，但不接管 autoresearch 主流程
 
 边界：
@@ -233,6 +233,11 @@ repo 解析顺序当前固定为：
 - `--sandbox`
 - `--full-auto` / `--no-full-auto`
 - `--opencode-bin`
+- `--worker-backend`
+- `--worker-model`
+- `--max-attempts`
+- `--backoff-seconds`
+- `--retry-on`
 
 当前默认值：
 
@@ -243,6 +248,7 @@ repo 解析顺序当前固定为：
 - Codex sandbox：`workspace-write`
 - Codex `full-auto`：默认开启
 - OpenCode executable 名：`opencode`
+- phase retry：默认 `max_attempts=3`、`backoff_seconds=3`
 
 说明：
 
@@ -258,6 +264,29 @@ repo 解析顺序当前固定为：
 - `--backend`
 - `--judge-backend`
 - `--task`
+
+## 五、Autoresearch 当前 feedback / worker contract 行为
+
+当前 `run_autoresearch.py` 与 `run_autoresearch_loop.py` 已固定下面这组 feedback artifact 行为：
+
+- round 级 `feedback-distill.json` 使用独立 round contract，不再与 run 级 ledger 同形
+- round payload 继续保留 lane 级 delta / flags，同时新增：
+  - `repo_prompt_guidance`
+  - `aggregate_prompt_guidance`
+- `repo_prompt_guidance` 当前只对 `context-routing` 做 deterministic 强保证；其他 task 显式落 `unsupported_task`
+- run 级 `feedback-ledger.jsonl` 只保留 compact aggregate guidance，用于 selector、excerpt 和下一轮 worker 上下文
+- `recent_feedback_excerpt` 继续从 ledger 生成短字符串，但优先复用 aggregate guidance，而不是 repo 明细
+- `worker-contract.json` 现在会额外冻结 structured `aggregate_prompt_guidance`
+- loop wrapper 渲染 worker prompt 时会同时显示：
+  - recent excerpt
+  - aggregate direction
+  - 最多 `2-3` 条 aggregate suggested adjustments
+
+当前兼容口径：
+
+- legacy v1 ledger entry 仍可读取
+- legacy v1 worker contract 仍只保留弱一致性校验
+- 新写出的 round distill / ledger entry / worker contract 都按当前 v2 contract 落盘
 - `--with-eval`
 - `--prompt-file`
 - `--eval-prompt-file`
@@ -296,6 +325,7 @@ repo 解析顺序当前固定为：
 - `--eval-timeout`
 - `--save-dir`
 - backend executable / runtime 参数，例如 `--claude-bin`、`--codex-bin`、`--sandbox`、`--no-full-auto`
+- phase retry 参数，例如 `--max-attempts`、`--backoff-seconds`、`--retry-on`
 
 说明：
 
@@ -612,20 +642,27 @@ codex exec \
 
 状态：
 
-- 仍然出现在统一 CLI 的 backend choices 中
-- 但当前 research runner 里是 `reserved but not implemented`
+- 已经出现在统一 CLI 的 backend choices 中
+- 当前 research runner 里是 MVP backend，不再是 stub-only slot
 
 真实行为：
 
-- backend registry 会尝试构建它
-- 即使本机存在 `opencode` 可执行文件，healthcheck 也会返回 unavailable
-- 所以当前把 `opencode` 用作 `--backend` 或 `--judge-backend` 都会在执行前失败
+- backend registry 会构建并做普通 executable healthcheck
+- skill / eval 命令当前最小透传：
+  - `--model`
+  - `--dir <repo>`
+  - `--format <normalized-output-format>`
+- `run_phase()` 也会把子进程 `cwd` 设为 `repo_path`；对 `OpenCode` 来说这不是二选一替代关系，当前 runner 会同时保留 `cwd` 与 `--dir`
+- 上述 `--dir` 用法按本地 `opencode run --help` 已验证为当前 CLI 支持参数
+- `OpenCode` 当前不宣称 schema-based eval；judge 走文本解析回退
+- `extract_final_message()` 会优先消费 JSONL `text` 事件与 message-style 事件，提取失败时回退 `stdout.strip()`
 
 因此当前文档只能写：
 
-- `OpenCode` 是预留位
-- 不是当前可运行 backend
-- 不应该在示例命令里把它写成 active 路径
+- `OpenCode` 已可作为 research runner 的 MVP backend
+- 更适合 deterministic / low-risk 路径；当前没有把它纳入 live acceptance matrix
+- 如果要稳定提取 JSON event 输出，建议配合 `--output-format json`
+- 统一 CLI 的 `text | json | stream-json` 会在进入 OpenCode adapter 前分别归一化为 `default | json | json`
 
 ## 九、backend acceptance matrix 的真实边界
 

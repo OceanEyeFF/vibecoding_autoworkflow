@@ -1,9 +1,9 @@
 ---
 title: "Autoresearch 最小闭环运行说明"
 status: active
-updated: 2026-03-30
+updated: 2026-04-06
 owner: aw-kernel
-last_verified: 2026-03-30
+last_verified: 2026-04-06
 ---
 # Autoresearch 最小闭环运行说明
 
@@ -54,7 +54,7 @@ last_verified: 2026-03-30
 这一轮不是新的 live backend 观测，而是针对已落地代码与 deterministic smoke 的验收事实：
 
 - 只允许微调一个 research prompt 文件
-- 只允许 `codex -> codex`
+- P2 suite backend pair 默认是 `codex -> codex`，但 contract 可通过 `expected_backend / expected_judge_backend` 显式覆盖
 - 只允许四个固定 target task 之一：
   - `context-routing-skill`
   - `knowledge-base-skill`
@@ -64,6 +64,8 @@ last_verified: 2026-03-30
   - `target_task`
   - `target_prompt_path`
 - `mutable_paths` 必须精确收紧到 `[target_prompt_path]`
+- loop worker backend 默认是 `codex`，但 contract / CLI 可切到 `claude | codex | opencode`
+- contract 可声明统一 `retry_policy`，默认 `max_attempts=3`、`backoff_seconds=3`
 - `init / baseline / prepare-round / run-round` 会做 P2 preflight
 - `decide-round` 不做无条件 CLI preflight，但如果命中 replay 条件，会在 replay 前复用同一套 P2 preflight
 - `promote-round` 会做 P2 preflight
@@ -101,6 +103,17 @@ last_verified: 2026-03-30
 2. `train.yaml`
 3. `validation.yaml`
 4. `manual-mutation.json` 或 run-local `mutation-registry.json`
+
+如果要直接起一个最小 `claude-claude` P2 run，不必再从本文手抄 JSON/YAML。当前仓库已经提供 copy-ready 模板包：
+
+- `toolchain/evals/fixtures/templates/autoresearch-p2-claude-claude/`
+
+推荐做法：
+
+1. 复制该目录里的五个模板文件到 `.autoworkflow/manual-runs/<run-name>/`
+2. 分别重命名成 `contract.json`、`train.yaml`、`validation.yaml`、`acceptance.yaml`、`manual-mutation.json`
+3. 把 suite 里的 `/abs/path/to/target-repo` 改成实际评测 repo
+4. 执行 `refresh_manual_run_contract.py` 刷新 fresh `run_id`
 
 最小 `contract.json` 示例：
 
@@ -225,11 +238,21 @@ runs:
 }
 ```
 
+如果要走 `claude -> claude`，在上述最小形态基础上再显式加上：
+
+```json
+{
+  "worker_backend": "claude",
+  "expected_backend": "claude",
+  "expected_judge_backend": "claude"
+}
+```
+
 Batch 1 的 suite 也要额外满足：
 
 - 每个 run 只能覆盖 contract 指定的单个 task
-- `backend` 必须是 `codex`
-- `judge_backend` 必须是 `codex`
+- `backend` 必须等于 contract 声明的 `expected_backend`
+- `judge_backend` 必须等于 contract 声明的 `expected_judge_backend`
 - `prompt_file` 若显式写出，必须解析到 `target_prompt_path`
 
 推荐最小 suite 形态：
@@ -311,7 +334,10 @@ python3 toolchain/scripts/research/run_autoresearch.py \
 
 ```bash
 python3 toolchain/scripts/research/run_autoresearch_loop.py \
-  --contract /abs/path/to/contract.json
+  --contract /abs/path/to/contract.json \
+  --worker-backend claude \
+  --worker-model claude-opus \
+  --max-attempts 3
 ```
 
 那么命中同一类 stop 时也会正常返回 `0`，并输出：
@@ -377,7 +403,7 @@ python3 -m unittest \
 
 当前命令口径代表的是：
 
-- P2 单 Prompt、`codex -> codex` 主路径可以用 deterministic smoke 证明
+- P2 单 Prompt、默认 `codex -> codex` 主路径，以及 contract-driven backend pair preflight，都可以用 deterministic smoke 证明
 - legacy P1.3 smoke 仍保持独立存在，没有被 P2 夹具吞并
 - 这不是 live Codex acceptance matrix；高成本 live 验收仍属于单独系统级验证
 
@@ -438,7 +464,7 @@ product/memory-side/adapters/claude/skills/context-routing-skill/SKILL.md
 - `target_task` 只能是四个已登记的 skill
 - `target_prompt_path` 必须精确匹配固定映射
 - `mutable_paths` 必须只剩这个 prompt 文件
-- suite 必须是单 task 且 `codex -> codex`
+- suite 必须是单 task，且 backend/judge pair 必须匹配 contract 的期望值；未声明时默认仍是 `codex -> codex`
 
 只要其中一项不满足，`init / baseline / prepare-round / run-round` 就会直接失败。
 
@@ -463,6 +489,7 @@ run 根目录固定在：
 
 - 有既有 ledger 时，positive family 可以在第二轮优先于 fresh entry 被再次选择
 - 带 `validation_drop` 的 mixed family 会被 guardrail 降权，fresh family 会优先被选择
+- 下一轮 worker contract 会冻结 compact `aggregate_prompt_guidance`，而不是把 repo 明细原样塞进 prompt
 
 单轮 `rounds/round-001/` 下至少会有：
 
@@ -477,6 +504,7 @@ run 根目录固定在：
 - `scoreboard.json`
 - `decision.json`
 - `feedback-distill.json`
+- `feedback-ledger.jsonl` 只保留 compact aggregate guidance；round 级 `feedback-distill.json` 才保留 repo guidance 明细
 - `replay/scoreboard.json`（仅当 round 先命中 provisional `keep` 且触发 replay 时生成）
 
 如果当前 round 触发 replay，`replay/` 下还会包含：
@@ -515,6 +543,12 @@ run 根目录固定在：
 
 - `keep` 是“优化成功”
 - `discard` 仍然是“闭环成功”
+
+当前 feedback / worker contract 还有一条额外约束：
+
+- `worker-contract.json` 必须包含 `aggregate_prompt_guidance`
+- 这个字段来源于 run-level ledger 的最新 compact summary
+- 即使 legacy ledger 只有 v1 `suggested_adjustments`，prepare-round 也会先投影出一个最小 aggregate guidance 再冻结进 worker contract
 
 ## 八、这次验证到的真实结果
 

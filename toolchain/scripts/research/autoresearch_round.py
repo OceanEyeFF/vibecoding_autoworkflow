@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from backend_runner import retry_policy_cli_args
 from autoresearch_contract import (
     HISTORY_COLUMNS,
     AutoresearchContract,
@@ -42,6 +43,7 @@ from autoresearch_worker_contract import (
     build_comparison_baseline,
     build_worker_contract_payload,
     compute_worker_contract_sha256,
+    default_aggregate_prompt_guidance,
     LEGACY_WORKER_CONTRACT_POLICY,
     load_legacy_worker_contract_payload,
     load_worker_contract_payload,
@@ -469,7 +471,7 @@ class AutoresearchRoundManager:
         self,
         contract: AutoresearchContract,
         round_number: int,
-    ) -> tuple[AutoresearchMutationRegistry, dict[str, Any], dict[str, Any], dict[str, float | None], list[str]]:
+    ) -> tuple[AutoresearchMutationRegistry, dict[str, Any], dict[str, Any], dict[str, float | None], list[str], dict[str, Any]]:
         (
             _authority_oid,
             _authority,
@@ -477,6 +479,7 @@ class AutoresearchRoundManager:
             frozen_mutation_payload,
             frozen_comparison_baseline,
             frozen_recent_feedback_excerpt,
+            frozen_aggregate_prompt_guidance,
         ) = self._load_round_authority(contract, round_number)
         registry_path = self.mutation_registry_path(contract.run_id)
         if not registry_path.is_file():
@@ -512,13 +515,22 @@ class AutoresearchRoundManager:
         actual_mutation = load_mutation_payload(mutation_path)
         if actual_mutation != frozen_mutation_payload:
             raise RuntimeError("mutation.json does not match frozen round authority snapshot.")
-        return registry, entry, frozen_mutation_payload, frozen_comparison_baseline, frozen_recent_feedback_excerpt
+        return (
+            registry,
+            entry,
+            frozen_mutation_payload,
+            frozen_comparison_baseline,
+            frozen_recent_feedback_excerpt,
+            frozen_aggregate_prompt_guidance,
+        )
 
     def validate_p2_preflight(self, contract: AutoresearchContract) -> None:
         resolved_target = resolve_p2_contract_target(contract, repo_root=self.repo_root)
         if resolved_target is None:
             return
         target_task, target_prompt_path = resolved_target
+        expected_backend = contract.expected_backend
+        expected_judge_backend = contract.expected_judge_backend
         expected_runner_task = next(
             runner_task for runner_task, mapped_target in P2_RUNNER_TASK_TO_TARGET_TASK.items() if mapped_target == target_task
         )
@@ -576,9 +588,13 @@ class AutoresearchRoundManager:
                             "P2 suite prompt_file must resolve to target_prompt_path: "
                             f"{suite_path}"
                         )
-                    if str(spec["backend"]) != "codex" or str(spec["judge_backend"]) != "codex":
+                    if (
+                        str(spec["backend"]) != expected_backend
+                        or str(spec["judge_backend"]) != expected_judge_backend
+                    ):
                         raise ValueError(
-                            f"P2 suite must enforce codex -> codex for every run: {suite_path}"
+                            "P2 suite must enforce the contract backend pair for every run: "
+                            f"{suite_path} ({expected_backend} -> {expected_judge_backend})"
                         )
 
     def _write_registry_decision_state(
@@ -629,6 +645,7 @@ class AutoresearchRoundManager:
         mutation_payload: dict[str, Any],
         comparison_baseline: dict[str, float | None],
         recent_feedback_excerpt: list[str],
+        aggregate_prompt_guidance: dict[str, Any] | None = None,
         rewrite: bool = False,
     ) -> Path:
         run_id = contract.run_id
@@ -650,6 +667,7 @@ class AutoresearchRoundManager:
             agent_report_path=self.agent_report_path(run_id, round_number),
             comparison_baseline=comparison_baseline,
             recent_feedback_excerpt=recent_feedback_excerpt,
+            aggregate_prompt_guidance=aggregate_prompt_guidance or default_aggregate_prompt_guidance(),
             materialized_at=materialized_at,
         )
         if rewrite or not worker_path.is_file():
@@ -666,6 +684,7 @@ class AutoresearchRoundManager:
         mutation_payload: dict[str, Any],
         comparison_baseline: dict[str, float | None],
         recent_feedback_excerpt: list[str],
+        aggregate_prompt_guidance: dict[str, Any] | None = None,
     ) -> Path:
         return self._ensure_round_worker_contract(
             contract,
@@ -673,6 +692,7 @@ class AutoresearchRoundManager:
             mutation_payload=mutation_payload,
             comparison_baseline=comparison_baseline,
             recent_feedback_excerpt=recent_feedback_excerpt,
+            aggregate_prompt_guidance=aggregate_prompt_guidance,
         )
 
     def _discover_active_prepare_round(self, run_id: str) -> int | None:
@@ -759,6 +779,7 @@ class AutoresearchRoundManager:
             mutation_payload,
             comparison_baseline,
             recent_feedback_excerpt,
+            aggregate_prompt_guidance,
         ) = self._load_round_authority(contract, round_number)
         mutation_path = self.mutation_path(contract.run_id, round_number)
         rewrite_mutation = True
@@ -791,6 +812,7 @@ class AutoresearchRoundManager:
             mutation_payload=mutation_payload,
             comparison_baseline=comparison_baseline,
             recent_feedback_excerpt=recent_feedback_excerpt,
+            aggregate_prompt_guidance=aggregate_prompt_guidance,
             rewrite=True,
         )
         return {
@@ -818,6 +840,7 @@ class AutoresearchRoundManager:
         mutation_payload: dict[str, Any],
         comparison_baseline: dict[str, float | None],
         recent_feedback_excerpt: list[str],
+        aggregate_prompt_guidance: dict[str, Any] | None = None,
     ) -> str:
         authority_payload = {
             "run_id": run_id,
@@ -826,6 +849,7 @@ class AutoresearchRoundManager:
             "mutation_payload": mutation_payload,
             "comparison_baseline": dict(comparison_baseline),
             "recent_feedback_excerpt": list(recent_feedback_excerpt),
+            "aggregate_prompt_guidance": dict(aggregate_prompt_guidance or default_aggregate_prompt_guidance()),
         }
         return self.worktree_manager.write_round_authority(run_id, round_number, authority_payload)
 
@@ -833,7 +857,7 @@ class AutoresearchRoundManager:
         self,
         contract: AutoresearchContract,
         round_number: int,
-    ) -> tuple[str, dict[str, Any], dict[str, Any], dict[str, Any], dict[str, float | None], list[str]]:
+    ) -> tuple[str, dict[str, Any], dict[str, Any], dict[str, Any], dict[str, float | None], list[str], dict[str, Any]]:
         authority_oid, authority = self.worktree_manager.read_round_authority(contract.run_id, round_number)
         if str(authority.get("run_id") or "") != contract.run_id:
             raise RuntimeError("round authority snapshot run_id does not match the active contract.")
@@ -843,14 +867,25 @@ class AutoresearchRoundManager:
         mutation_payload = authority.get("mutation_payload")
         comparison_baseline = authority.get("comparison_baseline")
         recent_feedback_excerpt = authority.get("recent_feedback_excerpt") or []
+        aggregate_prompt_guidance = authority.get("aggregate_prompt_guidance") or default_aggregate_prompt_guidance()
         if not isinstance(registry_entry, dict) or not isinstance(mutation_payload, dict):
             raise RuntimeError("round authority snapshot must contain registry_entry and mutation_payload objects.")
         if not isinstance(comparison_baseline, dict):
             raise RuntimeError("round authority snapshot must contain comparison_baseline.")
         if not isinstance(recent_feedback_excerpt, list):
             raise RuntimeError("round authority snapshot recent_feedback_excerpt must be a list.")
+        if not isinstance(aggregate_prompt_guidance, dict):
+            raise RuntimeError("round authority snapshot aggregate_prompt_guidance must be an object.")
         excerpt = [str(item).strip() for item in recent_feedback_excerpt if str(item).strip()]
-        return authority_oid, authority, registry_entry, mutation_payload, dict(comparison_baseline), excerpt
+        return (
+            authority_oid,
+            authority,
+            registry_entry,
+            mutation_payload,
+            dict(comparison_baseline),
+            excerpt,
+            dict(aggregate_prompt_guidance),
+        )
 
     def run_round(self, contract: AutoresearchContract) -> dict[str, Any]:
         active = self.worktree_manager.load_active_round(contract.run_id)
@@ -859,7 +894,7 @@ class AutoresearchRoundManager:
         if str(round_payload.get("state")) != "candidate_active":
             raise RuntimeError("run-round requires the active round to be in candidate_active state.")
         round_dir = self.worktree_manager.round_dir(contract.run_id, round_number)
-        _registry, _registry_entry, mutation_payload, comparison_baseline, recent_feedback_excerpt = (
+        _registry, _registry_entry, mutation_payload, comparison_baseline, recent_feedback_excerpt, aggregate_prompt_guidance = (
             self._load_authoritative_mutation(contract, round_number)
         )
         mutation_path = self.mutation_path(contract.run_id, round_number)
@@ -872,6 +907,7 @@ class AutoresearchRoundManager:
             actual_worker_contract_sha256 = compute_worker_contract_sha256(worker_path)
             if actual_worker_contract_sha256 != recorded_worker_contract_sha256:
                 raise RuntimeError("worker-contract.json does not match hash recorded in round.json.")
+            worker_contract_version = int(worker_contract.get("worker_contract_version") or 0)
             expected_worker_contract = build_worker_contract_payload(
                 contract=contract,
                 mutation_payload=mutation_payload,
@@ -879,7 +915,9 @@ class AutoresearchRoundManager:
                 agent_report_path=self.agent_report_path(contract.run_id, round_number),
                 comparison_baseline=comparison_baseline,
                 recent_feedback_excerpt=recent_feedback_excerpt,
+                aggregate_prompt_guidance=aggregate_prompt_guidance,
                 materialized_at=str(round_payload.get("worker_contract_materialized_at") or ""),
+                worker_contract_version=worker_contract_version,
             )
             if worker_contract != expected_worker_contract:
                 raise RuntimeError("worker-contract.json does not match authoritative round/mutation/worktree state.")
@@ -972,7 +1010,7 @@ class AutoresearchRoundManager:
         round_number = int(round_payload["round"])
         if str(round_payload.get("state")) != "evaluated":
             raise RuntimeError("decide-round requires the active round to be in evaluated state.")
-        registry, registry_entry, mutation_payload, _comparison_baseline, _recent_feedback_excerpt = (
+        registry, registry_entry, mutation_payload, _comparison_baseline, _recent_feedback_excerpt, _aggregate_prompt_guidance = (
             self._load_authoritative_mutation(contract, round_number)
         )
         baseline_scoreboard = read_json(self.baseline_scoreboard_path(contract.run_id))
@@ -1144,6 +1182,7 @@ class AutoresearchRoundManager:
                 str(save_dir),
                 "--timeout",
                 str(timeout_seconds),
+                *retry_policy_cli_args(contract.retry_policy),
             ]
             completed = subprocess.run(
                 cmd,
