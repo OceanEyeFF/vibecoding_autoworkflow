@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from backend_runner import retry_policy_cli_args
 from autoresearch_contract import (
     HISTORY_COLUMNS,
     AutoresearchContract,
@@ -528,6 +529,8 @@ class AutoresearchRoundManager:
         if resolved_target is None:
             return
         target_task, target_prompt_path = resolved_target
+        expected_backend = contract.expected_backend
+        expected_judge_backend = contract.expected_judge_backend
         expected_runner_task = next(
             runner_task for runner_task, mapped_target in P2_RUNNER_TASK_TO_TARGET_TASK.items() if mapped_target == target_task
         )
@@ -585,9 +588,13 @@ class AutoresearchRoundManager:
                             "P2 suite prompt_file must resolve to target_prompt_path: "
                             f"{suite_path}"
                         )
-                    if str(spec["backend"]) != "codex" or str(spec["judge_backend"]) != "codex":
+                    if (
+                        str(spec["backend"]) != expected_backend
+                        or str(spec["judge_backend"]) != expected_judge_backend
+                    ):
                         raise ValueError(
-                            f"P2 suite must enforce codex -> codex for every run: {suite_path}"
+                            "P2 suite must enforce the contract backend pair for every run: "
+                            f"{suite_path} ({expected_backend} -> {expected_judge_backend})"
                         )
 
     def _write_registry_decision_state(
@@ -1175,6 +1182,7 @@ class AutoresearchRoundManager:
                 str(save_dir),
                 "--timeout",
                 str(timeout_seconds),
+                *retry_policy_cli_args(contract.retry_policy),
             ]
             completed = subprocess.run(
                 cmd,

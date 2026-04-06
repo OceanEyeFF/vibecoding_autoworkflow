@@ -7,12 +7,14 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import run_autoresearch
 import run_autoresearch_loop
+from backend_runner import build_retry_policy
 from autoresearch_contract import load_contract
 from autoresearch_mutation_registry import compute_contract_fingerprint
 from autoresearch_round import AutoresearchRoundManager
@@ -165,6 +167,150 @@ def make_registry_entry(*, mutation_key: str) -> dict[str, object]:
 
 
 class RunAutoresearchLoopTest(unittest.TestCase):
+    def test_build_backend_context_normalizes_opencode_output_format(self) -> None:
+        args = SimpleNamespace(
+            permission_mode="bypassPermissions",
+            output_format="text",
+            sandbox="workspace-write",
+            full_auto=True,
+            codex_reasoning_effort="high",
+        )
+
+        context = run_autoresearch_loop.build_backend_context(args, "opencode")
+
+        self.assertEqual(
+            context,
+            {
+                "output_format": "default",
+            },
+        )
+
+    def test_execute_worker_phase_uses_configured_backend_and_writes_retry_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            candidate_worktree = root / "candidate"
+            candidate_worktree.mkdir(parents=True, exist_ok=True)
+            worker_contract_path = root / "worker-contract.json"
+            worker_contract = {
+                "candidate_worktree": str(candidate_worktree),
+                "round": 1,
+                "mutation_key": "demo",
+                "objective": "Improve prompt",
+                "target_surface": "prompt",
+                "instruction": "Tighten wording.",
+                "target_paths": ["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+            }
+            worker_contract_path.write_text(json.dumps(worker_contract), encoding="utf-8")
+
+            args = run_autoresearch_loop.parse_args(
+                [
+                    "--contract",
+                    str(root / "contract.json"),
+                    "--worker-backend",
+                    "claude",
+                    "--worker-model",
+                    "claude-opus",
+                ]
+            )
+            contract = SimpleNamespace(
+                worker_backend="codex",
+                worker_model=None,
+                retry_policy=build_retry_policy(max_attempts=3, backoff_seconds=0),
+                payload={"timeout_policy": {"seconds": 120}},
+            )
+
+            class FakeBackend:
+                backend_id = "claude"
+
+                def healthcheck(self) -> tuple[bool, str]:
+                    return True, "claude"
+
+            class FakeAttempt:
+                def __init__(self, payload: dict[str, object]) -> None:
+                    self.payload = payload
+
+                def to_dict(self) -> dict[str, object]:
+                    return dict(self.payload)
+
+            fake_result = SimpleNamespace(
+                backend_id="claude",
+                command=["claude", "-p", "prompt"],
+                returncode=0,
+                timed_out=False,
+                raw_stdout="raw",
+                raw_stderr="",
+                final_message="worker summary",
+                failure_reason=None,
+                attempt_count=3,
+                final_attempt=3,
+                attempts=[
+                    FakeAttempt(
+                        {
+                            "attempt": 1,
+                            "returncode": None,
+                            "timed_out": True,
+                            "failure_reason": "timeout",
+                            "parse_error": None,
+                            "raw_stdout_excerpt": None,
+                            "raw_stderr_excerpt": None,
+                            "started_at": "2026-03-26T00:00:00+00:00",
+                            "finished_at": "2026-03-26T00:00:01+00:00",
+                            "elapsed_seconds": 1.0,
+                        }
+                    ),
+                    FakeAttempt(
+                        {
+                            "attempt": 2,
+                            "returncode": 1,
+                            "timed_out": False,
+                            "failure_reason": "transient_disconnect",
+                            "parse_error": None,
+                            "raw_stdout_excerpt": "temporary",
+                            "raw_stderr_excerpt": "temporary",
+                            "started_at": "2026-03-26T00:00:02+00:00",
+                            "finished_at": "2026-03-26T00:00:03+00:00",
+                            "elapsed_seconds": 1.0,
+                        }
+                    ),
+                    FakeAttempt(
+                        {
+                            "attempt": 3,
+                            "returncode": 0,
+                            "timed_out": False,
+                            "failure_reason": None,
+                            "parse_error": None,
+                            "raw_stdout_excerpt": "worker summary",
+                            "raw_stderr_excerpt": None,
+                            "started_at": "2026-03-26T00:00:04+00:00",
+                            "finished_at": "2026-03-26T00:00:05+00:00",
+                            "elapsed_seconds": 1.0,
+                        }
+                    ),
+                ],
+                started_at="2026-03-26T00:00:04+00:00",
+                finished_at="2026-03-26T00:00:05+00:00",
+                elapsed_seconds=1.0,
+                backend_context={"permission_mode": "bypassPermissions", "output_format": "text"},
+            )
+
+            with mock.patch.object(run_autoresearch_loop, "build_backend", return_value=FakeBackend()) as mocked_backend, mock.patch.object(
+                run_autoresearch_loop, "run_phase", return_value=fake_result
+            ):
+                result = run_autoresearch_loop.execute_worker_phase(
+                    args=args,
+                    contract=contract,
+                    worker_contract_path=worker_contract_path,
+                    worker_contract=worker_contract,
+                )
+
+            self.assertIs(result, fake_result)
+            mocked_backend.assert_called_once_with("claude", args)
+            meta = json.loads((root / "worker.meta.json").read_text(encoding="utf-8"))
+            self.assertEqual(meta["backend"], "claude")
+            self.assertEqual(meta["attempt_count"], 3)
+            self.assertEqual(meta["final_attempt"], 3)
+            self.assertEqual(len(meta["attempts"]), 3)
+
     def test_build_worker_prompt_renders_aggregate_guidance(self) -> None:
         worker_contract = {
             "round": 1,
@@ -270,12 +416,20 @@ class RunAutoresearchLoopTest(unittest.TestCase):
                         return original_prepare(contract_path_arg, mutation_key=mutation_key, mutation_path=mutation_path)
                     raise AutoresearchStop(kind="synthetic_stop", message="Stop gate triggered: synthetic test stop.")
 
-                def fake_worker(*, args, worker_contract_path: Path, worker_contract: dict[str, object]) -> str:
-                    del args, worker_contract_path
+                def fake_worker(*, args, contract, worker_contract_path: Path, worker_contract: dict[str, object]):
+                    del args, contract, worker_contract_path
                     candidate_worktree = Path(str(worker_contract["candidate_worktree"]))
                     prompt_path = candidate_worktree / str(worker_contract["target_paths"][0])
                     prompt_path.write_text("mutated prompt\n", encoding="utf-8")
-                    return "## Scope\n- Edited target prompt.\n\n## Mutation Applied\n- Tightened wording.\n\n## Expected Effect\n- Better routing.\n\n## Validation Notes\n- Scope only.\n"
+                    return SimpleNamespace(
+                        backend_id="codex",
+                        attempt_count=1,
+                        final_attempt=1,
+                        final_message=(
+                            "## Scope\n- Edited target prompt.\n\n## Mutation Applied\n- Tightened wording.\n\n"
+                            "## Expected Effect\n- Better routing.\n\n## Validation Notes\n- Scope only.\n"
+                        ),
+                    )
 
                 def fake_lane_runner(
                     _self: AutoresearchRoundManager,
@@ -295,7 +449,7 @@ class RunAutoresearchLoopTest(unittest.TestCase):
                     return [{"suite_file": save_dir.name + ".yaml", "results": [build_eval_result(score)]}]
 
                 with mock.patch.object(run_autoresearch_loop, "cmd_prepare_round", side_effect=prepare_side_effect), mock.patch.object(
-                    run_autoresearch_loop, "run_codex_worker", side_effect=fake_worker
+                    run_autoresearch_loop, "execute_worker_phase", side_effect=fake_worker
                 ), mock.patch.object(AutoresearchRoundManager, "_run_lane_suites", new=fake_lane_runner):
                     stdout = io.StringIO()
                     with mock.patch("sys.stdout", stdout):
@@ -403,12 +557,20 @@ class RunAutoresearchLoopTest(unittest.TestCase):
                 write_summary(save_dir, label, 9.0 if label == "train" else 8.0)
                 return 0
 
-            def fake_worker(*, args, worker_contract_path: Path, worker_contract: dict[str, object]) -> str:
-                del args, worker_contract_path
+            def fake_worker(*, args, contract, worker_contract_path: Path, worker_contract: dict[str, object]):
+                del args, contract, worker_contract_path
                 candidate_worktree = Path(str(worker_contract["candidate_worktree"]))
                 prompt_path = candidate_worktree / str(worker_contract["target_paths"][0])
                 prompt_path.write_text("mutated prompt from prepared\n", encoding="utf-8")
-                return "## Scope\n- Edited target prompt.\n\n## Mutation Applied\n- Prepared recovery mutation.\n\n## Expected Effect\n- Resume loop.\n\n## Validation Notes\n- Scope only.\n"
+                return SimpleNamespace(
+                    backend_id="codex",
+                    attempt_count=1,
+                    final_attempt=1,
+                    final_message=(
+                        "## Scope\n- Edited target prompt.\n\n## Mutation Applied\n- Prepared recovery mutation.\n\n"
+                        "## Expected Effect\n- Resume loop.\n\n## Validation Notes\n- Scope only.\n"
+                    ),
+                )
 
             def fake_lane_runner(
                 _self: AutoresearchRoundManager,
@@ -465,7 +627,7 @@ class RunAutoresearchLoopTest(unittest.TestCase):
                     raise AutoresearchStop(kind="synthetic_stop", message="Stop gate triggered: synthetic test stop.")
 
                 with mock.patch.object(run_autoresearch_loop, "cmd_prepare_round", side_effect=stop_on_next_prepare), mock.patch.object(
-                    run_autoresearch_loop, "run_codex_worker", side_effect=fake_worker
+                    run_autoresearch_loop, "execute_worker_phase", side_effect=fake_worker
                 ), mock.patch.object(AutoresearchRoundManager, "_run_lane_suites", new=fake_lane_runner):
                     stdout = io.StringIO()
                     with mock.patch("sys.stdout", stdout):

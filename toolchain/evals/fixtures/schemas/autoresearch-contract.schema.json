@@ -113,6 +113,44 @@
     "promotion_policy": {
       "type": "object"
     },
+    "worker_backend": {
+      "type": "string",
+      "enum": ["claude", "codex", "opencode"]
+    },
+    "worker_model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_backend": {
+      "type": "string",
+      "enum": ["claude", "codex", "opencode"]
+    },
+    "expected_judge_backend": {
+      "type": "string",
+      "enum": ["claude", "codex", "opencode"]
+    },
+    "retry_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "backoff_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "retry_on": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["timeout", "nonzero_returncode", "empty_output_parse_error", "transient_disconnect"]
+          },
+          "uniqueItems": true
+        }
+      }
+    },
     "target_task": {
       "type": "string",
       "minLength": 1

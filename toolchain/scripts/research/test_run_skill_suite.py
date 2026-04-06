@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
+import subprocess
 import sys
 import tempfile
 import time
@@ -11,9 +13,52 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from backend_runner import (
+    PhaseExecutionRequest,
+    RETRY_REASON_EMPTY_OUTPUT_PARSE_ERROR,
+    RETRY_REASON_NONZERO_RETURNCODE,
+    RETRY_REASON_TIMEOUT,
+    build_retry_policy,
+    classify_phase_failure,
+    parse_retry_on_values,
+    retry_policy_cli_args,
+    run_phase,
+)
+from backends.base import BackendInvocation, ResearchBackend
 from common import RunResult, RunSpec, resolve_repo
 from exrepo_runtime import materialize_suite, resolve_tmp_exrepos_root
-from run_skill_suite import coerce_process_output, execute_specs, parse_args, resolve_suite_specs, validate_args
+from run_skill_suite import (
+    build_backend_context,
+    coerce_process_output,
+    execute_specs,
+    parse_args,
+    resolve_suite_specs,
+    save_result,
+    save_summary,
+    validate_args,
+)
+
+
+class FakeBackend(ResearchBackend):
+    backend_id = "fake"
+
+    def build_skill_command(self, prompt_text: str, repo_path: Path, model: str | None) -> BackendInvocation:
+        del prompt_text, repo_path, model
+        return BackendInvocation(command=["fake", "skill"])
+
+    def build_eval_command(
+        self,
+        prompt_text: str,
+        repo_path: Path,
+        model: str | None,
+        schema_path: Path | None,
+    ) -> BackendInvocation:
+        del prompt_text, repo_path, model, schema_path
+        return BackendInvocation(command=["fake", "eval"])
+
+    def extract_final_message(self, invocation: BackendInvocation, stdout: str) -> str:
+        del invocation
+        return stdout.strip()
 
 
 class RunSkillSuiteTest(unittest.TestCase):
@@ -56,6 +101,9 @@ class RunSkillSuiteTest(unittest.TestCase):
             full_auto=True,
             codex_reasoning_effort="high",
             opencode_bin="opencode",
+            max_attempts=3,
+            backoff_seconds=3.0,
+            retry_on=None,
         )
 
         with self.assertRaisesRegex(ValueError, "--jobs must be at least 1."):
@@ -187,6 +235,248 @@ class RunSkillSuiteTest(unittest.TestCase):
             self.assertEqual(specs[0].repo_path, suite_dir.resolve(strict=False))
             self.assertEqual(specs[0].prompt_file, prompt_path.resolve(strict=False))
             self.assertEqual(specs[0].eval_prompt_file, eval_prompt_path.resolve(strict=False))
+
+    def test_phase_executor_retries_until_third_attempt_success(self) -> None:
+        backend = FakeBackend(executable="fake")
+
+        def parse_output(output_text: str) -> tuple[dict[str, object] | None, str | None]:
+            if not output_text.strip():
+                return None, "Eval phase produced no usable output."
+            return {"ok": True}, None
+
+        completed = [
+            subprocess.TimeoutExpired(cmd=["fake", "eval"], timeout=30),
+            subprocess.CompletedProcess(["fake", "eval"], 0, "", ""),
+            subprocess.CompletedProcess(["fake", "eval"], 0, "usable output", ""),
+        ]
+
+        with mock.patch("backend_runner.subprocess.run", side_effect=completed):
+            result = run_phase(
+                PhaseExecutionRequest(
+                    phase="eval",
+                    backend_id="fake",
+                    backend=backend,
+                    prompt_text="judge",
+                    repo_path=Path("/tmp/repo"),
+                    model=None,
+                    timeout_seconds=30,
+                    retry_policy=build_retry_policy(max_attempts=3, backoff_seconds=0),
+                    parse_output=parse_output,
+                )
+            )
+
+        self.assertEqual(result.attempt_count, 3)
+        self.assertEqual(result.final_attempt, 3)
+        self.assertEqual(result.structured_output, {"ok": True})
+        self.assertIsNone(result.parse_error)
+        self.assertEqual(result.attempts[0].failure_reason, RETRY_REASON_TIMEOUT)
+        self.assertEqual(result.attempts[1].failure_reason, RETRY_REASON_EMPTY_OUTPUT_PARSE_ERROR)
+        self.assertIsNone(result.attempts[2].failure_reason)
+
+    def test_phase_executor_honors_max_attempts_one(self) -> None:
+        backend = FakeBackend(executable="fake")
+
+        with mock.patch(
+            "backend_runner.subprocess.run",
+            side_effect=subprocess.TimeoutExpired(cmd=["fake", "skill"], timeout=30),
+        ) as mocked_run:
+            result = run_phase(
+                PhaseExecutionRequest(
+                    phase="skill",
+                    backend_id="fake",
+                    backend=backend,
+                    prompt_text="prompt",
+                    repo_path=Path("/tmp/repo"),
+                    model=None,
+                    timeout_seconds=30,
+                    retry_policy=build_retry_policy(max_attempts=1, backoff_seconds=0),
+                )
+            )
+
+        self.assertEqual(mocked_run.call_count, 1)
+        self.assertEqual(result.attempt_count, 1)
+        self.assertEqual(result.final_attempt, 1)
+        self.assertTrue(result.timed_out)
+
+    def test_phase_executor_preserves_phase_level_timing_across_retries(self) -> None:
+        backend = FakeBackend(executable="fake")
+        completed = [
+            subprocess.CompletedProcess(["fake", "skill"], 1, "temporary failure", ""),
+            subprocess.CompletedProcess(["fake", "skill"], 0, "usable output", ""),
+        ]
+        timestamps = [
+            dt.datetime(2026, 3, 26, 0, 0, 0, tzinfo=dt.timezone.utc),
+            dt.datetime(2026, 3, 26, 0, 0, 1, tzinfo=dt.timezone.utc),
+            dt.datetime(2026, 3, 26, 0, 0, 2, tzinfo=dt.timezone.utc),
+            dt.datetime(2026, 3, 26, 0, 0, 10, tzinfo=dt.timezone.utc),
+            dt.datetime(2026, 3, 26, 0, 0, 12, tzinfo=dt.timezone.utc),
+        ]
+
+        with mock.patch("backend_runner.subprocess.run", side_effect=completed), mock.patch(
+            "backend_runner.datetime"
+        ) as mocked_datetime, mock.patch(
+            "backend_runner.time.perf_counter",
+            side_effect=[10.0, 11.0, 12.0, 20.0, 25.0, 30.0, 30.0],
+        ):
+            mocked_datetime.now.side_effect = timestamps
+            result = run_phase(
+                PhaseExecutionRequest(
+                    phase="skill",
+                    backend_id="fake",
+                    backend=backend,
+                    prompt_text="prompt",
+                    repo_path=Path("/tmp/repo"),
+                    model=None,
+                    timeout_seconds=30,
+                    retry_policy=build_retry_policy(max_attempts=2, backoff_seconds=0),
+                )
+            )
+
+        self.assertEqual(result.started_at, timestamps[0].isoformat())
+        self.assertEqual(result.finished_at, timestamps[-1].isoformat())
+        self.assertEqual(result.elapsed_seconds, 20.0)
+        self.assertEqual(result.attempts[0].started_at, timestamps[1].isoformat())
+        self.assertEqual(result.attempts[-1].finished_at, timestamps[-1].isoformat())
+
+    def test_retry_policy_cli_args_encodes_empty_retry_on_with_none_sentinel(self) -> None:
+        retry_policy = build_retry_policy(max_attempts=1, backoff_seconds=0, retry_on=[])
+
+        args = retry_policy_cli_args(retry_policy)
+
+        self.assertEqual(args, ["--max-attempts", "1", "--backoff-seconds", "0.0", "--retry-on", "none"])
+
+    def test_parse_retry_on_values_accepts_none_sentinel_as_empty_set(self) -> None:
+        self.assertEqual(parse_retry_on_values(["none"]), ())
+
+    def test_build_backend_context_records_effective_claude_eval_output_format(self) -> None:
+        args = argparse.Namespace(
+            permission_mode="bypassPermissions",
+            output_format="text",
+            sandbox="workspace-write",
+            full_auto=True,
+            codex_reasoning_effort="high",
+        )
+
+        context = build_backend_context(
+            args,
+            "claude",
+            phase="eval",
+            schema_file=Path("/tmp/schema.json"),
+        )
+
+        self.assertEqual(
+            context,
+            {
+                "permission_mode": "bypassPermissions",
+                "output_format": "json",
+            },
+        )
+
+    def test_build_backend_context_normalizes_opencode_output_format(self) -> None:
+        args = argparse.Namespace(
+            permission_mode="bypassPermissions",
+            output_format="stream-json",
+            sandbox="workspace-write",
+            full_auto=True,
+            codex_reasoning_effort="high",
+        )
+
+        context = build_backend_context(
+            args,
+            "opencode",
+            phase="skill",
+        )
+
+        self.assertEqual(
+            context,
+            {
+                "output_format": "json",
+            },
+        )
+
+    def test_classify_phase_failure_prefers_nonzero_returncode_over_parse_error_with_stdout(self) -> None:
+        failure_reason = classify_phase_failure(
+            returncode=1,
+            timed_out=False,
+            raw_stdout="backend printed something",
+            raw_stderr="",
+            final_message="",
+            parse_error="Eval output did not contain any parsed rubric scores.",
+        )
+
+        self.assertEqual(failure_reason, RETRY_REASON_NONZERO_RETURNCODE)
+
+    def test_classify_phase_failure_does_not_treat_stderr_only_parse_error_as_empty_output(self) -> None:
+        failure_reason = classify_phase_failure(
+            returncode=0,
+            timed_out=False,
+            raw_stdout="",
+            raw_stderr="usage: fake judge --token <token>",
+            final_message="",
+            parse_error="Eval phase produced no usable output.",
+        )
+
+        self.assertNotEqual(failure_reason, RETRY_REASON_EMPTY_OUTPUT_PARSE_ERROR)
+
+    def test_save_summary_and_meta_include_retry_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            result = self._make_result(self._make_spec("context-routing"), 1)
+            result.attempt_count = 3
+            result.final_attempt = 3
+            result.failure_reason = None
+            result.attempts = [
+                {
+                    "attempt": 1,
+                    "returncode": None,
+                    "timed_out": True,
+                    "failure_reason": "timeout",
+                    "parse_error": None,
+                    "raw_stdout_excerpt": None,
+                    "raw_stderr_excerpt": None,
+                    "started_at": "2026-03-26T00:00:00+00:00",
+                    "finished_at": "2026-03-26T00:00:01+00:00",
+                    "elapsed_seconds": 1.0,
+                },
+                {
+                    "attempt": 2,
+                    "returncode": 1,
+                    "timed_out": False,
+                    "failure_reason": "nonzero_returncode",
+                    "parse_error": None,
+                    "raw_stdout_excerpt": "temporary",
+                    "raw_stderr_excerpt": "temporary",
+                    "started_at": "2026-03-26T00:00:02+00:00",
+                    "finished_at": "2026-03-26T00:00:03+00:00",
+                    "elapsed_seconds": 1.0,
+                },
+                {
+                    "attempt": 3,
+                    "returncode": 0,
+                    "timed_out": False,
+                    "failure_reason": None,
+                    "parse_error": None,
+                    "raw_stdout_excerpt": "final",
+                    "raw_stderr_excerpt": None,
+                    "started_at": "2026-03-26T00:00:04+00:00",
+                    "finished_at": "2026-03-26T00:00:05+00:00",
+                    "elapsed_seconds": 1.0,
+                },
+            ]
+
+            artifacts = save_result(run_dir, result, 1)
+            save_summary(run_dir, None, [(result, artifacts)])
+
+            meta = json.loads((run_dir / artifacts["meta"]).read_text(encoding="utf-8"))
+            summary = json.loads((run_dir / "run-summary.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(meta["attempt_count"], 3)
+            self.assertEqual(meta["final_attempt"], 3)
+            self.assertEqual(len(meta["attempts"]), 3)
+            self.assertIn("attempts", artifacts)
+            self.assertEqual(summary["results"][0]["attempt_count"], 3)
+            self.assertEqual(summary["results"][0]["final_attempt"], 3)
+            self.assertEqual(len(summary["results"][0]["attempts"]), 3)
 
     @staticmethod
     def _make_spec(task: str) -> RunSpec:

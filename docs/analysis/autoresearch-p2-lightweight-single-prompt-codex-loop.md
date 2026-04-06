@@ -1,9 +1,9 @@
 ---
 title: "Autoresearch P2：单 Prompt、Codex-only 轻量迭代方案"
 status: active
-updated: 2026-03-28
+updated: 2026-04-06
 owner: aw-kernel
-last_verified: 2026-03-28
+last_verified: 2026-04-06
 ---
 # Autoresearch P2：单 Prompt、Codex-only 轻量迭代方案
 
@@ -18,7 +18,7 @@ last_verified: 2026-03-28
 
 本文继续保留为：
 
-- P2 方案为什么要收窄为“单 Prompt、`codex -> codex`、低变量”的设计记录
+- P2 方案为什么最初要收窄为“单 Prompt、默认 `codex -> codex`、低变量”的设计记录
 - 尚未升格为主线运行说明的背景约束与取舍说明
 
 因此，如果当前任务是“实际发起或复核已实现的 P2 run”，应优先读取上面的 runbook 和脚本入口文档，而不是把本文当作唯一执行入口。
@@ -87,7 +87,7 @@ last_verified: 2026-03-28
 
 - suite 只能覆盖 `target_task`
 - `mutable_paths` 只能包含 `target_prompt_path`
-- 若不是 `codex -> codex`，直接 fail closed
+- 默认 backend pair 仍假定 `codex -> codex`；当前已实现代码允许 contract 用 `expected_backend / expected_judge_backend` 显式覆盖这对默认值
 
 说明：
 
@@ -103,7 +103,7 @@ last_verified: 2026-03-28
 - contract 只承载两项轻量真相字段：
   - `target_task`
   - `target_prompt_path`
-- `codex -> codex` 不作为 contract 主 schema 的静态真相，而是在 P2 preflight 中解析 suite manifest 后做强校验
+- 默认 `codex -> codex` 不作为 contract 主 schema 的静态真相，而是在 P2 preflight 中解析 suite manifest 后做强校验；当前实现已允许 contract 声明期望 backend pair 覆盖默认值
 - 通用 `load_contract()` 继续承担通用合同校验，不直接变成 P2 专属 fail-closed 入口
 - P2 专属收紧只在显式 P2 路径上生效，避免误伤当前已存在的非 P2 fixture 和 smoke
 
@@ -156,7 +156,7 @@ P2 preflight 需要同时校验：
 
 本方案把 `Codex` 定为唯一执行与评测后端。
 
-固定口径：
+设计默认口径：
 
 - worker backend = `codex`
 - judge backend = `codex`
@@ -186,7 +186,7 @@ P2 preflight 需要同时校验：
 ### 3. 新冠军复评
 
 - 任一 round 命中 `keep` 后，立即用同一配置 replay 1 次
-- replay 必须先复用同一套 P2 preflight，不能绕开单 prompt 与 `codex -> codex` 约束
+- replay 必须先复用同一套 P2 preflight，不能绕开单 prompt 与 contract 期望 backend pair 约束；未声明时默认仍是 `codex -> codex`
 - 若 replay 不能保持 validation 相对本轮 round validation 不下降，则该 round 视为不稳定，不升级 champion
 - replay 复跑前应先清空旧的 `replay/` 子目录，避免陈旧产物污染结果
 

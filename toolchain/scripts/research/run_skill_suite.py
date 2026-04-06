@@ -5,16 +5,22 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 import sys
 import tempfile
-import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from backends import BACKEND_IDS, CODEX_REASONING_EFFORTS, build_backend
+from backend_runner import (
+    PhaseExecutionRequest,
+    build_retry_policy,
+    cleanup_backend_artifacts as cleanup_backend_artifacts_impl,
+    coerce_process_output as coerce_process_output_impl,
+    parse_retry_on_values,
+    run_phase,
+)
+from backends import BACKEND_IDS, CODEX_REASONING_EFFORTS, build_backend, normalize_opencode_output_format
 from common import (
     EVAL_SCORE_DIMENSIONS,
     RUN_SUMMARY_SCHEMA_PATH,
@@ -157,7 +163,27 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--opencode-bin",
         default="opencode",
-        help="Reserved OpenCode executable name. Defaults to 'opencode'.",
+        help="OpenCode executable to invoke. Defaults to 'opencode'.",
+    )
+    parser.add_argument(
+        "--max-attempts",
+        type=int,
+        default=3,
+        help="Maximum retry attempts for each skill/eval phase. Defaults to 3.",
+    )
+    parser.add_argument(
+        "--backoff-seconds",
+        type=float,
+        default=3.0,
+        help="Sleep between retry attempts in seconds. Defaults to 3.",
+    )
+    parser.add_argument(
+        "--retry-on",
+        action="append",
+        help=(
+            "Retry classification(s), repeatable or comma-separated. "
+            "Defaults to timeout,nonzero_returncode,empty_output_parse_error,transient_disconnect."
+        ),
     )
     return parser.parse_args(argv)
 
@@ -165,6 +191,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def validate_args(args: argparse.Namespace) -> None:
     if args.jobs < 1:
         raise ValueError("--jobs must be at least 1.")
+    build_retry_policy(
+        max_attempts=args.max_attempts,
+        backoff_seconds=args.backoff_seconds,
+        retry_on=list(parse_retry_on_values(args.retry_on)),
+    )
 
     if args.suite:
         forbidden = []
@@ -329,6 +360,40 @@ def build_backend_registry(specs: list[RunSpec], args: argparse.Namespace) -> di
     return registry
 
 
+def resolve_retry_policy_args(args: argparse.Namespace):
+    return build_retry_policy(
+        max_attempts=args.max_attempts,
+        backoff_seconds=args.backoff_seconds,
+        retry_on=list(parse_retry_on_values(args.retry_on)),
+    )
+
+
+def build_backend_context(
+    args: argparse.Namespace,
+    backend_id: str,
+    *,
+    phase: str,
+    schema_file: Path | None = None,
+) -> dict[str, Any]:
+    if backend_id == "claude":
+        effective_output_format = "json" if phase == "eval" and schema_file is not None else args.output_format
+        return {
+            "permission_mode": args.permission_mode,
+            "output_format": effective_output_format,
+        }
+    if backend_id == "codex":
+        return {
+            "sandbox": args.sandbox,
+            "full_auto": bool(args.full_auto),
+            "codex_reasoning_effort": args.codex_reasoning_effort,
+        }
+    if backend_id == "opencode":
+        return {
+            "output_format": normalize_opencode_output_format(args.output_format),
+        }
+    return {}
+
+
 def run_backend_prompt(
     backend,
     spec: RunSpec,
@@ -338,48 +403,27 @@ def run_backend_prompt(
     model: str | None,
     timeout: int,
     schema_file: Path | None,
+    retry_policy,
+    backend_context: dict[str, Any],
 ) -> RunResult:
-    if phase == "skill":
-        invocation = backend.build_skill_command(prompt_text=prompt_text, repo_path=spec.repo_path, model=model)
-    else:
-        invocation = backend.build_eval_command(
+    parse_output = None
+    if phase == "eval":
+        parse_output = lambda output_text: parse_eval_output(spec, output_text)
+    execution = run_phase(
+        PhaseExecutionRequest(
+            phase=phase,
+            backend_id=backend.backend_id,
+            backend=backend,
             prompt_text=prompt_text,
             repo_path=spec.repo_path,
             model=model,
-            schema_path=schema_file,
+            timeout_seconds=timeout,
+            retry_policy=retry_policy,
+            permission_args=backend_context,
+            schema_file=schema_file,
+            parse_output=parse_output,
         )
-
-    started_at_dt = datetime.now(timezone.utc)
-    started_perf = time.perf_counter()
-    try:
-        completed = subprocess.run(
-            invocation.command,
-            cwd=spec.repo_path,
-            input=invocation.stdin_text,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
-        )
-        returncode = completed.returncode
-        raw_stdout = coerce_process_output(completed.stdout)
-        raw_stderr = coerce_process_output(completed.stderr)
-        timed_out = False
-    except subprocess.TimeoutExpired as exc:
-        returncode = None
-        raw_stdout = coerce_process_output(exc.stdout)
-        raw_stderr = coerce_process_output(exc.stderr)
-        timed_out = True
-    finally:
-        finished_at_dt = datetime.now(timezone.utc)
-        elapsed_seconds = time.perf_counter() - started_perf
-
-    final_message = ""
-    try:
-        final_message = backend.extract_final_message(invocation, raw_stdout)
-    finally:
-        cleanup_backend_artifacts(invocation.cleanup_paths)
-
+    )
     result = RunResult(
         task=spec.task,
         phase=phase,
@@ -388,38 +432,33 @@ def run_backend_prompt(
         repo_path=spec.repo_path,
         prompt_file=prompt_file.resolve(),
         prompt_text=prompt_text,
-        command=invocation.command,
-        returncode=returncode,
-        raw_stdout=raw_stdout,
-        raw_stderr=raw_stderr,
-        final_message=final_message,
-        elapsed_seconds=elapsed_seconds,
-        timed_out=timed_out,
-        started_at=started_at_dt.isoformat(),
-        finished_at=finished_at_dt.isoformat(),
+        command=execution.command,
+        returncode=execution.returncode,
+        raw_stdout=execution.raw_stdout,
+        raw_stderr=execution.raw_stderr,
+        final_message=execution.final_message,
+        elapsed_seconds=execution.elapsed_seconds,
+        timed_out=execution.timed_out,
+        started_at=execution.started_at,
+        finished_at=execution.finished_at,
         schema_file=schema_file.resolve() if schema_file else None,
+        structured_output=execution.structured_output,
+        parse_error=execution.parse_error,
+        failure_reason=execution.failure_reason,
+        attempt_count=execution.attempt_count,
+        final_attempt=execution.final_attempt,
+        attempts=[attempt.to_dict() for attempt in execution.attempts],
+        backend_context=execution.backend_context,
     )
-    if phase == "eval":
-        structured_output, parse_error = parse_eval_output(spec, final_message or raw_stdout)
-        result.structured_output = structured_output
-        result.parse_error = parse_error
     return result
 
 
 def coerce_process_output(value: str | bytes | None) -> str:
-    if value is None:
-        return ""
-    if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace")
-    return value
+    return coerce_process_output_impl(value)
 
 
 def cleanup_backend_artifacts(paths: list[Path]) -> None:
-    for path in paths:
-        try:
-            path.unlink(missing_ok=True)
-        except OSError:
-            continue
+    cleanup_backend_artifacts_impl(paths)
 
 
 def parse_eval_output(spec: RunSpec, raw_text: str) -> tuple[dict[str, Any] | None, str | None]:
@@ -472,6 +511,8 @@ def print_result(result: RunResult) -> None:
     print(f"prompt_file: {result.prompt_file}")
     print(f"status: {status}")
     print(f"elapsed_seconds: {result.elapsed_seconds:.2f}")
+    print(f"attempt_count: {result.attempt_count}")
+    print(f"final_attempt: {result.final_attempt}")
     print(f"command: {result.command_preview}")
 
     display_text = result.final_message or result.raw_stdout
@@ -489,6 +530,9 @@ def print_result(result: RunResult) -> None:
     if result.parse_error:
         print()
         print(f"parse_error: {result.parse_error}")
+    if result.failure_reason:
+        print()
+        print(f"failure_reason: {result.failure_reason}")
     print()
 
 
@@ -532,6 +576,7 @@ def save_result(run_dir: Path, result: RunResult, sequence: int) -> dict[str, st
     stderr_path = run_dir / f"{stem}.raw.stderr.txt"
     legacy_stderr_path = run_dir / f"{stem}.stderr.txt"
     meta_path = run_dir / f"{stem}.meta.json"
+    attempts_path = run_dir / f"{stem}.attempts.json"
 
     prompt_path.write_text(result.prompt_text + "\n", encoding="utf-8")
     response_path.write_text(response_text + ("\n" if response_text else ""), encoding="utf-8")
@@ -553,11 +598,28 @@ def save_result(run_dir: Path, result: RunResult, sequence: int) -> dict[str, st
         artifacts["stderr"] = legacy_stderr_path.name
     if result.schema_file is not None and result.schema_file.parent == run_dir:
         artifacts["schema"] = result.schema_file.name
+    if result.attempts:
+        artifacts["attempts"] = attempts_path.name
 
     if result.structured_output is not None:
         structured_path = run_dir / f"{stem}.structured.json"
         write_json(structured_path, result.structured_output)
         artifacts["structured_output"] = structured_path.name
+
+    if result.attempts:
+        write_json(
+            attempts_path,
+            {
+                "task": result.task,
+                "phase": result.phase,
+                "backend": result.backend,
+                "judge_backend": result.judge_backend,
+                "attempt_count": result.attempt_count,
+                "final_attempt": result.final_attempt,
+                "failure_reason": result.failure_reason,
+                "attempts": result.attempts,
+            },
+        )
 
     meta = {
         "task": result.task,
@@ -574,6 +636,11 @@ def save_result(run_dir: Path, result: RunResult, sequence: int) -> dict[str, st
         "finished_at": result.finished_at,
         "schema_file": str(result.schema_file) if result.schema_file else None,
         "parse_error": result.parse_error,
+        "failure_reason": result.failure_reason,
+        "attempt_count": result.attempt_count,
+        "final_attempt": result.final_attempt,
+        "attempts": result.attempts,
+        "backend_context": result.backend_context,
         "artifacts": artifacts,
     }
     if result.structured_output is not None:
@@ -607,6 +674,11 @@ def save_summary(
                 "finished_at": result.finished_at,
                 "schema_file": str(result.schema_file) if result.schema_file else None,
                 "parse_error": result.parse_error,
+                "failure_reason": result.failure_reason,
+                "attempt_count": result.attempt_count,
+                "final_attempt": result.final_attempt,
+                "attempts": result.attempts,
+                "backend_context": result.backend_context,
                 "structured_output": result.structured_output,
                 "artifacts": artifacts or {},
             }
@@ -635,6 +707,7 @@ def run_spec_pipeline(
     run_dir: Path | None,
 ) -> list[tuple[RunResult, dict[str, str] | None]]:
     results: list[tuple[RunResult, dict[str, str] | None]] = []
+    retry_policy = resolve_retry_policy_args(args)
     prompt_text = read_prompt(spec.prompt_file)
     skill_result = run_backend_prompt(
         backend=backend_registry[spec.backend],
@@ -645,6 +718,8 @@ def run_spec_pipeline(
         model=args.model,
         timeout=args.timeout,
         schema_file=None,
+        retry_policy=retry_policy,
+        backend_context=build_backend_context(args, spec.backend, phase="skill"),
     )
     skill_artifacts = save_result(run_dir, skill_result, spec_index * 2 - 1) if run_dir else None
     results.append((skill_result, skill_artifacts))
@@ -672,6 +747,13 @@ def run_spec_pipeline(
             model=args.eval_model or args.model,
             timeout=args.eval_timeout or args.timeout,
             schema_file=schema_file,
+            retry_policy=retry_policy,
+            backend_context=build_backend_context(
+                args,
+                spec.judge_backend,
+                phase="eval",
+                schema_file=schema_file,
+            ),
         )
     finally:
         if schema_cleanup is not None:
