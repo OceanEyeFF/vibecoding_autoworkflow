@@ -629,8 +629,10 @@ codex exec \
   - `--model`
   - `--dir <repo>`
   - `--format <normalized-output-format>`
+- `run_phase()` 也会把子进程 `cwd` 设为 `repo_path`；对 `OpenCode` 来说这不是二选一替代关系，当前 runner 会同时保留 `cwd` 与 `--dir`
+- 上述 `--dir` 用法按本地 `opencode run --help` 已验证为当前 CLI 支持参数
 - `OpenCode` 当前不宣称 schema-based eval；judge 走文本解析回退
-- `extract_final_message()` 会从 JSON event stdout 中提取最后一个 assistant message；提取失败时回退 `stdout.strip()`
+- `extract_final_message()` 会优先消费 JSONL `text` 事件与 message-style 事件，提取失败时回退 `stdout.strip()`
 
 因此当前文档只能写：
 

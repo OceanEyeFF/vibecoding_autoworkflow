@@ -400,7 +400,7 @@ P0.3 的脚本侧约束当前固定为：
 
 - `claude`：直接把 prompt 作为命令参数传入；支持 JSON schema judge
 - `codex`：通过 stdin 传 prompt，使用 `--output-last-message` 提取最终消息；支持 JSON schema judge
-- `opencode`：已提供 MVP backend；透传 `model / --dir`，并把统一 runner 的 output format 归一化为 OpenCode 的 `default/json`；`extract_final_message()` 会优先消费 JSONL `text` 事件；不宣称 schema judge 支持，eval 继续走文本解析回退
+- `opencode`：已提供 MVP backend；透传 `model / --dir`，并把统一 runner 的 output format 归一化为 OpenCode 的 `default/json`；runner 会同时以 `cwd=repo_path` 启动子进程并显式传 `--dir <repo_path>`，这是按当前本地 `opencode run --help` 已验证的参数面；`extract_final_message()` 会优先消费 JSONL `text` 事件；不宣称 schema judge 支持，eval 继续走文本解析回退
 
 ## Eval Behavior
 
