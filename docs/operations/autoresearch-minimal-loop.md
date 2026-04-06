@@ -104,6 +104,17 @@ last_verified: 2026-04-06
 3. `validation.yaml`
 4. `manual-mutation.json` 或 run-local `mutation-registry.json`
 
+如果要直接起一个最小 `claude-claude` P2 run，不必再从本文手抄 JSON/YAML。当前仓库已经提供 copy-ready 模板包：
+
+- `toolchain/evals/fixtures/templates/autoresearch-p2-claude-claude/`
+
+推荐做法：
+
+1. 复制该目录里的五个模板文件到 `.autoworkflow/manual-runs/<run-name>/`
+2. 分别重命名成 `contract.json`、`train.yaml`、`validation.yaml`、`acceptance.yaml`、`manual-mutation.json`
+3. 把 suite 里的 `/abs/path/to/target-repo` 改成实际评测 repo
+4. 执行 `refresh_manual_run_contract.py` 刷新 fresh `run_id`
+
 最小 `contract.json` 示例：
 
 ```json
@@ -227,11 +238,21 @@ runs:
 }
 ```
 
+如果要走 `claude -> claude`，在上述最小形态基础上再显式加上：
+
+```json
+{
+  "worker_backend": "claude",
+  "expected_backend": "claude",
+  "expected_judge_backend": "claude"
+}
+```
+
 Batch 1 的 suite 也要额外满足：
 
 - 每个 run 只能覆盖 contract 指定的单个 task
-- `backend` 必须是 `codex`
-- `judge_backend` 必须是 `codex`
+- `backend` 必须等于 contract 声明的 `expected_backend`
+- `judge_backend` 必须等于 contract 声明的 `expected_judge_backend`
 - `prompt_file` 若显式写出，必须解析到 `target_prompt_path`
 
 推荐最小 suite 形态：
