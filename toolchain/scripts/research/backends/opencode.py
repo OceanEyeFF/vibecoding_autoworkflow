@@ -50,7 +50,7 @@ class OpenCodeBackend(ResearchBackend):
             if not event_type:
                 continue
             if event_type == "message.updated":
-                message = payload.get("message")
+                message = self._payload_message(payload)
                 if not isinstance(message, dict):
                     message = payload
                 role = str(message.get("role") or payload.get("role") or "").strip()
@@ -68,7 +68,7 @@ class OpenCodeBackend(ResearchBackend):
                         structured_by_message[message_id] = structured
                 continue
             if event_type == "text":
-                part = payload.get("part")
+                part = self._payload_part(payload)
                 if not isinstance(part, dict):
                     continue
                 message_id = str(part.get("messageID") or payload.get("messageID") or latest_assistant_message_id or "").strip()
@@ -82,10 +82,15 @@ class OpenCodeBackend(ResearchBackend):
                     part_order.append(key)
                 continue
             if event_type == "message.part.updated":
-                part = payload.get("part")
+                part = self._payload_part(payload)
                 if not isinstance(part, dict):
                     continue
-                message_id = str(payload.get("messageID") or latest_assistant_message_id or "").strip()
+                message_id = str(
+                    payload.get("messageID")
+                    or part.get("messageID")
+                    or latest_assistant_message_id
+                    or ""
+                ).strip()
                 if not message_id:
                     continue
                 if part.get("type") != "text":
@@ -97,12 +102,23 @@ class OpenCodeBackend(ResearchBackend):
                     part_order.append(key)
                 continue
             if event_type == "message.part.delta":
-                message_id = str(payload.get("messageID") or latest_assistant_message_id or "").strip()
+                part = self._payload_part(payload)
+                message_id = str(
+                    payload.get("messageID")
+                    or (part.get("messageID") if isinstance(part, dict) else None)
+                    or latest_assistant_message_id
+                    or ""
+                ).strip()
                 if not message_id:
                     continue
-                part_id = str(payload.get("partID") or payload.get("id") or f"delta-{index}").strip()
+                part_id = str(
+                    payload.get("partID")
+                    or payload.get("id")
+                    or (part.get("id") if isinstance(part, dict) else None)
+                    or f"delta-{index}"
+                ).strip()
                 key = (message_id, part_id)
-                delta_parts[key] = delta_parts.get(key, "") + str(payload.get("delta") or "")
+                delta_parts[key] = delta_parts.get(key, "") + str(self._payload_delta(payload) or "")
                 if key not in part_order:
                     part_order.append(key)
 
@@ -142,6 +158,35 @@ class OpenCodeBackend(ResearchBackend):
             command.extend(["--model", model])
         command.append(prompt_text)
         return command
+
+    @staticmethod
+    def _payload_properties(payload: dict[str, object]) -> dict[str, object]:
+        properties = payload.get("properties")
+        return properties if isinstance(properties, dict) else {}
+
+    def _payload_message(self, payload: dict[str, object]) -> dict[str, object] | None:
+        message = payload.get("message")
+        if isinstance(message, dict):
+            return message
+        properties = self._payload_properties(payload)
+        for key in ("message", "info"):
+            candidate = properties.get(key)
+            if isinstance(candidate, dict):
+                return candidate
+        return None
+
+    def _payload_part(self, payload: dict[str, object]) -> dict[str, object] | None:
+        part = payload.get("part")
+        if isinstance(part, dict):
+            return part
+        properties = self._payload_properties(payload)
+        candidate = properties.get("part")
+        return candidate if isinstance(candidate, dict) else None
+
+    def _payload_delta(self, payload: dict[str, object]) -> object | None:
+        if "delta" in payload:
+            return payload.get("delta")
+        return self._payload_properties(payload).get("delta")
 
     def _iter_event_payloads(self, stdout: str):
         for raw_line in stdout.splitlines():
