@@ -16,8 +16,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from backend_runner import (
     PhaseExecutionRequest,
     RETRY_REASON_EMPTY_OUTPUT_PARSE_ERROR,
+    RETRY_REASON_NONZERO_RETURNCODE,
     RETRY_REASON_TIMEOUT,
     build_retry_policy,
+    classify_phase_failure,
+    parse_retry_on_values,
     retry_policy_cli_args,
     run_phase,
 )
@@ -335,12 +338,15 @@ class RunSkillSuiteTest(unittest.TestCase):
         self.assertEqual(result.attempts[0].started_at, timestamps[1].isoformat())
         self.assertEqual(result.attempts[-1].finished_at, timestamps[-1].isoformat())
 
-    def test_retry_policy_cli_args_omits_empty_retry_on(self) -> None:
+    def test_retry_policy_cli_args_encodes_empty_retry_on_with_none_sentinel(self) -> None:
         retry_policy = build_retry_policy(max_attempts=1, backoff_seconds=0, retry_on=[])
 
         args = retry_policy_cli_args(retry_policy)
 
-        self.assertEqual(args, ["--max-attempts", "1", "--backoff-seconds", "0.0"])
+        self.assertEqual(args, ["--max-attempts", "1", "--backoff-seconds", "0.0", "--retry-on", "none"])
+
+    def test_parse_retry_on_values_accepts_none_sentinel_as_empty_set(self) -> None:
+        self.assertEqual(parse_retry_on_values(["none"]), ())
 
     def test_build_backend_context_records_effective_claude_eval_output_format(self) -> None:
         args = argparse.Namespace(
@@ -365,6 +371,30 @@ class RunSkillSuiteTest(unittest.TestCase):
                 "output_format": "json",
             },
         )
+
+    def test_classify_phase_failure_prefers_nonzero_returncode_over_parse_error_with_stdout(self) -> None:
+        failure_reason = classify_phase_failure(
+            returncode=1,
+            timed_out=False,
+            raw_stdout="backend printed something",
+            raw_stderr="",
+            final_message="",
+            parse_error="Eval output did not contain any parsed rubric scores.",
+        )
+
+        self.assertEqual(failure_reason, RETRY_REASON_NONZERO_RETURNCODE)
+
+    def test_classify_phase_failure_does_not_treat_stderr_only_parse_error_as_empty_output(self) -> None:
+        failure_reason = classify_phase_failure(
+            returncode=0,
+            timed_out=False,
+            raw_stdout="",
+            raw_stderr="usage: fake judge --token <token>",
+            final_message="",
+            parse_error="Eval phase produced no usable output.",
+        )
+
+        self.assertNotEqual(failure_reason, RETRY_REASON_EMPTY_OUTPUT_PARSE_ERROR)
 
     def test_save_summary_and_meta_include_retry_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

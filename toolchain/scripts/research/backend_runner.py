@@ -174,6 +174,11 @@ def parse_retry_on_values(values: list[str] | None) -> tuple[str, ...]:
                 tokens.append(normalized)
     if not tokens:
         raise ValueError("--retry-on must contain at least one retry reason when provided.")
+    lowered_tokens = [token.lower() for token in tokens]
+    if any(token in {"none", "off", "disabled", "empty"} for token in lowered_tokens):
+        if len(tokens) != 1:
+            raise ValueError("--retry-on special empty-set values cannot be combined with retry reasons.")
+        return ()
     invalid = sorted(set(tokens) - set(ALLOWED_RETRY_REASONS))
     if invalid:
         raise ValueError(
@@ -191,6 +196,8 @@ def retry_policy_cli_args(retry_policy: RetryPolicyConfig) -> list[str]:
     ]
     if retry_policy.retry_on:
         args.extend(["--retry-on", ",".join(retry_policy.retry_on)])
+    else:
+        args.extend(["--retry-on", "none"])
     return args
 
 
@@ -212,16 +219,16 @@ def classify_phase_failure(
     combined = "\n".join(
         part for part in (raw_stdout, raw_stderr, final_message) if part.strip()
     ).lower()
-    if parse_error is not None:
-        if not (final_message or raw_stdout).strip():
-            return RETRY_REASON_EMPTY_OUTPUT_PARSE_ERROR
-        if any(pattern in combined for pattern in TRANSIENT_DISCONNECT_PATTERNS):
-            return RETRY_REASON_TRANSIENT_DISCONNECT
-        return NON_RETRYABLE_PARSE_ERROR
     if returncode not in (0, None):
         if any(pattern in combined for pattern in TRANSIENT_DISCONNECT_PATTERNS):
             return RETRY_REASON_TRANSIENT_DISCONNECT
         return RETRY_REASON_NONZERO_RETURNCODE
+    if parse_error is not None:
+        if not (final_message or raw_stdout or raw_stderr).strip():
+            return RETRY_REASON_EMPTY_OUTPUT_PARSE_ERROR
+        if any(pattern in combined for pattern in TRANSIENT_DISCONNECT_PATTERNS):
+            return RETRY_REASON_TRANSIENT_DISCONNECT
+        return NON_RETRYABLE_PARSE_ERROR
     return None
 
 
