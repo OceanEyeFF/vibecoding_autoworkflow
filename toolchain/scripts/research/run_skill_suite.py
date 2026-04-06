@@ -368,11 +368,18 @@ def resolve_retry_policy_args(args: argparse.Namespace):
     )
 
 
-def build_backend_context(args: argparse.Namespace, backend_id: str) -> dict[str, Any]:
+def build_backend_context(
+    args: argparse.Namespace,
+    backend_id: str,
+    *,
+    phase: str,
+    schema_file: Path | None = None,
+) -> dict[str, Any]:
     if backend_id == "claude":
+        effective_output_format = "json" if phase == "eval" and schema_file is not None else args.output_format
         return {
             "permission_mode": args.permission_mode,
-            "output_format": args.output_format,
+            "output_format": effective_output_format,
         }
     if backend_id == "codex":
         return {
@@ -712,7 +719,7 @@ def run_spec_pipeline(
         timeout=args.timeout,
         schema_file=None,
         retry_policy=retry_policy,
-        backend_context=build_backend_context(args, spec.backend),
+        backend_context=build_backend_context(args, spec.backend, phase="skill"),
     )
     skill_artifacts = save_result(run_dir, skill_result, spec_index * 2 - 1) if run_dir else None
     results.append((skill_result, skill_artifacts))
@@ -741,7 +748,12 @@ def run_spec_pipeline(
             timeout=args.eval_timeout or args.timeout,
             schema_file=schema_file,
             retry_policy=retry_policy,
-            backend_context=build_backend_context(args, spec.judge_backend),
+            backend_context=build_backend_context(
+                args,
+                spec.judge_backend,
+                phase="eval",
+                schema_file=schema_file,
+            ),
         )
     finally:
         if schema_cleanup is not None:

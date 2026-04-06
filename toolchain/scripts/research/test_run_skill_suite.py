@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import subprocess
 import sys
@@ -17,12 +18,14 @@ from backend_runner import (
     RETRY_REASON_EMPTY_OUTPUT_PARSE_ERROR,
     RETRY_REASON_TIMEOUT,
     build_retry_policy,
+    retry_policy_cli_args,
     run_phase,
 )
 from backends.base import BackendInvocation, ResearchBackend
 from common import RunResult, RunSpec, resolve_repo
 from exrepo_runtime import materialize_suite, resolve_tmp_exrepos_root
 from run_skill_suite import (
+    build_backend_context,
     coerce_process_output,
     execute_specs,
     parse_args,
@@ -291,6 +294,77 @@ class RunSkillSuiteTest(unittest.TestCase):
         self.assertEqual(result.attempt_count, 1)
         self.assertEqual(result.final_attempt, 1)
         self.assertTrue(result.timed_out)
+
+    def test_phase_executor_preserves_phase_level_timing_across_retries(self) -> None:
+        backend = FakeBackend(executable="fake")
+        completed = [
+            subprocess.CompletedProcess(["fake", "skill"], 1, "temporary failure", ""),
+            subprocess.CompletedProcess(["fake", "skill"], 0, "usable output", ""),
+        ]
+        timestamps = [
+            dt.datetime(2026, 3, 26, 0, 0, 0, tzinfo=dt.timezone.utc),
+            dt.datetime(2026, 3, 26, 0, 0, 1, tzinfo=dt.timezone.utc),
+            dt.datetime(2026, 3, 26, 0, 0, 2, tzinfo=dt.timezone.utc),
+            dt.datetime(2026, 3, 26, 0, 0, 10, tzinfo=dt.timezone.utc),
+            dt.datetime(2026, 3, 26, 0, 0, 12, tzinfo=dt.timezone.utc),
+        ]
+
+        with mock.patch("backend_runner.subprocess.run", side_effect=completed), mock.patch(
+            "backend_runner.datetime"
+        ) as mocked_datetime, mock.patch(
+            "backend_runner.time.perf_counter",
+            side_effect=[10.0, 11.0, 12.0, 20.0, 25.0, 30.0, 30.0],
+        ):
+            mocked_datetime.now.side_effect = timestamps
+            result = run_phase(
+                PhaseExecutionRequest(
+                    phase="skill",
+                    backend_id="fake",
+                    backend=backend,
+                    prompt_text="prompt",
+                    repo_path=Path("/tmp/repo"),
+                    model=None,
+                    timeout_seconds=30,
+                    retry_policy=build_retry_policy(max_attempts=2, backoff_seconds=0),
+                )
+            )
+
+        self.assertEqual(result.started_at, timestamps[0].isoformat())
+        self.assertEqual(result.finished_at, timestamps[-1].isoformat())
+        self.assertEqual(result.elapsed_seconds, 20.0)
+        self.assertEqual(result.attempts[0].started_at, timestamps[1].isoformat())
+        self.assertEqual(result.attempts[-1].finished_at, timestamps[-1].isoformat())
+
+    def test_retry_policy_cli_args_omits_empty_retry_on(self) -> None:
+        retry_policy = build_retry_policy(max_attempts=1, backoff_seconds=0, retry_on=[])
+
+        args = retry_policy_cli_args(retry_policy)
+
+        self.assertEqual(args, ["--max-attempts", "1", "--backoff-seconds", "0.0"])
+
+    def test_build_backend_context_records_effective_claude_eval_output_format(self) -> None:
+        args = argparse.Namespace(
+            permission_mode="bypassPermissions",
+            output_format="text",
+            sandbox="workspace-write",
+            full_auto=True,
+            codex_reasoning_effort="high",
+        )
+
+        context = build_backend_context(
+            args,
+            "claude",
+            phase="eval",
+            schema_file=Path("/tmp/schema.json"),
+        )
+
+        self.assertEqual(
+            context,
+            {
+                "permission_mode": "bypassPermissions",
+                "output_format": "json",
+            },
+        )
 
     def test_save_summary_and_meta_include_retry_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

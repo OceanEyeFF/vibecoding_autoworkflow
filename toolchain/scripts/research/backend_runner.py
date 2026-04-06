@@ -183,14 +183,15 @@ def parse_retry_on_values(values: list[str] | None) -> tuple[str, ...]:
 
 
 def retry_policy_cli_args(retry_policy: RetryPolicyConfig) -> list[str]:
-    return [
+    args = [
         "--max-attempts",
         str(retry_policy.max_attempts),
         "--backoff-seconds",
         str(retry_policy.backoff_seconds),
-        "--retry-on",
-        ",".join(retry_policy.retry_on),
     ]
+    if retry_policy.retry_on:
+        args.extend(["--retry-on", ",".join(retry_policy.retry_on)])
+    return args
 
 
 def failure_is_retryable(failure_reason: str | None, retry_policy: RetryPolicyConfig) -> bool:
@@ -230,8 +231,13 @@ def run_phase(request: PhaseExecutionRequest) -> PhaseExecutionResult:
 
     attempts: list[PhaseAttemptRecord] = []
     final_result: PhaseExecutionResult | None = None
+    phase_started_at_dt: datetime | None = None
+    phase_started_perf: float | None = None
 
     for attempt in range(1, request.retry_policy.max_attempts + 1):
+        if phase_started_at_dt is None:
+            phase_started_at_dt = datetime.now(timezone.utc)
+            phase_started_perf = time.perf_counter()
         if request.phase == "eval":
             invocation = request.backend.build_eval_command(
                 prompt_text=request.prompt_text,
@@ -318,9 +324,13 @@ def run_phase(request: PhaseExecutionRequest) -> PhaseExecutionResult:
             attempt_count=len(attempts),
             final_attempt=attempt,
             attempts=list(attempts),
-            started_at=started_at_dt.isoformat(),
+            started_at=(phase_started_at_dt or started_at_dt).isoformat(),
             finished_at=finished_at_dt.isoformat(),
-            elapsed_seconds=elapsed_seconds,
+            elapsed_seconds=(
+                time.perf_counter() - phase_started_perf
+                if phase_started_perf is not None
+                else elapsed_seconds
+            ),
             schema_file=request.schema_file,
             backend_context=dict(request.permission_args),
         )
