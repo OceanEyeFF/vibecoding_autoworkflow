@@ -165,6 +165,97 @@ class OpenCodeBackendTest(unittest.TestCase):
 
         self.assertEqual(final_message, "first line\nsecond line")
 
+    def test_extract_final_message_handles_properties_wrapped_message_and_part_events(self) -> None:
+        backend = OpenCodeBackend(executable="opencode", output_format="json")
+        stdout = "\n".join(
+            [
+                json.dumps(
+                    {
+                        "payload": {
+                            "type": "message.updated",
+                            "properties": {
+                                "info": {
+                                    "id": "msg-1",
+                                    "role": "assistant",
+                                }
+                            },
+                        }
+                    }
+                ),
+                json.dumps(
+                    {
+                        "payload": {
+                            "type": "message.part.updated",
+                            "properties": {
+                                "part": {
+                                    "id": "part-1",
+                                    "messageID": "msg-1",
+                                    "type": "text",
+                                    "text": "wrapped answer",
+                                }
+                            },
+                        }
+                    }
+                ),
+            ]
+        )
+
+        final_message = backend.extract_final_message(invocation=None, stdout=stdout)
+
+        self.assertEqual(final_message, "wrapped answer")
+
+    def test_extract_final_message_handles_properties_wrapped_delta_events(self) -> None:
+        backend = OpenCodeBackend(executable="opencode", output_format="json")
+        stdout = "\n".join(
+            [
+                json.dumps(
+                    {
+                        "payload": {
+                            "type": "message.updated",
+                            "properties": {
+                                "info": {
+                                    "id": "msg-1",
+                                    "role": "assistant",
+                                }
+                            },
+                        }
+                    }
+                ),
+                json.dumps(
+                    {
+                        "payload": {
+                            "type": "message.part.delta",
+                            "properties": {
+                                "part": {
+                                    "id": "part-1",
+                                    "messageID": "msg-1",
+                                },
+                                "delta": "wrapped ",
+                            },
+                        }
+                    }
+                ),
+                json.dumps(
+                    {
+                        "payload": {
+                            "type": "message.part.delta",
+                            "properties": {
+                                "part": {
+                                    "id": "part-1",
+                                    "messageID": "msg-1",
+                                },
+                                "delta": "delta",
+                            },
+                        }
+                    }
+                ),
+            ]
+        )
+
+        final_message = backend.extract_final_message(invocation=None, stdout=stdout)
+
+        self.assertEqual(final_message, "wrapped delta")
+
 
 if __name__ == "__main__":
     unittest.main()
