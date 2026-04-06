@@ -1,9 +1,9 @@
 ---
 title: "Autoresearch 最小闭环运行说明"
 status: active
-updated: 2026-03-30
+updated: 2026-04-06
 owner: aw-kernel
-last_verified: 2026-03-30
+last_verified: 2026-04-06
 ---
 # Autoresearch 最小闭环运行说明
 
@@ -54,7 +54,7 @@ last_verified: 2026-03-30
 这一轮不是新的 live backend 观测，而是针对已落地代码与 deterministic smoke 的验收事实：
 
 - 只允许微调一个 research prompt 文件
-- 只允许 `codex -> codex`
+- P2 suite backend pair 默认是 `codex -> codex`，但 contract 可通过 `expected_backend / expected_judge_backend` 显式覆盖
 - 只允许四个固定 target task 之一：
   - `context-routing-skill`
   - `knowledge-base-skill`
@@ -64,6 +64,8 @@ last_verified: 2026-03-30
   - `target_task`
   - `target_prompt_path`
 - `mutable_paths` 必须精确收紧到 `[target_prompt_path]`
+- loop worker backend 默认是 `codex`，但 contract / CLI 可切到 `claude | codex | opencode`
+- contract 可声明统一 `retry_policy`，默认 `max_attempts=3`、`backoff_seconds=3`
 - `init / baseline / prepare-round / run-round` 会做 P2 preflight
 - `decide-round` 不做无条件 CLI preflight，但如果命中 replay 条件，会在 replay 前复用同一套 P2 preflight
 - `promote-round` 会做 P2 preflight
@@ -311,7 +313,10 @@ python3 toolchain/scripts/research/run_autoresearch.py \
 
 ```bash
 python3 toolchain/scripts/research/run_autoresearch_loop.py \
-  --contract /abs/path/to/contract.json
+  --contract /abs/path/to/contract.json \
+  --worker-backend claude \
+  --worker-model claude-opus \
+  --max-attempts 3
 ```
 
 那么命中同一类 stop 时也会正常返回 `0`，并输出：
@@ -377,7 +382,7 @@ python3 -m unittest \
 
 当前命令口径代表的是：
 
-- P2 单 Prompt、`codex -> codex` 主路径可以用 deterministic smoke 证明
+- P2 单 Prompt、默认 `codex -> codex` 主路径，以及 contract-driven backend pair preflight，都可以用 deterministic smoke 证明
 - legacy P1.3 smoke 仍保持独立存在，没有被 P2 夹具吞并
 - 这不是 live Codex acceptance matrix；高成本 live 验收仍属于单独系统级验证
 
@@ -438,7 +443,7 @@ product/memory-side/adapters/claude/skills/context-routing-skill/SKILL.md
 - `target_task` 只能是四个已登记的 skill
 - `target_prompt_path` 必须精确匹配固定映射
 - `mutable_paths` 必须只剩这个 prompt 文件
-- suite 必须是单 task 且 `codex -> codex`
+- suite 必须是单 task，且 backend/judge pair 必须匹配 contract 的期望值；未声明时默认仍是 `codex -> codex`
 
 只要其中一项不满足，`init / baseline / prepare-round / run-round` 就会直接失败。
 

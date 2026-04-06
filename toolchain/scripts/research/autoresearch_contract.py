@@ -4,14 +4,16 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from backend_runner import RetryPolicyConfig, build_retry_policy
 from common import REPO_ROOT, SCHEMAS_ROOT, SUITES_ROOT
 
 
 AUTORESEARCH_CONTRACT_SCHEMA_PATH = SCHEMAS_ROOT / "autoresearch-contract.schema.json"
+AUTORESEARCH_BACKEND_IDS = ("claude", "codex", "opencode")
 HISTORY_COLUMNS = [
     "round",
     "kind",
@@ -50,6 +52,11 @@ class AutoresearchContract:
     acceptance_suites: list[str]
     mutable_paths: list[str]
     frozen_paths: list[str]
+    worker_backend: str = "codex"
+    worker_model: str | None = None
+    expected_backend: str = "codex"
+    expected_judge_backend: str = "codex"
+    retry_policy: RetryPolicyConfig = field(default_factory=build_retry_policy)
     target_task: str | None = None
     target_prompt_path: str | None = None
 
@@ -108,6 +115,33 @@ def validate_contract_payload(payload: dict[str, Any]) -> None:
 
     schema = _load_json(AUTORESEARCH_CONTRACT_SCHEMA_PATH)
     jsonschema.validate(instance=payload, schema=schema)
+
+
+def normalize_backend_id(value: str | None, *, field_name: str, default: str) -> str:
+    backend_id = str(value or default).strip()
+    if backend_id not in AUTORESEARCH_BACKEND_IDS:
+        supported = ", ".join(AUTORESEARCH_BACKEND_IDS)
+        raise ValueError(f"{field_name} must be one of: {supported}")
+    return backend_id
+
+
+def resolve_retry_policy_from_payload(payload: dict[str, Any]) -> RetryPolicyConfig:
+    retry_policy_raw = payload.get("retry_policy")
+    if retry_policy_raw is None:
+        return build_retry_policy()
+    if not isinstance(retry_policy_raw, dict):
+        raise ValueError("retry_policy must be an object when present.")
+    retry_on_raw = retry_policy_raw.get("retry_on")
+    retry_on: list[str] | None = None
+    if retry_on_raw is not None:
+        if not isinstance(retry_on_raw, list):
+            raise ValueError("retry_policy.retry_on must be an array when present.")
+        retry_on = [str(item).strip() for item in retry_on_raw if str(item).strip()]
+    return build_retry_policy(
+        max_attempts=retry_policy_raw.get("max_attempts"),
+        backoff_seconds=retry_policy_raw.get("backoff_seconds"),
+        retry_on=retry_on,
+    )
 
 
 def resolve_suite_path(suite_value: str, *, base_dir: Path) -> Path:
@@ -197,6 +231,7 @@ def load_contract(path: Path, *, repo_root: Path = REPO_ROOT) -> AutoresearchCon
     source = path.expanduser().resolve()
     payload = _load_json(source)
     validate_contract_payload(payload)
+    retry_policy = resolve_retry_policy_from_payload(payload)
     contract = AutoresearchContract(
         source_path=source,
         payload=payload,
@@ -206,6 +241,23 @@ def load_contract(path: Path, *, repo_root: Path = REPO_ROOT) -> AutoresearchCon
         acceptance_suites=[str(item) for item in payload["acceptance_suites"]],
         mutable_paths=[str(item) for item in payload["mutable_paths"]],
         frozen_paths=[str(item) for item in payload["frozen_paths"]],
+        worker_backend=normalize_backend_id(
+            payload.get("worker_backend"),
+            field_name="worker_backend",
+            default="codex",
+        ),
+        worker_model=str(payload["worker_model"]).strip() if payload.get("worker_model") is not None else None,
+        expected_backend=normalize_backend_id(
+            payload.get("expected_backend"),
+            field_name="expected_backend",
+            default="codex",
+        ),
+        expected_judge_backend=normalize_backend_id(
+            payload.get("expected_judge_backend"),
+            field_name="expected_judge_backend",
+            default="codex",
+        ),
+        retry_policy=retry_policy,
         target_task=str(payload["target_task"]).strip() if payload.get("target_task") is not None else None,
         target_prompt_path=(
             str(normalize_repo_path(str(payload["target_prompt_path"]), repo_root).as_posix())

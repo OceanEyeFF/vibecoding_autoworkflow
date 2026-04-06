@@ -31,6 +31,9 @@ def build_contract_payload(
     mutable_paths: list[str] | None = None,
     target_task: str | None = None,
     target_prompt_path: str | None = None,
+    expected_backend: str | None = None,
+    expected_judge_backend: str | None = None,
+    retry_policy: dict[str, object] | None = None,
 ) -> dict[str, object]:
     payload: dict[str, object] = {
         "run_id": "demo-run",
@@ -54,6 +57,12 @@ def build_contract_payload(
         payload["target_task"] = target_task
     if target_prompt_path is not None:
         payload["target_prompt_path"] = target_prompt_path
+    if expected_backend is not None:
+        payload["expected_backend"] = expected_backend
+    if expected_judge_backend is not None:
+        payload["expected_judge_backend"] = expected_judge_backend
+    if retry_policy is not None:
+        payload["retry_policy"] = retry_policy
     return payload
 
 
@@ -329,6 +338,34 @@ class RunAutoresearchTest(unittest.TestCase):
 
             self.assertEqual(exit_code, 1)
 
+    def test_init_accepts_p2_suite_backend_pair_from_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            init_p2_prompt_tree(root)
+            write_suite_manifest(root / "train.yaml", task="context-routing", backend="claude", judge_backend="claude")
+            write_suite_manifest(root / "validation.yaml", task="context-routing", backend="claude", judge_backend="claude")
+            write_suite_manifest(root / "acceptance.yaml", task="context-routing", backend="claude", judge_backend="claude")
+            contract = build_contract_payload(
+                "train.yaml",
+                "validation.yaml",
+                "acceptance.yaml",
+                mutable_paths=["toolchain/scripts/research/tasks/context-routing-skill-prompt.md"],
+                target_task="context-routing-skill",
+                target_prompt_path="toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+                expected_backend="claude",
+                expected_judge_backend="claude",
+            )
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract), encoding="utf-8")
+
+            with mock.patch.object(run_autoresearch, "AUTORESEARCH_ROOT", root / ".autoworkflow"), mock.patch.object(
+                run_autoresearch, "REPO_ROOT", root
+            ):
+                exit_code = run_autoresearch.main(["init", "--contract", str(contract_path)])
+
+            self.assertEqual(exit_code, 0)
+
     def test_baseline_delegates_to_runner_and_writes_scoreboard(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -336,7 +373,16 @@ class RunAutoresearchTest(unittest.TestCase):
             write_suite_manifest(root / "train.yaml", task="context-routing", backend="codex", judge_backend="codex")
             write_suite_manifest(root / "validation.yaml", task="context-routing", backend="codex", judge_backend="codex")
             write_suite_manifest(root / "acceptance.yaml", task="context-routing", backend="codex", judge_backend="codex")
-            contract = build_contract_payload("train.yaml", "validation.yaml", "acceptance.yaml")
+            contract = build_contract_payload(
+                "train.yaml",
+                "validation.yaml",
+                "acceptance.yaml",
+                retry_policy={
+                    "max_attempts": 4,
+                    "backoff_seconds": 1,
+                    "retry_on": ["timeout", "transient_disconnect"],
+                },
+            )
             contract_path = root / "contract.json"
             contract_path.write_text(json.dumps(contract), encoding="utf-8")
 
@@ -347,6 +393,9 @@ class RunAutoresearchTest(unittest.TestCase):
             def fake_runner(argv: list[str]) -> int:
                 call_counter["count"] += 1
                 self.assertEqual(argv[argv.index("--timeout") + 1], "120")
+                self.assertEqual(argv[argv.index("--max-attempts") + 1], "4")
+                self.assertEqual(argv[argv.index("--backoff-seconds") + 1], "1.0")
+                self.assertEqual(argv[argv.index("--retry-on") + 1], "timeout,transient_disconnect")
                 invoked_suite_paths.append(Path(argv[argv.index("--suite") + 1]).resolve(strict=False))
                 save_dir = Path(argv[argv.index("--save-dir") + 1])
                 label = "train" if "baseline/train" in str(save_dir) else "validation"

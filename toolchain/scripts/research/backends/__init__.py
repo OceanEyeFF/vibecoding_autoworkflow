@@ -26,5 +26,8 @@ def build_backend(backend_id: str, args) -> object:
             reasoning_effort=getattr(args, "codex_reasoning_effort", "high"),
         )
     if backend_id == "opencode":
-        return OpenCodeBackend(executable=args.opencode_bin)
+        return OpenCodeBackend(
+            executable=args.opencode_bin,
+            output_format=getattr(args, "output_format", "json"),
+        )
     raise ValueError(f"Unknown backend: {backend_id}")

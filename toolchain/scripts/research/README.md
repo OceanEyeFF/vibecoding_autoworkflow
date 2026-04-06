@@ -34,6 +34,7 @@
 - `--save-dir`：可选；runner 会在该目录下创建一个 `UTC 时间戳 + slug(label)` 的 run 子目录
 - `--jobs`：可选；按 spec pipeline 并发执行。每条 pipeline 内仍保持 `skill -> eval` 顺序，默认 `1`
 - `--timeout`：单个 phase 的 timeout，默认 `300` 秒；它约束的是一次 skill run 或一次 eval run，不是整条 live smoke 的总墙钟时间
+- `--max-attempts / --backoff-seconds / --retry-on`：统一 phase retry policy；默认 `max_attempts=3`、`backoff_seconds=3`、`retry_on=timeout,nonzero_returncode,empty_output_parse_error,transient_disconnect`
 
 live Codex smoke 的预算口径当前建议固定为：
 
@@ -79,7 +80,7 @@ live Codex smoke 的预算口径当前建议固定为：
 - `promote-round`：只允许 fast-forward 语义，把 `champion/<run-id>` 前进到 active candidate commit，然后清理 candidate branch/worktree
 - `discard-round`：直接删除 active candidate branch/worktree，不走 `git revert`
 - `cleanup-round`：按 `.autoworkflow/autoresearch/<run-id>/runtime.json` 回收中断残留的 active candidate
-- `run_autoresearch_loop.py`：自动重复 `prepare-round -> Codex worker -> run-round -> decide-round`；命中 stop 时正常退出 `0`，并输出 `loop_status: stopped`、`stop_kind`、`stop_reason`
+- `run_autoresearch_loop.py`：自动重复 `prepare-round -> selected worker backend -> run-round -> decide-round`；worker 默认仍是 `codex`，但可由 contract 或 CLI 切到 `claude / codex / opencode`；命中 stop 时正常退出 `0`，并输出 `loop_status: stopped`、`stop_kind`、`stop_reason`
 - P0.3 仍不实现自动 mutation 搜索、多角色 planner / proposer / critic、或 acceptance 每轮必跑
 - candidate 内容改动与 `agent-report.md` 仍由 Codex / subagent 完成；脚本只负责 git 生命周期、评测与 keep / discard
 
@@ -269,7 +270,7 @@ P2 Batch 1 的命令边界当前固定为：
 补充语义：
 
 - `decide-round` 只有在“provisional keep 且 validation 严格高于当前 champion validation”时才会进入 replay
-- replay 执行前会复用同一套 P2 preflight，因此 replay-needed 路径不会绕开 `codex -> codex` 与单 prompt 约束
+- replay 执行前会复用同一套 P2 preflight，因此 replay-needed 路径不会绕开“单 prompt + contract 期望 backend pair”约束；未声明时默认仍是 `codex -> codex`
 - `promote-round` 当前显式受 P2 preflight 保护
 - `discard-round` / `cleanup-round` 仍保留 recovery 语义，不会因为 suite 漂移而 fail-stuck
 
@@ -298,7 +299,7 @@ P2 Batch 1 对 registry / round authority 的额外约束当前也已固定：
 当前没有承诺或未覆盖的范围是：
 
 - 同一 run 同时调多个 prompt
-- 在 P2 profile 下切换到非 `codex -> codex` backend/judge 组合
+- 在 P2 profile 下切换到未被 contract 声明的 backend/judge 组合
 - prompt 文本之外的参数搜索
 - 更丰富的 persisted family 状态模型
 
@@ -399,7 +400,7 @@ P0.3 的脚本侧约束当前固定为：
 
 - `claude`：直接把 prompt 作为命令参数传入；支持 JSON schema judge
 - `codex`：通过 stdin 传 prompt，使用 `--output-last-message` 提取最终消息；支持 JSON schema judge
-- `opencode`：仅保留 backend slot，healthcheck 会明确返回未实现
+- `opencode`：已提供 MVP backend；透传 `model / --dir / --format`，不宣称 schema judge 支持，eval 继续走文本解析回退
 
 ## Eval Behavior
 

@@ -92,6 +92,76 @@
           "parse_error": {
             "type": ["string", "null"]
           },
+          "failure_reason": {
+            "type": ["string", "null"]
+          },
+          "attempt_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "final_attempt": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "attempt",
+                "returncode",
+                "timed_out",
+                "failure_reason",
+                "parse_error",
+                "raw_stdout_excerpt",
+                "raw_stderr_excerpt",
+                "started_at",
+                "finished_at",
+                "elapsed_seconds"
+              ],
+              "properties": {
+                "attempt": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "returncode": {
+                  "type": ["integer", "null"]
+                },
+                "timed_out": {
+                  "type": "boolean"
+                },
+                "failure_reason": {
+                  "type": ["string", "null"]
+                },
+                "parse_error": {
+                  "type": ["string", "null"]
+                },
+                "raw_stdout_excerpt": {
+                  "type": ["string", "null"]
+                },
+                "raw_stderr_excerpt": {
+                  "type": ["string", "null"]
+                },
+                "started_at": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "finished_at": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "elapsed_seconds": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            }
+          },
+          "backend_context": {
+            "type": "object",
+            "additionalProperties": true
+          },
           "structured_output": {
             "type": ["object", "null"]
           },
