@@ -20,7 +20,7 @@ from backend_runner import (
     parse_retry_on_values,
     run_phase,
 )
-from backends import BACKEND_IDS, CODEX_REASONING_EFFORTS, build_backend
+from backends import BACKEND_IDS, CODEX_REASONING_EFFORTS, build_backend, normalize_opencode_output_format
 from common import (
     EVAL_SCORE_DIMENSIONS,
     RUN_SUMMARY_SCHEMA_PATH,
@@ -389,7 +389,7 @@ def build_backend_context(
         }
     if backend_id == "opencode":
         return {
-            "output_format": args.output_format,
+            "output_format": normalize_opencode_output_format(args.output_format),
         }
     return {}
 

@@ -372,6 +372,28 @@ class RunSkillSuiteTest(unittest.TestCase):
             },
         )
 
+    def test_build_backend_context_normalizes_opencode_output_format(self) -> None:
+        args = argparse.Namespace(
+            permission_mode="bypassPermissions",
+            output_format="stream-json",
+            sandbox="workspace-write",
+            full_auto=True,
+            codex_reasoning_effort="high",
+        )
+
+        context = build_backend_context(
+            args,
+            "opencode",
+            phase="skill",
+        )
+
+        self.assertEqual(
+            context,
+            {
+                "output_format": "json",
+            },
+        )
+
     def test_classify_phase_failure_prefers_nonzero_returncode_over_parse_error_with_stdout(self) -> None:
         failure_reason = classify_phase_failure(
             returncode=1,

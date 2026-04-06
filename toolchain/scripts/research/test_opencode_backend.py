@@ -4,13 +4,29 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from backends import build_backend, normalize_opencode_output_format
 from backends.opencode import OpenCodeBackend
 
 
 class OpenCodeBackendTest(unittest.TestCase):
+    def test_normalize_opencode_output_format_maps_shared_runner_values(self) -> None:
+        self.assertEqual(normalize_opencode_output_format("text"), "default")
+        self.assertEqual(normalize_opencode_output_format("json"), "json")
+        self.assertEqual(normalize_opencode_output_format("stream-json"), "json")
+
+    def test_build_backend_normalizes_opencode_output_format(self) -> None:
+        backend = build_backend(
+            "opencode",
+            SimpleNamespace(opencode_bin="opencode", output_format="text"),
+        )
+
+        self.assertIsInstance(backend, OpenCodeBackend)
+        self.assertEqual(backend.output_format, "default")
+
     def test_build_skill_command_passes_model_dir_and_output_format(self) -> None:
         backend = OpenCodeBackend(executable="opencode", output_format="json")
 

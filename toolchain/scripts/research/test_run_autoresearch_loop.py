@@ -167,6 +167,24 @@ def make_registry_entry(*, mutation_key: str) -> dict[str, object]:
 
 
 class RunAutoresearchLoopTest(unittest.TestCase):
+    def test_build_backend_context_normalizes_opencode_output_format(self) -> None:
+        args = SimpleNamespace(
+            permission_mode="bypassPermissions",
+            output_format="text",
+            sandbox="workspace-write",
+            full_auto=True,
+            codex_reasoning_effort="high",
+        )
+
+        context = run_autoresearch_loop.build_backend_context(args, "opencode")
+
+        self.assertEqual(
+            context,
+            {
+                "output_format": "default",
+            },
+        )
+
     def test_execute_worker_phase_uses_configured_backend_and_writes_retry_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

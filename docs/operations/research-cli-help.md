@@ -628,7 +628,7 @@ codex exec \
 - skill / eval 命令当前最小透传：
   - `--model`
   - `--dir <repo>`
-  - `--format <output-format>`
+  - `--format <normalized-output-format>`
 - `OpenCode` 当前不宣称 schema-based eval；judge 走文本解析回退
 - `extract_final_message()` 会从 JSON event stdout 中提取最后一个 assistant message；提取失败时回退 `stdout.strip()`
 
@@ -637,6 +637,7 @@ codex exec \
 - `OpenCode` 已可作为 research runner 的 MVP backend
 - 更适合 deterministic / low-risk 路径；当前没有把它纳入 live acceptance matrix
 - 如果要稳定提取 JSON event 输出，建议配合 `--output-format json`
+- 统一 CLI 的 `text | json | stream-json` 会在进入 OpenCode adapter 前分别归一化为 `default | json | json`
 
 ## 九、backend acceptance matrix 的真实边界
 

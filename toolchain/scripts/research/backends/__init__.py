@@ -11,6 +11,14 @@ from .opencode import OpenCodeBackend
 BACKEND_IDS = ("claude", "codex", "opencode")
 
 
+def normalize_opencode_output_format(output_format: str | None) -> str:
+    if output_format in (None, "", "text", "default"):
+        return "default"
+    if output_format in ("json", "stream-json"):
+        return "json"
+    raise ValueError(f"Unsupported OpenCode output format: {output_format}")
+
+
 def build_backend(backend_id: str, args) -> object:
     if backend_id == "claude":
         return ClaudeBackend(
@@ -28,6 +36,6 @@ def build_backend(backend_id: str, args) -> object:
     if backend_id == "opencode":
         return OpenCodeBackend(
             executable=args.opencode_bin,
-            output_format=getattr(args, "output_format", "json"),
+            output_format=normalize_opencode_output_format(getattr(args, "output_format", "text")),
         )
     raise ValueError(f"Unknown backend: {backend_id}")

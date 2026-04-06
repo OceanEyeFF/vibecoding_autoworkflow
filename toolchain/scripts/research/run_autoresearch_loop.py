@@ -24,7 +24,7 @@ from autoresearch_mutation_registry import (
 )
 from autoresearch_stop import AutoresearchStop
 from autoresearch_worker_contract import load_worker_contract_payload
-from backends import BACKEND_IDS, CODEX_REASONING_EFFORTS, build_backend
+from backends import BACKEND_IDS, CODEX_REASONING_EFFORTS, build_backend, normalize_opencode_output_format
 from run_autoresearch import (
     REPO_ROOT,
     build_worktree_manager,
@@ -299,7 +299,7 @@ def build_backend_context(args: argparse.Namespace, backend_id: str) -> dict[str
         }
     if backend_id == "opencode":
         return {
-            "output_format": args.output_format,
+            "output_format": normalize_opencode_output_format(args.output_format),
         }
     return {}
 
