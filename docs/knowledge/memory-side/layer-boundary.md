@@ -1,9 +1,9 @@
 ---
 title: "Memory Side 层级边界"
 status: active
-updated: 2026-03-26
+updated: 2026-04-07
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-04-07
 ---
 # Memory Side 层级边界
 
@@ -29,7 +29,7 @@ last_verified: 2026-03-26
 - 把本仓库目录结构误当成其他仓库的默认前提
 - 把本仓库评测基线误当成跨仓库通用验收标准
 
-## 二、三层主体 + 一层挂载
+## 二、四层主体 + 一层挂载
 
 ### 1. 通用合同层
 
@@ -82,7 +82,24 @@ last_verified: 2026-03-26
 - `docs/operations/memory-side/`
 - `toolchain/scripts/deploy/adapter_deploy.py`
 
-### 4. Repo-local deploy target
+### 4. Repo-local execution template layer
+
+职责：
+
+- 承接 repo-local execution templates、维护模板和临时执行 scaffolds
+- 把可复用的执行提示和收口动作留在 `docs/operations/`，但不把它们升格成主线 truth
+
+当前属于这一层的内容：
+
+- `docs/operations/prompt-templates/`
+
+硬规则：
+
+- 这里可以复用 canonical semantics，但不能重新定义 canonical truth
+- 这里若稳定承接了某条规则，就必须把该规则同步回 `docs/knowledge/`
+- 这里不负责生成业务源码
+
+### 5. Repo-local deploy target
 
 职责：
 
@@ -135,8 +152,9 @@ last_verified: 2026-03-26
 2. [Memory Side Skill 与 Agent 模型](./skill-agent-model.md)
 3. `product/memory-side/skills/`
 4. `docs/operations/memory-side/`
-5. `toolchain/scripts/`
-6. `.agents/skills/`、`.claude/skills/` 或 `.opencode/skills/`
+5. `docs/operations/prompt-templates/`
+6. `toolchain/scripts/`
+7. `.agents/skills/`、`.claude/skills/` 或 `.opencode/skills/`
 
 ## 四、措辞规范
 

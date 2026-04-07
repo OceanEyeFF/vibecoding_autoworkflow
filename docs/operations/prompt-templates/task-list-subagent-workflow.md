@@ -1,9 +1,9 @@
 ---
 title: "Task List Workflow Prompt"
 status: active
-updated: 2026-04-03
+updated: 2026-04-07
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-07
 ---
 # Task List Workflow Prompt
 
@@ -86,5 +86,7 @@ last_verified: 2026-04-03
 
 ## 相关文档
 
+- [docs/knowledge/README.md](../../knowledge/README.md)
+- [Task Contract 模板](../../knowledge/foundations/task-contract-template.md)
 - [Task Planning Contract Prompt](./task-planning-contract.md)
 - [Review Loop Prompt](./review-loop-code-review.md)

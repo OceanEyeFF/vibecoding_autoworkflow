@@ -20,14 +20,8 @@
 
 ## 阅读顺序
 
-1. `knowledge/README.md`
-2. `knowledge/foundations/README.md`
-3. `knowledge/foundations/root-directory-layering.md`
-4. `knowledge/foundations/path-governance-ai-routing.md`
-5. `knowledge/foundations/docs-governance.md`
-6. `knowledge/foundations/toolchain-layering.md`
-7. 目标领域入口，例如 `knowledge/memory-side/README.md`、`knowledge/task-interface/README.md` 或 `knowledge/autoresearch/README.md`
-8. 需要实际部署或评测时，再读 `operations/` 与 `analysis/`
+默认阅读顺序以 [knowledge/foundations/path-governance-ai-routing.md](./knowledge/foundations/path-governance-ai-routing.md) 为唯一权威，并由 [knowledge/foundations/docs-governance.md](./knowledge/foundations/docs-governance.md) 约束文档层级。
+本页只保留 `docs/` 模块入口，不重复 `read_first/read_next/do_not_read_yet` 细则。
 
 ## 文档治理规则
 

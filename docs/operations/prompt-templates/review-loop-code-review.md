@@ -1,9 +1,9 @@
 ---
 title: "Review Loop Prompt"
 status: active
-updated: 2026-04-03
+updated: 2026-04-07
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-07
 ---
 # Review Loop Prompt
 
@@ -109,5 +109,7 @@ Phase C：复查
 
 ## 相关文档
 
+- [docs/knowledge/README.md](../../knowledge/README.md)
+- [Docs 文档治理基线](../../knowledge/foundations/docs-governance.md)
 - [Harness Contract 模板](./harness-contract-template.md)
 - [Repo Governance Evaluation Prompt](./repo-governance-evaluation.md)

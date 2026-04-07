@@ -19,6 +19,7 @@ CONTEXT_ROUTING_SKILL_RELATIVE_PATH = Path(".agents/skills/context-routing-skill
 STATUS_USABLE = "usable_repo_skill"
 STATUS_MISSING = "missing_repo_skill"
 STATUS_INVALID = "invalid_repo_skill_wrapper"
+CANONICAL_SOURCE_HEADINGS = {"## Canonical Sources", "## Canonical Source"}
 
 
 def now_iso() -> str:
@@ -39,7 +40,7 @@ def _extract_canonical_source_paths(skill_text: str) -> list[str]:
     paths: list[str] = []
     for line in lines:
         stripped = line.strip()
-        if stripped == "## Canonical Sources":
+        if stripped in CANONICAL_SOURCE_HEADINGS:
             in_section = True
             continue
         if in_section and stripped.startswith("## "):

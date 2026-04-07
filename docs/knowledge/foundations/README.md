@@ -15,18 +15,8 @@
 - [decision-record-template.md](./decision-record-template.md)
 - [module-entry-template.md](./module-entry-template.md)
 
-建议阅读顺序：
-
-1. [root-directory-layering.md](./root-directory-layering.md)
-2. [path-governance-ai-routing.md](./path-governance-ai-routing.md)
-3. [docs-governance.md](./docs-governance.md)
-4. [toolchain-layering.md](./toolchain-layering.md)
-5. [partition-model.md](./partition-model.md)
-6. [task-contract-template.md](./task-contract-template.md)
-7. [context-entry-template.md](./context-entry-template.md)
-8. [writeback-log-template.md](./writeback-log-template.md)
-9. [decision-record-template.md](./decision-record-template.md)
-10. [module-entry-template.md](./module-entry-template.md)
+建议阅读顺序由 [path-governance-ai-routing.md](./path-governance-ai-routing.md) 统一定义。
+本页只保留 foundations 的目录入口，避免重复 `read_first/read_next/do_not_read_yet` 的主线合同。
 
 这里适合放：
 

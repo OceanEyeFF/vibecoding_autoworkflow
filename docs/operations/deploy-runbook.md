@@ -9,6 +9,8 @@ last_verified: 2026-03-26
 
 > 目的：给当前仓库提供一份统一的部署总览，说明 `Codex`、`Claude`、`OpenCode` 三个 backend 的 deploy target、入口命令和下钻阅读路径。
 
+本页属于 [Deploy / Verify / Maintenance](./deploy/README.md) 路径簇。
+
 先建立通用边界，再读本页：
 
 - [根目录分层](../knowledge/foundations/root-directory-layering.md)

@@ -1,9 +1,9 @@
 ---
 title: "Task Planning Contract Prompt"
 status: active
-updated: 2026-04-03
+updated: 2026-04-07
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-07
 ---
 # Task Planning Contract Prompt
 
@@ -61,5 +61,8 @@ last_verified: 2026-04-03
 
 ## 相关文档
 
+- [docs/knowledge/README.md](../../knowledge/README.md)
 - [Execution Contract 模板](./execution-contract-template.md)
 - [Task Contract 模板](../../knowledge/foundations/task-contract-template.md)
+- [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
+- [task-contract-skill](../../../product/task-interface/skills/task-contract-skill/SKILL.md)

@@ -7,8 +7,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from governance_semantic_check import (
     SemanticReport,
+    check_canonical_entrypoints_cover_required_formats,
+    check_canonical_skill_packages_are_minimal,
+    check_adapter_wrappers_are_thin,
     check_foundations_authority_shadows,
     check_outdated_placeholder_phrases,
+    check_prompt_template_knowledge_backlinks,
     check_required_handoffs,
 )
 
@@ -84,3 +88,121 @@ def test_check_outdated_placeholder_phrases_flags_stale_text(tmp_path: Path) -> 
     check_outdated_placeholder_phrases(tmp_path, report)
 
     assert any("toolchain/scripts/README.md" in item for item in report.failures)
+
+
+def test_check_prompt_template_knowledge_backlinks_flags_missing_link(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/operations/prompt-templates/README.md",
+        "[knowledge](../../knowledge/README.md)\n",
+    )
+    write_doc(
+        tmp_path / "docs/operations/prompt-templates/simple-subagent-workflow.md",
+        "# template without backlinks\n",
+    )
+    write_doc(tmp_path / "docs/knowledge/README.md", "# knowledge\n")
+
+    report = SemanticReport()
+    check_prompt_template_knowledge_backlinks(tmp_path, report)
+
+    assert any("simple-subagent-workflow.md" in item for item in report.failures)
+
+
+def test_check_adapter_wrappers_are_thin_flags_legacy_sections(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/memory-side/adapters/agents/skills/context-routing-skill/SKILL.md",
+        "\n".join(
+            [
+                "# Wrapper",
+                "## Canonical Source",
+                "## Backend Notes",
+                "## Deploy Target",
+                "## Execution Rules",
+            ]
+        )
+        + "\n",
+    )
+
+    report = SemanticReport()
+    check_adapter_wrappers_are_thin(tmp_path, report)
+
+    assert any("Execution Rules" in item for item in report.failures)
+
+
+def test_check_canonical_skill_packages_are_minimal_accepts_valid_package(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/memory-side/skills/demo-skill/SKILL.md",
+        "\n".join(
+            [
+                "# Demo Skill",
+                "## Overview",
+                "## When To Use",
+                "## Workflow",
+                "## Hard Constraints",
+                "## Expected Output",
+                "## Resources",
+            ]
+        )
+        + "\n",
+    )
+    write_doc(
+        tmp_path / "product/memory-side/skills/demo-skill/references/entrypoints.md",
+        "# Demo references\n\n## Reading Policy\n",
+    )
+
+    report = SemanticReport()
+    check_canonical_skill_packages_are_minimal(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_canonical_skill_packages_are_minimal_flags_adapter_leakage(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/task-interface/skills/demo-skill/SKILL.md",
+        "\n".join(
+            [
+                "# Demo Skill",
+                "## Overview",
+                "## When To Use",
+                "## Workflow",
+                "## Hard Constraints",
+                "## Expected Output",
+                "## Resources",
+                "## Backend Notes",
+            ]
+        )
+        + "\n",
+    )
+    write_doc(
+        tmp_path / "product/task-interface/skills/demo-skill/references/entrypoints.md",
+        "# Demo references\n\n## Reading Policy\n",
+    )
+
+    report = SemanticReport()
+    check_canonical_skill_packages_are_minimal(tmp_path, report)
+
+    assert any("Backend Notes" in item for item in report.failures)
+
+
+def test_check_canonical_entrypoints_cover_required_formats_flags_missing_link(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/memory-side/skills/context-routing-skill/references/entrypoints.md",
+        "# refs\n\n- `docs/knowledge/memory-side/context-routing-rules.md`\n",
+    )
+    write_doc(
+        tmp_path / "product/memory-side/skills/writeback-cleanup-skill/references/entrypoints.md",
+        "# refs\n\n- `docs/knowledge/memory-side/writeback-cleanup-rules.md`\n",
+    )
+    write_doc(
+        tmp_path / "docs/knowledge/memory-side/formats/context-routing-output-format.md",
+        "# format\n",
+    )
+    write_doc(
+        tmp_path / "docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md",
+        "# format\n",
+    )
+
+    report = SemanticReport()
+    check_canonical_entrypoints_cover_required_formats(tmp_path, report)
+
+    assert any("context-routing-output-format.md" in item for item in report.failures)
+    assert any("writeback-cleanup-output-format.md" in item for item in report.failures)

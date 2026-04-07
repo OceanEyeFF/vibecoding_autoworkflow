@@ -11,6 +11,8 @@ Decision time: 2026-04-03
 
 > 目的：明确本仓库的分支与 PR 约束，让 review 与治理检查具备可重复入口。
 
+本页属于 [Deploy / Verify / Maintenance](./deploy/README.md) 路径簇。
+
 ## 一、适用范围
 
 - 适用于 `product/`、`docs/`、`toolchain/` 及根目录治理变更

@@ -1,9 +1,9 @@
 ---
 title: "Repo Governance Evaluation Prompt"
 status: active
-updated: 2026-04-03
+updated: 2026-04-07
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-07
 ---
 # Repo Governance Evaluation Prompt
 
@@ -93,5 +93,9 @@ Step 7：AI / Harness 兼容性评估
 
 ## 相关文档
 
+- [docs/knowledge/README.md](../../knowledge/README.md)
+- [Docs 文档治理基线](../../knowledge/foundations/docs-governance.md)
+- [根目录分层](../../knowledge/foundations/root-directory-layering.md)
+- [路径治理与 AI 告知](../../knowledge/foundations/path-governance-ai-routing.md)
 - [Review / Verify 承接位](../review-verify-handbook.md)
 - [Branch / PR 治理规则](../branch-pr-governance.md)

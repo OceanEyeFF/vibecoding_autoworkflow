@@ -6,18 +6,12 @@
 
 - `task-contract-skill/`
 
-AI 先读什么：
+路由权威以 `docs/knowledge/foundations/path-governance-ai-routing.md` 为准。
+当 authority 已确认进入 canonical skill source layer 时，本目录只建议继续读取：
 
 1. `product/task-interface/README.md`
-2. `docs/knowledge/foundations/partition-model.md`
-3. `docs/knowledge/task-interface/task-contract.md`
-4. 再进入目标 skill 的 `SKILL.md`
-
-暂时不要先读什么：
-
-- 根目录 `.agents/`
-- 根目录 `.claude/`
-- backend adapter wrapper，除非当前任务明确涉及后端适配
+2. `task-contract-skill/SKILL.md`
+3. `task-contract-skill/references/entrypoints.md`
 
 这里适合放：
 

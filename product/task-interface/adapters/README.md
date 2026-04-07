@@ -8,19 +8,12 @@
 - `claude/`：Claude adapter 源码
 - `opencode/`：OpenCode adapter 源码
 
-AI 先读什么：
+路由权威以 `docs/knowledge/foundations/path-governance-ai-routing.md` 为准。
+当 authority 已确认进入 backend wrapper layer 时，本目录只建议继续读取：
 
 1. `product/task-interface/README.md`
-2. `docs/knowledge/foundations/partition-model.md`
-3. `docs/knowledge/task-interface/task-contract.md`
-4. 再选择 `agents/`、`claude/` 或 `opencode/` 进入对应 wrapper
-
-暂时不要先读什么：
-
-- 根目录 `.agents/`
-- 根目录 `.claude/`
-- 根目录 `.opencode/`
-- `agents/openai.yaml` 这类 interface metadata，除非当前任务明确需要它
+2. 对应 backend 下的 `task-contract-skill/SKILL.md`
+3. 仅在确实需要接口元数据时，再读 `agents/openai.yaml` 之类 backend metadata
 
 这里适合放：
 

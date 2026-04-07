@@ -8,10 +8,6 @@ Load the generic Task Interface contract docs in this order.
 - `docs/knowledge/foundations/task-contract-template.md`
 - `docs/knowledge/task-interface/task-contract.md`
 
-## Read For Skill Boundaries
-
-- `docs/knowledge/task-interface/skills/task-contract-skill.md`
-
 ## Read Only If Task Interface Touches Memory Side
 
 - `docs/knowledge/memory-side/overview.md`

@@ -4,22 +4,18 @@
 
 当前子层与模块入口：
 
-- `foundations/`：跨分区基础合同与根级边界
-- `memory-side/`：`Knowledge Base / Context Routing / Writeback & Cleanup`
-- `task-interface/`：`Task Contract`
-- `autoresearch/`：当前仓库 `autoresearch` repo 模块的稳定入口与跨层映射
+- [foundations/README.md](./foundations/README.md)：跨分区基础合同与根级边界
+- [memory-side/README.md](./memory-side/README.md)：`Knowledge Base / Context Routing / Writeback & Cleanup`
+- [task-interface/README.md](./task-interface/README.md)：`Task Contract`
+- [autoresearch/README.md](./autoresearch/README.md)：当前仓库 `autoresearch` repo 模块的稳定入口与跨层映射
 
 先建立治理边界，再进入子层：
 
 - [foundations/path-governance-ai-routing.md](./foundations/path-governance-ai-routing.md)
 - [foundations/docs-governance.md](./foundations/docs-governance.md)
 
-建议阅读顺序：
-
-1. [foundations/README.md](./foundations/README.md)
-2. [memory-side/README.md](./memory-side/README.md)
-3. [task-interface/README.md](./task-interface/README.md)
-4. 任务明确涉及 `autoresearch` 时，再读 [autoresearch/README.md](./autoresearch/README.md)
+建议阅读顺序由 [foundations/path-governance-ai-routing.md](./foundations/path-governance-ai-routing.md) 统一定义。
+本页只保留 `knowledge/` 的模块入口，避免重复 `read_first/read_next/do_not_read_yet` 的主线合同。
 
 这里适合放：
 
