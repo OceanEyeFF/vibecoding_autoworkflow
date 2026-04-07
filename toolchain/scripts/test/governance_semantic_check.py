@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -90,6 +91,14 @@ THIN_WRAPPER_FORBIDDEN_HEADINGS = [
     "## Execution Rules",
     "## Output Contract",
 ]
+CANONICAL_ENTRYPOINT_REQUIRED_LINKS = {
+    "product/memory-side/skills/context-routing-skill/references/entrypoints.md": [
+        "docs/knowledge/memory-side/formats/context-routing-output-format.md",
+    ],
+    "product/memory-side/skills/writeback-cleanup-skill/references/entrypoints.md": [
+        "docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md",
+    ],
+}
 
 
 @dataclass
@@ -126,6 +135,11 @@ def collect_repo_relative_markdown_links(repo_root: Path, relative_path: str) ->
         except ValueError:
             continue
     return resolved_targets
+
+
+def collect_repo_relative_code_paths(repo_root: Path, relative_path: str) -> set[str]:
+    text = (repo_root / relative_path).read_text(encoding="utf-8")
+    return {match.strip() for match in re.findall(r"`([^`]+)`", text) if match.strip()}
 
 
 def iter_prompt_template_files(repo_root: Path) -> list[Path]:
@@ -297,6 +311,23 @@ def check_adapter_wrappers_are_thin(repo_root: Path, report: SemanticReport) -> 
     report.add_info(f"checked {checked} adapter wrappers for thin-shell structure")
 
 
+def check_canonical_entrypoints_cover_required_formats(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    for relative_path, expected_targets in CANONICAL_ENTRYPOINT_REQUIRED_LINKS.items():
+        source = repo_root / relative_path
+        if not source.exists():
+            report.add_failure(f"missing canonical entrypoints document: {relative_path}")
+            continue
+        resolved_targets = collect_repo_relative_code_paths(repo_root, relative_path)
+        for target in expected_targets:
+            checked += 1
+            if target not in resolved_targets:
+                report.add_failure(
+                    f"canonical entrypoints missing required format link: {relative_path} -> {target}"
+                )
+    report.add_info(f"checked {checked} canonical entrypoint format links")
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -307,6 +338,7 @@ def main() -> int:
     check_outdated_placeholder_phrases(repo_root, report)
     check_prompt_template_knowledge_backlinks(repo_root, report)
     check_canonical_skill_packages_are_minimal(repo_root, report)
+    check_canonical_entrypoints_cover_required_formats(repo_root, report)
     check_adapter_wrappers_are_thin(repo_root, report)
 
     payload = {

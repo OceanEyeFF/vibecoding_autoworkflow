@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from governance_semantic_check import (
     SemanticReport,
+    check_canonical_entrypoints_cover_required_formats,
     check_canonical_skill_packages_are_minimal,
     check_adapter_wrappers_are_thin,
     check_foundations_authority_shadows,
@@ -180,3 +181,28 @@ def test_check_canonical_skill_packages_are_minimal_flags_adapter_leakage(tmp_pa
     check_canonical_skill_packages_are_minimal(tmp_path, report)
 
     assert any("Backend Notes" in item for item in report.failures)
+
+
+def test_check_canonical_entrypoints_cover_required_formats_flags_missing_link(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/memory-side/skills/context-routing-skill/references/entrypoints.md",
+        "# refs\n\n- `docs/knowledge/memory-side/context-routing-rules.md`\n",
+    )
+    write_doc(
+        tmp_path / "product/memory-side/skills/writeback-cleanup-skill/references/entrypoints.md",
+        "# refs\n\n- `docs/knowledge/memory-side/writeback-cleanup-rules.md`\n",
+    )
+    write_doc(
+        tmp_path / "docs/knowledge/memory-side/formats/context-routing-output-format.md",
+        "# format\n",
+    )
+    write_doc(
+        tmp_path / "docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md",
+        "# format\n",
+    )
+
+    report = SemanticReport()
+    check_canonical_entrypoints_cover_required_formats(tmp_path, report)
+
+    assert any("context-routing-output-format.md" in item for item in report.failures)
+    assert any("writeback-cleanup-output-format.md" in item for item in report.failures)

@@ -11,6 +11,7 @@ Load the generic Memory Side contract docs in this order.
 ## Read For Writeback Logic
 
 - `docs/knowledge/memory-side/writeback-cleanup-rules.md`
+- `docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md`
 
 ## Read Only If Layer Boundaries Are Unclear
 
