@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from governance_semantic_check import (
     SemanticReport,
+    check_canonical_skill_packages_are_minimal,
     check_adapter_wrappers_are_thin,
     check_foundations_authority_shadows,
     check_outdated_placeholder_phrases,
@@ -124,3 +125,58 @@ def test_check_adapter_wrappers_are_thin_flags_legacy_sections(tmp_path: Path) -
     check_adapter_wrappers_are_thin(tmp_path, report)
 
     assert any("Execution Rules" in item for item in report.failures)
+
+
+def test_check_canonical_skill_packages_are_minimal_accepts_valid_package(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/memory-side/skills/demo-skill/SKILL.md",
+        "\n".join(
+            [
+                "# Demo Skill",
+                "## Overview",
+                "## When To Use",
+                "## Workflow",
+                "## Hard Constraints",
+                "## Expected Output",
+                "## Resources",
+            ]
+        )
+        + "\n",
+    )
+    write_doc(
+        tmp_path / "product/memory-side/skills/demo-skill/references/entrypoints.md",
+        "# Demo references\n\n## Reading Policy\n",
+    )
+
+    report = SemanticReport()
+    check_canonical_skill_packages_are_minimal(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_canonical_skill_packages_are_minimal_flags_adapter_leakage(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/task-interface/skills/demo-skill/SKILL.md",
+        "\n".join(
+            [
+                "# Demo Skill",
+                "## Overview",
+                "## When To Use",
+                "## Workflow",
+                "## Hard Constraints",
+                "## Expected Output",
+                "## Resources",
+                "## Backend Notes",
+            ]
+        )
+        + "\n",
+    )
+    write_doc(
+        tmp_path / "product/task-interface/skills/demo-skill/references/entrypoints.md",
+        "# Demo references\n\n## Reading Policy\n",
+    )
+
+    report = SemanticReport()
+    check_canonical_skill_packages_are_minimal(tmp_path, report)
+
+    assert any("Backend Notes" in item for item in report.failures)

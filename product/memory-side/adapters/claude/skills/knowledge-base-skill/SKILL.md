@@ -1,9 +1,6 @@
 ---
 name: knowledge-base-skill
-description: >
-  Repo-local Claude adapter for the Memory Side Knowledge Base skill.
-  Read the canonical Memory Side skill and canonical docs, then propose the
-  smallest safe Knowledge Base updates for this repository.
+description: Repo-local Claude adapter for the Memory Side Knowledge Base skill.
 allowed-tools: Read, Grep, Glob, Bash
 ---
 
@@ -15,11 +12,11 @@ This folder is a repo-local backend adapter. It does not define project truth.
 
 1. `product/memory-side/skills/knowledge-base-skill/SKILL.md`
 2. `product/memory-side/skills/knowledge-base-skill/references/entrypoints.md`
-3. The canonical `docs/knowledge/memory-side/` files named there
 
 ## Backend Notes
 
 - Prefer the project-level skill before introducing Claude-specific subagents.
+- No backend delta beyond Claude metadata and deploy target.
 
 ## Deploy Target
 

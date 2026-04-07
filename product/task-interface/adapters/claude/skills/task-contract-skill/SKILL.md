@@ -1,9 +1,6 @@
 ---
 name: task-contract-skill
-description: >
-  Repo-local Claude adapter for the Task Interface Task Contract skill.
-  Read the canonical Task Interface skill and canonical docs, then produce the
-  fixed-format Task Contract for this repository.
+description: Repo-local Claude adapter for the Task Interface Task Contract skill.
 allowed-tools: Read, Grep, Glob, Bash
 ---
 
@@ -13,15 +10,13 @@ This folder is a repo-local backend adapter. It does not define Task Contract tr
 
 ## Canonical Source
 
-Always load the canonical skill layer first:
-
 1. `product/task-interface/skills/task-contract-skill/SKILL.md`
 2. `product/task-interface/skills/task-contract-skill/references/entrypoints.md`
-3. The canonical `docs/knowledge/` files named there
 
 ## Backend Notes
 
 - Prefer the project-level skill before introducing Claude-specific subagents.
+- No backend delta beyond Claude metadata and deploy target.
 
 ## Deploy Target
 

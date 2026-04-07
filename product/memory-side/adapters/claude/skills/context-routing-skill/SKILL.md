@@ -1,9 +1,6 @@
 ---
 name: context-routing-skill
-description: >
-  Repo-local Claude adapter for the Memory Side Context Routing skill.
-  Read the canonical Memory Side skill and canonical docs, then produce the
-  minimal Route Card for this repository.
+description: Repo-local Claude adapter for the Memory Side Context Routing skill.
 allowed-tools: Read, Grep, Glob, Bash
 ---
 
@@ -15,11 +12,11 @@ This folder is a repo-local backend adapter. It does not define routing rules.
 
 1. `product/memory-side/skills/context-routing-skill/SKILL.md`
 2. `product/memory-side/skills/context-routing-skill/references/entrypoints.md`
-3. The canonical `docs/knowledge/memory-side/` files named there
 
 ## Backend Notes
 
 - Prefer the project-level skill before introducing Claude-specific subagents.
+- No backend delta beyond Claude metadata and deploy target.
 
 ## Deploy Target
 

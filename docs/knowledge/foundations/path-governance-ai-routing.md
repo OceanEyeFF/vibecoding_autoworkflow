@@ -59,6 +59,7 @@ last_verified: 2026-04-07
 - `docs/knowledge/memory-side/skill-agent-model.md`
 - `docs/knowledge/task-interface/task-contract.md`
 - 按任务进入 `product/`、`docs/` 或 `toolchain/` 的局部入口页
+- 需要 repo-local execution templates 或 prompt scaffolds 时，先进入 `docs/operations/README.md`，再下钻 `docs/operations/prompt-templates/`
 
 ### `do_not_read_yet`
 
@@ -229,6 +230,10 @@ last_verified: 2026-04-07
 - 任务明确涉及 repo-local 部署
 - 任务明确涉及维护步骤、运行手册或 adapter 使用帮助
 - 任务明确需要 repo-local prompt / contract 模板来固定执行结构
+- 进入后按路径簇下钻：
+  - `docs/operations/deploy/README.md`：deploy / verify / maintenance
+  - `docs/operations/prompt-templates/`：repo-local execution templates
+  - `docs/operations/memory-side/README.md`、`docs/operations/task-interface/README.md`：partition-specific usage help
 
 ### 2. 进入 `docs/analysis/`
 

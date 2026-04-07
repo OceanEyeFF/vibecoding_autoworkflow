@@ -1,6 +1,6 @@
 ---
 name: knowledge-base-skill
-description: Repo-local OpenCode adapter for the Memory Side Knowledge Base skill in this repository.
+description: Repo-local OpenCode adapter for the Memory Side Knowledge Base skill.
 ---
 
 # Knowledge Base Skill (Repo Adapter)
@@ -11,7 +11,6 @@ This folder is a repo-local backend adapter. It does not define project truth.
 
 1. `product/memory-side/skills/knowledge-base-skill/SKILL.md`
 2. `product/memory-side/skills/knowledge-base-skill/references/entrypoints.md`
-3. The canonical `docs/knowledge/memory-side/` files named there
 
 ## Backend Notes
 

@@ -1,24 +1,17 @@
 ---
 name: task-contract-skill
-description: Use this skill when a task discussion has converged and you need a fixed-format Task Contract before routing or execution starts.
+description: Use this skill when a task discussion has converged and you need a fixed-format Task Contract.
 ---
 
 # Task Contract Skill
 
 ## Overview
 
-Use this skill to turn a converged discussion into a fixed-format `Task Contract`. The goal is to create one formal execution baseline, not to start implementation or invent an orchestration flow.
+Use this skill to turn a converged discussion into one formal execution baseline.
 
 ## When To Use
 
-Use this skill when the task involves any of the following:
-
-- a discussion has mostly converged and needs a formal baseline
-- multiple backends should consume the same task object before execution
-- the current request needs explicit goals, scope, non-goals, acceptance, constraints, risks, and verification rules
-- the team wants to separate discussion from execution with a stable contract
-
-Do not use this skill to generate a `Route Card` or a `Writeback Card`. Those belong to `$context-routing-skill` and `$writeback-cleanup-skill`.
+Use this skill when a discussion has converged and multiple executors should share one fixed-format `Task Contract`.
 
 ## Workflow
 

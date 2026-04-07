@@ -1,6 +1,6 @@
 ---
 name: context-routing-skill
-description: Repo-local Codex adapter for the Memory Side Context Routing skill in this repository.
+description: Repo-local Codex adapter for the Memory Side Context Routing skill.
 ---
 
 # Context Routing Skill (Repo Adapter)
@@ -11,7 +11,6 @@ This folder is a repo-local backend adapter. It does not define routing rules.
 
 1. `product/memory-side/skills/context-routing-skill/SKILL.md`
 2. `product/memory-side/skills/context-routing-skill/references/entrypoints.md`
-3. The canonical `docs/knowledge/memory-side/` files named there
 
 ## Backend Notes
 

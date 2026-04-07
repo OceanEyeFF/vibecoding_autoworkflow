@@ -38,6 +38,10 @@ REQUIRED_ENTRY_PATHS = [
     "docs/knowledge/memory-side/README.md",
     "docs/knowledge/task-interface/README.md",
     "docs/operations/README.md",
+    "docs/operations/deploy/README.md",
+    "docs/operations/memory-side/README.md",
+    "docs/operations/prompt-templates/README.md",
+    "docs/operations/task-interface/README.md",
     "docs/operations/path-governance-checks.md",
     DOCS_GOVERNANCE_DOC,
     PATH_GOVERNANCE_DOC,
@@ -103,6 +107,10 @@ ENTRYPOINT_LINK_RULES = {
     ],
     "docs/operations/README.md": [
         KNOWLEDGE_README,
+        "docs/operations/deploy/README.md",
+        "docs/operations/prompt-templates/README.md",
+        "docs/operations/memory-side/README.md",
+        "docs/operations/task-interface/README.md",
     ],
     "docs/analysis/README.md": [
         KNOWLEDGE_README,

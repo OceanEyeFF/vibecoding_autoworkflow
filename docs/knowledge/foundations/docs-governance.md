@@ -104,7 +104,9 @@ last_verified: 2026-04-07
 - `docs/knowledge/*/skills/` 只定义技能职责、边界、输入输出、格式、reading policy
 - `product/*/skills/` 只定义 canonical skill 语义、最小 workflow、references
 - `product/*/adapters/*/skills/` 只保留指针、后端 metadata 与最小差异说明
+- `docs/knowledge/*/prompts/` 可以承载语义化 prompt 合同，但不应混成 repo-local execution template
 - `docs/operations/prompt-templates/` 只作为 repo-local execution template layer，不定义主线 truth
+- 任何需要稳定成为主线 truth 的 prompt-like 内容，都必须先或同步落到 `docs/knowledge/`
 
 ### 2. `docs/operations/`
 
@@ -114,6 +116,7 @@ last_verified: 2026-04-07
 补充：`docs/operations/prompt-templates/` 的治理规则
 
 - 只承接 repo-local 执行模板，不承载主线真相或跨仓库通用规则
+- 它和 `docs/operations/memory-side/`、`docs/operations/task-interface/` 一起形成 `docs/operations/` 下的稳定路径簇：一个放 deploy / verify / maintenance，一个放 repo-local execution templates，一个放 partition-specific usage help
 - 每个模板必须在“相关文档”中回链到对应 `docs/knowledge/` 主线入口
 - 模板需要新增或修改规则时，必须先或同步写入 `docs/knowledge/`，不得只在模板内声明
 - 模板变更后需同步更新 `docs/operations/README.md` 的入口列表

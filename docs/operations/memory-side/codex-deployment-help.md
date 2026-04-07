@@ -9,6 +9,8 @@ last_verified: 2026-03-26
 
 > 目的：说明如何把 `product/` 下的 Codex / OpenAI adapter 源码部署到本仓库 `.agents/`，或安装到全局 `CODEX_HOME`。本页属于仓库实现层，不是跨仓库通用合同。
 
+本页属于 [Memory Side Usage Help](./README.md) 路径簇。
+
 先建立通用边界，再读本页：
 
 - [Memory Side 层级边界](../../knowledge/memory-side/layer-boundary.md)

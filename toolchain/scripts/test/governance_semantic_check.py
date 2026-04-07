@@ -61,9 +61,25 @@ OUTDATED_PLACEHOLDER_PHRASES = {
     ],
 }
 PROMPT_TEMPLATES_DIR = "docs/operations/prompt-templates"
+CANONICAL_SKILL_GLOBS = [
+    "product/*/skills/*/SKILL.md",
+]
 ADAPTER_SKILL_GLOBS = [
     "product/memory-side/adapters/*/skills/*/SKILL.md",
     "product/task-interface/adapters/*/skills/*/SKILL.md",
+]
+CANONICAL_SKILL_REQUIRED_HEADINGS = [
+    "## Overview",
+    "## When To Use",
+    "## Workflow",
+    "## Hard Constraints",
+    "## Expected Output",
+    "## Resources",
+]
+CANONICAL_SKILL_FORBIDDEN_HEADINGS = [
+    "## Canonical Source",
+    "## Backend Notes",
+    "## Deploy Target",
 ]
 THIN_WRAPPER_REQUIRED_HEADINGS = [
     "## Canonical Source",
@@ -206,6 +222,57 @@ def iter_adapter_skill_files(repo_root: Path) -> list[Path]:
     return adapter_files
 
 
+def iter_canonical_skill_files(repo_root: Path) -> list[Path]:
+    canonical_files: list[Path] = []
+    seen: set[Path] = set()
+    for pattern in CANONICAL_SKILL_GLOBS:
+        for path in sorted(repo_root.glob(pattern)):
+            if path not in seen:
+                seen.add(path)
+                canonical_files.append(path)
+    return canonical_files
+
+
+def check_canonical_skill_packages_are_minimal(repo_root: Path, report: SemanticReport) -> None:
+    canonical_files = iter_canonical_skill_files(repo_root)
+    if not canonical_files:
+        report.add_failure("missing canonical skill packages under product/*/skills/*/SKILL.md")
+        return
+
+    checked = 0
+    for canonical_file in canonical_files:
+        checked += 1
+        relative_path = to_relative_posix(canonical_file, repo_root)
+        text = canonical_file.read_text(encoding="utf-8")
+
+        for heading in CANONICAL_SKILL_REQUIRED_HEADINGS:
+            if heading not in text:
+                report.add_failure(
+                    f"canonical skill missing required heading {heading!r}: {relative_path}"
+                )
+
+        for heading in CANONICAL_SKILL_FORBIDDEN_HEADINGS:
+            if heading in text:
+                report.add_failure(
+                    f"canonical skill leaked adapter-style section {heading!r}: {relative_path}"
+                )
+
+        references_path = canonical_file.parent / "references/entrypoints.md"
+        if not references_path.exists():
+            report.add_failure(
+                f"canonical skill missing references/entrypoints.md: {relative_path}"
+            )
+            continue
+
+        references_text = references_path.read_text(encoding="utf-8")
+        if "## Reading Policy" not in references_text:
+            report.add_failure(
+                f"canonical skill references missing reading policy block: {relative_path}"
+            )
+
+    report.add_info(f"checked {checked} canonical skill packages for minimal executable shape")
+
+
 def check_adapter_wrappers_are_thin(repo_root: Path, report: SemanticReport) -> None:
     adapter_files = iter_adapter_skill_files(repo_root)
     if not adapter_files:
@@ -239,6 +306,7 @@ def main() -> int:
     check_foundations_authority_shadows(repo_root, report)
     check_outdated_placeholder_phrases(repo_root, report)
     check_prompt_template_knowledge_backlinks(repo_root, report)
+    check_canonical_skill_packages_are_minimal(repo_root, report)
     check_adapter_wrappers_are_thin(repo_root, report)
 
     payload = {
