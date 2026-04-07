@@ -1,9 +1,9 @@
 ---
 title: "路径治理与 AI 告知"
 status: active
-updated: 2026-04-03
+updated: 2026-04-07
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-07
 ---
 # 路径治理与 AI 告知
 
@@ -38,6 +38,9 @@ last_verified: 2026-04-03
 - `.git*`、`.claudeignore`、`LICENSE`：Repo Infra
 
 ## 三、根级 Route Contract
+
+本节是当前仓库唯一权威的 `read_first/read_next/do_not_read_yet/stop_reading_when` 合同。
+其他 README 或 wrapper 只允许做指针引用，不得复制本节正文。
 
 ### `read_first`
 
@@ -77,6 +80,8 @@ last_verified: 2026-04-03
 - 继续扩读只会重复背景，而不会增加决策价值
 
 ## 四、三块正式内容区的最小读取合同
+
+下面三块合同是根级合同的局部展开，仍以本页为唯一权威。
 
 ### 1. `product/`
 
@@ -223,6 +228,7 @@ last_verified: 2026-04-03
 
 - 任务明确涉及 repo-local 部署
 - 任务明确涉及维护步骤、运行手册或 adapter 使用帮助
+- 任务明确需要 repo-local prompt / contract 模板来固定执行结构
 
 ### 2. 进入 `docs/analysis/`
 

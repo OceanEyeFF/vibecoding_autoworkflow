@@ -25,21 +25,8 @@
 - `task-interface/claude-adaptation-help.md`
 - `task-interface/opencode-deployment-help.md`
 
-AI 先读什么：
-
-1. `docs/knowledge/README.md`
-2. `docs/knowledge/foundations/README.md`
-3. `docs/knowledge/foundations/docs-governance.md`
-4. 对应 partition 的知识主线，例如 `docs/knowledge/memory-side/README.md` 或 `docs/knowledge/task-interface/README.md`
-5. `deploy-runbook.md` 或其他目标主题下的操作说明
-
-暂时不要先读什么：
-
-- `docs/reference/`
-- `docs/archive/`
-- `.agents/`
-- `.claude/`
-- `.opencode/`
+AI 默认阅读顺序以 [路径治理与 AI 告知](../knowledge/foundations/path-governance-ai-routing.md) 为准，并由 [Docs 文档治理基线](../knowledge/foundations/docs-governance.md) 约束文档层级。
+本页只保留 repo-local 运维入口，不重复主线 `read_first/read_next/do_not_read_yet`。
 
 这里适合放：
 
@@ -48,6 +35,7 @@ AI 先读什么：
 - repo-local 维护说明
 - repo-local prompt / contract 模板
 - runner 或 adapter 的使用帮助
+- `prompt-templates/` 下模板必须回链 `docs/knowledge/` 主线入口
 
 这里不适合放：
 

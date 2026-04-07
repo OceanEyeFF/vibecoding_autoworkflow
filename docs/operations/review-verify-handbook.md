@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 承接位"
 status: active
-updated: 2026-04-03
+updated: 2026-04-07
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-07
 ---
 # Review / Verify 承接位
 
@@ -52,6 +52,8 @@ last_verified: 2026-04-03
 - 如果改了 root / partition / path 规则，是否同步 foundations 和治理检查
 - 如果改了 `AGENTS.md` 或执行流程，是否同步本文
 - 如果改了 deploy / adapter 行为，是否同步对应 operations runbook
+- 如果改了 `product/*/adapters/*/skills/*/SKILL.md`，是否仍保持 thin wrapper（`Canonical Source / Backend Notes / Deploy Target`）而没有重新复制 canonical 语义正文
+- 如果改了 `docs/operations/prompt-templates/`，是否回链对应 `docs/knowledge/` 主线入口，并同步更新 `docs/operations/README.md`
 
 ### 3. 验证结果
 

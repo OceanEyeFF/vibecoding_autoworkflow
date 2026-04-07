@@ -7,8 +7,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from governance_semantic_check import (
     SemanticReport,
+    check_adapter_wrappers_are_thin,
     check_foundations_authority_shadows,
     check_outdated_placeholder_phrases,
+    check_prompt_template_knowledge_backlinks,
     check_required_handoffs,
 )
 
@@ -84,3 +86,41 @@ def test_check_outdated_placeholder_phrases_flags_stale_text(tmp_path: Path) -> 
     check_outdated_placeholder_phrases(tmp_path, report)
 
     assert any("toolchain/scripts/README.md" in item for item in report.failures)
+
+
+def test_check_prompt_template_knowledge_backlinks_flags_missing_link(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/operations/prompt-templates/README.md",
+        "[knowledge](../../knowledge/README.md)\n",
+    )
+    write_doc(
+        tmp_path / "docs/operations/prompt-templates/simple-subagent-workflow.md",
+        "# template without backlinks\n",
+    )
+    write_doc(tmp_path / "docs/knowledge/README.md", "# knowledge\n")
+
+    report = SemanticReport()
+    check_prompt_template_knowledge_backlinks(tmp_path, report)
+
+    assert any("simple-subagent-workflow.md" in item for item in report.failures)
+
+
+def test_check_adapter_wrappers_are_thin_flags_legacy_sections(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/memory-side/adapters/agents/skills/context-routing-skill/SKILL.md",
+        "\n".join(
+            [
+                "# Wrapper",
+                "## Canonical Source",
+                "## Backend Notes",
+                "## Deploy Target",
+                "## Execution Rules",
+            ]
+        )
+        + "\n",
+    )
+
+    report = SemanticReport()
+    check_adapter_wrappers_are_thin(tmp_path, report)
+
+    assert any("Execution Rules" in item for item in report.failures)

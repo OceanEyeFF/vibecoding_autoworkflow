@@ -60,6 +60,20 @@ OUTDATED_PLACEHOLDER_PHRASES = {
         "`memory-side/` 当前只保留占位入口，不承载 active 的 `program / scenarios / scoring database` 一类资产。",
     ],
 }
+PROMPT_TEMPLATES_DIR = "docs/operations/prompt-templates"
+ADAPTER_SKILL_GLOBS = [
+    "product/memory-side/adapters/*/skills/*/SKILL.md",
+    "product/task-interface/adapters/*/skills/*/SKILL.md",
+]
+THIN_WRAPPER_REQUIRED_HEADINGS = [
+    "## Canonical Source",
+    "## Backend Notes",
+    "## Deploy Target",
+]
+THIN_WRAPPER_FORBIDDEN_HEADINGS = [
+    "## Execution Rules",
+    "## Output Contract",
+]
 
 
 @dataclass
@@ -96,6 +110,13 @@ def collect_repo_relative_markdown_links(repo_root: Path, relative_path: str) ->
         except ValueError:
             continue
     return resolved_targets
+
+
+def iter_prompt_template_files(repo_root: Path) -> list[Path]:
+    prompt_root = repo_root / PROMPT_TEMPLATES_DIR
+    if not prompt_root.exists():
+        return []
+    return sorted(prompt_root.glob("*.md"))
 
 
 def check_required_templates(repo_root: Path, report: SemanticReport) -> None:
@@ -150,6 +171,65 @@ def check_outdated_placeholder_phrases(repo_root: Path, report: SemanticReport) 
     report.add_info(f"checked {checked} outdated placeholder phrases")
 
 
+def check_prompt_template_knowledge_backlinks(repo_root: Path, report: SemanticReport) -> None:
+    prompt_files = iter_prompt_template_files(repo_root)
+    if not prompt_files:
+        report.add_failure(f"missing prompt template directory: {PROMPT_TEMPLATES_DIR}")
+        return
+
+    checked = 0
+    for prompt_file in prompt_files:
+        checked += 1
+        relative_path = to_relative_posix(prompt_file, repo_root)
+        resolved_targets = collect_repo_relative_markdown_links(repo_root, relative_path)
+        if relative_path.endswith("/README.md"):
+            if "docs/knowledge/README.md" not in resolved_targets:
+                report.add_failure(
+                    f"prompt template entrypoint missing knowledge backlink: {relative_path}"
+                )
+            continue
+        if not any(target.startswith("docs/knowledge/") for target in resolved_targets):
+            report.add_failure(
+                f"prompt template missing docs/knowledge backlink: {relative_path}"
+            )
+    report.add_info(f"checked {checked} prompt template knowledge backlinks")
+
+
+def iter_adapter_skill_files(repo_root: Path) -> list[Path]:
+    adapter_files: list[Path] = []
+    seen: set[Path] = set()
+    for pattern in ADAPTER_SKILL_GLOBS:
+        for path in sorted(repo_root.glob(pattern)):
+            if path not in seen:
+                seen.add(path)
+                adapter_files.append(path)
+    return adapter_files
+
+
+def check_adapter_wrappers_are_thin(repo_root: Path, report: SemanticReport) -> None:
+    adapter_files = iter_adapter_skill_files(repo_root)
+    if not adapter_files:
+        report.add_failure("missing adapter wrapper skills under product/*/adapters/*/skills/*/SKILL.md")
+        return
+
+    checked = 0
+    for adapter_file in adapter_files:
+        checked += 1
+        relative_path = to_relative_posix(adapter_file, repo_root)
+        text = adapter_file.read_text(encoding="utf-8")
+        for heading in THIN_WRAPPER_REQUIRED_HEADINGS:
+            if heading not in text:
+                report.add_failure(
+                    f"adapter wrapper missing required thin-shell heading {heading!r}: {relative_path}"
+                )
+        for heading in THIN_WRAPPER_FORBIDDEN_HEADINGS:
+            if heading in text:
+                report.add_failure(
+                    f"adapter wrapper still contains forbidden duplicated section {heading!r}: {relative_path}"
+                )
+    report.add_info(f"checked {checked} adapter wrappers for thin-shell structure")
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -158,6 +238,8 @@ def main() -> int:
     check_required_handoffs(repo_root, report)
     check_foundations_authority_shadows(repo_root, report)
     check_outdated_placeholder_phrases(repo_root, report)
+    check_prompt_template_knowledge_backlinks(repo_root, report)
+    check_adapter_wrappers_are_thin(repo_root, report)
 
     payload = {
         "passed": not report.failures,

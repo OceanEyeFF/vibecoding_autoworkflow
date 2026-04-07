@@ -11,7 +11,7 @@ allowed-tools: Read, Grep, Glob, Bash
 
 This folder is a repo-local backend adapter. It does not define Task Contract truth by itself.
 
-## Canonical Sources
+## Canonical Source
 
 Always load the canonical skill layer first:
 
@@ -19,34 +19,10 @@ Always load the canonical skill layer first:
 2. `product/task-interface/skills/task-contract-skill/references/entrypoints.md`
 3. The canonical `docs/knowledge/` files named there
 
-## Adapter Role
+## Backend Notes
 
-Use this wrapper to apply the canonical `task-contract-skill` inside this repository.
+- Prefer the project-level skill before introducing Claude-specific subagents.
 
-- Keep Task Contract truth in `docs/knowledge/`.
-- Keep canonical skill semantics in `product/task-interface/skills/`.
-- Prefer this project-level skill before inventing a Claude-specific subagent flow.
+## Deploy Target
 
-## Execution Rules
-
-1. Read the canonical skill and entrypoints before drafting a `Task Contract`.
-2. Extract only confirmed facts from the discussion and canonical docs.
-3. Mark unresolved items as `pending` instead of filling them with guesses.
-4. Stop before implementation, agent assignment, or execution planning.
-
-## Claude Notes
-
-- `.claude/skills/` is the repo-local deploy target.
-- Keep the same capability boundary as `product/task-interface/adapters/agents/skills/task-contract-skill/`.
-- Do not expand this into a large subagent catalog.
-- Do not store Task Contract truth under `.claude/skills/`.
-
-## Output Contract
-
-Return the same contract as the canonical skill:
-
-- `Task Contract Role`
-- `Project Baseline`
-- `Current Task Contract`
-- `Open Decisions`
-- `Downstream Consumption`
+- `.claude/skills/` is the repo-local deploy target. It is not a truth layer.

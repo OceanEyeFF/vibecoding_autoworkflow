@@ -1,9 +1,9 @@
 ---
 title: "Harness Contract 模板"
 status: active
-updated: 2026-04-03
+updated: 2026-04-07
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-07
 ---
 # Harness Contract 模板
 
@@ -60,3 +60,9 @@ last_verified: 2026-04-03
 
 - 本文档只提供结构样例，不直接承接运行态文件
 - 真实 state 和 contract 产物应落在 `.autoworkflow/`
+
+## 相关文档
+
+- [docs/knowledge/README.md](../../knowledge/README.md)
+- [Docs 文档治理基线](../../knowledge/foundations/docs-governance.md)
+- [根目录分层](../../knowledge/foundations/root-directory-layering.md)

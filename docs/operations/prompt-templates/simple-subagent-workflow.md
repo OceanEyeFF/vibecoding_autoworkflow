@@ -1,9 +1,9 @@
 ---
 title: "Simple Workflow Prompt"
 status: active
-updated: 2026-04-03
+updated: 2026-04-07
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-07
 ---
 # Simple Workflow Prompt
 
@@ -24,19 +24,8 @@ last_verified: 2026-04-03
 - 禁止静默降级：如需 fallback，必须先说明影响并等待确认。
 
 【Step 0：限定阅读入口】
-先只读取与本任务直接相关的仓库入口与真相层，优先遵守仓库既有阅读顺序：
-1. `docs/README.md`
-2. 根目录 `README.md` 与 `INDEX.md`
-3. 与任务直接相关的 `docs/`、`product/`、`toolchain/` 文件
-
-默认不要主动进入以下运行态或挂载态目录，除非任务明确要求：
-- `.autoworkflow/`
-- `.spec-workflow/`
-- `.serena/`
-- `.nav/`
-- `.agents/`
-- `.claude/`
-- `.opencode/`
+先按 `docs/knowledge/foundations/path-governance-ai-routing.md` 的权威路由确定阅读范围。
+本模板只额外要求：在 route 已收口后，只继续读取与当前任务直接相关的 `docs/`、`product/`、`toolchain/` 文件，不自行扩读 repo-local state、mount 或 deploy target。
 
 【Step 1：任务规划 / 执行合同生成】
 基于原始需求文档、仓库真相层文档和实际代码，输出一个执行合同，必须包含：
@@ -84,5 +73,8 @@ last_verified: 2026-04-03
 
 ## 相关文档
 
+- [docs/knowledge/README.md](../../knowledge/README.md)
+- [路径治理与 AI 告知](../../knowledge/foundations/path-governance-ai-routing.md)
+- [Task Contract 模板](../../knowledge/foundations/task-contract-template.md)
 - [Execution Contract 模板](./execution-contract-template.md)
 - [Review / Verify 承接位](../review-verify-handbook.md)
