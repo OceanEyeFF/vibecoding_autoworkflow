@@ -17,8 +17,9 @@ Use this skill when the task needs Knowledge Base classification, entrypoint rep
 
 1. Read `references/entrypoints.md`.
 2. Load only the canonical docs needed for the current repository state.
-3. Classify the relevant docs and entrypoints.
-4. Apply the smallest safe Knowledge Base update.
+3. Determine whether the repo is in `Bootstrap` or `Adopt` mode.
+4. Classify the relevant docs and entrypoints.
+5. Apply the smallest safe Knowledge Base update.
 
 ## Hard Constraints
 
