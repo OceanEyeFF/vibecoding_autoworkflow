@@ -3,11 +3,14 @@ encode/httpx
 fastapi/typer
 spf13/cobra
 pmndrs/zustand
-vitejs/vite
 voidzero-dev/vite-plus
-neovim/neovim
 Eugeny/russh
 urfave/cli
 roboflow/trackers
 ultralytics/yolov5
-open-mmlab/mmdetection
+nicknisi/dotfiles
+nikivdev/flow
+bors-ng/bors-ng
+vas3k/TaxHacker
+davehull/Kansa
+tabulapdf/tabula

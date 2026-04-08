@@ -1,11 +1,20 @@
 ---
 title: "Review Loop Prompt"
 status: active
-updated: 2026-04-07
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-07
+last_verified: 2026-04-08
 ---
 # Review Loop Prompt
+
+> 说明：本文已降级为 compatibility shim。canonical source 已迁到 [review-loop-workflow](../../../product/harness-operations/skills/review-loop-workflow/references/prompt.md)。本页只保留旧路径兼容入口，不再定义主线语义。
+
+## Canonical Source
+
+- [review-loop-workflow/SKILL.md](../../../product/harness-operations/skills/review-loop-workflow/SKILL.md)
+- [review-loop-workflow/references/prompt.md](../../../product/harness-operations/skills/review-loop-workflow/references/prompt.md)
+- [review-loop-workflow/references/entrypoints.md](../../../product/harness-operations/skills/review-loop-workflow/references/entrypoints.md)
+- [docs/knowledge/README.md](../../knowledge/README.md)
 
 > 定位：代码优先的 repo-side review contract。适用于 commit、PR、diff range 或 target path 的多轮审查与修复闭环。
 

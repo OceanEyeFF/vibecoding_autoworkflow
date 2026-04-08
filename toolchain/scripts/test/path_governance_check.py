@@ -52,6 +52,10 @@ REQUIRED_ENTRY_PATHS = [
     "docs/knowledge/foundations/decision-record-template.md",
     "docs/knowledge/foundations/module-entry-template.md",
     "product/README.md",
+    "product/harness-operations/README.md",
+    "product/harness-operations/skills/README.md",
+    "product/harness-operations/adapters/README.md",
+    "product/harness-operations/manifests/README.md",
     "product/memory-side/README.md",
     "product/memory-side/skills/README.md",
     "product/memory-side/adapters/README.md",
@@ -112,8 +116,17 @@ ENTRYPOINT_LINK_RULES = {
         "docs/operations/memory-side/README.md",
         "docs/operations/task-interface/README.md",
     ],
+    "docs/operations/prompt-templates/README.md": [
+        KNOWLEDGE_README,
+        "product/harness-operations/README.md",
+    ],
     "docs/analysis/README.md": [
         KNOWLEDGE_README,
+    ],
+    "product/README.md": [
+        "product/memory-side/README.md",
+        "product/task-interface/README.md",
+        "product/harness-operations/README.md",
     ],
     "docs/reference/README.md": [
         KNOWLEDGE_README,

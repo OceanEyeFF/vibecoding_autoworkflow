@@ -107,6 +107,33 @@ def test_check_prompt_template_knowledge_backlinks_flags_missing_link(tmp_path: 
     assert any("simple-subagent-workflow.md" in item for item in report.failures)
 
 
+def test_check_prompt_template_knowledge_backlinks_flags_missing_canonical_shim_link(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/operations/prompt-templates/README.md",
+        "\n".join(
+            [
+                "[knowledge](../../knowledge/README.md)",
+                "[product](../../../product/harness-operations/README.md)",
+            ]
+        )
+        + "\n",
+    )
+    write_doc(
+        tmp_path / "docs/operations/prompt-templates/simple-subagent-workflow.md",
+        "[knowledge](../../knowledge/README.md)\n",
+    )
+    write_doc(tmp_path / "docs/knowledge/README.md", "# knowledge\n")
+    write_doc(
+        tmp_path / "product/harness-operations/README.md",
+        "# harness operations\n",
+    )
+
+    report = SemanticReport()
+    check_prompt_template_knowledge_backlinks(tmp_path, report)
+
+    assert any("canonical source link" in item for item in report.failures)
+
+
 def test_check_adapter_wrappers_are_thin_flags_legacy_sections(tmp_path: Path) -> None:
     write_doc(
         tmp_path / "product/memory-side/adapters/agents/skills/context-routing-skill/SKILL.md",
@@ -181,6 +208,34 @@ def test_check_canonical_skill_packages_are_minimal_flags_adapter_leakage(tmp_pa
     check_canonical_skill_packages_are_minimal(tmp_path, report)
 
     assert any("Backend Notes" in item for item in report.failures)
+
+
+def test_check_canonical_skill_packages_are_minimal_requires_harness_prompt_and_bindings(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/harness-operations/skills/demo-workflow/SKILL.md",
+        "\n".join(
+            [
+                "# Demo Skill",
+                "## Overview",
+                "## When To Use",
+                "## Workflow",
+                "## Hard Constraints",
+                "## Expected Output",
+                "## Resources",
+            ]
+        )
+        + "\n",
+    )
+    write_doc(
+        tmp_path / "product/harness-operations/skills/demo-workflow/references/entrypoints.md",
+        "# Demo references\n\n## Reading Policy\n",
+    )
+
+    report = SemanticReport()
+    check_canonical_skill_packages_are_minimal(tmp_path, report)
+
+    assert any("references/prompt.md" in item for item in report.failures)
+    assert any("references/bindings.md" in item for item in report.failures)
 
 
 def test_check_canonical_entrypoints_cover_required_formats_flags_missing_link(tmp_path: Path) -> None:

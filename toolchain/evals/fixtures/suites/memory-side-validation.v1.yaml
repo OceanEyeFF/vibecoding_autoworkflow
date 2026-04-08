@@ -4,5 +4,11 @@ defaults:
   judge_backend: codex
   with_eval: true
 runs:
-  - repo: zustand
+  - repo: axum
+    task: context-routing
+  - repo: httpx
+    task: context-routing
+  - repo: vite-plus
+    task: context-routing
+  - repo: bors-ng
     task: context-routing

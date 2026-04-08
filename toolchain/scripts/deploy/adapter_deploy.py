@@ -13,7 +13,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PRODUCT_ROOT = REPO_ROOT / "product"
-PRODUCT_PARTITIONS = ("memory-side", "task-interface")
+PRODUCT_PARTITIONS = ("memory-side", "task-interface", "harness-operations")
 LOCAL_TARGET_ROOTS = {
     "claude": REPO_ROOT / ".claude" / "skills",
     "agents": REPO_ROOT / ".agents" / "skills",

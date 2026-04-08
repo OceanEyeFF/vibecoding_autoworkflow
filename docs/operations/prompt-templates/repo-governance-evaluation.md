@@ -1,11 +1,20 @@
 ---
 title: "Repo Governance Evaluation Prompt"
 status: active
-updated: 2026-04-07
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-07
+last_verified: 2026-04-08
 ---
 # Repo Governance Evaluation Prompt
+
+> 说明：本文已降级为 compatibility shim。canonical source 已迁到 [repo-governance-evaluation](../../../product/harness-operations/skills/repo-governance-evaluation/references/prompt.md)。本页只保留旧路径兼容入口，不再定义主线语义。
+
+## Canonical Source
+
+- [repo-governance-evaluation/SKILL.md](../../../product/harness-operations/skills/repo-governance-evaluation/SKILL.md)
+- [repo-governance-evaluation/references/prompt.md](../../../product/harness-operations/skills/repo-governance-evaluation/references/prompt.md)
+- [repo-governance-evaluation/references/entrypoints.md](../../../product/harness-operations/skills/repo-governance-evaluation/references/entrypoints.md)
+- [docs/knowledge/README.md](../../knowledge/README.md)
 
 > 目的：评估“仓库是否可被 AI 或非作者安全接管并持续维护”。
 

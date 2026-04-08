@@ -1,9 +1,9 @@
 ---
 title: "路径治理与 AI 告知"
 status: active
-updated: 2026-04-07
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-07
+last_verified: 2026-04-08
 ---
 # 路径治理与 AI 告知
 
@@ -59,7 +59,7 @@ last_verified: 2026-04-07
 - `docs/knowledge/memory-side/skill-agent-model.md`
 - `docs/knowledge/task-interface/task-contract.md`
 - 按任务进入 `product/`、`docs/` 或 `toolchain/` 的局部入口页
-- 需要 repo-local execution templates 或 prompt scaffolds 时，先进入 `docs/operations/README.md`，再下钻 `docs/operations/prompt-templates/`
+- 需要 Harness Operations prompt entrypoints 或旧路径兼容 shim 时，先进入 `docs/operations/README.md`，再下钻 `docs/operations/prompt-templates/`
 
 ### `do_not_read_yet`
 
@@ -94,7 +94,7 @@ last_verified: 2026-04-07
 `read_first`
 
 1. `product/README.md`
-2. `product/memory-side/README.md` 或 `product/task-interface/README.md`
+2. `product/memory-side/README.md`、`product/task-interface/README.md` 或 `product/harness-operations/README.md`
 3. 对应 partition 的 `skills/README.md` 或 `adapters/README.md`
 
 `read_next`
@@ -232,7 +232,7 @@ last_verified: 2026-04-07
 - 任务明确需要 repo-local prompt / contract 模板来固定执行结构
 - 进入后按路径簇下钻：
   - `docs/operations/deploy/README.md`：deploy / verify / maintenance
-  - `docs/operations/prompt-templates/`：repo-local execution templates
+  - `docs/operations/prompt-templates/`：Harness Operations compatibility shims
   - `docs/operations/memory-side/README.md`、`docs/operations/task-interface/README.md`：partition-specific usage help
 
 ### 2. 进入 `docs/analysis/`

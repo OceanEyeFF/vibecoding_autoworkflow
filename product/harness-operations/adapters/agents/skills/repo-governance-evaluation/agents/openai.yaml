@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repo Governance Evaluation (Repo)"
+  short_description: "Apply the repo-local Harness Operations governance-evaluation adapter"
+  default_prompt: "Use the repo-local $repo-governance-evaluation wrapper in .agents/skills to run an evidence-backed repository governance audit with maintainability scoring and AI or harness compatibility assessment."

@@ -1,11 +1,20 @@
 ---
 title: "Task List Workflow Prompt"
 status: active
-updated: 2026-04-07
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-07
+last_verified: 2026-04-08
 ---
 # Task List Workflow Prompt
+
+> 说明：本文已降级为 compatibility shim。canonical source 已迁到 [task-list-workflow](../../../product/harness-operations/skills/task-list-workflow/references/prompt.md)。本页只保留旧路径兼容入口，不再定义主线语义。
+
+## Canonical Source
+
+- [task-list-workflow/SKILL.md](../../../product/harness-operations/skills/task-list-workflow/SKILL.md)
+- [task-list-workflow/references/prompt.md](../../../product/harness-operations/skills/task-list-workflow/references/prompt.md)
+- [task-list-workflow/references/entrypoints.md](../../../product/harness-operations/skills/task-list-workflow/references/entrypoints.md)
+- [docs/knowledge/README.md](../../knowledge/README.md)
 
 > 目的：当输入文件内包含多个任务时，替代单任务 workflow，避免范围漂移、依赖错序和验证遗漏。
 

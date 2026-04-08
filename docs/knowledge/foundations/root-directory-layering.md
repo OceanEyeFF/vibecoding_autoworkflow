@@ -1,9 +1,9 @@
 ---
 title: "根目录分层"
 status: active
-updated: 2026-04-07
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-07
+last_verified: 2026-04-08
 ---
 # 根目录分层
 
@@ -59,7 +59,12 @@ last_verified: 2026-04-07
 - `product/task-interface/adapters/claude/`：Task Interface 的 Claude adapter 源码
 - `product/task-interface/adapters/agents/`：Task Interface 的 Codex / OpenAI adapter 源码
 - `product/task-interface/adapters/opencode/`：Task Interface 的 OpenCode adapter 源码
+- `product/harness-operations/skills/`：Harness Operations canonical skill 源码
+- `product/harness-operations/adapters/claude/`：Harness Operations 的 Claude adapter 源码
+- `product/harness-operations/adapters/agents/`：Harness Operations 的 Codex / OpenAI adapter 源码
+- `product/harness-operations/adapters/opencode/`：Harness Operations 的 OpenCode adapter 源码
 - `product/memory-side/manifests/`：全局安装与分发元数据预留位
+- `product/harness-operations/manifests/`：Harness Operations 的全局安装与分发元数据预留位
 - `product/*/adapters/*/skills/`：backend adapter 入口，只保留 canonical pointer、后端 metadata 与最小 delta
 
 硬规则：

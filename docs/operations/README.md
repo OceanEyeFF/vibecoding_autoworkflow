@@ -1,11 +1,11 @@
 # Operations
 
-`docs/operations/` 只保存当前仓库的 repo-local runbook、部署说明、维护帮助和 execution templates，不保存跨仓库通用真相。
+`docs/operations/` 只保存当前仓库的 repo-local runbook、部署说明、维护帮助和 compatibility prompt shims，不保存跨仓库通用真相。
 
 当前路径簇按对象类型分成三组：
 
 1. `deploy/`：deploy / verify / maintenance 的入口簇
-2. `prompt-templates/`：repo-local execution template layer
+2. `prompt-templates/`：`product/harness-operations/` 的 compatibility prompt shims
 3. `memory-side/`、`task-interface/`：partition-specific usage help
 
 当前主线索引：
@@ -39,7 +39,7 @@ AI 默认阅读顺序以 [路径治理与 AI 告知](../knowledge/foundations/pa
 这里适合放：
 
 - deploy / verify / maintenance 的 cluster index
-- repo-local execution templates
+- repo-local compatibility prompt shims
 - partition-specific usage help
 - repo-local runbook 的最小入口
 
