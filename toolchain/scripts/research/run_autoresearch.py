@@ -22,8 +22,9 @@ from autoresearch_contract import (
     resolve_p2_contract_target,
     resolve_suite_files,
 )
+from autoresearch_lane_executor import execute_lane_suites
 from autoresearch_round import AutoresearchRoundManager
-from autoresearch_scoreboard import build_scoreboard, load_run_summary, merge_run_summaries, write_scoreboard
+from autoresearch_scoreboard import build_scoreboard, merge_run_summaries, write_scoreboard
 from autoresearch_mutation_registry import (
     build_registry_payload,
     find_registry_entry,
@@ -34,6 +35,7 @@ from autoresearch_mutation_registry import (
     write_mutation_registry,
 )
 from autoresearch_selector import select_next_mutation_entry
+from autoresearch_prepare_round_stop import prepare_round_stop_reason
 from autoresearch_feedback_distill import (
     build_recent_feedback_excerpt,
     latest_aggregate_prompt_guidance,
@@ -57,7 +59,6 @@ from worktree_manager import WorktreeManager, champion_branch_name
 
 
 AUTORESEARCH_ROOT = REPO_ROOT / ".autoworkflow" / "autoresearch"
-EPSILON = 1e-9
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -129,78 +130,6 @@ def ensure_history_file(history_path: Path) -> None:
     if history_path.exists():
         return
     history_path.write_text(history_header() + "\n", encoding="utf-8")
-
-
-def _history_rows(history_path: Path) -> list[dict[str, str]]:
-    if not history_path.is_file():
-        return []
-    lines = [line for line in history_path.read_text(encoding="utf-8").splitlines() if line.strip()]
-    if len(lines) <= 1:
-        return []
-    rows: list[dict[str, str]] = []
-    for line in lines[1:]:
-        parts = line.split("\t")
-        if len(parts) != len(HISTORY_COLUMNS):
-            continue
-        rows.append(dict(zip(HISTORY_COLUMNS, parts, strict=True)))
-    return rows
-
-
-def _has_final_keep(history_path: Path) -> bool:
-    return any(row.get("decision") == "keep" for row in _history_rows(history_path))
-
-
-def _rounds_since_new_validation_champion(history_path: Path) -> int:
-    champion_validation: float | None = None
-    stale_rounds = 0
-    for row in _history_rows(history_path):
-        decision = str(row.get("decision") or "").strip()
-        try:
-            validation_score = float(row.get("validation_score") or "0")
-        except ValueError:
-            continue
-        if decision == "baseline":
-            champion_validation = validation_score
-            stale_rounds = 0
-            continue
-        if decision not in {"keep", "discard"}:
-            continue
-        if decision == "keep" and champion_validation is not None and validation_score > champion_validation + EPSILON:
-            champion_validation = validation_score
-            stale_rounds = 0
-            continue
-        stale_rounds += 1
-    return stale_rounds
-
-
-def _prepare_round_stop_reason(
-    *,
-    run_dir: Path,
-    registry,
-) -> tuple[str, str] | None:
-    history_path = run_dir / "history.tsv"
-    stale_rounds = _rounds_since_new_validation_champion(history_path)
-    if stale_rounds >= 3:
-        return (
-            "no_new_validation_champion",
-            "Stop gate triggered: 3 consecutive completed rounds without a new validation champion.",
-        )
-
-    if registry is None:
-        return None
-    active_entries = [
-        entry
-        for entry in registry.entries
-        if str(entry.get("status") or "").strip().lower() == "active"
-    ]
-    if active_entries and not _has_final_keep(history_path):
-        if all(int(entry.get("attempts") or 0) > 0 for entry in active_entries):
-            return (
-                "mutation_families_exhausted_without_keep",
-                "Stop gate triggered: all active mutation families have been tried at least once "
-                "and the run has no final keep.",
-            )
-    return None
 
 
 def write_canonical_contract(run_dir: Path, payload: dict[str, object]) -> None:
@@ -309,20 +238,6 @@ def sync_runtime_to_baseline(run_id: str, base_sha: str) -> None:
     manager.save_runtime(run_id, runtime)
 
 
-def _capture_new_summary(save_dir: Path, before: set[Path]) -> Path:
-    after = {path for path in save_dir.iterdir() if path.is_dir()}
-    new_dirs = sorted(after - before)
-    if len(new_dirs) == 1:
-        summary = new_dirs[0] / "run-summary.json"
-        if summary.is_file():
-            return summary
-    candidates = sorted((path / "run-summary.json" for path in after), key=lambda item: item.stat().st_mtime)
-    candidates = [path for path in candidates if path.is_file()]
-    if not candidates:
-        raise FileNotFoundError(f"No run-summary.json found under {save_dir}")
-    return candidates[-1]
-
-
 def run_lane_suites(
     suite_files: list[Path],
     save_dir: Path,
@@ -330,10 +245,7 @@ def run_lane_suites(
     timeout_seconds: int,
     retry_policy,
 ) -> list[dict[str, object]]:
-    save_dir.mkdir(parents=True, exist_ok=True)
-    summaries: list[dict[str, object]] = []
-    for suite_file in suite_files:
-        before = {path for path in save_dir.iterdir() if path.is_dir()}
+    def _run_suite(suite_file: Path) -> None:
         exit_code = run_skill_suite_main(
             [
                 "--suite",
@@ -347,9 +259,8 @@ def run_lane_suites(
         )
         if exit_code != 0:
             raise RuntimeError(f"Suite failed: {suite_file}")
-        summary_path = _capture_new_summary(save_dir, before)
-        summaries.append(load_run_summary(summary_path))
-    return summaries
+
+    return execute_lane_suites(suite_files, save_dir, run_suite=_run_suite)
 
 
 def materialize_lane_suites(
@@ -536,7 +447,7 @@ def cmd_prepare_round(
     feedback_ledger = load_feedback_ledger(run_dir / "feedback-ledger.jsonl")
     runtime = read_runtime_if_present(manager, contract.run_id)
     if runtime is None or runtime.get("active_round") is None:
-        stop_info = _prepare_round_stop_reason(run_dir=run_dir, registry=registry)
+        stop_info = prepare_round_stop_reason(run_dir=run_dir, registry=registry)
         if stop_info is not None:
             kind, stop_reason = stop_info
             raise AutoresearchStop(kind=kind, message=stop_reason)
