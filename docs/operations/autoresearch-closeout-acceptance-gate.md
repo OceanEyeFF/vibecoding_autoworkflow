@@ -1,11 +1,14 @@
 ---
 title: "Autoresearch closeout acceptance gate"
 status: active
-updated: 2026-04-03
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-08
 ---
+
 # Autoresearch closeout acceptance gate
+
+> 非默认入口。本文只保留 closeout acceptance gate 的审计与复跑说明；只有在复核 closeout lineage / audit 或重跑 gate 证据链时才进入。日常入口先回到 [README.md](./README.md) 中的 `autoresearch-minimal-loop / research-cli-help / tmp-exrepo-maintenance`。
 
 > 目的：把当前 `autoresearch` closeout 的验收动作收成一条可重复的 gate 链，明确先做什么、失败时停在哪里、如何回填状态。
 
@@ -54,8 +57,8 @@ last_verified: 2026-04-03
 - `Scope Gate`：确认当前工作区没有越界修改
 - `Spec Gate`：先确认 doc/entrypoint 结构没有偏离当前治理主线，再确认关键模板、承接关系和 foundations 权威位没有发生最小语义回退
 - `Static Gate`：确认新增脚本至少能被 Python 解析
-- `Test Gate`：确认针对 gate/backfill 的最小测试仍然通过，并完成三路 `adapter_deploy.py verify --target local`
-- `Smoke Gate`：确认 retained run 的 `runtime.json` 没有残留 `active_round`，并对 `gate_status_backfill.py` 做一次 `--dry-run` smoke，确认真入口和参数解析可重复执行
+- `Test Gate`：确认针对 gate/backfill 的最小测试仍然通过，并始终执行三路 `adapter_deploy.py verify`。如果当前 isolated worktree 只有 `missing-target-root` 这一类环境缺口，则把该 backend 记录成 `skipped`；但 CLI 失效、source root 缺失、broken symlink、wrong-type target root 等真实 drift 仍必须继续失败。
+- `Smoke Gate`：优先检查当前 worktree 中 materialize 的 retained run；若当前 worktree 未 materialize 这些 fixture，则回退到 primary worktree 中对应的 retained run。只有在 retained fixture 明确存在时，才允许通过；如果当前与 primary worktree 都找不到所需 retained runtime artifact，必须失败，不能把证据缺失写成 `skipped`
 
 ## 五、状态回填
 
@@ -68,6 +71,8 @@ python tools/gate_status_backfill.py \
   --status <status> \
   --details '<json>'
 ```
+
+其中 `<status>` 现在允许写回 `passed / failed / blocked / partial / skipped`；如果 gate 只因环境缺口被跳过，必须落成 `skipped` 并在 `details` 里带上 `skip_reasons`，不能伪装成 `passed`。
 
 回填会同步写入：
 

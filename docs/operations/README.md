@@ -14,14 +14,24 @@
 - [prompt-templates/README.md](./prompt-templates/README.md)
 - [memory-side/README.md](./memory-side/README.md)
 - [task-interface/README.md](./task-interface/README.md)
-- `autoresearch-artifact-hygiene.md`
-- `autoresearch-closeout-cleanup-and-retained-index.md`
-- `autoresearch-closeout-entry-layering.md`
-- `autoresearch-closeout-acceptance-gate.md`
-- `autoresearch-minimal-loop.md`
+
+**Autoresearch default operations entry**
+
+- `autoresearch-minimal-loop.md`（最小闭环 runbook，日常进入点）
+- `research-cli-help.md`（Research CLI 的直接帮助页）
+- `tmp-exrepo-maintenance.md`（TMP exrepo 的当前维护说明）
+
+这些文档构成 `autoresearch` 的 daily operations runbook，其他 closeout 专页都移到下方附录层，仅在需复核历史决策、审计 lineage 或追踪 closeout 例外时进入。
+
+**Closeout / lineage appendix（非默认入口）**
+
 - `autoresearch-closeout-decision-rules.md`
-- `research-cli-help.md`
-- `tmp-exrepo-maintenance.md`
+- `autoresearch-artifact-hygiene.md`
+- `autoresearch-closeout-entry-layering.md`
+- `autoresearch-closeout-cleanup-and-retained-index.md`
+- `autoresearch-closeout-acceptance-gate.md`
+
+在需要审计 closeout 记录或追踪 example decisions 时，可按上述目录依次进入，默认阅读顺序仍然以前面的 daily runbook 为准。
 
 AI 默认阅读顺序以 [路径治理与 AI 告知](../knowledge/foundations/path-governance-ai-routing.md) 为准，并由 [Docs 文档治理基线](../knowledge/foundations/docs-governance.md) 约束文档层级。
 本页只保留 repo-local 运维入口，不重复主线 `read_first/read_next/do_not_read_yet`。

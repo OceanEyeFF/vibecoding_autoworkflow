@@ -18,7 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Backfill a gate result into harness state.")
     parser.add_argument("--workflow-id", required=True)
     parser.add_argument("--gate", required=True)
-    parser.add_argument("--status", required=True, choices=("passed", "failed", "blocked", "partial"))
+    parser.add_argument("--status", required=True, choices=("passed", "failed", "blocked", "partial", "skipped"))
     parser.add_argument("--details", default="{}")
     parser.add_argument(
         "--state-file",

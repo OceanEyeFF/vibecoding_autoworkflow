@@ -1,9 +1,9 @@
 ---
 title: "Autoresearch 模块总览"
 status: active
-updated: 2026-04-02
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-02
+last_verified: 2026-04-08
 ---
 # Autoresearch 模块总览
 
@@ -64,20 +64,19 @@ last_verified: 2026-04-02
 - [Autoresearch 最小闭环运行说明](../../operations/autoresearch-minimal-loop.md)
 - [Research CLI 帮助](../../operations/research-cli-help.md)
 - [TMP Exrepo 维护说明](../../operations/tmp-exrepo-maintenance.md)
-- [Autoresearch 收口边界与例外决策规则](../../operations/autoresearch-closeout-decision-rules.md)
 
-这些文档回答的是“本仓库里怎么跑、怎么维护、怎么收口”，不是模块实现真相本体。
+上面三页是 `autoresearch` 的日常 operations entry；其他 closeout 规则页（artifact hygiene、决策规则、入口层级、cleanup、acceptance gate）仍保留，但仅在需要复核 closeout lineage / audit 或查阅例外判定时进入。这些文档回答的是“本仓库里怎么跑、怎么维护、怎么 closeout”，不是模块实现真相本体。
 
 ### 3. `docs/analysis/`
 
-这里承接阶段性合同、设计边界、执行规划与 closeout 跟踪，例如：
+这里承接阶段性合同、设计边界、执行规划与 closeout lineage，例如：
 
 - `autoresearch-p0-*`
 - `autoresearch-p1-*`
 - `autoresearch-p2-*`
 - `autoresearch-closeout-*`
 
-这些文档可以固定当前阶段边界，但不单独承担最终主线规则。
+这些文档可以固定当前阶段边界，但不单独承担最终主线规则。`autoresearch-closeout-*` 现已退出默认阅读面，进入前应先回到 `docs/analysis/README.md` 做分流。
 
 ### 4. `toolchain/`
 
@@ -104,21 +103,26 @@ last_verified: 2026-04-02
 ### 1. 理解模块边界时
 
 1. 先读本页。
-2. 再读 [toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)。
-3. 如果任务涉及 repo-local 操作，再读 `docs/operations/` 下对应 runbook。
+2. 如果任务涉及 repo-local 操作，再按需读：
+   - [Autoresearch 最小闭环运行说明](../../operations/autoresearch-minimal-loop.md)
+   - [Research CLI 帮助](../../operations/research-cli-help.md)
+   - [TMP Exrepo 维护说明](../../operations/tmp-exrepo-maintenance.md)
+3. 如果任务涉及 phase contract、当前 task-plan 或历史研究，再回到 [docs/analysis/README.md](../../analysis/README.md) 做分流。
+4. 只有任务明确落到实现或 CLI 内部接线时，再读 [toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)。
 
 ### 2. 修改实现时
 
 1. 先读本页。
 2. 再读 [toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)。
 3. 再进入目标脚本、测试和 fixture。
-4. 只有需要阶段语义或当前规划时，再进入 `docs/analysis/autoresearch-*.md`。
+4. 只有需要阶段语义或当前规划时，再回到 [docs/analysis/README.md](../../analysis/README.md) 分流到目标 `autoresearch-*.md`。
 
-### 3. 做 closeout 或治理时
+### 3. 复核 closeout lineage / audit 时
 
 1. 先读本页。
-2. 再读 [Autoresearch 收口边界与例外决策规则](../../operations/autoresearch-closeout-decision-rules.md)。
-3. 再读当前 `docs/analysis/` 中的 closeout 文档。
+2. 再回到 [docs/analysis/README.md](../../analysis/README.md)。
+3. 只在确实需要时，再进入 `docs/analysis/autoresearch-closeout-*.md` 或 `docs/operations/autoresearch-closeout-*.md`。
+4. 不把 closeout 专项页当成默认起点，也不让它们替代本模块入口或日常 runbook。
 
 ## 五、快速判断
 

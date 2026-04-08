@@ -1,11 +1,14 @@
 ---
 title: "Autoresearch closeout cleanup and retained index"
 status: active
-updated: 2026-04-02
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-02
+last_verified: 2026-04-08
 ---
+
 # Autoresearch closeout cleanup and retained index
+
+> 非默认入口。本文只保留 closeout cleanup record 与 retained index 的审计承接价值；只有在复核 retained evidence 或 cleanup lineage 时才进入。日常入口先回到 [README.md](./README.md) 中的 `autoresearch-minimal-loop / research-cli-help / tmp-exrepo-maintenance`。
 
 > 目的：记录本轮 `G-105` 的最小真实清理结果，并为 `G-301` 提供只登记明确保留对象的 retained index。
 
