@@ -8,6 +8,7 @@ from autoresearch_mutation_registry import AutoresearchMutationRegistry
 
 
 EPSILON = 1e-9
+MAX_STALE_ROUNDS = 3
 
 
 def history_rows(history_path: Path) -> list[dict[str, str]]:
@@ -26,7 +27,7 @@ def history_rows(history_path: Path) -> list[dict[str, str]]:
 
 
 def has_final_keep(history_path: Path) -> bool:
-    return any(row.get("decision") == "keep" for row in history_rows(history_path))
+    return any(str(row.get("decision") or "") == "keep" for row in history_rows(history_path))
 
 
 def rounds_since_new_validation_champion(history_path: Path) -> int:
@@ -59,10 +60,10 @@ def prepare_round_stop_reason(
 ) -> tuple[str, str] | None:
     history_path = run_dir / "history.tsv"
     stale_rounds = rounds_since_new_validation_champion(history_path)
-    if stale_rounds >= 3:
+    if stale_rounds >= MAX_STALE_ROUNDS:
         return (
             "no_new_validation_champion",
-            "Stop gate triggered: 3 consecutive completed rounds without a new validation champion.",
+            f"Stop gate triggered: {MAX_STALE_ROUNDS} consecutive completed rounds without a new validation champion.",
         )
 
     if registry is None:

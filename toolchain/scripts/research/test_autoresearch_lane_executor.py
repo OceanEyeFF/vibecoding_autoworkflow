@@ -58,6 +58,13 @@ class LaneExecutorTest(unittest.TestCase):
 
         self.assertEqual(summary_path, second / "run-summary.json")
 
+    def test_capture_new_summary_raises_when_no_candidates_exist(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            save_dir = Path(tmp)
+
+            with self.assertRaises(FileNotFoundError):
+                capture_new_summary(save_dir, set())
+
     def test_execute_lane_suites_runs_each_suite_and_loads_summaries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             save_dir = Path(tmp) / "lane"

@@ -8,7 +8,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from autoresearch_contract import history_header
-from autoresearch_prepare_round_stop import prepare_round_stop_reason
+from autoresearch_prepare_round_stop import prepare_round_stop_reason, rounds_since_new_validation_champion
 from autoresearch_mutation_registry import AutoresearchMutationRegistry
 
 
@@ -52,6 +52,15 @@ def build_registry(entries: list[dict[str, object]]) -> AutoresearchMutationRegi
 
 
 class PrepareRoundStopReasonTest(unittest.TestCase):
+    def test_rounds_since_new_validation_champion_empty_history(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            (run_dir / "history.tsv").write_text(history_header() + "\n", encoding="utf-8")
+
+            stale_rounds = rounds_since_new_validation_champion(run_dir / "history.tsv")
+
+        self.assertEqual(stale_rounds, 0)
+
     def test_returns_none_when_no_stop_gate_matches(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp)
