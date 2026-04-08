@@ -4,5 +4,11 @@ defaults:
   judge_backend: codex
   with_eval: true
 runs:
-  - repo: httpx
+  - repo: trackers
+    task: context-routing
+  - repo: yolov5
+    task: context-routing
+  - repo: TaxHacker
+    task: context-routing
+  - repo: tabula
     task: context-routing

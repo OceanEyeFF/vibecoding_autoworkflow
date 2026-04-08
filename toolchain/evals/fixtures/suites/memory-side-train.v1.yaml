@@ -6,3 +6,17 @@ defaults:
 runs:
   - repo: typer
     task: context-routing
+  - repo: zustand
+    task: context-routing
+  - repo: cobra
+    task: context-routing
+  - repo: cli
+    task: context-routing
+  - repo: russh
+    task: context-routing
+  - repo: flow
+    task: context-routing
+  - repo: Kansa
+    task: context-routing
+  - repo: dotfiles
+    task: context-routing
