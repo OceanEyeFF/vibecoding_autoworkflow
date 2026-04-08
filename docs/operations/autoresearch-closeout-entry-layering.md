@@ -1,17 +1,20 @@
 ---
 title: "Autoresearch closeout 入口层级规则"
 status: active
-updated: 2026-04-02
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-02
+last_verified: 2026-04-08
 ---
+
 # Autoresearch closeout 入口层级规则
+
+> 非默认入口。本文只保留 closeout 入口层级规则的 lineage / audit 记录；只有在复核已完成 closeout 的入口退场语义时才进入。日常入口先回到 [README.md](./README.md) 中的 `autoresearch-minimal-loop / research-cli-help / tmp-exrepo-maintenance`。
 
 > 目的：冻结当前 `autoresearch` closeout 在 `docs/analysis/` 的入口层级，明确什么文件可以承担目录页型入口，什么文件只能作为叶子页正文，以及历史 planning 如何退回 lineage 地位。
 
 ## 一、适用范围
 
-本文只治理当前 closeout surface：
+本文只治理已经收起的 closeout surface：
 
 - `docs/analysis/README.md`
 - 当前 closeout 正文：
@@ -43,17 +46,17 @@ last_verified: 2026-04-02
 
 ## 四、当前 closeout 映射
 
-当前仓库内，closeout surface 先按下面映射执行：
+当前仓库内，closeout surface 现在按下面映射执行：
 
 - `docs/analysis/README.md`：
-  - 当前 `analysis/` 层的目录页型入口。
-  - 在 `G-205` 完成前，它也是 closeout 相关 active 文档的临时分流入口。
+  - 当前 `analysis/` 层的唯一目录页型入口。
+  - closeout 相关内容只保留在单独的 lineage / audit 分流块里，不再占用“当前执行规划”。
 - `autoresearch-closeout-governance-goals.md`：
-  - 当前 closeout 的目标正文叶子页。
-  - 可被目录页链接，但不单独承担默认入口。
+  - 已完成 closeout 的目标正文叶子页。
+  - 应使用 `status: superseded`，只保留 lineage / audit 价值。
 - `autoresearch-closeout-governance-task-list.md`：
-  - 当前 closeout 的任务正文叶子页。
-  - 可被目录页链接，但不单独承担默认入口。
+  - 一次已收起的“收口后中期治理”任务设想。
+  - 应使用 `status: superseded`，只保留 lineage / audit 价值。
 - 历史 planning 文档：
   - 一律保留为 lineage 叶子页。
   - 只说明“它曾经是什么”和“现在应该去哪里”，不再承担当前入口分流。
@@ -86,5 +89,5 @@ last_verified: 2026-04-02
 ## 七、与后续任务的关系
 
 - `G-201` 到此冻结的是“谁能当入口、谁只能当叶子页”。
-- `G-205` 继续负责把 closeout 收敛为唯一默认入口。
-- 只要 `G-205` 还没完成，就不允许把 goals、task list 或历史 planning 重新提升为并列默认入口。
+- `G-205` 的结果已经收束到 `docs/analysis/README.md` 的分流结构中。
+- 现在不允许把 goals、task list 或历史 planning 重新提升为并列默认入口。

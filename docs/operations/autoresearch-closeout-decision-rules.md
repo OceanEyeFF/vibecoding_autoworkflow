@@ -1,11 +1,14 @@
 ---
 title: "Autoresearch 收口边界与例外决策规则"
 status: active
-updated: 2026-04-02
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-02
+last_verified: 2026-04-08
 ---
+
 # Autoresearch 收口边界与例外决策规则
+
+> 非默认入口。本文只保留已完成 closeout 的边界与例外判定记录；只有在复核 closeout lineage / audit 或 retained evidence 时才进入。日常入口先回到 [README.md](./README.md) 中的 `autoresearch-minimal-loop / research-cli-help / tmp-exrepo-maintenance`。
 
 > 目的：把当前 `autoresearch` 收口治理期的允许项、禁止项、默认判定、最小 authority 和例外处理口径冻结成同一份 repo-local 规则，避免再把同一问题拆成单独的 `authority matrix` 或 `waiver` 任务。
 
