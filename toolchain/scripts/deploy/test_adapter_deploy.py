@@ -23,13 +23,14 @@ class AdapterDeployTest(unittest.TestCase):
         self._create_skill("memory-side", "alpha", "alpha-v1")
         self._create_skill("memory-side", "beta", "beta-v1")
         self._create_skill("task-interface", "task-contract-skill", "task-v1")
+        self._create_skill("harness-operations", "simple-workflow", "workflow-v1")
 
         self.patches = [
             mock.patch.object(adapter_deploy, "PRODUCT_ROOT", self.product_root),
             mock.patch.object(
                 adapter_deploy,
                 "PRODUCT_PARTITIONS",
-                ("memory-side", "task-interface"),
+                ("memory-side", "task-interface", "harness-operations"),
             ),
             mock.patch.object(
                 adapter_deploy,
@@ -239,6 +240,7 @@ class AdapterDeployTest(unittest.TestCase):
         target_alpha = self.local_root / "alpha"
         target_beta = self.local_root / "beta"
         target_task = self.local_root / "task-contract-skill"
+        target_workflow = self.local_root / "simple-workflow"
 
         with self.subTest("missing target entry"):
             target_beta.unlink()
@@ -247,6 +249,13 @@ class AdapterDeployTest(unittest.TestCase):
             self.assertIn("missing-target-entry", stdout)
             restore_code, _, restore_stderr = self._run_cli("local", "--backend", "agents")
             self.assertEqual(restore_code, 0, restore_stderr)
+
+        with self.subTest("new partition target is deployed"):
+            self.assertTrue(target_workflow.is_symlink())
+            self.assertEqual(
+                (target_workflow / "SKILL.md").read_text(encoding="utf-8"),
+                "workflow-v1",
+            )
 
         with self.subTest("unexpected target entry"):
             extra = self.local_root / "stale-skill"

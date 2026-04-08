@@ -62,12 +62,42 @@ OUTDATED_PLACEHOLDER_PHRASES = {
     ],
 }
 PROMPT_TEMPLATES_DIR = "docs/operations/prompt-templates"
+PROMPT_TEMPLATE_REQUIRED_CANONICAL_LINKS = {
+    "docs/operations/prompt-templates/README.md": [
+        "product/harness-operations/README.md",
+    ],
+    "docs/operations/prompt-templates/simple-subagent-workflow.md": [
+        "product/harness-operations/skills/simple-workflow/references/prompt.md",
+    ],
+    "docs/operations/prompt-templates/strict-subagent-workflow.md": [
+        "product/harness-operations/skills/strict-workflow/references/prompt.md",
+    ],
+    "docs/operations/prompt-templates/task-planning-contract.md": [
+        "product/harness-operations/skills/task-planning-contract/references/prompt.md",
+    ],
+    "docs/operations/prompt-templates/execution-contract-template.md": [
+        "product/harness-operations/skills/execution-contract-template/references/prompt.md",
+    ],
+    "docs/operations/prompt-templates/review-loop-code-review.md": [
+        "product/harness-operations/skills/review-loop-workflow/references/prompt.md",
+    ],
+    "docs/operations/prompt-templates/task-list-subagent-workflow.md": [
+        "product/harness-operations/skills/task-list-workflow/references/prompt.md",
+    ],
+    "docs/operations/prompt-templates/harness-contract-template.md": [
+        "product/harness-operations/skills/harness-contract-shape/references/prompt.md",
+    ],
+    "docs/operations/prompt-templates/repo-governance-evaluation.md": [
+        "product/harness-operations/skills/repo-governance-evaluation/references/prompt.md",
+    ],
+}
 CANONICAL_SKILL_GLOBS = [
     "product/*/skills/*/SKILL.md",
 ]
 ADAPTER_SKILL_GLOBS = [
     "product/memory-side/adapters/*/skills/*/SKILL.md",
     "product/task-interface/adapters/*/skills/*/SKILL.md",
+    "product/harness-operations/adapters/*/skills/*/SKILL.md",
 ]
 CANONICAL_SKILL_REQUIRED_HEADINGS = [
     "## Overview",
@@ -217,11 +247,15 @@ def check_prompt_template_knowledge_backlinks(repo_root: Path, report: SemanticR
                 report.add_failure(
                     f"prompt template entrypoint missing knowledge backlink: {relative_path}"
                 )
-            continue
-        if not any(target.startswith("docs/knowledge/") for target in resolved_targets):
+        elif not any(target.startswith("docs/knowledge/") for target in resolved_targets):
             report.add_failure(
                 f"prompt template missing docs/knowledge backlink: {relative_path}"
             )
+        for target in PROMPT_TEMPLATE_REQUIRED_CANONICAL_LINKS.get(relative_path, []):
+            if target not in resolved_targets:
+                report.add_failure(
+                    f"prompt template shim missing canonical source link: {relative_path} -> {target}"
+                )
     report.add_info(f"checked {checked} prompt template knowledge backlinks")
 
 
@@ -277,6 +311,14 @@ def check_canonical_skill_packages_are_minimal(repo_root: Path, report: Semantic
                 f"canonical skill missing references/entrypoints.md: {relative_path}"
             )
             continue
+
+        if "product/harness-operations/skills/" in relative_path:
+            for extra_name in ("prompt.md", "bindings.md"):
+                extra_path = canonical_file.parent / "references" / extra_name
+                if not extra_path.exists():
+                    report.add_failure(
+                        f"harness canonical skill missing references/{extra_name}: {relative_path}"
+                    )
 
         references_text = references_path.read_text(encoding="utf-8")
         if "## Reading Policy" not in references_text:

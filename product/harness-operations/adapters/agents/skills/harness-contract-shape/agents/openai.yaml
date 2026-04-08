@@ -1,0 +1,4 @@
+interface:
+  display_name: "Harness Contract Shape (Repo)"
+  short_description: "Apply the repo-local Harness Operations harness-contract adapter"
+  default_prompt: "Use the repo-local $harness-contract-shape wrapper in .agents/skills to generate the minimal contract JSON shape for a harness-driven workflow with scope, gates, risk triage, and governance state."

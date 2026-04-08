@@ -1,0 +1,4 @@
+interface:
+  display_name: "Task Planning Contract (Repo)"
+  short_description: "Apply the repo-local Harness Operations task planning adapter"
+  default_prompt: "Use the repo-local $task-planning-contract wrapper in .agents/skills to normalize a requirement source into executable task units with dependencies, validation plans, and batch guidance."

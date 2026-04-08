@@ -44,10 +44,17 @@ last_verified: 2026-04-08
 
 当前 8 份模板更适合按“产品对象族”而不是按当前 `docs/operations/` 目录理解。
 
+本轮冻结后的 canonical 名称与分组如下。
+
 ### 1. Execution Workflow Shell
 
 - `simple-subagent-workflow.md`
 - `strict-subagent-workflow.md`
+
+冻结后的对象名：
+
+- `simple-workflow`
+- `strict-workflow`
 
 共同特点：
 
@@ -60,6 +67,11 @@ last_verified: 2026-04-08
 - `task-planning-contract.md`
 - `execution-contract-template.md`
 
+冻结后的对象名：
+
+- `task-planning-contract`
+- `execution-contract-template`
+
 共同特点：
 
 - 面向任务拆分、执行合同与规划产物生成
@@ -71,6 +83,11 @@ last_verified: 2026-04-08
 - `review-loop-code-review.md`
 - `task-list-subagent-workflow.md`
 
+冻结后的对象名：
+
+- `review-loop-workflow`
+- `task-list-workflow`
+
 共同特点：
 
 - 负责带状态、带 gate、带 integration 阶段的 workflow shell
@@ -81,6 +98,11 @@ last_verified: 2026-04-08
 
 - `harness-contract-template.md`
 - `repo-governance-evaluation.md`
+
+冻结后的对象名：
+
+- `harness-contract-shape`
+- `repo-governance-evaluation`
 
 共同特点：
 
@@ -183,13 +205,21 @@ product/
 - 当前 `rule / folders / document / code / overall` 评分维度
 - 当前 Scope / Spec / Static / Test / Smoke 关卡命名
 
-建议后续统一抽成 bindings 变量或最小 schema，例如：
+本轮冻结为统一 bindings 变量或最小 schema：
 
 - `${HARNESS_STATE_FILE}`
 - `${HARNESS_CONTRACT_FILE}`
 - `${SCOPE_GATE_CMD}`
 - `${BACKFILL_CMD}`
 - `${GOVERNANCE_EVAL_CMDS}`
+- `${SCOPE_INCLUDE}`
+- `${SCOPE_EXCLUDE}`
+- `${GATE_SEQUENCE}`
+- `${GOVERNANCE_DIMENSIONS}`
+
+补充说明：
+
+- `${WORKFLOW_ID}` 与 `${TASK_SOURCE_REF}` 继续作为 runtime placeholders 使用，但不算 repo-specific bindings 冻结项。
 
 ## 七、对现有 Skills 分发链路的影响
 
@@ -305,11 +335,8 @@ product/
 1. 先确认新 partition 的工作名和对象边界。
 2. 给 8 个对象分别确定 canonical 名称与分组。
 3. 抽出统一 bindings 清单，先固定变量与 schema。
-4. 设计 `product/harness-operations/` 的最小目录骨架。
-5. 评估 `docs/operations/prompt-templates/` 迁移后保留什么：
-   - shim
-   - usage help
-   - 或完全退役
+4. 冻结 `docs/operations/prompt-templates/` 为“保留 shim 指针”的迁移策略。
+5. 设计 `product/harness-operations/` 的最小目录骨架。
 6. 再进入 deploy / docs / governance tests 的联动改造。
 
 ## 十二、出口条件
@@ -322,6 +349,12 @@ product/
 - 明确 `docs/operations/prompt-templates/` 的保留策略
 - 明确 `adapter_deploy.py` 的 source root 扩展方案
 - 明确哪些 governance docs 与 tests 需要同步改写
+
+当前冻结结论：
+
+- 8 个对象名与分组已冻结
+- bindings 清单已冻结
+- `docs/operations/prompt-templates/` 迁移后保留策略已冻结为 `shim`
 
 ## 十三、为什么旧评估文档不再适合作为当前入口
 

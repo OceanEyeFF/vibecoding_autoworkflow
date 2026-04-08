@@ -63,39 +63,54 @@ last_verified: 2026-04-08
 
 ## 四、实施前置决议
 
-在进入代码和结构改造之前，必须先冻结下面三项：
+下面三项已冻结，可直接作为后续实现输入：
 
 ### 1. 对象目录与 canonical 名称
 
-至少冻结下面对象的命名：
+冻结后的对象命名与分组如下：
 
-- `simple-workflow`
-- `strict-workflow`
-- `task-planning-contract`
-- `execution-contract-template`
-- `review-loop-workflow`
-- `task-list-workflow`
-- `harness-contract-shape`
-- `repo-governance-evaluation`
+- `Execution Workflow Shell`
+  - `simple-workflow`
+  - `strict-workflow`
+- `Task Intake / Planning`
+  - `task-planning-contract`
+  - `execution-contract-template`
+- `Harness Workflow Shell`
+  - `review-loop-workflow`
+  - `task-list-workflow`
+- `Harness Contract / Governance Audit`
+  - `harness-contract-shape`
+  - `repo-governance-evaluation`
 
 ### 2. 统一 bindings 清单
 
-至少冻结：
+冻结后的 bindings 清单如下：
 
 - `HARNESS_STATE_FILE`
 - `HARNESS_CONTRACT_FILE`
 - `SCOPE_GATE_CMD`
 - `BACKFILL_CMD`
 - `GOVERNANCE_EVAL_CMDS`
-- 如有需要补充的 `SCOPE_INCLUDE` / `SCOPE_EXCLUDE` 类字段
+- `SCOPE_INCLUDE`
+- `SCOPE_EXCLUDE`
+- `GATE_SEQUENCE`
+- `GOVERNANCE_DIMENSIONS`
+
+说明：
+
+- `${WORKFLOW_ID}`、`${TASK_SOURCE_REF}` 属于运行期占位变量，可继续作为通用 runtime placeholders，不归类为 repo-specific bindings 清单本体。
 
 ### 3. `docs/operations/prompt-templates/` 的迁移后策略
 
-三选一，但必须明确只选一种：
+冻结结论：
 
 - 保留 shim 指针
-- 保留 usage help
-- 完全退役
+
+选择理由：
+
+- 可以保留旧路径的兼容跳转，避免在 docs / tests / review 流程改造期间产生断链
+- 可以明确把 `docs/operations/prompt-templates/` 降级为 compatibility layer，而不是继续冒充 source-of-truth
+- 比“完全退役”更稳，比“保留 usage help”更不容易把 repo-local 帮助文档重新写成对象正文
 
 ## 五、阶段拆分
 
@@ -105,6 +120,14 @@ last_verified: 2026-04-08
 
 - 把“还能继续讨论什么”收窄成最小集合
 - 为后续产品骨架和 deploy 接线提供稳定输入
+
+当前阶段完成定义：
+
+- `T-001`
+- `T-002`
+- `T-003`
+
+已在本任务规划中冻结，可直接进入 `T-101`
 
 ### Phase 2：建立 `product/harness-operations/` 骨架
 

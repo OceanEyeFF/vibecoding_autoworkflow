@@ -1,11 +1,20 @@
 ---
 title: "Task Planning Contract Prompt"
 status: active
-updated: 2026-04-07
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-07
+last_verified: 2026-04-08
 ---
 # Task Planning Contract Prompt
+
+> 说明：本文已降级为 compatibility shim。canonical source 已迁到 [task-planning-contract](../../../product/harness-operations/skills/task-planning-contract/references/prompt.md)。本页只保留旧路径兼容入口，不再定义主线语义。
+
+## Canonical Source
+
+- [task-planning-contract/SKILL.md](../../../product/harness-operations/skills/task-planning-contract/SKILL.md)
+- [task-planning-contract/references/prompt.md](../../../product/harness-operations/skills/task-planning-contract/references/prompt.md)
+- [task-planning-contract/references/entrypoints.md](../../../product/harness-operations/skills/task-planning-contract/references/entrypoints.md)
+- [docs/knowledge/README.md](../../knowledge/README.md)
 
 > 目的：把需求文档或问题列表转成可直接驱动执行的 Task Unit 合同集合。
 

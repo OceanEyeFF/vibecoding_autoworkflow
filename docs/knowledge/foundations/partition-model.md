@@ -1,9 +1,9 @@
 ---
 title: "项目 Partition 模型"
 status: active
-updated: 2026-03-23
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-03-23
+last_verified: 2026-04-08
 ---
 # 项目 Partition 模型
 
@@ -29,6 +29,7 @@ last_verified: 2026-03-23
 | `Context Routing` | Memory Side | 决定任务开始前应读取哪些上下文 | 入口文档、代码入口、禁读范围 |
 | `Task Contract` | Task Interface | 把讨论收束成正式执行基线 | 目标、范围、验收标准、约束、风险 |
 | `Writeback & Cleanup` | Memory Side | 回写项目真相并清理失效上下文 | 变更摘要、风险、待办、清场记录 |
+| `Harness Operations` | Product Partition | 承接 workflow prompts、harness contract shape 与治理审计对象 | canonical workflow body、bindings、backend wrappers |
 
 ## 三、主线分区与接口对象
 
@@ -59,6 +60,29 @@ last_verified: 2026-03-23
 - `docs/knowledge/foundations/task-contract-template.md`
 - `docs/knowledge/task-interface/task-contract.md`
 - `product/task-interface/skills/task-contract-skill/`
+
+### Harness Operations
+
+- `Simple Workflow`
+- `Strict Workflow`
+- `Task Planning Contract`
+- `Execution Contract Template`
+- `Review Loop Workflow`
+- `Task List Workflow`
+- `Harness Contract Shape`
+- `Repo Governance Evaluation`
+
+职责：
+
+- 承接可分发的 workflow prompts 与 harness contract shape
+- 为多任务执行、review loop、contract scaffolding 和治理审计提供 canonical product source
+- 通过 backend wrappers 把同一套 canonical 对象暴露给 `agents`、`claude` 与 `opencode`
+
+当前仓库中的最小载体：
+
+- `product/harness-operations/skills/`
+- `product/harness-operations/adapters/`
+- `product/harness-operations/manifests/`
 
 ## 四、各 Partition 边界
 
@@ -203,12 +227,14 @@ last_verified: 2026-03-23
 - `Knowledge Base -> Context Routing`：提供长期记忆和稳定入口
 - `Context Routing -> Task Contract`：提供任务限读范围和入口
 - `Task Contract -> 执行层`：提供唯一正式基线
+- `Harness Operations -> 执行层`：提供 workflow shell、harness contract shape 与治理审计对象
 - `已验证结果 -> Writeback & Cleanup`：提供可回写事实
 - `Writeback & Cleanup -> Knowledge Base`：刷新长期真相
 
 说明：
 
 - 当前 foundations 只定义主线分区和接口对象
+- `Harness Operations` 是 product partition，不替代 `Task Contract`、`Context Routing` 或 `Writeback & Cleanup` 的 truth ownership
 - `Control Plane`、`Execution Runtime`、`Verification` 属于后续宿主运行时或仓库实现层议题，不在本页展开
 
 ## 六、建议的最小文档产物

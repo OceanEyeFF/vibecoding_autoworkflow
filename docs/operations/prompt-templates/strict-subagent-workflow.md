@@ -1,11 +1,20 @@
 ---
 title: "Strict Workflow Prompt"
 status: active
-updated: 2026-04-07
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-07
+last_verified: 2026-04-08
 ---
 # Strict Workflow Prompt
+
+> 说明：本文已降级为 compatibility shim。canonical source 已迁到 [strict-workflow](../../../product/harness-operations/skills/strict-workflow/references/prompt.md)。本页只保留旧路径兼容入口，不再定义主线语义。
+
+## Canonical Source
+
+- [strict-workflow/SKILL.md](../../../product/harness-operations/skills/strict-workflow/SKILL.md)
+- [strict-workflow/references/prompt.md](../../../product/harness-operations/skills/strict-workflow/references/prompt.md)
+- [strict-workflow/references/entrypoints.md](../../../product/harness-operations/skills/strict-workflow/references/entrypoints.md)
+- [docs/knowledge/README.md](../../knowledge/README.md)
 
 > 定位：跨模块、高风险或需要更强审计的任务模板。
 
