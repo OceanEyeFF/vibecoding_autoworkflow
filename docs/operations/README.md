@@ -22,7 +22,7 @@
 - `tmp-exrepo-maintenance.md`（TMP exrepo 的当前维护说明）
 - `autoresearch-development-log.md`（近期开发记录与维护承接页）
 
-这些文档构成 `autoresearch` 的 daily operations runbook / maintenance entry，其他 closeout 专页都移到下方附录层，仅在需复核历史决策、审计 lineage 或追踪 closeout 例外时进入。
+这些文档构成 `autoresearch` 的 daily operations runbook / maintenance entry，其他 closeout 专页都移到下方附录层，并统一按 `superseded` lineage / audit 叶子页处理；只有在需复核历史决策、审计 lineage 或追踪 closeout 例外时才进入。
 
 **Closeout / lineage appendix（非默认入口）**
 

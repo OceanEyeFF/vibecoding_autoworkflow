@@ -1,6 +1,6 @@
 ---
 title: "Autoresearch closeout cleanup and retained index"
-status: active
+status: superseded
 updated: 2026-04-08
 owner: aw-kernel
 last_verified: 2026-04-08

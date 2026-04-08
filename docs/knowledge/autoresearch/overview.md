@@ -78,6 +78,9 @@ last_verified: 2026-04-08
 - `autoresearch-closeout-*`
 
 这些文档可以固定当前阶段边界，但不单独承担最终主线规则。`autoresearch-closeout-*` 现已退出默认阅读面，进入前应先回到 `docs/analysis/README.md` 做分流。
+当前默认只保留一个 `autoresearch` 开发目标入口：
+
+- [Autoresearch：下一阶段 CLI 模块化与插拔化建议](../../analysis/autoresearch-next-stage-cli-modularity-plan.md)
 
 ### 4. `toolchain/`
 

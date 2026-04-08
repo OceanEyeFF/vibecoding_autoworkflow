@@ -17,11 +17,11 @@
 | Bucket | Status | Count | 用途 |
 | --- | --- | ---: | --- |
 | Research / Eval 边界 | `active` | 3 | 固定 research runner、eval、对象分类评估与 observability 合同 |
-| Autoresearch 阶段合同与设计边界 | `active` | 9 | 固定 phase contract、代码复核、下一阶段模块化建议与当前设计基线 |
-| 当前执行规划 | `active` | 3 | 当前仍用于直接驱动实现的受控任务入口 |
+| Autoresearch 阶段合同与设计边界 | `active` | 9 | 固定 phase contract、代码复核、唯一当前开发目标与当前设计基线 |
+| 当前执行规划 | `active` | 1 | 当前仍用于直接驱动实现的受控任务入口 |
 | 历史研究 lineage | `superseded` | 1 | 保留上一轮问题 framing，不作为当前研究入口 |
 | Closeout lineage / audit | `superseded` | 2 | 保留 closeout 目标与治理设想的 lineage，不作为默认执行入口 |
-| 历史执行规划 | `superseded` | 5 | 保留 lineage，不作为默认执行入口 |
+| 历史执行规划 | `superseded` | 7 | 保留 lineage，不作为默认执行入口 |
 
 ## 当前研究文档
 
@@ -30,6 +30,8 @@
   - [research-eval-observability.md](./research-eval-observability.md)
   - [prompt-templates-productization-and-skill-distribution-assessment.md](./prompt-templates-productization-and-skill-distribution-assessment.md)
 - Autoresearch 阶段合同与设计边界：
+  - [autoresearch-next-stage-cli-modularity-plan.md](./autoresearch-next-stage-cli-modularity-plan.md)  
+    当前 `autoresearch` 唯一保留的开发目标入口；下一阶段默认只关注 CLI 模块化与插拔化建议。
   - [autoresearch-p0-1-contract-and-data-plane.md](./autoresearch-p0-1-contract-and-data-plane.md)
   - [autoresearch-p0-2-worktree-control-shell.md](./autoresearch-p0-2-worktree-control-shell.md)
   - [autoresearch-p0-3-baseline-loop-and-round-execution.md](./autoresearch-p0-3-baseline-loop-and-round-execution.md)
@@ -37,7 +39,6 @@
   - [autoresearch-p1-2-worker-contract-and-minimal-selector.md](./autoresearch-p1-2-worker-contract-and-minimal-selector.md)
   - [autoresearch-p1-3-feedback-distillation-and-adaptive-scheduler.md](./autoresearch-p1-3-feedback-distillation-and-adaptive-scheduler.md)
   - [autoresearch-p1-final-code-audit-and-followups.md](./autoresearch-p1-final-code-audit-and-followups.md)
-  - [autoresearch-next-stage-cli-modularity-plan.md](./autoresearch-next-stage-cli-modularity-plan.md)
   - [autoresearch-p2-lightweight-single-prompt-codex-loop.md](./autoresearch-p2-lightweight-single-prompt-codex-loop.md)
 
 ## 当前执行规划
@@ -46,10 +47,6 @@
 
 - 本节只保留当前仍在直接驱动实现的 active task-plan。
 
-- [autoresearch-p2-tmp-exrepo-runtime-task-plan.md](./autoresearch-p2-tmp-exrepo-runtime-task-plan.md)  
-  当前用于驱动 `tmp exrepo + materialized suite + maintenance script` 两阶段施工；继续作为默认执行规划的一部分。
-- [autoresearch-p2-repo-prompt-guidance-task-plan.md](./autoresearch-p2-repo-prompt-guidance-task-plan.md)  
-  当前用于驱动 repo 级 prompt 改进建议、aggregate guidance 与 worker-facing 接线的两阶段施工；当前代码承接位已同步到 `toolchain/scripts/research/README.md` 和 `docs/operations/autoresearch-minimal-loop.md`；继续作为默认执行规划的一部分。
 - [prompt-templates-productization-task-plan.md](./prompt-templates-productization-task-plan.md)  
   当前用于驱动 `Prompt Templates` 向 `product/` 分区、Skills 分发链和治理检查的收口改造；当前阶段判断已固定为“实施准备”，不再继续开放式边界讨论。
 
@@ -84,6 +81,10 @@
 
 - [autoresearch-p2-stage-closeout-and-next-stage-platform-plan.md](./autoresearch-p2-stage-closeout-and-next-stage-platform-plan.md)  
   已被更明确的收口治理目标文档与治理任务清单取代，保留为上一版宽口径平台期规划 lineage。
+- [autoresearch-p2-tmp-exrepo-runtime-task-plan.md](./autoresearch-p2-tmp-exrepo-runtime-task-plan.md)  
+  `/tmp exrepo + materialized suite` 迁移与维护脚本目标已完成并归档；当前不再作为默认开发目标。
+- [autoresearch-p2-repo-prompt-guidance-task-plan.md](./autoresearch-p2-repo-prompt-guidance-task-plan.md)  
+  repo 级 prompt guidance 目标已从当前默认开发面收起，保留为历史任务拆解与 lineage。
 - [autoresearch-p1-final-followup-task-plan.md](./autoresearch-p1-final-followup-task-plan.md)  
   保留为 P1 follow-up lineage，不再作为当前执行入口。
 - [autoresearch-p2-exrepo-input-hygiene-task-plan.md](./autoresearch-p2-exrepo-input-hygiene-task-plan.md)  

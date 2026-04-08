@@ -47,24 +47,39 @@ last_verified: 2026-04-09
 
 ## 三、当前记录
 
-### 2026-04-09：补齐下一阶段 CLI 模块化与插拔化建议入口
+### 当前唯一开发目标
+
+- [Autoresearch：下一阶段 CLI 模块化与插拔化建议](../analysis/autoresearch-next-stage-cli-modularity-plan.md)
+
+当前约束：
+
+- 当前只保留这一个 `autoresearch` 开发目标作为默认关注面。
+- 之前的目标与实现记录继续保留，但只作为 archived records，不再作为默认开发入口。
+
+## 四、归档记录
+
+### 2026-04-09：切换为“唯一当前开发目标”模式
 
 主题：
 
-- 明确把 `autoresearch` 的下一阶段问题收敛到“更适合 `codex | claude` 交互使用的 CLI 软件”，并把“当前最大问题是模块化和插拔性不足”固定为可引用建议。
+- 把 `autoresearch` 当前默认开发面收敛为唯一目标，并将之前仍暴露为 active 的旧目标改做归档 lineage。
 
 已验证事实：
 
-- 当前仓库此前没有专门承接该建议的 active `autoresearch` 文档页。
-- 已新增 `analysis` 文档：
+- 当前唯一保留的开发目标入口为：
   - `docs/analysis/autoresearch-next-stage-cli-modularity-plan.md`
-- `docs/analysis/README.md` 已补入口。
+- 旧的两个 `autoresearch` task-plan 已从默认当前目标中退出：
+  - `docs/analysis/autoresearch-p2-tmp-exrepo-runtime-task-plan.md`
+  - `docs/analysis/autoresearch-p2-repo-prompt-guidance-task-plan.md`
+- `docs/analysis/README.md` 已改成只把该目标作为当前 `autoresearch` 默认关注面。
 - `governance_semantic_check.py` 已通过。
 
 承接位置：
 
 - `docs/analysis/autoresearch-next-stage-cli-modularity-plan.md`
 - `docs/analysis/README.md`
+- `docs/analysis/autoresearch-p2-tmp-exrepo-runtime-task-plan.md`
+- `docs/analysis/autoresearch-p2-repo-prompt-guidance-task-plan.md`
 
 验证：
 
@@ -72,7 +87,7 @@ last_verified: 2026-04-09
 
 后续关注：
 
-- 若下一阶段真正开工，应从该建议页继续收敛成更小的 task-plan，而不是直接做大重构。
+- 后续如需重新激活某个旧目标，必须显式重新准入，而不是直接把 archived planning 恢复成默认入口。
 
 ### 2026-04-08：新增 autoresearch run/skill 状态索引
 
@@ -111,7 +126,7 @@ last_verified: 2026-04-09
 
 - 后续如需更适合人读的 operator 视图，应在当前 JSON 索引之上加 summary 层，而不是把 authority / state artifact 直接改成人工 UI。
 
-## 四、相关文档
+## 五、相关文档
 
 - [Autoresearch 最小闭环运行说明](./autoresearch-minimal-loop.md)
 - [Research CLI 指令](./research-cli-help.md)

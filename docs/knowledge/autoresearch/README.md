@@ -24,6 +24,8 @@
    - [../../operations/tmp-exrepo-maintenance.md](../../operations/tmp-exrepo-maintenance.md)
    - [../../operations/autoresearch-development-log.md](../../operations/autoresearch-development-log.md)
 3. 如果任务涉及 phase contract、当前 task-plan 或历史研究，再先回到 [../../analysis/README.md](../../analysis/README.md) 做分流。
+   当前默认只保留一个 `autoresearch` 开发目标入口：
+   - [../../analysis/autoresearch-next-stage-cli-modularity-plan.md](../../analysis/autoresearch-next-stage-cli-modularity-plan.md)
 4. 只有任务明确涉及实现或 CLI 内部接线时，再进入 [../../../toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)。
 5. 要复核 closeout lineage / audit 或查阅异常处理规则时，再进入：
    - [../../operations/autoresearch-closeout-decision-rules.md](../../operations/autoresearch-closeout-decision-rules.md)

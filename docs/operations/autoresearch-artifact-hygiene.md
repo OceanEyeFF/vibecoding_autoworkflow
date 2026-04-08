@@ -1,6 +1,6 @@
 ---
 title: "Autoresearch artifact 最小留删规则"
-status: active
+status: superseded
 updated: 2026-04-08
 owner: aw-kernel
 last_verified: 2026-04-08
