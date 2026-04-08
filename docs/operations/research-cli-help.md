@@ -1,9 +1,9 @@
 ---
 title: "Research CLI 指令"
 status: active
-updated: 2026-04-06
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-06
+last_verified: 2026-04-08
 ---
 # Research CLI 指令
 
@@ -43,6 +43,7 @@ python3 toolchain/scripts/research/manage_tmp_exrepos.py
 - `run_claude_skill_eval.py`：Claude 兼容壳
 - `run_backend_acceptance_matrix.py`：live acceptance 入口
 - `run_autoresearch.py`：autoresearch 的 `init / baseline / prepare-round / run-round / decide-round` 以及相关收尾命令入口
+- `run_autoresearch.py refresh-status`：重建 `.autoworkflow/autoresearch/` 下的 run/skill 聚合状态索引
 - `run_autoresearch_loop.py`：连续 loop 包装器，自动重复 `prepare-round -> selected worker backend -> run-round -> decide-round`；默认 worker 仍是 `codex`
 - `manage_tmp_exrepos.py`：TMP exrepo 维护入口；顶层暴露 shared root options 与 `init / reset / prepare`，legacy flat mode 兼容整个 catalog 的 `prepare`，子命令可通过 `--repo` 或 `--suite` 选择 repo 子集，但不接管 autoresearch 主流程
 
@@ -56,6 +57,22 @@ python3 toolchain/scripts/research/manage_tmp_exrepos.py
 - `manage_tmp_exrepos.py` 是维护脚本，不会自动嵌进 `run_autoresearch.py`
 
 ## 二、统一主入口的当前用法
+
+### 0. 回填当前 autoresearch 状态索引
+
+```bash
+python3 toolchain/scripts/research/run_autoresearch.py refresh-status
+```
+
+当前会重建两个 repo-local state 文件：
+
+- `.autoworkflow/autoresearch/run-status-index.json`
+- `.autoworkflow/autoresearch/skill-training-status.json`
+
+语义：
+
+- `run-status-index.json`：按 run 汇总 `target_task`、backend、当前 round 状态、轮次数和最新 score
+- `skill-training-status.json`：按 canonical skill 汇总训练状态；已接入 autoresearch 的 skill 会显示最新 run，未接入的 canonical skill 会显式标成 `not_supported_by_autoresearch`
 
 ### 1. 单 task，只有 skill
 

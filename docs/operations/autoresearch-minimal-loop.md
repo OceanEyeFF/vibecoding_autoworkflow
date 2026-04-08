@@ -1,9 +1,9 @@
 ---
 title: "Autoresearch 最小闭环运行说明"
 status: active
-updated: 2026-04-06
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-06
+last_verified: 2026-04-08
 ---
 # Autoresearch 最小闭环运行说明
 
@@ -157,6 +157,19 @@ python3 toolchain/scripts/research/refresh_manual_run_contract.py \
 
 - contract 在仓库内时，写到 `.autoworkflow/manual-runs/.run-id-state/<contract-parent>/`
 - contract 在仓库外时，回退到 contract 同级 `.run-id-state/`
+
+当前 autoresearch run/skill 聚合状态文件固定落在：
+
+- `.autoworkflow/autoresearch/run-status-index.json`
+- `.autoworkflow/autoresearch/skill-training-status.json`
+
+它们属于 repo-local state，不是长期知识层；推荐在需要看“现在哪些 run 在跑、每个 skill 当前训练到哪一步”时重建：
+
+```bash
+python3 toolchain/scripts/research/run_autoresearch.py refresh-status
+```
+
+另外，`init / baseline / prepare-round / run-round / decide-round / promote-round / discard-round / cleanup-round` 成功后也会自动刷新这两份索引。
 
 当前工具会把 `run_id` 刷成：
 

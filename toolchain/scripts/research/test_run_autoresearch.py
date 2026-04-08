@@ -260,6 +260,43 @@ class RunAutoresearchTest(unittest.TestCase):
             history = (run_dir / "history.tsv").read_text(encoding="utf-8")
             self.assertIn("round\tkind\tbase_sha", history)
 
+    def test_refresh_status_command_writes_indexes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            (root / "product" / "memory-side" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
+            (root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
+                "# skill\n",
+                encoding="utf-8",
+            )
+            run_dir = root / ".autoworkflow" / "autoresearch" / "demo-run"
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "contract.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "demo-run",
+                        "target_task": "context-routing-skill",
+                        "target_prompt_path": "toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+                        "worker_backend": "codex",
+                        "expected_backend": "codex",
+                        "expected_judge_backend": "codex",
+                        "max_rounds": 1,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(
+                run_autoresearch,
+                "AUTORESEARCH_ROOT",
+                root / ".autoworkflow" / "autoresearch",
+            ), mock.patch.object(run_autoresearch, "REPO_ROOT", root):
+                exit_code = run_autoresearch.main(["refresh-status"])
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue((root / ".autoworkflow" / "autoresearch" / "run-status-index.json").is_file())
+            self.assertTrue((root / ".autoworkflow" / "autoresearch" / "skill-training-status.json").is_file())
+
     def test_init_accepts_valid_p2_contract(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
