@@ -1,13 +1,22 @@
 ---
 title: "Prompt Templates 产品化与 Skills 分发任务规划"
-status: active
-updated: 2026-04-08
+status: superseded
+updated: 2026-04-09
 owner: aw-kernel
-last_verified: 2026-04-08
+last_verified: 2026-04-09
 ---
 # Prompt Templates 产品化与 Skills 分发任务规划
 
-> 说明：本文是当前 `Prompt Templates` 产品化与 Skills 分发改造的 active task-plan。它承接已经确认的产品前提，并把当前阶段判断固定为“进入实施准备”，而不是继续开放式讨论。
+> 当前状态：本文保留为产品化改造的历史任务拆解叶子页，不是当前默认入口。
+>
+> 当前 `analysis/` 分流入口请先回到 [Analysis README](./README.md)；现行落位与兼容路径以：
+>
+> - [Prompt Templates Compatibility Shims](../operations/prompt-templates/README.md)
+> - [Harness Operations Product Source](../../product/harness-operations/README.md)
+>
+> 为准。本文继续只保留 lineage / audit 价值。
+>
+> 原始说明：本文曾作为 `Prompt Templates` 产品化与 Skills 分发改造的 task-plan，承接当时已确认的产品前提，并把阶段判断固定为“进入实施准备”。
 
 > 当前工作分支：`feature/prompt-templates-productization`
 

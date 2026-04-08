@@ -5,7 +5,7 @@
 ## 当前入口规则
 
 - 本页是 `analysis/` 唯一默认分流入口；正文页不单独承担默认入口。
-- 默认只把“当前研究文档”和“当前仍在驱动实现的执行规划”暴露为入口。
+- 默认只把“当前研究文档”暴露为入口，不再把历史 planning / audit / closeout 叶子页混进当前阅读面。
 - closeout 叶子页已经退出“当前执行规划”语义，只保留 lineage / audit 价值。
 - P0 / P1 / P2 phase contract 与设计边界仍保持 active，不因为本轮入口收口而降级。
 - 已完成、已替换或只保留 lineage 的 task-plan 文档，必须改成 `status: superseded`，并移出默认当前状态清单。
@@ -16,19 +16,17 @@
 
 | Bucket | Status | Count | 用途 |
 | --- | --- | ---: | --- |
-| Research / Eval 边界 | `active` | 3 | 固定 research runner、eval、对象分类评估与 observability 合同 |
-| Autoresearch 阶段合同与设计边界 | `active` | 9 | 固定 phase contract、代码复核、唯一当前开发目标与当前设计基线 |
-| 当前执行规划 | `active` | 1 | 当前仍用于直接驱动实现的受控任务入口 |
-| 历史研究 lineage | `superseded` | 1 | 保留上一轮问题 framing，不作为当前研究入口 |
+| Research / Eval 边界 | `active` | 2 | 固定 research runner 与 observability 合同 |
+| Autoresearch 阶段合同与设计边界 | `active` | 8 | 固定 phase contract、唯一当前开发目标与当前设计基线 |
+| 历史研究 lineage | `superseded` | 4 | 保留上一轮问题 framing、审计与产品化判断，不作为当前研究入口 |
 | Closeout lineage / audit | `superseded` | 2 | 保留 closeout 目标与治理设想的 lineage，不作为默认执行入口 |
-| 历史执行规划 | `superseded` | 7 | 保留 lineage，不作为默认执行入口 |
+| 历史执行规划 | `superseded` | 8 | 保留 lineage，不作为默认执行入口 |
 
 ## 当前研究文档
 
 - Research / Eval 边界：
   - [research-eval-contracts.md](./research-eval-contracts.md)
   - [research-eval-observability.md](./research-eval-observability.md)
-  - [prompt-templates-productization-and-skill-distribution-assessment.md](./prompt-templates-productization-and-skill-distribution-assessment.md)
 - Autoresearch 阶段合同与设计边界：
   - [autoresearch-next-stage-cli-modularity-plan.md](./autoresearch-next-stage-cli-modularity-plan.md)  
     当前 `autoresearch` 唯一保留的开发目标入口；下一阶段默认只关注 CLI 模块化与插拔化建议。
@@ -38,17 +36,7 @@
   - [autoresearch-p1-1-mutation-registry.md](./autoresearch-p1-1-mutation-registry.md)
   - [autoresearch-p1-2-worker-contract-and-minimal-selector.md](./autoresearch-p1-2-worker-contract-and-minimal-selector.md)
   - [autoresearch-p1-3-feedback-distillation-and-adaptive-scheduler.md](./autoresearch-p1-3-feedback-distillation-and-adaptive-scheduler.md)
-  - [autoresearch-p1-final-code-audit-and-followups.md](./autoresearch-p1-final-code-audit-and-followups.md)
   - [autoresearch-p2-lightweight-single-prompt-codex-loop.md](./autoresearch-p2-lightweight-single-prompt-codex-loop.md)
-
-## 当前执行规划
-
-说明：
-
-- 本节只保留当前仍在直接驱动实现的 active task-plan。
-
-- [prompt-templates-productization-task-plan.md](./prompt-templates-productization-task-plan.md)  
-  当前用于驱动 `Prompt Templates` 向 `product/` 分区、Skills 分发链和治理检查的收口改造；当前阶段判断已固定为“实施准备”，不再继续开放式边界讨论。
 
 ## Closeout Lineage / Audit
 
@@ -71,7 +59,11 @@
 - 它们只用于解释“为什么当时这样评估”，不再作为当前研究入口。
 
 - [prompt-templates-harness-operations-package-assessment.md](./prompt-templates-harness-operations-package-assessment.md)  
-  保留为上一轮“repo-local execution template / 包本体 vs 实例化层”评估框架的 lineage；当前入口已切换到 `prompt-templates-productization-and-skill-distribution-assessment.md`。
+  保留为上一轮“repo-local execution template / 包本体 vs 实例化层”评估框架的 lineage；当前默认入口已回到目录页与现行 shim / product 入口。
+- [prompt-templates-productization-and-skill-distribution-assessment.md](./prompt-templates-productization-and-skill-distribution-assessment.md)  
+  保留为 `prompt-templates` 产品化判断的 lineage；当前现行落位已由 `product/harness-operations` 与 `docs/operations/prompt-templates/` 承接。
+- [autoresearch-p1-final-code-audit-and-followups.md](./autoresearch-p1-final-code-audit-and-followups.md)  
+  保留为 P1.Final 审计与 follow-up 判断记录；当前默认入口已回到阶段合同与运行说明。
 
 ## 历史执行规划
 
@@ -81,6 +73,8 @@
 
 - [autoresearch-p2-stage-closeout-and-next-stage-platform-plan.md](./autoresearch-p2-stage-closeout-and-next-stage-platform-plan.md)  
   已被更明确的收口治理目标文档与治理任务清单取代，保留为上一版宽口径平台期规划 lineage。
+- [prompt-templates-productization-task-plan.md](./prompt-templates-productization-task-plan.md)  
+  已被当前 `product/harness-operations` 落位与 shim 治理吸收，保留为产品化改造的历史任务拆解。
 - [autoresearch-p2-tmp-exrepo-runtime-task-plan.md](./autoresearch-p2-tmp-exrepo-runtime-task-plan.md)  
   `/tmp exrepo + materialized suite` 迁移与维护脚本目标已完成并归档；当前不再作为默认开发目标。
 - [autoresearch-p2-repo-prompt-guidance-task-plan.md](./autoresearch-p2-repo-prompt-guidance-task-plan.md)  
@@ -130,4 +124,4 @@
 - 当前主线规则
 - 业务源码真相
 - 运行期临时结果
-- 已失效但仍冒充当前入口的旧 task-plan
+- 已失效但仍冒充当前入口的旧 planning / audit / closeout 叶子页

@@ -1,13 +1,23 @@
 ---
 title: "Autoresearch 开发记录"
-status: active
+status: superseded
 updated: 2026-04-09
 owner: aw-kernel
 last_verified: 2026-04-09
 ---
 # Autoresearch 开发记录
 
-> 目的：为当前仓库的 `autoresearch` 保留一份 repo-local、可持续追加的开发记录页，用来承接“最近做了什么、哪些事实已验证、后续应关注什么”。本文属于 `docs/operations/`，是维护记录与协作入口，不替代 `docs/knowledge/` 的模块边界，也不替代 `toolchain/` 的实现合同。
+> 当前状态：本文保留为 `autoresearch` 已验证开发记录的历史叶子页，不是当前默认入口。
+>
+> 当前 operations 入口请先回到 [Operations README](./README.md)；日常 runbook 仍以：
+>
+> - [Autoresearch 最小闭环运行说明](./autoresearch-minimal-loop.md)
+> - [Research CLI 指令](./research-cli-help.md)
+> - [TMP Exrepo 维护说明](./tmp-exrepo-maintenance.md)
+>
+> 为准。本文继续只保留 lineage / audit / recent-history 价值。
+>
+> 目的：为当前仓库的 `autoresearch` 保留一份 repo-local 开发记录页，用来承接“最近做了什么、哪些事实已验证、后续应关注什么”。本文属于 `docs/operations/`，当前只保留维护记录与审计价值，不替代 `docs/knowledge/` 的模块边界，也不替代 `toolchain/` 的实现合同。
 
 ## 一、适用范围
 

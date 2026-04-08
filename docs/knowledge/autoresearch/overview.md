@@ -32,7 +32,7 @@ last_verified: 2026-04-08
 - run contract、scoreboard、round 生命周期与 authority 边界
 - mutation registry、worker contract、selector、feedback distill 的最小实现合同
 - repo-local 运行说明、closeout 规则和维护帮助
-- 当前阶段的研究合同、执行规划与 closeout 跟踪
+- 当前阶段的研究合同、专题研究与 closeout 跟踪
 
 `autoresearch` 当前不拥有：
 
@@ -64,23 +64,19 @@ last_verified: 2026-04-08
 - [Autoresearch 最小闭环运行说明](../../operations/autoresearch-minimal-loop.md)
 - [Research CLI 帮助](../../operations/research-cli-help.md)
 - [TMP Exrepo 维护说明](../../operations/tmp-exrepo-maintenance.md)
-- [Autoresearch 开发记录](../../operations/autoresearch-development-log.md)
 
-上面几页是 `autoresearch` 的日常 operations / maintenance entry；其他 closeout 规则页（artifact hygiene、决策规则、入口层级、cleanup、acceptance gate）仍保留，但仅在需要复核 closeout lineage / audit 或查阅例外判定时进入。这些文档回答的是“本仓库里怎么跑、怎么维护、怎么记录近期开发承接、怎么 closeout”，不是模块实现真相本体。
+上面三页是 `autoresearch` 的日常 operations / maintenance entry；开发记录与其他 closeout 规则页（artifact hygiene、决策规则、入口层级、cleanup、acceptance gate）仍保留，但仅在需要复核 lineage / audit 或查阅例外判定时进入。这些文档回答的是“本仓库里怎么跑、怎么维护、怎么 closeout”，不是模块实现真相本体。
 
 ### 3. `docs/analysis/`
 
-这里承接阶段性合同、设计边界、执行规划与 closeout lineage，例如：
+这里承接阶段性合同、设计边界、专题研究与 closeout lineage，例如：
 
 - `autoresearch-p0-*`
 - `autoresearch-p1-*`
 - `autoresearch-p2-*`
 - `autoresearch-closeout-*`
 
-这些文档可以固定当前阶段边界，但不单独承担最终主线规则。`autoresearch-closeout-*` 现已退出默认阅读面，进入前应先回到 `docs/analysis/README.md` 做分流。
-当前默认只保留一个 `autoresearch` 开发目标入口：
-
-- [Autoresearch：下一阶段 CLI 模块化与插拔化建议](../../analysis/autoresearch-next-stage-cli-modularity-plan.md)
+这些文档可以固定当前阶段边界，但不单独承担最终主线规则。`autoresearch-closeout-*` 与历史 planning / audit 页都已退出默认阅读面，进入前应先回到 `docs/analysis/README.md` 做分流。
 
 ### 4. `toolchain/`
 
@@ -111,8 +107,7 @@ last_verified: 2026-04-08
    - [Autoresearch 最小闭环运行说明](../../operations/autoresearch-minimal-loop.md)
    - [Research CLI 帮助](../../operations/research-cli-help.md)
    - [TMP Exrepo 维护说明](../../operations/tmp-exrepo-maintenance.md)
-   - [Autoresearch 开发记录](../../operations/autoresearch-development-log.md)
-3. 如果任务涉及 phase contract、当前 task-plan 或历史研究，再回到 [docs/analysis/README.md](../../analysis/README.md) 做分流。
+3. 如果任务涉及 phase contract、当前 active research 或历史研究，再回到 [docs/analysis/README.md](../../analysis/README.md) 做分流。
 4. 只有任务明确落到实现或 CLI 内部接线时，再读 [toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)。
 
 ### 2. 修改实现时

@@ -7,7 +7,7 @@ last_verified: 2026-04-09
 ---
 # Autoresearch P2：Repo 级 Prompt 改进建议任务规划
 
-> 当前状态：本文保留为已归档的历史执行规划，不再作为当前默认开发目标。
+> 当前状态：本文保留为已归档的历史执行规划，本文不是当前默认入口，也不再作为当前默认开发目标。
 >
 > 当前 `analysis/` 层分流入口请先回到 [Analysis README](./README.md)；`autoresearch` 当前唯一保留的开发目标入口改为：
 >

@@ -2,13 +2,10 @@
 
 `docs/knowledge/autoresearch/` 固定当前仓库里 `autoresearch` 这个 repo 模块的稳定入口，不新增 partition，也不重写现有 `operations / analysis / toolchain` 的职责边界。
 
-当前默认 active 入口：
+当前默认入口只保留：
 
 - [overview.md](./overview.md)
-- [../../operations/autoresearch-minimal-loop.md](../../operations/autoresearch-minimal-loop.md)
-- [../../operations/research-cli-help.md](../../operations/research-cli-help.md)
-- [../../operations/tmp-exrepo-maintenance.md](../../operations/tmp-exrepo-maintenance.md)
-- [../../operations/autoresearch-development-log.md](../../operations/autoresearch-development-log.md)
+- [../../operations/README.md](../../operations/README.md)
 - [../../analysis/README.md](../../analysis/README.md)
 
 补充模板：
@@ -18,21 +15,10 @@
 建议阅读顺序：
 
 1. [overview.md](./overview.md)
-2. 如果任务是 repo-local 运行或维护，再按需进入 `docs/operations/` 的 active runbook：
-   - [../../operations/autoresearch-minimal-loop.md](../../operations/autoresearch-minimal-loop.md)
-   - [../../operations/research-cli-help.md](../../operations/research-cli-help.md)
-   - [../../operations/tmp-exrepo-maintenance.md](../../operations/tmp-exrepo-maintenance.md)
-   - [../../operations/autoresearch-development-log.md](../../operations/autoresearch-development-log.md)
-3. 如果任务涉及 phase contract、当前 task-plan 或历史研究，再先回到 [../../analysis/README.md](../../analysis/README.md) 做分流。
-   当前默认只保留一个 `autoresearch` 开发目标入口：
-   - [../../analysis/autoresearch-next-stage-cli-modularity-plan.md](../../analysis/autoresearch-next-stage-cli-modularity-plan.md)
+2. 如果任务是 repo-local 运行或维护，再先回到 [../../operations/README.md](../../operations/README.md) 分流到当前 runbook。
+3. 如果任务涉及 phase contract、当前 active research 或历史研究，再先回到 [../../analysis/README.md](../../analysis/README.md) 做分流。
 4. 只有任务明确涉及实现或 CLI 内部接线时，再进入 [../../../toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)。
-5. 要复核 closeout lineage / audit 或查阅异常处理规则时，再进入：
-   - [../../operations/autoresearch-closeout-decision-rules.md](../../operations/autoresearch-closeout-decision-rules.md)
-   - [../../operations/autoresearch-artifact-hygiene.md](../../operations/autoresearch-artifact-hygiene.md)
-   - [../../operations/autoresearch-closeout-entry-layering.md](../../operations/autoresearch-closeout-entry-layering.md)
-   - [../../operations/autoresearch-closeout-cleanup-and-retained-index.md](../../operations/autoresearch-closeout-cleanup-and-retained-index.md)
-   - [../../operations/autoresearch-closeout-acceptance-gate.md](../../operations/autoresearch-closeout-acceptance-gate.md)
+5. 要复核 closeout lineage / audit 时，再按需进入 `docs/operations/` 或 `docs/analysis/` 中对应的 superseded 叶子页。
 
 closeout 专项页继续保留审计价值，但不属于“今天先读什么”的默认阅读面。
 
