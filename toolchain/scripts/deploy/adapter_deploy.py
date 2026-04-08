@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import filecmp
 import os
 import shutil
 import sys
@@ -302,23 +301,12 @@ def verify_local_target(target_path: Path, source_path: Path) -> list[VerifyIssu
     expected_link = Path(os.path.relpath(source_path, start=target_path.parent))
 
     if not target_path.is_symlink():
-        if target_path.is_dir():
-            if directories_match(source_path, target_path):
-                return issues
-            issues.append(
-                VerifyIssue(
-                    code="wrong-target-type",
-                    path=target_path,
-                    detail="expected symlink or in-sync directory copy, found drifted directory",
-                )
-            )
-            return issues
-
+        found_type = "directory" if target_path.is_dir() else "file"
         issues.append(
             VerifyIssue(
                 code="wrong-target-type",
                 path=target_path,
-                detail="expected symlink or directory copy, found file",
+                detail=f"expected symlink, found {found_type}",
             )
         )
         return issues
@@ -378,84 +366,13 @@ def verify_global_target(target_path: Path) -> list[VerifyIssue]:
     return issues
 
 
-def directories_match(source_path: Path, target_path: Path) -> bool:
-    """Check whether two adapter directories contain the same files and contents."""
-
-    comparison = filecmp.dircmp(source_path, target_path)
-    if comparison.left_only or comparison.right_only or comparison.funny_files:
-        return False
-
-    _, mismatch, errors = filecmp.cmpfiles(
-        source_path,
-        target_path,
-        comparison.common_files,
-        shallow=False,
-    )
-    if mismatch or errors:
-        return False
-
-    return all(
-        directories_match(source_path / subdir, target_path / subdir)
-        for subdir in comparison.common_dirs
-    )
-
-
-def ensure_local_verify_targets(
-    target_root: Path, expected_sources: dict[str, Path]
-) -> list[VerifyIssue]:
-    """Bootstrap missing repo-local roots and entries before drift verification."""
-
-    issues: list[VerifyIssue] = []
-
-    if target_root.is_symlink() or (target_root.exists() and not target_root.is_dir()):
-        return issues
-
-    try:
-        target_root.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        issues.append(
-            VerifyIssue(
-                code="bootstrap-target-root-failed",
-                path=target_root,
-                detail=f"unable to create local target root: {exc}",
-            )
-        )
-        return issues
-
-    for name, source_path in expected_sources.items():
-        target_path = target_root / name
-        if target_path.exists() or target_path.is_symlink():
-            continue
-        link_target = Path(os.path.relpath(source_path, start=target_path.parent))
-        try:
-            target_path.symlink_to(link_target, target_is_directory=True)
-        except OSError as exc:
-            try:
-                shutil.copytree(source_path, target_path)
-            except OSError as copy_exc:
-                issues.append(
-                    VerifyIssue(
-                        code="bootstrap-target-entry-failed",
-                        path=target_path,
-                        detail=f"symlink failed ({exc}); copy fallback failed ({copy_exc})",
-                    )
-                )
-
-    return issues
-
-
 def verify_backend(backend: str, args: argparse.Namespace) -> VerifyResult:
     """Compare a deployed backend target against expected adapter directories."""
 
     target_scope = target_scope_for(args)
     target_root = target_root_for(backend, args)
     expected_sources = expected_sources_for(backend)
-    issues: list[VerifyIssue] = []
-
-    if target_scope == "local":
-        issues.extend(ensure_local_verify_targets(target_root, expected_sources))
-
-    issues.extend(verify_target_root(backend, target_root))
+    issues = verify_target_root(backend, target_root)
 
     if issues:
         return VerifyResult(
