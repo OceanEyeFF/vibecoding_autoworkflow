@@ -43,7 +43,7 @@ NAV_SLOT_TARGETS = {
     "@skills": "product/memory-side/skills",
 }
 FIRST_LEVEL_ALLOWLIST = {
-    "product": {"README.md", "memory-side", "task-interface"},
+    "product": {"README.md", "memory-side", "task-interface", "harness-operations"},
     "docs": {"README.md", "analysis", "archive", "ideas", "knowledge", "operations", "reference"},
     "toolchain": {"README.md", "evals", "scripts"},
 }

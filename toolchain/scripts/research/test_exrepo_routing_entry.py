@@ -49,6 +49,29 @@ class ExrepoRoutingEntryTest(unittest.TestCase):
             self.assertEqual(payload["status"], STATUS_USABLE)
             self.assertEqual(payload["missing_paths"], [])
 
+    def test_classify_accepts_singular_canonical_source_heading(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / ".exrepos" / "fmt"
+            (repo / "product" / "memory-side" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
+            (repo / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
+                "canonical\n",
+                encoding="utf-8",
+            )
+            (repo / "docs" / "knowledge" / "memory-side").mkdir(parents=True, exist_ok=True)
+            write_skill_wrapper(
+                repo / ".agents" / "skills" / "context-routing-skill" / "SKILL.md",
+                "## Canonical Source\n"
+                "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
+                "2. `docs/knowledge/memory-side/`\n",
+            )
+
+            payload = classify_context_routing_repo_skill(repo, repo_root=root)
+
+            assert payload is not None
+            self.assertEqual(payload["status"], STATUS_USABLE)
+            self.assertEqual(payload["missing_paths"], [])
+
     def test_classify_returns_missing_repo_skill_when_skill_mount_is_absent(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

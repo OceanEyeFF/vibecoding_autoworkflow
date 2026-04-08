@@ -20,6 +20,8 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             ".codex/config.toml",
             ".github/workflows/ci.yml",
             "docs/analysis/README.md",
+            "docs/knowledge/README.md",
+            "docs/knowledge/autoresearch/README.md",
             "docs/operations/autoresearch-closeout-acceptance-gate.md",
             "docs/operations/review-verify-handbook.md",
             ".autoworkflow/closeout/demo/summary.json",
@@ -33,10 +35,21 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             ".github/",
             ".autoworkflow/closeout/",
             "docs/analysis/README.md",
+            "docs/knowledge/README.md",
+            "docs/knowledge/autoresearch/README.md",
             "docs/operations/",
             "toolchain/scripts/test/",
             "tools/scope_gate_check.py",
         ),
+    )
+    assert result.passed is True
+    assert result.violations == []
+
+
+def test_check_scope_accepts_closeout_prefix() -> None:
+    result = check_scope(
+        ["docs/analysis/autoresearch-closeout-governance-goals.md"],
+        ("docs/analysis/autoresearch-closeout-",),
     )
     assert result.passed is True
     assert result.violations == []
@@ -54,6 +67,19 @@ def test_update_state_backfills_gate_status() -> None:
     assert updated["workflow_id"] == "workflow-1"
     assert updated["gates"]["scope_gate"] == "passed"
     assert updated["last_backfill"]["gate"] == "scope_gate"
+
+
+def test_update_state_allows_skipped_gate_status() -> None:
+    state = {"gates": {"scope_gate": "pending"}}
+    updated = update_state(
+        state,
+        "test_gate",
+        "skipped",
+        {"returncode": 0, "skip_reasons": ["missing local deploy target root"]},
+        "workflow-1",
+    )
+    assert updated["gates"]["test_gate"] == "skipped"
+    assert updated["last_backfill"]["status"] == "skipped"
 
 
 def test_update_state_replaces_cross_workflow_state() -> None:
@@ -103,6 +129,9 @@ def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path
     assert "CONTRIBUTING.md" in command
     assert ".codex/" in command
     assert ".github/" in command
+    assert "docs/knowledge/README.md" in command
+    assert "docs/knowledge/autoresearch/README.md" in command
+    assert "docs/knowledge/autoresearch/overview.md" in command
     assert "docs/knowledge/foundations/path-governance-ai-routing.md" in command
     assert "docs/knowledge/foundations/root-directory-layering.md" in command
     assert "docs/knowledge/foundations/toolchain-layering.md" in command
@@ -134,6 +163,7 @@ def test_run_spec_gate_includes_folder_logic(monkeypatch, tmp_path) -> None:
     ]
     assert any(command[-2:] == ["--repo-root", str(tmp_path)] for command in commands)
     assert any("folder_logic_check.py" in command[1] for command in commands)
+    assert any("docs/knowledge/autoresearch" in command for command in commands)
 
 
 def test_run_test_gate_includes_folder_logic_tests(monkeypatch, tmp_path) -> None:
@@ -159,6 +189,77 @@ def test_run_test_gate_includes_folder_logic_tests(monkeypatch, tmp_path) -> Non
         "folder_logic_tests",
     ]
     assert any(command[-1] == "toolchain/scripts/test/test_folder_logic_check.py" for command in commands)
+
+
+def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path) -> None:
+    commands: list[list[str]] = []
+
+    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+        commands.append(command)
+        if "adapter_deploy.py" in command[1]:
+            return {
+                "command": command,
+                "returncode": 1,
+                "stdout": (
+                    "[agents] drift: 1 issue(s) in local target at /tmp/demo\n"
+                    "  - missing-target-root: /tmp/demo (.agents target root does not exist)\n"
+                ),
+                "stderr": "",
+                "passed": False,
+            }
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is True
+    assert result["status"] == "skipped"
+    deploy_results = {
+        item["name"]: item for item in result["subchecks"] if item["name"].startswith("deploy_verify_")
+    }
+    assert all(item["passed"] is True for item in deploy_results.values())
+    assert all(item["skipped"] is True for item in deploy_results.values())
+    assert any("adapter_deploy.py" in command[1] for command in commands)
+
+
+def test_run_test_gate_checks_broken_local_deploy_target_symlink(monkeypatch, tmp_path) -> None:
+    commands: list[list[str]] = []
+    broken_root = tmp_path / ".agents" / "skills"
+    broken_root.parent.mkdir(parents=True)
+    broken_root.symlink_to(tmp_path / "missing-agents-skills")
+
+    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+        commands.append(command)
+        if "adapter_deploy.py" in command[1]:
+            return {
+                "command": command,
+                "returncode": 1,
+                "stdout": "broken-target-root-symlink\n",
+                "stderr": "",
+                "passed": False,
+            }
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is False
+    assert result["status"] == "failed"
+    assert any("adapter_deploy.py" in command[1] for command in commands)
 
 
 def test_closeout_gate_fails_closed_on_test_gate_failure(monkeypatch, tmp_path, capsys) -> None:
@@ -191,7 +292,53 @@ def test_closeout_gate_fails_closed_on_test_gate_failure(monkeypatch, tmp_path, 
     ]
 
 
-def test_run_smoke_gate_reports_missing_runtime_files(monkeypatch, tmp_path) -> None:
+def test_run_smoke_gate_skips_missing_runtime_root(monkeypatch, tmp_path) -> None:
+    primary_root = tmp_path / "primary"
+    runtime_dir = (
+        primary_root
+        / ".autoworkflow"
+        / "autoresearch"
+        / "manual-cr-codex-loop-3round-r000001-m000642"
+    )
+    runtime_dir.mkdir(parents=True)
+    (runtime_dir / "runtime.json").write_text('{"active_round": null}', encoding="utf-8")
+    other_runtime_dir = (
+        primary_root
+        / ".autoworkflow"
+        / "autoresearch"
+        / "manual-cr-codex-loop-6-3-3-r000001-m046830"
+    )
+    other_runtime_dir.mkdir(parents=True)
+    (other_runtime_dir / "runtime.json").write_text('{"active_round": null}', encoding="utf-8")
+    monkeypatch.setattr(closeout_acceptance_gate, "find_primary_worktree_root", lambda repo_root: primary_root)
+    monkeypatch.setattr(
+        closeout_acceptance_gate,
+        "run_command",
+        lambda command, cwd: {
+            "command": command,
+            "returncode": 0,
+            "stdout": "{}",
+            "stderr": "",
+            "passed": True,
+        },
+    )
+
+    result = closeout_acceptance_gate.run_smoke_gate(tmp_path, sys.executable, "workflow-1")
+    assert result["passed"] is True
+    assert result["status"] == "passed"
+    assert result["backfill_smoke"]["passed"] is True
+    assert len(result["runtime_checks"]) == 2
+    assert all(check["passed"] is True for check in result["runtime_checks"])
+    assert all(check["checked_from"] == str(primary_root) for check in result["runtime_checks"])
+
+
+def test_run_smoke_gate_fails_when_runtime_root_exists_but_retained_files_are_missing(monkeypatch, tmp_path) -> None:
+    (
+        tmp_path
+        / ".autoworkflow"
+        / "autoresearch"
+        / "manual-cr-codex-loop-3round-r000001-m000642"
+    ).mkdir(parents=True)
     monkeypatch.setattr(
         closeout_acceptance_gate,
         "run_command",
@@ -210,3 +357,101 @@ def test_run_smoke_gate_reports_missing_runtime_files(monkeypatch, tmp_path) -> 
     assert len(result["runtime_checks"]) == 2
     assert all(check["passed"] is False for check in result["runtime_checks"])
     assert all(check["missing"] is True for check in result["runtime_checks"])
+
+
+def test_run_smoke_gate_fails_when_only_unrelated_runtime_artifacts_exist(monkeypatch, tmp_path) -> None:
+    primary_root = tmp_path / "primary"
+    (primary_root / ".autoworkflow" / "autoresearch" / "some-other-run").mkdir(parents=True)
+    monkeypatch.setattr(closeout_acceptance_gate, "find_primary_worktree_root", lambda repo_root: primary_root)
+    monkeypatch.setattr(
+        closeout_acceptance_gate,
+        "run_command",
+        lambda command, cwd: {
+            "command": command,
+            "returncode": 0,
+            "stdout": "{}",
+            "stderr": "",
+            "passed": True,
+        },
+    )
+
+    result = closeout_acceptance_gate.run_smoke_gate(tmp_path, sys.executable, "workflow-1")
+    assert result["passed"] is False
+    assert result["status"] == "failed"
+    assert len(result["runtime_checks"]) == 2
+    assert all(check["missing"] is True for check in result["runtime_checks"])
+
+
+def test_closeout_gate_backfills_skipped_status(monkeypatch, tmp_path, capsys) -> None:
+    class Args:
+        repo_root = tmp_path
+        workflow_id = "workflow-1"
+        json = True
+
+    backfill_commands: list[list[str]] = []
+
+    def fake_run_gate(gate: str, *, repo_root: Path, python: str, workflow_id: str) -> dict:
+        if gate == "scope_gate":
+            return {"passed": True, "returncode": 0}
+        if gate == "spec_gate":
+            return {"passed": True, "returncode": 0}
+        if gate == "static_gate":
+            return {"passed": True, "returncode": 0}
+        if gate == "test_gate":
+            return {
+                "passed": True,
+                "returncode": 0,
+                "status": "skipped",
+                "subchecks": [
+                    {
+                        "name": "deploy_verify_agents",
+                        "passed": True,
+                        "skipped": True,
+                        "skip_reason": "missing local deploy target root /tmp/demo",
+                    }
+                ],
+            }
+        return {"passed": True, "returncode": 0}
+
+    def fake_subprocess_run(*args, **kwargs) -> subprocess.CompletedProcess[str]:
+        command = args[0]
+        backfill_commands.append(command)
+        return subprocess.CompletedProcess(command, 0, stdout="{}", stderr="")
+
+    monkeypatch.setattr(closeout_acceptance_gate, "parse_args", lambda: Args())
+    monkeypatch.setattr(closeout_acceptance_gate, "run_gate", fake_run_gate)
+    monkeypatch.setattr(closeout_acceptance_gate.subprocess, "run", fake_subprocess_run)
+
+    assert closeout_acceptance_gate.main() == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["passed"] is True
+    test_gate_backfill = next(command for command in backfill_commands if "--gate" in command and command[command.index("--gate") + 1] == "test_gate")
+    assert test_gate_backfill[test_gate_backfill.index("--status") + 1] == "skipped"
+    details = json.loads(test_gate_backfill[test_gate_backfill.index("--details") + 1])
+    assert "skip_reasons" in details
+
+
+def test_find_primary_worktree_root_prefers_non_nested_worktree(monkeypatch, tmp_path) -> None:
+    current_root = tmp_path / ".worktrees" / "topic"
+    current_root.mkdir(parents=True)
+    primary_root = tmp_path / "repo"
+    primary_root.mkdir()
+
+    def fake_run(*args, **kwargs) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            args[0],
+            0,
+            stdout=(
+                f"worktree {primary_root}\n"
+                "HEAD abcdef\n"
+                "branch refs/heads/develop-main\n"
+                f"worktree {current_root}\n"
+                "HEAD 123456\n"
+                "branch refs/heads/topic\n"
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr(closeout_acceptance_gate.subprocess, "run", fake_run)
+
+    assert closeout_acceptance_gate.find_primary_worktree_root(current_root.resolve()) == primary_root.resolve()

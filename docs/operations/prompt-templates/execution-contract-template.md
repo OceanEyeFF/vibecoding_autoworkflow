@@ -1,11 +1,20 @@
 ---
 title: "Execution Contract 模板"
 status: active
-updated: 2026-04-03
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-08
 ---
 # Execution Contract 模板
+
+> 说明：本文已降级为 compatibility shim。canonical source 已迁到 [execution-contract-template](../../../product/harness-operations/skills/execution-contract-template/references/prompt.md)。本页只保留旧路径兼容入口，不再定义主线语义。
+
+## Canonical Source
+
+- [execution-contract-template/SKILL.md](../../../product/harness-operations/skills/execution-contract-template/SKILL.md)
+- [execution-contract-template/references/prompt.md](../../../product/harness-operations/skills/execution-contract-template/references/prompt.md)
+- [execution-contract-template/references/entrypoints.md](../../../product/harness-operations/skills/execution-contract-template/references/entrypoints.md)
+- [docs/knowledge/README.md](../../knowledge/README.md)
 
 > 目的：为 repo-local 执行流程提供一份最小执行合同，锁定目标、边界、验证与退出条件。
 
@@ -69,5 +78,7 @@ last_verified: 2026-04-03
 
 ## 相关文档
 
+- [docs/knowledge/README.md](../../knowledge/README.md)
 - [Task Contract 模板](../../knowledge/foundations/task-contract-template.md)
+- [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
 - [Review / Verify 承接位](../review-verify-handbook.md)

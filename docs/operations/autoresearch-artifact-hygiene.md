@@ -1,11 +1,14 @@
 ---
 title: "Autoresearch artifact 最小留删规则"
 status: active
-updated: 2026-04-02
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-02
+last_verified: 2026-04-08
 ---
+
 # Autoresearch artifact 最小留删规则
+
+> 非默认入口。本文只保留 closeout artifact hygiene 的审计与承接价值；只有在复核 closeout lineage / audit、retained object 或 cleanup 判定时才进入。日常入口先回到 [README.md](./README.md) 中的 `autoresearch-minimal-loop / research-cli-help / tmp-exrepo-maintenance`。
 
 > 目的：只为当前 `autoresearch` closeout 真会触碰的 `.autoworkflow` 热区冻结最小留删规则。本文回答当前对象默认是 `保留 / 归档 / 删除` 哪一类、为什么，以及未覆盖对象如何 `fail closed`。
 

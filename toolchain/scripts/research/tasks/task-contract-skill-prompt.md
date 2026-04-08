@@ -1,4 +1,4 @@
-Use the repo-local `task-contract-skill` in `.claude/skills` for this repository.
+If the repo-local `.claude/skills/task-contract-skill` wrapper exists, use it. If it does not exist, stop searching and produce the Task Contract directly from repository evidence — do not return search notes, tool errors, or "wrapper not found" messages.
 
 Produce the fixed-format `Task Contract` now in a single response.
 

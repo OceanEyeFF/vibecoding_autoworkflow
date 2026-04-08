@@ -1,9 +1,9 @@
 ---
 title: "路径治理与 AI 告知"
 status: active
-updated: 2026-04-03
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-08
 ---
 # 路径治理与 AI 告知
 
@@ -39,6 +39,9 @@ last_verified: 2026-04-03
 
 ## 三、根级 Route Contract
 
+本节是当前仓库唯一权威的 `read_first/read_next/do_not_read_yet/stop_reading_when` 合同。
+其他 README 或 wrapper 只允许做指针引用，不得复制本节正文。
+
 ### `read_first`
 
 1. `docs/README.md`
@@ -56,6 +59,7 @@ last_verified: 2026-04-03
 - `docs/knowledge/memory-side/skill-agent-model.md`
 - `docs/knowledge/task-interface/task-contract.md`
 - 按任务进入 `product/`、`docs/` 或 `toolchain/` 的局部入口页
+- 需要 Harness Operations prompt entrypoints 或旧路径兼容 shim 时，先进入 `docs/operations/README.md`，再下钻 `docs/operations/prompt-templates/`
 
 ### `do_not_read_yet`
 
@@ -78,6 +82,8 @@ last_verified: 2026-04-03
 
 ## 四、三块正式内容区的最小读取合同
 
+下面三块合同是根级合同的局部展开，仍以本页为唯一权威。
+
 ### 1. `product/`
 
 职责：
@@ -88,7 +94,7 @@ last_verified: 2026-04-03
 `read_first`
 
 1. `product/README.md`
-2. `product/memory-side/README.md` 或 `product/task-interface/README.md`
+2. `product/memory-side/README.md`、`product/task-interface/README.md` 或 `product/harness-operations/README.md`
 3. 对应 partition 的 `skills/README.md` 或 `adapters/README.md`
 
 `read_next`
@@ -223,6 +229,11 @@ last_verified: 2026-04-03
 
 - 任务明确涉及 repo-local 部署
 - 任务明确涉及维护步骤、运行手册或 adapter 使用帮助
+- 任务明确需要 repo-local prompt / contract 模板来固定执行结构
+- 进入后按路径簇下钻：
+  - `docs/operations/deploy/README.md`：deploy / verify / maintenance
+  - `docs/operations/prompt-templates/`：Harness Operations compatibility shims
+  - `docs/operations/memory-side/README.md`、`docs/operations/task-interface/README.md`：partition-specific usage help
 
 ### 2. 进入 `docs/analysis/`
 

@@ -1,13 +1,15 @@
 ---
 title: "Review / Verify 承接位"
 status: active
-updated: 2026-04-03
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-08
 ---
 # Review / Verify 承接位
 
 > 目的：把 `plan -> implement -> verify -> review -> writeback` 收成一个 repo-local、可复用、可引用的复核入口。本文只承接执行阶段的最小复核动作，不承接长期真相本体。
+
+本页属于 [Deploy / Verify / Maintenance](./deploy/README.md) 路径簇。
 
 ## 一、适用范围
 
@@ -52,6 +54,10 @@ last_verified: 2026-04-03
 - 如果改了 root / partition / path 规则，是否同步 foundations 和治理检查
 - 如果改了 `AGENTS.md` 或执行流程，是否同步本文
 - 如果改了 deploy / adapter 行为，是否同步对应 operations runbook
+- 如果改了 `docs/knowledge/*/skills/`、`product/*/skills/*/`、`product/*/adapters/*/skills/*/` 或 `docs/operations/prompt-templates/`，是否仍保持四段式分工：合同层、canonical executable layer、backend adapter layer、compatibility shim / usage bridge layer
+- 如果改了 `product/*/adapters/*/skills/*/SKILL.md`，是否仍保持 thin wrapper（`Canonical Source / Backend Notes / Deploy Target`）而没有重新复制 canonical 语义正文
+- 如果改了 `product/*/skills/*/SKILL.md`，是否保持最小 executable body + `references/entrypoints.md`，而没有吸收 repo-local execution template 内容
+- 如果改了 `docs/operations/prompt-templates/`，是否仍只承接 compatibility shim，并回链对应 `product/harness-operations/` canonical source 与 `docs/knowledge/` 主线入口
 
 ### 3. 验证结果
 
@@ -59,6 +65,9 @@ last_verified: 2026-04-03
 
 - 根目录、路径、分层、hidden/state 规则变更
   - `python3 toolchain/scripts/test/folder_logic_check.py`
+  - `python3 toolchain/scripts/test/path_governance_check.py`
+  - `python3 toolchain/scripts/test/governance_semantic_check.py`
+- skills / templates 分层规则变更
   - `python3 toolchain/scripts/test/path_governance_check.py`
   - `python3 toolchain/scripts/test/governance_semantic_check.py`
 - closeout / gate / backfill 变更

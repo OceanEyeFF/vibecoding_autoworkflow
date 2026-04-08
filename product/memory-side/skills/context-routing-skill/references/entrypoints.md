@@ -11,11 +11,7 @@ Load the generic Memory Side contract docs in this order.
 ## Read For Routing Logic
 
 - `docs/knowledge/memory-side/context-routing-rules.md`
-
-## Read Before Finalizing Output
-
 - `docs/knowledge/memory-side/formats/context-routing-output-format.md`
-- `docs/knowledge/memory-side/prompts/context-routing-adapter-prompt.md`
 
 ## Read Only If Boundaries Are Unclear
 

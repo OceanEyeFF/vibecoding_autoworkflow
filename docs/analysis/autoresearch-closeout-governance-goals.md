@@ -1,15 +1,15 @@
 ---
 title: "Autoresearch：收口治理目标"
-status: active
-updated: 2026-04-03
+status: superseded
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-08
 ---
 # Autoresearch：收口治理目标
 
-> 说明：本文固定当前 `autoresearch` 阶段收口治理期的目标、边界与完成判断，用来约束“这段时间为什么做治理、治理做到什么算完成”。它不是下一阶段 implementation 规划；当前这轮 closeout 已达成本文定义的完成判断，因此本文保留为本轮 closeout 的目标基线与 lineage 入口。
+> 说明：本文归档已完成的 `autoresearch` 阶段收口治理目标、边界与完成判断，用来约束“这段时间为什么做治理、治理做到什么算完成”，现在仅作为本轮 closeout 的 lineage 基线与 audit 证据，不再代表当前执行入口。
 
-> 入口位说明：本文是当前 closeout 的目标正文叶子页，只承接目标与完成判断，不承担默认入口；当前 closeout 的唯一目录页型入口是 [Analysis README](./README.md) 的 closeout 分流块。
+> 入口位说明：本文是 closeout lineage-only 的目标正文叶子页，只在复核 closeout 完成或 gate 审计时查阅；默认分流入口先回到 [Analysis README](./README.md)，日常 active 入口仍以 `overview + minimal-loop + research-cli-help + tmp-exrepo-maintenance + Analysis README` 为准。
 
 ## 一、当前定位
 

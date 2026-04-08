@@ -1,9 +1,9 @@
 ---
 title: "Memory Side Skill 与 Agent 模型"
 status: active
-updated: 2026-03-26
+updated: 2026-04-07
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-04-07
 ---
 # Memory Side Skill 与 Agent 模型
 
@@ -61,7 +61,7 @@ last_verified: 2026-03-26
 - 这是可选调用层，不是当前仓库知识主线的一部分
 - 当前仓库不固定 `task-entry-agent`、`task-closeout-agent` 一类命名
 
-## 三、当前仓库里的四层落点
+## 三、当前仓库里的五层落点
 
 ### 1. 知识合同层
 
@@ -92,7 +92,19 @@ last_verified: 2026-03-26
 - 它们从 `product/` 同步出来
 - 它们不是 source of truth
 
-### 4. 工具层
+### 4. Repo-local execution template layer
+
+包括：
+
+- `docs/operations/prompt-templates/`
+
+说明：
+
+- 这里承接可复用的 repo-local execution templates
+- 它可以复用 canonical semantics，但不能重写 canonical truth
+- 如果某个模板内容稳定下来，应该回写到 `docs/knowledge/`
+
+### 5. 工具层
 
 包括：
 

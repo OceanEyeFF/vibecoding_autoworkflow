@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -60,6 +61,74 @@ OUTDATED_PLACEHOLDER_PHRASES = {
         "`memory-side/` 当前只保留占位入口，不承载 active 的 `program / scenarios / scoring database` 一类资产。",
     ],
 }
+PROMPT_TEMPLATES_DIR = "docs/operations/prompt-templates"
+PROMPT_TEMPLATE_REQUIRED_CANONICAL_LINKS = {
+    "docs/operations/prompt-templates/README.md": [
+        "product/harness-operations/README.md",
+    ],
+    "docs/operations/prompt-templates/simple-subagent-workflow.md": [
+        "product/harness-operations/skills/simple-workflow/references/prompt.md",
+    ],
+    "docs/operations/prompt-templates/strict-subagent-workflow.md": [
+        "product/harness-operations/skills/strict-workflow/references/prompt.md",
+    ],
+    "docs/operations/prompt-templates/task-planning-contract.md": [
+        "product/harness-operations/skills/task-planning-contract/references/prompt.md",
+    ],
+    "docs/operations/prompt-templates/execution-contract-template.md": [
+        "product/harness-operations/skills/execution-contract-template/references/prompt.md",
+    ],
+    "docs/operations/prompt-templates/review-loop-code-review.md": [
+        "product/harness-operations/skills/review-loop-workflow/references/prompt.md",
+    ],
+    "docs/operations/prompt-templates/task-list-subagent-workflow.md": [
+        "product/harness-operations/skills/task-list-workflow/references/prompt.md",
+    ],
+    "docs/operations/prompt-templates/harness-contract-template.md": [
+        "product/harness-operations/skills/harness-contract-shape/references/prompt.md",
+    ],
+    "docs/operations/prompt-templates/repo-governance-evaluation.md": [
+        "product/harness-operations/skills/repo-governance-evaluation/references/prompt.md",
+    ],
+}
+CANONICAL_SKILL_GLOBS = [
+    "product/*/skills/*/SKILL.md",
+]
+ADAPTER_SKILL_GLOBS = [
+    "product/memory-side/adapters/*/skills/*/SKILL.md",
+    "product/task-interface/adapters/*/skills/*/SKILL.md",
+    "product/harness-operations/adapters/*/skills/*/SKILL.md",
+]
+CANONICAL_SKILL_REQUIRED_HEADINGS = [
+    "## Overview",
+    "## When To Use",
+    "## Workflow",
+    "## Hard Constraints",
+    "## Expected Output",
+    "## Resources",
+]
+CANONICAL_SKILL_FORBIDDEN_HEADINGS = [
+    "## Canonical Source",
+    "## Backend Notes",
+    "## Deploy Target",
+]
+THIN_WRAPPER_REQUIRED_HEADINGS = [
+    "## Canonical Source",
+    "## Backend Notes",
+    "## Deploy Target",
+]
+THIN_WRAPPER_FORBIDDEN_HEADINGS = [
+    "## Execution Rules",
+    "## Output Contract",
+]
+CANONICAL_ENTRYPOINT_REQUIRED_LINKS = {
+    "product/memory-side/skills/context-routing-skill/references/entrypoints.md": [
+        "docs/knowledge/memory-side/formats/context-routing-output-format.md",
+    ],
+    "product/memory-side/skills/writeback-cleanup-skill/references/entrypoints.md": [
+        "docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md",
+    ],
+}
 
 
 @dataclass
@@ -96,6 +165,18 @@ def collect_repo_relative_markdown_links(repo_root: Path, relative_path: str) ->
         except ValueError:
             continue
     return resolved_targets
+
+
+def collect_repo_relative_code_paths(repo_root: Path, relative_path: str) -> set[str]:
+    text = (repo_root / relative_path).read_text(encoding="utf-8")
+    return {match.strip() for match in re.findall(r"`([^`]+)`", text) if match.strip()}
+
+
+def iter_prompt_template_files(repo_root: Path) -> list[Path]:
+    prompt_root = repo_root / PROMPT_TEMPLATES_DIR
+    if not prompt_root.exists():
+        return []
+    return sorted(prompt_root.glob("*.md"))
 
 
 def check_required_templates(repo_root: Path, report: SemanticReport) -> None:
@@ -150,6 +231,145 @@ def check_outdated_placeholder_phrases(repo_root: Path, report: SemanticReport) 
     report.add_info(f"checked {checked} outdated placeholder phrases")
 
 
+def check_prompt_template_knowledge_backlinks(repo_root: Path, report: SemanticReport) -> None:
+    prompt_files = iter_prompt_template_files(repo_root)
+    if not prompt_files:
+        report.add_failure(f"missing prompt template directory: {PROMPT_TEMPLATES_DIR}")
+        return
+
+    checked = 0
+    for prompt_file in prompt_files:
+        checked += 1
+        relative_path = to_relative_posix(prompt_file, repo_root)
+        resolved_targets = collect_repo_relative_markdown_links(repo_root, relative_path)
+        if relative_path.endswith("/README.md"):
+            if "docs/knowledge/README.md" not in resolved_targets:
+                report.add_failure(
+                    f"prompt template entrypoint missing knowledge backlink: {relative_path}"
+                )
+        elif not any(target.startswith("docs/knowledge/") for target in resolved_targets):
+            report.add_failure(
+                f"prompt template missing docs/knowledge backlink: {relative_path}"
+            )
+        for target in PROMPT_TEMPLATE_REQUIRED_CANONICAL_LINKS.get(relative_path, []):
+            if target not in resolved_targets:
+                report.add_failure(
+                    f"prompt template shim missing canonical source link: {relative_path} -> {target}"
+                )
+    report.add_info(f"checked {checked} prompt template knowledge backlinks")
+
+
+def iter_adapter_skill_files(repo_root: Path) -> list[Path]:
+    adapter_files: list[Path] = []
+    seen: set[Path] = set()
+    for pattern in ADAPTER_SKILL_GLOBS:
+        for path in sorted(repo_root.glob(pattern)):
+            if path not in seen:
+                seen.add(path)
+                adapter_files.append(path)
+    return adapter_files
+
+
+def iter_canonical_skill_files(repo_root: Path) -> list[Path]:
+    canonical_files: list[Path] = []
+    seen: set[Path] = set()
+    for pattern in CANONICAL_SKILL_GLOBS:
+        for path in sorted(repo_root.glob(pattern)):
+            if path not in seen:
+                seen.add(path)
+                canonical_files.append(path)
+    return canonical_files
+
+
+def check_canonical_skill_packages_are_minimal(repo_root: Path, report: SemanticReport) -> None:
+    canonical_files = iter_canonical_skill_files(repo_root)
+    if not canonical_files:
+        report.add_failure("missing canonical skill packages under product/*/skills/*/SKILL.md")
+        return
+
+    checked = 0
+    for canonical_file in canonical_files:
+        checked += 1
+        relative_path = to_relative_posix(canonical_file, repo_root)
+        text = canonical_file.read_text(encoding="utf-8")
+
+        for heading in CANONICAL_SKILL_REQUIRED_HEADINGS:
+            if heading not in text:
+                report.add_failure(
+                    f"canonical skill missing required heading {heading!r}: {relative_path}"
+                )
+
+        for heading in CANONICAL_SKILL_FORBIDDEN_HEADINGS:
+            if heading in text:
+                report.add_failure(
+                    f"canonical skill leaked adapter-style section {heading!r}: {relative_path}"
+                )
+
+        references_path = canonical_file.parent / "references/entrypoints.md"
+        if not references_path.exists():
+            report.add_failure(
+                f"canonical skill missing references/entrypoints.md: {relative_path}"
+            )
+            continue
+
+        if "product/harness-operations/skills/" in relative_path:
+            for extra_name in ("prompt.md", "bindings.md"):
+                extra_path = canonical_file.parent / "references" / extra_name
+                if not extra_path.exists():
+                    report.add_failure(
+                        f"harness canonical skill missing references/{extra_name}: {relative_path}"
+                    )
+
+        references_text = references_path.read_text(encoding="utf-8")
+        if "## Reading Policy" not in references_text:
+            report.add_failure(
+                f"canonical skill references missing reading policy block: {relative_path}"
+            )
+
+    report.add_info(f"checked {checked} canonical skill packages for minimal executable shape")
+
+
+def check_adapter_wrappers_are_thin(repo_root: Path, report: SemanticReport) -> None:
+    adapter_files = iter_adapter_skill_files(repo_root)
+    if not adapter_files:
+        report.add_failure("missing adapter wrapper skills under product/*/adapters/*/skills/*/SKILL.md")
+        return
+
+    checked = 0
+    for adapter_file in adapter_files:
+        checked += 1
+        relative_path = to_relative_posix(adapter_file, repo_root)
+        text = adapter_file.read_text(encoding="utf-8")
+        for heading in THIN_WRAPPER_REQUIRED_HEADINGS:
+            if heading not in text:
+                report.add_failure(
+                    f"adapter wrapper missing required thin-shell heading {heading!r}: {relative_path}"
+                )
+        for heading in THIN_WRAPPER_FORBIDDEN_HEADINGS:
+            if heading in text:
+                report.add_failure(
+                    f"adapter wrapper still contains forbidden duplicated section {heading!r}: {relative_path}"
+                )
+    report.add_info(f"checked {checked} adapter wrappers for thin-shell structure")
+
+
+def check_canonical_entrypoints_cover_required_formats(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    for relative_path, expected_targets in CANONICAL_ENTRYPOINT_REQUIRED_LINKS.items():
+        source = repo_root / relative_path
+        if not source.exists():
+            report.add_failure(f"missing canonical entrypoints document: {relative_path}")
+            continue
+        resolved_targets = collect_repo_relative_code_paths(repo_root, relative_path)
+        for target in expected_targets:
+            checked += 1
+            if target not in resolved_targets:
+                report.add_failure(
+                    f"canonical entrypoints missing required format link: {relative_path} -> {target}"
+                )
+    report.add_info(f"checked {checked} canonical entrypoint format links")
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -158,6 +378,10 @@ def main() -> int:
     check_required_handoffs(repo_root, report)
     check_foundations_authority_shadows(repo_root, report)
     check_outdated_placeholder_phrases(repo_root, report)
+    check_prompt_template_knowledge_backlinks(repo_root, report)
+    check_canonical_skill_packages_are_minimal(repo_root, report)
+    check_canonical_entrypoints_cover_required_formats(repo_root, report)
+    check_adapter_wrappers_are_thin(repo_root, report)
 
     payload = {
         "passed": not report.failures,

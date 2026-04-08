@@ -1,9 +1,9 @@
 ---
 title: "Memory Side 层级边界"
 status: active
-updated: 2026-03-26
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-04-08
 ---
 # Memory Side 层级边界
 
@@ -29,7 +29,7 @@ last_verified: 2026-03-26
 - 把本仓库目录结构误当成其他仓库的默认前提
 - 把本仓库评测基线误当成跨仓库通用验收标准
 
-## 二、三层主体 + 一层挂载
+## 二、四层主体 + 一层挂载
 
 ### 1. 通用合同层
 
@@ -82,7 +82,24 @@ last_verified: 2026-03-26
 - `docs/operations/memory-side/`
 - `toolchain/scripts/deploy/adapter_deploy.py`
 
-### 4. Repo-local deploy target
+### 4. Cross-partition compatibility shim layer
+
+职责：
+
+- 承接跨分区旧路径兼容入口和 repo-local 过渡指针
+- 把历史 prompt 路径保留在 `docs/operations/`，但不把它们升格成主线 truth 或 canonical skill 语义
+
+当前属于这一层的内容：
+
+- `docs/operations/prompt-templates/`
+
+硬规则：
+
+- 这里只能回链 `product/harness-operations/` 的 canonical source，不能重新定义 canonical truth
+- 这里若需要保留 repo-local 使用说明，也只能以 shim / usage bridge 方式存在
+- 这里不负责生成业务源码
+
+### 5. Repo-local deploy target
 
 职责：
 
@@ -135,8 +152,10 @@ last_verified: 2026-03-26
 2. [Memory Side Skill 与 Agent 模型](./skill-agent-model.md)
 3. `product/memory-side/skills/`
 4. `docs/operations/memory-side/`
-5. `toolchain/scripts/`
-6. `.agents/skills/`、`.claude/skills/` 或 `.opencode/skills/`
+5. `product/harness-operations/`
+6. 只有命中旧路径或历史链接时，再看 `docs/operations/prompt-templates/`
+7. `toolchain/scripts/`
+8. `.agents/skills/`、`.claude/skills/` 或 `.opencode/skills/`
 
 ## 四、措辞规范
 

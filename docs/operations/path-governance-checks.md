@@ -1,13 +1,15 @@
 ---
 title: "路径与文档治理检查运行说明"
 status: active
-updated: 2026-04-03
+updated: 2026-04-07
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-07
 ---
 # 路径与文档治理检查运行说明
 
 > 目的：说明如何在本仓库本地执行“路径治理与文档治理”相关的最小回归检查，包括结构检查和少量高价值语义检查。
+
+本页属于 [Deploy / Verify / Maintenance](./deploy/README.md) 路径簇。
 
 ## 一、适用范围
 
@@ -24,6 +26,8 @@ last_verified: 2026-04-03
 - foundations / memory-side / module entry 的关键承接关系是否仍存在
 - foundations 中关键 authority/template 文档是否被影子文件分叉
 - 已退役的 placeholder 口径是否回流到关键入口文档
+- `docs/operations/prompt-templates/` 是否仍回链 `docs/knowledge/` 主线
+- `product/*/adapters/*/skills/*/SKILL.md` 是否仍保持 thin wrapper，而不是重新长出重复语义正文
 
 它不替代人工审阅，也不检查所有 anchor 片段。
 
@@ -89,6 +93,8 @@ python3 toolchain/scripts/test/governance_semantic_check.py
    - 模块入口 README -> `module-entry-template.md`
 20. foundations 权威文档是否出现同名前缀 shadow 文件
 21. 关键入口文档是否重新出现已退役的“预留位 / 占位”口径
+22. `docs/operations/prompt-templates/README.md` 是否回链 `docs/knowledge/README.md`，以及每个模板是否至少回链一个 `docs/knowledge/` 主线文档
+23. `product/*/adapters/*/skills/*/SKILL.md` 是否同时保留 `Canonical Source / Backend Notes / Deploy Target` 薄壳结构，并移除 `Execution Rules / Output Contract` 这类重复章节
 
 说明：
 

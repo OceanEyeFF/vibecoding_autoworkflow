@@ -1,15 +1,15 @@
 ---
 title: "Autoresearch：收口后中期治理任务清单"
-status: active
-updated: 2026-04-03
+status: superseded
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-08
 ---
 # Autoresearch：收口后中期治理任务清单
 
-> 说明：本文承接本轮 `autoresearch` closeout 完成后的中期治理维护任务。它不再追踪“收口是否成立”本身，而是追踪如何把已经收成的治理语言继续压缩为更短的长期事实、更硬的执行约束和更稳定的自动检查。
+> 说明：本文记录过一次“收口后中期治理”的设想；它现在只保留 lineage / audit 价值，用于解释 closeout 收起后曾经考虑过哪些后续治理方向，不再是默认入口，也不驱动当前 autoresearch 实施。
 
-> 入口位说明：本文仍是当前 closeout lineage 下的任务正文叶子页，只承接中期治理工作拆解与执行顺序，不承担默认入口；当前默认目录页型入口仍是 [Analysis README](./README.md) 的 closeout 分流块。
+> 入口位说明：本文是 superseded 的 closeout 叶子页，并且仅供 audit / lineage 查阅；当前默认分流入口先回到 [Analysis README](./README.md)，再进入仍 active 的 task-plan 或 repo-local runbook。
 
 ## 一、当前阶段定位
 

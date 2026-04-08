@@ -13,6 +13,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from backend_runner import retry_policy_cli_args
+from autoresearch_lane_executor import execute_lane_suites
 from autoresearch_contract import (
     HISTORY_COLUMNS,
     AutoresearchContract,
@@ -37,7 +38,7 @@ from autoresearch_feedback_distill import (
     upsert_feedback_ledger_entry,
     write_feedback_distill,
 )
-from autoresearch_scoreboard import build_scoreboard, load_run_summary, merge_run_summaries, write_scoreboard
+from autoresearch_scoreboard import build_scoreboard, merge_run_summaries, write_scoreboard
 from autoresearch_stop import AutoresearchStop
 from autoresearch_worker_contract import (
     build_comparison_baseline,
@@ -160,20 +161,6 @@ def load_mutation_payload(path: Path) -> dict[str, Any]:
         value.lower() for value in _require_non_empty_string_list(payload, "allowed_actions")
     ]
     return payload
-
-
-def _capture_new_summary(save_dir: Path, before: set[Path]) -> Path:
-    after = {path for path in save_dir.iterdir() if path.is_dir()}
-    new_dirs = sorted(after - before)
-    if len(new_dirs) == 1:
-        summary = new_dirs[0] / "run-summary.json"
-        if summary.is_file():
-            return summary
-    candidates = sorted((path / "run-summary.json" for path in after), key=lambda item: item.stat().st_mtime)
-    candidates = [path for path in candidates if path.is_file()]
-    if not candidates:
-        raise FileNotFoundError(f"No run-summary.json found under {save_dir}")
-    return candidates[-1]
 
 
 def _lane_map(scoreboard: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -1161,12 +1148,10 @@ class AutoresearchRoundManager:
         suite_files: list[Path],
         save_dir: Path,
     ) -> list[dict[str, Any]]:
-        save_dir.mkdir(parents=True, exist_ok=True)
-        summaries: list[dict[str, Any]] = []
         timeout_seconds = resolve_timeout_seconds(contract)
         materialized_output_dir = save_dir.parent / "materialized-suites" / save_dir.name
-        for suite_file in suite_files:
-            before = {path for path in save_dir.iterdir() if path.is_dir()}
+
+        def _run_suite(suite_file: Path) -> None:
             resolved_suite = self._resolve_candidate_suite(candidate_worktree, suite_file)
             materialized_suite = materialize_suite(
                 resolved_suite,
@@ -1194,9 +1179,8 @@ class AutoresearchRoundManager:
             if completed.returncode != 0:
                 stderr = completed.stderr.strip()
                 raise RuntimeError(f"Candidate suite failed: {materialized_suite}\n{stderr}")
-            summary_path = _capture_new_summary(save_dir, before)
-            summaries.append(load_run_summary(summary_path))
-        return summaries
+
+        return execute_lane_suites(suite_files, save_dir, run_suite=_run_suite)
 
     def _resolve_candidate_suite(self, candidate_worktree: Path, suite_file: Path) -> Path:
         resolved_suite = suite_file.expanduser().resolve()

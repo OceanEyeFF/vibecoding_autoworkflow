@@ -1,11 +1,20 @@
 ---
 title: "Strict Workflow Prompt"
 status: active
-updated: 2026-04-03
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-08
 ---
 # Strict Workflow Prompt
+
+> 说明：本文已降级为 compatibility shim。canonical source 已迁到 [strict-workflow](../../../product/harness-operations/skills/strict-workflow/references/prompt.md)。本页只保留旧路径兼容入口，不再定义主线语义。
+
+## Canonical Source
+
+- [strict-workflow/SKILL.md](../../../product/harness-operations/skills/strict-workflow/SKILL.md)
+- [strict-workflow/references/prompt.md](../../../product/harness-operations/skills/strict-workflow/references/prompt.md)
+- [strict-workflow/references/entrypoints.md](../../../product/harness-operations/skills/strict-workflow/references/entrypoints.md)
+- [docs/knowledge/README.md](../../knowledge/README.md)
 
 > 定位：跨模块、高风险或需要更强审计的任务模板。
 
@@ -23,11 +32,8 @@ last_verified: 2026-04-03
 - 禁止未授权降级：不得在未明确说明和未获确认的情况下，自行 fallback 到不完整方案。
 
 【Step 0：限定阅读入口】
-1. `docs/README.md`
-2. 根目录 `README.md` 与 `INDEX.md`
-3. 与任务直接相关的 `docs/`、`product/`、`toolchain/` 文件
-
-默认不主动读取运行态或挂载态目录，除非需求明确要求。
+先按 `docs/knowledge/foundations/path-governance-ai-routing.md` 的权威路由确定阅读范围。
+本模板只额外要求：在 route 已收口后，只继续读取与当前任务直接相关的 `docs/`、`product/`、`toolchain/` 文件，不自行扩读 repo-local state、mount 或 deploy target。
 
 【Step 1：执行合同生成 + 边界冻结】
 先生成执行合同，至少包含：
@@ -84,5 +90,8 @@ last_verified: 2026-04-03
 
 ## 相关文档
 
+- [docs/knowledge/README.md](../../knowledge/README.md)
+- [路径治理与 AI 告知](../../knowledge/foundations/path-governance-ai-routing.md)
+- [Task Contract 模板](../../knowledge/foundations/task-contract-template.md)
 - [Execution Contract 模板](./execution-contract-template.md)
 - [Task Planning Contract Prompt](./task-planning-contract.md)

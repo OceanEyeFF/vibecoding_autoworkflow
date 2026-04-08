@@ -1,9 +1,9 @@
 ---
 title: "Task Contract 基线"
 status: active
-updated: 2026-03-23
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-03-23
+last_verified: 2026-04-08
 ---
 # Task Contract 基线
 
@@ -26,6 +26,7 @@ last_verified: 2026-03-23
 - 不是后端服务模块
 - 不是宿主运行时编排器
 - 不是客户端专属调用逻辑
+- 不是 repo-local execution template layer
 
 ## 四、输入与输出
 
@@ -60,6 +61,7 @@ last_verified: 2026-03-23
 - 模板负责固定结构
 - skill 负责把同一结构变成可直接调用的稳定能力
 - 两者都属于 `Task Interface`，不属于 `Memory Side`
+- Harness Operations workflows 与 compatibility shims 可以消费这份基线，但不能把它改写成自己的 truth
 
 ## 六、不做什么
 
@@ -80,6 +82,9 @@ docs/knowledge/
     skills/
       task-contract-skill.md
 
+docs/operations/
+  prompt-templates/  # compatibility shims only
+
 product/
   task-interface/
     skills/
@@ -87,6 +92,10 @@ product/
     adapters/
       agents/
       claude/
+  harness-operations/
+    skills/
+      execution-contract-template/
+      task-planning-contract/
 ```
 
 ## 八、判断标准
@@ -103,6 +112,7 @@ product/
 - [项目 Partition 模型](../foundations/partition-model.md)
 - [Task Contract 模板](../foundations/task-contract-template.md)
 - [Task Contract Skill 骨架](./skills/task-contract-skill.md)
+- [Prompt template compatibility shims](../../operations/prompt-templates/README.md)
 - [Codex Task Interface Repo-local Adapter 部署帮助](../../operations/task-interface/codex-deployment-help.md)
 - [Claude Task Interface Repo-local Adapter 适配帮助](../../operations/task-interface/claude-adaptation-help.md)
 - [Memory Side 总览](../memory-side/overview.md)
