@@ -64,8 +64,9 @@ last_verified: 2026-04-08
 - [Autoresearch 最小闭环运行说明](../../operations/autoresearch-minimal-loop.md)
 - [Research CLI 帮助](../../operations/research-cli-help.md)
 - [TMP Exrepo 维护说明](../../operations/tmp-exrepo-maintenance.md)
+- [Autoresearch 开发记录](../../operations/autoresearch-development-log.md)
 
-上面三页是 `autoresearch` 的日常 operations entry；其他 closeout 规则页（artifact hygiene、决策规则、入口层级、cleanup、acceptance gate）仍保留，但仅在需要复核 closeout lineage / audit 或查阅例外判定时进入。这些文档回答的是“本仓库里怎么跑、怎么维护、怎么 closeout”，不是模块实现真相本体。
+上面几页是 `autoresearch` 的日常 operations / maintenance entry；其他 closeout 规则页（artifact hygiene、决策规则、入口层级、cleanup、acceptance gate）仍保留，但仅在需要复核 closeout lineage / audit 或查阅例外判定时进入。这些文档回答的是“本仓库里怎么跑、怎么维护、怎么记录近期开发承接、怎么 closeout”，不是模块实现真相本体。
 
 ### 3. `docs/analysis/`
 
@@ -107,6 +108,7 @@ last_verified: 2026-04-08
    - [Autoresearch 最小闭环运行说明](../../operations/autoresearch-minimal-loop.md)
    - [Research CLI 帮助](../../operations/research-cli-help.md)
    - [TMP Exrepo 维护说明](../../operations/tmp-exrepo-maintenance.md)
+   - [Autoresearch 开发记录](../../operations/autoresearch-development-log.md)
 3. 如果任务涉及 phase contract、当前 task-plan 或历史研究，再回到 [docs/analysis/README.md](../../analysis/README.md) 做分流。
 4. 只有任务明确落到实现或 CLI 内部接线时，再读 [toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)。
 

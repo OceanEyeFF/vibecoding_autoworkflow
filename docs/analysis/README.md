@@ -17,7 +17,7 @@
 | Bucket | Status | Count | 用途 |
 | --- | --- | ---: | --- |
 | Research / Eval 边界 | `active` | 3 | 固定 research runner、eval、对象分类评估与 observability 合同 |
-| Autoresearch 阶段合同与设计边界 | `active` | 8 | 固定 phase contract、代码复核与当前设计基线 |
+| Autoresearch 阶段合同与设计边界 | `active` | 9 | 固定 phase contract、代码复核、下一阶段模块化建议与当前设计基线 |
 | 当前执行规划 | `active` | 3 | 当前仍用于直接驱动实现的受控任务入口 |
 | 历史研究 lineage | `superseded` | 1 | 保留上一轮问题 framing，不作为当前研究入口 |
 | Closeout lineage / audit | `superseded` | 2 | 保留 closeout 目标与治理设想的 lineage，不作为默认执行入口 |
@@ -37,6 +37,7 @@
   - [autoresearch-p1-2-worker-contract-and-minimal-selector.md](./autoresearch-p1-2-worker-contract-and-minimal-selector.md)
   - [autoresearch-p1-3-feedback-distillation-and-adaptive-scheduler.md](./autoresearch-p1-3-feedback-distillation-and-adaptive-scheduler.md)
   - [autoresearch-p1-final-code-audit-and-followups.md](./autoresearch-p1-final-code-audit-and-followups.md)
+  - [autoresearch-next-stage-cli-modularity-plan.md](./autoresearch-next-stage-cli-modularity-plan.md)
   - [autoresearch-p2-lightweight-single-prompt-codex-loop.md](./autoresearch-p2-lightweight-single-prompt-codex-loop.md)
 
 ## 当前执行规划
