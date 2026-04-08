@@ -297,6 +297,53 @@ class RunAutoresearchTest(unittest.TestCase):
             self.assertTrue((root / ".autoworkflow" / "autoresearch" / "run-status-index.json").is_file())
             self.assertTrue((root / ".autoworkflow" / "autoresearch" / "skill-training-status.json").is_file())
 
+    def test_successful_command_does_not_fail_when_auto_refresh_status_raises(self) -> None:
+        args = mock.Mock()
+        args.command = "init"
+        args.contract = Path("contract.json")
+
+        stderr = io.StringIO()
+        with mock.patch.object(run_autoresearch, "parse_args", return_value=args), mock.patch.object(
+            run_autoresearch, "cmd_init", return_value=0
+        ) as cmd_init, mock.patch.object(
+            run_autoresearch,
+            "refresh_status_indexes",
+            side_effect=ValueError("broken historical run"),
+        ) as refresh_mock, mock.patch("sys.stderr", stderr):
+            exit_code = run_autoresearch.main([])
+
+        self.assertEqual(exit_code, 0)
+        cmd_init.assert_called_once_with(Path("contract.json"))
+        refresh_mock.assert_called_once()
+        self.assertIn("warning: status index refresh skipped after init: broken historical run", stderr.getvalue())
+
+    def test_stop_exit_refreshes_status_indexes(self) -> None:
+        args = mock.Mock()
+        args.command = "prepare-round"
+        args.contract = Path("contract.json")
+        args.mutation_key = None
+        args.mutation = None
+
+        stdout = io.StringIO()
+        with mock.patch.object(run_autoresearch, "parse_args", return_value=args), mock.patch.object(
+            run_autoresearch,
+            "cmd_prepare_round",
+            side_effect=run_autoresearch.AutoresearchStop(
+                kind="max_rounds_reached",
+                message="run reached max rounds",
+            ),
+        ) as cmd_prepare, mock.patch.object(
+            run_autoresearch, "refresh_status_indexes", return_value=(Path("run-status-index.json"), Path("skill-training-status.json"))
+        ) as refresh_mock, mock.patch("sys.stdout", stdout):
+            exit_code = run_autoresearch.main([])
+
+        self.assertEqual(exit_code, 0)
+        cmd_prepare.assert_called_once_with(Path("contract.json"), mutation_key=None, mutation_path=None)
+        refresh_mock.assert_called_once()
+        stdout_value = stdout.getvalue()
+        self.assertIn("prepare_round_status: stopped", stdout_value)
+        self.assertIn("stop_kind: max_rounds_reached", stdout_value)
+
     def test_init_accepts_valid_p2_contract(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -622,6 +622,19 @@ def cmd_refresh_status() -> int:
     return 0
 
 
+def _refresh_status_indexes_best_effort(command: str) -> None:
+    try:
+        refresh_status_indexes(
+            autoresearch_root=AUTORESEARCH_ROOT,
+            repo_root=REPO_ROOT,
+        )
+    except (FileNotFoundError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
+        print(
+            f"warning: status index refresh skipped after {command}: {exc}",
+            file=sys.stderr,
+        )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv if argv is not None else sys.argv[1:])
     try:
@@ -651,15 +664,14 @@ def main(argv: list[str] | None = None) -> int:
         if exit_code is None:
             raise RuntimeError(f"Unsupported command: {args.command}")
         if exit_code == 0 and args.command != "refresh-status":
-            refresh_status_indexes(
-                autoresearch_root=AUTORESEARCH_ROOT,
-                repo_root=REPO_ROOT,
-            )
+            _refresh_status_indexes_best_effort(args.command)
         return exit_code
     except AutoresearchStop as exc:
         print(f"{format_stop_status(args.command)}: stopped")
         print(f"stop_kind: {exc.kind}")
         print(f"stop_reason: {exc.message}")
+        if args.command != "refresh-status":
+            _refresh_status_indexes_best_effort(args.command)
         return 0
     except (FileNotFoundError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
         print(f"error: {exc}", file=sys.stderr)
