@@ -228,27 +228,49 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(code, 0, stderr)
         self.assertIn("[agents] ok", stdout)
 
-    def test_verify_reports_local_drift_issue_codes(self) -> None:
-        with self.subTest("missing target root"):
-            code, stdout, stderr = self._run_cli("verify", "--backend", "agents")
-            self.assertEqual(code, 1, stderr)
-            self.assertIn("missing-target-root", stdout)
+    def test_verify_bootstraps_local_root_and_missing_entries(self) -> None:
+        code, stdout, stderr = self._run_cli("verify", "--backend", "agents")
+        self.assertEqual(code, 0, stderr)
+        self.assertIn("[agents] ok", stdout)
+        self.assertTrue(self.local_root.is_dir())
+        self.assertTrue((self.local_root / "alpha").is_symlink())
+        self.assertTrue((self.local_root / "simple-workflow").is_symlink())
 
+        target_beta = self.local_root / "beta"
+        target_beta.unlink()
+
+        code, stdout, stderr = self._run_cli("verify", "--backend", "agents")
+        self.assertEqual(code, 0, stderr)
+        self.assertIn("[agents] ok", stdout)
+        self.assertTrue(target_beta.is_symlink())
+
+    def test_verify_bootstraps_local_entries_with_copy_fallback_when_symlinks_fail(self) -> None:
+        original_symlink_to = Path.symlink_to
+
+        def flaky_symlink(path: Path, target: Path, target_is_directory: bool = False) -> None:
+            if path.parent == self.local_root:
+                raise OSError("symlink not permitted")
+            original_symlink_to(path, target, target_is_directory=target_is_directory)
+
+        with mock.patch.object(Path, "symlink_to", autospec=True, side_effect=flaky_symlink):
+            code, stdout, stderr = self._run_cli("verify", "--backend", "agents")
+
+        self.assertEqual(code, 0, stderr)
+        self.assertIn("[agents] ok", stdout)
+        self.assertTrue((self.local_root / "alpha").is_dir())
+        self.assertFalse((self.local_root / "alpha").is_symlink())
+        self.assertEqual(
+            (self.local_root / "alpha" / "SKILL.md").read_text(encoding="utf-8"),
+            "alpha-v1",
+        )
+
+    def test_verify_reports_local_drift_issue_codes(self) -> None:
         code, _, stderr = self._run_cli("local", "--backend", "agents")
         self.assertEqual(code, 0, stderr)
 
         target_alpha = self.local_root / "alpha"
-        target_beta = self.local_root / "beta"
         target_task = self.local_root / "task-contract-skill"
         target_workflow = self.local_root / "simple-workflow"
-
-        with self.subTest("missing target entry"):
-            target_beta.unlink()
-            code, stdout, stderr = self._run_cli("verify", "--backend", "agents")
-            self.assertEqual(code, 1, stderr)
-            self.assertIn("missing-target-entry", stdout)
-            restore_code, _, restore_stderr = self._run_cli("local", "--backend", "agents")
-            self.assertEqual(restore_code, 0, restore_stderr)
 
         with self.subTest("new partition target is deployed"):
             self.assertTrue(target_workflow.is_symlink())
