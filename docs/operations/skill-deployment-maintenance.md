@@ -1,9 +1,9 @@
 ---
 title: "Skill Deployment 维护流"
 status: active
-updated: 2026-03-26
+updated: 2026-04-08
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-04-08
 ---
 # Skill Deployment 维护流
 
@@ -31,6 +31,8 @@ last_verified: 2026-03-26
 - 是 source 没有变化，但 target 漂移了
 - 是 target 需要重新同步
 - 是 deploy 后仍然存在结构问题
+
+当 `product/*/adapters/<backend>/skills/` 新增 partition 来源（例如新增 `harness-operations`）时，已存在的 repo-local mount 不会自动补齐新条目。此时 `verify` 会出现 `missing-target-entry`，`closeout_acceptance_gate.py` 的 `test_gate` 也会按真实 drift 失败（不属于 `missing-target-root` 可跳过场景）。处理方式是先执行对应 backend 的 `local` deploy，再复验一次 `verify`。
 
 ## 二、验证分层
 
