@@ -16,9 +16,10 @@
 
 | Bucket | Status | Count | 用途 |
 | --- | --- | ---: | --- |
-| Research / Eval 边界 | `active` | 2 | 固定 research runner、eval 与 observability 合同 |
+| Research / Eval 边界 | `active` | 3 | 固定 research runner、eval、对象分类评估与 observability 合同 |
 | Autoresearch 阶段合同与设计边界 | `active` | 8 | 固定 phase contract、代码复核与当前设计基线 |
-| 当前执行规划 | `active` | 2 | 当前仍用于直接驱动实现的受控任务入口 |
+| 当前执行规划 | `active` | 3 | 当前仍用于直接驱动实现的受控任务入口 |
+| 历史研究 lineage | `superseded` | 1 | 保留上一轮问题 framing，不作为当前研究入口 |
 | Closeout lineage / audit | `superseded` | 2 | 保留 closeout 目标与治理设想的 lineage，不作为默认执行入口 |
 | 历史执行规划 | `superseded` | 5 | 保留 lineage，不作为默认执行入口 |
 
@@ -27,6 +28,7 @@
 - Research / Eval 边界：
   - [research-eval-contracts.md](./research-eval-contracts.md)
   - [research-eval-observability.md](./research-eval-observability.md)
+  - [prompt-templates-productization-and-skill-distribution-assessment.md](./prompt-templates-productization-and-skill-distribution-assessment.md)
 - Autoresearch 阶段合同与设计边界：
   - [autoresearch-p0-1-contract-and-data-plane.md](./autoresearch-p0-1-contract-and-data-plane.md)
   - [autoresearch-p0-2-worktree-control-shell.md](./autoresearch-p0-2-worktree-control-shell.md)
@@ -47,6 +49,8 @@
   当前用于驱动 `tmp exrepo + materialized suite + maintenance script` 两阶段施工；继续作为默认执行规划的一部分。
 - [autoresearch-p2-repo-prompt-guidance-task-plan.md](./autoresearch-p2-repo-prompt-guidance-task-plan.md)  
   当前用于驱动 repo 级 prompt 改进建议、aggregate guidance 与 worker-facing 接线的两阶段施工；当前代码承接位已同步到 `toolchain/scripts/research/README.md` 和 `docs/operations/autoresearch-minimal-loop.md`；继续作为默认执行规划的一部分。
+- [prompt-templates-productization-task-plan.md](./prompt-templates-productization-task-plan.md)  
+  当前用于驱动 `Prompt Templates` 向 `product/` 分区、Skills 分发链和治理检查的收口改造；当前阶段判断已固定为“实施准备”，不再继续开放式边界讨论。
 
 ## Closeout Lineage / Audit
 
@@ -60,6 +64,16 @@
   2026-04 closeout 的目标基线，现只保留 lineage 和完成判断记录。
 - [autoresearch-closeout-governance-task-list.md](./autoresearch-closeout-governance-task-list.md)  
   一次已收起的“收口后中期治理”设想，现只保留 superseded lineage，不驱动当前实现。
+
+## 历史研究 Lineage
+
+说明：
+
+- 本节只保留已被替换的问题 framing 文档。
+- 它们只用于解释“为什么当时这样评估”，不再作为当前研究入口。
+
+- [prompt-templates-harness-operations-package-assessment.md](./prompt-templates-harness-operations-package-assessment.md)  
+  保留为上一轮“repo-local execution template / 包本体 vs 实例化层”评估框架的 lineage；当前入口已切换到 `prompt-templates-productization-and-skill-distribution-assessment.md`。
 
 ## 历史执行规划
 
