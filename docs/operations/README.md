@@ -2,6 +2,8 @@
 
 `docs/operations/` 只保存当前仓库的 repo-local runbook、部署说明、维护帮助和 compatibility prompt shims，不保存跨仓库通用真相。
 
+`operations/` 不长期承载 `suspended` 文档；暂停中的共享 runbook 应转为 `superseded`，非共享 scratch 应移出 `docs/`。
+
 当前路径簇按对象类型分成三组：
 
 1. `deploy/`：deploy / verify / maintenance 的入口簇

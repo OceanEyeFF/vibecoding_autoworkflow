@@ -22,6 +22,7 @@ last_verified: 2026-04-07
 - `.gitignore` 是否仍继续忽略关键 hidden layers
 - `docs/` 下正文文档的 frontmatter 是否齐全
 - `status` 是否仍和目录语义、生命周期语义一致
+- `docs/` 正文是否错误使用 `status: suspended`
 - `docs/analysis/README.md` 是否仍枚举当前研究文档，并保留对历史执行规划的入口
 - foundations / memory-side / module entry 的关键承接关系是否仍存在
 - foundations 中关键 authority/template 文档是否被影子文件分叉
@@ -71,30 +72,31 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 12. `docs/knowledge/README.md` 与关键子入口是否仍存在，并继续链接 Foundations、Memory Side 与 Task Interface 主线
 13. `docs/` 下除 `README.md` 以外的正文文档是否仍保留最小 frontmatter
 14. `docs/reference/`、`docs/archive/`、`docs/ideas/*/` 以及 `docs/knowledge/`、`docs/operations/`、`docs/analysis/` 的 `status` 是否仍匹配目录与生命周期语义
-15. `docs/analysis/README.md` 是否仍回链当前分析文档，包括 `superseded` 的历史执行规划
-16. `.gitignore` 是否仍忽略：
+15. `docs/` 正文文档是否仍避免使用 `status: suspended`；暂停中的共享文档应改成 `superseded`，非共享 scratch 应移出 `docs/`
+16. `docs/analysis/README.md` 是否仍回链当前分析文档，包括 `superseded` 的历史执行规划
+17. `.gitignore` 是否仍忽略：
    - `.agents/`
    - `.claude/`
    - `.opencode/`
    - `.autoworkflow/`
    - `.spec-workflow/`
-17. `governance_semantic_check.py`
-18. foundations 最小模板集是否仍存在：
+18. `governance_semantic_check.py`
+19. foundations 最小模板集是否仍存在：
    - `task-contract-template.md`
    - `context-entry-template.md`
    - `writeback-log-template.md`
    - `decision-record-template.md`
    - `module-entry-template.md`
-19. 关键承接关系是否仍存在：
+20. 关键承接关系是否仍存在：
    - `toolchain-layering.md -> toolchain/scripts/README.md`
    - `toolchain-layering.md -> toolchain/evals/README.md`
    - `context-routing.md -> context-entry-template.md`
    - `writeback-cleanup.md -> writeback-log-template.md`
    - 模块入口 README -> `module-entry-template.md`
-20. foundations 权威文档是否出现同名前缀 shadow 文件
-21. 关键入口文档是否重新出现已退役的“预留位 / 占位”口径
-22. `docs/operations/prompt-templates/README.md` 是否回链 `docs/knowledge/README.md`，以及每个模板是否至少回链一个 `docs/knowledge/` 主线文档
-23. `product/*/adapters/*/skills/*/SKILL.md` 是否同时保留 `Canonical Source / Backend Notes / Deploy Target` 薄壳结构，并移除 `Execution Rules / Output Contract` 这类重复章节
+21. foundations 权威文档是否出现同名前缀 shadow 文件
+22. 关键入口文档是否重新出现已退役的“预留位 / 占位”口径
+23. `docs/operations/prompt-templates/README.md` 是否回链 `docs/knowledge/README.md`，以及每个模板是否至少回链一个 `docs/knowledge/` 主线文档
+24. `product/*/adapters/*/skills/*/SKILL.md` 是否同时保留 `Canonical Source / Backend Notes / Deploy Target` 薄壳结构，并移除 `Execution Rules / Output Contract` 这类重复章节
 
 说明：
 
