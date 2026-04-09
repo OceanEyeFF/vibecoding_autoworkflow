@@ -87,6 +87,7 @@ python3 toolchain/scripts/research/run_autoresearch.py summary
 - 标出最近活跃的 latest run
 - 给每个 tracked skill 标出 view-level `signal`
 - 单独列出 `action_needed_runs`
+- 如果历史 run 有损坏 artifact，summary 会走 best-effort 聚合，跳过坏 run 并在输出里显示 `malformed_runs_skipped` 和 `malformed_runs`
 
 说明：
 
@@ -176,6 +177,8 @@ python3 toolchain/scripts/research/run_autoresearch.py summary
 
 - `round_candidate_active`
   - run 上仍挂着 active round；这不是正常等待下一轮，operator 应先继续当前 round 或显式清理
+- `round_prepared`
+  - run 上的 active round 已经准备完毕，但还没进入后续裁决或继续执行；operator 应继续当前 round，或者在不再需要这条 round 时直接 `cleanup-round`
 - `round_<state>_recovery_required`
   - 代表 runtime 已不完整，但 round authority 还在；先恢复或确认后 `cleanup-round`
 - `round_cleanup_required_<reason>`
@@ -211,6 +214,7 @@ python3 toolchain/scripts/research/run_autoresearch.py summary
 
 - `prepare-round` 命中 `AutoresearchStop` 并正常 `0` 退出时，也会刷新索引
 - automatic refresh 是 best-effort；历史坏 run、缺失 artifact 或旧状态导致的聚合错误只会打印 warning，不会把原命令改判成失败
+- refresh-status 和 summary 都会把坏 run 隔离进 `malformed_runs`；summary 还会把这些坏 run 以人读表格列出来，方便 operator 先修复或清理，再看健康状态
 - 如果 summary 或索引出现 `recovery` / `cleanup-required` 信号，优先处理当前残留 round，不要直接继续 `prepare-round`
 
 ### 1. 单 task，只有 skill

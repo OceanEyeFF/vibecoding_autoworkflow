@@ -592,6 +592,67 @@ class AutoresearchStatusTest(unittest.TestCase):
             self.assertIn("round_evaluated", summary)
             self.assertIn("decide-round next, or cleanup-round if the round is no longer usable", summary)
 
+    def test_render_operator_summary_guides_prepared_rounds(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            autoresearch_root = root / ".autoworkflow" / "autoresearch"
+
+            skill_path = root / "product" / "memory-side" / "skills" / "knowledge-base-skill" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True, exist_ok=True)
+            skill_path.write_text("# skill\n", encoding="utf-8")
+
+            run_dir = autoresearch_root / "demo-prepared"
+            write_json(
+                run_dir / "contract.json",
+                {
+                    "run_id": "demo-prepared",
+                    "target_task": "knowledge-base-skill",
+                    "target_prompt_path": "toolchain/scripts/research/tasks/knowledge-base-skill-prompt.md",
+                    "worker_backend": "codex",
+                    "expected_backend": "codex",
+                    "expected_judge_backend": "codex",
+                    "max_rounds": 2,
+                },
+            )
+            write_json(
+                run_dir / "runtime.json",
+                {
+                    "run_id": "demo-prepared",
+                    "champion_sha": "999999",
+                    "active_round": 1,
+                    "updated_at": "2026-04-09T11:00:00+00:00",
+                },
+            )
+            write_json(
+                run_dir / "scoreboard.json",
+                {
+                    "run_id": "demo-prepared",
+                    "generated_at": "2026-04-09T09:00:00+00:00",
+                    "baseline_sha": "999999",
+                    "rounds_completed": 0,
+                    "best_round": 0,
+                    "lanes": [
+                        {"lane_name": "train", "avg_total_score": 8.0},
+                        {"lane_name": "validation", "avg_total_score": 7.5},
+                    ],
+                },
+            )
+            write_json(
+                run_dir / "rounds" / "round-001" / "round.json",
+                {
+                    "round": 1,
+                    "state": "prepared",
+                },
+            )
+
+            summary = render_operator_summary(
+                autoresearch_root=autoresearch_root,
+                repo_root=root,
+            )
+
+            self.assertIn("round_prepared", summary)
+            self.assertIn("continue active round or cleanup-round", summary)
+
     def test_build_status_payloads_surface_malformed_skill_runs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

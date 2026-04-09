@@ -115,6 +115,8 @@ live Codex smoke 的预算口径当前建议固定为：
 - 残留 active round：
   - `round_candidate_active`
   - 这不是 `baseline_completed` 或 `awaiting_next_round`，说明 run 上仍挂着 active round，需要继续处理或显式清理
+  - `round_prepared`
+  - 这表示 active round 已经准备完毕，但还没进入后续裁决；先继续这条 round，或者在不再需要它时直接 `cleanup-round`
 - recovery / cleanup-required：
   - `round_<state>_recovery_required`
   - `round_cleanup_required_<reason>`
@@ -137,6 +139,7 @@ live Codex smoke 的预算口径当前建议固定为：
 
 - 如果历史坏 run、缺失 artifact 或旧状态让聚合失败，原命令仍保持成功
 - CLI 只会打印 warning，不会把 refresh 失败反向污染成主命令失败
+- `refresh-status` 和 `summary` 都会把坏 run 隔离进 `malformed_runs`；`summary` 还会把这些坏 run 以人读表格列出来，方便 operator 先修复或清理，再看健康状态
 
 如果索引或 summary 中出现 recovery / cleanup-required，operator 当前应优先考虑：
 
