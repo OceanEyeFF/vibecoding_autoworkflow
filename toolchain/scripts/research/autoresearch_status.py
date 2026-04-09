@@ -494,6 +494,8 @@ def classify_operator_signal(training_status: str | None) -> str:
     status = str(training_status or "").strip()
     if not status:
         return "unknown"
+    if status == "round_accepted":
+        return "cleanup-required"
     if "cleanup_required" in status:
         return "cleanup-required"
     if status.endswith("_recovery_required"):
@@ -513,6 +515,8 @@ def classify_operator_signal(training_status: str | None) -> str:
 
 def summarize_operator_action(item: dict[str, Any]) -> str:
     training_status = str(item.get("training_status") or "").strip()
+    if training_status == "round_accepted":
+        return "cleanup-round first"
     if "cleanup_required" in training_status:
         return "cleanup-round first"
     if training_status in {"round_evaluating", "round_evaluating_recovery_required"}:
