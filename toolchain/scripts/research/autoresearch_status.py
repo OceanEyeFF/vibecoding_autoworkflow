@@ -61,15 +61,42 @@ def _round_dir_sort_key(path: Path) -> tuple[int, str]:
         return 0, path.name
 
 
+def _discover_interrupted_round(run_dir: Path) -> tuple[int | None, str | None]:
+    rounds_root = run_dir / "rounds"
+    if not rounds_root.is_dir():
+        return None, None
+    interrupted_rounds: list[tuple[int, str]] = []
+    for round_dir in sorted((path for path in rounds_root.iterdir() if path.is_dir()), key=_round_dir_sort_key):
+        round_payload = _read_json(round_dir / "round.json")
+        if not round_payload:
+            continue
+        state = str(round_payload.get("state") or "").strip()
+        if state not in {"prepared", "candidate_active"}:
+            continue
+        round_number_raw = round_payload.get("round")
+        try:
+            round_number = int(round_number_raw)
+        except (TypeError, ValueError):
+            continue
+        interrupted_rounds.append((round_number, state))
+    if not interrupted_rounds:
+        return None, None
+    if len(interrupted_rounds) > 1:
+        return interrupted_rounds[-1][0], "cleanup_required_multiple_active_rounds"
+    round_number, state = interrupted_rounds[0]
+    return round_number, f"{state}_recovery_required"
+
+
 def _round_state(run_dir: Path, runtime: dict[str, Any] | None) -> tuple[int | None, str | None]:
-    if not runtime:
-        return None, None
-    active_round = runtime.get("active_round")
-    if active_round is None:
-        return None, None
-    round_number = int(active_round)
-    round_payload = _read_json(run_dir / "rounds" / f"round-{round_number:03d}" / "round.json")
-    return round_number, (str(round_payload.get("state") or "").strip() if round_payload else None)
+    if runtime:
+        active_round = runtime.get("active_round")
+        if active_round is not None:
+            round_number = int(active_round)
+            round_payload = _read_json(run_dir / "rounds" / f"round-{round_number:03d}" / "round.json")
+            if round_payload:
+                return round_number, str(round_payload.get("state") or "").strip() or None
+            return round_number, "cleanup_required_missing_round_json"
+    return _discover_interrupted_round(run_dir)
 
 
 def _latest_decision(run_dir: Path) -> tuple[str | None, int | None, str | None]:

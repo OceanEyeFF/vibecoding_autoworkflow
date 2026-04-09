@@ -193,3 +193,128 @@ class AutoresearchStatusTest(unittest.TestCase):
                 skills["simple-workflow"]["training_status"],
                 "not_supported_by_autoresearch",
             )
+
+    def test_refresh_status_indexes_preserves_interrupted_active_round_states(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            autoresearch_root = root / ".autoworkflow" / "autoresearch"
+
+            for skill_path in (
+                root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md",
+                root / "product" / "memory-side" / "skills" / "knowledge-base-skill" / "SKILL.md",
+            ):
+                skill_path.parent.mkdir(parents=True, exist_ok=True)
+                skill_path.write_text("# skill\n", encoding="utf-8")
+
+            missing_round_run = autoresearch_root / "demo-missing-round"
+            write_json(
+                missing_round_run / "contract.json",
+                {
+                    "run_id": "demo-missing-round",
+                    "target_task": "context-routing-skill",
+                    "target_prompt_path": "toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+                    "worker_backend": "codex",
+                    "expected_backend": "codex",
+                    "expected_judge_backend": "codex",
+                    "max_rounds": 3,
+                },
+            )
+            write_json(
+                missing_round_run / "runtime.json",
+                {
+                    "run_id": "demo-missing-round",
+                    "champion_sha": "aaa111",
+                    "active_round": 2,
+                    "updated_at": "2026-04-09T10:00:00+00:00",
+                },
+            )
+            write_json(
+                missing_round_run / "scoreboard.json",
+                {
+                    "run_id": "demo-missing-round",
+                    "generated_at": "2026-04-09T09:00:00+00:00",
+                    "baseline_sha": "aaa111",
+                    "rounds_completed": 1,
+                    "best_round": 1,
+                    "lanes": [
+                        {"lane_name": "train", "avg_total_score": 9.0},
+                        {"lane_name": "validation", "avg_total_score": 9.5},
+                    ],
+                },
+            )
+            write_history(
+                missing_round_run / "history.tsv",
+                [
+                    "0\tbaseline\taaa111\t-\t8.500000\t8.750000\t0.000000\t0.000000\tbaseline\t",
+                    "1\ttext_rephrase\taaa111\tbbb222\t9.000000\t9.500000\t0.000000\t0.000000\tdiscard\tmutation_id=mut-001",
+                ],
+            )
+
+            recovered_round_run = autoresearch_root / "demo-recovered-round"
+            write_json(
+                recovered_round_run / "contract.json",
+                {
+                    "run_id": "demo-recovered-round",
+                    "target_task": "knowledge-base-skill",
+                    "target_prompt_path": "toolchain/scripts/research/tasks/knowledge-base-skill-prompt.md",
+                    "worker_backend": "claude",
+                    "expected_backend": "claude",
+                    "expected_judge_backend": "claude",
+                    "max_rounds": 3,
+                },
+            )
+            write_json(
+                recovered_round_run / "scoreboard.json",
+                {
+                    "run_id": "demo-recovered-round",
+                    "generated_at": "2026-04-09T08:00:00+00:00",
+                    "baseline_sha": "ccc333",
+                    "rounds_completed": 0,
+                    "best_round": 0,
+                    "lanes": [
+                        {"lane_name": "train", "avg_total_score": 7.0},
+                        {"lane_name": "validation", "avg_total_score": 7.25},
+                    ],
+                },
+            )
+            write_json(
+                recovered_round_run / "rounds" / "round-001" / "round.json",
+                {
+                    "round": 1,
+                    "state": "prepared",
+                },
+            )
+            write_history(
+                recovered_round_run / "history.tsv",
+                ["0\tbaseline\tccc333\t-\t7.000000\t7.250000\t0.000000\t0.000000\tbaseline\t"],
+            )
+
+            run_index_path, skill_index_path = refresh_status_indexes(
+                autoresearch_root=autoresearch_root,
+                repo_root=root,
+            )
+
+            run_index = json.loads(run_index_path.read_text(encoding="utf-8"))
+            skill_index = json.loads(skill_index_path.read_text(encoding="utf-8"))
+
+            runs = {entry["run_id"]: entry for entry in run_index["runs"]}
+            self.assertEqual(
+                runs["demo-missing-round"]["training_status"],
+                "round_cleanup_required_missing_round_json",
+            )
+            self.assertEqual(runs["demo-missing-round"]["active_round"], 2)
+            self.assertEqual(
+                runs["demo-recovered-round"]["training_status"],
+                "round_prepared_recovery_required",
+            )
+            self.assertEqual(runs["demo-recovered-round"]["active_round"], 1)
+
+            skills = {entry["skill_id"]: entry for entry in skill_index["skills"]}
+            self.assertEqual(
+                skills["context-routing-skill"]["training_status"],
+                "round_cleanup_required_missing_round_json",
+            )
+            self.assertEqual(
+                skills["knowledge-base-skill"]["training_status"],
+                "round_prepared_recovery_required",
+            )
