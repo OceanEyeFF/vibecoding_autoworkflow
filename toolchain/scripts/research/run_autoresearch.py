@@ -642,7 +642,7 @@ def _refresh_status_indexes_best_effort(command: str) -> None:
             autoresearch_root=AUTORESEARCH_ROOT,
             repo_root=REPO_ROOT,
         )
-    except (FileNotFoundError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
+    except (FileNotFoundError, RuntimeError, TypeError, ValueError, subprocess.CalledProcessError) as exc:
         print(
             f"warning: status index refresh skipped after {command}: {exc}",
             file=sys.stderr,
@@ -689,7 +689,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command not in {"refresh-status", "summary"}:
             _refresh_status_indexes_best_effort(args.command)
         return 0
-    except (FileNotFoundError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
+    except (FileNotFoundError, RuntimeError, TypeError, ValueError, subprocess.CalledProcessError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 

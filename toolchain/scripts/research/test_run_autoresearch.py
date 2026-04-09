@@ -482,6 +482,29 @@ class RunAutoresearchTest(unittest.TestCase):
         refresh_mock.assert_called_once()
         self.assertIn("warning: status index refresh skipped after init: broken historical run", stderr.getvalue())
 
+    def test_successful_command_does_not_fail_when_auto_refresh_status_raises_type_error(self) -> None:
+        args = mock.Mock()
+        args.command = "baseline"
+        args.contract = Path("contract.json")
+
+        stderr = io.StringIO()
+        with mock.patch.object(run_autoresearch, "parse_args", return_value=args), mock.patch.object(
+            run_autoresearch, "cmd_baseline", return_value=0
+        ) as cmd_baseline, mock.patch.object(
+            run_autoresearch,
+            "refresh_status_indexes",
+            side_effect=TypeError("scoreboard lanes are not iterable"),
+        ) as refresh_mock, mock.patch("sys.stderr", stderr):
+            exit_code = run_autoresearch.main([])
+
+        self.assertEqual(exit_code, 0)
+        cmd_baseline.assert_called_once_with(Path("contract.json"))
+        refresh_mock.assert_called_once()
+        self.assertIn(
+            "warning: status index refresh skipped after baseline: scoreboard lanes are not iterable",
+            stderr.getvalue(),
+        )
+
     def test_stop_exit_refreshes_status_indexes(self) -> None:
         args = mock.Mock()
         args.command = "prepare-round"

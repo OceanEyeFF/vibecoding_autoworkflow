@@ -30,6 +30,13 @@ def _read_json(path: Path) -> dict[str, Any] | None:
     return payload
 
 
+def _read_json_best_effort(path: Path) -> dict[str, Any] | None:
+    try:
+        return _read_json(path)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+
+
 def _history_rows(history_path: Path) -> list[dict[str, str]]:
     if not history_path.is_file():
         return []
@@ -141,6 +148,28 @@ def _activity_at(
     ]
     values = sorted(candidate for candidate in candidates if candidate)
     return values[-1] if values else None
+
+
+def _summarize_malformed_run(run_dir: Path, *, repo_root: Path, error: Exception) -> dict[str, str | None]:
+    contract = _read_json_best_effort(run_dir / "contract.json")
+    runtime = _read_json_best_effort(run_dir / "runtime.json")
+    scoreboard = _read_json_best_effort(run_dir / "scoreboard.json")
+    latest_decision, _latest_decision_round, latest_decision_at = _latest_decision(run_dir)
+    run_id = str((contract or {}).get("run_id") or run_dir.name).strip() or run_dir.name
+    target_task = str((contract or {}).get("target_task") or "").strip() or None
+    activity_at = _activity_at(
+        contract=contract,
+        runtime=runtime,
+        scoreboard=scoreboard,
+        latest_decision_at=latest_decision_at,
+    )
+    return {
+        "run_id": run_id,
+        "run_dir": _relative_path(run_dir, repo_root=repo_root),
+        "target_task": target_task,
+        "activity_at": activity_at,
+        "error": str(error),
+    }
 
 
 def _derive_training_status(
@@ -266,15 +295,10 @@ def collect_run_summaries_best_effort(
             continue
         try:
             summaries.append(summarize_run(run_dir, repo_root=repo_root))
-        except (FileNotFoundError, RuntimeError, ValueError) as exc:
+        except (FileNotFoundError, RuntimeError, TypeError, ValueError) as exc:
             if strict:
                 raise
-            errors.append(
-                {
-                    "run_dir": _relative_path(run_dir, repo_root=repo_root),
-                    "error": str(exc),
-                }
-            )
+            errors.append(_summarize_malformed_run(run_dir, repo_root=repo_root, error=exc))
     summaries.sort(
         key=lambda item: (
             str(item.get("activity_at") or ""),
@@ -305,6 +329,7 @@ def build_skill_training_status(
     *,
     autoresearch_root: Path = AUTORESEARCH_ROOT,
     repo_root: Path = REPO_ROOT,
+    malformed_runs: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     skills = []
     by_skill: dict[str, list[dict[str, Any]]] = {}
@@ -313,20 +338,61 @@ def build_skill_training_status(
         if not target_task:
             continue
         by_skill.setdefault(target_task, []).append(summary)
+    malformed_by_skill: dict[str, list[dict[str, Any]]] = {}
+    for malformed in malformed_runs or []:
+        target_task = str(malformed.get("target_task") or "").strip()
+        if not target_task:
+            continue
+        malformed_by_skill.setdefault(target_task, []).append(malformed)
+
+    def _sort_latest(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        items.sort(
+            key=lambda item: (
+                str(item.get("activity_at") or ""),
+                str(item.get("run_id") or ""),
+            ),
+            reverse=True,
+        )
+        return items
 
     for entry in _canonical_skill_entries(repo_root=repo_root):
         skill_id = entry["skill_id"]
-        runs = by_skill.get(skill_id, [])
+        runs = _sort_latest(list(by_skill.get(skill_id, [])))
+        malformed_for_skill = _sort_latest(list(malformed_by_skill.get(skill_id, [])))
         tracked = skill_id in P2_TARGET_TASK_TO_RUNNER_TASK
         latest = runs[0] if runs else None
+        latest_malformed = malformed_for_skill[0] if malformed_for_skill else None
+        malformed_newer_than_healthy = False
+        if latest_malformed is not None:
+            malformed_key = (
+                str(latest_malformed.get("activity_at") or ""),
+                str(latest_malformed.get("run_id") or ""),
+            )
+            healthy_key = (
+                str(latest.get("activity_at") or "") if latest is not None else "",
+                str(latest.get("run_id") or "") if latest is not None else "",
+            )
+            malformed_newer_than_healthy = latest is None or malformed_key >= healthy_key
         payload: dict[str, Any] = {
             **entry,
             "autoresearch_tracking": "tracked" if tracked else "not_supported_by_autoresearch",
             "runs_total": len(runs),
             "run_ids": [str(run["run_id"]) for run in runs],
+            "malformed_runs_total": len(malformed_for_skill),
+            "malformed_run_ids": [str(run["run_id"]) for run in malformed_for_skill],
         }
         if not tracked:
             payload["training_status"] = "not_supported_by_autoresearch"
+        elif malformed_newer_than_healthy and latest_malformed is not None:
+            payload.update(
+                {
+                    "training_status": "malformed_run_present",
+                    "latest_run_id": latest_malformed["run_id"],
+                    "latest_run_dir": latest_malformed["run_dir"],
+                    "latest_activity_at": latest_malformed["activity_at"],
+                    "latest_malformed_error": latest_malformed["error"],
+                }
+            )
         elif latest is None:
             payload["training_status"] = "not_started"
         else:
@@ -384,6 +450,7 @@ def build_status_index_payloads(
         run_summaries,
         autoresearch_root=autoresearch_root,
         repo_root=repo_root,
+        malformed_runs=malformed_runs,
     )
     return run_index_payload, skill_payload
 
@@ -402,6 +469,8 @@ def classify_operator_signal(training_status: str | None) -> str:
         return "terminal"
     if status == "not_supported_by_autoresearch":
         return "unsupported"
+    if status == "malformed_run_present":
+        return "cleanup-required"
     if status in {"not_started", "awaiting_baseline", "baseline_completed", "awaiting_next_round"}:
         return "waiting"
     return "unknown"
@@ -425,6 +494,8 @@ def summarize_operator_action(item: dict[str, Any]) -> str:
         return "init + baseline when ready"
     if training_status == "max_rounds_reached":
         return "terminal; inspect results or start a new run"
+    if training_status == "malformed_run_present":
+        return "inspect malformed run artifacts, then repair or cleanup-round"
     if training_status == "not_supported_by_autoresearch":
         return "not tracked by autoresearch"
     return "-"

@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from autoresearch_status import refresh_status_indexes, render_operator_summary
+from autoresearch_status import build_status_index_payloads, refresh_status_indexes, render_operator_summary
 
 
 def write_json(path: Path, payload: dict[str, object]) -> None:
@@ -474,3 +474,137 @@ class AutoresearchStatusTest(unittest.TestCase):
             self.assertIn("action_needed_runs", summary)
             self.assertIn("demo-active", summary)
             self.assertIn("demo-cleanup", summary)
+
+    def test_build_status_payloads_surface_malformed_skill_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            autoresearch_root = root / ".autoworkflow" / "autoresearch"
+
+            skill_path = root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True, exist_ok=True)
+            skill_path.write_text("# skill\n", encoding="utf-8")
+
+            broken_run = autoresearch_root / "broken-run"
+            write_json(
+                broken_run / "contract.json",
+                {
+                    "run_id": "broken-run",
+                    "target_task": "context-routing-skill",
+                    "target_prompt_path": "toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+                    "worker_backend": "codex",
+                    "expected_backend": "codex",
+                    "expected_judge_backend": "codex",
+                },
+            )
+            write_json(
+                broken_run / "runtime.json",
+                {
+                    "run_id": "broken-run",
+                    "active_round": 1,
+                    "updated_at": "2026-04-09T12:00:00+00:00",
+                },
+            )
+            write_json(
+                broken_run / "scoreboard.json",
+                {
+                    "run_id": "broken-run",
+                    "generated_at": "2026-04-09T11:00:00+00:00",
+                    "lanes": 1,
+                },
+            )
+
+            run_index, skill_index = build_status_index_payloads(
+                autoresearch_root=autoresearch_root,
+                repo_root=root,
+                strict=False,
+            )
+
+            self.assertEqual(len(run_index["runs"]), 0)
+            self.assertEqual(len(run_index["malformed_runs"]), 1)
+            self.assertEqual(run_index["malformed_runs"][0]["run_id"], "broken-run")
+            self.assertEqual(run_index["malformed_runs"][0]["target_task"], "context-routing-skill")
+
+            skills = {entry["skill_id"]: entry for entry in skill_index["skills"]}
+            self.assertEqual(skills["context-routing-skill"]["training_status"], "malformed_run_present")
+            self.assertEqual(skills["context-routing-skill"]["latest_run_id"], "broken-run")
+            self.assertEqual(skills["context-routing-skill"]["malformed_runs_total"], 1)
+            self.assertIn("iterable", skills["context-routing-skill"]["latest_malformed_error"])
+
+    def test_render_operator_summary_skips_type_error_runs_and_marks_skill_for_repair(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            autoresearch_root = root / ".autoworkflow" / "autoresearch"
+
+            skill_path = root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True, exist_ok=True)
+            skill_path.write_text("# skill\n", encoding="utf-8")
+
+            healthy_run = autoresearch_root / "demo-run"
+            write_json(
+                healthy_run / "contract.json",
+                {
+                    "run_id": "demo-run",
+                    "target_task": "context-routing-skill",
+                    "target_prompt_path": "toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+                    "worker_backend": "codex",
+                    "expected_backend": "codex",
+                    "expected_judge_backend": "codex",
+                    "max_rounds": 2,
+                },
+            )
+            write_json(
+                healthy_run / "runtime.json",
+                {
+                    "run_id": "demo-run",
+                    "champion_sha": "abc123",
+                    "active_round": None,
+                    "updated_at": "2026-04-09T10:00:00+00:00",
+                },
+            )
+            write_json(
+                healthy_run / "scoreboard.json",
+                {
+                    "run_id": "demo-run",
+                    "generated_at": "2026-04-09T09:00:00+00:00",
+                    "baseline_sha": "abc123",
+                    "rounds_completed": 1,
+                    "best_round": 1,
+                    "lanes": [
+                        {"lane_name": "train", "avg_total_score": 8.0},
+                        {"lane_name": "validation", "avg_total_score": 7.5},
+                    ],
+                },
+            )
+
+            broken_run = autoresearch_root / "broken-run"
+            write_json(
+                broken_run / "contract.json",
+                {
+                    "run_id": "broken-run",
+                    "target_task": "context-routing-skill",
+                    "target_prompt_path": "toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+                    "worker_backend": "codex",
+                    "expected_backend": "codex",
+                    "expected_judge_backend": "codex",
+                    "updated_at": "2026-04-09T12:00:00+00:00",
+                },
+            )
+            write_json(
+                broken_run / "scoreboard.json",
+                {
+                    "run_id": "broken-run",
+                    "generated_at": "2026-04-09T12:00:00+00:00",
+                    "lanes": 1,
+                },
+            )
+
+            summary = render_operator_summary(
+                autoresearch_root=autoresearch_root,
+                repo_root=root,
+            )
+
+            self.assertIn("malformed_runs_skipped: 1", summary)
+            self.assertIn("broken-run", summary)
+            self.assertIn("malformed_run_present", summary)
+            self.assertIn("inspect malformed run artifacts, then repair or cleanup-round", summary)
+            self.assertNotIn("init + baseline when ready", summary)
