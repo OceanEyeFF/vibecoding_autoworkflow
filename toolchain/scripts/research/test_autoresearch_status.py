@@ -647,6 +647,45 @@ class AutoresearchStatusTest(unittest.TestCase):
             self.assertEqual(skills["context-routing-skill"]["malformed_runs_total"], 1)
             self.assertIn("iterable", skills["context-routing-skill"]["latest_malformed_error"])
 
+    def test_refresh_status_indexes_writes_malformed_runs_instead_of_failing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            autoresearch_root = root / ".autoworkflow" / "autoresearch"
+
+            skill_path = root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True, exist_ok=True)
+            skill_path.write_text("# skill\n", encoding="utf-8")
+
+            broken_run = autoresearch_root / "broken-run"
+            write_json(
+                broken_run / "contract.json",
+                {
+                    "run_id": "broken-run",
+                    "target_task": "context-routing-skill",
+                    "updated_at": "2026-04-09T12:00:00+00:00",
+                },
+            )
+            write_json(
+                broken_run / "scoreboard.json",
+                {
+                    "run_id": "broken-run",
+                    "generated_at": "2026-04-09T11:00:00+00:00",
+                    "lanes": 1,
+                },
+            )
+
+            run_index_path, skill_index_path = refresh_status_indexes(
+                autoresearch_root=autoresearch_root,
+                repo_root=root,
+            )
+
+            run_index = json.loads(run_index_path.read_text(encoding="utf-8"))
+            skill_index = json.loads(skill_index_path.read_text(encoding="utf-8"))
+            self.assertEqual(run_index["runs"], [])
+            self.assertEqual(run_index["malformed_runs"][0]["run_id"], "broken-run")
+            skills = {entry["skill_id"]: entry for entry in skill_index["skills"]}
+            self.assertEqual(skills["context-routing-skill"]["training_status"], "malformed_run_present")
+
     def test_render_operator_summary_skips_type_error_runs_and_marks_skill_for_repair(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -725,6 +764,66 @@ class AutoresearchStatusTest(unittest.TestCase):
             self.assertIn("malformed_run_present", summary)
             self.assertIn("inspect malformed run artifacts, then repair or cleanup-round", summary)
             self.assertNotIn("init + baseline when ready", summary)
+
+    def test_render_operator_summary_uses_latest_malformed_run_for_latest_and_action_needed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            autoresearch_root = root / ".autoworkflow" / "autoresearch"
+
+            skill_path = root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True, exist_ok=True)
+            skill_path.write_text("# skill\n", encoding="utf-8")
+
+            healthy_run = autoresearch_root / "healthy-run"
+            write_json(
+                healthy_run / "contract.json",
+                {
+                    "run_id": "healthy-run",
+                    "target_task": "context-routing-skill",
+                    "updated_at": "2026-04-09T10:00:00+00:00",
+                },
+            )
+            write_json(
+                healthy_run / "scoreboard.json",
+                {
+                    "run_id": "healthy-run",
+                    "generated_at": "2026-04-09T10:00:00+00:00",
+                    "rounds_completed": 1,
+                    "best_round": 1,
+                    "lanes": [
+                        {"lane_name": "train", "avg_total_score": 8.0},
+                        {"lane_name": "validation", "avg_total_score": 7.5},
+                    ],
+                },
+            )
+
+            broken_run = autoresearch_root / "broken-run"
+            write_json(
+                broken_run / "contract.json",
+                {
+                    "run_id": "broken-run",
+                    "target_task": "context-routing-skill",
+                    "updated_at": "2026-04-09T12:00:00+00:00",
+                },
+            )
+            write_json(
+                broken_run / "scoreboard.json",
+                {
+                    "run_id": "broken-run",
+                    "generated_at": "2026-04-09T12:00:00+00:00",
+                    "lanes": 1,
+                },
+            )
+
+            summary = render_operator_summary(
+                autoresearch_root=autoresearch_root,
+                repo_root=root,
+            )
+
+            self.assertIn("latest_run: broken-run [cleanup-required / malformed_run_present]", summary)
+            self.assertIn("action_needed_runs", summary)
+            self.assertIn("broken-run", summary)
+            self.assertIn("malformed_run_present", summary)
 
     def test_render_operator_summary_still_skips_malformed_runs_when_decision_json_is_also_bad(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

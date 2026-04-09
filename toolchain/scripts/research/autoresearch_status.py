@@ -539,6 +539,47 @@ def _format_table(columns: list[tuple[str, str]], rows: list[dict[str, Any]]) ->
     return "\n".join(lines)
 
 
+def _operator_run_rows(
+    runs: list[dict[str, Any]],
+    malformed_runs: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for run in runs:
+        rows.append(
+            {
+                "run_id": run.get("run_id"),
+                "signal": classify_operator_signal(run.get("training_status")),
+                "status": run.get("training_status"),
+                "active_round": run.get("active_round"),
+                "latest_decision": run.get("latest_decision"),
+                "next_action": summarize_operator_action(run),
+                "activity_at": run.get("activity_at"),
+                "run_dir": run.get("run_dir"),
+            }
+        )
+    for malformed in malformed_runs:
+        rows.append(
+            {
+                "run_id": malformed.get("run_id"),
+                "signal": "cleanup-required",
+                "status": "malformed_run_present",
+                "active_round": None,
+                "latest_decision": None,
+                "next_action": "inspect malformed run artifacts, then repair or cleanup-round",
+                "activity_at": malformed.get("activity_at"),
+                "run_dir": malformed.get("run_dir"),
+            }
+        )
+    rows.sort(
+        key=lambda item: (
+            str(item.get("activity_at") or ""),
+            str(item.get("run_id") or ""),
+        ),
+        reverse=True,
+    )
+    return rows
+
+
 def render_operator_summary(
     *,
     autoresearch_root: Path = AUTORESEARCH_ROOT,
@@ -551,7 +592,8 @@ def render_operator_summary(
     )
     runs = list(run_index_payload.get("runs") or [])
     malformed_runs = list(run_index_payload.get("malformed_runs") or [])
-    latest_run = runs[0] if runs else None
+    operator_runs = _operator_run_rows(runs, malformed_runs)
+    latest_run = operator_runs[0] if operator_runs else None
     tracked_skills = []
     for skill in skill_payload.get("skills") or []:
         if str(skill.get("autoresearch_tracking") or "").strip() != "tracked":
@@ -577,20 +619,11 @@ def render_operator_summary(
             }
         )
     action_needed_runs = []
-    for run in runs:
-        signal = classify_operator_signal(run.get("training_status"))
+    for run in operator_runs:
+        signal = str(run.get("signal") or "").strip()
         if signal not in {"active", "recovery", "cleanup-required"}:
             continue
-        action_needed_runs.append(
-            {
-                "run_id": run.get("run_id"),
-                "signal": signal,
-                "status": run.get("training_status"),
-                "active_round": run.get("active_round"),
-                "latest_decision": run.get("latest_decision"),
-                "next_action": summarize_operator_action(run),
-            }
-        )
+        action_needed_runs.append(run)
 
     lines = [
         "autoresearch_status_summary",
@@ -604,8 +637,8 @@ def render_operator_summary(
         lines.append(
             "latest_run: "
             f"{_stringify_cell(latest_run.get('run_id'))} "
-            f"[{classify_operator_signal(latest_run.get('training_status'))} / "
-            f"{_stringify_cell(latest_run.get('training_status'))}]"
+            f"[{_stringify_cell(latest_run.get('signal'))} / "
+            f"{_stringify_cell(latest_run.get('status'))}]"
         )
     lines.extend(
         [
@@ -665,6 +698,7 @@ def refresh_status_indexes(
     run_index_payload, skill_payload = build_status_index_payloads(
         autoresearch_root=root,
         repo_root=repo_root,
+        strict=False,
     )
     run_index_path = root / RUN_STATUS_INDEX_NAME
     run_index_path.write_text(json.dumps(run_index_payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
