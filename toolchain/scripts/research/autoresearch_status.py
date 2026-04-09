@@ -191,13 +191,32 @@ def _derive_training_status(
         return "unknown"
     if active_round_state:
         return f"round_{active_round_state}"
-    if not has_scoreboard:
-        return "awaiting_baseline"
     if max_rounds is not None and max_rounds > 0 and rounds_completed >= max_rounds:
         return "max_rounds_reached"
+    if not has_scoreboard:
+        if rounds_completed > 0:
+            return "awaiting_next_round"
+        return "awaiting_baseline"
     if rounds_completed > 0:
         return "awaiting_next_round"
     return "baseline_completed"
+
+
+def _run_has_recorded_artifacts(
+    run_dir: Path,
+    *,
+    runtime: dict[str, Any] | None,
+    scoreboard: dict[str, Any] | None,
+    history_rows: list[dict[str, str]],
+    latest_decision: str | None,
+    active_round_state: str | None,
+) -> bool:
+    if runtime is not None or scoreboard is not None or history_rows:
+        return True
+    if latest_decision is not None or active_round_state is not None:
+        return True
+    rounds_root = run_dir / "rounds"
+    return rounds_root.is_dir() and any(path.is_dir() for path in rounds_root.iterdir())
 
 
 def summarize_run(run_dir: Path, *, repo_root: Path = REPO_ROOT) -> dict[str, Any]:
@@ -207,6 +226,15 @@ def summarize_run(run_dir: Path, *, repo_root: Path = REPO_ROOT) -> dict[str, An
     history_rows = _history_rows(run_dir / "history.tsv")
     latest_decision, latest_decision_round, latest_decision_at = _latest_decision(run_dir)
     active_round, active_round_state = _round_state(run_dir, runtime)
+    if contract is None and _run_has_recorded_artifacts(
+        run_dir,
+        runtime=runtime,
+        scoreboard=scoreboard,
+        history_rows=history_rows,
+        latest_decision=latest_decision,
+        active_round_state=active_round_state,
+    ):
+        raise RuntimeError("Missing contract.json for run directory with recorded artifacts.")
 
     run_id = str((contract or {}).get("run_id") or run_dir.name).strip() or run_dir.name
     tracked_target = str((contract or {}).get("target_task") or "").strip() or None

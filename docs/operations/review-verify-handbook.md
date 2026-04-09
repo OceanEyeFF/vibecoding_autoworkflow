@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 承接位"
 status: active
-updated: 2026-04-08
+updated: 2026-04-09
 owner: aw-kernel
-last_verified: 2026-04-08
+last_verified: 2026-04-09
 ---
 # Review / Verify 承接位
 
@@ -40,6 +40,7 @@ last_verified: 2026-04-08
 - `verify` 先于 `review`
 - `review` 只审已经验证过的改动
 - `writeback` 只记录已验证事实
+- 修复类任务不能只压住当前症状；必须检查相邻状态、恢复路径、operator-facing 语义和已知脏数据场景，避免引入新的问题源，并尽量把修复做完整
 
 ## 三、推荐复核清单
 
@@ -76,6 +77,16 @@ last_verified: 2026-04-08
 - adapter / deploy 变更
   - `python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend <backend>`
 
+### 3.1 修复完整性
+
+如果本轮是 bugfix、review comment 响应或回归修复，额外确认：
+
+- 修复是否覆盖根因或至少覆盖同一条执行链上的相邻状态，而不只是让当前断言通过
+- 是否检查了相邻 phase / state / recovery path，不把错误转移到下一步或旁路入口
+- 是否检查了 operator-facing 视图、状态聚合、CLI 返回码和文档承诺之间仍然一致
+- 是否补了能锁住该问题及其直接相邻变体的回归测试
+- 是否确认修复后不会把已有 healthy path、dirty state path 或 malformed artifact path 重新打坏
+
 ### 4. 回写要求
 
 - 已验证结果写进 `docs/knowledge/`
@@ -92,6 +103,7 @@ last_verified: 2026-04-08
 - review 没有发现未处理风险
 - 同步文档已经更新
 - writeback 已完成
+- 如果是修复类任务，相关相邻状态和回归路径也已验证，没有留下新的已知问题源
 
 ## 五、相关文档
 

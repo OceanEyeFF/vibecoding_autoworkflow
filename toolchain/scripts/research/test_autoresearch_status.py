@@ -647,6 +647,104 @@ class AutoresearchStatusTest(unittest.TestCase):
             self.assertEqual(skills["context-routing-skill"]["malformed_runs_total"], 1)
             self.assertIn("iterable", skills["context-routing-skill"]["latest_malformed_error"])
 
+    def test_missing_scoreboard_still_uses_history_to_surface_progressed_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            autoresearch_root = root / ".autoworkflow" / "autoresearch"
+
+            skill_path = root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True, exist_ok=True)
+            skill_path.write_text("# skill\n", encoding="utf-8")
+
+            run_dir = autoresearch_root / "history-only-run"
+            write_json(
+                run_dir / "contract.json",
+                {
+                    "run_id": "history-only-run",
+                    "target_task": "context-routing-skill",
+                    "target_prompt_path": "toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+                    "worker_backend": "codex",
+                    "expected_backend": "codex",
+                    "expected_judge_backend": "codex",
+                    "max_rounds": 3,
+                },
+            )
+            write_history(
+                run_dir / "history.tsv",
+                [
+                    "0\tbaseline\taaa111\t-\t8.000000\t8.100000\t0.000000\t0.000000\tbaseline\t",
+                    "1\ttext_rephrase\taaa111\tbbb222\t8.500000\t8.700000\t0.000000\t0.000000\tkeep\tmutation_id=mut-001",
+                ],
+            )
+            write_json(
+                run_dir / "rounds" / "round-001" / "decision.json",
+                {
+                    "round": 1,
+                    "decision": "keep",
+                    "decided_at": "2026-04-09T12:00:00+00:00",
+                },
+            )
+
+            run_index, skill_index = build_status_index_payloads(
+                autoresearch_root=autoresearch_root,
+                repo_root=root,
+                strict=False,
+            )
+
+            self.assertEqual(run_index["runs"][0]["run_id"], "history-only-run")
+            self.assertEqual(run_index["runs"][0]["training_status"], "awaiting_next_round")
+            self.assertEqual(run_index["runs"][0]["rounds_completed"], 1)
+            skills = {entry["skill_id"]: entry for entry in skill_index["skills"]}
+            self.assertEqual(skills["context-routing-skill"]["training_status"], "awaiting_next_round")
+            self.assertEqual(skills["context-routing-skill"]["latest_run_id"], "history-only-run")
+
+    def test_contractless_run_directory_with_artifacts_is_quarantined_as_malformed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            autoresearch_root = root / ".autoworkflow" / "autoresearch"
+
+            skill_path = root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True, exist_ok=True)
+            skill_path.write_text("# skill\n", encoding="utf-8")
+
+            run_dir = autoresearch_root / "contractless-run"
+            write_json(
+                run_dir / "runtime.json",
+                {
+                    "run_id": "contractless-run",
+                    "active_round": 1,
+                    "updated_at": "2026-04-09T12:00:00+00:00",
+                },
+            )
+            write_json(
+                run_dir / "scoreboard.json",
+                {
+                    "run_id": "contractless-run",
+                    "generated_at": "2026-04-09T11:00:00+00:00",
+                    "rounds_completed": 0,
+                    "best_round": 0,
+                    "lanes": [],
+                },
+            )
+
+            run_index, skill_index = build_status_index_payloads(
+                autoresearch_root=autoresearch_root,
+                repo_root=root,
+                strict=False,
+            )
+
+            self.assertEqual(run_index["runs"], [])
+            self.assertEqual(run_index["malformed_runs"][0]["run_id"], "contractless-run")
+            self.assertIn("Missing contract.json", run_index["malformed_runs"][0]["error"])
+            skills = {entry["skill_id"]: entry for entry in skill_index["skills"]}
+            self.assertEqual(skills["context-routing-skill"]["training_status"], "not_started")
+            summary = render_operator_summary(
+                autoresearch_root=autoresearch_root,
+                repo_root=root,
+            )
+            self.assertIn("contractless-run", summary)
+            self.assertIn("malformed_run_present", summary)
+
     def test_refresh_status_indexes_writes_malformed_runs_instead_of_failing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

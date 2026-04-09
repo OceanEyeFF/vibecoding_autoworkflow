@@ -52,6 +52,7 @@
 ## Review / Verify
 
 - 常规复核入口见 `docs/operations/review-verify-handbook.md`。
+- 修复类任务不得只压住当前症状；必须检查相邻状态、恢复路径和 operator-facing 语义，避免引入新的问题源，并尽量把修复做完整。
 - 涉及根目录、路径、分层或治理规则时，优先跑：
   - `python3 toolchain/scripts/test/folder_logic_check.py`
   - `python3 toolchain/scripts/test/path_governance_check.py`
