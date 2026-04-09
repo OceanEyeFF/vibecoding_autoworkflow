@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from autoresearch_status import refresh_status_indexes
+from autoresearch_status import refresh_status_indexes, render_operator_summary
 
 
 def write_json(path: Path, payload: dict[str, object]) -> None:
@@ -318,3 +318,159 @@ class AutoresearchStatusTest(unittest.TestCase):
                 skills["knowledge-base-skill"]["training_status"],
                 "round_prepared_recovery_required",
             )
+
+    def test_render_operator_summary_highlights_latest_and_action_needed_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            autoresearch_root = root / ".autoworkflow" / "autoresearch"
+
+            for skill_path in (
+                root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md",
+                root / "product" / "memory-side" / "skills" / "knowledge-base-skill" / "SKILL.md",
+                root / "product" / "memory-side" / "skills" / "writeback-cleanup-skill" / "SKILL.md",
+                root / "product" / "task-interface" / "skills" / "task-contract-skill" / "SKILL.md",
+            ):
+                skill_path.parent.mkdir(parents=True, exist_ok=True)
+                skill_path.write_text("# skill\n", encoding="utf-8")
+
+            waiting_run = autoresearch_root / "demo-context"
+            write_json(
+                waiting_run / "contract.json",
+                {
+                    "run_id": "demo-context",
+                    "target_task": "context-routing-skill",
+                    "target_prompt_path": "toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+                    "worker_backend": "claude",
+                    "expected_backend": "claude",
+                    "expected_judge_backend": "claude",
+                    "max_rounds": 3,
+                },
+            )
+            write_json(
+                waiting_run / "runtime.json",
+                {
+                    "run_id": "demo-context",
+                    "champion_sha": "abc123",
+                    "active_round": None,
+                    "updated_at": "2026-04-08T10:00:00+00:00",
+                },
+            )
+            write_json(
+                waiting_run / "scoreboard.json",
+                {
+                    "run_id": "demo-context",
+                    "generated_at": "2026-04-08T10:00:00+00:00",
+                    "baseline_sha": "abc123",
+                    "rounds_completed": 1,
+                    "best_round": 1,
+                    "lanes": [
+                        {"lane_name": "train", "avg_total_score": 11.5},
+                        {"lane_name": "validation", "avg_total_score": 12.0},
+                    ],
+                },
+            )
+            write_json(
+                waiting_run / "rounds" / "round-001" / "decision.json",
+                {
+                    "round": 1,
+                    "decision": "keep",
+                    "decided_at": "2026-04-08T10:00:00+00:00",
+                },
+            )
+
+            active_run = autoresearch_root / "demo-active"
+            write_json(
+                active_run / "contract.json",
+                {
+                    "run_id": "demo-active",
+                    "target_task": "knowledge-base-skill",
+                    "target_prompt_path": "toolchain/scripts/research/tasks/knowledge-base-skill-prompt.md",
+                    "worker_backend": "codex",
+                    "expected_backend": "codex",
+                    "expected_judge_backend": "codex",
+                    "max_rounds": 2,
+                },
+            )
+            write_json(
+                active_run / "runtime.json",
+                {
+                    "run_id": "demo-active",
+                    "champion_sha": "999999",
+                    "active_round": 2,
+                    "updated_at": "2026-04-09T11:00:00+00:00",
+                },
+            )
+            write_json(
+                active_run / "scoreboard.json",
+                {
+                    "run_id": "demo-active",
+                    "generated_at": "2026-04-09T09:00:00+00:00",
+                    "baseline_sha": "999999",
+                    "rounds_completed": 0,
+                    "best_round": 0,
+                    "lanes": [
+                        {"lane_name": "train", "avg_total_score": 8.0},
+                        {"lane_name": "validation", "avg_total_score": 7.5},
+                    ],
+                },
+            )
+            write_json(
+                active_run / "rounds" / "round-002" / "round.json",
+                {
+                    "round": 2,
+                    "state": "candidate_active",
+                },
+            )
+
+            cleanup_run = autoresearch_root / "demo-cleanup"
+            write_json(
+                cleanup_run / "contract.json",
+                {
+                    "run_id": "demo-cleanup",
+                    "target_task": "writeback-cleanup-skill",
+                    "target_prompt_path": "toolchain/scripts/research/tasks/writeback-cleanup-skill-prompt.md",
+                    "worker_backend": "codex",
+                    "expected_backend": "codex",
+                    "expected_judge_backend": "codex",
+                    "max_rounds": 3,
+                },
+            )
+            write_json(
+                cleanup_run / "runtime.json",
+                {
+                    "run_id": "demo-cleanup",
+                    "champion_sha": "aaa111",
+                    "active_round": 3,
+                    "updated_at": "2026-04-09T12:00:00+00:00",
+                },
+            )
+            write_json(
+                cleanup_run / "scoreboard.json",
+                {
+                    "run_id": "demo-cleanup",
+                    "generated_at": "2026-04-09T08:00:00+00:00",
+                    "baseline_sha": "aaa111",
+                    "rounds_completed": 1,
+                    "best_round": 1,
+                    "lanes": [
+                        {"lane_name": "train", "avg_total_score": 9.0},
+                        {"lane_name": "validation", "avg_total_score": 9.5},
+                    ],
+                },
+            )
+
+            summary = render_operator_summary(
+                autoresearch_root=autoresearch_root,
+                repo_root=root,
+            )
+
+            self.assertIn("latest_run: demo-cleanup [cleanup-required / round_cleanup_required_missing_round_json]", summary)
+            self.assertIn("context-routing-skill", summary)
+            self.assertIn("awaiting_next_round", summary)
+            self.assertIn("knowledge-base-skill", summary)
+            self.assertIn("round_candidate_active", summary)
+            self.assertIn("writeback-cleanup-skill", summary)
+            self.assertIn("cleanup-round first", summary)
+            self.assertIn("action_needed_runs", summary)
+            self.assertIn("demo-active", summary)
+            self.assertIn("demo-cleanup", summary)

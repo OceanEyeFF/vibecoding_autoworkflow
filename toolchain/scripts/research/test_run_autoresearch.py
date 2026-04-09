@@ -297,6 +297,171 @@ class RunAutoresearchTest(unittest.TestCase):
             self.assertTrue((root / ".autoworkflow" / "autoresearch" / "run-status-index.json").is_file())
             self.assertTrue((root / ".autoworkflow" / "autoresearch" / "skill-training-status.json").is_file())
 
+    def test_summary_command_prints_human_status_view(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            for skill_path in (
+                root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md",
+                root / "product" / "memory-side" / "skills" / "knowledge-base-skill" / "SKILL.md",
+                root / "product" / "memory-side" / "skills" / "writeback-cleanup-skill" / "SKILL.md",
+                root / "product" / "task-interface" / "skills" / "task-contract-skill" / "SKILL.md",
+            ):
+                skill_path.parent.mkdir(parents=True, exist_ok=True)
+                skill_path.write_text("# skill\n", encoding="utf-8")
+            run_dir = root / ".autoworkflow" / "autoresearch" / "demo-run"
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "contract.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "demo-run",
+                        "target_task": "context-routing-skill",
+                        "target_prompt_path": "toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+                        "worker_backend": "codex",
+                        "expected_backend": "codex",
+                        "expected_judge_backend": "codex",
+                        "max_rounds": 2,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "runtime.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "demo-run",
+                        "champion_sha": "abc123",
+                        "active_round": 1,
+                        "updated_at": "2026-04-09T10:00:00+00:00",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "scoreboard.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "demo-run",
+                        "generated_at": "2026-04-09T09:00:00+00:00",
+                        "baseline_sha": "abc123",
+                        "rounds_completed": 0,
+                        "best_round": 0,
+                        "lanes": [
+                            {"lane_name": "train", "avg_total_score": 8.0},
+                            {"lane_name": "validation", "avg_total_score": 7.5},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "rounds" / "round-001").mkdir(parents=True, exist_ok=True)
+            (run_dir / "rounds" / "round-001" / "round.json").write_text(
+                json.dumps({"round": 1, "state": "candidate_active"}),
+                encoding="utf-8",
+            )
+
+            stdout = io.StringIO()
+            with mock.patch.object(
+                run_autoresearch,
+                "AUTORESEARCH_ROOT",
+                root / ".autoworkflow" / "autoresearch",
+            ), mock.patch.object(run_autoresearch, "REPO_ROOT", root), mock.patch("sys.stdout", stdout):
+                exit_code = run_autoresearch.main(["summary"])
+
+            self.assertEqual(exit_code, 0)
+            output = stdout.getvalue()
+            self.assertIn("autoresearch_status_summary", output)
+            self.assertIn("latest_run: demo-run [active / round_candidate_active]", output)
+            self.assertIn("tracked_skills", output)
+            self.assertIn("action_needed_runs", output)
+
+    def test_summary_command_skips_malformed_historical_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            skill_path = root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True, exist_ok=True)
+            skill_path.write_text("# skill\n", encoding="utf-8")
+
+            healthy_run = root / ".autoworkflow" / "autoresearch" / "demo-run"
+            healthy_run.mkdir(parents=True, exist_ok=True)
+            (healthy_run / "contract.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "demo-run",
+                        "target_task": "context-routing-skill",
+                        "target_prompt_path": "toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+                        "worker_backend": "codex",
+                        "expected_backend": "codex",
+                        "expected_judge_backend": "codex",
+                        "max_rounds": 2,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (healthy_run / "runtime.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "demo-run",
+                        "champion_sha": "abc123",
+                        "active_round": None,
+                        "updated_at": "2026-04-09T10:00:00+00:00",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (healthy_run / "scoreboard.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "demo-run",
+                        "generated_at": "2026-04-09T09:00:00+00:00",
+                        "baseline_sha": "abc123",
+                        "rounds_completed": 1,
+                        "best_round": 1,
+                        "lanes": [
+                            {"lane_name": "train", "avg_total_score": 8.0},
+                            {"lane_name": "validation", "avg_total_score": 7.5},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            broken_run = root / ".autoworkflow" / "autoresearch" / "broken-run"
+            broken_run.mkdir(parents=True, exist_ok=True)
+            (broken_run / "contract.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "broken-run",
+                        "target_task": "context-routing-skill",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (broken_run / "runtime.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "broken-run",
+                        "active_round": "oops",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            stdout = io.StringIO()
+            with mock.patch.object(
+                run_autoresearch,
+                "AUTORESEARCH_ROOT",
+                root / ".autoworkflow" / "autoresearch",
+            ), mock.patch.object(run_autoresearch, "REPO_ROOT", root), mock.patch("sys.stdout", stdout):
+                exit_code = run_autoresearch.main(["summary"])
+
+            self.assertEqual(exit_code, 0)
+            output = stdout.getvalue()
+            self.assertIn("autoresearch_status_summary", output)
+            self.assertIn("malformed_runs_skipped: 1", output)
+            self.assertIn("latest_run: demo-run", output)
+            self.assertIn("broken-run", output)
+            self.assertIn("invalid literal for int()", output)
+
     def test_successful_command_does_not_fail_when_auto_refresh_status_raises(self) -> None:
         args = mock.Mock()
         args.command = "init"

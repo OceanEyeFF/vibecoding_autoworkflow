@@ -243,13 +243,38 @@ def collect_run_summaries(
     autoresearch_root: Path = AUTORESEARCH_ROOT,
     repo_root: Path = REPO_ROOT,
 ) -> list[dict[str, Any]]:
+    summaries, _errors = collect_run_summaries_best_effort(
+        autoresearch_root=autoresearch_root,
+        repo_root=repo_root,
+        strict=True,
+    )
+    return summaries
+
+
+def collect_run_summaries_best_effort(
+    *,
+    autoresearch_root: Path = AUTORESEARCH_ROOT,
+    repo_root: Path = REPO_ROOT,
+    strict: bool = False,
+) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     if not autoresearch_root.exists():
-        return []
-    summaries = []
+        return [], []
+    summaries: list[dict[str, Any]] = []
+    errors: list[dict[str, str]] = []
     for run_dir in sorted(path for path in autoresearch_root.iterdir() if path.is_dir()):
         if run_dir.name == "__pycache__":
             continue
-        summaries.append(summarize_run(run_dir, repo_root=repo_root))
+        try:
+            summaries.append(summarize_run(run_dir, repo_root=repo_root))
+        except (FileNotFoundError, RuntimeError, ValueError) as exc:
+            if strict:
+                raise
+            errors.append(
+                {
+                    "run_dir": _relative_path(run_dir, repo_root=repo_root),
+                    "error": str(exc),
+                }
+            )
     summaries.sort(
         key=lambda item: (
             str(item.get("activity_at") or ""),
@@ -257,7 +282,7 @@ def collect_run_summaries(
         ),
         reverse=True,
     )
-    return summaries
+    return summaries, errors
 
 
 def _canonical_skill_entries(*, repo_root: Path) -> list[dict[str, str]]:
@@ -338,6 +363,216 @@ def build_skill_training_status(
     }
 
 
+def build_status_index_payloads(
+    *,
+    autoresearch_root: Path = AUTORESEARCH_ROOT,
+    repo_root: Path = REPO_ROOT,
+    strict: bool = True,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    run_summaries, malformed_runs = collect_run_summaries_best_effort(
+        autoresearch_root=autoresearch_root,
+        repo_root=repo_root,
+        strict=strict,
+    )
+    run_index_payload = {
+        "generated_at": now_iso(),
+        "autoresearch_root": _relative_path(autoresearch_root, repo_root=repo_root),
+        "runs": run_summaries,
+        "malformed_runs": malformed_runs,
+    }
+    skill_payload = build_skill_training_status(
+        run_summaries,
+        autoresearch_root=autoresearch_root,
+        repo_root=repo_root,
+    )
+    return run_index_payload, skill_payload
+
+
+def classify_operator_signal(training_status: str | None) -> str:
+    status = str(training_status or "").strip()
+    if not status:
+        return "unknown"
+    if "cleanup_required" in status:
+        return "cleanup-required"
+    if status.endswith("_recovery_required"):
+        return "recovery"
+    if status.startswith("round_"):
+        return "active"
+    if status == "max_rounds_reached":
+        return "terminal"
+    if status == "not_supported_by_autoresearch":
+        return "unsupported"
+    if status in {"not_started", "awaiting_baseline", "baseline_completed", "awaiting_next_round"}:
+        return "waiting"
+    return "unknown"
+
+
+def summarize_operator_action(item: dict[str, Any]) -> str:
+    training_status = str(item.get("training_status") or "").strip()
+    if "cleanup_required" in training_status:
+        return "cleanup-round first"
+    if training_status.endswith("_recovery_required"):
+        return "inspect round state, then recover or cleanup-round"
+    if training_status == "round_candidate_active":
+        return "continue active round, then run-round/decide-round, or cleanup-round"
+    if training_status == "round_prepared":
+        return "continue active round or cleanup-round"
+    if training_status == "awaiting_baseline":
+        return "run baseline"
+    if training_status in {"baseline_completed", "awaiting_next_round"}:
+        return "prepare-round when ready"
+    if training_status == "not_started":
+        return "init + baseline when ready"
+    if training_status == "max_rounds_reached":
+        return "terminal; inspect results or start a new run"
+    if training_status == "not_supported_by_autoresearch":
+        return "not tracked by autoresearch"
+    return "-"
+
+
+def _stringify_cell(value: Any) -> str:
+    if value is None:
+        return "-"
+    if isinstance(value, float):
+        return f"{value:.2f}"
+    text = str(value).strip()
+    return text or "-"
+
+
+def _format_table(columns: list[tuple[str, str]], rows: list[dict[str, Any]]) -> str:
+    if not rows:
+        return "(none)"
+    headers = [header for header, _key in columns]
+    widths = [len(header) for header in headers]
+    rendered_rows: list[list[str]] = []
+    for row in rows:
+        rendered = [_stringify_cell(row.get(key)) for _header, key in columns]
+        rendered_rows.append(rendered)
+        for index, cell in enumerate(rendered):
+            widths[index] = max(widths[index], len(cell))
+    lines = ["  ".join(header.ljust(widths[index]) for index, header in enumerate(headers))]
+    lines.append("  ".join("-" * widths[index] for index in range(len(widths))))
+    for rendered in rendered_rows:
+        lines.append("  ".join(cell.ljust(widths[index]) for index, cell in enumerate(rendered)))
+    return "\n".join(lines)
+
+
+def render_operator_summary(
+    *,
+    autoresearch_root: Path = AUTORESEARCH_ROOT,
+    repo_root: Path = REPO_ROOT,
+) -> str:
+    run_index_payload, skill_payload = build_status_index_payloads(
+        autoresearch_root=autoresearch_root,
+        repo_root=repo_root,
+        strict=False,
+    )
+    runs = list(run_index_payload.get("runs") or [])
+    malformed_runs = list(run_index_payload.get("malformed_runs") or [])
+    latest_run = runs[0] if runs else None
+    tracked_skills = []
+    for skill in skill_payload.get("skills") or []:
+        if str(skill.get("autoresearch_tracking") or "").strip() != "tracked":
+            continue
+        latest_run_id = skill.get("latest_run_id")
+        rounds_completed = skill.get("rounds_completed")
+        max_rounds = skill.get("max_rounds")
+        if latest_run_id is None:
+            rounds_display = "-"
+        elif max_rounds is None:
+            rounds_display = _stringify_cell(rounds_completed)
+        else:
+            rounds_display = f"{_stringify_cell(rounds_completed)}/{_stringify_cell(max_rounds)}"
+        tracked_skills.append(
+            {
+                "skill": skill.get("skill_id"),
+                "signal": classify_operator_signal(skill.get("training_status")),
+                "status": skill.get("training_status"),
+                "latest_run": latest_run_id,
+                "rounds": rounds_display,
+                "latest_decision": skill.get("latest_decision"),
+                "next_action": summarize_operator_action(skill),
+            }
+        )
+    action_needed_runs = []
+    for run in runs:
+        signal = classify_operator_signal(run.get("training_status"))
+        if signal not in {"active", "recovery", "cleanup-required"}:
+            continue
+        action_needed_runs.append(
+            {
+                "run_id": run.get("run_id"),
+                "signal": signal,
+                "status": run.get("training_status"),
+                "active_round": run.get("active_round"),
+                "latest_decision": run.get("latest_decision"),
+                "next_action": summarize_operator_action(run),
+            }
+        )
+
+    lines = [
+        "autoresearch_status_summary",
+        f"autoresearch_root: {run_index_payload['autoresearch_root']}",
+        f"generated_at: {run_index_payload['generated_at']}",
+        f"malformed_runs_skipped: {len(malformed_runs)}",
+    ]
+    if latest_run is None:
+        lines.append("latest_run: -")
+    else:
+        lines.append(
+            "latest_run: "
+            f"{_stringify_cell(latest_run.get('run_id'))} "
+            f"[{classify_operator_signal(latest_run.get('training_status'))} / "
+            f"{_stringify_cell(latest_run.get('training_status'))}]"
+        )
+    lines.extend(
+        [
+            "",
+            "tracked_skills",
+            _format_table(
+                [
+                    ("skill", "skill"),
+                    ("signal", "signal"),
+                    ("status", "status"),
+                    ("latest_run", "latest_run"),
+                    ("rounds", "rounds"),
+                    ("latest_decision", "latest_decision"),
+                    ("next_action", "next_action"),
+                ],
+                tracked_skills,
+            ),
+            "",
+            "action_needed_runs",
+            _format_table(
+                [
+                    ("run_id", "run_id"),
+                    ("signal", "signal"),
+                    ("status", "status"),
+                    ("active_round", "active_round"),
+                    ("latest_decision", "latest_decision"),
+                    ("next_action", "next_action"),
+                ],
+                action_needed_runs,
+            ),
+        ]
+    )
+    if malformed_runs:
+        lines.extend(
+            [
+                "",
+                "malformed_runs",
+                _format_table(
+                    [
+                        ("run_dir", "run_dir"),
+                        ("error", "error"),
+                    ],
+                    malformed_runs,
+                ),
+            ]
+        )
+    return "\n".join(lines)
+
+
 def refresh_status_indexes(
     *,
     autoresearch_root: Path = AUTORESEARCH_ROOT,
@@ -345,20 +580,13 @@ def refresh_status_indexes(
 ) -> tuple[Path, Path]:
     root = autoresearch_root.resolve()
     root.mkdir(parents=True, exist_ok=True)
-    run_summaries = collect_run_summaries(autoresearch_root=root, repo_root=repo_root)
-    run_index_payload = {
-        "generated_at": now_iso(),
-        "autoresearch_root": _relative_path(root, repo_root=repo_root),
-        "runs": run_summaries,
-    }
-    run_index_path = root / RUN_STATUS_INDEX_NAME
-    run_index_path.write_text(json.dumps(run_index_payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
-
-    skill_payload = build_skill_training_status(
-        run_summaries,
+    run_index_payload, skill_payload = build_status_index_payloads(
         autoresearch_root=root,
         repo_root=repo_root,
     )
+    run_index_path = root / RUN_STATUS_INDEX_NAME
+    run_index_path.write_text(json.dumps(run_index_payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+
     skill_index_path = root / SKILL_TRAINING_STATUS_NAME
     skill_index_path.write_text(json.dumps(skill_payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
     return run_index_path, skill_index_path

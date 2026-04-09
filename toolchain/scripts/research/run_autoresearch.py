@@ -22,7 +22,7 @@ from autoresearch_contract import (
     resolve_p2_contract_target,
     resolve_suite_files,
 )
-from autoresearch_status import refresh_status_indexes
+from autoresearch_status import refresh_status_indexes, render_operator_summary
 from autoresearch_lane_executor import execute_lane_suites
 from autoresearch_round import AutoresearchRoundManager
 from autoresearch_scoreboard import build_scoreboard, merge_run_summaries, write_scoreboard
@@ -124,6 +124,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     subparsers.add_parser(
         "refresh-status",
         help="Rebuild aggregate run and per-skill status indexes under .autoworkflow/autoresearch/.",
+    )
+    subparsers.add_parser(
+        "summary",
+        help="Render a read-only human summary of tracked skills and action-needed runs.",
     )
     return parser.parse_args(argv)
 
@@ -622,6 +626,16 @@ def cmd_refresh_status() -> int:
     return 0
 
 
+def cmd_summary() -> int:
+    print(
+        render_operator_summary(
+            autoresearch_root=AUTORESEARCH_ROOT,
+            repo_root=REPO_ROOT,
+        )
+    )
+    return 0
+
+
 def _refresh_status_indexes_best_effort(command: str) -> None:
     try:
         refresh_status_indexes(
@@ -661,16 +675,18 @@ def main(argv: list[str] | None = None) -> int:
             exit_code = cmd_cleanup_round(args.contract)
         elif args.command == "refresh-status":
             exit_code = cmd_refresh_status()
+        elif args.command == "summary":
+            exit_code = cmd_summary()
         if exit_code is None:
             raise RuntimeError(f"Unsupported command: {args.command}")
-        if exit_code == 0 and args.command != "refresh-status":
+        if exit_code == 0 and args.command not in {"refresh-status", "summary"}:
             _refresh_status_indexes_best_effort(args.command)
         return exit_code
     except AutoresearchStop as exc:
         print(f"{format_stop_status(args.command)}: stopped")
         print(f"stop_kind: {exc.kind}")
         print(f"stop_reason: {exc.message}")
-        if args.command != "refresh-status":
+        if args.command not in {"refresh-status", "summary"}:
             _refresh_status_indexes_best_effort(args.command)
         return 0
     except (FileNotFoundError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:

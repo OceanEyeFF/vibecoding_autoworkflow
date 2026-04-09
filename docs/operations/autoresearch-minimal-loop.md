@@ -1,9 +1,9 @@
 ---
 title: "Autoresearch 最小闭环运行说明"
 status: active
-updated: 2026-04-08
+updated: 2026-04-09
 owner: aw-kernel
-last_verified: 2026-04-08
+last_verified: 2026-04-09
 ---
 # Autoresearch 最小闭环运行说明
 
@@ -169,7 +169,28 @@ python3 toolchain/scripts/research/refresh_manual_run_contract.py \
 python3 toolchain/scripts/research/run_autoresearch.py refresh-status
 ```
 
-另外，`init / baseline / prepare-round / run-round / decide-round / promote-round / discard-round / cleanup-round` 成功后也会自动刷新这两份索引。
+另外，当前还有一个只读 operator 入口：
+
+```bash
+python3 toolchain/scripts/research/run_autoresearch.py summary
+```
+
+它会直接输出 tracked skill、latest run 和 `action_needed_runs` 的人读 summary，不会写入新的状态文件。
+
+`init / baseline / prepare-round / run-round / decide-round / promote-round / discard-round / cleanup-round` 成功后也会自动刷新这两份索引；`prepare-round` 如果通过 `AutoresearchStop` 正常 `0` 退出，也会刷新索引。这里的自动 refresh 是 best-effort：索引聚合失败只会给 warning，不会把原命令从成功改判成失败。
+
+对 operator 来说，当前优先级最高的状态判断是：
+
+- `round_candidate_active`
+  - 说明当前 run 还有 active round 没收掉；先继续当前 round 或显式 `cleanup-round`
+- `round_<state>_recovery_required`
+  - 说明 run 需要恢复，不应直接开新 round
+- `round_cleanup_required_<reason>`
+  - 说明 run 已经不满足安全恢复前提；先 `cleanup-round`
+- `baseline_completed` / `awaiting_next_round`
+  - 这才属于正常等待下一步
+- `max_rounds_reached`
+  - 这是正常终态，不需要再 `prepare-round`
 
 当前工具会把 `run_id` 刷成：
 
