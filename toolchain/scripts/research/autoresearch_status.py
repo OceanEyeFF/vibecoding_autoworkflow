@@ -78,7 +78,7 @@ def _discover_interrupted_round(run_dir: Path) -> tuple[int | None, str | None]:
         if not round_payload:
             continue
         state = str(round_payload.get("state") or "").strip()
-        if state not in {"prepared", "candidate_active"}:
+        if state not in {"prepared", "candidate_active", "evaluating", "evaluated"}:
             continue
         round_number_raw = round_payload.get("round")
         try:
@@ -124,6 +124,13 @@ def _latest_decision(run_dir: Path) -> tuple[str | None, int | None, str | None]
     return str(latest_payload.get("decision") or "").strip() or None, latest_round, decided_at
 
 
+def _latest_decision_best_effort(run_dir: Path) -> tuple[str | None, int | None, str | None]:
+    try:
+        return _latest_decision(run_dir)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None, None, None
+
+
 def _lane_metrics(scoreboard: dict[str, Any] | None, lane_name: str) -> dict[str, Any]:
     if not scoreboard:
         return {}
@@ -154,7 +161,7 @@ def _summarize_malformed_run(run_dir: Path, *, repo_root: Path, error: Exception
     contract = _read_json_best_effort(run_dir / "contract.json")
     runtime = _read_json_best_effort(run_dir / "runtime.json")
     scoreboard = _read_json_best_effort(run_dir / "scoreboard.json")
-    latest_decision, _latest_decision_round, latest_decision_at = _latest_decision(run_dir)
+    latest_decision, _latest_decision_round, latest_decision_at = _latest_decision_best_effort(run_dir)
     run_id = str((contract or {}).get("run_id") or run_dir.name).strip() or run_dir.name
     target_task = str((contract or {}).get("target_task") or "").strip() or None
     activity_at = _activity_at(
@@ -480,6 +487,10 @@ def summarize_operator_action(item: dict[str, Any]) -> str:
     training_status = str(item.get("training_status") or "").strip()
     if "cleanup_required" in training_status:
         return "cleanup-round first"
+    if training_status in {"round_evaluating", "round_evaluating_recovery_required"}:
+        return "wait for run-round to finish, or inspect and cleanup-round if stuck"
+    if training_status in {"round_evaluated", "round_evaluated_recovery_required"}:
+        return "decide-round next, or cleanup-round if the round is no longer usable"
     if training_status.endswith("_recovery_required"):
         return "inspect round state, then recover or cleanup-round"
     if training_status == "round_candidate_active":

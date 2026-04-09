@@ -319,6 +319,62 @@ class AutoresearchStatusTest(unittest.TestCase):
                 "round_prepared_recovery_required",
             )
 
+    def test_refresh_status_indexes_discovers_evaluated_round_when_runtime_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            autoresearch_root = root / ".autoworkflow" / "autoresearch"
+
+            skill_path = root / "product" / "memory-side" / "skills" / "knowledge-base-skill" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True, exist_ok=True)
+            skill_path.write_text("# skill\n", encoding="utf-8")
+
+            run_dir = autoresearch_root / "demo-evaluated"
+            write_json(
+                run_dir / "contract.json",
+                {
+                    "run_id": "demo-evaluated",
+                    "target_task": "knowledge-base-skill",
+                    "target_prompt_path": "toolchain/scripts/research/tasks/knowledge-base-skill-prompt.md",
+                    "worker_backend": "codex",
+                    "expected_backend": "codex",
+                    "expected_judge_backend": "codex",
+                    "max_rounds": 3,
+                },
+            )
+            write_json(
+                run_dir / "scoreboard.json",
+                {
+                    "run_id": "demo-evaluated",
+                    "generated_at": "2026-04-09T11:00:00+00:00",
+                    "baseline_sha": "123abc",
+                    "rounds_completed": 0,
+                    "best_round": 0,
+                    "lanes": [
+                        {"lane_name": "train", "avg_total_score": 8.5},
+                        {"lane_name": "validation", "avg_total_score": 8.0},
+                    ],
+                },
+            )
+            write_json(
+                run_dir / "rounds" / "round-001" / "round.json",
+                {
+                    "round": 1,
+                    "state": "evaluated",
+                },
+            )
+
+            run_index_path, skill_index_path = refresh_status_indexes(
+                autoresearch_root=autoresearch_root,
+                repo_root=root,
+            )
+            run_index = json.loads(run_index_path.read_text(encoding="utf-8"))
+            skill_index = json.loads(skill_index_path.read_text(encoding="utf-8"))
+
+            self.assertEqual(run_index["runs"][0]["training_status"], "round_evaluated_recovery_required")
+            self.assertEqual(run_index["runs"][0]["active_round"], 1)
+            skills = {entry["skill_id"]: entry for entry in skill_index["skills"]}
+            self.assertEqual(skills["knowledge-base-skill"]["training_status"], "round_evaluated_recovery_required")
+
     def test_render_operator_summary_highlights_latest_and_action_needed_runs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -475,6 +531,67 @@ class AutoresearchStatusTest(unittest.TestCase):
             self.assertIn("demo-active", summary)
             self.assertIn("demo-cleanup", summary)
 
+    def test_render_operator_summary_guides_evaluated_rounds(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            autoresearch_root = root / ".autoworkflow" / "autoresearch"
+
+            skill_path = root / "product" / "memory-side" / "skills" / "knowledge-base-skill" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True, exist_ok=True)
+            skill_path.write_text("# skill\n", encoding="utf-8")
+
+            run_dir = autoresearch_root / "demo-evaluated"
+            write_json(
+                run_dir / "contract.json",
+                {
+                    "run_id": "demo-evaluated",
+                    "target_task": "knowledge-base-skill",
+                    "target_prompt_path": "toolchain/scripts/research/tasks/knowledge-base-skill-prompt.md",
+                    "worker_backend": "codex",
+                    "expected_backend": "codex",
+                    "expected_judge_backend": "codex",
+                    "max_rounds": 2,
+                },
+            )
+            write_json(
+                run_dir / "runtime.json",
+                {
+                    "run_id": "demo-evaluated",
+                    "champion_sha": "999999",
+                    "active_round": 2,
+                    "updated_at": "2026-04-09T11:00:00+00:00",
+                },
+            )
+            write_json(
+                run_dir / "scoreboard.json",
+                {
+                    "run_id": "demo-evaluated",
+                    "generated_at": "2026-04-09T09:00:00+00:00",
+                    "baseline_sha": "999999",
+                    "rounds_completed": 0,
+                    "best_round": 0,
+                    "lanes": [
+                        {"lane_name": "train", "avg_total_score": 8.0},
+                        {"lane_name": "validation", "avg_total_score": 7.5},
+                    ],
+                },
+            )
+            write_json(
+                run_dir / "rounds" / "round-002" / "round.json",
+                {
+                    "round": 2,
+                    "state": "evaluated",
+                },
+            )
+
+            summary = render_operator_summary(
+                autoresearch_root=autoresearch_root,
+                repo_root=root,
+            )
+
+            self.assertIn("round_evaluated", summary)
+            self.assertIn("decide-round next, or cleanup-round if the round is no longer usable", summary)
+
     def test_build_status_payloads_surface_malformed_skill_runs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -608,3 +725,44 @@ class AutoresearchStatusTest(unittest.TestCase):
             self.assertIn("malformed_run_present", summary)
             self.assertIn("inspect malformed run artifacts, then repair or cleanup-round", summary)
             self.assertNotIn("init + baseline when ready", summary)
+
+    def test_render_operator_summary_still_skips_malformed_runs_when_decision_json_is_also_bad(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            autoresearch_root = root / ".autoworkflow" / "autoresearch"
+
+            skill_path = root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True, exist_ok=True)
+            skill_path.write_text("# skill\n", encoding="utf-8")
+
+            broken_run = autoresearch_root / "broken-run"
+            write_json(
+                broken_run / "contract.json",
+                {
+                    "run_id": "broken-run",
+                    "target_task": "context-routing-skill",
+                    "updated_at": "2026-04-09T12:00:00+00:00",
+                },
+            )
+            write_json(
+                broken_run / "scoreboard.json",
+                {
+                    "run_id": "broken-run",
+                    "generated_at": "2026-04-09T11:00:00+00:00",
+                    "lanes": 1,
+                },
+            )
+            (broken_run / "rounds" / "round-001").mkdir(parents=True, exist_ok=True)
+            (broken_run / "rounds" / "round-001" / "decision.json").write_text(
+                "{not-json}\n",
+                encoding="utf-8",
+            )
+
+            summary = render_operator_summary(
+                autoresearch_root=autoresearch_root,
+                repo_root=root,
+            )
+
+            self.assertIn("malformed_runs_skipped: 1", summary)
+            self.assertIn("broken-run", summary)
+            self.assertIn("malformed_run_present", summary)
