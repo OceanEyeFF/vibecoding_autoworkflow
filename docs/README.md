@@ -28,6 +28,7 @@
 - `knowledge/` 不放 repo-local guide、benchmark 说明或外部参考
 - `operations/` 不冒充真相层
 - `analysis/` 可以固定研究轨道的阶段边界，但不单独承载当前主线规则
+- `docs/` 不长期承载 `suspended` / scratch 文档；需要共享保留的暂停文档应转为 `superseded`，非共享草稿应移出 `docs/`
 - `reference/` 只做参考，不做执行入口
 - `ideas/active/`、`ideas/incubating/`、`ideas/archived/` 的目录语义必须和 frontmatter `status` 一致
 - `docs/` 下除 `README.md` 之外的正文文档，都应保持 `title / status / updated / owner / last_verified` frontmatter

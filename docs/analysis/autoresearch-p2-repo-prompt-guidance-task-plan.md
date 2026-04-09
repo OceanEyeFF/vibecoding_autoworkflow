@@ -1,15 +1,19 @@
 ---
 title: "Autoresearch P2：Repo 级 Prompt 改进建议任务规划"
-status: active
-updated: 2026-04-04
+status: superseded
+updated: 2026-04-09
 owner: aw-kernel
-last_verified: 2026-04-04
+last_verified: 2026-04-09
 ---
 # Autoresearch P2：Repo 级 Prompt 改进建议任务规划
 
-> 说明：本文承接当前 `autoresearch` P2 单 prompt、Codex-only 的实际运行形状，规划“按 repo 生成 prompt 改进建议，再蒸馏一个总建议用于确定下一轮改进方向”的最小实现路径。
+> 当前状态：本文保留为已归档的历史执行规划，本文不是当前默认入口，也不再作为当前默认开发目标。
 >
-> 本文是新的 implementation planning 叶子页，不属于当前 closeout 默认入口；之所以准入，是因为已有显式任务授权要求把该能力收敛成完整任务方案。
+> 当前 `analysis/` 层分流入口请先回到 [Analysis README](./README.md)；`autoresearch` 当前唯一保留的开发目标入口改为：
+>
+> - [Autoresearch：下一阶段 CLI 模块化与插拔化建议](./autoresearch-next-stage-cli-modularity-plan.md)
+>
+> 本文继续保留为 repo 级 prompt guidance 方向的一版历史任务拆解记录。
 
 ## 一、规划目标
 

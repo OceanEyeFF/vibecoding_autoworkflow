@@ -84,6 +84,69 @@ live Codex smoke 的预算口径当前建议固定为：
 - P0.3 仍不实现自动 mutation 搜索、多角色 planner / proposer / critic、或 acceptance 每轮必跑
 - candidate 内容改动与 `agent-report.md` 仍由 Codex / subagent 完成；脚本只负责 git 生命周期、评测与 keep / discard
 
+### Autoresearch 状态入口
+
+当前分支已经把 autoresearch 的最小状态面固定成三类入口：
+
+- `python3 toolchain/scripts/research/run_autoresearch.py refresh-status`
+  - 重建 `.autoworkflow/autoresearch/run-status-index.json`
+  - 重建 `.autoworkflow/autoresearch/skill-training-status.json`
+- `python3 toolchain/scripts/research/run_autoresearch.py summary`
+  - 只读输出当前 tracked skill 和 action-needed run 的人读 summary
+  - 复用同一套状态聚合逻辑，不会写入新的 authority 文件
+- `.autoworkflow/autoresearch/`
+  - 仍然是 authority artifacts 的真实落点；summary 和索引都只是在它之上的聚合视图
+
+两个索引当前分别回答不同问题：
+
+- `run-status-index.json`
+  - 问题是“每个 run 现在处于什么状态、最近活跃的是谁、是否有 active round / recovery / cleanup-required 信号”
+- `skill-training-status.json`
+  - 问题是“每个 canonical skill 现在训练到哪一步、最新 run 是谁、这个 skill 是 not_started 还是根本不受 autoresearch 跟踪”
+
+当前索引里的核心状态信号和 operator 语义是：
+
+- 正常等待或正常终态：
+  - `not_started`
+  - `awaiting_baseline`
+  - `baseline_completed`
+  - `awaiting_next_round`
+  - `max_rounds_reached`
+- 残留 active round：
+  - `round_candidate_active`
+  - 这不是 `baseline_completed` 或 `awaiting_next_round`，说明 run 上仍挂着 active round，需要继续处理或显式清理
+  - `round_prepared`
+  - 这表示 active round 已经准备完毕，但还没进入后续裁决；先继续这条 round，或者在不再需要它时直接 `cleanup-round`
+- recovery / cleanup-required：
+  - `round_<state>_recovery_required`
+  - `round_cleanup_required_<reason>`
+  - 这类状态优先级高于“继续开新 round”；先恢复或 `cleanup-round`
+
+自动 refresh 当前发生在成功返回 `0` 的状态变更命令之后：
+
+- `init`
+- `baseline`
+- `prepare-round`
+- `run-round`
+- `decide-round`
+- `promote-round`
+- `discard-round`
+- `cleanup-round`
+
+另外，`prepare-round` 因 `AutoresearchStop` 正常走 `0` 退出路径时，也会刷新这两份索引。
+
+这里的 automatic refresh 是 best-effort：
+
+- 如果历史坏 run、缺失 artifact 或旧状态让聚合失败，原命令仍保持成功
+- CLI 只会打印 warning，不会把 refresh 失败反向污染成主命令失败
+- `refresh-status` 和 `summary` 都会把坏 run 隔离进 `malformed_runs`；`summary` 还会把这些坏 run 以人读表格列出来，方便 operator 先修复或清理，再看健康状态
+
+如果索引或 summary 中出现 recovery / cleanup-required，operator 当前应优先考虑：
+
+- 先看对应 run 的 `training_status` 和 `active_round`
+- 先执行 `cleanup-round`，或者在明确 round authority 仍完整时先恢复当前 round
+- 不要在残留 active round 尚未处理时继续 `prepare-round`
+
 ### Autoresearch P0.1 Contract And Data Plane
 
 P0.1 当前代码侧的最小 contract / 数据面行为固定为：

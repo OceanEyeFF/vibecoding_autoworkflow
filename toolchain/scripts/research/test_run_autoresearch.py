@@ -260,6 +260,278 @@ class RunAutoresearchTest(unittest.TestCase):
             history = (run_dir / "history.tsv").read_text(encoding="utf-8")
             self.assertIn("round\tkind\tbase_sha", history)
 
+    def test_refresh_status_command_writes_indexes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            (root / "product" / "memory-side" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
+            (root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
+                "# skill\n",
+                encoding="utf-8",
+            )
+            run_dir = root / ".autoworkflow" / "autoresearch" / "demo-run"
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "contract.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "demo-run",
+                        "target_task": "context-routing-skill",
+                        "target_prompt_path": "toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+                        "worker_backend": "codex",
+                        "expected_backend": "codex",
+                        "expected_judge_backend": "codex",
+                        "max_rounds": 1,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(
+                run_autoresearch,
+                "AUTORESEARCH_ROOT",
+                root / ".autoworkflow" / "autoresearch",
+            ), mock.patch.object(run_autoresearch, "REPO_ROOT", root):
+                exit_code = run_autoresearch.main(["refresh-status"])
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue((root / ".autoworkflow" / "autoresearch" / "run-status-index.json").is_file())
+            self.assertTrue((root / ".autoworkflow" / "autoresearch" / "skill-training-status.json").is_file())
+
+    def test_summary_command_prints_human_status_view(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            for skill_path in (
+                root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md",
+                root / "product" / "memory-side" / "skills" / "knowledge-base-skill" / "SKILL.md",
+                root / "product" / "memory-side" / "skills" / "writeback-cleanup-skill" / "SKILL.md",
+                root / "product" / "task-interface" / "skills" / "task-contract-skill" / "SKILL.md",
+            ):
+                skill_path.parent.mkdir(parents=True, exist_ok=True)
+                skill_path.write_text("# skill\n", encoding="utf-8")
+            run_dir = root / ".autoworkflow" / "autoresearch" / "demo-run"
+            run_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "contract.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "demo-run",
+                        "target_task": "context-routing-skill",
+                        "target_prompt_path": "toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+                        "worker_backend": "codex",
+                        "expected_backend": "codex",
+                        "expected_judge_backend": "codex",
+                        "max_rounds": 2,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "runtime.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "demo-run",
+                        "champion_sha": "abc123",
+                        "active_round": 1,
+                        "updated_at": "2026-04-09T10:00:00+00:00",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "scoreboard.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "demo-run",
+                        "generated_at": "2026-04-09T09:00:00+00:00",
+                        "baseline_sha": "abc123",
+                        "rounds_completed": 0,
+                        "best_round": 0,
+                        "lanes": [
+                            {"lane_name": "train", "avg_total_score": 8.0},
+                            {"lane_name": "validation", "avg_total_score": 7.5},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "rounds" / "round-001").mkdir(parents=True, exist_ok=True)
+            (run_dir / "rounds" / "round-001" / "round.json").write_text(
+                json.dumps({"round": 1, "state": "candidate_active"}),
+                encoding="utf-8",
+            )
+
+            stdout = io.StringIO()
+            with mock.patch.object(
+                run_autoresearch,
+                "AUTORESEARCH_ROOT",
+                root / ".autoworkflow" / "autoresearch",
+            ), mock.patch.object(run_autoresearch, "REPO_ROOT", root), mock.patch("sys.stdout", stdout):
+                exit_code = run_autoresearch.main(["summary"])
+
+            self.assertEqual(exit_code, 0)
+            output = stdout.getvalue()
+            self.assertIn("autoresearch_status_summary", output)
+            self.assertIn("latest_run: demo-run [active / round_candidate_active]", output)
+            self.assertIn("tracked_skills", output)
+            self.assertIn("action_needed_runs", output)
+
+    def test_summary_command_skips_malformed_historical_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_git_repo(root)
+            skill_path = root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True, exist_ok=True)
+            skill_path.write_text("# skill\n", encoding="utf-8")
+
+            healthy_run = root / ".autoworkflow" / "autoresearch" / "demo-run"
+            healthy_run.mkdir(parents=True, exist_ok=True)
+            (healthy_run / "contract.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "demo-run",
+                        "target_task": "context-routing-skill",
+                        "target_prompt_path": "toolchain/scripts/research/tasks/context-routing-skill-prompt.md",
+                        "worker_backend": "codex",
+                        "expected_backend": "codex",
+                        "expected_judge_backend": "codex",
+                        "max_rounds": 2,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (healthy_run / "runtime.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "demo-run",
+                        "champion_sha": "abc123",
+                        "active_round": None,
+                        "updated_at": "2026-04-09T10:00:00+00:00",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (healthy_run / "scoreboard.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "demo-run",
+                        "generated_at": "2026-04-09T09:00:00+00:00",
+                        "baseline_sha": "abc123",
+                        "rounds_completed": 1,
+                        "best_round": 1,
+                        "lanes": [
+                            {"lane_name": "train", "avg_total_score": 8.0},
+                            {"lane_name": "validation", "avg_total_score": 7.5},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            broken_run = root / ".autoworkflow" / "autoresearch" / "broken-run"
+            broken_run.mkdir(parents=True, exist_ok=True)
+            (broken_run / "contract.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "broken-run",
+                        "target_task": "context-routing-skill",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (broken_run / "runtime.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "broken-run",
+                        "active_round": "oops",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            stdout = io.StringIO()
+            with mock.patch.object(
+                run_autoresearch,
+                "AUTORESEARCH_ROOT",
+                root / ".autoworkflow" / "autoresearch",
+            ), mock.patch.object(run_autoresearch, "REPO_ROOT", root), mock.patch("sys.stdout", stdout):
+                exit_code = run_autoresearch.main(["summary"])
+
+            self.assertEqual(exit_code, 0)
+            output = stdout.getvalue()
+            self.assertIn("autoresearch_status_summary", output)
+            self.assertIn("malformed_runs_skipped: 1", output)
+            self.assertIn("latest_run: demo-run", output)
+            self.assertIn("broken-run", output)
+            self.assertIn("invalid literal for int()", output)
+
+    def test_successful_command_does_not_fail_when_auto_refresh_status_raises(self) -> None:
+        args = mock.Mock()
+        args.command = "init"
+        args.contract = Path("contract.json")
+
+        stderr = io.StringIO()
+        with mock.patch.object(run_autoresearch, "parse_args", return_value=args), mock.patch.object(
+            run_autoresearch, "cmd_init", return_value=0
+        ) as cmd_init, mock.patch.object(
+            run_autoresearch,
+            "refresh_status_indexes",
+            side_effect=ValueError("broken historical run"),
+        ) as refresh_mock, mock.patch("sys.stderr", stderr):
+            exit_code = run_autoresearch.main([])
+
+        self.assertEqual(exit_code, 0)
+        cmd_init.assert_called_once_with(Path("contract.json"))
+        refresh_mock.assert_called_once()
+        self.assertIn("warning: status index refresh skipped after init: broken historical run", stderr.getvalue())
+
+    def test_successful_command_does_not_fail_when_auto_refresh_status_raises_type_error(self) -> None:
+        args = mock.Mock()
+        args.command = "baseline"
+        args.contract = Path("contract.json")
+
+        stderr = io.StringIO()
+        with mock.patch.object(run_autoresearch, "parse_args", return_value=args), mock.patch.object(
+            run_autoresearch, "cmd_baseline", return_value=0
+        ) as cmd_baseline, mock.patch.object(
+            run_autoresearch,
+            "refresh_status_indexes",
+            side_effect=TypeError("scoreboard lanes are not iterable"),
+        ) as refresh_mock, mock.patch("sys.stderr", stderr):
+            exit_code = run_autoresearch.main([])
+
+        self.assertEqual(exit_code, 0)
+        cmd_baseline.assert_called_once_with(Path("contract.json"))
+        refresh_mock.assert_called_once()
+        self.assertIn(
+            "warning: status index refresh skipped after baseline: scoreboard lanes are not iterable",
+            stderr.getvalue(),
+        )
+
+    def test_stop_exit_refreshes_status_indexes(self) -> None:
+        args = mock.Mock()
+        args.command = "prepare-round"
+        args.contract = Path("contract.json")
+        args.mutation_key = None
+        args.mutation = None
+
+        stdout = io.StringIO()
+        with mock.patch.object(run_autoresearch, "parse_args", return_value=args), mock.patch.object(
+            run_autoresearch,
+            "cmd_prepare_round",
+            side_effect=run_autoresearch.AutoresearchStop(
+                kind="max_rounds_reached",
+                message="run reached max rounds",
+            ),
+        ) as cmd_prepare, mock.patch.object(
+            run_autoresearch, "refresh_status_indexes", return_value=(Path("run-status-index.json"), Path("skill-training-status.json"))
+        ) as refresh_mock, mock.patch("sys.stdout", stdout):
+            exit_code = run_autoresearch.main([])
+
+        self.assertEqual(exit_code, 0)
+        cmd_prepare.assert_called_once_with(Path("contract.json"), mutation_key=None, mutation_path=None)
+        refresh_mock.assert_called_once()
+        stdout_value = stdout.getvalue()
+        self.assertIn("prepare_round_status: stopped", stdout_value)
+        self.assertIn("stop_kind: max_rounds_reached", stdout_value)
+
     def test_init_accepts_valid_p2_contract(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -92,6 +92,12 @@ last_verified: 2026-04-08
 - `superseded` 规划文档必须保留去向说明，指出当前承接文档或仅说明“保留为 lineage”
 - `docs/analysis/README.md` 只默认暴露当前仍有效的研究和执行规划，不把 `superseded` 文档混进“当前状态”
 
+补充限制：
+
+- `suspended` 不是 `docs/` 的长期文档状态，只能视为临时过程标签，不应出现在受治理的正文 frontmatter 中。
+- 暂停但仍需共享保留的文档，应改成 `status: superseded` 并退出默认入口。
+- 只用于 skill 调用过程、个人备忘或 scratch 工作面的暂停草稿，不应长期留在 `docs/`，应移到 repo-local ignored workspace，而不是继续占据共享文档层。
+
 ## 五、层级语义
 
 ### 1. `docs/knowledge/`
@@ -205,6 +211,7 @@ last_verified: 2026-04-08
 5. 如果新文档接管了旧作用域，补回链或退役旧文档，避免双份主线。
 6. 如果结论已经准入主线，不要只改 `analysis/`，要同步改承接层。
 7. 如果执行规划已经完成或被替换，把旧规划改成 `status: superseded`，并从默认当前入口移走。
+8. 如果文档当前只是暂停中的草稿或中间笔记，不要发明 `suspended` 长期状态；共享保留则转 `superseded`，非共享草稿则移出 `docs/`。
 
 ## 八、当前最小自动检查
 

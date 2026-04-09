@@ -1,12 +1,21 @@
 ---
 title: "Prompt Templates 产品化与 Skills 分发评估"
-status: active
-updated: 2026-04-08
+status: superseded
+updated: 2026-04-09
 owner: aw-kernel
-last_verified: 2026-04-08
+last_verified: 2026-04-09
 ---
 # Prompt Templates 产品化与 Skills 分发评估
 
+> 当前状态：本文保留为 `prompt-templates` 产品化判断的 lineage 叶子页，不是当前默认入口。
+>
+> 当前入口请先回到 [Analysis README](./README.md)；若需要现行对象落位与兼容路径，优先进入：
+>
+> - [Prompt Templates Compatibility Shims](../operations/prompt-templates/README.md)
+> - [Harness Operations Product Source](../../product/harness-operations/README.md)
+>
+> 本文继续只保留产品化判断和分发边界的 lineage / audit 价值。
+>
 > 目的：在“`docs/operations/prompt-templates/` 下全部模板都是产品对象，并需要纳入当前 Skills 分发流程”这一前提已经确认之后，固定对象分组、source of truth 落点、分发接线范围、repo-specific bindings 抽离要求与改造出口条件。
 
 ## 一、当前已确认前提

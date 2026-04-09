@@ -1,9 +1,9 @@
 ---
 title: "Research CLI 指令"
 status: active
-updated: 2026-04-06
+updated: 2026-04-09
 owner: aw-kernel
-last_verified: 2026-04-06
+last_verified: 2026-04-09
 ---
 # Research CLI 指令
 
@@ -43,6 +43,8 @@ python3 toolchain/scripts/research/manage_tmp_exrepos.py
 - `run_claude_skill_eval.py`：Claude 兼容壳
 - `run_backend_acceptance_matrix.py`：live acceptance 入口
 - `run_autoresearch.py`：autoresearch 的 `init / baseline / prepare-round / run-round / decide-round` 以及相关收尾命令入口
+- `run_autoresearch.py refresh-status`：重建 `.autoworkflow/autoresearch/` 下的 run/skill 聚合状态索引
+- `run_autoresearch.py summary`：只读输出当前 tracked skill 与 action-needed run 的 operator summary
 - `run_autoresearch_loop.py`：连续 loop 包装器，自动重复 `prepare-round -> selected worker backend -> run-round -> decide-round`；默认 worker 仍是 `codex`
 - `manage_tmp_exrepos.py`：TMP exrepo 维护入口；顶层暴露 shared root options 与 `init / reset / prepare`，legacy flat mode 兼容整个 catalog 的 `prepare`，子命令可通过 `--repo` 或 `--suite` 选择 repo 子集，但不接管 autoresearch 主流程
 
@@ -56,6 +58,164 @@ python3 toolchain/scripts/research/manage_tmp_exrepos.py
 - `manage_tmp_exrepos.py` 是维护脚本，不会自动嵌进 `run_autoresearch.py`
 
 ## 二、统一主入口的当前用法
+
+### 0. 回填当前 autoresearch 状态索引
+
+```bash
+python3 toolchain/scripts/research/run_autoresearch.py refresh-status
+```
+
+当前会重建两个 repo-local state 文件：
+
+- `.autoworkflow/autoresearch/run-status-index.json`
+- `.autoworkflow/autoresearch/skill-training-status.json`
+
+语义：
+
+- `run-status-index.json`：按 run 汇总 `target_task`、backend、当前 round 状态、轮次数和最新 score
+- `skill-training-status.json`：按 canonical skill 汇总训练状态；已接入 autoresearch 的 skill 会显示最新 run，未接入的 canonical skill 会显式标成 `not_supported_by_autoresearch`
+
+### 0.1 查看当前 operator summary
+
+```bash
+python3 toolchain/scripts/research/run_autoresearch.py summary
+```
+
+当前输出是只读 summary：
+
+- 列出 tracked skill 的当前状态
+- 标出最近活跃的 latest run
+- 给每个 tracked skill 标出 view-level `signal`
+- 单独列出 `action_needed_runs`
+- 如果历史 run 有损坏 artifact，summary 会走 best-effort 聚合，跳过坏 run 并在输出里显示 `malformed_runs_skipped` 和 `malformed_runs`
+
+说明：
+
+- `summary` 复用和 `refresh-status` 相同的状态聚合逻辑
+- `summary` 不会写入索引，不会生成第二套状态系统
+- operator 应把 `signal` 当成人读标签；真正的 authority 仍是索引里的 `training_status` 和 run 目录下的 artifacts
+
+### 0.2 两个状态索引的核心字段
+
+`run-status-index.json` 当前核心字段：
+
+- 顶层：
+  - `generated_at`
+  - `autoresearch_root`
+  - `runs`
+- `runs[*]`：
+  - `run_id`
+  - `run_dir`
+  - `target_task`
+  - `target_prompt_path`
+  - `worker_backend`
+  - `expected_backend`
+  - `expected_judge_backend`
+  - `training_status`
+  - `activity_at`
+  - `max_rounds`
+  - `rounds_completed`
+  - `best_round`
+  - `active_round`
+  - `active_round_state`
+  - `latest_decision`
+  - `latest_decision_round`
+  - `champion_sha`
+  - `baseline_sha`
+  - `train_score` / `validation_score`
+  - `train_pass_rate` / `validation_pass_rate`
+  - `train_parse_error_rate` / `validation_parse_error_rate`
+
+`skill-training-status.json` 当前核心字段：
+
+- 顶层：
+  - `generated_at`
+  - `autoresearch_root`
+  - `skills`
+- `skills[*]`：
+  - `skill_id`
+  - `partition`
+  - `canonical_skill_path`
+  - `autoresearch_tracking`
+  - `training_status`
+  - `runs_total`
+  - `run_ids`
+  - tracked skill 命中最新 run 时还会带：
+    - `latest_run_id`
+    - `latest_run_dir`
+    - `latest_activity_at`
+    - `worker_backend`
+    - `expected_backend`
+    - `expected_judge_backend`
+    - `rounds_completed`
+    - `max_rounds`
+    - `best_round`
+    - `latest_decision`
+    - `active_round`
+    - `active_round_state`
+    - `train_score` / `validation_score`
+    - `train_pass_rate` / `validation_pass_rate`
+    - `train_parse_error_rate` / `validation_parse_error_rate`
+    - `champion_sha`
+
+### 0.3 当前训练状态的 operator 语义
+
+正常等待或正常终态：
+
+- `not_started`
+  - skill 已被 autoresearch 跟踪，但当前还没有任何 run
+- `awaiting_baseline`
+  - run 已存在 contract，但还没有 baseline scoreboard
+- `baseline_completed`
+  - baseline 已完成，还没有已裁决 round
+- `awaiting_next_round`
+  - 至少已有一个 round 完成裁决；如果没命中 stop，可以继续 `prepare-round`
+- `max_rounds_reached`
+  - 正常终态；run 已到配置上限，不应继续开新 round
+
+残留 active round 或恢复相关状态：
+
+- `round_candidate_active`
+  - run 上仍挂着 active round；这不是正常等待下一轮，operator 应先继续当前 round 或显式清理
+- `round_prepared`
+  - run 上的 active round 已经准备完毕，但还没进入后续裁决或继续执行；operator 应继续当前 round，或者在不再需要这条 round 时直接 `cleanup-round`
+- `round_<state>_recovery_required`
+  - 代表 runtime 已不完整，但 round authority 还在；先恢复或确认后 `cleanup-round`
+- `round_cleanup_required_<reason>`
+  - 代表 run 目录已经不满足安全恢复前提；operator 应优先执行 `cleanup-round`
+
+当前代码已经验证过并会直接产出的 cleanup / recovery 例子包括：
+
+- `round_prepared_recovery_required`
+- `round_cleanup_required_missing_round_json`
+- `round_cleanup_required_multiple_active_rounds`
+
+`not_started` 和 `not_supported_by_autoresearch` 的区别：
+
+- `not_started`
+  - 这个 canonical skill 在当前分支的 autoresearch 跟踪范围内，但还没开始跑
+- `not_supported_by_autoresearch`
+  - 这个 canonical skill 当前根本不在 autoresearch 跟踪范围内；不是“还没开始”，而是“这条能力线不由 autoresearch 管”
+
+### 0.4 自动 refresh 的当前规则
+
+当前会在成功返回 `0` 的状态变更命令后自动 refresh 两个索引：
+
+- `init`
+- `baseline`
+- `prepare-round`
+- `run-round`
+- `decide-round`
+- `promote-round`
+- `discard-round`
+- `cleanup-round`
+
+补充：
+
+- `prepare-round` 命中 `AutoresearchStop` 并正常 `0` 退出时，也会刷新索引
+- automatic refresh 是 best-effort；历史坏 run、缺失 artifact 或旧状态导致的聚合错误只会打印 warning，不会把原命令改判成失败
+- refresh-status 和 summary 都会把坏 run 隔离进 `malformed_runs`；summary 还会把这些坏 run 以人读表格列出来，方便 operator 先修复或清理，再看健康状态
+- 如果 summary 或索引出现 `recovery` / `cleanup-required` 信号，优先处理当前残留 round，不要直接继续 `prepare-round`
 
 ### 1. 单 task，只有 skill
 

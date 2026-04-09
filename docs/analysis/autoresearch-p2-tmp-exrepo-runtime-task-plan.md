@@ -1,13 +1,21 @@
 ---
 title: "Autoresearch P2：TMP Exrepo 运行时迁移与维护脚本任务规划"
-status: active
-updated: 2026-03-30
+status: superseded
+updated: 2026-04-09
 owner: aw-kernel
-last_verified: 2026-03-30
+last_verified: 2026-04-09
 ---
 # Autoresearch P2：TMP Exrepo 运行时迁移与维护脚本任务规划
 
-> 说明：本文基于当前 `exrepo input hygiene` 施工记录与最新决策收敛结果，固定一条新的两阶段执行路径：
+> 当前状态：本文保留为已完成并归档的历史执行规划，本文不是当前默认入口，也不再作为当前默认开发目标。
+>
+> 当前 `analysis/` 层分流入口请先回到 [Analysis README](./README.md)；`autoresearch` 当前唯一保留的开发目标入口改为：
+>
+> - [Autoresearch：下一阶段 CLI 模块化与插拔化建议](./autoresearch-next-stage-cli-modularity-plan.md)
+>
+> 本文继续保留为 `/tmp exrepo + materialized suite` 相关施工的 lineage 记录。
+>
+> 原始说明：本文基于当前 `exrepo input hygiene` 施工记录与最新决策收敛结果，固定一条新的两阶段执行路径：
 >
 > 1. 保留现有 `candidate worktree` 生命周期
 > 2. 把 exrepo 执行根迁到 OS 级 `/tmp`

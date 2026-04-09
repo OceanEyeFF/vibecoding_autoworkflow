@@ -1,6 +1,6 @@
 ---
 title: "Autoresearch 收口边界与例外决策规则"
-status: active
+status: superseded
 updated: 2026-04-08
 owner: aw-kernel
 last_verified: 2026-04-08

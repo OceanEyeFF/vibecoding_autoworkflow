@@ -9,7 +9,7 @@ last_verified: 2026-04-08
 
 > 说明：本文保留为上一轮问题 framing 的 lineage 记录。它建立在“`docs/operations/prompt-templates/` 仍可被视为 repo-local execution template layer，并需要继续评估包本体 vs repo-local 实例化层”的前提上。
 
-> 当前这个前提已经被替换。当前默认入口请先回到 [Analysis README](./README.md)，再进入 [Prompt Templates 产品化与 Skills 分发评估](./prompt-templates-productization-and-skill-distribution-assessment.md)。
+> 当前这个前提已经被替换。本文不是当前默认入口。当前默认入口请先回到 [Analysis README](./README.md)，再按需进入相关专题研究或现行 shim / product 入口。
 
 > 目的：在调整 `docs/operations/prompt-templates/` 或规划通用分发资产之前，先固定当前对象边界、候选分发包范围、架构影响、deploy/eval 影响与决策出口条件，避免把目录动作误写成产品结论。
 

@@ -1,12 +1,20 @@
 ---
 title: "Autoresearch P1.Final：代码复核、当前状态与后续动作"
-status: active
-updated: 2026-03-28
+status: superseded
+updated: 2026-04-09
 owner: aw-kernel
-last_verified: 2026-03-28
+last_verified: 2026-04-09
 ---
 # Autoresearch P1.Final：代码复核、当前状态与后续动作
 
+> 当前状态：本文保留为 P1.Final 审计与 follow-up 判断的历史叶子页，不是当前默认入口。
+>
+> 当前 `analysis/` 分流入口请先回到 [Analysis README](./README.md)；若需要当前 `autoresearch` 研究入口，先进入：
+>
+> - [Autoresearch：下一阶段 CLI 模块化与插拔化建议](./autoresearch-next-stage-cli-modularity-plan.md)
+>
+> 本文继续只保留 audit / lineage 价值。
+>
 > 说明：本文是对 P1.1 - P1.3 当前代码、测试和已落地 runbook 的复核结论。它属于 `analysis`，不替代 `toolchain/` 实现入口，也不替代 `docs/operations/` 的 repo-local 运行说明。
 
 ## 一、本文定位

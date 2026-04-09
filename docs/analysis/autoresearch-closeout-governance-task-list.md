@@ -9,7 +9,7 @@ last_verified: 2026-04-08
 
 > 说明：本文记录过一次“收口后中期治理”的设想；它现在只保留 lineage / audit 价值，用于解释 closeout 收起后曾经考虑过哪些后续治理方向，不再是默认入口，也不驱动当前 autoresearch 实施。
 
-> 入口位说明：本文是 superseded 的 closeout 叶子页，并且仅供 audit / lineage 查阅；当前默认分流入口先回到 [Analysis README](./README.md)，再进入仍 active 的 task-plan 或 repo-local runbook。
+> 入口位说明：本文是 superseded 的 closeout 叶子页，并且仅供 audit / lineage 查阅；当前默认分流入口先回到 [Analysis README](./README.md)，再进入仍 active 的专题研究、phase contract 或 repo-local runbook。本文不是当前默认入口。
 
 ## 一、当前阶段定位
 

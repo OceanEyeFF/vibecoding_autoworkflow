@@ -22,6 +22,7 @@ from autoresearch_contract import (
     resolve_p2_contract_target,
     resolve_suite_files,
 )
+from autoresearch_status import refresh_status_indexes, render_operator_summary
 from autoresearch_lane_executor import execute_lane_suites
 from autoresearch_round import AutoresearchRoundManager
 from autoresearch_scoreboard import build_scoreboard, merge_run_summaries, write_scoreboard
@@ -119,6 +120,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Recover from an interrupted active round by cleaning recorded candidate state.",
     )
     cleanup_parser.add_argument("--contract", type=Path, required=True, help="Path to autoresearch contract JSON.")
+
+    subparsers.add_parser(
+        "refresh-status",
+        help="Rebuild aggregate run and per-skill status indexes under .autoworkflow/autoresearch/.",
+    )
+    subparsers.add_parser(
+        "summary",
+        help="Render a read-only human summary of tracked skills and action-needed runs.",
+    )
     return parser.parse_args(argv)
 
 
@@ -606,38 +616,82 @@ def cmd_cleanup_round(contract_path: Path) -> int:
     return 0
 
 
+def cmd_refresh_status() -> int:
+    run_index_path, skill_index_path = refresh_status_indexes(
+        autoresearch_root=AUTORESEARCH_ROOT,
+        repo_root=REPO_ROOT,
+    )
+    print(f"run_status_index: {run_index_path}")
+    print(f"skill_training_status: {skill_index_path}")
+    return 0
+
+
+def cmd_summary() -> int:
+    print(
+        render_operator_summary(
+            autoresearch_root=AUTORESEARCH_ROOT,
+            repo_root=REPO_ROOT,
+        )
+    )
+    return 0
+
+
+def _refresh_status_indexes_best_effort(command: str) -> None:
+    try:
+        refresh_status_indexes(
+            autoresearch_root=AUTORESEARCH_ROOT,
+            repo_root=REPO_ROOT,
+        )
+    except (FileNotFoundError, RuntimeError, TypeError, ValueError, subprocess.CalledProcessError) as exc:
+        print(
+            f"warning: status index refresh skipped after {command}: {exc}",
+            file=sys.stderr,
+        )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv if argv is not None else sys.argv[1:])
     try:
+        exit_code: int | None = None
         if args.command == "init":
-            return cmd_init(args.contract)
-        if args.command == "baseline":
-            return cmd_baseline(args.contract)
-        if args.command == "prepare-round":
-            return cmd_prepare_round(
+            exit_code = cmd_init(args.contract)
+        elif args.command == "baseline":
+            exit_code = cmd_baseline(args.contract)
+        elif args.command == "prepare-round":
+            exit_code = cmd_prepare_round(
                 args.contract,
                 mutation_key=getattr(args, "mutation_key", None),
                 mutation_path=getattr(args, "mutation", None),
             )
-        if args.command == "run-round":
-            return cmd_run_round(args.contract)
-        if args.command == "decide-round":
-            return cmd_decide_round(args.contract)
-        if args.command == "promote-round":
-            return cmd_promote_round(args.contract)
-        if args.command == "discard-round":
-            return cmd_discard_round(args.contract)
-        if args.command == "cleanup-round":
-            return cmd_cleanup_round(args.contract)
+        elif args.command == "run-round":
+            exit_code = cmd_run_round(args.contract)
+        elif args.command == "decide-round":
+            exit_code = cmd_decide_round(args.contract)
+        elif args.command == "promote-round":
+            exit_code = cmd_promote_round(args.contract)
+        elif args.command == "discard-round":
+            exit_code = cmd_discard_round(args.contract)
+        elif args.command == "cleanup-round":
+            exit_code = cmd_cleanup_round(args.contract)
+        elif args.command == "refresh-status":
+            exit_code = cmd_refresh_status()
+        elif args.command == "summary":
+            exit_code = cmd_summary()
+        if exit_code is None:
+            raise RuntimeError(f"Unsupported command: {args.command}")
+        if exit_code == 0 and args.command not in {"refresh-status", "summary"}:
+            _refresh_status_indexes_best_effort(args.command)
+        return exit_code
     except AutoresearchStop as exc:
         print(f"{format_stop_status(args.command)}: stopped")
         print(f"stop_kind: {exc.kind}")
         print(f"stop_reason: {exc.message}")
+        if args.command not in {"refresh-status", "summary"}:
+            _refresh_status_indexes_best_effort(args.command)
         return 0
-    except (FileNotFoundError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
+    except (FileNotFoundError, RuntimeError, TypeError, ValueError, subprocess.CalledProcessError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
-    raise RuntimeError(f"Unsupported command: {args.command}")
 
 
 if __name__ == "__main__":

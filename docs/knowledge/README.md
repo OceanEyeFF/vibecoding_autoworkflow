@@ -9,8 +9,6 @@
 - [task-interface/README.md](./task-interface/README.md)：`Task Contract`
 - [autoresearch/README.md](./autoresearch/README.md)：当前仓库 `autoresearch` repo 模块的稳定入口与跨层映射
 
-  `autoresearch` 的默认 active 入口只保留 `docs/knowledge/autoresearch/overview.md`、`docs/operations/autoresearch-minimal-loop.md`、`docs/operations/research-cli-help.md`、`docs/operations/tmp-exrepo-maintenance.md` 与 `docs/analysis/README.md`；其他 closeout 规则页仅在复核 lineage / audit 时进入。
-
 先建立治理边界，再进入子层：
 
 - [foundations/path-governance-ai-routing.md](./foundations/path-governance-ai-routing.md)
