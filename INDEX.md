@@ -17,8 +17,7 @@ last_verified: 2026-03-26
 | 进入知识主线 | [`docs/knowledge/README.md`](./docs/knowledge/README.md) |
 | 进入 foundations 主线 | [`docs/knowledge/foundations/README.md`](./docs/knowledge/foundations/README.md) |
 | 建立根目录边界 | [`docs/knowledge/foundations/root-directory-layering.md`](./docs/knowledge/foundations/root-directory-layering.md) |
-| 建立路径治理边界 | [`docs/knowledge/foundations/path-governance-ai-routing.md`](./docs/knowledge/foundations/path-governance-ai-routing.md) |
-| 建立文档治理边界 | [`docs/knowledge/foundations/docs-governance.md`](./docs/knowledge/foundations/docs-governance.md) |
+| 建立路径与文档治理边界 | [`AGENTS.md`](./AGENTS.md) |
 
 ## 按任务进入
 

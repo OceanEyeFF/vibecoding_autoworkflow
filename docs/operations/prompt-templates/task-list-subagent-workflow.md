@@ -96,6 +96,6 @@ last_verified: 2026-04-08
 ## 相关文档
 
 - [docs/knowledge/README.md](../../knowledge/README.md)
-- [Task Contract 模板](../../knowledge/foundations/task-contract-template.md)
+- [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
 - [Task Planning Contract Prompt](./task-planning-contract.md)
 - [Review Loop Prompt](./review-loop-code-review.md)

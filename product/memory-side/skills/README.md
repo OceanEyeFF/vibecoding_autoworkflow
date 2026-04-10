@@ -8,7 +8,7 @@
 - `context-routing-skill/`
 - `writeback-cleanup-skill/`
 
-路由权威以 `docs/knowledge/foundations/path-governance-ai-routing.md` 为准。
+路由权威以 `AGENTS.md` 为准。
 当 authority 已确认进入 canonical skill source layer 时，本目录只建议继续读取：
 
 1. `product/memory-side/README.md`

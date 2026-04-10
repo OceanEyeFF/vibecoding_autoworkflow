@@ -46,8 +46,8 @@ last_verified: 2026-03-23
 
 ## 六、主要读取入口
 
-- [项目 Partition 模型](../../foundations/partition-model.md)
-- [Task Contract 模板](../../foundations/task-contract-template.md)
+- [根目录分层](../../foundations/root-directory-layering.md)
+- [Task Contract 基线](../task-contract.md)
 - [Task Contract 基线](../task-contract.md)
 
 ## 七、硬性约束

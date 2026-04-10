@@ -32,7 +32,7 @@ last_verified: 2026-04-08
 - 禁止未授权降级：不得在未明确说明和未获确认的情况下，自行 fallback 到不完整方案。
 
 【Step 0：限定阅读入口】
-先按 `docs/knowledge/foundations/path-governance-ai-routing.md` 的权威路由确定阅读范围。
+先按 `AGENTS.md` 的权威路由确定阅读范围。
 本模板只额外要求：在 route 已收口后，只继续读取与当前任务直接相关的 `docs/`、`product/`、`toolchain/` 文件，不自行扩读 repo-local state、mount 或 deploy target。
 
 【Step 1：执行合同生成 + 边界冻结】
@@ -91,7 +91,7 @@ last_verified: 2026-04-08
 ## 相关文档
 
 - [docs/knowledge/README.md](../../knowledge/README.md)
-- [路径治理与 AI 告知](../../knowledge/foundations/path-governance-ai-routing.md)
-- [Task Contract 模板](../../knowledge/foundations/task-contract-template.md)
+- [AGENTS.md](../../../AGENTS.md)
+- [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
 - [Execution Contract 模板](./execution-contract-template.md)
 - [Task Planning Contract Prompt](./task-planning-contract.md)

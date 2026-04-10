@@ -24,17 +24,15 @@ def write_doc(path: Path, content: str) -> None:
 
 def test_check_required_handoffs_flags_missing_link(tmp_path: Path) -> None:
     write_doc(
-        tmp_path / "docs/knowledge/foundations/toolchain-layering.md",
+        tmp_path / "toolchain/toolchain-layering.md",
         "[scripts](../../../toolchain/scripts/README.md)\n",
     )
     write_doc(tmp_path / "toolchain/scripts/README.md", "# scripts\n")
     write_doc(tmp_path / "toolchain/evals/README.md", "# evals\n")
-    write_doc(tmp_path / "docs/knowledge/foundations/README.md", "")
-    write_doc(tmp_path / "docs/knowledge/foundations/task-contract-template.md", "")
-    write_doc(tmp_path / "docs/knowledge/foundations/context-entry-template.md", "")
-    write_doc(tmp_path / "docs/knowledge/foundations/writeback-log-template.md", "")
-    write_doc(tmp_path / "docs/knowledge/foundations/decision-record-template.md", "")
-    write_doc(tmp_path / "docs/knowledge/foundations/module-entry-template.md", "")
+    write_doc(tmp_path / "docs/knowledge/README.md", "")
+    write_doc(tmp_path / "docs/knowledge/memory-side/formats/context-routing-output-format.md", "")
+    write_doc(tmp_path / "docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md", "")
+    write_doc(tmp_path / "docs/knowledge/task-interface/task-contract.md", "")
     write_doc(tmp_path / "docs/knowledge/memory-side/context-routing.md", "")
     write_doc(tmp_path / "docs/knowledge/memory-side/writeback-cleanup.md", "")
     write_doc(tmp_path / "docs/knowledge/autoresearch/README.md", "")
@@ -50,15 +48,6 @@ def test_check_foundations_authority_shadows_flags_prefixed_duplicate(tmp_path: 
     foundations_dir.mkdir(parents=True, exist_ok=True)
     required = [
         "root-directory-layering.md",
-        "path-governance-ai-routing.md",
-        "docs-governance.md",
-        "toolchain-layering.md",
-        "partition-model.md",
-        "task-contract-template.md",
-        "context-entry-template.md",
-        "writeback-log-template.md",
-        "decision-record-template.md",
-        "module-entry-template.md",
     ]
     for name in required:
         write_doc(foundations_dir / name, "# doc\n")
@@ -80,7 +69,7 @@ def test_check_outdated_placeholder_phrases_flags_stale_text(tmp_path: Path) -> 
         "`memory-side/` 当前承接已准入主题的 eval 入口。\n",
     )
     write_doc(
-        tmp_path / "docs/knowledge/foundations/toolchain-layering.md",
+        tmp_path / "toolchain/toolchain-layering.md",
         "current wording\n",
     )
 

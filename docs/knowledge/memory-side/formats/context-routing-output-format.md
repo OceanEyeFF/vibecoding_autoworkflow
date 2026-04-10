@@ -95,7 +95,7 @@ read_first:
 - docs/knowledge/memory-side/context-routing.md
 read_next:
 - docs/knowledge/memory-side/context-routing-rules.md
-- docs/knowledge/foundations/partition-model.md
+- docs/knowledge/foundations/root-directory-layering.md
 code_entry:
 - docs/knowledge/
 do_not_read_yet:

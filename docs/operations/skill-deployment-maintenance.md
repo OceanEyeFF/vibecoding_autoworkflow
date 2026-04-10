@@ -14,7 +14,7 @@ last_verified: 2026-04-08
 先建立通用边界，再读本页：
 
 - [根目录分层](../knowledge/foundations/root-directory-layering.md)
-- [Toolchain 分层](../knowledge/foundations/toolchain-layering.md)
+- [Toolchain 分层](../../toolchain/toolchain-layering.md)
 
 本页只负责仓库实现层的维护动作，不定义 skill 真相。
 

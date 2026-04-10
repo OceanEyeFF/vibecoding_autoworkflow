@@ -24,7 +24,7 @@ def _valid_payload() -> dict:
         "document": 84,
         "code": 91,
         "evidence": {
-            "rule": ["docs/knowledge/foundations/docs-governance.md"],
+            "rule": ["AGENTS.md"],
             "folders": ["toolchain/scripts/test/README.md"],
             "document": ["docs/operations/prompt-templates/review-loop-code-review.md"],
             "code": ["toolchain/scripts/test/governance_assess.py"],
@@ -57,7 +57,7 @@ def test_main_rejects_partial_evidence_map(tmp_path: Path, monkeypatch: pytest.M
             "document": 84,
             "code": 91,
             "evidence": {
-                "rule": ["docs/knowledge/foundations/docs-governance.md"],
+                "rule": ["AGENTS.md"],
                 "folders": ["toolchain/scripts/test/README.md"],
                 "document": ["docs/operations/prompt-templates/review-loop-code-review.md"],
             },
@@ -78,7 +78,7 @@ def test_load_input_json_rejects_out_of_range_scores(tmp_path: Path) -> None:
             "document": 84,
             "code": 91,
             "evidence": {
-                "rule": ["docs/knowledge/foundations/docs-governance.md"],
+                "rule": ["AGENTS.md"],
                 "folders": ["toolchain/scripts/test/README.md"],
                 "document": ["docs/operations/prompt-templates/review-loop-code-review.md"],
                 "code": ["toolchain/scripts/test/governance_assess.py"],
@@ -98,5 +98,5 @@ def test_main_includes_evidence_in_output(tmp_path: Path, monkeypatch: pytest.Mo
 
     result = json.loads(capsys.readouterr().out)
     assert result["overall"] == "通过"
-    assert result["dimensions"]["rule"]["evidence"] == ["docs/knowledge/foundations/docs-governance.md"]
+    assert result["dimensions"]["rule"]["evidence"] == ["AGENTS.md"]
     assert result["evidence"]["code"] == ["toolchain/scripts/test/governance_assess.py"]

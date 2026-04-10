@@ -13,8 +13,7 @@ last_verified: 2026-03-26
 - 当前知识主线入口：`docs/knowledge/README.md`
 - 当前 foundations 入口：`docs/knowledge/foundations/README.md`
 - 当前根目录边界入口：`docs/knowledge/foundations/root-directory-layering.md`
-- 当前路径治理入口：`docs/knowledge/foundations/path-governance-ai-routing.md`
-- 当前文档治理入口：`docs/knowledge/foundations/docs-governance.md`
+- 当前路径与文档治理入口：`AGENTS.md`
 - 当前业务源码入口：`product/README.md`
 - 当前部署入口：`toolchain/scripts/deploy/adapter_deploy.py`
 - 当前不维护主线评测入口

@@ -72,6 +72,6 @@ last_verified: 2026-04-08
 
 - [docs/knowledge/README.md](../../knowledge/README.md)
 - [Execution Contract 模板](./execution-contract-template.md)
-- [Task Contract 模板](../../knowledge/foundations/task-contract-template.md)
+- [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
 - [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
 - [task-contract-skill](../../../product/task-interface/skills/task-contract-skill/SKILL.md)

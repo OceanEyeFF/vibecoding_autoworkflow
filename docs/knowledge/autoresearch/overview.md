@@ -131,7 +131,6 @@ last_verified: 2026-04-08
 ## 六、相关文档
 
 - [Knowledge README](../README.md)
-- [Docs 文档治理基线](../foundations/docs-governance.md)
-- [路径治理与 AI 告知](../foundations/path-governance-ai-routing.md)
+- [AGENTS.md](../../../AGENTS.md)
 - [Autoresearch 最小闭环运行说明](../../operations/autoresearch-minimal-loop.md)
 - [Research Scripts](../../../toolchain/scripts/research/README.md)

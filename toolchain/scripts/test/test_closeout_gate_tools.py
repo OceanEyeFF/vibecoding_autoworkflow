@@ -130,9 +130,8 @@ def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path
     assert "docs/knowledge/README.md" in command
     assert "docs/knowledge/autoresearch/README.md" in command
     assert "docs/knowledge/autoresearch/overview.md" in command
-    assert "docs/knowledge/foundations/path-governance-ai-routing.md" in command
     assert "docs/knowledge/foundations/root-directory-layering.md" in command
-    assert "docs/knowledge/foundations/toolchain-layering.md" in command
+    assert "toolchain/toolchain-layering.md" in command
     assert "docs/operations/review-verify-handbook.md" in command
 
 

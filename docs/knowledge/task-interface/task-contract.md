@@ -1,9 +1,9 @@
 ---
 title: "Task Contract 基线"
 status: active
-updated: 2026-04-08
+updated: 2026-04-10
 owner: aw-kernel
-last_verified: 2026-04-08
+last_verified: 2026-04-10
 ---
 # Task Contract 基线
 
@@ -51,19 +51,42 @@ last_verified: 2026-04-08
 
 ## 五、当前最合适的载体
 
-当前仓库中，`Task Contract` 适合同时由两类载体承载：
+当前仓库中，`Task Contract` 由两类载体承载：
 
-- `docs/knowledge/foundations/task-contract-template.md`
+- `docs/knowledge/task-interface/task-contract.md`
 - `task-contract-skill`
 
 说明：
 
-- 模板负责固定结构
+- 本文负责固定结构与字段约束
 - skill 负责把同一结构变成可直接调用的稳定能力
 - 两者都属于 `Task Interface`，不属于 `Memory Side`
 - Harness Operations workflows 与 compatibility shims 可以消费这份基线，但不能把它改写成自己的 truth
 
-## 六、不做什么
+## 六、固定输出结构
+
+每份 `Task Contract` 至少包含下面 5 个部分：
+
+1. `Task Contract Role`
+2. `Project Baseline`
+3. `Current Task Contract`
+4. `Open Decisions`
+5. `Downstream Consumption`
+
+其中 `Current Task Contract` 至少包含下面字段：
+
+- `task`
+- `goal`
+- `non_goals`
+- `in_scope`
+- `out_of_scope`
+- `acceptance_criteria`
+- `constraints`
+- `dependencies`
+- `risks`
+- `verification_requirements`
+
+## 七、不做什么
 
 - 不直接进入编码
 - 不直接分配 agents
@@ -71,12 +94,10 @@ last_verified: 2026-04-08
 - 不把 `Route Card` 或 `Writeback Card` 混入本体
 - 不基于猜测补全缺失事实
 
-## 七、当前仓库中的落点
+## 八、当前仓库中的落点
 
 ```text
 docs/knowledge/
-  foundations/
-    task-contract-template.md
   task-interface/
     task-contract.md
     skills/
@@ -98,7 +119,7 @@ product/
       task-planning-contract/
 ```
 
-## 八、判断标准
+## 九、判断标准
 
 如果下面几句话成立，说明 `Task Contract` 的基线是清楚的：
 
@@ -107,10 +128,9 @@ product/
 - 它能被不同后端用同一套结构消费
 - 它不会被误写成 `Memory Side` 组件或 runtime 方案
 
-## 九、相关文档
+## 十、相关文档
 
-- [项目 Partition 模型](../foundations/partition-model.md)
-- [Task Contract 模板](../foundations/task-contract-template.md)
+- [根目录分层](../foundations/root-directory-layering.md)
 - [Task Contract Skill 骨架](./skills/task-contract-skill.md)
 - [Prompt template compatibility shims](../../operations/prompt-templates/README.md)
 - [Codex Task Interface Repo-local Adapter 部署帮助](../../operations/task-interface/codex-deployment-help.md)

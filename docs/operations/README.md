@@ -35,7 +35,7 @@
 
 在需要审计 closeout 记录或追踪例外判定时，再按需进入上述叶子页；默认阅读顺序仍然以前面的 daily runbook 为准。
 
-AI 默认阅读顺序以 [路径治理与 AI 告知](../knowledge/foundations/path-governance-ai-routing.md) 为准，并由 [Docs 文档治理基线](../knowledge/foundations/docs-governance.md) 约束文档层级。
+AI 默认阅读顺序以 [AGENTS.md](../../AGENTS.md) 为准。
 本页只保留 repo-local 运维入口，不重复主线 `read_first/read_next/do_not_read_yet`。
 
 这里适合放：

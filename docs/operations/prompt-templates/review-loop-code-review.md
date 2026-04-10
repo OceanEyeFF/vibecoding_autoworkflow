@@ -119,6 +119,6 @@ Phase C：复查
 ## 相关文档
 
 - [docs/knowledge/README.md](../../knowledge/README.md)
-- [Docs 文档治理基线](../../knowledge/foundations/docs-governance.md)
+- [AGENTS.md](../../../AGENTS.md)
 - [Harness Contract 模板](./harness-contract-template.md)
 - [Repo Governance Evaluation Prompt](./repo-governance-evaluation.md)

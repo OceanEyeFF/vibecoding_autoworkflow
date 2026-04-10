@@ -1,32 +1,14 @@
 # Foundations
 
-`docs/knowledge/foundations/` 固定当前仓库最上层的结构合同、路径治理和文档治理规则。
+`docs/knowledge/foundations/` 只保留仓库最上层结构合同。
 
-当前主线：
+当前生效入口：
 
 - [root-directory-layering.md](./root-directory-layering.md)
-- [path-governance-ai-routing.md](./path-governance-ai-routing.md)
-- [docs-governance.md](./docs-governance.md)
-- [toolchain-layering.md](./toolchain-layering.md)
-- [partition-model.md](./partition-model.md)
-- [task-contract-template.md](./task-contract-template.md)
-- [context-entry-template.md](./context-entry-template.md)
-- [writeback-log-template.md](./writeback-log-template.md)
-- [decision-record-template.md](./decision-record-template.md)
-- [module-entry-template.md](./module-entry-template.md)
+- [toolchain/toolchain-layering.md](../../../toolchain/toolchain-layering.md)
+- [AGENTS.md](../../../AGENTS.md)（路径路由与文档治理基线）
 
-建议阅读顺序由 [path-governance-ai-routing.md](./path-governance-ai-routing.md) 统一定义。
-本页只保留 foundations 的目录入口，避免重复 `read_first/read_next/do_not_read_yet` 的主线合同。
+最小治理原则：
 
-这里适合放：
-
-- 根目录分层合同
-- AI 默认阅读路径
-- 文档治理规则
-- 跨分区基础模板
-
-这里不适合放：
-
-- repo-local CLI 操作说明
-- 分区内的具体能力语义
-- 研究阶段边界
+- foundations 不重复维护 `AGENTS.md` 已定义的流程与路由规则。
+- 模板、runbook、分区内部语义应放回对应目录，不放在 foundations。

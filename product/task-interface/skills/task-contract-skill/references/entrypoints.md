@@ -4,8 +4,8 @@ Load the generic Task Interface contract docs in this order.
 
 ## Always Read First
 
-- `docs/knowledge/foundations/partition-model.md`
-- `docs/knowledge/foundations/task-contract-template.md`
+- `docs/knowledge/foundations/root-directory-layering.md`
+- `docs/knowledge/task-interface/task-contract.md`
 - `docs/knowledge/task-interface/task-contract.md`
 
 ## Read Only If Task Interface Touches Memory Side

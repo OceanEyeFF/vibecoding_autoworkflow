@@ -69,7 +69,6 @@ last_verified: 2026-04-03
 
 为了把 `Context Routing` 落成可执行产物，当前配套文档包括：
 
-- [Context Entry 模板](../foundations/context-entry-template.md)
 - [Context Routing 分流规则](./context-routing-rules.md)
 - [Context Routing 适配 Prompt 草案](./prompts/context-routing-adapter-prompt.md)
 - [Context Routing 输出格式](./formats/context-routing-output-format.md)

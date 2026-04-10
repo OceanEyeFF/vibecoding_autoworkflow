@@ -5,7 +5,7 @@ Load the minimum governance docs in this order.
 ## Always Read First
 
 - `docs/knowledge/README.md`
-- `docs/knowledge/foundations/docs-governance.md`
+- `AGENTS.md`
 - `docs/knowledge/foundations/root-directory-layering.md`
 
 ## Read For Workflow Consumers

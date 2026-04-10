@@ -14,7 +14,7 @@ last_verified: 2026-03-26
 先建立通用边界，再读本页：
 
 - [根目录分层](../knowledge/foundations/root-directory-layering.md)
-- [Toolchain 分层](../knowledge/foundations/toolchain-layering.md)
+- [Toolchain 分层](../../toolchain/toolchain-layering.md)
 - [Skill Deployment 维护流](./skill-deployment-maintenance.md)
 
 本页是 repo-local runbook，总结“怎么部署、部署到哪里、接着该读哪页”，不是 canonical truth。

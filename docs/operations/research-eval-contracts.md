@@ -215,7 +215,7 @@ runner 当前行为是：
 
 - [Research 评测观测与输出规范](./research-eval-observability.md)
 - [Research CLI 指令](../operations/research-cli-help.md)
-- [Toolchain 分层](../knowledge/foundations/toolchain-layering.md)
+- [Toolchain 分层](../../toolchain/toolchain-layering.md)
 - [toolchain/evals/README.md](../../toolchain/evals/README.md)
 - [toolchain/scripts/research/README.md](../../toolchain/scripts/research/README.md)
 - [Codex Memory Side Repo-local Adapter 部署帮助](../operations/memory-side/codex-deployment-help.md)

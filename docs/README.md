@@ -17,7 +17,7 @@
 
 ## 阅读顺序
 
-默认阅读顺序以 [knowledge/foundations/path-governance-ai-routing.md](./knowledge/foundations/path-governance-ai-routing.md) 为唯一权威，并由 [knowledge/foundations/docs-governance.md](./knowledge/foundations/docs-governance.md) 约束文档层级。
+默认阅读顺序以 [AGENTS.md](../AGENTS.md) 为唯一权威。
 本页只保留 `docs/` 模块入口，不重复 `read_first/read_next/do_not_read_yet` 细则。
 
 ## 文档治理规则

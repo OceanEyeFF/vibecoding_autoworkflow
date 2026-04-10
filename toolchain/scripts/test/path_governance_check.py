@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run lightweight governance checks for path layout and AI routing docs."""
+"""Run lightweight governance checks for path layout and AGENTS-based routing."""
 
 from __future__ import annotations
 
@@ -11,8 +11,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-PATH_GOVERNANCE_DOC = "docs/knowledge/foundations/path-governance-ai-routing.md"
-DOCS_GOVERNANCE_DOC = "docs/knowledge/foundations/docs-governance.md"
+AGENTS_CONTRACT_DOC = "AGENTS.md"
 KNOWLEDGE_README = "docs/knowledge/README.md"
 DEFAULT_SCAN_PATHS = [
     "README.md",
@@ -42,14 +41,8 @@ REQUIRED_ENTRY_PATHS = [
     "docs/operations/prompt-templates/README.md",
     "docs/operations/task-interface/README.md",
     "docs/operations/path-governance-checks.md",
-    DOCS_GOVERNANCE_DOC,
-    PATH_GOVERNANCE_DOC,
     "docs/knowledge/foundations/root-directory-layering.md",
-    "docs/knowledge/foundations/toolchain-layering.md",
-    "docs/knowledge/foundations/context-entry-template.md",
-    "docs/knowledge/foundations/writeback-log-template.md",
-    "docs/knowledge/foundations/decision-record-template.md",
-    "docs/knowledge/foundations/module-entry-template.md",
+    "toolchain/toolchain-layering.md",
     "product/README.md",
     "product/harness-operations/README.md",
     "product/harness-operations/skills/README.md",
@@ -64,19 +57,7 @@ REQUIRED_ENTRY_PATHS = [
     "toolchain/evals/README.md",
     "toolchain/evals/memory-side/README.md",
 ]
-PATH_GOVERNANCE_BACKLINK_PATHS = [
-    "AGENTS.md",
-    "README.md",
-    "INDEX.md",
-    "GUIDE.md",
-    "ROADMAP.md",
-    "docs/README.md",
-    KNOWLEDGE_README,
-    "docs/knowledge/foundations/README.md",
-    "docs/knowledge/foundations/root-directory-layering.md",
-    ".nav/README.md",
-]
-DOCS_GOVERNANCE_BACKLINK_PATHS = [
+AGENTS_CONTRACT_BACKLINK_PATHS = [
     "AGENTS.md",
     "README.md",
     "INDEX.md",
@@ -87,6 +68,7 @@ DOCS_GOVERNANCE_BACKLINK_PATHS = [
     "docs/knowledge/foundations/README.md",
     "docs/operations/README.md",
     "docs/operations/path-governance-checks.md",
+    ".nav/README.md",
 ]
 ENTRYPOINT_LINK_RULES = {
     "AGENTS.md": [
@@ -133,15 +115,8 @@ ENTRYPOINT_LINK_RULES = {
     ],
     "docs/knowledge/foundations/README.md": [
         "docs/knowledge/foundations/root-directory-layering.md",
-        "docs/knowledge/foundations/path-governance-ai-routing.md",
-        "docs/knowledge/foundations/docs-governance.md",
-        "docs/knowledge/foundations/toolchain-layering.md",
-        "docs/knowledge/foundations/partition-model.md",
-        "docs/knowledge/foundations/task-contract-template.md",
-        "docs/knowledge/foundations/context-entry-template.md",
-        "docs/knowledge/foundations/writeback-log-template.md",
-        "docs/knowledge/foundations/decision-record-template.md",
-        "docs/knowledge/foundations/module-entry-template.md",
+        "toolchain/toolchain-layering.md",
+        AGENTS_CONTRACT_DOC,
     ],
     "docs/knowledge/memory-side/README.md": [
         "docs/knowledge/memory-side/overview.md",
@@ -203,7 +178,7 @@ class CheckReport:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate path-governance docs, main entrypoints, and lightweight markdown links."
+        description="Validate AGENTS routing contract, main entrypoints, and lightweight markdown links."
     )
     parser.add_argument(
         "--repo-root",
@@ -426,16 +401,9 @@ def main() -> int:
     check_required_backlinks(
         repo_root,
         report,
-        label="path-governance",
-        target_relative_path=PATH_GOVERNANCE_DOC,
-        backlink_paths=PATH_GOVERNANCE_BACKLINK_PATHS,
-    )
-    check_required_backlinks(
-        repo_root,
-        report,
-        label="docs-governance",
-        target_relative_path=DOCS_GOVERNANCE_DOC,
-        backlink_paths=DOCS_GOVERNANCE_BACKLINK_PATHS,
+        label="agents-contract",
+        target_relative_path=AGENTS_CONTRACT_DOC,
+        backlink_paths=AGENTS_CONTRACT_BACKLINK_PATHS,
     )
     check_docs_frontmatter(repo_root, report)
     check_required_entrypoint_links(repo_root, report)

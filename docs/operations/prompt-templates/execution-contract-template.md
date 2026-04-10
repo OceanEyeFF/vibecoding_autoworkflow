@@ -20,7 +20,7 @@ last_verified: 2026-04-08
 
 它不是：
 
-- `docs/knowledge/foundations/task-contract-template.md` 的替代品
+- `docs/knowledge/task-interface/task-contract.md` 的替代品
 - 产品设计文档
 - 运行时编排器规范
 
@@ -79,6 +79,6 @@ last_verified: 2026-04-08
 ## 相关文档
 
 - [docs/knowledge/README.md](../../knowledge/README.md)
-- [Task Contract 模板](../../knowledge/foundations/task-contract-template.md)
+- [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
 - [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
 - [Review / Verify 承接位](../review-verify-handbook.md)

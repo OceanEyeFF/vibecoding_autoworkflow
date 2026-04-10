@@ -129,14 +129,14 @@ Knowledge Base
 
 当前仓库中与 `Task Contract` 对应的实际落点包括：
 
-- [Task Contract 模板](../foundations/task-contract-template.md)
+- [Task Contract 基线](../task-interface/task-contract.md)
 - [Task Contract 基线](../task-interface/task-contract.md)
 - [Task Contract Skill 骨架](../task-interface/skills/task-contract-skill.md)
 
 如果你要理解通用能力模型，先读：
 
 - [Memory Side Skill 与 Agent 模型](./skill-agent-model.md)
-- [项目 Partition 模型](../foundations/partition-model.md)
+- [根目录分层](../foundations/root-directory-layering.md)
 
 如果你要看本仓库当前怎么部署和 repo-local 使用，再读：
 

@@ -5,11 +5,11 @@ Load the minimum contract docs in this order.
 ## Always Read First
 
 - `docs/knowledge/README.md`
-- `docs/knowledge/foundations/path-governance-ai-routing.md`
+- `AGENTS.md`
 
 ## Read For Contract Shape
 
-- `docs/knowledge/foundations/task-contract-template.md`
+- `docs/knowledge/task-interface/task-contract.md`
 - `product/harness-operations/skills/execution-contract-template/references/prompt.md`
 
 ## Read For Closeout

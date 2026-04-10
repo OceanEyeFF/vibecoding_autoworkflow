@@ -15,15 +15,34 @@
 2. `docs/knowledge/README.md`
 3. `docs/knowledge/foundations/README.md`
 4. `docs/knowledge/foundations/root-directory-layering.md`
-5. `docs/knowledge/foundations/path-governance-ai-routing.md`
-6. `docs/knowledge/foundations/docs-governance.md`
-7. `docs/operations/review-verify-handbook.md`
-8. `docs/knowledge/foundations/toolchain-layering.md`
-9. `docs/knowledge/foundations/partition-model.md`
-10. `docs/knowledge/task-interface/task-contract.md`
-11. `docs/knowledge/memory-side/layer-boundary.md`
-12. `docs/knowledge/memory-side/overview.md`
-13. `docs/knowledge/memory-side/skill-agent-model.md`
+5. `docs/operations/review-verify-handbook.md`
+6. `toolchain/toolchain-layering.md`
+7. `docs/knowledge/task-interface/task-contract.md`
+8. `docs/knowledge/memory-side/layer-boundary.md`
+9. `docs/knowledge/memory-side/overview.md`
+10. `docs/knowledge/memory-side/skill-agent-model.md`
+
+## Route Contract
+
+- `read_next`：
+  - `docs/knowledge/memory-side/overview.md`
+  - `docs/knowledge/memory-side/skill-agent-model.md`
+  - `docs/knowledge/task-interface/task-contract.md`
+  - 按任务进入 `product/`、`docs/` 或 `toolchain/` 的局部入口页
+  - 需要 Harness Operations prompt entrypoints 或旧路径兼容 shim 时，先进入 `docs/operations/README.md`，再下钻 `docs/operations/prompt-templates/`
+- `do_not_read_yet`：
+  - `.agents/`
+  - `.claude/`
+  - `.opencode/`
+  - `.autoworkflow/`
+  - `.spec-workflow/`
+  - `.serena/`
+  - `.nav/`
+  - `docs/reference/`
+- `stop_reading_when`：
+  - 已确认当前任务落在哪一块正式内容区
+  - 已拿到当前任务所需的最小模块入口
+  - 继续扩读只会重复背景，而不会增加决策价值
 
 ## Default Flow
 
@@ -48,6 +67,20 @@
 - `.autoworkflow/`、`.spec-workflow/` 只属于 repo-local state layer。
 - `.serena/` 是 repo-local state/config layer，可保留受控入库的项目级配置与记忆，但不是主线真相层。
 - `.nav/` 只是 compatibility navigation layer，不能当真实结构定义。
+
+## Docs Governance Baseline
+
+- `docs/README.md`、`docs/knowledge/README.md` 和 `docs/*/README.md` 只做入口导航，不承载独占规则正文。
+- `docs/` 下除 `README.md` 外的正文文档必须有 frontmatter：`title / status / updated / owner / last_verified`。
+- `status` 只允许：
+  - `docs/knowledge/` 与 `docs/operations/`：`active | draft | superseded`
+  - `docs/reference/`：`reference`
+- 不在 `docs/` 长期使用 `status: suspended`。共享保留内容转 `superseded`，非共享草稿移出 `docs/`。
+- 研究结论准入后必须升格到承接层：
+  - 稳定规则写 `docs/knowledge/`
+  - runbook 写 `docs/operations/`
+  - 实现合同落 `product/` 或 `toolchain/`
+- 新增或接管文档作用域时，必须同步更新最近入口页并清理旧入口，避免双份主线。
 
 ## Review / Verify
 
@@ -78,10 +111,7 @@
 - `docs/README.md`
 - `docs/knowledge/README.md`
 - `docs/knowledge/foundations/README.md`
-- `docs/knowledge/foundations/partition-model.md`
 - `docs/knowledge/foundations/root-directory-layering.md`
-- `docs/knowledge/foundations/path-governance-ai-routing.md`
-- `docs/knowledge/foundations/docs-governance.md`
 - `docs/knowledge/task-interface/task-contract.md`
 - `docs/knowledge/memory-side/layer-boundary.md`
 - `docs/knowledge/memory-side/overview.md`

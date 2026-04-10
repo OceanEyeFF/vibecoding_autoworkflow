@@ -15,42 +15,31 @@ from path_governance_check import iter_relative_markdown_targets, resolve_markdo
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FOUNDATIONS_DIR = "docs/knowledge/foundations"
 REQUIRED_TEMPLATE_PATHS = [
-    "docs/knowledge/foundations/task-contract-template.md",
-    "docs/knowledge/foundations/context-entry-template.md",
-    "docs/knowledge/foundations/writeback-log-template.md",
-    "docs/knowledge/foundations/decision-record-template.md",
-    "docs/knowledge/foundations/module-entry-template.md",
+    "docs/knowledge/memory-side/formats/context-routing-output-format.md",
+    "docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md",
+    "docs/knowledge/task-interface/task-contract.md",
 ]
 REQUIRED_HANDOFF_LINKS = {
-    "docs/knowledge/foundations/toolchain-layering.md": [
+    "toolchain/toolchain-layering.md": [
         "toolchain/scripts/README.md",
         "toolchain/evals/README.md",
     ],
-    "docs/knowledge/foundations/README.md": REQUIRED_TEMPLATE_PATHS,
+    "docs/knowledge/README.md": REQUIRED_TEMPLATE_PATHS,
     "docs/knowledge/memory-side/context-routing.md": [
-        "docs/knowledge/foundations/context-entry-template.md",
+        "docs/knowledge/memory-side/formats/context-routing-output-format.md",
     ],
     "docs/knowledge/memory-side/writeback-cleanup.md": [
-        "docs/knowledge/foundations/writeback-log-template.md",
+        "docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md",
     ],
     "docs/knowledge/autoresearch/README.md": [
-        "docs/knowledge/foundations/module-entry-template.md",
+        "docs/knowledge/autoresearch/overview.md",
     ],
 }
 FOUNDATIONS_AUTHORITY_STEMS = [
     "root-directory-layering",
-    "path-governance-ai-routing",
-    "docs-governance",
-    "toolchain-layering",
-    "partition-model",
-    "task-contract-template",
-    "context-entry-template",
-    "writeback-log-template",
-    "decision-record-template",
-    "module-entry-template",
 ]
 OUTDATED_PLACEHOLDER_PHRASES = {
-    "docs/knowledge/foundations/toolchain-layering.md": [
+    "toolchain/toolchain-layering.md": [
         "`research/` 目录当前只保留占位入口，不承载 active runner；其中 `OpenCode` 仍是 research backend 预留位",
         "`research/` 与 `evals/` 保留为预留位，只有在方案重新准入后才继续扩展。",
     ],

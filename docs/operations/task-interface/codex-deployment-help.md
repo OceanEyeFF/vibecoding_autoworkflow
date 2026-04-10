@@ -13,7 +13,7 @@ last_verified: 2026-03-26
 
 先建立通用边界，再读本页：
 
-- [项目 Partition 模型](../../knowledge/foundations/partition-model.md)
+- [根目录分层](../../knowledge/foundations/root-directory-layering.md)
 - [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
 - [Skill Deployment 维护流](../skill-deployment-maintenance.md)
 
@@ -33,7 +33,7 @@ last_verified: 2026-03-26
 ```text
 docs/knowledge/
   foundations/
-    task-contract-template.md
+    task-contract.md
   task-interface/
     task-contract.md
     skills/

@@ -27,7 +27,7 @@ last_verified: 2026-04-08
 ## 相关文档
 
 - [docs/knowledge/README.md](../../knowledge/README.md)
-- [路径治理与 AI 告知](../../knowledge/foundations/path-governance-ai-routing.md)
-- [Task Contract 模板](../../knowledge/foundations/task-contract-template.md)
+- [AGENTS.md](../../../AGENTS.md)
+- [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
 - [Execution Contract 模板](./execution-contract-template.md)
 - [Review / Verify 承接位](../review-verify-handbook.md)

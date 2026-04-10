@@ -66,5 +66,5 @@ last_verified: 2026-04-08
 ## 相关文档
 
 - [docs/knowledge/README.md](../../knowledge/README.md)
-- [Docs 文档治理基线](../../knowledge/foundations/docs-governance.md)
+- [AGENTS.md](../../../AGENTS.md)
 - [根目录分层](../../knowledge/foundations/root-directory-layering.md)
