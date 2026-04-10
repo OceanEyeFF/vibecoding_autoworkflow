@@ -108,7 +108,7 @@ stop_reading_when:
 verification_entry:
 - 检查新增文档是否与现有基线定义冲突
 optional_background:
-- docs/reference/
+- docs/operations/
 open_questions:
 - 当前任务是否需要同步补 Writeback 规则
 ```

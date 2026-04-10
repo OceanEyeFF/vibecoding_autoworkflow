@@ -165,7 +165,7 @@ docs/
     active/
     completed/
   changelog/
-  reference/
+  archive/
 ```
 
 ## 八、不做什么

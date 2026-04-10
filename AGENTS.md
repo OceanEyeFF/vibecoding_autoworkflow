@@ -38,7 +38,6 @@
   - `.spec-workflow/`
   - `.serena/`
   - `.nav/`
-  - `docs/reference/`
 - `stop_reading_when`：
   - 已确认当前任务落在哪一块正式内容区
   - 已拿到当前任务所需的最小模块入口
@@ -62,7 +61,7 @@
 ## Root Rules
 
 - `product/` 是业务代码唯一源码根。
-- `docs/` 是文档层，内部再分 `knowledge / operations / analysis / reference / ideas / archive`。
+- `docs/` 是文档层，内部再分 `knowledge / operations / analysis / ideas / archive`。
 - `toolchain/` 只放脚本、评测、测试、打包、部署工具。
 - `.autoworkflow/`、`.spec-workflow/` 只属于 repo-local state layer。
 - `.serena/` 是 repo-local state/config layer，可保留受控入库的项目级配置与记忆，但不是主线真相层。
@@ -74,7 +73,6 @@
 - `docs/` 下除 `README.md` 外的正文文档必须有 frontmatter：`title / status / updated / owner / last_verified`。
 - `status` 只允许：
   - `docs/knowledge/` 与 `docs/operations/`：`active | draft | superseded`
-  - `docs/reference/`：`reference`
 - 不在 `docs/` 长期使用 `status: suspended`。共享保留内容转 `superseded`，非共享草稿移出 `docs/`。
 - 研究结论准入后必须升格到承接层：
   - 稳定规则写 `docs/knowledge/`

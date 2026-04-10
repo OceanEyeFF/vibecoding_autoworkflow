@@ -56,7 +56,6 @@ def create_valid_repo(tmp_path: Path) -> Path:
         "product/task-interface",
         "docs/knowledge",
         "docs/operations",
-        "docs/reference",
         "toolchain/scripts",
         "toolchain/evals",
         "tools",

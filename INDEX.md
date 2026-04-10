@@ -52,7 +52,6 @@ last_verified: 2026-03-26
 - `.spec-workflow/`
 - `.serena/`
 - `.nav/`
-- `docs/reference/`
 
 ## 停止继续扩读的条件
 

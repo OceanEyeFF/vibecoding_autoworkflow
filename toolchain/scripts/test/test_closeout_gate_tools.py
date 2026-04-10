@@ -54,9 +54,9 @@ def test_check_scope_accepts_closeout_prefix() -> None:
 
 
 def test_check_scope_flags_disallowed_changes() -> None:
-    result = check_scope(["docs/reference/README.md"], ("docs/operations/",))
+    result = check_scope(["docs/knowledge/README.md"], ("docs/operations/",))
     assert result.passed is False
-    assert result.violations == ["docs/reference/README.md"]
+    assert result.violations == ["docs/knowledge/README.md"]
 
 
 def test_update_state_backfills_gate_status() -> None:

@@ -105,9 +105,6 @@ ENTRYPOINT_LINK_RULES = {
         "product/task-interface/README.md",
         "product/harness-operations/README.md",
     ],
-    "docs/reference/README.md": [
-        KNOWLEDGE_README,
-    ],
     KNOWLEDGE_README: [
         "docs/knowledge/foundations/README.md",
         "docs/knowledge/memory-side/README.md",
@@ -156,7 +153,6 @@ FRONTMATTER_REQUIRED_KEYS = [
     "last_verified",
 ]
 STATUS_RULES = [
-    ("docs/reference/", {"reference"}),
     ("docs/knowledge/", {"active", "draft", "superseded"}),
     ("docs/operations/", {"active", "draft", "superseded"}),
 ]
