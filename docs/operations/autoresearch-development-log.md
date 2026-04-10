@@ -59,7 +59,7 @@ last_verified: 2026-04-09
 
 ### 当前唯一开发目标
 
-- [Autoresearch：下一阶段 CLI 模块化与插拔化建议](../analysis/autoresearch-next-stage-cli-modularity-plan.md)
+- [Autoresearch：下一阶段 CLI 模块化与插拔化建议](./autoresearch-next-stage-cli-modularity-plan.md)
 
 当前约束：
 
@@ -77,19 +77,19 @@ last_verified: 2026-04-09
 已验证事实：
 
 - 当前唯一保留的开发目标入口为：
-  - `docs/analysis/autoresearch-next-stage-cli-modularity-plan.md`
+  - `docs/operations/autoresearch-next-stage-cli-modularity-plan.md`
 - 旧的两个 `autoresearch` task-plan 已从默认当前目标中退出：
-  - `docs/analysis/autoresearch-p2-tmp-exrepo-runtime-task-plan.md`
-  - `docs/analysis/autoresearch-p2-repo-prompt-guidance-task-plan.md`
-- `docs/analysis/README.md` 已改成只把该目标作为当前 `autoresearch` 默认关注面。
+  - `历史规划（已移除）: autoresearch-p2-tmp-exrepo-runtime-task-plan.md`
+  - `历史规划（已移除）: autoresearch-p2-repo-prompt-guidance-task-plan.md`
+- 已移除旧研究目录入口，当前只把该目标作为默认关注面。
 - `governance_semantic_check.py` 已通过。
 
 承接位置：
 
-- `docs/analysis/autoresearch-next-stage-cli-modularity-plan.md`
-- `docs/analysis/README.md`
-- `docs/analysis/autoresearch-p2-tmp-exrepo-runtime-task-plan.md`
-- `docs/analysis/autoresearch-p2-repo-prompt-guidance-task-plan.md`
+- `docs/operations/autoresearch-next-stage-cli-modularity-plan.md`
+- `旧研究目录入口（已移除）`
+- `历史规划（已移除）: autoresearch-p2-tmp-exrepo-runtime-task-plan.md`
+- `历史规划（已移除）: autoresearch-p2-repo-prompt-guidance-task-plan.md`
 
 验证：
 
@@ -141,5 +141,5 @@ last_verified: 2026-04-09
 - [Autoresearch 最小闭环运行说明](./autoresearch-minimal-loop.md)
 - [Research CLI 指令](./research-cli-help.md)
 - [TMP Exrepo 维护说明](./tmp-exrepo-maintenance.md)
-- [Autoresearch：下一阶段 CLI 模块化与插拔化建议](../analysis/autoresearch-next-stage-cli-modularity-plan.md)
+- [Autoresearch：下一阶段 CLI 模块化与插拔化建议](./autoresearch-next-stage-cli-modularity-plan.md)
 - [Autoresearch 模块总览](../knowledge/autoresearch/overview.md)

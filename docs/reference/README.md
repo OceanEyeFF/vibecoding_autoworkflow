@@ -8,7 +8,7 @@
 
 原始导出追溯：
 
-- `../archive/chatgpt-ai-coding-methodology-raw-export.md`
+- `./chatgpt-ai-coding-methodology-raw-export.md`
 
 AI 先读什么：
 

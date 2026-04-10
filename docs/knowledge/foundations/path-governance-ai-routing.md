@@ -71,8 +71,6 @@ last_verified: 2026-04-08
 - `.serena/`
 - `.nav/`
 - `docs/reference/`
-- `docs/ideas/`
-- `docs/archive/`
 
 ### `stop_reading_when`
 
@@ -134,17 +132,16 @@ last_verified: 2026-04-08
 `read_next`
 
 - 需要部署或维护时进入 `docs/operations/README.md`
-- 只有任务明确要求历史研究或新准入研究时，才进入 `docs/analysis/README.md`
+- 只有任务明确需要 research 合同或观测口径时，才进入 `docs/operations/research-eval-contracts.md` 与 `docs/operations/research-eval-observability.md`
 
 `do_not_read_yet`
 
 - `docs/reference/`
-- `docs/ideas/`
-- `docs/archive/`
 
 `stop_reading_when`
 
-- 已确认当前文档落点属于 `knowledge / operations / analysis / reference / ideas / archive` 的哪一层
+- 已确认当前文档落点属于 `knowledge / operations / reference` 的哪一层
+- 已确认当前文档落点属于 `knowledge / operations / reference` 的哪一层
 - 已拿到可直接开始编辑或判断的目标文档
 
 ### 3. `toolchain/`
@@ -235,28 +232,12 @@ last_verified: 2026-04-08
   - `docs/operations/prompt-templates/`：Harness Operations compatibility shims
   - `docs/operations/memory-side/README.md`、`docs/operations/task-interface/README.md`：partition-specific usage help
 
-### 2. 进入 `docs/analysis/`
-
-只在下面情况进入：
-
-- 任务明确涉及已准入研究说明
-- 任务明确要求查看历史分析结论
-
-### 3. 进入 `docs/reference/`
+### 2. 进入 `docs/reference/`
 
 只在下面情况进入：
 
 - 主线文档不足以支持判断
 - 明确需要外部方法论或引文背景
-
-### 4. 进入 `docs/ideas/` 与 `docs/archive/`
-
-只在下面情况进入：
-
-- 任务明确需要探索候选方案
-- 任务明确需要追溯历史或归档脉络
-
-默认不把这两层当执行基线。
 
 ## 七、失败信号
 
@@ -264,7 +245,7 @@ last_verified: 2026-04-08
 
 - AI 一开始就进入 `.agents/`、`.claude/`、`.opencode/` 或 `.nav/`
 - AI 跳过 `docs/README.md` 和 foundations 主线文档直接全仓扫描
-- `docs/reference/`、`docs/ideas/`、`docs/archive/` 被默认当成执行基线
+- `docs/reference/` 被默认当成执行基线
 - repo-local state 被误当成项目真相
 - 三块正式内容区以外的目录重新被写成“主线入口”
 

@@ -79,7 +79,7 @@ last_verified: 2026-04-09
 - `docs/operations/autoresearch-minimal-loop.md`
 - `toolchain/scripts/research/README.md`
 
-而 `docs/analysis/autoresearch-p2-lightweight-single-prompt-codex-loop.md` 继续只保留设计背景和收窄理由。
+旧版轻量迭代设计草案仅保留为历史记录，不再作为默认运行入口。
 
 ### 3. `2026-03-30` TMP exrepo runtime 与 materialized suite 接线已确认
 
@@ -607,6 +607,4 @@ run 根目录固定在：
 
 - [Research CLI 指令](./research-cli-help.md)
 - [toolchain/scripts/research/README.md](../../toolchain/scripts/research/README.md)
-- [Autoresearch P2：单 Prompt、Codex-only 轻量迭代方案](../analysis/autoresearch-p2-lightweight-single-prompt-codex-loop.md)
-- [Autoresearch P2：单 Prompt、Codex-only 轻量迭代任务规划](../analysis/autoresearch-p2-lightweight-single-prompt-codex-task-plan.md)
-- [Research 评测观测与输出规范](../analysis/research-eval-observability.md)
+- [Research 评测观测与输出规范](./research-eval-observability.md)

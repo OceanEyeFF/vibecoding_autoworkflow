@@ -134,8 +134,6 @@ def run_spec_gate(repo_root: Path, python: str) -> dict:
                     "--repo-root",
                     str(repo_root),
                     "--scan-path",
-                    "docs/analysis",
-                    "--scan-path",
                     "docs/knowledge/autoresearch",
                     "--scan-path",
                     "docs/operations",

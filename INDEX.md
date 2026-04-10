@@ -54,8 +54,6 @@ last_verified: 2026-03-26
 - `.serena/`
 - `.nav/`
 - `docs/reference/`
-- `docs/ideas/`
-- `docs/archive/`
 
 ## 停止继续扩读的条件
 

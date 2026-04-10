@@ -85,10 +85,7 @@ last_verified: 2026-04-08
 
 - `docs/knowledge/`：canonical truth 与 foundations
 - `docs/operations/`：repo-local runbook
-- `docs/analysis/`：benchmark 与研究说明
 - `docs/reference/`：外部参考资料
-- `docs/ideas/`：未准入主线的 ideas
-- `docs/archive/`：退役资料
 
 ### 3. `toolchain/`
 
@@ -213,7 +210,6 @@ last_verified: 2026-04-08
 ## 八、当前已知问题
 
 - `.nav/` 仍然带有旧时代导航假设，部分入口只属于兼容层
-- `docs/archive/` 和 `docs/ideas/incubating/` 当前仍然很轻，但它们的职责已经明确
 
 ## 九、相关文档
 

@@ -14,7 +14,7 @@ last_verified: 2026-03-23
 - 只有在 `docs/knowledge/` 主线文档不足以支持判断时，才进入本页
 - 本页只能作为外部方法论参考，不能覆盖当前仓库的分层、路径和写作规则
 - 如果本页与知识层文档冲突，以 `docs/knowledge/` 为准
-- 原始对话导出已归档到 [../archive/chatgpt-ai-coding-methodology-raw-export.md](../archive/chatgpt-ai-coding-methodology-raw-export.md)
+- 原始对话导出见 [chatgpt-ai-coding-methodology-raw-export.md](./chatgpt-ai-coding-methodology-raw-export.md)
 
 ## 来源信息
 

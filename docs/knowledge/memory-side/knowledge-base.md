@@ -165,11 +165,7 @@ docs/
     active/
     completed/
   changelog/
-  ideas/
-  discussions/
-  thinking/
   reference/
-  archive/
 ```
 
 ## 八、不做什么
@@ -177,7 +173,7 @@ docs/
 - 不把 Prompt 当成长期真相
 - 不让某个后端维护自己的私有知识体系
 - 不在现阶段把 `Knowledge Base` 做成外部数据库或检索系统
-- 不把 `ideas / discussions / thinking` 直接当作默认执行基线
+- 不把外部参考材料直接当作默认执行基线
 
 ## 九、判断标准
 

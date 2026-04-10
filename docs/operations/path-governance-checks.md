@@ -23,7 +23,6 @@ last_verified: 2026-04-07
 - `docs/` 下正文文档的 frontmatter 是否齐全
 - `status` 是否仍和目录语义、生命周期语义一致
 - `docs/` 正文是否错误使用 `status: suspended`
-- `docs/analysis/README.md` 是否仍枚举当前研究文档，并保留对历史执行规划的入口
 - foundations / memory-side / module entry 的关键承接关系是否仍存在
 - foundations 中关键 authority/template 文档是否被影子文件分叉
 - 已退役的 placeholder 口径是否回流到关键入口文档
@@ -71,9 +70,9 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 11. `docs/knowledge/foundations/path-governance-ai-routing.md` 与 `docs/knowledge/foundations/docs-governance.md` 是否仍被关键入口页显式引用
 12. `docs/knowledge/README.md` 与关键子入口是否仍存在，并继续链接 Foundations、Memory Side 与 Task Interface 主线
 13. `docs/` 下除 `README.md` 以外的正文文档是否仍保留最小 frontmatter
-14. `docs/reference/`、`docs/archive/`、`docs/ideas/*/` 以及 `docs/knowledge/`、`docs/operations/`、`docs/analysis/` 的 `status` 是否仍匹配目录与生命周期语义
+14. `docs/reference/`、`docs/knowledge/`、`docs/operations/` 的 `status` 是否仍匹配目录与生命周期语义
 15. `docs/` 正文文档是否仍避免使用 `status: suspended`；暂停中的共享文档应改成 `superseded`，非共享 scratch 应移出 `docs/`
-16. `docs/analysis/README.md` 是否仍回链当前分析文档，包括 `superseded` 的历史执行规划
+16. `docs/operations/README.md` 与 `docs/knowledge/autoresearch/README.md` 是否仍维持当前研究与运行入口分流
 17. `.gitignore` 是否仍忽略：
    - `.agents/`
    - `.claude/`

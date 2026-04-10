@@ -1,6 +1,6 @@
 # Docs
 
-`docs/` 是当前仓库的第二块正式内容区，负责承载文档真相、仓库操作说明、研究记录、外部参考和 ideas 生命周期。
+`docs/` 是当前仓库的第二块正式内容区，负责承载文档真相、仓库操作说明和外部参考。
 
 ## 核心定位
 
@@ -13,10 +13,7 @@
 
 - `knowledge/`：canonical truth、基础治理、文档治理基线与稳定模块入口
 - `operations/`：repo-local runbook、部署和维护说明
-- `analysis/`：benchmark、评测、研究闭环与阶段性研究边界
 - `reference/`：外部导入资料
-- `ideas/`：未准入主线的想法，按生命周期管理
-- `archive/`：已退役资料
 
 ## 阅读顺序
 
@@ -27,10 +24,8 @@
 
 - `knowledge/` 不放 repo-local guide、benchmark 说明或外部参考
 - `operations/` 不冒充真相层
-- `analysis/` 可以固定研究轨道的阶段边界，但不单独承载当前主线规则
 - `docs/` 不长期承载 `suspended` / scratch 文档；需要共享保留的暂停文档应转为 `superseded`，非共享草稿应移出 `docs/`
 - `reference/` 只做参考，不做执行入口
-- `ideas/active/`、`ideas/incubating/`、`ideas/archived/` 的目录语义必须和 frontmatter `status` 一致
 - `docs/` 下除 `README.md` 之外的正文文档，都应保持 `title / status / updated / owner / last_verified` frontmatter
 - 新增正文文档后，至少更新最近的 `README.md` 入口，不留下孤儿文档
 - 研究结论一旦准入主线，必须同步升格到 `knowledge/`、`operations/`、`toolchain/` 或 `product/` 的承接位
@@ -39,5 +34,4 @@
 
 - 先读 `knowledge/` 的主线入口
 - 需要 repo-local 步骤时再进入 `operations/`
-- 需要评测和研究时再进入 `analysis/`
-- 不默认把 `reference/`、`ideas/`、`archive/` 推进执行主线
+- 需要外部背景时再进入 `reference/`

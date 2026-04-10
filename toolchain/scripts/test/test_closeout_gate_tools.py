@@ -19,7 +19,6 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "CONTRIBUTING.md",
             ".codex/config.toml",
             ".github/workflows/ci.yml",
-            "docs/analysis/README.md",
             "docs/knowledge/README.md",
             "docs/knowledge/autoresearch/README.md",
             "docs/operations/autoresearch-closeout-acceptance-gate.md",
@@ -34,7 +33,6 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             ".codex/",
             ".github/",
             ".autoworkflow/closeout/",
-            "docs/analysis/README.md",
             "docs/knowledge/README.md",
             "docs/knowledge/autoresearch/README.md",
             "docs/operations/",
@@ -48,17 +46,17 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
 
 def test_check_scope_accepts_closeout_prefix() -> None:
     result = check_scope(
-        ["docs/analysis/autoresearch-closeout-governance-goals.md"],
-        ("docs/analysis/autoresearch-closeout-",),
+        ["docs/operations/autoresearch-closeout-acceptance-gate.md"],
+        ("docs/operations/autoresearch-closeout-",),
     )
     assert result.passed is True
     assert result.violations == []
 
 
 def test_check_scope_flags_disallowed_changes() -> None:
-    result = check_scope(["docs/analysis/autoresearch-closeout-governance-task-list.md"], ("docs/operations/",))
+    result = check_scope(["docs/reference/README.md"], ("docs/operations/",))
     assert result.passed is False
-    assert result.violations == ["docs/analysis/autoresearch-closeout-governance-task-list.md"]
+    assert result.violations == ["docs/reference/README.md"]
 
 
 def test_update_state_backfills_gate_status() -> None:

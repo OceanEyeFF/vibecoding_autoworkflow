@@ -81,16 +81,12 @@ last_verified: 2026-04-08
   - 已被更新文档、已完成任务或更窄规划替代；允许保留作 lineage，但必须移出默认当前入口。
 - `reference`
   - 只用于 `docs/reference/`，表示外部参考，不参与主线断言。
-- `incubating`
-  - 只用于 `docs/ideas/incubating/`，表示仍在孵化的想法。
-- `archived`
-  - 用于 `docs/archive/` 与 `docs/ideas/archived/`，表示退役资料。
 
 对执行规划类文档额外要求：
 
 - task-plan 或 batch-plan 一旦完成、被替换或不再驱动当前施工，必须改成 `status: superseded`
 - `superseded` 规划文档必须保留去向说明，指出当前承接文档或仅说明“保留为 lineage”
-- `docs/analysis/README.md` 只默认暴露当前仍有效的研究和执行规划，不把 `superseded` 文档混进“当前状态”
+- `docs/operations/README.md` 只默认暴露当前仍有效的 runbook 与 research contracts，不把 `superseded` 文档混进“当前状态”
 
 补充限制：
 
@@ -127,36 +123,16 @@ last_verified: 2026-04-08
 - 如果 Harness Operations 语义变化，必须先或同步改 `product/harness-operations/`，不得只改 shim
 - shim 映射变更后需同步更新 `docs/operations/README.md` 与 `docs/operations/prompt-templates/README.md` 的入口列表
 
-### 3. `docs/analysis/`
-
-- 已准入的研究说明和阶段性边界
-- 允许固定某条研究轨道在当前阶段的局部 contract、观测口径和实验控制边界
-
-限制：
-
-- 不自动成为默认执行真相
-- 不单独承担最终主线规则
-
-### 4. `docs/reference/`
+### 3. `docs/reference/`
 
 - 受治理的外部参考
 - 只做参考，不做当前仓库主线判断
 
-### 5. `docs/ideas/`
-
-- 尚未准入主线的探索材料
-- 目录语义必须和 `status` 保持一致
-
-### 6. `docs/archive/`
-
-- 已退役资料
-- 默认不作为当前任务的执行入口
-
 ## 六、研究固定与主线升格
 
-`analysis/` 允许写“阶段性固定”，但必须区分它固定的到底是什么层级。
+研究类文档允许写“阶段性固定”，但必须区分它固定的到底是什么层级。
 
-### 1. 在 `analysis/` 中允许固定的内容
+### 1. 在 `docs/operations/` 中允许固定的内容
 
 - 某条研究轨道的 phase boundary
 - 某个 runner / eval / observability 的当前研究 contract
@@ -180,17 +156,17 @@ last_verified: 2026-04-08
 1. 稳定规则、边界和命名：写入 `docs/knowledge/`
 2. repo-local 使用步骤和维护方法：写入 `docs/operations/`
 3. 已经落地的脚本或源码 contract：落实到 `toolchain/`、`product/` 及其入口文档
-4. 原始 `analysis/` 文档保留为研究记录，并回链到已承接的主线文档
+4. 原始研究规划文档保留为研究记录，并回链到已承接的主线文档
 
-禁止只让主线结论停留在 `analysis/`。
+禁止只让主线结论停留在临时规划文档中。
 
 ### 3. 当前 autoresearch 三份文档的定位
 
 当前这三份文档：
 
-- `docs/analysis/autoresearch-p0-1-contract-and-data-plane.md`
-- `docs/analysis/autoresearch-p0-2-worktree-control-shell.md`
-- `docs/analysis/autoresearch-p0-3-baseline-loop-and-round-execution.md`
+- `docs/operations/research-eval-contracts.md`
+- `docs/operations/research-eval-observability.md`
+- `docs/operations/autoresearch-next-stage-cli-modularity-plan.md`
 
 固定的是 `autoresearch` 轨道的 P0 分阶段边界：
 
@@ -198,18 +174,18 @@ last_verified: 2026-04-08
 - P0.2：champion/candidate worktree 生命周期和 promote/discard 语义
 - P0.3：baseline loop、round 目录、mutation spec 和 keep/discard 的最小规则
 
-这三份文档当前属于“研究轨道的阶段合同”，不是自动覆盖全仓库主线的正式规则。
+这三份文档当前属于“研究轨道的阶段合同/规划入口”，不是自动覆盖全仓库主线的正式规则。
 
 ## 七、新增或修改文档时的最小动作
 
 每次往 `docs/` 新增或显著修改文档，至少完成下面动作：
 
-1. 先确定它属于 `knowledge / operations / analysis / reference / ideas / archive` 的哪一层。
+1. 先确定它属于 `knowledge / operations / reference` 的哪一层。
 2. 如果是正文文档，补齐 frontmatter。
 3. 更新最近的入口页，至少让同目录 `README.md` 能找到它。
 4. 如果它属于主线知识目录，优先接到 `docs/knowledge/README.md` 或对应子目录 `README.md`。
 5. 如果新文档接管了旧作用域，补回链或退役旧文档，避免双份主线。
-6. 如果结论已经准入主线，不要只改 `analysis/`，要同步改承接层。
+6. 如果结论已经准入主线，不要只改临时规划文档，要同步改承接层。
 7. 如果执行规划已经完成或被替换，把旧规划改成 `status: superseded`，并从默认当前入口移走。
 8. 如果文档当前只是暂停中的草稿或中间笔记，不要发明 `suspended` 长期状态；共享保留则转 `superseded`，非共享草稿则移出 `docs/`。
 
@@ -223,7 +199,7 @@ last_verified: 2026-04-08
 - `path-governance` 与 `docs-governance` 的关键回链存在
 - 正文文档 frontmatter 齐全
 - `status` 与目录语义和生命周期规则一致
-- `analysis/README.md` 能枚举当前研究文档，并继续保留对历史执行规划的可达链接
+- `docs/operations/README.md` 与 `docs/knowledge/autoresearch/README.md` 能维持 research/runbook 分流
 
 当前运行入口见：
 

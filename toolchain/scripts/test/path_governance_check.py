@@ -13,7 +13,6 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PATH_GOVERNANCE_DOC = "docs/knowledge/foundations/path-governance-ai-routing.md"
 DOCS_GOVERNANCE_DOC = "docs/knowledge/foundations/docs-governance.md"
-ANALYSIS_README = "docs/analysis/README.md"
 KNOWLEDGE_README = "docs/knowledge/README.md"
 DEFAULT_SCAN_PATHS = [
     "README.md",
@@ -86,7 +85,6 @@ DOCS_GOVERNANCE_BACKLINK_PATHS = [
     "docs/README.md",
     KNOWLEDGE_README,
     "docs/knowledge/foundations/README.md",
-    ANALYSIS_README,
     "docs/operations/README.md",
     "docs/operations/path-governance-checks.md",
 ]
@@ -119,9 +117,6 @@ ENTRYPOINT_LINK_RULES = {
     "docs/operations/prompt-templates/README.md": [
         KNOWLEDGE_README,
         "product/harness-operations/README.md",
-    ],
-    "docs/analysis/README.md": [
-        KNOWLEDGE_README,
     ],
     "product/README.md": [
         "product/memory-side/README.md",
@@ -187,13 +182,8 @@ FRONTMATTER_REQUIRED_KEYS = [
 ]
 STATUS_RULES = [
     ("docs/reference/", {"reference"}),
-    ("docs/archive/", {"archived"}),
-    ("docs/ideas/active/", {"active"}),
-    ("docs/ideas/incubating/", {"incubating"}),
-    ("docs/ideas/archived/", {"archived"}),
     ("docs/knowledge/", {"active", "draft", "superseded"}),
     ("docs/operations/", {"active", "draft", "superseded"}),
-    ("docs/analysis/", {"active", "draft", "superseded"}),
 ]
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -394,25 +384,6 @@ def check_docs_frontmatter(repo_root: Path, report: CheckReport) -> None:
     report.add_info(f"checked {len(docs_files)} docs substantive frontmatter blocks")
 
 
-def check_analysis_readme_links(repo_root: Path, report: CheckReport) -> None:
-    analysis_readme_path = repo_root / ANALYSIS_README
-    if not analysis_readme_path.exists():
-        report.add_failure(f"missing analysis entrypoint: {ANALYSIS_README}")
-        return
-
-    analysis_docs = sorted(
-        path for path in (repo_root / "docs/analysis").glob("*.md") if path.name != "README.md"
-    )
-    for doc_path in analysis_docs:
-        relative_path = to_relative_posix(doc_path, repo_root)
-        if not file_links_to(repo_root, analysis_readme_path, relative_path):
-            report.add_failure(
-                f"analysis README missing document link: {ANALYSIS_README} -> {relative_path}"
-            )
-
-    report.add_info(f"checked {len(analysis_docs)} analysis README document links")
-
-
 def check_required_entrypoint_links(repo_root: Path, report: CheckReport) -> None:
     for readme_path, target_paths in ENTRYPOINT_LINK_RULES.items():
         readme = repo_root / readme_path
@@ -468,7 +439,6 @@ def main() -> int:
     )
     check_docs_frontmatter(repo_root, report)
     check_required_entrypoint_links(repo_root, report)
-    check_analysis_readme_links(repo_root, report)
     check_gitignore(repo_root, report)
 
     for info in report.infos:

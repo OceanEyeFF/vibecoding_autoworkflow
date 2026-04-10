@@ -1,13 +1,13 @@
 ---
 title: "AI Coding 编排方法论原始导出"
-status: archived
+status: reference
 updated: 2026-03-23
 owner: aw-kernel
 last_verified: 2026-03-23
 ---
 # AI Coding 编排方法论原始导出
 
-> 这是从 `docs/reference/chatgpt-ai-coding-methodology.md` 退役出来的原始 ChatGPT 对话导出，仅用于历史追溯。
+> 这是 `docs/reference/chatgpt-ai-coding-methodology.md` 的原始 ChatGPT 对话导出，仅用于历史追溯。
 > 当前受治理的参考摘要见 [../reference/chatgpt-ai-coding-methodology.md](../reference/chatgpt-ai-coding-methodology.md)。
 
 ---

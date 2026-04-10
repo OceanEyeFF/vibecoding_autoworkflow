@@ -7,7 +7,7 @@ last_verified: 2026-04-06
 ---
 # Research 评测契约与边界
 
-> 目的：基于当前代码基线，固定 Research/Eval 的最小执行契约、backend 边界、suite 口径与结构化 judge 行为；这里是 analysis/boundary 文档，不是运行日志。
+> 目的：基于当前代码基线，固定 Research/Eval 的最小执行契约、backend 边界、suite 口径与结构化 judge 行为；这里是 research boundary 文档，不是运行日志。
 
 ## 一、当前主实现与闭环口径
 

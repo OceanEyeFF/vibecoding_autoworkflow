@@ -7,7 +7,7 @@ last_verified: 2026-04-08
 ---
 # Autoresearch 模块总览
 
-> 目的：把当前仓库里的 `autoresearch` 从“散落在 `toolchain / operations / analysis / .autoworkflow` 的一组对象”收束成一个可识别的 repo 模块入口，说明它是什么、边界在哪、不同层分别承接什么。
+> 目的：把当前仓库里的 `autoresearch` 从“散落在 `toolchain / operations / .autoworkflow` 的一组对象”收束成一个可识别的 repo 模块入口，说明它是什么、边界在哪、不同层分别承接什么。
 
 ## 一、模块定位
 
@@ -23,7 +23,7 @@ last_verified: 2026-04-08
 
 - 一套围绕 `toolchain/scripts/research/` 组织起来的 contract-driven research loop
 - 当前仓库里负责 baseline、round、mutation、worker contract、feedback distill、decision 和 replay 的实现主题
-- 一个需要跨 `docs/knowledge`、`docs/operations`、`docs/analysis`、`toolchain/` 和 `.autoworkflow/` 共同描述，但必须由稳定入口统一分流的模块
+- 一个需要跨 `docs/knowledge`、`docs/operations`、`toolchain/` 和 `.autoworkflow/` 共同描述，但必须由稳定入口统一分流的模块
 
 ## 二、模块边界
 
@@ -32,7 +32,7 @@ last_verified: 2026-04-08
 - run contract、scoreboard、round 生命周期与 authority 边界
 - mutation registry、worker contract、selector、feedback distill 的最小实现合同
 - repo-local 运行说明、closeout 规则和维护帮助
-- 当前阶段的研究合同、专题研究与 closeout 跟踪
+- 当前阶段的研究合同与 closeout 跟踪
 
 `autoresearch` 当前不拥有：
 
@@ -67,18 +67,7 @@ last_verified: 2026-04-08
 
 上面三页是 `autoresearch` 的日常 operations / maintenance entry；开发记录与其他 closeout 规则页（artifact hygiene、决策规则、入口层级、cleanup、acceptance gate）仍保留，但仅在需要复核 lineage / audit 或查阅例外判定时进入。这些文档回答的是“本仓库里怎么跑、怎么维护、怎么 closeout”，不是模块实现真相本体。
 
-### 3. `docs/analysis/`
-
-这里承接阶段性合同、设计边界、专题研究与 closeout lineage，例如：
-
-- `autoresearch-p0-*`
-- `autoresearch-p1-*`
-- `autoresearch-p2-*`
-- `autoresearch-closeout-*`
-
-这些文档可以固定当前阶段边界，但不单独承担最终主线规则。`autoresearch-closeout-*` 与历史 planning / audit 页都已退出默认阅读面，进入前应先回到 `docs/analysis/README.md` 做分流。
-
-### 4. `toolchain/`
+### 3. `toolchain/`
 
 这里承接实现与测量资产，当前核心入口包括：
 
@@ -88,7 +77,7 @@ last_verified: 2026-04-08
 `toolchain/scripts/research/` 是当前 `autoresearch` 实现面的 source of truth；
 `docs/knowledge/autoresearch/` 只负责模块入口，不替代实现文档。
 
-### 5. `.autoworkflow/`
+### 4. `.autoworkflow/`
 
 这里承接运行产物和 run-local state。
 
@@ -107,7 +96,7 @@ last_verified: 2026-04-08
    - [Autoresearch 最小闭环运行说明](../../operations/autoresearch-minimal-loop.md)
    - [Research CLI 帮助](../../operations/research-cli-help.md)
    - [TMP Exrepo 维护说明](../../operations/tmp-exrepo-maintenance.md)
-3. 如果任务涉及 phase contract、当前 active research 或历史研究，再回到 [docs/analysis/README.md](../../analysis/README.md) 做分流。
+3. 如果任务涉及 phase contract、当前 active research 或历史研究，再进入 `docs/operations/research-eval-contracts.md` 与 `docs/operations/research-eval-observability.md`。
 4. 只有任务明确落到实现或 CLI 内部接线时，再读 [toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)。
 
 ### 2. 修改实现时
@@ -115,13 +104,13 @@ last_verified: 2026-04-08
 1. 先读本页。
 2. 再读 [toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)。
 3. 再进入目标脚本、测试和 fixture。
-4. 只有需要阶段语义或当前规划时，再回到 [docs/analysis/README.md](../../analysis/README.md) 分流到目标 `autoresearch-*.md`。
+4. 只有需要阶段语义或当前规划时，再进入 `docs/operations/autoresearch-next-stage-cli-modularity-plan.md` 与 `docs/operations/research-eval-*.md`。
 
 ### 3. 复核 closeout lineage / audit 时
 
 1. 先读本页。
-2. 再回到 [docs/analysis/README.md](../../analysis/README.md)。
-3. 只在确实需要时，再进入 `docs/analysis/autoresearch-closeout-*.md` 或 `docs/operations/autoresearch-closeout-*.md`。
+2. 再回到 [Operations README](../../operations/README.md)。
+3. 只在确实需要时，再进入 `docs/operations/autoresearch-closeout-*.md`。
 4. 不把 closeout 专项页当成默认起点，也不让它们替代本模块入口或日常 runbook。
 
 ## 五、快速判断

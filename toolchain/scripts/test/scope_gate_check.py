@@ -15,8 +15,6 @@ DEFAULT_ALLOWED_PREFIXES = (
     ".autoworkflow/contracts/",
     ".autoworkflow/closeout/",
     ".autoworkflow/state/",
-    "docs/analysis/README.md",
-    "docs/analysis/autoresearch-closeout-",
     "docs/knowledge/README.md",
     "docs/knowledge/autoresearch/README.md",
     "docs/knowledge/autoresearch/overview.md",

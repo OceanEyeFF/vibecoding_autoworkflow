@@ -295,7 +295,7 @@ last_verified: 2026-04-09
 
 如果后续某条建议被接受并开始实现，应承接到：
 
-- `docs/analysis/` 下更收敛的 task-plan
+- 更收敛的 task-plan 集合
 - `toolchain/scripts/research/README.md` 的实现入口说明
 - `docs/operations/` 的 repo-local CLI 帮助
 

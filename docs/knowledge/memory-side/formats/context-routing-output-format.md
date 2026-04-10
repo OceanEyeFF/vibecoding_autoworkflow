@@ -99,8 +99,7 @@ read_next:
 code_entry:
 - docs/knowledge/
 do_not_read_yet:
-- docs/archive/
-- 无关的 ideas / discussions / thinking
+- 无关的参考背景资料
 - 宿主调用层实现细节
 stop_reading_when:
 - 已确认当前任务所属 Partition
