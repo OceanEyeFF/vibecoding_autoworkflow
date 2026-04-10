@@ -24,7 +24,7 @@ def test_evaluate_repo_governance_accepts_valid_payload() -> None:
             },
             "evidence": {
                 "baseline_hygiene": ["docs/README.md"],
-                "change_governance": ["docs/operations/review-verify-handbook.md"],
+                "change_governance": ["docs/operations/deploy/review-verify-handbook.md"],
                 "automation": ["toolchain/scripts/test/README.md"],
                 "structural_clarity": ["docs/knowledge/foundations/root-directory-layering.md"],
                 "operational_maintainability": ["toolchain/scripts/test/repo_governance_eval.py"],
@@ -42,7 +42,7 @@ def test_evaluate_repo_governance_accepts_valid_payload() -> None:
     assert result["total"] == 22
     assert result["rating"] == "工业级（可长期稳定维护）"
     assert result["ai_compatible"] == "YES"
-    assert result["dimensions"]["change_governance"]["evidence"] == ["docs/operations/review-verify-handbook.md"]
+    assert result["dimensions"]["change_governance"]["evidence"] == ["docs/operations/deploy/review-verify-handbook.md"]
 
 
 def test_load_input_json_rejects_missing_evidence_dimension(tmp_path: Path) -> None:
@@ -59,7 +59,7 @@ def test_load_input_json_rejects_missing_evidence_dimension(tmp_path: Path) -> N
                 },
                 "evidence": {
                     "baseline_hygiene": ["docs/README.md"],
-                    "change_governance": ["docs/operations/review-verify-handbook.md"],
+                    "change_governance": ["docs/operations/deploy/review-verify-handbook.md"],
                     "automation": ["toolchain/scripts/test/README.md"],
                     "structural_clarity": ["docs/knowledge/foundations/root-directory-layering.md"],
                 },
@@ -92,7 +92,7 @@ def test_evaluate_repo_governance_rejects_out_of_range_score() -> None:
                 },
                 "evidence": {
                     "baseline_hygiene": ["docs/README.md"],
-                    "change_governance": ["docs/operations/review-verify-handbook.md"],
+                    "change_governance": ["docs/operations/deploy/review-verify-handbook.md"],
                     "automation": ["toolchain/scripts/test/README.md"],
                     "structural_clarity": ["docs/knowledge/foundations/root-directory-layering.md"],
                     "operational_maintainability": ["toolchain/scripts/test/repo_governance_eval.py"],
@@ -118,7 +118,7 @@ def test_evaluate_repo_governance_accepts_partial_scores_when_allowed() -> None:
             },
             "evidence": {
                 "baseline_hygiene": ["docs/README.md"],
-                "change_governance": ["docs/operations/review-verify-handbook.md"],
+                "change_governance": ["docs/operations/deploy/review-verify-handbook.md"],
                 "automation": ["toolchain/scripts/test/README.md"],
                 "structural_clarity": ["docs/knowledge/foundations/root-directory-layering.md"],
                 "operational_maintainability": ["toolchain/scripts/test/repo_governance_eval.py"],
@@ -152,7 +152,7 @@ def test_evaluate_repo_governance_rejects_out_of_range_agent_readiness() -> None
                 },
                 "evidence": {
                     "baseline_hygiene": ["docs/README.md"],
-                    "change_governance": ["docs/operations/review-verify-handbook.md"],
+                    "change_governance": ["docs/operations/deploy/review-verify-handbook.md"],
                     "automation": ["toolchain/scripts/test/README.md"],
                     "structural_clarity": ["docs/knowledge/foundations/root-directory-layering.md"],
                     "operational_maintainability": ["toolchain/scripts/test/repo_governance_eval.py"],

@@ -1,14 +1,14 @@
 ---
 title: "Autoresearch artifact 最小留删规则"
 status: superseded
-updated: 2026-04-08
+updated: 2026-04-11
 owner: aw-kernel
-last_verified: 2026-04-08
+last_verified: 2026-04-11
 ---
 
 # Autoresearch artifact 最小留删规则
 
-> 非默认入口。本文只保留 closeout artifact hygiene 的审计与承接价值；只有在复核 closeout lineage / audit、retained object 或 cleanup 判定时才进入。日常入口先回到 [README.md](./README.md) 中的 `autoresearch-minimal-loop / research-cli-help / tmp-exrepo-maintenance`。
+> 非默认入口。本文只保留 closeout artifact hygiene 的审计与承接价值；只有在复核 closeout lineage / audit、retained object 或 cleanup 判定时才进入。日常入口先回到 [README.md](../README.md) 中的 `autoresearch-minimal-loop / research-cli-help / tmp-exrepo-maintenance`。
 
 > 目的：只为当前 `autoresearch` closeout 真会触碰的 `.autoworkflow` 热区冻结最小留删规则。本文回答当前对象默认是 `保留 / 归档 / 删除` 哪一类、为什么，以及未覆盖对象如何 `fail closed`。
 
@@ -40,7 +40,7 @@ last_verified: 2026-04-08
 1. 先按“对象形态”判定，再按父目录判定；更具体的子规则优先。
 2. 根目录被判定为 `保留` 或 `归档` 时，内部对象默认继承该动作，除非本文另有更细的子目录规则。
 3. 本文只冻结默认动作，不在这里直接执行真实移动、归档或删除；真实处置由 `G-105` 负责。
-4. 本文未覆盖的对象，默认不做真实处置，转 `需要显式特批`，遵守 [Autoresearch 收口边界与例外决策规则](./autoresearch-closeout-decision-rules.md)。
+4. 本文未覆盖的对象，默认不做真实处置，转 `需要显式特批`，遵守 [Autoresearch 收口边界与例外决策规则](./decision-rules.md)。
 
 ## 三、热区规则表
 
@@ -89,7 +89,7 @@ last_verified: 2026-04-08
 最小处理方式：
 
 1. 先在 `G-105` 的清理记录里写明对象路径和冲突原因。
-2. 再按 [Autoresearch 收口边界与例外决策规则](./autoresearch-closeout-decision-rules.md) 走显式批准。
+2. 再按 [Autoresearch 收口边界与例外决策规则](./decision-rules.md) 走显式批准。
 3. 如果同类对象反复出现，下一步应回到本文补规则，而不是继续口头判定。
 
 ## 六、与后续任务的承接关系

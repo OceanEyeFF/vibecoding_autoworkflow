@@ -1,9 +1,9 @@
 ---
 title: "TMP Exrepo 维护说明"
 status: active
-updated: 2026-03-31
+updated: 2026-04-11
 owner: aw-kernel
-last_verified: 2026-03-31
+last_verified: 2026-04-11
 ---
 # TMP Exrepo 维护说明
 
@@ -259,6 +259,6 @@ python3 toolchain/scripts/research/manage_tmp_exrepos.py \
 ## 九、相关文档
 
 - [Research CLI 指令](./research-cli-help.md)
-- [Autoresearch 最小闭环运行说明](./autoresearch-minimal-loop.md)
-- [toolchain/scripts/research/README.md](../../toolchain/scripts/research/README.md)
-- [路径与文档治理检查运行说明](./path-governance-checks.md)
+- [Autoresearch 最小闭环运行说明](./minimal-loop.md)
+- [toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)
+- [路径与文档治理检查运行说明](../deploy/path-governance-checks.md)

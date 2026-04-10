@@ -1,19 +1,19 @@
 ---
 title: "Autoresearch 开发记录"
 status: superseded
-updated: 2026-04-09
+updated: 2026-04-11
 owner: aw-kernel
-last_verified: 2026-04-09
+last_verified: 2026-04-11
 ---
 # Autoresearch 开发记录
 
 > 当前状态：本文保留为 `autoresearch` 已验证开发记录的历史叶子页，不是当前默认入口。
 >
-> 当前 operations 入口请先回到 [Operations README](./README.md)；日常 runbook 仍以：
+> 当前 operations 入口请先回到 [Operations README](../README.md)；日常 runbook 仍以：
 >
-> - [Autoresearch 最小闭环运行说明](./autoresearch-minimal-loop.md)
-> - [Research CLI 指令](./research-cli-help.md)
-> - [TMP Exrepo 维护说明](./tmp-exrepo-maintenance.md)
+> - [Autoresearch 最小闭环运行说明](../minimal-loop.md)
+> - [Research CLI 指令](../research-cli-help.md)
+> - [TMP Exrepo 维护说明](../tmp-exrepo-maintenance.md)
 >
 > 为准。本文继续只保留 lineage / audit / recent-history 价值。
 >
@@ -59,7 +59,7 @@ last_verified: 2026-04-09
 
 ### 当前唯一开发目标
 
-- [Autoresearch：下一阶段 CLI 模块化与插拔化建议](./autoresearch-next-stage-cli-modularity-plan.md)
+- [Autoresearch：下一阶段 CLI 模块化与插拔化建议](./next-stage-cli-modularity-plan.md)
 
 当前约束：
 
@@ -77,7 +77,7 @@ last_verified: 2026-04-09
 已验证事实：
 
 - 当前唯一保留的开发目标入口为：
-  - `docs/operations/autoresearch-next-stage-cli-modularity-plan.md`
+  - `docs/operations/autoresearch/closeout/next-stage-cli-modularity-plan.md`
 - 旧的两个 `autoresearch` task-plan 已从默认当前目标中退出：
   - `历史规划（已移除）: autoresearch-p2-tmp-exrepo-runtime-task-plan.md`
   - `历史规划（已移除）: autoresearch-p2-repo-prompt-guidance-task-plan.md`
@@ -86,7 +86,7 @@ last_verified: 2026-04-09
 
 承接位置：
 
-- `docs/operations/autoresearch-next-stage-cli-modularity-plan.md`
+- `docs/operations/autoresearch/closeout/next-stage-cli-modularity-plan.md`
 - `旧研究目录入口（已移除）`
 - `历史规划（已移除）: autoresearch-p2-tmp-exrepo-runtime-task-plan.md`
 - `历史规划（已移除）: autoresearch-p2-repo-prompt-guidance-task-plan.md`
@@ -125,8 +125,8 @@ last_verified: 2026-04-09
 
 - `toolchain/scripts/research/autoresearch_status.py`
 - `toolchain/scripts/research/run_autoresearch.py`
-- `docs/operations/research-cli-help.md`
-- `docs/operations/autoresearch-minimal-loop.md`
+- `docs/operations/autoresearch/research-cli-help.md`
+- `docs/operations/autoresearch/minimal-loop.md`
 
 验证：
 
@@ -138,8 +138,8 @@ last_verified: 2026-04-09
 
 ## 五、相关文档
 
-- [Autoresearch 最小闭环运行说明](./autoresearch-minimal-loop.md)
-- [Research CLI 指令](./research-cli-help.md)
-- [TMP Exrepo 维护说明](./tmp-exrepo-maintenance.md)
-- [Autoresearch：下一阶段 CLI 模块化与插拔化建议](./autoresearch-next-stage-cli-modularity-plan.md)
-- [Autoresearch 模块总览](../knowledge/autoresearch/overview.md)
+- [Autoresearch 最小闭环运行说明](../minimal-loop.md)
+- [Research CLI 指令](../research-cli-help.md)
+- [TMP Exrepo 维护说明](../tmp-exrepo-maintenance.md)
+- [Autoresearch：下一阶段 CLI 模块化与插拔化建议](./next-stage-cli-modularity-plan.md)
+- [Autoresearch 模块总览](../../../knowledge/autoresearch/overview.md)

@@ -1,15 +1,15 @@
 ---
 title: "Review / Verify 承接位"
 status: active
-updated: 2026-04-09
+updated: 2026-04-11
 owner: aw-kernel
-last_verified: 2026-04-09
+last_verified: 2026-04-11
 ---
 # Review / Verify 承接位
 
 > 目的：把 `plan -> implement -> verify -> review -> writeback` 收成一个 repo-local、可复用、可引用的复核入口。本文只承接执行阶段的最小复核动作，不承接长期真相本体。
 
-本页属于 [Deploy / Verify / Maintenance](./deploy/README.md) 路径簇。
+本页属于 [Deploy / Verify / Maintenance](./README.md) 路径簇。
 
 ## 一、适用范围
 
@@ -107,9 +107,9 @@ last_verified: 2026-04-09
 
 ## 五、相关文档
 
-- [AGENTS.md](../../AGENTS.md)
+- [AGENTS.md](../../../AGENTS.md)
 - [路径与文档治理检查运行说明](./path-governance-checks.md)
-- [Autoresearch closeout acceptance gate](./autoresearch-closeout-acceptance-gate.md)
+- [Autoresearch closeout acceptance gate](../autoresearch/closeout/acceptance-gate.md)
 - [Deploy Runbook](./deploy-runbook.md)
 - [Skill Deployment 维护流](./skill-deployment-maintenance.md)
 - [Branch / PR 治理规则](./branch-pr-governance.md)

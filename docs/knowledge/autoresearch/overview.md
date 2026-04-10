@@ -61,9 +61,9 @@ last_verified: 2026-04-08
 
 这里承接 repo-local runbook，例如：
 
-- [Autoresearch 最小闭环运行说明](../../operations/autoresearch-minimal-loop.md)
-- [Research CLI 帮助](../../operations/research-cli-help.md)
-- [TMP Exrepo 维护说明](../../operations/tmp-exrepo-maintenance.md)
+- [Autoresearch 最小闭环运行说明](../../operations/autoresearch/minimal-loop.md)
+- [Research CLI 帮助](../../operations/autoresearch/research-cli-help.md)
+- [TMP Exrepo 维护说明](../../operations/autoresearch/tmp-exrepo-maintenance.md)
 
 上面三页是 `autoresearch` 的日常 operations / maintenance entry；开发记录与其他 closeout 规则页（artifact hygiene、决策规则、入口层级、cleanup、acceptance gate）仍保留，但仅在需要复核 lineage / audit 或查阅例外判定时进入。这些文档回答的是“本仓库里怎么跑、怎么维护、怎么 closeout”，不是模块实现真相本体。
 
@@ -93,10 +93,10 @@ last_verified: 2026-04-08
 
 1. 先读本页。
 2. 如果任务涉及 repo-local 操作，再按需读：
-   - [Autoresearch 最小闭环运行说明](../../operations/autoresearch-minimal-loop.md)
-   - [Research CLI 帮助](../../operations/research-cli-help.md)
-   - [TMP Exrepo 维护说明](../../operations/tmp-exrepo-maintenance.md)
-3. 如果任务涉及 phase contract、当前 active research 或历史研究，再进入 `docs/operations/research-eval-contracts.md` 与 `docs/operations/research-eval-observability.md`。
+   - [Autoresearch 最小闭环运行说明](../../operations/autoresearch/minimal-loop.md)
+   - [Research CLI 帮助](../../operations/autoresearch/research-cli-help.md)
+   - [TMP Exrepo 维护说明](../../operations/autoresearch/tmp-exrepo-maintenance.md)
+3. 如果任务涉及 phase contract、当前 active research 或历史研究，再进入 `docs/operations/autoresearch/research-eval-contracts.md` 与 `docs/operations/autoresearch/research-eval-observability.md`。
 4. 只有任务明确落到实现或 CLI 内部接线时，再读 [toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)。
 
 ### 2. 修改实现时
@@ -104,7 +104,7 @@ last_verified: 2026-04-08
 1. 先读本页。
 2. 再读 [toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)。
 3. 再进入目标脚本、测试和 fixture。
-4. 只有需要阶段语义或当前规划时，再进入 `docs/operations/autoresearch-next-stage-cli-modularity-plan.md` 与 `docs/operations/research-eval-*.md`。
+4. 只有需要阶段语义或当前规划时，再进入 `docs/operations/autoresearch/closeout/next-stage-cli-modularity-plan.md` 与 `docs/operations/research-eval-*.md`。
 
 ### 3. 复核 closeout lineage / audit 时
 
@@ -132,5 +132,5 @@ last_verified: 2026-04-08
 
 - [Knowledge README](../README.md)
 - [AGENTS.md](../../../AGENTS.md)
-- [Autoresearch 最小闭环运行说明](../../operations/autoresearch-minimal-loop.md)
+- [Autoresearch 最小闭环运行说明](../../operations/autoresearch/minimal-loop.md)
 - [Research Scripts](../../../toolchain/scripts/research/README.md)

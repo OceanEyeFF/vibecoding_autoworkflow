@@ -21,8 +21,8 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             ".github/workflows/ci.yml",
             "docs/knowledge/README.md",
             "docs/knowledge/autoresearch/README.md",
-            "docs/operations/autoresearch-closeout-acceptance-gate.md",
-            "docs/operations/review-verify-handbook.md",
+            "docs/operations/autoresearch/closeout/acceptance-gate.md",
+            "docs/operations/deploy/review-verify-handbook.md",
             ".autoworkflow/closeout/demo/summary.json",
             "toolchain/scripts/test/scope_gate_check.py",
             "tools/scope_gate_check.py",
@@ -46,8 +46,8 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
 
 def test_check_scope_accepts_closeout_prefix() -> None:
     result = check_scope(
-        ["docs/operations/autoresearch-closeout-acceptance-gate.md"],
-        ("docs/operations/autoresearch-closeout-",),
+        ["docs/operations/autoresearch/closeout/acceptance-gate.md"],
+        ("docs/operations/autoresearch/closeout/",),
     )
     assert result.passed is True
     assert result.violations == []
@@ -132,7 +132,7 @@ def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path
     assert "docs/knowledge/autoresearch/overview.md" in command
     assert "docs/knowledge/foundations/root-directory-layering.md" in command
     assert "toolchain/toolchain-layering.md" in command
-    assert "docs/operations/review-verify-handbook.md" in command
+    assert "docs/operations/deploy/review-verify-handbook.md" in command
 
 
 def test_run_spec_gate_includes_folder_logic(monkeypatch, tmp_path) -> None:

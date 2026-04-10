@@ -99,7 +99,7 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
             "--allowed-prefix",
             "docs/knowledge/autoresearch/overview.md",
             "--allowed-prefix",
-            "docs/operations/review-verify-handbook.md",
+            "docs/operations/deploy/review-verify-handbook.md",
             "--allowed-prefix",
             "docs/knowledge/foundations/root-directory-layering.md",
             "--allowed-prefix",

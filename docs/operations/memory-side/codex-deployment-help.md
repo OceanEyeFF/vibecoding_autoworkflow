@@ -1,9 +1,9 @@
 ---
 title: "Codex Memory Side Repo-local Adapter 部署帮助"
 status: active
-updated: 2026-03-26
+updated: 2026-04-11
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-04-11
 ---
 # Codex Memory Side Repo-local Adapter 部署帮助
 
@@ -14,7 +14,7 @@ last_verified: 2026-03-26
 先建立通用边界，再读本页：
 
 - [Memory Side 层级边界](../../knowledge/memory-side/layer-boundary.md)
-- [Skill Deployment 维护流](../skill-deployment-maintenance.md)
+- [Skill Deployment 维护流](../deploy/skill-deployment-maintenance.md)
 
 本页默认采用两层验证：
 

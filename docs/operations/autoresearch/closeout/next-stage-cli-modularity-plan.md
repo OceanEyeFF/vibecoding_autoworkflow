@@ -1,9 +1,9 @@
 ---
 title: "Autoresearch：下一阶段 CLI 模块化与插拔化建议"
-status: active
-updated: 2026-04-09
+status: superseded
+updated: 2026-04-11
 owner: aw-kernel
-last_verified: 2026-04-09
+last_verified: 2026-04-11
 ---
 # Autoresearch：下一阶段 CLI 模块化与插拔化建议
 

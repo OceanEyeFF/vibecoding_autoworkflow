@@ -1,9 +1,9 @@
 ---
 title: "OpenCode Task Interface Repo-local Adapter 部署帮助"
 status: active
-updated: 2026-03-26
+updated: 2026-04-11
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-04-11
 ---
 # OpenCode Task Interface Repo-local Adapter 部署帮助
 
@@ -15,7 +15,7 @@ last_verified: 2026-03-26
 
 - [根目录分层](../../knowledge/foundations/root-directory-layering.md)
 - [Task Contract 基线](../../knowledge/task-interface/task-contract.md)
-- [Skill Deployment 维护流](../skill-deployment-maintenance.md)
+- [Skill Deployment 维护流](../deploy/skill-deployment-maintenance.md)
 
 本页当前只采用一层验证：
 

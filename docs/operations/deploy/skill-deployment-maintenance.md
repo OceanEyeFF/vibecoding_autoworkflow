@@ -1,20 +1,20 @@
 ---
 title: "Skill Deployment 维护流"
 status: active
-updated: 2026-04-08
+updated: 2026-04-11
 owner: aw-kernel
-last_verified: 2026-04-08
+last_verified: 2026-04-11
 ---
 # Skill Deployment 维护流
 
 > 目的：为当前仓库的 repo-local / global skill mounts 提供统一的维护节奏，避免只会“重新部署”，却看不见 drift、陈旧 target 和坏链路。
 
-本页属于 [Deploy / Verify / Maintenance](./deploy/README.md) 路径簇。
+本页属于 [Deploy / Verify / Maintenance](./README.md) 路径簇。
 
 先建立通用边界，再读本页：
 
-- [根目录分层](../knowledge/foundations/root-directory-layering.md)
-- [Toolchain 分层](../../toolchain/toolchain-layering.md)
+- [根目录分层](../../knowledge/foundations/root-directory-layering.md)
+- [Toolchain 分层](../../../toolchain/toolchain-layering.md)
 
 本页只负责仓库实现层的维护动作，不定义 skill 真相。
 

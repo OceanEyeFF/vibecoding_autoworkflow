@@ -1,14 +1,14 @@
 ---
 title: "Autoresearch closeout 入口层级规则"
 status: superseded
-updated: 2026-04-08
+updated: 2026-04-11
 owner: aw-kernel
-last_verified: 2026-04-08
+last_verified: 2026-04-11
 ---
 
 # Autoresearch closeout 入口层级规则
 
-> 非默认入口。本文只保留 closeout 入口层级规则的 lineage / audit 记录；只有在复核已完成 closeout 的入口退场语义时才进入。日常入口先回到 [README.md](./README.md) 中的 `autoresearch-minimal-loop / research-cli-help / tmp-exrepo-maintenance`。
+> 非默认入口。本文只保留 closeout 入口层级规则的 lineage / audit 记录；只有在复核已完成 closeout 的入口退场语义时才进入。日常入口先回到 [README.md](../README.md) 中的 `autoresearch-minimal-loop / research-cli-help / tmp-exrepo-maintenance`。
 
 > 目的：冻结当前 `autoresearch` closeout 在 `docs/analysis/` 的入口层级，明确什么文件可以承担目录页型入口，什么文件只能作为叶子页正文，以及历史 planning 如何退回 lineage 地位。
 

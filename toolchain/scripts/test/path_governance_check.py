@@ -36,11 +36,13 @@ REQUIRED_ENTRY_PATHS = [
     "docs/knowledge/memory-side/README.md",
     "docs/knowledge/task-interface/README.md",
     "docs/operations/README.md",
+    "docs/operations/autoresearch/README.md",
+    "docs/operations/autoresearch/closeout/README.md",
     "docs/operations/deploy/README.md",
     "docs/operations/memory-side/README.md",
     "docs/operations/prompt-templates/README.md",
     "docs/operations/task-interface/README.md",
-    "docs/operations/path-governance-checks.md",
+    "docs/operations/deploy/path-governance-checks.md",
     "docs/knowledge/foundations/root-directory-layering.md",
     "toolchain/toolchain-layering.md",
     "product/README.md",
@@ -67,7 +69,7 @@ AGENTS_CONTRACT_BACKLINK_PATHS = [
     KNOWLEDGE_README,
     "docs/knowledge/foundations/README.md",
     "docs/operations/README.md",
-    "docs/operations/path-governance-checks.md",
+    "docs/operations/deploy/path-governance-checks.md",
     ".nav/README.md",
 ]
 ENTRYPOINT_LINK_RULES = {
@@ -91,10 +93,19 @@ ENTRYPOINT_LINK_RULES = {
     ],
     "docs/operations/README.md": [
         KNOWLEDGE_README,
+        "docs/operations/autoresearch/README.md",
         "docs/operations/deploy/README.md",
         "docs/operations/prompt-templates/README.md",
         "docs/operations/memory-side/README.md",
         "docs/operations/task-interface/README.md",
+    ],
+    "docs/operations/autoresearch/README.md": [
+        "docs/operations/autoresearch/minimal-loop.md",
+        "docs/operations/autoresearch/research-cli-help.md",
+        "docs/operations/autoresearch/tmp-exrepo-maintenance.md",
+        "docs/operations/autoresearch/research-eval-contracts.md",
+        "docs/operations/autoresearch/research-eval-observability.md",
+        "docs/operations/autoresearch/closeout/README.md",
     ],
     "docs/operations/prompt-templates/README.md": [
         KNOWLEDGE_README,

@@ -1,20 +1,20 @@
 ---
 title: "Deploy Runbook"
 status: active
-updated: 2026-03-26
+updated: 2026-04-11
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-04-11
 ---
 # Deploy Runbook
 
 > 目的：给当前仓库提供一份统一的部署总览，说明 `Codex`、`Claude`、`OpenCode` 三个 backend 的 deploy target、入口命令和下钻阅读路径。
 
-本页属于 [Deploy / Verify / Maintenance](./deploy/README.md) 路径簇。
+本页属于 [Deploy / Verify / Maintenance](./README.md) 路径簇。
 
 先建立通用边界，再读本页：
 
-- [根目录分层](../knowledge/foundations/root-directory-layering.md)
-- [Toolchain 分层](../../toolchain/toolchain-layering.md)
+- [根目录分层](../../knowledge/foundations/root-directory-layering.md)
+- [Toolchain 分层](../../../toolchain/toolchain-layering.md)
 - [Skill Deployment 维护流](./skill-deployment-maintenance.md)
 
 本页是 repo-local runbook，总结“怎么部署、部署到哪里、接着该读哪页”，不是 canonical truth。
@@ -104,17 +104,17 @@ python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --o
 
 读对应 backend 页面：
 
-- [Codex Memory Side Repo-local Adapter 部署帮助](./memory-side/codex-deployment-help.md)
-- [Claude Memory Side Repo-local Adapter 适配帮助](./memory-side/claude-adaptation-help.md)
-- [OpenCode Memory Side Repo-local Adapter 部署帮助](./memory-side/opencode-deployment-help.md)
+- [Codex Memory Side Repo-local Adapter 部署帮助](../memory-side/codex-deployment-help.md)
+- [Claude Memory Side Repo-local Adapter 适配帮助](../memory-side/claude-adaptation-help.md)
+- [OpenCode Memory Side Repo-local Adapter 部署帮助](../memory-side/opencode-deployment-help.md)
 
 ### 2. 你关心 `Task Interface`
 
 读对应 backend 页面：
 
-- [Codex Task Interface Repo-local Adapter 部署帮助](./task-interface/codex-deployment-help.md)
-- [Claude Task Interface Repo-local Adapter 适配帮助](./task-interface/claude-adaptation-help.md)
-- [OpenCode Task Interface Repo-local Adapter 部署帮助](./task-interface/opencode-deployment-help.md)
+- [Codex Task Interface Repo-local Adapter 部署帮助](../task-interface/codex-deployment-help.md)
+- [Claude Task Interface Repo-local Adapter 适配帮助](../task-interface/claude-adaptation-help.md)
+- [OpenCode Task Interface Repo-local Adapter 部署帮助](../task-interface/opencode-deployment-help.md)
 
 ## 六、判断标准
 

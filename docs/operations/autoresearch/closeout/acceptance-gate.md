@@ -1,14 +1,14 @@
 ---
 title: "Autoresearch closeout acceptance gate"
 status: superseded
-updated: 2026-04-08
+updated: 2026-04-11
 owner: aw-kernel
-last_verified: 2026-04-08
+last_verified: 2026-04-11
 ---
 
 # Autoresearch closeout acceptance gate
 
-> 非默认入口。本文只保留 closeout acceptance gate 的审计与复跑说明；只有在复核 closeout lineage / audit 或重跑 gate 证据链时才进入。日常入口先回到 [README.md](./README.md) 中的 `autoresearch-minimal-loop / research-cli-help / tmp-exrepo-maintenance`。
+> 非默认入口。本文只保留 closeout acceptance gate 的审计与复跑说明；只有在复核 closeout lineage / audit 或重跑 gate 证据链时才进入。日常入口先回到 [README.md](../README.md) 中的 `autoresearch-minimal-loop / research-cli-help / tmp-exrepo-maintenance`。
 
 > 目的：把当前 `autoresearch` closeout 的验收动作收成一条可重复的 gate 链，明确先做什么、失败时停在哪里、如何回填状态。
 

@@ -1,9 +1,9 @@
 ---
 title: "Research 评测契约与边界"
 status: active
-updated: 2026-04-06
+updated: 2026-04-11
 owner: aw-kernel
-last_verified: 2026-04-06
+last_verified: 2026-04-11
 ---
 # Research 评测契约与边界
 
@@ -214,9 +214,9 @@ runner 当前行为是：
 ## 十二、相关文档
 
 - [Research 评测观测与输出规范](./research-eval-observability.md)
-- [Research CLI 指令](../operations/research-cli-help.md)
-- [Toolchain 分层](../../toolchain/toolchain-layering.md)
-- [toolchain/evals/README.md](../../toolchain/evals/README.md)
-- [toolchain/scripts/research/README.md](../../toolchain/scripts/research/README.md)
-- [Codex Memory Side Repo-local Adapter 部署帮助](../operations/memory-side/codex-deployment-help.md)
-- [Codex Task Interface Repo-local Adapter 部署帮助](../operations/task-interface/codex-deployment-help.md)
+- [Research CLI 指令](./research-cli-help.md)
+- [Toolchain 分层](../../../toolchain/toolchain-layering.md)
+- [toolchain/evals/README.md](../../../toolchain/evals/README.md)
+- [toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)
+- [Codex Memory Side Repo-local Adapter 部署帮助](../memory-side/codex-deployment-help.md)
+- [Codex Task Interface Repo-local Adapter 部署帮助](../task-interface/codex-deployment-help.md)

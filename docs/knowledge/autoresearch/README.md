@@ -11,7 +11,7 @@
 
 1. [overview.md](./overview.md)
 2. 如果任务是 repo-local 运行或维护，再先回到 [../../operations/README.md](../../operations/README.md) 分流到当前 runbook。
-3. 如果任务涉及 research 合同或观测口径，再先回到 `docs/operations/research-eval-contracts.md` 与 `docs/operations/research-eval-observability.md`。
+3. 如果任务涉及 research 合同或观测口径，再先回到 `docs/operations/autoresearch/research-eval-contracts.md` 与 `docs/operations/autoresearch/research-eval-observability.md`。
 4. 只有任务明确涉及实现或 CLI 内部接线时，再进入 [../../../toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)。
 5. 要复核 closeout lineage / audit 时，再按需进入 `docs/operations/` 中对应的 superseded 叶子页。
 
