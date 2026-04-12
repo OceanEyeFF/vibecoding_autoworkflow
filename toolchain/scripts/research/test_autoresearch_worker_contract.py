@@ -26,7 +26,7 @@ def build_contract_payload(*, suite_name: str = "lane.yaml") -> dict[str, object
         "objective": "Worker contract",
         "target_surface": "memory-side",
         "mutable_paths": ["product/memory-side/skills"],
-        "frozen_paths": ["docs/knowledge"],
+        "frozen_paths": ["docs"],
         "train_suites": [suite_name],
         "validation_suites": [suite_name],
         "acceptance_suites": [suite_name],

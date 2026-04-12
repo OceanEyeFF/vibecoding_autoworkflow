@@ -4,7 +4,7 @@
 
 根层级说明见：
 
-- `docs/knowledge/foundations/root-directory-layering.md`
+- `docs/project-maintenance/foundations/root-directory-layering.md`
 - `AGENTS.md`
 
 ## 导航符号说明

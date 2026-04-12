@@ -30,7 +30,7 @@ def build_p2_contract_payload(train_suite: str, validation_suite: str, acceptanc
         "objective": "P2 loop smoke",
         "target_surface": "research prompt",
         "mutable_paths": [prompt_path],
-        "frozen_paths": ["docs/knowledge"],
+        "frozen_paths": ["docs"],
         "train_suites": [train_suite],
         "validation_suites": [validation_suite],
         "acceptance_suites": [acceptance_suite],
@@ -52,7 +52,7 @@ def init_git_repo(root: Path) -> None:
     subprocess.run(["git", "config", "user.name", "tester"], cwd=root, check=True, capture_output=True, text=True)
     (root / ".gitignore").write_text(".autoworkflow/\n", encoding="utf-8")
     (root / "README.md").write_text("initial\n", encoding="utf-8")
-    (root / "docs" / "knowledge").mkdir(parents=True, exist_ok=True)
+    (root / "docs").mkdir(parents=True, exist_ok=True)
     (root / "toolchain" / "scripts" / "research" / "tasks").mkdir(parents=True, exist_ok=True)
     (root / "toolchain" / "scripts" / "research" / "tasks" / "context-routing-skill-prompt.md").write_text(
         "initial prompt\n",
@@ -496,7 +496,7 @@ class RunAutoresearchLoopTest(unittest.TestCase):
                 "objective": "Demo",
                 "target_surface": "memory-side",
                 "mutable_paths": ["product/memory-side/skills"],
-                "frozen_paths": ["docs/knowledge"],
+                "frozen_paths": ["docs"],
                 "train_suites": ["train.yaml"],
                 "validation_suites": ["validation.yaml"],
                 "acceptance_suites": ["acceptance.yaml"],

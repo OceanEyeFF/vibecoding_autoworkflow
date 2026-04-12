@@ -26,7 +26,7 @@ def _valid_payload() -> dict:
         "evidence": {
             "rule": ["AGENTS.md"],
             "folders": ["toolchain/scripts/test/README.md"],
-            "document": ["docs/operations/governance/review-verify-handbook.md"],
+            "document": ["docs/project-maintenance/governance/review-verify-handbook.md"],
             "code": ["toolchain/scripts/test/governance_assess.py"],
         },
     }
@@ -59,7 +59,7 @@ def test_main_rejects_partial_evidence_map(tmp_path: Path, monkeypatch: pytest.M
             "evidence": {
                 "rule": ["AGENTS.md"],
                 "folders": ["toolchain/scripts/test/README.md"],
-                "document": ["docs/operations/governance/review-verify-handbook.md"],
+                "document": ["docs/project-maintenance/governance/review-verify-handbook.md"],
             },
         },
     )
@@ -80,7 +80,7 @@ def test_load_input_json_rejects_out_of_range_scores(tmp_path: Path) -> None:
             "evidence": {
                 "rule": ["AGENTS.md"],
                 "folders": ["toolchain/scripts/test/README.md"],
-                "document": ["docs/operations/governance/review-verify-handbook.md"],
+                "document": ["docs/project-maintenance/governance/review-verify-handbook.md"],
                 "code": ["toolchain/scripts/test/governance_assess.py"],
             },
         },

@@ -24,7 +24,7 @@ def build_contract_payload(train_suite: str, validation_suite: str, acceptance_s
         "objective": "P1.3 smoke",
         "target_surface": "memory-side",
         "mutable_paths": ["product/memory-side/skills"],
-        "frozen_paths": ["docs/knowledge"],
+        "frozen_paths": ["docs"],
         "train_suites": [train_suite],
         "validation_suites": [validation_suite],
         "acceptance_suites": [acceptance_suite],
@@ -45,9 +45,9 @@ def init_git_repo(root: Path) -> None:
     (root / ".gitignore").write_text(".autoworkflow/\n", encoding="utf-8")
     (root / "README.md").write_text("initial\n", encoding="utf-8")
     (root / "product" / "memory-side" / "skills").mkdir(parents=True, exist_ok=True)
-    (root / "docs" / "knowledge").mkdir(parents=True, exist_ok=True)
+    (root / "docs").mkdir(parents=True, exist_ok=True)
     (root / "product" / "memory-side" / "skills" / "skill.md").write_text("initial skill\n", encoding="utf-8")
-    (root / "docs" / "knowledge" / "README.md").write_text("frozen\n", encoding="utf-8")
+    (root / "docs" / "README.md").write_text("frozen\n", encoding="utf-8")
     subprocess.run(["git", "add", ".gitignore", "README.md", "product", "docs"], cwd=root, check=True, capture_output=True, text=True)
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=root, check=True, capture_output=True, text=True)
 

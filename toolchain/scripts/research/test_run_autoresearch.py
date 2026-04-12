@@ -41,7 +41,7 @@ def build_contract_payload(
         "objective": "Baseline aggregation",
         "target_surface": "memory-side",
         "mutable_paths": mutable_paths or ["product/memory-side/skills"],
-        "frozen_paths": ["docs/knowledge"],
+        "frozen_paths": ["docs"],
         "train_suites": [train_suite],
         "validation_suites": [validation_suite],
         "acceptance_suites": [acceptance_suite],
@@ -155,9 +155,9 @@ def init_git_repo(root: Path) -> None:
     (root / ".gitignore").write_text(".autoworkflow/\n", encoding="utf-8")
     (root / "README.md").write_text("initial\n", encoding="utf-8")
     (root / "product" / "memory-side" / "skills").mkdir(parents=True, exist_ok=True)
-    (root / "docs" / "knowledge").mkdir(parents=True, exist_ok=True)
+    (root / "docs").mkdir(parents=True, exist_ok=True)
     (root / "product" / "memory-side" / "skills" / "skill.md").write_text("initial skill\n", encoding="utf-8")
-    (root / "docs" / "knowledge" / "README.md").write_text("frozen\n", encoding="utf-8")
+    (root / "docs" / "README.md").write_text("frozen\n", encoding="utf-8")
     subprocess.run(["git", "add", ".gitignore", "README.md", "product", "docs"], cwd=root, check=True, capture_output=True, text=True)
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=root, check=True, capture_output=True, text=True)
     subprocess.run(
@@ -209,7 +209,7 @@ class RunAutoresearchTest(unittest.TestCase):
             skill_dir = exrepo / ".agents" / "skills" / "context-routing-skill"
             skill_dir.mkdir(parents=True, exist_ok=True)
             (exrepo / "product" / "memory-side" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
-            (exrepo / "docs" / "knowledge" / "memory-side").mkdir(parents=True, exist_ok=True)
+            (exrepo / "docs" / "deployable-skills" / "memory-side").mkdir(parents=True, exist_ok=True)
             (exrepo / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
                 "canonical\n",
                 encoding="utf-8",
@@ -222,12 +222,12 @@ class RunAutoresearchTest(unittest.TestCase):
                 "entrypoints\n",
                 encoding="utf-8",
             )
-            (exrepo / "docs" / "knowledge" / "memory-side" / "overview.md").write_text("overview\n", encoding="utf-8")
+            (exrepo / "docs" / "deployable-skills" / "memory-side" / "overview.md").write_text("overview\n", encoding="utf-8")
             (skill_dir / "SKILL.md").write_text(
                 "## Canonical Sources\n"
                 "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
                 "2. `product/memory-side/skills/context-routing-skill/references/entrypoints.md`\n"
-                "3. `docs/knowledge/memory-side/overview.md`\n",
+                "3. `docs/deployable-skills/memory-side/overview.md`\n",
                 encoding="utf-8",
             )
 
@@ -845,7 +845,7 @@ class RunAutoresearchTest(unittest.TestCase):
             skill_path.write_text(
                 "## Canonical Sources\n"
                 "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
-                "2. `docs/knowledge/memory-side/overview.md`\n",
+                "2. `docs/deployable-skills/memory-side/overview.md`\n",
                 encoding="utf-8",
             )
             write_suite_manifest(
@@ -970,11 +970,11 @@ class RunAutoresearchTest(unittest.TestCase):
                 "canonical\n",
                 encoding="utf-8",
             )
-            (train_repo / "docs" / "knowledge" / "memory-side").mkdir(parents=True, exist_ok=True)
+            (train_repo / "docs" / "deployable-skills" / "memory-side").mkdir(parents=True, exist_ok=True)
             (train_skill_dir / "SKILL.md").write_text(
                 "## Canonical Sources\n"
                 "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
-                "2. `docs/knowledge/memory-side/`\n",
+                "2. `docs/deployable-skills/memory-side/`\n",
                 encoding="utf-8",
             )
 

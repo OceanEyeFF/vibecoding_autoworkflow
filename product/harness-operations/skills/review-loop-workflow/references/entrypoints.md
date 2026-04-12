@@ -4,9 +4,9 @@ Load the minimum harness docs in this order.
 
 ## Always Read First
 
-- `docs/knowledge/README.md`
+- `docs/deployable-skills/README.md`
 - `AGENTS.md`
-- `docs/operations/review-verify-handbook.md`
+- `docs/project-maintenance/governance/review-verify-handbook.md`
 
 ## Read For Harness Contract
 

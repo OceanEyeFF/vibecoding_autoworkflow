@@ -23,9 +23,9 @@ def test_evaluate_governance_caps_overall_when_code_fails() -> None:
             "document": 85,
             "code": 30,
             "evidence": {
-                "rule": ["docs/operations/governance/review-verify-handbook.md"],
-                "folders": ["docs/knowledge/foundations/root-directory-layering.md"],
-                "document": ["docs/operations/governance/review-verify-handbook.md"],
+                "rule": ["docs/project-maintenance/governance/review-verify-handbook.md"],
+                "folders": ["docs/project-maintenance/foundations/root-directory-layering.md"],
+                "document": ["docs/project-maintenance/governance/review-verify-handbook.md"],
                 "code": ["toolchain/scripts/test/governance_assess.py"],
             },
         }
@@ -44,9 +44,9 @@ def test_evaluate_governance_marks_conditional_pass() -> None:
             "document": 61,
             "code": 88,
             "evidence": {
-                "rule": ["docs/operations/governance/review-verify-handbook.md"],
-                "folders": ["docs/knowledge/foundations/root-directory-layering.md"],
-                "document": ["docs/operations/governance/review-verify-handbook.md"],
+                "rule": ["docs/project-maintenance/governance/review-verify-handbook.md"],
+                "folders": ["docs/project-maintenance/foundations/root-directory-layering.md"],
+                "document": ["docs/project-maintenance/governance/review-verify-handbook.md"],
                 "code": ["toolchain/scripts/test/governance_assess.py"],
             },
         }
@@ -76,9 +76,9 @@ def test_evaluate_repo_governance_applies_change_governance_cap() -> None:
             },
             "evidence": {
                 "baseline_hygiene": ["docs/README.md"],
-                "change_governance": ["docs/operations/governance/branch-pr-governance.md"],
+                "change_governance": ["docs/project-maintenance/governance/branch-pr-governance.md"],
                 "automation": ["toolchain/scripts/test/README.md"],
-                "structural_clarity": ["docs/knowledge/foundations/root-directory-layering.md"],
+                "structural_clarity": ["docs/project-maintenance/foundations/root-directory-layering.md"],
                 "operational_maintainability": ["toolchain/scripts/test/repo_governance_eval.py"],
             },
         }
@@ -86,7 +86,7 @@ def test_evaluate_repo_governance_applies_change_governance_cap() -> None:
 
     assert result["total"] == 20
     assert result["rating"] == "可用（存在治理风险，变更治理薄弱）"
-    assert result["dimensions"]["change_governance"]["evidence"] == ["docs/operations/governance/branch-pr-governance.md"]
+    assert result["dimensions"]["change_governance"]["evidence"] == ["docs/project-maintenance/governance/branch-pr-governance.md"]
 
 
 def test_load_input_json_reports_missing_file() -> None:
@@ -123,8 +123,8 @@ def test_repo_governance_load_input_rejects_invalid_values(tmp_path: Path) -> No
     invalid_score = tmp_path / "repo-invalid-score.json"
     invalid_score.write_text(
         '{"scores":{"baseline_hygiene": 5, "change_governance": 4, "automation": "bad", "structural_clarity": 4, "operational_maintainability": 4},'
-        '"evidence":{"baseline_hygiene":["docs/README.md"],"change_governance":["docs/operations/governance/review-verify-handbook.md"],'
-        '"automation":["toolchain/scripts/test/README.md"],"structural_clarity":["docs/knowledge/foundations/root-directory-layering.md"],'
+        '"evidence":{"baseline_hygiene":["docs/README.md"],"change_governance":["docs/project-maintenance/governance/review-verify-handbook.md"],'
+        '"automation":["toolchain/scripts/test/README.md"],"structural_clarity":["docs/project-maintenance/foundations/root-directory-layering.md"],'
         '"operational_maintainability":["toolchain/scripts/test/repo_governance_eval.py"]}}',
         encoding="utf-8",
     )
@@ -134,8 +134,8 @@ def test_repo_governance_load_input_rejects_invalid_values(tmp_path: Path) -> No
     invalid_readiness = tmp_path / "repo-invalid-readiness.json"
     invalid_readiness.write_text(
         '{"scores":{"baseline_hygiene": 5, "change_governance": 4, "automation": 4, "structural_clarity": 4, "operational_maintainability": 4},'
-        '"evidence":{"baseline_hygiene":["docs/README.md"],"change_governance":["docs/operations/governance/review-verify-handbook.md"],'
-        '"automation":["toolchain/scripts/test/README.md"],"structural_clarity":["docs/knowledge/foundations/root-directory-layering.md"],'
+        '"evidence":{"baseline_hygiene":["docs/README.md"],"change_governance":["docs/project-maintenance/governance/review-verify-handbook.md"],'
+        '"automation":["toolchain/scripts/test/README.md"],"structural_clarity":["docs/project-maintenance/foundations/root-directory-layering.md"],'
         '"operational_maintainability":["toolchain/scripts/test/repo_governance_eval.py"]},'
         '"agent_readiness":{"safe_change": null}}',
         encoding="utf-8",

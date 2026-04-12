@@ -14,9 +14,9 @@ last_verified: 2026-03-26
 | 目的 | 入口 |
 |------|------|
 | 建立 docs 模块边界 | [`docs/README.md`](./docs/README.md) |
-| 进入知识主线 | [`docs/knowledge/README.md`](./docs/knowledge/README.md) |
-| 进入 foundations 主线 | [`docs/knowledge/foundations/README.md`](./docs/knowledge/foundations/README.md) |
-| 建立根目录边界 | [`docs/knowledge/foundations/root-directory-layering.md`](./docs/knowledge/foundations/root-directory-layering.md) |
+| 进入项目维护主线 | [`docs/project-maintenance/README.md`](./docs/project-maintenance/README.md) |
+| 进入 deployable skills 主线 | [`docs/deployable-skills/README.md`](./docs/deployable-skills/README.md) |
+| 建立根目录边界 | [`docs/project-maintenance/foundations/root-directory-layering.md`](./docs/project-maintenance/foundations/root-directory-layering.md) |
 | 建立路径与文档治理边界 | [`AGENTS.md`](./AGENTS.md) |
 
 ## 按任务进入
@@ -25,13 +25,13 @@ last_verified: 2026-03-26
 |------|------|
 | 理解项目是什么、根目录怎么分层 | [`README.md`](./README.md) |
 | 看文档真相层与阅读顺序 | [`docs/README.md`](./docs/README.md) |
-| 看稳定规则与分层合同 | [`docs/knowledge/README.md`](./docs/knowledge/README.md) |
-| 改 `Memory Side` 主线文档 | [`docs/knowledge/memory-side/README.md`](./docs/knowledge/memory-side/README.md) |
-| 改 `Task Interface` 主线文档 | [`docs/knowledge/task-interface/README.md`](./docs/knowledge/task-interface/README.md) |
+| 看稳定规则与分层合同 | [`docs/deployable-skills/README.md`](./docs/deployable-skills/README.md) |
+| 改 `Memory Side` 主线文档 | [`docs/deployable-skills/memory-side/README.md`](./docs/deployable-skills/memory-side/README.md) |
+| 改 `Task Interface` 主线文档 | [`docs/deployable-skills/task-interface/README.md`](./docs/deployable-skills/task-interface/README.md) |
 | 改业务源码 | [`product/README.md`](./product/README.md) |
 | 改工具脚本、部署或评测 | [`toolchain/README.md`](./toolchain/README.md) |
-| 看 repo-local runbook | [`docs/operations/README.md`](./docs/operations/README.md) |
-| 运行路径治理检查 | [`docs/operations/governance/path-governance-checks.md`](./docs/operations/governance/path-governance-checks.md) |
+| 看 repo-local runbook | [`docs/project-maintenance/README.md`](./docs/project-maintenance/README.md) |
+| 运行路径治理检查 | [`docs/project-maintenance/governance/path-governance-checks.md`](./docs/project-maintenance/governance/path-governance-checks.md) |
 | 看 agent-facing 最小规则 | [`AGENTS.md`](./AGENTS.md) |
 
 ## 根目录对象怎么理解

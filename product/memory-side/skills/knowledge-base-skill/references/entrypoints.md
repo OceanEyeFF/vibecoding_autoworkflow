@@ -4,13 +4,13 @@ Load the generic Memory Side contract docs in this order.
 
 ## Always Read First
 
-- `docs/knowledge/memory-side/layer-boundary.md`
-- `docs/knowledge/memory-side/overview.md`
-- `docs/knowledge/memory-side/knowledge-base.md`
+- `docs/deployable-skills/memory-side/layer-boundary.md`
+- `docs/deployable-skills/memory-side/overview.md`
+- `docs/deployable-skills/memory-side/knowledge-base.md`
 
 ## Read When You Need Memory Side Boundaries
 
-- `docs/knowledge/memory-side/skill-agent-model.md`
+- `docs/deployable-skills/memory-side/skill-agent-model.md`
 
 ## Reading Policy
 

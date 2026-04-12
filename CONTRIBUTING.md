@@ -21,10 +21,10 @@ python -m pytest toolchain/scripts/test/test_folder_logic_check.py toolchain/scr
 
 ## Review Expectations
 
-- Follow `docs/operations/governance/review-verify-handbook.md`.
+- Follow `docs/project-maintenance/governance/review-verify-handbook.md`.
 - If you touch governance rules, update the matching docs and checks in the same PR.
-- If you introduce a new root-level object, update `docs/knowledge/foundations/root-directory-layering.md` and folder logic checks.
+- If you introduce a new root-level object, update `docs/project-maintenance/foundations/root-directory-layering.md` and folder logic checks.
 
 ## PR / Branch Rules
 
-See `docs/operations/governance/branch-pr-governance.md` for the branch model, PR requirements, and CI expectations.
+See `docs/project-maintenance/governance/branch-pr-governance.md` for the branch model, PR requirements, and CI expectations.

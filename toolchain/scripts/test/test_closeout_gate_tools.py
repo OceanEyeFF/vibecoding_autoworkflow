@@ -19,10 +19,11 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "CONTRIBUTING.md",
             ".codex/config.toml",
             ".github/workflows/ci.yml",
-            "docs/knowledge/README.md",
-            "docs/knowledge/autoresearch/README.md",
-            "docs/operations/governance/review-verify-handbook.md",
-            "docs/operations/governance/path-governance-checks.md",
+            "docs/project-maintenance/README.md",
+            "docs/deployable-skills/README.md",
+            "docs/autoresearch/README.md",
+            "docs/project-maintenance/governance/review-verify-handbook.md",
+            "docs/project-maintenance/governance/path-governance-checks.md",
             ".autoworkflow/closeout/demo/summary.json",
             "toolchain/scripts/test/scope_gate_check.py",
             "tools/scope_gate_check.py",
@@ -33,9 +34,9 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             ".codex/",
             ".github/",
             ".autoworkflow/closeout/",
-            "docs/knowledge/README.md",
-            "docs/knowledge/autoresearch/README.md",
-            "docs/operations/",
+            "docs/project-maintenance/",
+            "docs/deployable-skills/",
+            "docs/autoresearch/",
             "toolchain/scripts/test/",
             "tools/scope_gate_check.py",
         ),
@@ -46,17 +47,17 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
 
 def test_check_scope_accepts_closeout_prefix() -> None:
     result = check_scope(
-        ["docs/operations/governance/review-verify-handbook.md"],
-        ("docs/operations/governance/",),
+        ["docs/project-maintenance/governance/review-verify-handbook.md"],
+        ("docs/project-maintenance/governance/",),
     )
     assert result.passed is True
     assert result.violations == []
 
 
 def test_check_scope_flags_disallowed_changes() -> None:
-    result = check_scope(["docs/knowledge/README.md"], ("docs/operations/",))
+    result = check_scope(["docs/deployable-skills/README.md"], ("docs/project-maintenance/",))
     assert result.passed is False
-    assert result.violations == ["docs/knowledge/README.md"]
+    assert result.violations == ["docs/deployable-skills/README.md"]
 
 
 def test_update_state_backfills_gate_status() -> None:
@@ -127,12 +128,14 @@ def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path
     assert "CONTRIBUTING.md" in command
     assert ".codex/" in command
     assert ".github/" in command
-    assert "docs/knowledge/README.md" in command
-    assert "docs/knowledge/autoresearch/README.md" in command
-    assert "docs/knowledge/autoresearch/overview.md" in command
-    assert "docs/knowledge/foundations/root-directory-layering.md" in command
+    assert "docs/project-maintenance/README.md" in command
+    assert "docs/deployable-skills/README.md" in command
+    assert "docs/autoresearch/README.md" in command
+    assert "docs/autoresearch/knowledge/README.md" in command
+    assert "docs/autoresearch/knowledge/overview.md" in command
+    assert "docs/project-maintenance/foundations/root-directory-layering.md" in command
     assert "toolchain/toolchain-layering.md" in command
-    assert "docs/operations/governance/review-verify-handbook.md" in command
+    assert "docs/project-maintenance/governance/review-verify-handbook.md" in command
 
 
 def test_run_spec_gate_includes_folder_logic(monkeypatch, tmp_path) -> None:
@@ -160,7 +163,7 @@ def test_run_spec_gate_includes_folder_logic(monkeypatch, tmp_path) -> None:
     ]
     assert any(command[-2:] == ["--repo-root", str(tmp_path)] for command in commands)
     assert any("folder_logic_check.py" in command[1] for command in commands)
-    assert any("docs/knowledge/autoresearch" in command for command in commands)
+    assert any("docs/autoresearch" in command for command in commands)
 
 
 def test_run_test_gate_includes_folder_logic_tests(monkeypatch, tmp_path) -> None:

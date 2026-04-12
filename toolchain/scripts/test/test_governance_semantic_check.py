@@ -28,13 +28,13 @@ def test_check_required_handoffs_flags_missing_link(tmp_path: Path) -> None:
     )
     write_doc(tmp_path / "toolchain/scripts/README.md", "# scripts\n")
     write_doc(tmp_path / "toolchain/evals/README.md", "# evals\n")
-    write_doc(tmp_path / "docs/knowledge/README.md", "")
-    write_doc(tmp_path / "docs/knowledge/memory-side/formats/context-routing-output-format.md", "")
-    write_doc(tmp_path / "docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md", "")
-    write_doc(tmp_path / "docs/knowledge/task-interface/task-contract.md", "")
-    write_doc(tmp_path / "docs/knowledge/memory-side/context-routing.md", "")
-    write_doc(tmp_path / "docs/knowledge/memory-side/writeback-cleanup.md", "")
-    write_doc(tmp_path / "docs/knowledge/autoresearch/README.md", "")
+    write_doc(tmp_path / "docs/deployable-skills/README.md", "")
+    write_doc(tmp_path / "docs/deployable-skills/memory-side/formats/context-routing-output-format.md", "")
+    write_doc(tmp_path / "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md", "")
+    write_doc(tmp_path / "docs/deployable-skills/task-interface/task-contract.md", "")
+    write_doc(tmp_path / "docs/deployable-skills/memory-side/context-routing.md", "")
+    write_doc(tmp_path / "docs/deployable-skills/memory-side/writeback-cleanup.md", "")
+    write_doc(tmp_path / "docs/autoresearch/knowledge/README.md", "")
 
     report = SemanticReport()
     check_required_handoffs(tmp_path, report)
@@ -43,7 +43,7 @@ def test_check_required_handoffs_flags_missing_link(tmp_path: Path) -> None:
 
 
 def test_check_foundations_authority_shadows_flags_prefixed_duplicate(tmp_path: Path) -> None:
-    foundations_dir = tmp_path / "docs/knowledge/foundations"
+    foundations_dir = tmp_path / "docs/project-maintenance/foundations"
     foundations_dir.mkdir(parents=True, exist_ok=True)
     required = [
         "root-directory-layering.md",
@@ -186,18 +186,18 @@ def test_check_canonical_skill_packages_are_minimal_requires_harness_prompt_and_
 def test_check_canonical_entrypoints_cover_required_formats_flags_missing_link(tmp_path: Path) -> None:
     write_doc(
         tmp_path / "product/memory-side/skills/context-routing-skill/references/entrypoints.md",
-        "# refs\n\n- `docs/knowledge/memory-side/context-routing-rules.md`\n",
+        "# refs\n\n- `docs/deployable-skills/memory-side/context-routing-rules.md`\n",
     )
     write_doc(
         tmp_path / "product/memory-side/skills/writeback-cleanup-skill/references/entrypoints.md",
-        "# refs\n\n- `docs/knowledge/memory-side/writeback-cleanup-rules.md`\n",
+        "# refs\n\n- `docs/deployable-skills/memory-side/writeback-cleanup-rules.md`\n",
     )
     write_doc(
-        tmp_path / "docs/knowledge/memory-side/formats/context-routing-output-format.md",
+        tmp_path / "docs/deployable-skills/memory-side/formats/context-routing-output-format.md",
         "# format\n",
     )
     write_doc(
-        tmp_path / "docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md",
+        tmp_path / "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md",
         "# format\n",
     )
 

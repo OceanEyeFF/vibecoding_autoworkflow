@@ -11,8 +11,9 @@
 
 ## 当前结构
 
-- `knowledge/`：canonical truth、基础治理、文档治理基线与稳定模块入口
-- `operations/`：repo-local runbook、部署和维护说明
+- [project-maintenance/README.md](./project-maintenance/README.md)：项目维护、治理、deploy 与 backend usage
+- [deployable-skills/README.md](./deployable-skills/README.md)：可部署能力的 canonical truth 与合同
+- [autoresearch/README.md](./autoresearch/README.md)：`autoresearch` 模块的 knowledge、references 与 runbooks
 
 ## 阅读顺序
 
@@ -21,14 +22,17 @@
 
 ## 文档治理规则
 
-- `knowledge/` 不放 repo-local guide、benchmark 说明或外部参考
-- `operations/` 不冒充真相层
+- `project-maintenance/` 不冒充能力合同层
+- `deployable-skills/` 不承载 repo-local runbook 或 operator 手册
+- `autoresearch/` 只承接 `autoresearch` 模块本身的文档，不替代通用知识层
 - `docs/` 不长期承载 `suspended` / scratch 文档；需要共享保留的暂停文档应转为 `superseded`，非共享草稿应移出 `docs/`
 - `docs/` 下除 `README.md` 之外的正文文档，都应保持 `title / status / updated / owner / last_verified` frontmatter
 - 新增正文文档后，至少更新最近的 `README.md` 入口，不留下孤儿文档
-- 研究结论一旦准入主线，必须同步升格到 `knowledge/`、`operations/`、`toolchain/` 或 `product/` 的承接位
+- 研究结论一旦准入主线，必须同步升格到 `project-maintenance/`、`deployable-skills/`、`autoresearch/`、`toolchain/` 或 `product/` 的承接位
 
 ## AI 默认路径
 
-- 先读 `knowledge/` 的主线入口
-- 需要 repo-local 步骤时再进入 `operations/`
+- 先读 `project-maintenance/` 与 `deployable-skills/` 的入口，确认当前任务是维护问题还是能力合同问题
+- 需要 repo-local workflow 步骤时进入 `project-maintenance/`
+- 需要技能合同与格式时进入 `deployable-skills/`
+- 任务明确属于 `autoresearch` 模块时，再进入 `autoresearch/`

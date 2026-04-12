@@ -4,13 +4,13 @@ Load the minimum planning docs in this order.
 
 ## Always Read First
 
-- `docs/knowledge/README.md`
+- `docs/deployable-skills/README.md`
 - `AGENTS.md`
 
 ## Read For Planning Shape
 
-- `docs/knowledge/task-interface/task-contract.md`
-- `docs/knowledge/task-interface/task-contract.md`
+- `docs/deployable-skills/task-interface/task-contract.md`
+- `docs/deployable-skills/task-interface/task-contract.md`
 - `product/harness-operations/skills/execution-contract-template/references/prompt.md`
 
 ## Reading Policy

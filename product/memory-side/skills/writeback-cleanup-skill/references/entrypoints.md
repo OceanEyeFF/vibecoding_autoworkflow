@@ -4,19 +4,19 @@ Load the generic Memory Side contract docs in this order.
 
 ## Always Read First
 
-- `docs/knowledge/memory-side/layer-boundary.md`
-- `docs/knowledge/memory-side/overview.md`
-- `docs/knowledge/memory-side/writeback-cleanup.md`
+- `docs/deployable-skills/memory-side/layer-boundary.md`
+- `docs/deployable-skills/memory-side/overview.md`
+- `docs/deployable-skills/memory-side/writeback-cleanup.md`
 
 ## Read For Writeback Logic
 
-- `docs/knowledge/memory-side/writeback-cleanup-rules.md`
-- `docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md`
+- `docs/deployable-skills/memory-side/writeback-cleanup-rules.md`
+- `docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md`
 
 ## Read Only If Layer Boundaries Are Unclear
 
-- `docs/knowledge/memory-side/knowledge-base.md`
-- `docs/knowledge/memory-side/skill-agent-model.md`
+- `docs/deployable-skills/memory-side/knowledge-base.md`
+- `docs/deployable-skills/memory-side/skill-agent-model.md`
 
 ## Reading Policy
 

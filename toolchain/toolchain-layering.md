@@ -63,7 +63,7 @@ toolchain/
 
 ## 五、相关文档
 
-- [根目录分层](../docs/knowledge/foundations/root-directory-layering.md)
+- [根目录分层](../docs/project-maintenance/foundations/root-directory-layering.md)
 - [Toolchain 入口](./README.md)
 - [Scripts 入口总览](./scripts/README.md)
 - [Evals 入口总览](./evals/README.md)

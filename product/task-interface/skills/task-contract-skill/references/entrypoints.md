@@ -4,14 +4,14 @@ Load the generic Task Interface contract docs in this order.
 
 ## Always Read First
 
-- `docs/knowledge/foundations/root-directory-layering.md`
-- `docs/knowledge/task-interface/task-contract.md`
-- `docs/knowledge/task-interface/task-contract.md`
+- `docs/project-maintenance/foundations/root-directory-layering.md`
+- `docs/deployable-skills/task-interface/task-contract.md`
+- `docs/deployable-skills/task-interface/task-contract.md`
 
 ## Read Only If Task Interface Touches Memory Side
 
-- `docs/knowledge/memory-side/overview.md`
-- `docs/knowledge/memory-side/skill-agent-model.md`
+- `docs/deployable-skills/memory-side/overview.md`
+- `docs/deployable-skills/memory-side/skill-agent-model.md`
 
 ## Reading Policy
 

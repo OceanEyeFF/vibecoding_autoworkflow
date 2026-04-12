@@ -10,9 +10,9 @@ last_verified: 2026-03-26
 当前仓库不再维护旧的 roadmap 主线。
 
 - 当前 docs 模块入口：`docs/README.md`
-- 当前知识主线入口：`docs/knowledge/README.md`
-- 当前 foundations 入口：`docs/knowledge/foundations/README.md`
-- 当前根目录边界入口：`docs/knowledge/foundations/root-directory-layering.md`
+- 当前项目维护入口：`docs/project-maintenance/README.md`
+- 当前 deployable skills 入口：`docs/deployable-skills/README.md`
+- 当前根目录边界入口：`docs/project-maintenance/foundations/root-directory-layering.md`
 - 当前路径与文档治理入口：`AGENTS.md`
 - 当前业务源码入口：`product/README.md`
 - 当前部署入口：`toolchain/scripts/deploy/adapter_deploy.py`

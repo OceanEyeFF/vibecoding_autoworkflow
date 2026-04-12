@@ -12,7 +12,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 AGENTS_CONTRACT_DOC = "AGENTS.md"
-KNOWLEDGE_README = "docs/knowledge/README.md"
+PROJECT_MAINTENANCE_README = "docs/project-maintenance/README.md"
+DEPLOYABLE_SKILLS_README = "docs/deployable-skills/README.md"
 DEFAULT_SCAN_PATHS = [
     "README.md",
     "INDEX.md",
@@ -31,17 +32,20 @@ REQUIRED_ENTRY_PATHS = [
     "GUIDE.md",
     "ROADMAP.md",
     "docs/README.md",
-    KNOWLEDGE_README,
-    "docs/knowledge/foundations/README.md",
-    "docs/knowledge/memory-side/README.md",
-    "docs/knowledge/task-interface/README.md",
-    "docs/operations/README.md",
-    "docs/operations/runbooks/README.md",
-    "docs/operations/references/README.md",
-    "docs/operations/governance/README.md",
-    "docs/operations/usage-help/README.md",
-    "docs/operations/governance/path-governance-checks.md",
-    "docs/knowledge/foundations/root-directory-layering.md",
+    PROJECT_MAINTENANCE_README,
+    "docs/project-maintenance/foundations/README.md",
+    "docs/project-maintenance/governance/README.md",
+    "docs/project-maintenance/deploy/README.md",
+    "docs/project-maintenance/usage-help/README.md",
+    "docs/project-maintenance/governance/path-governance-checks.md",
+    DEPLOYABLE_SKILLS_README,
+    "docs/deployable-skills/memory-side/README.md",
+    "docs/deployable-skills/task-interface/README.md",
+    "docs/autoresearch/README.md",
+    "docs/autoresearch/knowledge/README.md",
+    "docs/autoresearch/references/README.md",
+    "docs/autoresearch/runbooks/README.md",
+    "docs/project-maintenance/foundations/root-directory-layering.md",
     "toolchain/toolchain-layering.md",
     "product/README.md",
     "product/harness-operations/README.md",
@@ -64,95 +68,108 @@ AGENTS_CONTRACT_BACKLINK_PATHS = [
     "GUIDE.md",
     "ROADMAP.md",
     "docs/README.md",
-    KNOWLEDGE_README,
-    "docs/knowledge/foundations/README.md",
-    "docs/operations/README.md",
-    "docs/operations/governance/path-governance-checks.md",
+    PROJECT_MAINTENANCE_README,
+    DEPLOYABLE_SKILLS_README,
+    "docs/project-maintenance/foundations/README.md",
+    "docs/autoresearch/README.md",
+    "docs/project-maintenance/governance/path-governance-checks.md",
     ".nav/README.md",
 ]
 ENTRYPOINT_LINK_RULES = {
     "AGENTS.md": [
-        KNOWLEDGE_README,
+        "docs/README.md",
     ],
     "README.md": [
-        KNOWLEDGE_README,
+        "docs/README.md",
     ],
     "INDEX.md": [
-        KNOWLEDGE_README,
+        "docs/README.md",
     ],
     "GUIDE.md": [
-        KNOWLEDGE_README,
+        "docs/README.md",
     ],
     "ROADMAP.md": [
-        KNOWLEDGE_README,
+        "docs/README.md",
     ],
     "docs/README.md": [
-        KNOWLEDGE_README,
+        PROJECT_MAINTENANCE_README,
+        DEPLOYABLE_SKILLS_README,
+        "docs/autoresearch/README.md",
     ],
-    "docs/operations/README.md": [
-        KNOWLEDGE_README,
-        "docs/operations/runbooks/README.md",
-        "docs/operations/references/README.md",
-        "docs/operations/governance/README.md",
-        "docs/operations/usage-help/README.md",
+    PROJECT_MAINTENANCE_README: [
+        "docs/project-maintenance/foundations/README.md",
+        "docs/project-maintenance/governance/README.md",
+        "docs/project-maintenance/deploy/README.md",
+        "docs/project-maintenance/usage-help/README.md",
     ],
-    "docs/operations/runbooks/README.md": [
-        "docs/operations/runbooks/deploy-runbook.md",
-        "docs/operations/runbooks/skill-deployment-maintenance.md",
-        "docs/operations/runbooks/autoresearch-minimal-loop.md",
-        "docs/operations/runbooks/tmp-exrepo-maintenance.md",
+    "docs/project-maintenance/foundations/README.md": [
+        "docs/project-maintenance/foundations/root-directory-layering.md",
+        "toolchain/toolchain-layering.md",
+        AGENTS_CONTRACT_DOC,
     ],
-    "docs/operations/references/README.md": [
-        "docs/operations/references/research-cli-help.md",
-        "docs/operations/references/research-eval-contracts.md",
-        "docs/operations/references/research-eval-observability.md",
+    "docs/project-maintenance/governance/README.md": [
+        "docs/project-maintenance/governance/review-verify-handbook.md",
+        "docs/project-maintenance/governance/path-governance-checks.md",
+        "docs/project-maintenance/governance/branch-pr-governance.md",
     ],
-    "docs/operations/governance/README.md": [
-        "docs/operations/governance/review-verify-handbook.md",
-        "docs/operations/governance/path-governance-checks.md",
-        "docs/operations/governance/branch-pr-governance.md",
+    "docs/project-maintenance/deploy/README.md": [
+        "docs/project-maintenance/deploy/deploy-runbook.md",
+        "docs/project-maintenance/deploy/skill-deployment-maintenance.md",
     ],
-    "docs/operations/usage-help/README.md": [
-        "docs/operations/usage-help/codex.md",
-        "docs/operations/usage-help/claude.md",
-        "docs/operations/usage-help/opencode.md",
+    "docs/project-maintenance/usage-help/README.md": [
+        "docs/project-maintenance/usage-help/codex.md",
+        "docs/project-maintenance/usage-help/claude.md",
+        "docs/project-maintenance/usage-help/opencode.md",
+    ],
+    "docs/autoresearch/README.md": [
+        "docs/autoresearch/knowledge/README.md",
+        "docs/autoresearch/references/README.md",
+        "docs/autoresearch/runbooks/README.md",
+        AGENTS_CONTRACT_DOC,
+    ],
+    "docs/autoresearch/knowledge/README.md": [
+        "docs/autoresearch/knowledge/overview.md",
+    ],
+    "docs/autoresearch/references/README.md": [
+        "docs/autoresearch/references/research-cli-help.md",
+        "docs/autoresearch/references/research-eval-contracts.md",
+        "docs/autoresearch/references/research-eval-observability.md",
+    ],
+    "docs/autoresearch/runbooks/README.md": [
+        "docs/autoresearch/runbooks/autoresearch-minimal-loop.md",
+        "docs/autoresearch/runbooks/tmp-exrepo-maintenance.md",
     ],
     "product/README.md": [
         "product/memory-side/README.md",
         "product/task-interface/README.md",
         "product/harness-operations/README.md",
     ],
-    KNOWLEDGE_README: [
-        "docs/knowledge/foundations/README.md",
-        "docs/knowledge/memory-side/README.md",
-        "docs/knowledge/task-interface/README.md",
-    ],
-    "docs/knowledge/foundations/README.md": [
-        "docs/knowledge/foundations/root-directory-layering.md",
-        "toolchain/toolchain-layering.md",
+    DEPLOYABLE_SKILLS_README: [
+        "docs/deployable-skills/memory-side/README.md",
+        "docs/deployable-skills/task-interface/README.md",
         AGENTS_CONTRACT_DOC,
     ],
-    "docs/knowledge/memory-side/README.md": [
-        "docs/knowledge/memory-side/overview.md",
-        "docs/knowledge/memory-side/layer-boundary.md",
-        "docs/knowledge/memory-side/knowledge-base.md",
-        "docs/knowledge/memory-side/context-routing.md",
-        "docs/knowledge/memory-side/context-routing-rules.md",
-        "docs/knowledge/memory-side/writeback-cleanup.md",
-        "docs/knowledge/memory-side/writeback-cleanup-rules.md",
-        "docs/knowledge/memory-side/skill-agent-model.md",
-        "docs/knowledge/memory-side/formats/context-routing-output-format.md",
-        "docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md",
-        "docs/knowledge/memory-side/prompts/knowledge-base-adapter-prompt.md",
-        "docs/knowledge/memory-side/prompts/context-routing-adapter-prompt.md",
-        "docs/knowledge/memory-side/prompts/writeback-cleanup-adapter-prompt.md",
-        "docs/knowledge/memory-side/skills/knowledge-base-skill.md",
-        "docs/knowledge/memory-side/skills/context-routing-skill.md",
-        "docs/knowledge/memory-side/skills/writeback-cleanup-skill.md",
+    "docs/deployable-skills/memory-side/README.md": [
+        "docs/deployable-skills/memory-side/overview.md",
+        "docs/deployable-skills/memory-side/layer-boundary.md",
+        "docs/deployable-skills/memory-side/knowledge-base.md",
+        "docs/deployable-skills/memory-side/context-routing.md",
+        "docs/deployable-skills/memory-side/context-routing-rules.md",
+        "docs/deployable-skills/memory-side/writeback-cleanup.md",
+        "docs/deployable-skills/memory-side/writeback-cleanup-rules.md",
+        "docs/deployable-skills/memory-side/skill-agent-model.md",
+        "docs/deployable-skills/memory-side/formats/context-routing-output-format.md",
+        "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md",
+        "docs/deployable-skills/memory-side/prompts/knowledge-base-adapter-prompt.md",
+        "docs/deployable-skills/memory-side/prompts/context-routing-adapter-prompt.md",
+        "docs/deployable-skills/memory-side/prompts/writeback-cleanup-adapter-prompt.md",
+        "docs/deployable-skills/memory-side/skills/knowledge-base-skill.md",
+        "docs/deployable-skills/memory-side/skills/context-routing-skill.md",
+        "docs/deployable-skills/memory-side/skills/writeback-cleanup-skill.md",
     ],
-    "docs/knowledge/task-interface/README.md": [
-        "docs/knowledge/task-interface/task-contract.md",
-        "docs/knowledge/task-interface/skills/task-contract-skill.md",
+    "docs/deployable-skills/task-interface/README.md": [
+        "docs/deployable-skills/task-interface/task-contract.md",
+        "docs/deployable-skills/task-interface/skills/task-contract-skill.md",
     ],
 }
 REQUIRED_GITIGNORE_ENTRIES = [
@@ -170,8 +187,9 @@ FRONTMATTER_REQUIRED_KEYS = [
     "last_verified",
 ]
 STATUS_RULES = [
-    ("docs/knowledge/", {"active", "draft", "superseded"}),
-    ("docs/operations/", {"active", "draft", "superseded"}),
+    ("docs/project-maintenance/", {"active", "draft", "superseded"}),
+    ("docs/deployable-skills/", {"active", "draft", "superseded"}),
+    ("docs/autoresearch/", {"active", "draft", "superseded"}),
 ]
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")

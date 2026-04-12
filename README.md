@@ -22,16 +22,16 @@ last_verified: 2026-03-26
 | [`README.md`](./README.md) | 根级 landing page，先回答“这是什么仓库、主线在哪” |
 | [`INDEX.md`](./INDEX.md) | quick index，按任务目标把人或 agent 导向正确入口 |
 | [`GUIDE.md`](./GUIDE.md) / [`ROADMAP.md`](./ROADMAP.md) | 兼容入口，不单独定义主线 |
-| [`AGENTS.md`](./AGENTS.md) | agent-facing 最小工作规则入口；若冲突，以 `docs/knowledge/` 为准 |
+| [`AGENTS.md`](./AGENTS.md) | agent-facing 最小工作规则入口；若冲突，以 `docs/project-maintenance/`、`docs/deployable-skills/` 与 `docs/autoresearch/` 为准 |
 
 ## 默认阅读路径
 
 1. [`docs/README.md`](./docs/README.md)
-2. [`docs/knowledge/README.md`](./docs/knowledge/README.md)
-3. [`docs/knowledge/foundations/README.md`](./docs/knowledge/foundations/README.md)
-4. [`docs/knowledge/foundations/root-directory-layering.md`](./docs/knowledge/foundations/root-directory-layering.md)
+2. [`docs/project-maintenance/README.md`](./docs/project-maintenance/README.md)
+3. [`docs/project-maintenance/foundations/README.md`](./docs/project-maintenance/foundations/README.md)
+4. [`docs/project-maintenance/foundations/root-directory-layering.md`](./docs/project-maintenance/foundations/root-directory-layering.md)
 5. [`AGENTS.md`](./AGENTS.md)
-6. 按任务进入 [`docs/knowledge/memory-side/README.md`](./docs/knowledge/memory-side/README.md)、[`docs/knowledge/task-interface/README.md`](./docs/knowledge/task-interface/README.md)、[`product/README.md`](./product/README.md) 或 [`toolchain/README.md`](./toolchain/README.md)
+6. 按任务进入 [`docs/deployable-skills/memory-side/README.md`](./docs/deployable-skills/memory-side/README.md)、[`docs/deployable-skills/task-interface/README.md`](./docs/deployable-skills/task-interface/README.md)、[`product/README.md`](./product/README.md) 或 [`toolchain/README.md`](./toolchain/README.md)
 
 ## 继续往哪走
 

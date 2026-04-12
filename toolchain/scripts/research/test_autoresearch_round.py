@@ -53,7 +53,7 @@ def build_contract_payload(
         "objective": "Round execution",
         "target_surface": "memory-side",
         "mutable_paths": mutable_paths or ["product/memory-side/skills"],
-        "frozen_paths": ["docs/knowledge"],
+        "frozen_paths": ["docs"],
         "train_suites": [train_suite],
         "validation_suites": [validation_suite],
         "acceptance_suites": [acceptance_suite],
@@ -188,7 +188,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         (self.repo_root / ".gitignore").write_text(".autoworkflow/\n", encoding="utf-8")
         (self.repo_root / "README.md").write_text("initial\n", encoding="utf-8")
         (self.repo_root / "product" / "memory-side" / "skills").mkdir(parents=True, exist_ok=True)
-        (self.repo_root / "docs" / "knowledge").mkdir(parents=True, exist_ok=True)
+        (self.repo_root / "docs").mkdir(parents=True, exist_ok=True)
         (self.repo_root / "product" / "memory-side" / "skills" / "skill.md").write_text(
             "initial skill\n",
             encoding="utf-8",
@@ -197,7 +197,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             "initial secondary skill\n",
             encoding="utf-8",
         )
-        (self.repo_root / "docs" / "knowledge" / "README.md").write_text("frozen\n", encoding="utf-8")
+        (self.repo_root / "docs" / "README.md").write_text("frozen\n", encoding="utf-8")
         (self.repo_root / "train.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
         (self.repo_root / "validation.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
         (self.repo_root / "acceptance.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
@@ -733,7 +733,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_prepare_round_rejects_target_path_outside_mutable_paths(self) -> None:
         mutation_payload = build_mutation_payload()
-        mutation_payload["target_paths"] = ["docs/knowledge"]
+        mutation_payload["target_paths"] = ["docs"]
         with self.assertRaisesRegex(ValueError, "Mutation target_paths must stay within contract.mutable_paths"):
             self.round_manager.ensure_prepare_allowed(self.contract, mutation_payload)
 

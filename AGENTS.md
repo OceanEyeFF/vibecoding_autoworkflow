@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> 这是当前仓库的 agent-facing 最小工作规则入口。若与 `docs/knowledge/` 冲突，以知识层文档为准。
+> 这是当前仓库的 agent-facing 最小工作规则入口。若与 `docs/project-maintenance/`、`docs/deployable-skills/` 或 `docs/autoresearch/` 冲突，以对应承接层文档为准。
 
 ## Core
 
@@ -12,22 +12,22 @@
 ## Read First
 
 1. `docs/README.md`
-2. `docs/knowledge/README.md`
-3. `docs/knowledge/foundations/README.md`
-4. `docs/knowledge/foundations/root-directory-layering.md`
-5. `docs/operations/governance/review-verify-handbook.md`
+2. `docs/project-maintenance/README.md`
+3. `docs/project-maintenance/foundations/README.md`
+4. `docs/project-maintenance/foundations/root-directory-layering.md`
+5. `docs/project-maintenance/governance/review-verify-handbook.md`
 6. `toolchain/toolchain-layering.md`
-7. `docs/knowledge/task-interface/task-contract.md`
-8. `docs/knowledge/memory-side/layer-boundary.md`
-9. `docs/knowledge/memory-side/overview.md`
-10. `docs/knowledge/memory-side/skill-agent-model.md`
+7. `docs/deployable-skills/task-interface/task-contract.md`
+8. `docs/deployable-skills/memory-side/layer-boundary.md`
+9. `docs/deployable-skills/memory-side/overview.md`
+10. `docs/deployable-skills/memory-side/skill-agent-model.md`
 
 ## Route Contract
 
 - `read_next`：
-  - `docs/knowledge/memory-side/overview.md`
-  - `docs/knowledge/memory-side/skill-agent-model.md`
-  - `docs/knowledge/task-interface/task-contract.md`
+  - `docs/deployable-skills/memory-side/overview.md`
+  - `docs/deployable-skills/memory-side/skill-agent-model.md`
+  - `docs/deployable-skills/task-interface/task-contract.md`
   - 按任务进入 `product/`、`docs/` 或 `toolchain/` 的局部入口页
 - `do_not_read_yet`：
   - `.agents/`
@@ -48,19 +48,21 @@
 2. `implement`：只做当前任务，不顺手扩边界。
 3. `verify`：先跑与改动面匹配的检查和测试。
 4. `review`：把 diff、计划和验收标准对齐，确认没有遗漏同步项。
-5. `writeback`：把已验证事实写回知识层或 operations 层，并清理失效上下文。
+5. `writeback`：把已验证事实写回 `docs/project-maintenance/`、`docs/deployable-skills/` 或 `docs/autoresearch/`，并清理失效上下文。
 
 ## Required Sync
 
 - 根目录分层、一级子目录、hidden/state/mount 层或 `.nav/` 规则变化时，必须同步更新 foundations 文档和对应治理检查。
-- `AGENTS.md`、review/verify 流程或退出标准变化时，必须同步更新 `docs/operations/governance/review-verify-handbook.md`。
-- deployment / adapter 行为变化时，必须同步更新相关 operations runbook 和 verify 命令说明。
+- `AGENTS.md`、review/verify 流程或退出标准变化时，必须同步更新 `docs/project-maintenance/governance/review-verify-handbook.md`。
+- deployment / adapter 行为变化时，必须同步更新相关 `docs/project-maintenance/deploy/` 文档和 verify 命令说明。
+- autoresearch 模块路径、入口或运行/参考文档变化时，必须同步更新 `docs/autoresearch/` 入口与对应治理检查。
+- deployable skill 合同、格式或 skill skeleton 路径变化时，必须同步更新 `docs/deployable-skills/` 入口与对应治理检查。
 - 只有已验证结果才可以回写为长期真相；未验证的结论不要写进知识层。
 
 ## Root Rules
 
 - `product/` 是业务代码唯一源码根。
-- `docs/` 是文档层，内部再分 `knowledge / operations / analysis / ideas / archive`。
+- `docs/` 是文档层，内部再分 `project-maintenance / deployable-skills / autoresearch / analysis / ideas / archive`。
 - `toolchain/` 只放脚本、评测、测试、打包、部署工具。
 - `.autoworkflow/`、`.spec-workflow/` 只属于 repo-local state layer。
 - `.serena/` 是 repo-local state/config layer，可保留受控入库的项目级配置与记忆，但不是主线真相层。
@@ -68,20 +70,21 @@
 
 ## Docs Governance Baseline
 
-- `docs/README.md`、`docs/knowledge/README.md` 和 `docs/*/README.md` 只做入口导航，不承载独占规则正文。
+- `docs/README.md`、`docs/project-maintenance/README.md`、`docs/deployable-skills/README.md`、`docs/autoresearch/README.md` 和 `docs/*/README.md` 只做入口导航，不承载独占规则正文。
 - `docs/` 下除 `README.md` 外的正文文档必须有 frontmatter：`title / status / updated / owner / last_verified`。
 - `status` 只允许：
-  - `docs/knowledge/` 与 `docs/operations/`：`active | draft | superseded`
+  - `docs/project-maintenance/`、`docs/deployable-skills/` 与 `docs/autoresearch/`：`active | draft | superseded`
 - 不在 `docs/` 长期使用 `status: suspended`。共享保留内容转 `superseded`，非共享草稿移出 `docs/`。
 - 研究结论准入后必须升格到承接层：
-  - 稳定规则写 `docs/knowledge/`
-  - runbook 写 `docs/operations/`
+  - 项目维护规则、governance、deploy、usage-help 写 `docs/project-maintenance/`
+  - deployable skill 合同与格式写 `docs/deployable-skills/`
+  - autoresearch 模块专属知识、runbook 与 references 写 `docs/autoresearch/`
   - 实现合同落 `product/` 或 `toolchain/`
 - 新增或接管文档作用域时，必须同步更新最近入口页并清理旧入口，避免双份主线。
 
 ## Review / Verify
 
-- 常规复核入口见 `docs/operations/governance/review-verify-handbook.md`。
+- 常规复核入口见 `docs/project-maintenance/governance/review-verify-handbook.md`。
 - 修复类任务不得只压住当前症状；必须检查相邻状态、恢复路径和 operator-facing 语义，避免引入新的问题源，并尽量把修复做完整。
 - 涉及根目录、路径、分层或治理规则时，优先跑：
   - `python3 toolchain/scripts/test/folder_logic_check.py`
@@ -93,8 +96,9 @@
 
 ## Writeback
 
-- 通用规则和知识正文写到 `docs/knowledge/`。
-- repo-local runbook、维护流和复核入口写到 `docs/operations/`。
+- 项目维护与治理正文写到 `docs/project-maintenance/`。
+- deployable skills 的知识、格式和 skeleton 写到 `docs/deployable-skills/`。
+- autoresearch 模块文档写到 `docs/autoresearch/`。
 - template / checklist 只在它们能稳定承接执行时才保留。
 - 不要把项目真相写进 `.agents/`、`.claude/`、`.opencode/`、`.nav/`。
 
@@ -106,10 +110,12 @@
 ## Canonical References
 
 - `docs/README.md`
-- `docs/knowledge/README.md`
-- `docs/knowledge/foundations/README.md`
-- `docs/knowledge/foundations/root-directory-layering.md`
-- `docs/knowledge/task-interface/task-contract.md`
-- `docs/knowledge/memory-side/layer-boundary.md`
-- `docs/knowledge/memory-side/overview.md`
-- `docs/knowledge/memory-side/skill-agent-model.md`
+- `docs/project-maintenance/README.md`
+- `docs/deployable-skills/README.md`
+- `docs/autoresearch/README.md`
+- `docs/project-maintenance/foundations/README.md`
+- `docs/project-maintenance/foundations/root-directory-layering.md`
+- `docs/deployable-skills/task-interface/task-contract.md`
+- `docs/deployable-skills/memory-side/layer-boundary.md`
+- `docs/deployable-skills/memory-side/overview.md`
+- `docs/deployable-skills/memory-side/skill-agent-model.md`

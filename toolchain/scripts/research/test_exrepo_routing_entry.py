@@ -35,12 +35,12 @@ class ExrepoRoutingEntryTest(unittest.TestCase):
                 "canonical\n",
                 encoding="utf-8",
             )
-            (repo / "docs" / "knowledge" / "memory-side").mkdir(parents=True, exist_ok=True)
+            (repo / "docs" / "deployable-skills" / "memory-side").mkdir(parents=True, exist_ok=True)
             write_skill_wrapper(
                 repo / ".agents" / "skills" / "context-routing-skill" / "SKILL.md",
                 "## Canonical Sources\n"
                 "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
-                "2. `docs/knowledge/memory-side/`\n",
+                "2. `docs/deployable-skills/memory-side/`\n",
             )
 
             payload = classify_context_routing_repo_skill(repo, repo_root=root)
@@ -58,12 +58,12 @@ class ExrepoRoutingEntryTest(unittest.TestCase):
                 "canonical\n",
                 encoding="utf-8",
             )
-            (repo / "docs" / "knowledge" / "memory-side").mkdir(parents=True, exist_ok=True)
+            (repo / "docs" / "deployable-skills" / "memory-side").mkdir(parents=True, exist_ok=True)
             write_skill_wrapper(
                 repo / ".agents" / "skills" / "context-routing-skill" / "SKILL.md",
                 "## Canonical Source\n"
                 "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
-                "2. `docs/knowledge/memory-side/`\n",
+                "2. `docs/deployable-skills/memory-side/`\n",
             )
 
             payload = classify_context_routing_repo_skill(repo, repo_root=root)
@@ -92,7 +92,7 @@ class ExrepoRoutingEntryTest(unittest.TestCase):
                 repo / ".agents" / "skills" / "context-routing-skill" / "SKILL.md",
                 "## Canonical Sources\n"
                 "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
-                "2. `docs/knowledge/memory-side/overview.md`\n",
+                "2. `docs/deployable-skills/memory-side/overview.md`\n",
             )
 
             payload = classify_context_routing_repo_skill(repo, repo_root=root)
@@ -103,7 +103,7 @@ class ExrepoRoutingEntryTest(unittest.TestCase):
                 payload["missing_paths"],
                 [
                     "product/memory-side/skills/context-routing-skill/SKILL.md",
-                    "docs/knowledge/memory-side/overview.md",
+                    "docs/deployable-skills/memory-side/overview.md",
                 ],
             )
 
@@ -144,12 +144,12 @@ class ExrepoRoutingEntryTest(unittest.TestCase):
                 "canonical\n",
                 encoding="utf-8",
             )
-            (repo / "docs" / "knowledge" / "memory-side").mkdir(parents=True, exist_ok=True)
+            (repo / "docs" / "deployable-skills" / "memory-side").mkdir(parents=True, exist_ok=True)
             write_skill_wrapper(
                 repo / ".agents" / "skills" / "context-routing-skill" / "SKILL.md",
                 "## Canonical Sources\n"
                 "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
-                "2. `docs/knowledge/memory-side/`\n",
+                "2. `docs/deployable-skills/memory-side/`\n",
             )
 
             payload = classify_context_routing_repo_skill(

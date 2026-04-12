@@ -4,18 +4,18 @@ Load the minimum contract docs in this order.
 
 ## Always Read First
 
-- `docs/knowledge/README.md`
+- `docs/deployable-skills/README.md`
 - `AGENTS.md`
 
 ## Read For Contract Shape
 
-- `docs/knowledge/task-interface/task-contract.md`
+- `docs/deployable-skills/task-interface/task-contract.md`
 - `product/harness-operations/skills/execution-contract-template/references/prompt.md`
 - `product/harness-operations/skills/task-planning-contract/references/prompt.md`
 
 ## Read For Closeout
 
-- `docs/operations/review-verify-handbook.md`
+- `docs/project-maintenance/governance/review-verify-handbook.md`
 
 ## Reading Policy
 

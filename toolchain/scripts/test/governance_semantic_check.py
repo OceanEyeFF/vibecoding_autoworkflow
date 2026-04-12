@@ -13,26 +13,26 @@ from path_governance_check import iter_relative_markdown_targets, resolve_markdo
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-FOUNDATIONS_DIR = "docs/knowledge/foundations"
+FOUNDATIONS_DIR = "docs/project-maintenance/foundations"
 REQUIRED_TEMPLATE_PATHS = [
-    "docs/knowledge/memory-side/formats/context-routing-output-format.md",
-    "docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md",
-    "docs/knowledge/task-interface/task-contract.md",
+    "docs/deployable-skills/memory-side/formats/context-routing-output-format.md",
+    "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md",
+    "docs/deployable-skills/task-interface/task-contract.md",
 ]
 REQUIRED_HANDOFF_LINKS = {
     "toolchain/toolchain-layering.md": [
         "toolchain/scripts/README.md",
         "toolchain/evals/README.md",
     ],
-    "docs/knowledge/README.md": REQUIRED_TEMPLATE_PATHS,
-    "docs/knowledge/memory-side/context-routing.md": [
-        "docs/knowledge/memory-side/formats/context-routing-output-format.md",
+    "docs/deployable-skills/README.md": REQUIRED_TEMPLATE_PATHS,
+    "docs/deployable-skills/memory-side/context-routing.md": [
+        "docs/deployable-skills/memory-side/formats/context-routing-output-format.md",
     ],
-    "docs/knowledge/memory-side/writeback-cleanup.md": [
-        "docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md",
+    "docs/deployable-skills/memory-side/writeback-cleanup.md": [
+        "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md",
     ],
-    "docs/knowledge/autoresearch/README.md": [
-        "docs/knowledge/autoresearch/overview.md",
+    "docs/autoresearch/knowledge/README.md": [
+        "docs/autoresearch/knowledge/overview.md",
     ],
 }
 FOUNDATIONS_AUTHORITY_STEMS = [
@@ -82,10 +82,10 @@ THIN_WRAPPER_FORBIDDEN_HEADINGS = [
 ]
 CANONICAL_ENTRYPOINT_REQUIRED_LINKS = {
     "product/memory-side/skills/context-routing-skill/references/entrypoints.md": [
-        "docs/knowledge/memory-side/formats/context-routing-output-format.md",
+        "docs/deployable-skills/memory-side/formats/context-routing-output-format.md",
     ],
     "product/memory-side/skills/writeback-cleanup-skill/references/entrypoints.md": [
-        "docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md",
+        "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md",
     ],
 }
 

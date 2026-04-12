@@ -31,7 +31,7 @@ def build_contract_payload(
         "objective": "Registry loading",
         "target_surface": "memory-side",
         "mutable_paths": mutable_paths or ["product/memory-side/skills"],
-        "frozen_paths": ["docs/knowledge"],
+        "frozen_paths": ["docs"],
         "train_suites": [suite_name],
         "validation_suites": [suite_name],
         "acceptance_suites": [suite_name],

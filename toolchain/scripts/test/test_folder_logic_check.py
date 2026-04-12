@@ -54,8 +54,9 @@ def create_valid_repo(tmp_path: Path) -> Path:
         ".codex/rules",
         "product/memory-side/skills",
         "product/task-interface",
-        "docs/knowledge",
-        "docs/operations",
+        "docs/project-maintenance",
+        "docs/deployable-skills",
+        "docs/autoresearch",
         "toolchain/scripts",
         "toolchain/evals",
         "tools",
@@ -260,7 +261,7 @@ def test_nav_symlink_target_must_be_allowed(tmp_path: Path) -> None:
 
 def test_docs_executable_file_fails(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
-    path = repo_root / "docs/operations/run.sh"
+    path = repo_root / "docs/project-maintenance/run.sh"
     write_file(path, "#!/bin/sh\nexit 0\n")
     make_executable(path)
 
