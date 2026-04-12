@@ -31,7 +31,7 @@ last_verified: 2026-03-26
 | 改业务源码 | [`product/README.md`](./product/README.md) |
 | 改工具脚本、部署或评测 | [`toolchain/README.md`](./toolchain/README.md) |
 | 看 repo-local runbook | [`docs/operations/README.md`](./docs/operations/README.md) |
-| 运行路径治理检查 | [`docs/operations/path-governance-checks.md`](./docs/operations/path-governance-checks.md) |
+| 运行路径治理检查 | [`docs/operations/governance/path-governance-checks.md`](./docs/operations/governance/path-governance-checks.md) |
 | 看 agent-facing 最小规则 | [`AGENTS.md`](./AGENTS.md) |
 
 ## 根目录对象怎么理解

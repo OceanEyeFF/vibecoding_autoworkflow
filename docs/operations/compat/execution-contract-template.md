@@ -19,4 +19,4 @@ last_verified: 2026-04-11
 ## Usage Note
 
 - 从旧链接进入时，仅把本页当作导航；执行语义以 canonical source 为准。
-- repo-local 验证与收口流程请读 [Review / Verify 承接位](../deploy/review-verify-handbook.md)。
+- repo-local 验证与收口流程请读 [Review / Verify 治理入口](../governance/review-verify-handbook.md)。

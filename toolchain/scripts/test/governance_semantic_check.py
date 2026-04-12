@@ -50,33 +50,33 @@ OUTDATED_PLACEHOLDER_PHRASES = {
         "`memory-side/` 当前只保留占位入口，不承载 active 的 `program / scenarios / scoring database` 一类资产。",
     ],
 }
-PROMPT_TEMPLATES_DIR = "docs/operations/prompt-templates"
+PROMPT_TEMPLATES_DIR = "docs/operations/compat"
 PROMPT_TEMPLATE_REQUIRED_CANONICAL_LINKS = {
-    "docs/operations/prompt-templates/README.md": [
+    "docs/operations/compat/README.md": [
         "product/harness-operations/README.md",
     ],
-    "docs/operations/prompt-templates/simple-subagent-workflow.md": [
+    "docs/operations/compat/simple-subagent-workflow.md": [
         "product/harness-operations/skills/simple-workflow/references/prompt.md",
     ],
-    "docs/operations/prompt-templates/strict-subagent-workflow.md": [
+    "docs/operations/compat/strict-subagent-workflow.md": [
         "product/harness-operations/skills/strict-workflow/references/prompt.md",
     ],
-    "docs/operations/prompt-templates/task-planning-contract.md": [
+    "docs/operations/compat/task-planning-contract.md": [
         "product/harness-operations/skills/task-planning-contract/references/prompt.md",
     ],
-    "docs/operations/prompt-templates/execution-contract-template.md": [
+    "docs/operations/compat/execution-contract-template.md": [
         "product/harness-operations/skills/execution-contract-template/references/prompt.md",
     ],
-    "docs/operations/prompt-templates/review-loop-code-review.md": [
+    "docs/operations/compat/review-loop-code-review.md": [
         "product/harness-operations/skills/review-loop-workflow/references/prompt.md",
     ],
-    "docs/operations/prompt-templates/task-list-subagent-workflow.md": [
+    "docs/operations/compat/task-list-subagent-workflow.md": [
         "product/harness-operations/skills/task-list-workflow/references/prompt.md",
     ],
-    "docs/operations/prompt-templates/harness-contract-template.md": [
+    "docs/operations/compat/harness-contract-template.md": [
         "product/harness-operations/skills/harness-contract-shape/references/prompt.md",
     ],
-    "docs/operations/prompt-templates/repo-governance-evaluation.md": [
+    "docs/operations/compat/repo-governance-evaluation.md": [
         "product/harness-operations/skills/repo-governance-evaluation/references/prompt.md",
     ],
 }

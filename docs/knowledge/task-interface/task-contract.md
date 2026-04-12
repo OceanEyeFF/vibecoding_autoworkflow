@@ -104,7 +104,8 @@ docs/knowledge/
       task-contract-skill.md
 
 docs/operations/
-  prompt-templates/  # compatibility shims only
+  compat/  # compatibility shims only
+  usage-help/  # repo-local backend usage help
 
 product/
   task-interface/
@@ -132,7 +133,8 @@ product/
 
 - [根目录分层](../foundations/root-directory-layering.md)
 - [Task Contract Skill 骨架](./skills/task-contract-skill.md)
-- [Prompt template compatibility shims](../../operations/prompt-templates/README.md)
-- [Codex Task Interface Repo-local Adapter 部署帮助](../../operations/task-interface/codex-deployment-help.md)
-- [Claude Task Interface Repo-local Adapter 适配帮助](../../operations/task-interface/claude-adaptation-help.md)
+- [Prompt template compatibility shims](../../operations/compat/README.md)
+- [Usage Help 总入口](../../operations/usage-help/README.md)
+- [Codex Repo-local Usage Help](../../operations/usage-help/codex.md)
+- [Claude Repo-local Usage Help](../../operations/usage-help/claude.md)
 - [Memory Side 总览](../memory-side/overview.md)

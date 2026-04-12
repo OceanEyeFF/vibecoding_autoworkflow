@@ -15,7 +15,7 @@
 补充入口：
 
 - 如果需要看上游模板，回到 [./task-contract.md](./task-contract.md)
-- 如果需要看 repo-local 部署帮助，再进入 `docs/operations/task-interface/`
+- 如果需要看 repo-local 部署帮助，再进入 [../../operations/usage-help/README.md](../../operations/usage-help/README.md)
 
 这里适合放：
 

@@ -130,7 +130,6 @@ Knowledge Base
 当前仓库中与 `Task Contract` 对应的实际落点包括：
 
 - [Task Contract 基线](../task-interface/task-contract.md)
-- [Task Contract 基线](../task-interface/task-contract.md)
 - [Task Contract Skill 骨架](../task-interface/skills/task-contract-skill.md)
 
 如果你要理解通用能力模型，先读：
@@ -140,5 +139,6 @@ Knowledge Base
 
 如果你要看本仓库当前怎么部署和 repo-local 使用，再读：
 
-- [Codex Memory Side Repo-local Adapter 部署帮助](../../operations/memory-side/codex-deployment-help.md)
-- [Claude Memory Side Repo-local Adapter 适配帮助](../../operations/memory-side/claude-adaptation-help.md)
+- [Usage Help 总入口](../../operations/usage-help/README.md)
+- [Codex Repo-local Usage Help](../../operations/usage-help/codex.md)
+- [Claude Repo-local Usage Help](../../operations/usage-help/claude.md)

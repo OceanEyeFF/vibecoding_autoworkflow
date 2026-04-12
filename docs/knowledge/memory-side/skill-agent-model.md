@@ -96,11 +96,11 @@ last_verified: 2026-04-07
 
 包括：
 
-- `docs/operations/prompt-templates/`
+- `docs/operations/compat/`
 
 说明：
 
-- 这里承接可复用的 repo-local execution templates
+- 这里承接旧路径兼容 shim 与最薄的 repo-local usage bridge
 - 它可以复用 canonical semantics，但不能重写 canonical truth
 - 如果某个模板内容稳定下来，应该回写到 `docs/knowledge/`
 
@@ -269,5 +269,6 @@ toolchain/
 - [Knowledge Base Skill 骨架](./skills/knowledge-base-skill.md)
 - [Context Routing Skill 骨架](./skills/context-routing-skill.md)
 - [Writeback & Cleanup Skill 骨架](./skills/writeback-cleanup-skill.md)
-- [Codex Memory Side Repo-local Adapter 部署帮助](../../operations/memory-side/codex-deployment-help.md)
-- [Claude Memory Side Repo-local Adapter 适配帮助](../../operations/memory-side/claude-adaptation-help.md)
+- [Usage Help 总入口](../../operations/usage-help/README.md)
+- [Codex Repo-local Usage Help](../../operations/usage-help/codex.md)
+- [Claude Repo-local Usage Help](../../operations/usage-help/claude.md)

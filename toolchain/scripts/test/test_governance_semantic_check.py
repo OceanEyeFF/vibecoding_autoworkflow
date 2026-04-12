@@ -81,11 +81,11 @@ def test_check_outdated_placeholder_phrases_flags_stale_text(tmp_path: Path) -> 
 
 def test_check_prompt_template_knowledge_backlinks_flags_missing_link(tmp_path: Path) -> None:
     write_doc(
-        tmp_path / "docs/operations/prompt-templates/README.md",
+        tmp_path / "docs/operations/compat/README.md",
         "[knowledge](../../knowledge/README.md)\n",
     )
     write_doc(
-        tmp_path / "docs/operations/prompt-templates/simple-subagent-workflow.md",
+        tmp_path / "docs/operations/compat/simple-subagent-workflow.md",
         "# template without backlinks\n",
     )
     write_doc(tmp_path / "docs/knowledge/README.md", "# knowledge\n")
@@ -98,7 +98,7 @@ def test_check_prompt_template_knowledge_backlinks_flags_missing_link(tmp_path: 
 
 def test_check_prompt_template_knowledge_backlinks_flags_missing_canonical_shim_link(tmp_path: Path) -> None:
     write_doc(
-        tmp_path / "docs/operations/prompt-templates/README.md",
+        tmp_path / "docs/operations/compat/README.md",
         "\n".join(
             [
                 "[knowledge](../../knowledge/README.md)",
@@ -108,7 +108,7 @@ def test_check_prompt_template_knowledge_backlinks_flags_missing_canonical_shim_
         + "\n",
     )
     write_doc(
-        tmp_path / "docs/operations/prompt-templates/simple-subagent-workflow.md",
+        tmp_path / "docs/operations/compat/simple-subagent-workflow.md",
         "[knowledge](../../knowledge/README.md)\n",
     )
     write_doc(tmp_path / "docs/knowledge/README.md", "# knowledge\n")

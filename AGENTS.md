@@ -15,7 +15,7 @@
 2. `docs/knowledge/README.md`
 3. `docs/knowledge/foundations/README.md`
 4. `docs/knowledge/foundations/root-directory-layering.md`
-5. `docs/operations/deploy/review-verify-handbook.md`
+5. `docs/operations/governance/review-verify-handbook.md`
 6. `toolchain/toolchain-layering.md`
 7. `docs/knowledge/task-interface/task-contract.md`
 8. `docs/knowledge/memory-side/layer-boundary.md`
@@ -29,7 +29,7 @@
   - `docs/knowledge/memory-side/skill-agent-model.md`
   - `docs/knowledge/task-interface/task-contract.md`
   - 按任务进入 `product/`、`docs/` 或 `toolchain/` 的局部入口页
-  - 需要 Harness Operations prompt entrypoints 或旧路径兼容 shim 时，先进入 `docs/operations/README.md`，再下钻 `docs/operations/prompt-templates/`
+  - 需要 Harness Operations prompt entrypoints 或旧路径兼容 shim 时，先进入 `docs/operations/README.md`，再下钻 `docs/operations/compat/`
 - `do_not_read_yet`：
   - `.agents/`
   - `.claude/`
@@ -54,7 +54,7 @@
 ## Required Sync
 
 - 根目录分层、一级子目录、hidden/state/mount 层或 `.nav/` 规则变化时，必须同步更新 foundations 文档和对应治理检查。
-- `AGENTS.md`、review/verify 流程或退出标准变化时，必须同步更新 `docs/operations/deploy/review-verify-handbook.md`。
+- `AGENTS.md`、review/verify 流程或退出标准变化时，必须同步更新 `docs/operations/governance/review-verify-handbook.md`。
 - deployment / adapter 行为变化时，必须同步更新相关 operations runbook 和 verify 命令说明。
 - 只有已验证结果才可以回写为长期真相；未验证的结论不要写进知识层。
 
@@ -82,7 +82,7 @@
 
 ## Review / Verify
 
-- 常规复核入口见 `docs/operations/deploy/review-verify-handbook.md`。
+- 常规复核入口见 `docs/operations/governance/review-verify-handbook.md`。
 - 修复类任务不得只压住当前症状；必须检查相邻状态、恢复路径和 operator-facing 语义，避免引入新的问题源，并尽量把修复做完整。
 - 涉及根目录、路径、分层或治理规则时，优先跑：
   - `python3 toolchain/scripts/test/folder_logic_check.py`

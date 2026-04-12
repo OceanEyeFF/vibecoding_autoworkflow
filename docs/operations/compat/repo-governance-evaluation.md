@@ -19,5 +19,5 @@ last_verified: 2026-04-11
 ## Usage Note
 
 - 治理评估规则与评分口径只看 canonical source。
-- 复核入口见 [Review / Verify 承接位](../deploy/review-verify-handbook.md)。
-- 分支/PR 规则见 [Branch / PR 治理规则](../deploy/branch-pr-governance.md)。
+- 复核入口见 [Review / Verify 治理入口](../governance/review-verify-handbook.md)。
+- 分支/PR 规则见 [Branch / PR 治理规则](../governance/branch-pr-governance.md)。

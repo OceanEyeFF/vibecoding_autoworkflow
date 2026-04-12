@@ -76,7 +76,7 @@ last_verified: 2026-04-11
 
 这组事实当前的主线承接位置是：
 
-- `docs/operations/autoresearch/minimal-loop.md`
+- `docs/operations/runbooks/autoresearch-minimal-loop.md`
 - `toolchain/scripts/research/README.md`
 
 旧版轻量迭代设计草案仅保留为历史记录，不再作为默认运行入口。
@@ -605,6 +605,6 @@ run 根目录固定在：
 
 ## 九、相关文档
 
-- [Research CLI 指令](./research-cli-help.md)
+- [Research CLI 指令](../references/research-cli-help.md)
 - [toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)
-- [Research 评测观测与输出规范](./research-eval-observability.md)
+- [Research 评测观测与输出规范](../references/research-eval-observability.md)

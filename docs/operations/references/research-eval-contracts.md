@@ -218,5 +218,5 @@ runner 当前行为是：
 - [Toolchain 分层](../../../toolchain/toolchain-layering.md)
 - [toolchain/evals/README.md](../../../toolchain/evals/README.md)
 - [toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)
-- [Codex Memory Side Repo-local Adapter 部署帮助](../memory-side/codex-deployment-help.md)
-- [Codex Task Interface Repo-local Adapter 部署帮助](../task-interface/codex-deployment-help.md)
+- [Codex Repo-local Usage Help](../usage-help/codex.md)
+- [Task Interface / Memory Side Usage Help 总入口](../usage-help/README.md)

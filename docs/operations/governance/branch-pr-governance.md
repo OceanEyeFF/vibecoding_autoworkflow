@@ -11,7 +11,7 @@ Decision time: 2026-04-03
 
 > 目的：明确本仓库的分支与 PR 约束，让 review 与治理检查具备可重复入口。
 
-本页属于 [Deploy / Verify / Maintenance](./README.md) 路径簇。
+本页属于 [Governance](./README.md) 路径簇。
 
 ## 一、适用范围
 
@@ -38,7 +38,7 @@ Decision time: 2026-04-03
 ## 四、Review 规则
 
 - `CODEOWNERS` 生效时，至少需要对应 owner review
-- review 参考 `docs/operations/deploy/review-verify-handbook.md`
+- review 参考 `docs/operations/governance/review-verify-handbook.md`
 
 ## 五、CI 最小检查链
 
@@ -79,5 +79,5 @@ chmod +x toolchain/scripts/git-hooks/pre-push
 ## 九、相关文档
 
 - `AGENTS.md`
-- `docs/operations/deploy/review-verify-handbook.md`
-- `docs/operations/deploy/path-governance-checks.md`
+- `docs/operations/governance/review-verify-handbook.md`
+- `docs/operations/governance/path-governance-checks.md`

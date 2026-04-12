@@ -1,6 +1,6 @@
-# Prompt Templates Compatibility Shims
+# Compatibility Shims
 
-`docs/operations/prompt-templates/` 只保留历史路径兼容入口，不承载 canonical prompt 语义。
+`docs/operations/compat/` 只保留历史路径兼容入口，不承载 canonical prompt 语义。
 
 canonical source 在：
 
@@ -18,4 +18,4 @@ canonical source 在：
 - `repo-governance-evaluation.md` -> [repo-governance-evaluation](../../../product/harness-operations/skills/repo-governance-evaluation/references/prompt.md)
 - `harness-contract-template.md` -> [harness-contract-shape](../../../product/harness-operations/skills/harness-contract-shape/references/prompt.md)
 
-如果你在找 deploy / verify / maintenance，请先读 [../deploy/README.md](../deploy/README.md)。
+如果你在找当前执行入口，请先读 [../runbooks/README.md](../runbooks/README.md) 或 [../governance/README.md](../governance/README.md)。

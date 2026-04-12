@@ -567,7 +567,7 @@ suite 中的 `repo`：
 
 维护脚本的专用 runbook 见：
 
-- [TMP Exrepo 维护说明](./tmp-exrepo-maintenance.md)
+- [TMP Exrepo 维护说明](../runbooks/tmp-exrepo-maintenance.md)
 
 ## 五、Claude 兼容壳的真实行为
 
@@ -846,9 +846,9 @@ codex exec \
 
 - [Research 评测契约与边界](./research-eval-contracts.md)
 - [Research 评测观测与输出规范](./research-eval-observability.md)
-- [Autoresearch 最小闭环运行说明](./minimal-loop.md)
-- [TMP Exrepo 维护说明](./tmp-exrepo-maintenance.md)
+- [Autoresearch 最小闭环运行说明](../runbooks/autoresearch-minimal-loop.md)
+- [TMP Exrepo 维护说明](../runbooks/tmp-exrepo-maintenance.md)
 - [toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)
 - [toolchain/evals/README.md](../../../toolchain/evals/README.md)
-- [Codex Memory Side Repo-local Adapter 部署帮助](../memory-side/codex-deployment-help.md)
-- [Codex Task Interface Repo-local Adapter 部署帮助](../task-interface/codex-deployment-help.md)
+- [Codex Repo-local Usage Help](../usage-help/codex.md)
+- [Task Interface / Memory Side Usage Help 总入口](../usage-help/README.md)

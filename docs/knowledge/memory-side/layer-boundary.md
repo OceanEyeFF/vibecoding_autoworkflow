@@ -79,7 +79,7 @@ last_verified: 2026-04-08
 
 当前属于这一层的内容：
 
-- `docs/operations/memory-side/`
+- `docs/operations/usage-help/`
 - `toolchain/scripts/deploy/adapter_deploy.py`
 
 ### 4. Cross-partition compatibility shim layer
@@ -91,7 +91,7 @@ last_verified: 2026-04-08
 
 当前属于这一层的内容：
 
-- `docs/operations/prompt-templates/`
+- `docs/operations/compat/`
 
 硬规则：
 
@@ -151,9 +151,9 @@ last_verified: 2026-04-08
 1. [Memory Side 总览](./overview.md)
 2. [Memory Side Skill 与 Agent 模型](./skill-agent-model.md)
 3. `product/memory-side/skills/`
-4. `docs/operations/memory-side/`
+4. `docs/operations/usage-help/`
 5. `product/harness-operations/`
-6. 只有命中旧路径或历史链接时，再看 `docs/operations/prompt-templates/`
+6. 只有命中旧路径或历史链接时，再看 `docs/operations/compat/`
 7. `toolchain/scripts/`
 8. `.agents/skills/`、`.claude/skills/` 或 `.opencode/skills/`
 

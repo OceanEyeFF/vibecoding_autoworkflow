@@ -258,7 +258,7 @@ python3 toolchain/scripts/research/manage_tmp_exrepos.py \
 
 ## 九、相关文档
 
-- [Research CLI 指令](./research-cli-help.md)
-- [Autoresearch 最小闭环运行说明](./minimal-loop.md)
+- [Research CLI 指令](../references/research-cli-help.md)
+- [Autoresearch 最小闭环运行说明](./autoresearch-minimal-loop.md)
 - [toolchain/scripts/research/README.md](../../../toolchain/scripts/research/README.md)
-- [路径与文档治理检查运行说明](../deploy/path-governance-checks.md)
+- [路径与文档治理检查运行说明](../governance/path-governance-checks.md)
