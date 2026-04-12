@@ -26,7 +26,6 @@ last_verified: 2026-04-11
 - foundations / memory-side / module entry 的关键承接关系是否仍存在
 - foundations 中关键 authority/template 文档是否被影子文件分叉
 - 已退役的 placeholder 口径是否回流到关键入口文档
-- `docs/operations/compat/` 是否仍回链 `docs/knowledge/` 主线
 - `product/*/adapters/*/skills/*/SKILL.md` 是否仍保持 thin wrapper，而不是重新长出重复语义正文
 
 它不替代人工审阅，也不检查所有 anchor 片段。
@@ -87,8 +86,7 @@ python3 toolchain/scripts/test/governance_semantic_check.py
    - `writeback-cleanup.md -> writeback-cleanup-output-format.md`
 20. foundations 权威文档是否出现同名前缀 shadow 文件
 21. 关键入口文档是否重新出现已退役的“预留位 / 占位”口径
-22. `docs/operations/compat/README.md` 是否回链 `docs/knowledge/README.md`，以及每个 shim 是否至少回链一个 `docs/knowledge/` 主线文档
-23. `product/*/adapters/*/skills/*/SKILL.md` 是否同时保留 `Canonical Source / Backend Notes / Deploy Target` 薄壳结构，并移除 `Execution Rules / Output Contract` 这类重复章节
+22. `product/*/adapters/*/skills/*/SKILL.md` 是否同时保留 `Canonical Source / Backend Notes / Deploy Target` 薄壳结构，并移除 `Execution Rules / Output Contract` 这类重复章节
 
 说明：
 
@@ -101,7 +99,7 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 - 调整主入口或 foundations 文档后
 - 新增模块入口页后
 - 清理 `.nav/` 或 hidden-layer 说明后
-- 调整根目录对象分类、tracked 白名单或 compat shim 后
+- 调整根目录对象分类或 tracked 白名单后
 - 准备让其他 AI 后端复用当前入口体系前
 
 ## 五、如何理解结果

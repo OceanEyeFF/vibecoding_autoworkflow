@@ -12,7 +12,6 @@ from governance_semantic_check import (
     check_adapter_wrappers_are_thin,
     check_foundations_authority_shadows,
     check_outdated_placeholder_phrases,
-    check_prompt_template_knowledge_backlinks,
     check_required_handoffs,
 )
 
@@ -78,49 +77,6 @@ def test_check_outdated_placeholder_phrases_flags_stale_text(tmp_path: Path) -> 
 
     assert any("toolchain/scripts/README.md" in item for item in report.failures)
 
-
-def test_check_prompt_template_knowledge_backlinks_flags_missing_link(tmp_path: Path) -> None:
-    write_doc(
-        tmp_path / "docs/operations/compat/README.md",
-        "[knowledge](../../knowledge/README.md)\n",
-    )
-    write_doc(
-        tmp_path / "docs/operations/compat/simple-subagent-workflow.md",
-        "# template without backlinks\n",
-    )
-    write_doc(tmp_path / "docs/knowledge/README.md", "# knowledge\n")
-
-    report = SemanticReport()
-    check_prompt_template_knowledge_backlinks(tmp_path, report)
-
-    assert any("simple-subagent-workflow.md" in item for item in report.failures)
-
-
-def test_check_prompt_template_knowledge_backlinks_flags_missing_canonical_shim_link(tmp_path: Path) -> None:
-    write_doc(
-        tmp_path / "docs/operations/compat/README.md",
-        "\n".join(
-            [
-                "[knowledge](../../knowledge/README.md)",
-                "[product](../../../product/harness-operations/README.md)",
-            ]
-        )
-        + "\n",
-    )
-    write_doc(
-        tmp_path / "docs/operations/compat/simple-subagent-workflow.md",
-        "[knowledge](../../knowledge/README.md)\n",
-    )
-    write_doc(tmp_path / "docs/knowledge/README.md", "# knowledge\n")
-    write_doc(
-        tmp_path / "product/harness-operations/README.md",
-        "# harness operations\n",
-    )
-
-    report = SemanticReport()
-    check_prompt_template_knowledge_backlinks(tmp_path, report)
-
-    assert any("canonical source link" in item for item in report.failures)
 
 
 def test_check_adapter_wrappers_are_thin_flags_legacy_sections(tmp_path: Path) -> None:

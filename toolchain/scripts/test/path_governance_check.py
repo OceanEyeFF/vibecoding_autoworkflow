@@ -40,7 +40,6 @@ REQUIRED_ENTRY_PATHS = [
     "docs/operations/references/README.md",
     "docs/operations/governance/README.md",
     "docs/operations/usage-help/README.md",
-    "docs/operations/compat/README.md",
     "docs/operations/governance/path-governance-checks.md",
     "docs/knowledge/foundations/root-directory-layering.md",
     "toolchain/toolchain-layering.md",
@@ -96,7 +95,6 @@ ENTRYPOINT_LINK_RULES = {
         "docs/operations/references/README.md",
         "docs/operations/governance/README.md",
         "docs/operations/usage-help/README.md",
-        "docs/operations/compat/README.md",
     ],
     "docs/operations/runbooks/README.md": [
         "docs/operations/runbooks/deploy-runbook.md",
@@ -118,10 +116,6 @@ ENTRYPOINT_LINK_RULES = {
         "docs/operations/usage-help/codex.md",
         "docs/operations/usage-help/claude.md",
         "docs/operations/usage-help/opencode.md",
-    ],
-    "docs/operations/compat/README.md": [
-        KNOWLEDGE_README,
-        "product/harness-operations/README.md",
     ],
     "product/README.md": [
         "product/memory-side/README.md",

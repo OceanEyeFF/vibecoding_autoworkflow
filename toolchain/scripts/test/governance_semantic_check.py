@@ -50,36 +50,6 @@ OUTDATED_PLACEHOLDER_PHRASES = {
         "`memory-side/` 当前只保留占位入口，不承载 active 的 `program / scenarios / scoring database` 一类资产。",
     ],
 }
-PROMPT_TEMPLATES_DIR = "docs/operations/compat"
-PROMPT_TEMPLATE_REQUIRED_CANONICAL_LINKS = {
-    "docs/operations/compat/README.md": [
-        "product/harness-operations/README.md",
-    ],
-    "docs/operations/compat/simple-subagent-workflow.md": [
-        "product/harness-operations/skills/simple-workflow/references/prompt.md",
-    ],
-    "docs/operations/compat/strict-subagent-workflow.md": [
-        "product/harness-operations/skills/strict-workflow/references/prompt.md",
-    ],
-    "docs/operations/compat/task-planning-contract.md": [
-        "product/harness-operations/skills/task-planning-contract/references/prompt.md",
-    ],
-    "docs/operations/compat/execution-contract-template.md": [
-        "product/harness-operations/skills/execution-contract-template/references/prompt.md",
-    ],
-    "docs/operations/compat/review-loop-code-review.md": [
-        "product/harness-operations/skills/review-loop-workflow/references/prompt.md",
-    ],
-    "docs/operations/compat/task-list-subagent-workflow.md": [
-        "product/harness-operations/skills/task-list-workflow/references/prompt.md",
-    ],
-    "docs/operations/compat/harness-contract-template.md": [
-        "product/harness-operations/skills/harness-contract-shape/references/prompt.md",
-    ],
-    "docs/operations/compat/repo-governance-evaluation.md": [
-        "product/harness-operations/skills/repo-governance-evaluation/references/prompt.md",
-    ],
-}
 CANONICAL_SKILL_GLOBS = [
     "product/*/skills/*/SKILL.md",
 ]
@@ -161,12 +131,6 @@ def collect_repo_relative_code_paths(repo_root: Path, relative_path: str) -> set
     return {match.strip() for match in re.findall(r"`([^`]+)`", text) if match.strip()}
 
 
-def iter_prompt_template_files(repo_root: Path) -> list[Path]:
-    prompt_root = repo_root / PROMPT_TEMPLATES_DIR
-    if not prompt_root.exists():
-        return []
-    return sorted(prompt_root.glob("*.md"))
-
 
 def check_required_templates(repo_root: Path, report: SemanticReport) -> None:
     missing = [path for path in REQUIRED_TEMPLATE_PATHS if not (repo_root / path).exists()]
@@ -219,33 +183,6 @@ def check_outdated_placeholder_phrases(repo_root: Path, report: SemanticReport) 
                 report.add_failure(f"outdated placeholder wording still present in {relative_path}")
     report.add_info(f"checked {checked} outdated placeholder phrases")
 
-
-def check_prompt_template_knowledge_backlinks(repo_root: Path, report: SemanticReport) -> None:
-    prompt_files = iter_prompt_template_files(repo_root)
-    if not prompt_files:
-        report.add_failure(f"missing prompt template directory: {PROMPT_TEMPLATES_DIR}")
-        return
-
-    checked = 0
-    for prompt_file in prompt_files:
-        checked += 1
-        relative_path = to_relative_posix(prompt_file, repo_root)
-        resolved_targets = collect_repo_relative_markdown_links(repo_root, relative_path)
-        if relative_path.endswith("/README.md"):
-            if "docs/knowledge/README.md" not in resolved_targets:
-                report.add_failure(
-                    f"prompt template entrypoint missing knowledge backlink: {relative_path}"
-                )
-        elif not any(target.startswith("docs/knowledge/") for target in resolved_targets):
-            report.add_failure(
-                f"prompt template missing docs/knowledge backlink: {relative_path}"
-            )
-        for target in PROMPT_TEMPLATE_REQUIRED_CANONICAL_LINKS.get(relative_path, []):
-            if target not in resolved_targets:
-                report.add_failure(
-                    f"prompt template shim missing canonical source link: {relative_path} -> {target}"
-                )
-    report.add_info(f"checked {checked} prompt template knowledge backlinks")
 
 
 def iter_adapter_skill_files(repo_root: Path) -> list[Path]:
@@ -367,7 +304,6 @@ def main() -> int:
     check_required_handoffs(repo_root, report)
     check_foundations_authority_shadows(repo_root, report)
     check_outdated_placeholder_phrases(repo_root, report)
-    check_prompt_template_knowledge_backlinks(repo_root, report)
     check_canonical_skill_packages_are_minimal(repo_root, report)
     check_canonical_entrypoints_cover_required_formats(repo_root, report)
     check_adapter_wrappers_are_thin(repo_root, report)

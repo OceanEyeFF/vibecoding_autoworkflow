@@ -23,7 +23,7 @@ def test_evaluate_governance_caps_overall_when_code_fails() -> None:
             "document": 85,
             "code": 30,
             "evidence": {
-                "rule": ["docs/operations/compat/review-loop-code-review.md"],
+                "rule": ["docs/operations/governance/review-verify-handbook.md"],
                 "folders": ["docs/knowledge/foundations/root-directory-layering.md"],
                 "document": ["docs/operations/governance/review-verify-handbook.md"],
                 "code": ["toolchain/scripts/test/governance_assess.py"],
@@ -44,7 +44,7 @@ def test_evaluate_governance_marks_conditional_pass() -> None:
             "document": 61,
             "code": 88,
             "evidence": {
-                "rule": ["docs/operations/compat/review-loop-code-review.md"],
+                "rule": ["docs/operations/governance/review-verify-handbook.md"],
                 "folders": ["docs/knowledge/foundations/root-directory-layering.md"],
                 "document": ["docs/operations/governance/review-verify-handbook.md"],
                 "code": ["toolchain/scripts/test/governance_assess.py"],

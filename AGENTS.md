@@ -29,7 +29,6 @@
   - `docs/knowledge/memory-side/skill-agent-model.md`
   - `docs/knowledge/task-interface/task-contract.md`
   - 按任务进入 `product/`、`docs/` 或 `toolchain/` 的局部入口页
-  - 需要 Harness Operations prompt entrypoints 或旧路径兼容 shim 时，先进入 `docs/operations/README.md`，再下钻 `docs/operations/compat/`
 - `do_not_read_yet`：
   - `.agents/`
   - `.claude/`

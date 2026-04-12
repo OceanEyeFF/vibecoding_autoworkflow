@@ -61,7 +61,7 @@ last_verified: 2026-04-10
 - 本文负责固定结构与字段约束
 - skill 负责把同一结构变成可直接调用的稳定能力
 - 两者都属于 `Task Interface`，不属于 `Memory Side`
-- Harness Operations workflows 与 compatibility shims 可以消费这份基线，但不能把它改写成自己的 truth
+- Harness Operations workflows 可以消费这份基线，但不能把它改写成自己的 truth
 
 ## 六、固定输出结构
 
@@ -104,7 +104,6 @@ docs/knowledge/
       task-contract-skill.md
 
 docs/operations/
-  compat/  # compatibility shims only
   usage-help/  # repo-local backend usage help
 
 product/
@@ -133,7 +132,6 @@ product/
 
 - [根目录分层](../foundations/root-directory-layering.md)
 - [Task Contract Skill 骨架](./skills/task-contract-skill.md)
-- [Prompt template compatibility shims](../../operations/compat/README.md)
 - [Usage Help 总入口](../../operations/usage-help/README.md)
 - [Codex Repo-local Usage Help](../../operations/usage-help/codex.md)
 - [Claude Repo-local Usage Help](../../operations/usage-help/claude.md)

@@ -92,19 +92,7 @@ last_verified: 2026-04-07
 - 它们从 `product/` 同步出来
 - 它们不是 source of truth
 
-### 4. Repo-local execution template layer
-
-包括：
-
-- `docs/operations/compat/`
-
-说明：
-
-- 这里承接旧路径兼容 shim 与最薄的 repo-local usage bridge
-- 它可以复用 canonical semantics，但不能重写 canonical truth
-- 如果某个模板内容稳定下来，应该回写到 `docs/knowledge/`
-
-### 5. 工具层
+### 4. 工具层
 
 包括：
 
