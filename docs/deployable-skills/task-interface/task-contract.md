@@ -1,9 +1,9 @@
 ---
 title: "Task Contract 基线"
 status: active
-updated: 2026-04-10
+updated: 2026-04-13
 owner: aw-kernel
-last_verified: 2026-04-10
+last_verified: 2026-04-13
 ---
 # Task Contract 基线
 
@@ -54,12 +54,12 @@ last_verified: 2026-04-10
 当前仓库中，`Task Contract` 由两类载体承载：
 
 - `docs/deployable-skills/task-interface/task-contract.md`
-- `task-contract-skill`
+- `product/task-interface/skills/task-contract-skill/`
 
 说明：
 
 - 本文负责固定结构与字段约束
-- skill 负责把同一结构变成可直接调用的稳定能力
+- canonical skill package 负责把同一结构变成可直接调用的稳定能力
 - 两者都属于 `Task Interface`，不属于 `Memory Side`
 - Harness Operations workflows 可以消费这份基线，但不能把它改写成自己的 truth
 
@@ -100,8 +100,6 @@ last_verified: 2026-04-10
 docs/deployable-skills/
   task-interface/
     task-contract.md
-    skills/
-      task-contract-skill.md
 
 docs/project-maintenance/
   usage-help/  # repo-local backend usage help
@@ -131,7 +129,8 @@ product/
 ## 十、相关文档
 
 - [根目录分层](../../project-maintenance/foundations/root-directory-layering.md)
-- [Task Contract Skill 骨架](./skills/task-contract-skill.md)
+- [task-contract-skill/SKILL.md](../../../product/task-interface/skills/task-contract-skill/SKILL.md)
+- [task-contract-skill/references/entrypoints.md](../../../product/task-interface/skills/task-contract-skill/references/entrypoints.md)
 - [Usage Help 总入口](../../project-maintenance/usage-help/README.md)
 - [Codex Repo-local Usage Help](../../project-maintenance/usage-help/codex.md)
 - [Claude Repo-local Usage Help](../../project-maintenance/usage-help/claude.md)

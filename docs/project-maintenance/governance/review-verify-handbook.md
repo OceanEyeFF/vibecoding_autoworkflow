@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 治理入口"
 status: active
-updated: 2026-04-11
+updated: 2026-04-13
 owner: aw-kernel
-last_verified: 2026-04-11
+last_verified: 2026-04-13
 ---
 # Review / Verify 治理入口
 
@@ -55,7 +55,7 @@ last_verified: 2026-04-11
 - 如果改了 root / partition / path 规则，是否同步 foundations 和治理检查
 - 如果改了 `AGENTS.md` 或执行流程，是否同步本文
 - 如果改了 deploy / adapter 行为，是否同步对应 `docs/project-maintenance/deploy/` runbook
-- 如果改了 `docs/deployable-skills/*/skills/`、`product/*/skills/*/` 或 `product/*/adapters/*/skills/*/`，是否仍保持三段式分工：合同层、canonical executable layer、backend adapter layer
+- 如果改了 `docs/deployable-skills/`、`product/*/skills/*/` 或 `product/*/adapters/*/skills/*/`，是否仍保持三段式分工：合同层、canonical executable layer、backend adapter layer
 - 如果改了 `product/*/adapters/*/skills/*/SKILL.md`，是否仍保持 thin wrapper（`Canonical Source / Backend Notes / Deploy Target`）而没有重新复制 canonical 语义正文
 - 如果改了 `product/*/skills/*/SKILL.md`，是否保持最小 executable body + `references/entrypoints.md`，而没有吸收 repo-local execution template 内容
 

@@ -6,15 +6,15 @@
 
 - [task-contract.md](./task-contract.md)
 
-配套入口：
+Canonical skill package 入口：
 
-- [skills/task-contract-skill.md](./skills/task-contract-skill.md)（draft）
-- [skills/README.md](./skills/README.md)：`task-contract-skill` 草案骨架入口
+- [../../../product/task-interface/skills/README.md](../../../product/task-interface/skills/README.md)
+- [../../../product/task-interface/skills/task-contract-skill/SKILL.md](../../../product/task-interface/skills/task-contract-skill/SKILL.md)
 
 建议阅读顺序：
 
 1. [task-contract.md](./task-contract.md)
-2. 只有需要看 skill skeleton 时，再进入 [skills/README.md](./skills/README.md)
+2. 只有需要看 executable skill 时，再进入 [../../../product/task-interface/skills/README.md](../../../product/task-interface/skills/README.md)
 
 补充入口：
 
@@ -24,7 +24,7 @@
 这里适合放：
 
 - `Task Contract` 的对象边界
-- `task-contract-skill` 的草案骨架入口
+- `Task Contract` 对应的 canonical skill 入口
 
 这里不适合放：
 

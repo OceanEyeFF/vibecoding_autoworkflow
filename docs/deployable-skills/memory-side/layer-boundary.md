@@ -1,9 +1,9 @@
 ---
 title: "Memory Side 层级边界"
 status: active
-updated: 2026-04-08
+updated: 2026-04-13
 owner: aw-kernel
-last_verified: 2026-04-08
+last_verified: 2026-04-13
 ---
 # Memory Side 层级边界
 
@@ -47,8 +47,6 @@ last_verified: 2026-04-08
 - `docs/deployable-skills/memory-side/writeback-cleanup.md`
 - `docs/deployable-skills/memory-side/*-rules.md`
 - `docs/deployable-skills/memory-side/formats/`
-- `docs/deployable-skills/memory-side/prompts/`
-- `docs/deployable-skills/memory-side/skills/`
 - `docs/deployable-skills/memory-side/skill-agent-model.md`
 
 ### 2. 业务源码层

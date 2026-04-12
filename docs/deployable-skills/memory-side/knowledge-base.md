@@ -1,9 +1,9 @@
 ---
 title: "Knowledge Base 基线"
 status: active
-updated: 2026-03-20
+updated: 2026-04-13
 owner: aw-kernel
-last_verified: 2026-03-20
+last_verified: 2026-04-13
 ---
 # Knowledge Base 基线
 
@@ -204,5 +204,4 @@ docs/
 
 为了把 `Knowledge Base` 继续落成可执行载体，当前配套文档包括：
 
-- [Knowledge Base 适配 Prompt 草案](./prompts/knowledge-base-adapter-prompt.md)
-- [Knowledge Base Skill 骨架](./skills/knowledge-base-skill.md)
+- [knowledge-base-skill/SKILL.md](../../../product/memory-side/skills/knowledge-base-skill/SKILL.md)

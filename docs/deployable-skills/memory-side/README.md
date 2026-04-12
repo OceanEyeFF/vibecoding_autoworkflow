@@ -19,19 +19,12 @@
 - [formats/writeback-cleanup-output-format.md](./formats/writeback-cleanup-output-format.md)
 - [formats/README.md](./formats/README.md)：目录导航
 
-Prompt 草案：
+Canonical skill package 入口：
 
-- [prompts/knowledge-base-adapter-prompt.md](./prompts/knowledge-base-adapter-prompt.md)（draft）
-- [prompts/context-routing-adapter-prompt.md](./prompts/context-routing-adapter-prompt.md)（draft）
-- [prompts/writeback-cleanup-adapter-prompt.md](./prompts/writeback-cleanup-adapter-prompt.md)（draft）
-- [prompts/README.md](./prompts/README.md)：目录导航
-
-Skill skeleton 草案：
-
-- [skills/knowledge-base-skill.md](./skills/knowledge-base-skill.md)（draft）
-- [skills/context-routing-skill.md](./skills/context-routing-skill.md)（draft）
-- [skills/writeback-cleanup-skill.md](./skills/writeback-cleanup-skill.md)（draft）
-- [skills/README.md](./skills/README.md)：目录导航
+- [../../../product/memory-side/skills/README.md](../../../product/memory-side/skills/README.md)
+- [../../../product/memory-side/skills/knowledge-base-skill/SKILL.md](../../../product/memory-side/skills/knowledge-base-skill/SKILL.md)
+- [../../../product/memory-side/skills/context-routing-skill/SKILL.md](../../../product/memory-side/skills/context-routing-skill/SKILL.md)
+- [../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md](../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md)
 
 建议阅读顺序：
 
@@ -48,8 +41,7 @@ Skill skeleton 草案：
 - `Context Routing`：先读 [context-routing.md](./context-routing.md) 和 [context-routing-rules.md](./context-routing-rules.md)
 - `Writeback & Cleanup`：先读 [writeback-cleanup.md](./writeback-cleanup.md) 和 [writeback-cleanup-rules.md](./writeback-cleanup-rules.md)
 - 固定格式：先读 [formats/README.md](./formats/README.md)
-- Prompt 草案：先读 [prompts/README.md](./prompts/README.md)
-- skill skeleton：先读 [skills/README.md](./skills/README.md)
+- executable skill：先读 [../../../product/memory-side/skills/README.md](../../../product/memory-side/skills/README.md)
 
 这里不适合放：
 

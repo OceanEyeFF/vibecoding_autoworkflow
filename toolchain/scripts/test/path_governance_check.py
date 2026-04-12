@@ -160,16 +160,15 @@ ENTRYPOINT_LINK_RULES = {
         "docs/deployable-skills/memory-side/skill-agent-model.md",
         "docs/deployable-skills/memory-side/formats/context-routing-output-format.md",
         "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md",
-        "docs/deployable-skills/memory-side/prompts/knowledge-base-adapter-prompt.md",
-        "docs/deployable-skills/memory-side/prompts/context-routing-adapter-prompt.md",
-        "docs/deployable-skills/memory-side/prompts/writeback-cleanup-adapter-prompt.md",
-        "docs/deployable-skills/memory-side/skills/knowledge-base-skill.md",
-        "docs/deployable-skills/memory-side/skills/context-routing-skill.md",
-        "docs/deployable-skills/memory-side/skills/writeback-cleanup-skill.md",
+        "product/memory-side/skills/README.md",
+        "product/memory-side/skills/knowledge-base-skill/SKILL.md",
+        "product/memory-side/skills/context-routing-skill/SKILL.md",
+        "product/memory-side/skills/writeback-cleanup-skill/SKILL.md",
     ],
     "docs/deployable-skills/task-interface/README.md": [
         "docs/deployable-skills/task-interface/task-contract.md",
-        "docs/deployable-skills/task-interface/skills/task-contract-skill.md",
+        "product/task-interface/skills/README.md",
+        "product/task-interface/skills/task-contract-skill/SKILL.md",
     ],
 }
 REQUIRED_GITIGNORE_ENTRIES = [

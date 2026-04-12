@@ -1,9 +1,9 @@
 ---
 title: "Memory Side 总览"
 status: active
-updated: 2026-03-23
+updated: 2026-04-13
 owner: aw-kernel
-last_verified: 2026-03-23
+last_verified: 2026-04-13
 ---
 # Memory Side 总览
 
@@ -52,7 +52,7 @@ last_verified: 2026-03-23
 - 仓库内静态文档是真相本体。
 - Agent Prompt 是维护层，不是真相层。
 - 后端差异只能影响“怎么读写文档”，不能影响“项目真相是什么”。
-- Memory Side 优先做文档和 Prompt 规范，不优先做交互模块。
+- Memory Side 优先做文档与能力合同，不优先做交互模块。
 
 ## 五、组件关系
 
@@ -118,19 +118,19 @@ Knowledge Base
 
 ## 十一、Skill、Task Interface 与可选调用层
 
-当前 `Memory Side` 已经有 Prompt 规范，但后续真实落地不能停在 Prompt。
+当前 `Memory Side` 已经有稳定的合同正文，但后续真实落地不能停在 docs 层说明。
 
 建议的载体分层是：
 
-- Prompt：定义语义规范
-- Skill：封装单一能力
+- 合同正文：定义语义规范
+- canonical skill：封装单一能力
 - `Task Contract`：在讨论和执行之间提供正式任务基线
 - Agent / Workflow Shell：由宿主执行层决定如何调用 Skill，不属于当前仓库知识主线
 
 当前仓库中与 `Task Contract` 对应的实际落点包括：
 
 - [Task Contract 基线](../task-interface/task-contract.md)
-- [Task Contract Skill 骨架](../task-interface/skills/task-contract-skill.md)
+- [task-contract-skill/SKILL.md](../../../product/task-interface/skills/task-contract-skill/SKILL.md)
 
 如果你要理解通用能力模型，先读：
 

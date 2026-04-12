@@ -1,29 +1,29 @@
 ---
 title: "Memory Side Skill 与 Agent 模型"
 status: active
-updated: 2026-04-07
+updated: 2026-04-13
 owner: aw-kernel
-last_verified: 2026-04-07
+last_verified: 2026-04-13
 ---
 # Memory Side Skill 与 Agent 模型
 
-> 目的：定义 `Memory Side` 中 `Prompt`、`Skill` 与可选调用层的关系，并明确 `Task Contract` 这个任务接口对象如何与它们衔接。
+> 目的：定义 `Memory Side` 中合同正文、`Skill` 与可选调用层的关系，并明确 `Task Contract` 这个任务接口对象如何与它们衔接。
 
-## 一、为什么不能停在 Prompt
+## 一、为什么不能停在合同正文
 
-当前三个 Prompt 已经能定义行为边界，但还不够成为稳定产物。
+只靠合同正文也能定义行为边界，但还不够成为稳定产物。
 
 原因：
 
-- Prompt 解决“怎么说”，不解决“怎么触发”
-- Prompt 解决“语义约束”，不解决“能力封装”
-- Prompt 解决“共识规范”，不解决“多后端部署”
+- 合同正文解决“是什么”，不解决“怎么触发”
+- 合同正文解决“语义约束”，不解决“能力封装”
+- 合同正文解决“跨后端共识”，不解决“多后端部署”
 
-因此，`Memory Side` 的可落地形态不能只有 Prompt。
+因此，`Memory Side` 的可落地形态不能只有 docs 层合同正文。
 
 ## 二、四类载体
 
-### 1. Prompt
+### 1. 合同正文
 
 职责：
 
@@ -61,13 +61,13 @@ last_verified: 2026-04-07
 - 这是可选调用层，不是当前仓库知识主线的一部分
 - 当前仓库不固定 `task-entry-agent`、`task-closeout-agent` 一类命名
 
-## 三、当前仓库里的五层落点
+## 三、当前仓库里的四层落点
 
 ### 1. 知识合同层
 
 包括：
 
-- `docs/deployable-skills/memory-side/` 下的基线、规则、格式、Prompt 和 skill skeleton
+- `docs/deployable-skills/memory-side/` 下的基线、规则、格式和模型说明
 
 ### 2. 业务源码层
 
@@ -232,7 +232,7 @@ toolchain/
 
 无论是 `Codex` 还是 `Claude`，都应共享同一套：
 
-- Prompt 规范
+- 合同正文与字段约束
 - Skill 输入输出约束
 - `Task Contract / Route Card / Writeback Card` 这组接口对象
 - canonical skill 源码
@@ -254,9 +254,10 @@ toolchain/
 ## 九、配套文档
 
 - [Memory Side 层级边界](./layer-boundary.md)
-- [Knowledge Base Skill 骨架](./skills/knowledge-base-skill.md)
-- [Context Routing Skill 骨架](./skills/context-routing-skill.md)
-- [Writeback & Cleanup Skill 骨架](./skills/writeback-cleanup-skill.md)
+- [product/memory-side/skills/README.md](../../../product/memory-side/skills/README.md)
+- [knowledge-base-skill/SKILL.md](../../../product/memory-side/skills/knowledge-base-skill/SKILL.md)
+- [context-routing-skill/SKILL.md](../../../product/memory-side/skills/context-routing-skill/SKILL.md)
+- [writeback-cleanup-skill/SKILL.md](../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md)
 - [Usage Help 总入口](../../project-maintenance/usage-help/README.md)
 - [Codex Repo-local Usage Help](../../project-maintenance/usage-help/codex.md)
 - [Claude Repo-local Usage Help](../../project-maintenance/usage-help/claude.md)

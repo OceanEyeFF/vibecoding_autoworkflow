@@ -56,7 +56,7 @@
 - `AGENTS.md`、review/verify 流程或退出标准变化时，必须同步更新 `docs/project-maintenance/governance/review-verify-handbook.md`。
 - deployment / adapter 行为变化时，必须同步更新相关 `docs/project-maintenance/deploy/` 文档和 verify 命令说明。
 - autoresearch 模块路径、入口或运行/参考文档变化时，必须同步更新 `docs/autoresearch/` 入口与对应治理检查。
-- deployable skill 合同、格式或 skill skeleton 路径变化时，必须同步更新 `docs/deployable-skills/` 入口与对应治理检查。
+- deployable skill 合同、格式或 canonical skill 入口路径变化时，必须同步更新 `docs/deployable-skills/`、`product/*/skills/` 入口与对应治理检查。
 - 只有已验证结果才可以回写为长期真相；未验证的结论不要写进知识层。
 
 ## Root Rules
@@ -97,7 +97,7 @@
 ## Writeback
 
 - 项目维护与治理正文写到 `docs/project-maintenance/`。
-- deployable skills 的知识、格式和 skeleton 写到 `docs/deployable-skills/`。
+- deployable skills 的知识与格式写到 `docs/deployable-skills/`，可执行 skill package 写到 `product/`。
 - autoresearch 模块文档写到 `docs/autoresearch/`。
 - template / checklist 只在它们能稳定承接执行时才保留。
 - 不要把项目真相写进 `.agents/`、`.claude/`、`.opencode/`、`.nav/`。

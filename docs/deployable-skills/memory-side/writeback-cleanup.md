@@ -1,9 +1,9 @@
 ---
 title: "Writeback & Cleanup 基线"
 status: active
-updated: 2026-04-03
+updated: 2026-04-13
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-13
 ---
 # Writeback & Cleanup 基线
 
@@ -71,6 +71,5 @@ last_verified: 2026-04-03
 为了把 `Writeback & Cleanup` 落成可执行产物，当前配套文档包括：
 
 - [Writeback & Cleanup 回写规则](./writeback-cleanup-rules.md)
-- [Writeback & Cleanup 适配 Prompt 草案](./prompts/writeback-cleanup-adapter-prompt.md)
 - [Writeback & Cleanup 输出格式](./formats/writeback-cleanup-output-format.md)
-- [Writeback & Cleanup Skill 骨架](./skills/writeback-cleanup-skill.md)
+- [writeback-cleanup-skill/SKILL.md](../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md)

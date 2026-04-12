@@ -1,9 +1,9 @@
 ---
 title: "Context Routing 基线"
 status: active
-updated: 2026-04-03
+updated: 2026-04-13
 owner: aw-kernel
-last_verified: 2026-04-03
+last_verified: 2026-04-13
 ---
 # Context Routing 基线
 
@@ -70,6 +70,5 @@ last_verified: 2026-04-03
 为了把 `Context Routing` 落成可执行产物，当前配套文档包括：
 
 - [Context Routing 分流规则](./context-routing-rules.md)
-- [Context Routing 适配 Prompt 草案](./prompts/context-routing-adapter-prompt.md)
 - [Context Routing 输出格式](./formats/context-routing-output-format.md)
-- [Context Routing Skill 骨架](./skills/context-routing-skill.md)
+- [context-routing-skill/SKILL.md](../../../product/memory-side/skills/context-routing-skill/SKILL.md)
