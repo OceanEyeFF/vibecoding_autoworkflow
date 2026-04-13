@@ -4,11 +4,13 @@
 
 当前子层与模块入口：
 
+- [harness-operations/README.md](./harness-operations/README.md)：`Harness Operations`
 - [memory-side/README.md](./memory-side/README.md)：`Knowledge Base / Context Routing / Writeback & Cleanup`
 - [task-interface/README.md](./task-interface/README.md)：`Task Contract`
 
 当前结构化承接入口：
 
+- [harness-operations/Harness指导思想.md](./harness-operations/Harness指导思想.md)
 - [memory-side/formats/context-routing-output-format.md](./memory-side/formats/context-routing-output-format.md)
 - [memory-side/formats/writeback-cleanup-output-format.md](./memory-side/formats/writeback-cleanup-output-format.md)
 - [task-interface/task-contract.md](./task-interface/task-contract.md)
