@@ -1,13 +1,13 @@
 ---
 title: "Skill Deployment 维护流"
 status: active
-updated: 2026-04-11
+updated: 2026-04-13
 owner: aw-kernel
-last_verified: 2026-04-11
+last_verified: 2026-04-13
 ---
 # Skill Deployment 维护流
 
-> 目的：为当前仓库的 repo-local / global skill mounts 提供统一的维护节奏，避免只会“重新部署”，却看不见 drift、陈旧 target 和坏链路。
+> 目的：为当前仓库的 repo-local / global skill mounts 提供统一的维护与诊断入口，回答“怎么复验、怎么处理 drift、什么时候该 `--prune`、故障信号分别表示什么”。
 
 本页属于 [Deploy Runbooks](./README.md) 路径簇。
 
@@ -16,41 +16,39 @@ last_verified: 2026-04-11
 - [根目录分层](../foundations/root-directory-layering.md)
 - [Toolchain 分层](../../../toolchain/toolchain-layering.md)
 
-本页只负责仓库实现层的维护动作，不定义 skill 真相。
+本页只负责维护与诊断；首次安装看 [deploy-runbook.md](./deploy-runbook.md)，生命周期动作看 [skill-lifecycle.md](./skill-lifecycle.md)。
 
-## 一、推荐维护循环
+## 一、什么时候看这页
 
-默认维护顺序固定为：
+适合在下面场景先读：
+
+- 你已经有 target，想做日常同步与复验
+- 你怀疑 mounts 和 source 漂移了
+- 你需要判断是否该用 `--prune`
+- 你在处理 stale target、坏链路或 rename / remove 后残留
+
+## 二、推荐维护循环
+
+默认顺序固定为：
 
 1. `verify`
 2. `local` 或 `global` deploy
 3. 再跑一次 `verify`
 
-这能区分三种情况：
+这个顺序的目的：
 
-- 是 source 没有变化，但 target 漂移了
-- 是 target 需要重新同步
-- 是 deploy 后仍然存在结构问题
+- 先看清 drift 是什么
+- 再决定只是重同步，还是要顺手清理 stale target
+- 最后确认 deploy 后问题是否真的消失
 
-当 `product/*/adapters/<backend>/skills/` 新增 partition 来源（例如新增 `harness-operations`）时，已存在的 repo-local mount 不会自动补齐新条目。此时 `verify` 会出现 `missing-target-entry`，`closeout_acceptance_gate.py` 的 `test_gate` 也会按真实 drift 失败（不属于 `missing-target-root` 可跳过场景）。处理方式是先执行对应 backend 的 `local` deploy，再复验一次 `verify`。
-
-## 二、验证分层
-
-当前把 deployment verification 分成两层：
+## 三、验证分层
 
 ### 1. `sync verify`
 
 用途：
 
 - 检查 deploy target 是否和 `product/.../adapters/<backend>/skills/` 同步
-- 发现缺失 mount、陈旧 target、坏链路和错误路径类型
-- 作为 repo-local / global deploy 的统一结构检查
-
-当前支持：
-
-- `agents`
-- `claude`
-- `opencode`
+- 发现缺失 mount、坏链路、错误类型和陈旧 target
 
 执行入口：
 
@@ -58,30 +56,32 @@ last_verified: 2026-04-11
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend <backend>
 ```
 
+global target 复验时，优先显式传该 backend 对应的 root 参数：
+
+- `agents`：`--agents-root`
+- `claude`：`--claude-root`
+- `opencode`：`--opencode-root`
+
 ### 2. `smoke verify`
 
 用途：
 
-- 在 backend 自己的真实运行环境里，做最小可用性确认
-- 确认 backend 不只是“挂载结构存在”，而是真的能读取对应 repo-local skill wrapper
-- 只做最小项目级 skill 调用验证，不扩成 research runner 或长期评测
+- 在 backend 自己的真实运行环境里做最小可用性确认
+- 确认 backend 不只是“挂载结构存在”，而是真的能读取对应 wrapper
 
-当前支持：
+当前边界：
 
-- `agents`
-- `claude`
+- `agents`：支持
+- `claude`：支持
+- `opencode`：当前不写成稳定 smoke verify backend，只保留 `sync verify`
 
-当前不支持：
+backend-specific smoke verify 口径看：
 
-- `opencode`
+- [Codex Repo-local Usage Help](../usage-help/codex.md)
+- [Claude Repo-local Usage Help](../usage-help/claude.md)
+- [OpenCode Repo-local Usage Help](../usage-help/opencode.md)
 
-说明：
-
-- `OpenCode` 当前只确认 deployment adaptation 成立
-- 当前不把 `OpenCode` 写成 smoke verify 已稳定可做的 backend
-- 如果后续有稳定 runtime contract，再单独补 smoke verify 口径
-
-## 三、Repo-local 维护
+## 四、Repo-local 维护
 
 检查 repo-local mounts：
 
@@ -99,7 +99,7 @@ python3 toolchain/scripts/deploy/adapter_deploy.py local --backend claude
 python3 toolchain/scripts/deploy/adapter_deploy.py local --backend opencode
 ```
 
-如果怀疑 target 里残留了旧目录，可以带 `--prune`：
+需要清理陈旧 target 时再带 `--prune`：
 
 ```bash
 python3 toolchain/scripts/deploy/adapter_deploy.py local --backend agents --prune
@@ -107,126 +107,120 @@ python3 toolchain/scripts/deploy/adapter_deploy.py local --backend claude --prun
 python3 toolchain/scripts/deploy/adapter_deploy.py local --backend opencode --prune
 ```
 
-部署后再复验：
+## 五、全局安装维护
+
+检查全局 target：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend claude
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend opencode
+python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root ~/.codex/skills
+python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend claude --claude-root ~/.claude/skills
+python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend opencode --opencode-root ~/.config/opencode/skills
 ```
 
-## 四、全局安装维护
-
-检查全局 target 时，优先显式传目标根，避免受环境变量差异影响。
-
-示例：
+重新同步全局 target：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify \
-  --target global \
-  --backend agents \
-  --agents-root ~/.codex/skills
+python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root ~/.codex/skills --create-roots
+python3 toolchain/scripts/deploy/adapter_deploy.py global --backend claude --claude-root ~/.claude/skills --create-roots
+python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --opencode-root ~/.config/opencode/skills --create-roots
 ```
+
+需要清理陈旧全局 target 时再带 `--prune`：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify \
-  --target global \
-  --backend claude \
-  --claude-root ~/.claude/skills
+python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root ~/.codex/skills --create-roots --prune
+python3 toolchain/scripts/deploy/adapter_deploy.py global --backend claude --claude-root ~/.claude/skills --create-roots --prune
+python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --opencode-root ~/.config/opencode/skills --create-roots --prune
 ```
 
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify \
-  --target global \
-  --backend opencode \
-  --opencode-root ~/.config/opencode/skills
-```
+## 六、`--prune` 的边界
 
-部署全局 target：
+适合在这些场景使用：
 
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global \
-  --backend agents \
-  --agents-root ~/.codex/skills \
-  --create-roots
-```
+- skill 被删除
+- skill 名发生 rename
+- target 里残留历史目录
+- 你明确希望 target 和 source 完全一致
 
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global \
-  --backend claude \
-  --claude-root ~/.claude/skills \
-  --create-roots
-```
+不适合默认使用的场景：
 
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global \
-  --backend opencode \
-  --opencode-root ~/.config/opencode/skills \
-  --create-roots
-```
+- 还没先跑过一次 `verify`
+- 还没确认 target 里的额外目录是不是手工实验目录
 
-如需清理全局 target 中的陈旧目录：
+## 七、常见故障信号
 
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global \
-  --backend opencode \
-  --opencode-root ~/.config/opencode/skills \
-  --create-roots \
-  --prune
-```
+### 1. `missing-target-entry`
 
-## 五、`verify` 当前会检查什么
+含义：
 
-- target root 是否存在
-- target root 类型是否正确
-- 是否缺少预期 skill 目录
-- 是否存在没有 source 对应关系的陈旧 target
-- repo-local mount 是否是坏链路
-- repo-local mount 的 symlink 目标是否正确
-- global target 是否错误地变成 symlink 或普通文件
+- source 已存在，但 target 里缺少预期 mount
+- 常见于新增 skill、新增 partition 来源后还没重新 deploy
 
-`verify` 发现 drift 时会返回非零退出码，适合直接挂进手工检查或 CI。
+处理顺序：
 
-## 六、Smoke Verify 的当前边界
+1. 先跑 `verify` 确认缺的是哪个 entry
+2. 执行对应 backend 的 `local` 或 `global` deploy
+3. 再跑一次 `verify`
 
-`smoke verify` 当前只覆盖 `agents` 与 `claude`。
+### 2. unexpected stale target
 
-最小口径：
+常见信号：
 
-- `agents`：在 Codex / OpenAI 侧显式调用 repo-local `.agents/skills/` 下的 wrapper，确认固定格式输出成立
-- `claude`：在 Claude 侧显式调用 repo-local `.claude/skills/` 下的 wrapper，确认固定格式输出成立
-- `opencode`：当前不写成 smoke verify 已支持；只保留 `sync verify`
+- `unexpected-target-entry`
 
-因此当前推荐节奏是：
+含义：
 
-1. 所有 backend 先做 `sync verify`
-2. `agents` 与 `claude` 再按各自 runbook 做 `smoke verify`
-3. `opencode` 当前停在 deploy sync 层，不补 runtime smoke 结论
+- target 里有 source 不再承认的旧 skill 或历史目录
 
-## 七、什么时候使用 `--prune`
+处理顺序：
 
-适合在下面几种场景使用：
+1. 先确认它不是手工实验目录
+2. 如果确认是历史残留，再执行 deploy 时带 `--prune`
+3. 再跑一次 `verify`
 
-- 某个 backend 的 skill 名发生收口或删除
-- target 目录里混入了历史实验目录
-- 你明确希望 target 和 `product/.../adapters/<backend>/skills/` 一致
+### 3. broken symlink / wrong type
 
-不适合在下面几种场景默认使用：
+常见信号：
 
-- 你还没先跑过一次 `verify`
-- 你不确定 target 里是否有临时手工实验内容
+- `broken-symlink`
+- `wrong-target-type`
+- `wrong-symlink-target`
+- `wrong-target-root-type`
 
-## 八、非目标
+含义：
 
-本页不是：
+- repo-local mount 结构损坏
+- local target 本该是 symlink，却变成目录或文件
+- global target 本该是目录 copy，却变成 symlink 或文件
 
-- research runner 使用手册
-- canonical skill 规则正文
-- 自动同步 daemon 设计
-- 多 agent 编排方案
+处理顺序：
 
-本页只负责：
+1. 先确认 target root 本身可用
+2. 执行对应 backend 的 deploy，重建正确结构
+3. 再跑一次 `verify`
 
-- deploy target 维护节奏
-- `verify` / `deploy` / `--prune` 的最小使用方式
-- repo-local 与 global mounts 的检查顺序
+### 4. rename / remove 后的 drift
+
+常见信号：
+
+- 新名字报 `missing-target-entry`
+- 旧名字报 `unexpected-target-entry`
+
+含义：
+
+- source 已经变了，但 target 还残留旧名
+
+处理顺序：
+
+1. 先 `verify` 看新旧名字各自的状态
+2. 重新 deploy
+3. 如果旧名仍残留，再带 `--prune`
+4. 再复验一次 `verify`
+
+## 八、额外判断
+
+如果看到：
+
+- `missing-target-root`
+
+先判断这是“还没安装”还是“已安装 target 丢失”。首次安装场景应回到 [deploy-runbook.md](./deploy-runbook.md)；已有安装意外缺失时，再按本页维护循环处理。
