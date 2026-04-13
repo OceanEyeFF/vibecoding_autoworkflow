@@ -28,7 +28,7 @@ contract:
       - document
       - code
   commands:
-    scope_gate: python3 toolchain/scripts/test/scope_gate_check.py
+    scope_gate: python3 toolchain/scripts/test/harness_scope_gate.py --harness-file .autoworkflow/harness.yaml
     spec_gate: python3 toolchain/scripts/test/path_governance_check.py
     backfill_gate: python3 toolchain/scripts/test/gate_status_backfill.py --workflow-id pending --gate scope_gate --status passed --state-file .autoworkflow/state/harness-review-loop.json --closeout-root .autoworkflow/closeout
     static_gate: python3 toolchain/scripts/test/path_governance_check.py

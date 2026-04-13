@@ -6,6 +6,7 @@
 
 - `adapter_deploy.py`：把 `product/` 下的 adapter 源码部署到 repo-local mount 或全局技能目录，并提供 deploy target 校验与清理能力
 - `init_harness_project.py`：从 canonical harness 模板初始化 runtime 目录和 `harness.yaml`
+- `test_harness_template_contract.py`：锁定 canonical harness 模板里的 gate 命令契约，避免回退到非 harness-aware scope gate 或误引入 build 依赖
 
 最小维护流：
 

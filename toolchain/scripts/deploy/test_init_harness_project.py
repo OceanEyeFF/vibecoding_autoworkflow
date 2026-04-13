@@ -22,7 +22,7 @@ class InitHarnessProjectTest(unittest.TestCase):
                 "version: 1\n"
                 "contract:\n"
                 "  commands:\n"
-                "    scope_gate: python3 toolchain/scripts/test/scope_gate_check.py\n"
+                "    scope_gate: python3 toolchain/scripts/test/harness_scope_gate.py --harness-file .autoworkflow/harness.yaml\n"
                 "    backfill_gate: python3 toolchain/scripts/test/gate_status_backfill.py --workflow-id pending --gate scope_gate --status passed --state-file .autoworkflow/state/harness-review-loop.json --closeout-root .autoworkflow/closeout\n"
                 "    smoke_gate: python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root .autoworkflow/smoke/agents/skills --create-roots --prune && python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root .autoworkflow/smoke/agents/skills\n"
                 "runtime:\n"
@@ -137,6 +137,10 @@ class InitHarnessProjectTest(unittest.TestCase):
         )
         self.assertIn(
             "--state-file custom-runtime/harness/state/harness-review-loop.json",
+            rendered,
+        )
+        self.assertIn(
+            "--harness-file custom-runtime/harness/config.yaml",
             rendered,
         )
         self.assertIn(
