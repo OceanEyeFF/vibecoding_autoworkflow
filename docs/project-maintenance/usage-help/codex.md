@@ -26,6 +26,7 @@ last_verified: 2026-04-13
 
 - 如果没有 `--agents-root`，全局安装依赖 `CODEX_HOME`
 - `verify --target global` 时，优先显式传 `--agents-root`
+- 如果你要依赖脚本默认解析，先 `export CODEX_HOME=/your/codex/home`；不要把未设置的 `"$CODEX_HOME/skills"` 直接当命令参数传进去
 
 ## 二、最小 smoke verify 口径
 
@@ -54,6 +55,6 @@ last_verified: 2026-04-13
 全局安装或复验时，`agents` backend 的差异只有 target root 参数：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root "$CODEX_HOME/skills" --create-roots
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root "$CODEX_HOME/skills"
+python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root /your/codex/home/skills --create-roots
+python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root /your/codex/home/skills
 ```

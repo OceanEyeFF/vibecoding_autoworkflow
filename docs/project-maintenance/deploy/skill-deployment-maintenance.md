@@ -165,15 +165,17 @@ python3 toolchain/scripts/deploy/adapter_deploy.py local --backend opencode --pr
 检查全局 target：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root "$CODEX_HOME/skills"
+python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root /your/codex/home/skills
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend claude --claude-root ~/.claude/skills
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend opencode --opencode-root ~/.config/opencode/skills
 ```
 
+如果你不想显式传 `--agents-root`，先在 shell 里 `export CODEX_HOME=/your/codex/home`；脚本只会在未传 `--agents-root` 时读取 `CODEX_HOME`，不会替你把空变量补成合法路径。
+
 重新同步全局 target：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root "$CODEX_HOME/skills" --create-roots
+python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root /your/codex/home/skills --create-roots
 python3 toolchain/scripts/deploy/adapter_deploy.py global --backend claude --claude-root ~/.claude/skills --create-roots
 python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --opencode-root ~/.config/opencode/skills --create-roots
 ```
@@ -181,7 +183,7 @@ python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --o
 需要清理陈旧全局 target 时再带 `--prune`：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root "$CODEX_HOME/skills" --create-roots --prune
+python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root /your/codex/home/skills --create-roots --prune
 python3 toolchain/scripts/deploy/adapter_deploy.py global --backend claude --claude-root ~/.claude/skills --create-roots --prune
 python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --opencode-root ~/.config/opencode/skills --create-roots --prune
 ```

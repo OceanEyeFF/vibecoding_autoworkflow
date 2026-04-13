@@ -139,8 +139,14 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend opencode
 
 先选定 global target，再执行安装：
 
+如果 `agents` backend 想走脚本默认解析，先确保当前 shell 已经设置：
+
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root "$CODEX_HOME/skills" --create-roots
+export CODEX_HOME=/your/codex/home
+```
+
+```bash
+python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root /your/codex/home/skills --create-roots
 python3 toolchain/scripts/deploy/adapter_deploy.py global --backend claude --claude-root ~/.claude/skills --create-roots
 python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --opencode-root ~/.config/opencode/skills --create-roots
 ```
@@ -148,7 +154,7 @@ python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --o
 安装后显式传 root 做复验：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root "$CODEX_HOME/skills"
+python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root /your/codex/home/skills
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend claude --claude-root ~/.claude/skills
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend opencode --opencode-root ~/.config/opencode/skills
 ```

@@ -50,16 +50,18 @@ last_verified: 2026-04-13
 
 - `product/<partition>/adapters/<backend>/skills/<skill>/`
 
-`harness-operations` 不一样。它的 source 由三部分组成：
+`harness-operations` 不一样。它的 source 由三段正文加一个 adapter shim 组成：
 
 - canonical prompt：`product/harness-operations/skills/<skill>/prompt.md`
 - shared standard：`product/harness-operations/skills/harness-standard.md`
 - backend header：`product/harness-operations/adapters/<backend>/skills/<skill>/header.yaml`
+- adapter `SKILL.md`：保留为指向 canonical `product/harness-operations/skills/<skill>/SKILL.md` 的 symlink shim
 
 因此当你修改 harness skill 时：
 
 - 不要把 deploy target 当 source 去改
 - 不要把 backend 差异重新写回 canonical `prompt.md`
+- 不要删掉 adapter source 里的 `SKILL.md` symlink shim；`governance_semantic_check.py` 仍会把它当必需项
 - 需要通过 `build` 或后续 `local/global` deploy 刷新 assembled `SKILL.md`
 
 ## 四、动作矩阵
@@ -79,7 +81,7 @@ last_verified: 2026-04-13
 
 - 新增 canonical skill 时，改 `product/<partition>/skills/`
 - 新增 backend adapter source 时，改 `product/<partition>/adapters/<backend>/skills/`
-- 新增 harness skill 时，同时检查 `prompt.md`、`references/`、`header.yaml` 是否齐全
+- 新增 harness skill 时，同时检查 `prompt.md`、`references/`、`header.yaml`，以及 adapter source 里的 `SKILL.md` symlink shim 是否齐全且指向 canonical `SKILL.md`
 - 对使用中的 target scope 执行 deploy，再跑对应 scope 的 verify：
 
 ```bash
