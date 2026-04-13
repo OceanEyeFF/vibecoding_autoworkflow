@@ -7,7 +7,7 @@ last_verified: 2026-04-13
 ---
 # Skill Deployment 维护流
 
-> 目的：为当前仓库的 repo-local / global skill mounts 提供统一的维护与诊断入口，回答“怎么复验、怎么处理 drift、什么时候该 `--prune`、故障信号分别表示什么”。
+> 目的：为当前仓库的 repo-local / global skill mounts 提供统一的维护与诊断入口，回答“怎么复验、怎么处理 drift、什么时候该 `--prune`、local/global verify 到底各看什么、故障信号分别表示什么”。
 
 本页属于 [Deploy Runbooks](./README.md) 路径簇。
 
@@ -26,6 +26,7 @@ last_verified: 2026-04-13
 - 你怀疑 mounts 和 source 漂移了
 - 你需要判断是否该用 `--prune`
 - 你在处理 stale target、坏链路或 rename / remove 后残留
+- 你看到 `missing-build-source`、`wrong-target-type`、`unexpected-target-entry` 之类的错误码
 
 ## 二、推荐维护循环
 
@@ -49,16 +50,16 @@ last_verified: 2026-04-13
 python3 toolchain/scripts/deploy/init_harness_project.py
 ```
 
-## 三、验证分层
+## 三、`verify` 在看什么
 
-### 1. `sync verify`
+### 1. 通用 `sync verify`
 
 用途：
 
 - 检查 deploy target 是否和 `product/.../adapters/<backend>/skills/` 同步
 - 发现缺失 mount、坏链路、错误类型和陈旧 target
-- 对 `harness-operations` 的 local mounts 额外检查 symlink 是否指向当前 build root，以及 build output 是否和 canonical `prompt.md + harness-standard.md + references/` 一致
-- 对 global copied targets 额外检查 copy 内容是否和当前 canonical harness snapshot 一致
+- 对 `harness-operations` 的 local mounts 额外检查 symlink 是否指向当前 build root，以及 build output 是否和 canonical snapshot 一致
+- 对 global copied targets 额外检查 copy 内容是否和当前 canonical snapshot 一致
 
 执行入口：
 
@@ -78,12 +79,40 @@ global target 复验时，优先显式传该 backend 对应的 root 参数：
 - `claude`：`--claude-root`
 - `opencode`：`--opencode-root`
 
-### 2. `smoke verify`
+### 2. local 与 global 的差异
+
+`verify` 在两个 target scope 下关注的 drift 不同：
+
+- `local`
+  检查 `.agents/skills/`、`.claude/skills/`、`.opencode/skills/` 里的 entry 是否是正确 symlink。
+- `global`
+  检查全局 target 是否是目录 copy，以及 copy 出来的文件内容是否和当前 source snapshot 一致。
+
+对 harness skills，差异更明显：
+
+- `local verify`
+  关注 repo-local symlink 是否指向 `.autoworkflow/build/adapter-sources/<backend>/<skill>/`，并检查 build root 里的 `SKILL.md + references/` 是否与 `header.yaml + harness-standard.md + prompt.md + references/` 的当前快照一致。
+- `global verify`
+  不关心 symlink，而是直接检查全局目录 copy 的文件内容是否与当前 harness assembled snapshot 一致。
+
+这里的 operator-facing 目标形态是固定的：
+
+- `local` 预期是 symlink
+- `global` 预期是目录 copy
+
+如果手工改过 target，或使用了和默认形态相反的 `--method`，`verify` 会把它报成 `wrong-target-type`。
+
+因此：
+
+- 你想确认 harness build 产物有没有过期，看 `local verify`
+- 你想确认全局安装是不是拷贝了旧内容，看 `global verify`
+
+### 3. `smoke verify`
 
 用途：
 
 - 在 backend 自己的真实运行环境里做最小可用性确认
-- 确认 backend 不只是“挂载结构存在”，而是真的能读取对应 wrapper
+- 确认 backend 不只是“挂载结构存在”，而是真的能读取对应 skill entry
 
 当前边界：
 
@@ -136,7 +165,7 @@ python3 toolchain/scripts/deploy/adapter_deploy.py local --backend opencode --pr
 检查全局 target：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root ~/.codex/skills
+python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root "$CODEX_HOME/skills"
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend claude --claude-root ~/.claude/skills
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend opencode --opencode-root ~/.config/opencode/skills
 ```
@@ -144,7 +173,7 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --back
 重新同步全局 target：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root ~/.codex/skills --create-roots
+python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root "$CODEX_HOME/skills" --create-roots
 python3 toolchain/scripts/deploy/adapter_deploy.py global --backend claude --claude-root ~/.claude/skills --create-roots
 python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --opencode-root ~/.config/opencode/skills --create-roots
 ```
@@ -152,12 +181,26 @@ python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --o
 需要清理陈旧全局 target 时再带 `--prune`：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root ~/.codex/skills --create-roots --prune
+python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root "$CODEX_HOME/skills" --create-roots --prune
 python3 toolchain/scripts/deploy/adapter_deploy.py global --backend claude --claude-root ~/.claude/skills --create-roots --prune
 python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --opencode-root ~/.config/opencode/skills --create-roots --prune
 ```
 
-## 六、`--prune` 的边界
+## 六、故障信号怎么路由
+
+| 信号 | 常见含义 | 优先处理方式 |
+|---|---|---|
+| `missing-target-root` | target 还没安装，或已安装 root 被删了 | 首次安装回 [deploy-runbook.md](./deploy-runbook.md)；非首次场景按本页维护循环重建 |
+| `missing-target-entry` | source 已存在，但 target 少了预期 mount | `verify -> deploy -> verify` |
+| `unexpected-target-entry` | target 残留 source 已不承认的旧目录 | 先确认不是手工实验目录，再按需 `deploy --prune` |
+| `wrong-target-root-type` | target root 存在，但不是目录 | 修正 root 后重跑 deploy |
+| `wrong-target-type` | local 本应是 symlink，或 global 本应是目录 copy | 重跑对应 deploy；必要时先清理坏 target |
+| `broken-symlink` / `wrong-symlink-target` | repo-local mount 指向错了，或指向对象已不存在 | 重跑 local deploy；如是 harness，再检查 build root |
+| `missing-build-source` | harness assembled source 不存在；`verify` 不会自动 build | 先 `build --backend <backend>`，再复验或重新 deploy |
+| `missing-build-source-file` / `stale-build-source-file` / `unexpected-build-source-file` | harness build root 的组装内容已经和当前 canonical snapshot 不一致 | 先 `build` 刷新组装产物，再看是否还需 deploy |
+| `missing-target-file` / `stale-target-file` / `unexpected-target-file` | global copy 内容已经和当前 source snapshot 不一致 | 重新执行对应 backend 的 global deploy，再复验 |
+
+## 七、`--prune` 的边界
 
 适合在这些场景使用：
 
@@ -170,100 +213,6 @@ python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --o
 
 - 还没先跑过一次 `verify`
 - 还没确认 target 里的额外目录是不是手工实验目录
-
-## 七、常见故障信号
-
-### 1. `missing-target-entry`
-
-含义：
-
-- source 已存在，但 target 里缺少预期 mount
-- 常见于新增 skill、新增 partition 来源后还没重新 deploy
-
-处理顺序：
-
-1. 先跑 `verify` 确认缺的是哪个 entry
-2. 执行对应 backend 的 `local` 或 `global` deploy
-3. 再跑一次 `verify`
-
-### 2. unexpected stale target
-
-常见信号：
-
-- `unexpected-target-entry`
-
-含义：
-
-- target 里有 source 不再承认的旧 skill 或历史目录
-
-处理顺序：
-
-1. 先确认它不是手工实验目录
-2. 如果确认是历史残留，再执行 deploy 时带 `--prune`
-3. 再跑一次 `verify`
-
-### 3. broken symlink / wrong type
-
-常见信号：
-
-- `broken-symlink`
-- `wrong-target-type`
-- `wrong-symlink-target`
-- `wrong-target-root-type`
-- `missing-build-source`
-- `stale-build-source-file`
-- `missing-build-source-file`
-
-含义：
-
-- repo-local mount 结构损坏
-- local target 本该是 symlink，却变成目录或文件
-- global target 本该是目录 copy，却变成 symlink 或文件
-- harness repo-local mount 指向的 build source 缺失、过期，或内容和当前 canonical snapshot 不一致
-
-处理顺序：
-
-1. 先确认 target root 本身可用
-2. 如为 harness source 问题，先执行 `build --backend <backend>`
-3. 执行对应 backend 的 deploy，重建正确结构
-4. 再跑一次 `verify`
-
-### 5. global copy 内容漂移
-
-常见信号：
-
-- `missing-target-file`
-- `stale-target-file`
-- `unexpected-target-file`
-
-含义：
-
-- global target 目录虽然还存在，但内容已经和当前 source snapshot 不一致
-- 对 harness skills，这个 snapshot 会按当前 `header.yaml + harness-standard.md + prompt.md + references/` 重新计算
-
-处理顺序：
-
-1. 先确认当前 canonical source 是预期版本
-2. 重新执行对应 backend 的 `global` deploy
-3. 再跑一次 `verify`
-
-### 4. rename / remove 后的 drift
-
-常见信号：
-
-- 新名字报 `missing-target-entry`
-- 旧名字报 `unexpected-target-entry`
-
-含义：
-
-- source 已经变了，但 target 还残留旧名
-
-处理顺序：
-
-1. 先 `verify` 看新旧名字各自的状态
-2. 重新 deploy
-3. 如果旧名仍残留，再带 `--prune`
-4. 再复验一次 `verify`
 
 ## 八、额外判断
 

@@ -1,35 +1,50 @@
 # Deploy Runbooks
 
-`docs/project-maintenance/deploy/` 只保存当前仓库的 repo-local deploy runbook 与维护说明。
+`docs/project-maintenance/deploy/` 只保存当前仓库的 operator-facing deploy / verify / maintenance 文档。这里解释 repo-local 与 global target 怎么装、怎么复验、怎么诊断 drift，但不承接 canonical skill 合同正文，也不恢复旧 `docs/operations/*` 的 backend 分叉结构。
 
 这里适合放：
 
-- 当前仓库的 deploy backend 总览
-- repo-local / global target 的动作入口
-- skill mounts 的维护、诊断与生命周期闭环
+- 当前仓库的 deploy backend、target 和入口命令
+- 首次安装与已有 mounts 的最小操作路径
+- `verify`、drift、stale、`--prune` 与 lifecycle 同步闭环
+- `harness-operations` 的特殊 build/deploy/verify 模型
 
 这里不适合放：
 
 - canonical skill 真相正文
-- backend 专属 runtime 细节
+- 按 `memory-side/`、`task-interface/` 再拆的 backend help 子树
 - research runner 或评测主流程
 
-## 按任务进入
+## 按问题进入
 
-| 你要做什么 | 先看哪里 | 说明 |
+| 你要回答什么问题 | 先看哪里 | 说明 |
 |---|---|---|
-| 首次本地挂载 skill | [deploy-runbook.md](./deploy-runbook.md) | 只看 Quick Start、target 对照和最小命令 |
-| 首次全局安装 | [deploy-runbook.md](./deploy-runbook.md) | 先确认 global target，再执行最小安装步骤 |
-| 日常同步已有 mounts | [skill-deployment-maintenance.md](./skill-deployment-maintenance.md) | 重点看 `verify -> deploy -> verify` |
-| 排查 drift、stale target、坏链路 | [skill-deployment-maintenance.md](./skill-deployment-maintenance.md) | 重点看故障信号、`--prune` 边界和处理顺序 |
-| 新增 skill | [skill-lifecycle.md](./skill-lifecycle.md) | 看 `Add` 模板，确认 source、deploy 和 verify |
-| 更新已有 skill | [skill-lifecycle.md](./skill-lifecycle.md) | 看 `Update` 模板，不必翻 maintenance 诊断细节 |
-| 删除或重命名 skill | [skill-lifecycle.md](./skill-lifecycle.md) | 看 `Rename / Remove` 模板和 `--prune` 语义 |
-| 只想看 backend 特有差异 | [usage-help/codex.md](../usage-help/codex.md)、[usage-help/claude.md](../usage-help/claude.md)、[usage-help/opencode.md](../usage-help/opencode.md) | 这些页面只保留 backend 特有 target、smoke verify 和限制 |
+| 我第一次给某个 backend 装 skill | [deploy-runbook.md](./deploy-runbook.md) | Quick Start，只保留首次 local/global install、target 对照和最小复验 |
+| 我已有 mounts，只想更新或复验 | [skill-deployment-maintenance.md](./skill-deployment-maintenance.md) | 先看 `build` 何时需要，再按 `verify -> deploy -> verify` 做 |
+| 我看到 drift / stale / `wrong-target-type` / `missing-build-source` | [skill-deployment-maintenance.md](./skill-deployment-maintenance.md) | 这里集中解释错误信号、local/global drift 口径和 `--prune` |
+| 我在新增、改名、删除 skill source | [skill-lifecycle.md](./skill-lifecycle.md) | 这里回答 source 改哪、deploy 跟什么、docs 何时同步 |
+| 我只想看 `agents / claude / opencode` 差异 | [usage-help/README.md](../usage-help/README.md) | backend-specific 页面只保留 target、smoke verify 和限制 |
 
-## 文档分工
+## 页面职责
 
-- [deploy-runbook.md](./deploy-runbook.md)：首次安装、最小更新、backend / target 总览
-- [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)：`verify`、drift、stale target、`--prune`、故障诊断
-- [skill-lifecycle.md](./skill-lifecycle.md)：`add / update / rename / remove` 生命周期闭环
-- `usage-help/`：backend 特有差异，不重复通用 deploy 流程
+- [deploy-runbook.md](./deploy-runbook.md)
+  quick start。回答首次安装、repo-local / global target 对照、harness 为什么要先 build。
+- [skill-lifecycle.md](./skill-lifecycle.md)
+  lifecycle。回答 add / update / rename / remove 的 source of truth、deploy follow-up 与 writeback。
+- [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)
+  maintenance / diagnosis。回答只读 `verify`、drift 类型、`--prune` 边界，以及 local/global verify 的不同关注点。
+- `usage-help/`
+  backend-specific。只解释 `agents`、`claude`、`opencode` 的差异，不重复通用 deploy 流程。
+
+## Harness 特殊模型
+
+`harness-operations` 不是普通 thin-wrapper source：
+
+- canonical source 在 `product/harness-operations/skills/<skill>/prompt.md`
+- shared body 在 `product/harness-operations/skills/harness-standard.md`
+- backend source 在 `product/harness-operations/adapters/<backend>/skills/<skill>/header.yaml`
+- `build` 负责组装最终 `SKILL.md`
+- `local` / `global` deploy 会为 harness 自动刷新当前 backend 的 assembled source
+- `verify` 保持只读，不自动 build
+
+首次安装先看 [deploy-runbook.md](./deploy-runbook.md)；已有 mounts 的 drift 与 build-source 问题看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)。

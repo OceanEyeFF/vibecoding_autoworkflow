@@ -1,26 +1,27 @@
 # Usage Help
 
-`docs/project-maintenance/usage-help/` 只保存按 backend 聚合的 repo-local 使用帮助。
+`docs/project-maintenance/usage-help/` 只保存按 backend 聚合的 repo-local 使用帮助。这里不再按 `memory-side/` 或 `task-interface/` 再拆子树；每页只回答这个 backend 自己的 target、override 参数、smoke verify 口径和当前限制。
 
 这里适合放：
 
 - backend 特有的 global target 路径
+- backend 特有的 root override 参数
 - backend 特有的 smoke verify 口径
-- backend 限制与参数差异
+- backend 当前支持边界
 
 这里不适合放：
 
 - 通用 local / global deploy 流程
 - 通用 source-of-truth 解释
-- skill 生命周期维护说明
+- skill lifecycle 与 drift 诊断正文
 
 ## 按 backend 进入
 
-| 你要看什么 | 先看哪里 | 说明 |
+| backend | 页面 | 主要差异 |
 |---|---|---|
-| Codex / OpenAI 侧差异 | [codex.md](./codex.md) | 看 `agents` backend 的 global target、smoke verify 和参数差异 |
-| Claude 侧差异 | [claude.md](./claude.md) | 看 `claude` backend 的 global target、smoke verify 和参数差异 |
-| OpenCode 侧差异 | [opencode.md](./opencode.md) | 看 `opencode` backend 当前支持边界和 XDG target 差异 |
+| `agents` | [codex.md](./codex.md) | `CODEX_HOME` / `--agents-root`、稳定 smoke verify |
+| `claude` | [claude.md](./claude.md) | `~/.claude/skills` / `--claude-root`、稳定 smoke verify |
+| `opencode` | [opencode.md](./opencode.md) | XDG target root、仅 `sync verify`，无稳定 smoke verify |
 
 ## 和 Deploy 文档的分工
 
