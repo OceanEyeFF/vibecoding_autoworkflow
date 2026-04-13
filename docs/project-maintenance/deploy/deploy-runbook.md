@@ -63,6 +63,20 @@ python3 toolchain/scripts/deploy/adapter_deploy.py
 
 ## 四、首次安装最小步骤
 
+### 0. 首次初始化 harness runtime
+
+如果你要跑 `Harness Operations` 相关 workflow，先把 repo-local harness runtime 初始化出来：
+
+```bash
+python3 toolchain/scripts/deploy/init_harness_project.py
+```
+
+需要把 harness 配置写到自定义路径时，可显式传：
+
+```bash
+python3 toolchain/scripts/deploy/init_harness_project.py --harness-file custom-runtime/harness/config.yaml
+```
+
 ### 1. 首次本地挂载
 
 执行对应 backend 的 repo-local deploy：

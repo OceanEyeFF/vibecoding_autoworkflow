@@ -1,0 +1,51 @@
+version: 1
+
+contract:
+  workflow:
+    type: review-loop
+    gate_sequence:
+      - scope_gate
+      - spec_gate
+      - static_gate
+      - semantic_gate
+      - test_gate
+      - smoke_gate
+  scope:
+    include:
+      - product/
+      - docs/
+      - toolchain/
+    exclude:
+      - .agents/
+      - .claude/
+      - .opencode/
+      - .autoworkflow/
+      - .spec-workflow/
+  governance:
+    dimensions:
+      - rule
+      - folders
+      - document
+      - code
+  commands:
+    scope_gate: python3 toolchain/scripts/test/scope_gate_check.py
+    spec_gate: python3 toolchain/scripts/test/path_governance_check.py
+    backfill_gate: python3 toolchain/scripts/test/gate_status_backfill.py --workflow-id pending --gate scope_gate --status passed --state-file .autoworkflow/state/harness-review-loop.json --closeout-root .autoworkflow/closeout
+    static_gate: python3 toolchain/scripts/test/path_governance_check.py
+    semantic_gate: python3 toolchain/scripts/test/governance_semantic_check.py
+    test_gate: python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py' && python3 -m pytest toolchain/scripts/test/test_governance_semantic_check.py -q
+    smoke_gate: python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root .autoworkflow/smoke/agents/skills --create-roots --prune && python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root .autoworkflow/smoke/agents/skills
+    governance_eval_cmds:
+      - python3 toolchain/scripts/test/repo_governance_eval.py
+      - python3 toolchain/scripts/test/governance_assess.py --json
+
+runtime:
+  repo_root: __REPO_ROOT__
+  workflow_id: pending
+  task_source_ref: pending
+  state_file: .autoworkflow/state/harness-review-loop.json
+  contract_file: .autoworkflow/contracts/pending.json
+  closeout_root: .autoworkflow/closeout
+  smoke_agents_root: .autoworkflow/smoke/agents/skills
+  started_at: pending
+  updated_at: pending

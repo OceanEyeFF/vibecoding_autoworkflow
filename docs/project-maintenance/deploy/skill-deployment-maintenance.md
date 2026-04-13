@@ -41,6 +41,12 @@ last_verified: 2026-04-13
 - 再决定只是重同步，还是要顺手清理 stale target
 - 最后确认 deploy 后问题是否真的消失
 
+如果本仓库还没有 harness runtime，而你接下来要跑 harness-driven workflow，先执行：
+
+```bash
+python3 toolchain/scripts/deploy/init_harness_project.py
+```
+
 ## 三、验证分层
 
 ### 1. `sync verify`

@@ -7,3 +7,5 @@
 - 业务源码仍在 `product/harness-operations/skills/` 与 `product/harness-operations/adapters/`
 - repo-local 测试挂载点仍在 `.claude/`、`.agents/` 与 `.opencode/`
 - 部署行为由 `toolchain/scripts/deploy/adapter_deploy.py` 统一处理
+- `harness.template.yaml` 是 canonical harness runtime/init 模板
+- `toolchain/scripts/deploy/init_harness_project.py` 负责把模板实例化到 repo-local 或自定义 harness 路径
