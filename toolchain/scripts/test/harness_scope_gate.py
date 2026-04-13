@@ -274,6 +274,13 @@ def collect_changed_files_from_diff_range(repo_root: Path, diff_range: str) -> l
     return flatten_changed_entries(parse_git_name_status_entries(completed.stdout))
 
 
+def resolve_diff_range(repo_root: Path, diff_range: str) -> tuple[list[str], bool]:
+    completed = run_git(repo_root, "diff", "--name-status", "--find-renames", diff_range)
+    if completed.returncode != 0:
+        return [], False
+    return flatten_changed_entries(parse_git_name_status_entries(completed.stdout)), True
+
+
 def collect_changed_files_from_commit(repo_root: Path, commit_ref: str) -> list[str]:
     completed = run_git(
         repo_root,
@@ -316,19 +323,25 @@ def collect_changed_files_from_fallback(repo_root: Path) -> DiffInputResult:
     return DiffInputResult(changed_files=[], source="empty", task_source_ref=None)
 
 
-def collect_changed_files_for_path_ref(repo_root: Path, path_ref: str) -> list[str]:
+def collect_changed_files_for_path_ref(repo_root: Path, path_ref: str) -> tuple[list[str], bool]:
     relative_path = normalize_repo_relative_path(repo_root, path_ref)
     if relative_path is None:
-        return []
+        return [], False
+
+    matched_paths: list[str] = []
+    prefix = f"{relative_path}/"
 
     for entry in collect_changed_entries(repo_root):
-        if relative_path in entry.paths:
-            return list(entry.paths)
+        if any(path == relative_path or path.startswith(prefix) for path in entry.paths):
+            matched_paths.extend(entry.paths)
+
+    if matched_paths:
+        return dedupe_paths(matched_paths), True
 
     resolved_path = repo_root / relative_path
     if resolved_path.exists():
-        return [relative_path]
-    return []
+        return [], True
+    return [], False
 
 
 def collect_changed_files_from_task_source_ref(repo_root: Path, task_source_ref: str) -> DiffInputResult:
@@ -337,14 +350,14 @@ def collect_changed_files_from_task_source_ref(repo_root: Path, task_source_ref:
         return DiffInputResult(changed_files=[], source="pending-task-source-ref", task_source_ref=task_source_ref)
 
     if ".." in ref:
-        files = collect_changed_files_from_diff_range(repo_root, ref)
-        if files:
+        files, resolved = resolve_diff_range(repo_root, ref)
+        if resolved:
             return DiffInputResult(changed_files=files, source="task-diff-range", task_source_ref=task_source_ref)
 
-    path_files = collect_changed_files_for_path_ref(repo_root, ref)
-    if path_files:
+    path_files, path_resolved = collect_changed_files_for_path_ref(repo_root, ref)
+    if path_resolved:
         source = "task-target-path"
-        if len(path_files) > 1 or not (repo_root / path_files[0]).exists():
+        if path_files:
             source = "task-target-path-worktree"
         return DiffInputResult(changed_files=path_files, source=source, task_source_ref=task_source_ref)
 
@@ -356,8 +369,8 @@ def collect_changed_files_from_task_source_ref(repo_root: Path, task_source_ref:
     range_match = re.search(r"([A-Za-z0-9._/-]+\.{2,3}[A-Za-z0-9._/-]+)", ref)
     if range_match:
         diff_ref = range_match.group(1)
-        files = collect_changed_files_from_diff_range(repo_root, diff_ref)
-        if files:
+        files, resolved = resolve_diff_range(repo_root, diff_ref)
+        if resolved:
             return DiffInputResult(changed_files=files, source="task-embedded-range", task_source_ref=task_source_ref)
 
     commit_match = re.search(r"\b([0-9a-f]{7,40})\b", ref, flags=re.IGNORECASE)

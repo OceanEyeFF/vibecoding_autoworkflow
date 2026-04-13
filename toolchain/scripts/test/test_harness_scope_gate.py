@@ -87,6 +87,14 @@ def commit_harness(repo_root: Path, harness_file: Path) -> None:
 
 
 def run_scope_gate(repo_root: Path, harness_file: Path) -> tuple[subprocess.CompletedProcess[str], dict[str, object]]:
+    return run_scope_gate_with_args(repo_root, harness_file)
+
+
+def run_scope_gate_with_args(
+    repo_root: Path,
+    harness_file: Path,
+    *extra_args: str,
+) -> tuple[subprocess.CompletedProcess[str], dict[str, object]]:
     completed = subprocess.run(
         [
             "python3",
@@ -96,6 +104,7 @@ def run_scope_gate(repo_root: Path, harness_file: Path) -> tuple[subprocess.Comp
             "--harness-file",
             str(harness_file),
             "--json",
+            *extra_args,
         ],
         check=False,
         capture_output=True,
@@ -391,8 +400,67 @@ def test_resolve_diff_input_normalizes_absolute_repo_path_task_ref(tmp_path: Pat
         exclude_prefixes=EXCLUDE_PREFIXES,
     )
 
-    assert diff_input.changed_files == ["product/harness-operations/README.md"]
+    assert diff_input.changed_files == []
     assert diff_input.source == "task-target-path"
+    assert diff_input.error is None
+
+
+def test_resolve_diff_input_path_task_ref_with_directory_collects_descendant_changes(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir(parents=True, exist_ok=True)
+    init_repo(repo_root)
+
+    commit_file(repo_root, "product/harness-operations/README.md", "init\n", "init")
+    harness_file = repo_root / ".autoworkflow" / "harness.yaml"
+    write_harness(harness_file, task_source_ref="product/harness-operations")
+
+    write_file(repo_root, "product/harness-operations/README.md", "dirty\n")
+
+    diff_input = resolve_diff_input(
+        repo_root,
+        harness_file,
+        task_source_ref=None,
+        diff_range=None,
+        commit_ref=None,
+        exclude_prefixes=EXCLUDE_PREFIXES,
+    )
+
+    assert diff_input.changed_files == ["product/harness-operations/README.md"]
+    assert diff_input.source == "task-target-path-worktree"
+
+
+def test_scope_gate_path_task_ref_without_real_changes_fails_without_allow_empty(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir(parents=True, exist_ok=True)
+    init_repo(repo_root)
+
+    commit_file(repo_root, "product/harness-operations/README.md", "init\n", "init")
+    harness_file = repo_root / ".autoworkflow" / "harness.yaml"
+    write_harness(harness_file, task_source_ref="product/harness-operations/README.md")
+
+    completed, payload = run_scope_gate(repo_root, harness_file)
+
+    assert completed.returncode == 1
+    assert payload["source"] == "task-target-path"
+    assert payload["changed_files"] == []
+    assert payload["error"] == "no-effective-changed-files"
+
+
+def test_scope_gate_path_task_ref_without_real_changes_allows_empty_when_requested(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir(parents=True, exist_ok=True)
+    init_repo(repo_root)
+
+    commit_file(repo_root, "product/harness-operations/README.md", "init\n", "init")
+    harness_file = repo_root / ".autoworkflow" / "harness.yaml"
+    write_harness(harness_file, task_source_ref="product/harness-operations/README.md")
+
+    completed, payload = run_scope_gate_with_args(repo_root, harness_file, "--allow-empty")
+
+    assert completed.returncode == 0
+    assert payload["source"] == "task-target-path"
+    assert payload["changed_files"] == []
+    assert payload["effective_changed_files"] == []
 
 
 def test_resolve_diff_input_path_task_delete_resolves_deleted_path_from_git_metadata(tmp_path: Path) -> None:
@@ -478,6 +546,46 @@ def test_resolve_diff_input_path_task_rename_to_out_of_scope_path_fails(tmp_path
     assert diff_input.changed_files == [old_path, new_path]
     assert scope.passed is False
     assert scope.violations == ["README.md"]
+
+
+def test_resolve_diff_input_treats_empty_diff_range_as_resolved(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir(parents=True, exist_ok=True)
+    init_repo(repo_root)
+
+    commit_file(repo_root, "product/harness-operations/README.md", "base\n", "base")
+    harness_file = repo_root / ".autoworkflow" / "harness.yaml"
+    write_harness(harness_file, task_source_ref="HEAD..HEAD")
+
+    diff_input = resolve_diff_input(
+        repo_root,
+        harness_file,
+        task_source_ref=None,
+        diff_range=None,
+        commit_ref=None,
+        exclude_prefixes=EXCLUDE_PREFIXES,
+    )
+
+    assert diff_input.source == "task-diff-range"
+    assert diff_input.changed_files == []
+    assert diff_input.error is None
+
+
+def test_scope_gate_empty_diff_range_allows_empty_when_requested(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir(parents=True, exist_ok=True)
+    init_repo(repo_root)
+
+    commit_file(repo_root, "product/harness-operations/README.md", "base\n", "base")
+    harness_file = repo_root / ".autoworkflow" / "harness.yaml"
+    write_harness(harness_file, task_source_ref="HEAD..HEAD")
+
+    completed, payload = run_scope_gate_with_args(repo_root, harness_file, "--allow-empty")
+
+    assert completed.returncode == 0
+    assert payload["source"] == "task-diff-range"
+    assert payload["changed_files"] == []
+    assert payload["effective_changed_files"] == []
 
 
 def test_resolve_diff_input_without_task_source_ref_uses_upstream_diff_first(tmp_path: Path) -> None:
