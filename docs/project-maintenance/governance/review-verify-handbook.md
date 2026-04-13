@@ -56,8 +56,10 @@ last_verified: 2026-04-13
 - 如果改了 `AGENTS.md` 或执行流程，是否同步本文
 - 如果改了 deploy / adapter 行为，是否同步对应 `docs/project-maintenance/deploy/` runbook
 - 如果改了 `docs/deployable-skills/`、`product/*/skills/*/` 或 `product/*/adapters/*/skills/*/`，是否仍保持三段式分工：合同层、canonical executable layer、backend adapter layer
-- 如果改了 `product/*/adapters/*/skills/*/SKILL.md`，是否仍保持 thin wrapper（`Canonical Source / Backend Notes / Deploy Target`）而没有重新复制 canonical 语义正文
+- 如果改了 `product/memory-side|task-interface/adapters/*/skills/*/SKILL.md`，是否仍保持 thin wrapper（`Canonical Source / Backend Notes / Deploy Target`）而没有重新复制 canonical 语义正文
 - 如果改了 `product/*/skills/*/SKILL.md`，是否保持最小 executable body + `references/entrypoints.md`，而没有吸收 repo-local execution template 内容
+- 如果改了 `product/harness-operations/skills/*/`，是否保持 `prompt.md`（backend-agnostic）+ shared `harness-standard.md` + `references/entrypoints.md|bindings.md` 的分层
+- 如果改了 `product/harness-operations/adapters/*/skills/*/`，是否保持 `header.yaml` + backend metadata 的 source 形态，并只把 `SKILL.md` 保留为指向 canonical 的 symlink shim
 
 ### 3. 验证结果
 
@@ -74,6 +76,7 @@ last_verified: 2026-04-13
   - `python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`
   - 对应的最小 pytest
 - adapter / deploy 变更
+  - `python3 toolchain/scripts/deploy/adapter_deploy.py build --backend <backend>`
   - `python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend <backend>`
 
 ### 3.1 修复完整性

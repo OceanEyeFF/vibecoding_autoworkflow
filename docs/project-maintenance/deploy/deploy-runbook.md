@@ -77,6 +77,24 @@ python3 toolchain/scripts/deploy/init_harness_project.py
 python3 toolchain/scripts/deploy/init_harness_project.py --harness-file custom-runtime/harness/config.yaml
 ```
 
+### 0.5 需要时预构建 harness adapter source
+
+`harness-operations` 现在由 canonical `prompt.md`、shared `harness-standard.md` 和 backend `header.yaml` 组装成最终 `SKILL.md`。
+
+如果你要先检查组装产物、在不部署的情况下刷新 build cache，或准备运行只读 `verify`，可以先显式执行：
+
+```bash
+python3 toolchain/scripts/deploy/adapter_deploy.py build --backend agents
+python3 toolchain/scripts/deploy/adapter_deploy.py build --backend claude
+python3 toolchain/scripts/deploy/adapter_deploy.py build --backend opencode
+```
+
+说明：
+
+- `local` / `global` 在部署 `harness-operations` 时也会自动组装当前 backend 的产物
+- `verify` 保持只读，不会自动触发 build
+- 如果 `verify` 报 `missing-build-source`，先跑一次 `build` 或重新执行对应 deploy
+
 ### 1. 首次本地挂载
 
 执行对应 backend 的 repo-local deploy：
@@ -118,8 +136,9 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --back
 如果你只是更新已有 mounts，而不是处理 rename / remove：
 
 1. 先跑一次 `verify`
-2. 执行对应的 `local` 或 `global` deploy
-3. 再跑一次 `verify`
+2. 如需只读复验 harness build output，先跑一次 `build`
+3. 执行对应的 `local` 或 `global` deploy
+4. 再跑一次 `verify`
 
 repo-local 示例：
 

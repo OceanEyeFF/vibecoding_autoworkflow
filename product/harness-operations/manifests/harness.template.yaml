@@ -34,7 +34,7 @@ contract:
     static_gate: python3 toolchain/scripts/test/path_governance_check.py
     semantic_gate: python3 toolchain/scripts/test/governance_semantic_check.py
     test_gate: python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py' && python3 -m pytest toolchain/scripts/test/test_governance_semantic_check.py -q
-    smoke_gate: python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root .autoworkflow/smoke/agents/skills --create-roots --prune && python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root .autoworkflow/smoke/agents/skills
+    smoke_gate: python3 toolchain/scripts/deploy/adapter_deploy.py build --backend agents && python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root .autoworkflow/smoke/agents/skills --create-roots --prune && python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root .autoworkflow/smoke/agents/skills
     governance_eval_cmds:
       - python3 toolchain/scripts/test/repo_governance_eval.py
       - python3 toolchain/scripts/test/governance_assess.py --json

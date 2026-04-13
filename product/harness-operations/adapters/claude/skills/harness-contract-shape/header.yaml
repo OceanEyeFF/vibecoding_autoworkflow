@@ -1,0 +1,3 @@
+name: harness-contract-shape
+description: Repo-local Claude adapter for the Harness Operations Harness Contract Shape skill.
+allowed-tools: Read, Grep, Glob, Bash

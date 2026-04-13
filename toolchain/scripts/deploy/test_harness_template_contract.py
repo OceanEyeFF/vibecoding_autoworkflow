@@ -37,10 +37,10 @@ class HarnessTemplateContractTest(unittest.TestCase):
         self.assertIn("--state-file .autoworkflow/state/harness-review-loop.json", backfill_cmd)
         self.assertIn("--closeout-root .autoworkflow/closeout", backfill_cmd)
 
-    def test_smoke_gate_avoids_build_and_repo_local_mount_side_effects(self) -> None:
+    def test_smoke_gate_builds_before_global_smoke_sync(self) -> None:
         template = load_template()
         smoke_cmd = command_line(template, "smoke_gate")
-        self.assertNotIn(" adapter_deploy.py build ", smoke_cmd)
+        self.assertIn("adapter_deploy.py build --backend agents", smoke_cmd)
         self.assertNotIn(" adapter_deploy.py local ", smoke_cmd)
         self.assertIn("adapter_deploy.py global --backend agents", smoke_cmd)
         self.assertIn("--agents-root .autoworkflow/smoke/agents/skills", smoke_cmd)

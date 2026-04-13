@@ -1,0 +1,3 @@
+name: repo-governance-evaluation
+description: Repo-local Claude adapter for the Harness Operations Repo Governance Evaluation skill.
+allowed-tools: Read, Grep, Glob, Bash

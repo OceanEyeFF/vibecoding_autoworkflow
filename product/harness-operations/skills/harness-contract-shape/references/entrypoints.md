@@ -10,8 +10,8 @@ Load the minimum governance docs in this order.
 
 ## Read For Workflow Consumers
 
-- `product/harness-operations/skills/review-loop-workflow/references/prompt.md`
-- `product/harness-operations/skills/task-list-workflow/references/prompt.md`
+- `product/harness-operations/skills/review-loop-workflow/prompt.md`
+- `product/harness-operations/skills/task-list-workflow/prompt.md`
 
 ## Reading Policy
 

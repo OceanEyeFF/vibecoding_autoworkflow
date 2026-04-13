@@ -31,13 +31,15 @@ last_verified: 2026-04-13
 
 默认顺序固定为：
 
-1. `verify`
-2. `local` 或 `global` deploy
-3. 再跑一次 `verify`
+1. 如需刷新或检查 harness 组装产物，先跑 `build`
+2. `verify`
+3. `local` 或 `global` deploy
+4. 再跑一次 `verify`
 
 这个顺序的目的：
 
-- 先看清 drift 是什么
+- 先把需要的 harness 组装产物准备好，同时保持 `verify` 本身只读
+- 再看清 drift 是什么
 - 再决定只是重同步，还是要顺手清理 stale target
 - 最后确认 deploy 后问题是否真的消失
 
@@ -55,11 +57,19 @@ python3 toolchain/scripts/deploy/init_harness_project.py
 
 - 检查 deploy target 是否和 `product/.../adapters/<backend>/skills/` 同步
 - 发现缺失 mount、坏链路、错误类型和陈旧 target
+- 对 `harness-operations` 的 local mounts 额外检查 symlink 是否指向当前 build root，以及 build output 是否和 canonical `prompt.md + harness-standard.md + references/` 一致
+- 对 global copied targets 额外检查 copy 内容是否和当前 canonical harness snapshot 一致
 
 执行入口：
 
 ```bash
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend <backend>
+```
+
+如果命中 `missing-build-source`，说明当前 backend 的 harness assembled source 不存在；先执行：
+
+```bash
+python3 toolchain/scripts/deploy/adapter_deploy.py build --backend <backend>
 ```
 
 global target 复验时，优先显式传该 backend 对应的 root 参数：
@@ -95,6 +105,14 @@ backend-specific smoke verify 口径看：
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend claude
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend opencode
+```
+
+需要显式检查组装产物时，可先跑：
+
+```bash
+python3 toolchain/scripts/deploy/adapter_deploy.py build --backend agents
+python3 toolchain/scripts/deploy/adapter_deploy.py build --backend claude
+python3 toolchain/scripts/deploy/adapter_deploy.py build --backend opencode
 ```
 
 重新同步 repo-local mounts：
@@ -192,17 +210,41 @@ python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --o
 - `wrong-target-type`
 - `wrong-symlink-target`
 - `wrong-target-root-type`
+- `missing-build-source`
+- `stale-build-source-file`
+- `missing-build-source-file`
 
 含义：
 
 - repo-local mount 结构损坏
 - local target 本该是 symlink，却变成目录或文件
 - global target 本该是目录 copy，却变成 symlink 或文件
+- harness repo-local mount 指向的 build source 缺失、过期，或内容和当前 canonical snapshot 不一致
 
 处理顺序：
 
 1. 先确认 target root 本身可用
-2. 执行对应 backend 的 deploy，重建正确结构
+2. 如为 harness source 问题，先执行 `build --backend <backend>`
+3. 执行对应 backend 的 deploy，重建正确结构
+4. 再跑一次 `verify`
+
+### 5. global copy 内容漂移
+
+常见信号：
+
+- `missing-target-file`
+- `stale-target-file`
+- `unexpected-target-file`
+
+含义：
+
+- global target 目录虽然还存在，但内容已经和当前 source snapshot 不一致
+- 对 harness skills，这个 snapshot 会按当前 `header.yaml + harness-standard.md + prompt.md + references/` 重新计算
+
+处理顺序：
+
+1. 先确认当前 canonical source 是预期版本
+2. 重新执行对应 backend 的 `global` deploy
 3. 再跑一次 `verify`
 
 ### 4. rename / remove 后的 drift
