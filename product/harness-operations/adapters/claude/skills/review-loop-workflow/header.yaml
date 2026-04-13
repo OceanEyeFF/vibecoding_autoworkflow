@@ -1,0 +1,3 @@
+name: review-loop-workflow
+description: Repo-local Claude adapter for the Harness Operations Review Loop Workflow skill.
+allowed-tools: Read, Grep, Glob, Bash

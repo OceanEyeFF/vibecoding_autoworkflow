@@ -40,4 +40,4 @@ When you use this skill, produce a compact result that includes:
 
 ## Resources
 
-Read `references/entrypoints.md` first. Use `references/prompt.md` as the canonical prompt body and `references/bindings.md` before substituting host-repo values.
+Read `references/entrypoints.md` first. Use `prompt.md` as the backend-agnostic prompt body, apply shared rules from `product/harness-operations/skills/harness-standard.md`, and use `references/bindings.md` before substituting host-repo values.

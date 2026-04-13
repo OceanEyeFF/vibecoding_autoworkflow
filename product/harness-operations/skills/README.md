@@ -18,12 +18,16 @@
 
 1. `product/harness-operations/README.md`
 2. 对应 skill 的 `SKILL.md`
-3. 对应 skill 的 `references/entrypoints.md`
+3. 对应 skill 的 `prompt.md`
+4. 对应 skill 的 `references/entrypoints.md`
+5. `product/harness-operations/skills/harness-standard.md`
 
 这里适合放：
 
 - Harness Operations canonical skill 源码
-- skill 的最小 references
+- backend-agnostic `prompt.md`
+- shared `harness-standard.md`
+- skill 的最小 references（`entrypoints.md` 与 `bindings.md`）
 
 这里不适合放：
 

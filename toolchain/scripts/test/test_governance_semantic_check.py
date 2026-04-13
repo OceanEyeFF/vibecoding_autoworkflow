@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from governance_semantic_check import (
     SemanticReport,
+    check_harness_adapters_are_header_driven,
     check_canonical_entrypoints_cover_required_formats,
     check_canonical_skill_packages_are_minimal,
     check_adapter_wrappers_are_thin,
@@ -179,8 +180,78 @@ def test_check_canonical_skill_packages_are_minimal_requires_harness_prompt_and_
     report = SemanticReport()
     check_canonical_skill_packages_are_minimal(tmp_path, report)
 
-    assert any("references/prompt.md" in item for item in report.failures)
+    assert any("missing prompt.md" in item for item in report.failures)
     assert any("references/bindings.md" in item for item in report.failures)
+
+
+def test_check_harness_adapters_are_header_driven_flags_non_symlink_skill_file(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/harness-operations/adapters/agents/skills/demo-flow/header.yaml",
+        "name: demo-flow\n",
+    )
+    write_doc(
+        tmp_path / "product/harness-operations/adapters/agents/skills/demo-flow/SKILL.md",
+        "# legacy\n",
+    )
+
+    report = SemanticReport()
+    check_harness_adapters_are_header_driven(tmp_path, report)
+
+    assert any("must be symlink shim" in item for item in report.failures)
+
+
+def test_check_harness_adapters_are_header_driven_requires_skill_symlink(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/harness-operations/adapters/agents/skills/demo-flow/header.yaml",
+        "name: demo-flow\n",
+    )
+
+    report = SemanticReport()
+    check_harness_adapters_are_header_driven(tmp_path, report)
+
+    assert any("missing required symlink shim 'SKILL.md'" in item for item in report.failures)
+
+
+def test_check_harness_adapters_are_header_driven_allows_canonical_skill_symlink(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/harness-operations/adapters/agents/skills/demo-flow/header.yaml",
+        "name: demo-flow\n",
+    )
+    write_doc(
+        tmp_path / "product/harness-operations/skills/demo-flow/SKILL.md",
+        "# canonical\n",
+    )
+    shim = tmp_path / "product/harness-operations/adapters/agents/skills/demo-flow/SKILL.md"
+    shim.parent.mkdir(parents=True, exist_ok=True)
+    shim.symlink_to(Path("../../../../skills/demo-flow/SKILL.md"))
+
+    report = SemanticReport()
+    check_harness_adapters_are_header_driven(tmp_path, report)
+
+    assert not report.failures
+
+
+def test_check_harness_adapters_are_header_driven_rejects_wrong_symlink_target(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/harness-operations/adapters/agents/skills/demo-flow/header.yaml",
+        "name: demo-flow\n",
+    )
+    write_doc(
+        tmp_path / "product/harness-operations/skills/demo-flow/SKILL.md",
+        "# canonical\n",
+    )
+    write_doc(
+        tmp_path / "product/harness-operations/skills/other-flow/SKILL.md",
+        "# wrong canonical\n",
+    )
+    shim = tmp_path / "product/harness-operations/adapters/agents/skills/demo-flow/SKILL.md"
+    shim.parent.mkdir(parents=True, exist_ok=True)
+    shim.symlink_to(Path("../../../../skills/other-flow/SKILL.md"))
+
+    report = SemanticReport()
+    check_harness_adapters_are_header_driven(tmp_path, report)
+
+    assert any("must target canonical SKILL.md" in item for item in report.failures)
 
 
 def test_check_canonical_entrypoints_cover_required_formats_flags_missing_link(tmp_path: Path) -> None:

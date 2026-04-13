@@ -1,0 +1,3 @@
+name: execution-contract-template
+description: Repo-local Claude adapter for the Harness Operations Execution Contract Template skill.
+allowed-tools: Read, Grep, Glob, Bash

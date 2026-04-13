@@ -10,8 +10,8 @@ Load the minimum contract docs in this order.
 ## Read For Contract Shape
 
 - `docs/deployable-skills/task-interface/task-contract.md`
-- `product/harness-operations/skills/execution-contract-template/references/prompt.md`
-- `product/harness-operations/skills/task-planning-contract/references/prompt.md`
+- `product/harness-operations/skills/execution-contract-template/prompt.md`
+- `product/harness-operations/skills/task-planning-contract/prompt.md`
 
 ## Read For Closeout
 

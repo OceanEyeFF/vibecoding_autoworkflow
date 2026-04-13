@@ -11,7 +11,7 @@ Load the minimum planning docs in this order.
 
 - `docs/deployable-skills/task-interface/task-contract.md`
 - `docs/deployable-skills/task-interface/task-contract.md`
-- `product/harness-operations/skills/execution-contract-template/references/prompt.md`
+- `product/harness-operations/skills/execution-contract-template/prompt.md`
 
 ## Reading Policy
 
