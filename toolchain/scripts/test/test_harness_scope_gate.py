@@ -5,6 +5,7 @@ from pathlib import Path
 
 from harness_scope_gate import (
     check_scope,
+    collect_changed_files_from_commit,
     parse_runtime_task_source_ref,
     parse_scope_prefixes,
     resolve_diff_input,
@@ -149,7 +150,7 @@ def test_resolve_diff_input_uses_runtime_commit_on_clean_tree(tmp_path: Path) ->
     assert diff_input.source in {"task-commit", "task-embedded-commit"}
 
 
-def test_resolve_diff_input_prefers_worktree_status_over_runtime_ref(tmp_path: Path) -> None:
+def test_resolve_diff_input_prefers_runtime_ref_over_worktree_noise(tmp_path: Path) -> None:
     repo_root = tmp_path / "repo"
     repo_root.mkdir(parents=True, exist_ok=True)
     init_repo(repo_root)
@@ -162,7 +163,67 @@ def test_resolve_diff_input_prefers_worktree_status_over_runtime_ref(tmp_path: P
     harness_file = repo_root / ".autoworkflow" / "harness.yaml"
     write_harness(harness_file, task_source_ref=commit_ref)
 
-    write_file(repo_root, "README.md", "worktree out of scope\n")
+    write_file(repo_root, ".autoworkflow/runtime/state.json", '{"status":"dirty"}\n')
+
+    diff_input = resolve_diff_input(
+        repo_root,
+        harness_file,
+        task_source_ref=None,
+        diff_range=None,
+        commit_ref=None,
+    )
+
+    assert diff_input.changed_files == ["product/harness-operations/README.md"]
+    assert diff_input.source == "task-commit"
+
+
+def test_collect_changed_files_from_commit_includes_merge_commit_paths(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir(parents=True, exist_ok=True)
+    init_repo(repo_root)
+
+    write_file(repo_root, "product/harness-operations/README.md", "init\n")
+    run_git(repo_root, "add", "product/harness-operations/README.md")
+    run_git(repo_root, "commit", "-m", "init")
+    main_branch = run_git(repo_root, "branch", "--show-current")
+
+    run_git(repo_root, "checkout", "-b", "feature")
+    write_file(repo_root, "README.md", "merged change\n")
+    run_git(repo_root, "add", "README.md")
+    run_git(repo_root, "commit", "-m", "feature change")
+
+    run_git(repo_root, "checkout", main_branch)
+    run_git(repo_root, "merge", "--no-ff", "feature", "-m", "merge feature")
+    merge_commit = run_git(repo_root, "rev-parse", "HEAD")
+
+    changed_files = collect_changed_files_from_commit(repo_root, merge_commit)
+
+    assert "README.md" in changed_files
+
+
+def test_resolve_diff_input_uses_merge_commit_task_source_ref(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir(parents=True, exist_ok=True)
+    init_repo(repo_root)
+
+    write_file(repo_root, "product/harness-operations/README.md", "init\n")
+    run_git(repo_root, "add", "product/harness-operations/README.md")
+    run_git(repo_root, "commit", "-m", "init")
+    main_branch = run_git(repo_root, "branch", "--show-current")
+
+    run_git(repo_root, "checkout", "-b", "feature")
+    write_file(repo_root, "README.md", "merged change\n")
+    run_git(repo_root, "add", "README.md")
+    run_git(repo_root, "commit", "-m", "feature change")
+
+    run_git(repo_root, "checkout", main_branch)
+    run_git(repo_root, "merge", "--no-ff", "feature", "-m", "merge feature")
+    merge_commit = run_git(repo_root, "rev-parse", "HEAD")
+
+    harness_file = repo_root / ".autoworkflow" / "harness.yaml"
+    write_harness(harness_file, task_source_ref=merge_commit)
+    run_git(repo_root, "add", ".autoworkflow/harness.yaml")
+    run_git(repo_root, "commit", "-m", "add harness config")
 
     diff_input = resolve_diff_input(
         repo_root,
@@ -173,7 +234,7 @@ def test_resolve_diff_input_prefers_worktree_status_over_runtime_ref(tmp_path: P
     )
 
     assert "README.md" in diff_input.changed_files
-    assert diff_input.source == "worktree-status"
+    assert diff_input.source == "task-commit"
 
 
 def test_resolve_diff_input_normalizes_absolute_repo_path_task_ref(tmp_path: Path) -> None:

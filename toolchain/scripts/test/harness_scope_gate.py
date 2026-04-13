@@ -197,10 +197,27 @@ def collect_changed_files_from_diff_range(repo_root: Path, diff_range: str) -> l
 
 
 def collect_changed_files_from_commit(repo_root: Path, commit_ref: str) -> list[str]:
-    completed = run_git(repo_root, "diff-tree", "--no-commit-id", "--name-only", "-r", commit_ref)
+    completed = run_git(
+        repo_root,
+        "diff-tree",
+        "--no-commit-id",
+        "--name-only",
+        "--root",
+        "-r",
+        "-m",
+        commit_ref,
+    )
     if completed.returncode != 0:
         return []
-    return [line.strip() for line in completed.stdout.splitlines() if line.strip()]
+    changed: list[str] = []
+    seen: set[str] = set()
+    for line in completed.stdout.splitlines():
+        path = line.strip()
+        if not path or path in seen:
+            continue
+        seen.add(path)
+        changed.append(path)
+    return changed
 
 
 def is_commit_ref(repo_root: Path, ref: str) -> bool:
@@ -297,14 +314,12 @@ def resolve_diff_input(
         )
 
     ref = task_source_ref or parse_runtime_task_source_ref(harness_file)
+    if ref and ref != "pending":
+        return collect_changed_files_from_task_source_ref(repo_root, ref)
+
     worktree_files = collect_changed_files(repo_root)
     if worktree_files:
         return DiffInputResult(changed_files=worktree_files, source="worktree-status", task_source_ref=ref)
-
-    if ref and ref != "pending":
-        result = collect_changed_files_from_task_source_ref(repo_root, ref)
-        if result.changed_files:
-            return result
 
     fallback = collect_changed_files_from_fallback(repo_root)
     fallback.task_source_ref = ref
