@@ -8,17 +8,25 @@ import contextlib
 import json
 import re
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
+@dataclass(frozen=True)
+class ChangedPathEntry:
+    status: str
+    paths: tuple[str, ...]
+
+
 @dataclass
 class ScopeGateResult:
     passed: bool
     changed_files: list[str]
+    effective_changed_files: list[str]
+    ignored_files: list[str]
     violations: list[str]
     include_prefixes: list[str]
     exclude_prefixes: list[str]
@@ -29,6 +37,10 @@ class DiffInputResult:
     changed_files: list[str]
     source: str
     task_source_ref: str | None
+    error: str | None = None
+    error_detail: str | None = None
+    conflict_files: list[str] = field(default_factory=list)
+    live_worktree_files: list[str] = field(default_factory=list)
 
 
 def parse_args() -> argparse.Namespace:
@@ -176,32 +188,99 @@ def run_git(repo_root: Path, *args: str, check: bool = False) -> subprocess.Comp
     )
 
 
-def collect_changed_files(repo_root: Path) -> list[str]:
-    completed = run_git(repo_root, "status", "--short", "--untracked-files=all", check=True)
-    changed: list[str] = []
-    for raw_line in completed.stdout.splitlines():
+def dedupe_paths(paths: list[str]) -> list[str]:
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for path in paths:
+        if not path or path in seen:
+            continue
+        seen.add(path)
+        deduped.append(path)
+    return deduped
+
+
+def extract_entry_paths(status: str, parts: list[str]) -> tuple[str, ...]:
+    cleaned = tuple(part.strip() for part in parts if part.strip())
+    if not cleaned:
+        return ()
+    if status and status[0] in {"R", "C"} and len(cleaned) >= 2:
+        return cleaned[:2]
+    return (cleaned[-1],)
+
+
+def parse_git_name_status_entries(output: str) -> list[ChangedPathEntry]:
+    entries: list[ChangedPathEntry] = []
+    for raw_line in output.splitlines():
+        if not raw_line.strip():
+            continue
+        parts = raw_line.split("\t")
+        status = parts[0].strip()
+        entry_paths = extract_entry_paths(status, parts[1:])
+        if entry_paths:
+            entries.append(ChangedPathEntry(status=status, paths=entry_paths))
+    return entries
+
+
+def parse_git_status_entries(output: str) -> list[ChangedPathEntry]:
+    entries: list[ChangedPathEntry] = []
+    for raw_line in output.splitlines():
         if not raw_line:
             continue
-        path = raw_line[3:].strip()
-        if " -> " in path:
-            path = path.split(" -> ", 1)[1].strip()
-        changed.append(path)
-    return changed
+        status = raw_line[:2].strip() or raw_line[:2]
+        path_text = raw_line[3:].strip()
+        parts = [part.strip() for part in path_text.split(" -> ", 1)] if " -> " in path_text else [path_text]
+        entry_paths = extract_entry_paths(status, parts)
+        if entry_paths:
+            entries.append(ChangedPathEntry(status=status, paths=entry_paths))
+    return entries
+
+
+def flatten_changed_entries(entries: list[ChangedPathEntry]) -> list[str]:
+    return dedupe_paths([path for entry in entries for path in entry.paths])
+
+
+def normalize_repo_relative_path(repo_root: Path, path_ref: str) -> str | None:
+    candidate = Path(path_ref)
+    resolved = candidate.resolve() if candidate.is_absolute() else (repo_root / candidate).resolve()
+    with contextlib.suppress(ValueError):
+        return resolved.relative_to(repo_root.resolve()).as_posix()
+    return None
+
+
+def filter_effective_changed_files(changed_files: list[str], exclude_prefixes: list[str]) -> tuple[list[str], list[str]]:
+    effective: list[str] = []
+    ignored: list[str] = []
+    for path in changed_files:
+        if path.startswith(".git") or any(path.startswith(prefix) for prefix in exclude_prefixes):
+            ignored.append(path)
+            continue
+        effective.append(path)
+    return dedupe_paths(effective), dedupe_paths(ignored)
+
+
+def collect_changed_entries(repo_root: Path) -> list[ChangedPathEntry]:
+    completed = run_git(repo_root, "status", "--short", "--untracked-files=all", check=True)
+    return parse_git_status_entries(completed.stdout)
+
+
+def collect_changed_files(repo_root: Path) -> list[str]:
+    return flatten_changed_entries(collect_changed_entries(repo_root))
 
 
 def collect_changed_files_from_diff_range(repo_root: Path, diff_range: str) -> list[str]:
-    completed = run_git(repo_root, "diff", "--name-only", diff_range)
+    completed = run_git(repo_root, "diff", "--name-status", "--find-renames", diff_range)
     if completed.returncode != 0:
         return []
-    return [line.strip() for line in completed.stdout.splitlines() if line.strip()]
+    return flatten_changed_entries(parse_git_name_status_entries(completed.stdout))
 
 
 def collect_changed_files_from_commit(repo_root: Path, commit_ref: str) -> list[str]:
     completed = run_git(
         repo_root,
         "diff-tree",
+        "--name-status",
+        "--find-renames",
         "--no-commit-id",
-        "--name-only",
         "--root",
         "-r",
         "-m",
@@ -209,15 +288,7 @@ def collect_changed_files_from_commit(repo_root: Path, commit_ref: str) -> list[
     )
     if completed.returncode != 0:
         return []
-    changed: list[str] = []
-    seen: set[str] = set()
-    for line in completed.stdout.splitlines():
-        path = line.strip()
-        if not path or path in seen:
-            continue
-        seen.add(path)
-        changed.append(path)
-    return changed
+    return flatten_changed_entries(parse_git_name_status_entries(completed.stdout))
 
 
 def is_commit_ref(repo_root: Path, ref: str) -> bool:
@@ -245,6 +316,21 @@ def collect_changed_files_from_fallback(repo_root: Path) -> DiffInputResult:
     return DiffInputResult(changed_files=[], source="empty", task_source_ref=None)
 
 
+def collect_changed_files_for_path_ref(repo_root: Path, path_ref: str) -> list[str]:
+    relative_path = normalize_repo_relative_path(repo_root, path_ref)
+    if relative_path is None:
+        return []
+
+    for entry in collect_changed_entries(repo_root):
+        if relative_path in entry.paths:
+            return list(entry.paths)
+
+    resolved_path = repo_root / relative_path
+    if resolved_path.exists():
+        return [relative_path]
+    return []
+
+
 def collect_changed_files_from_task_source_ref(repo_root: Path, task_source_ref: str) -> DiffInputResult:
     ref = task_source_ref.strip()
     if not ref or ref == "pending":
@@ -255,15 +341,12 @@ def collect_changed_files_from_task_source_ref(repo_root: Path, task_source_ref:
         if files:
             return DiffInputResult(changed_files=files, source="task-diff-range", task_source_ref=task_source_ref)
 
-    resolved_path = (repo_root / ref).resolve()
-    with contextlib.suppress(ValueError):
-        relative_path = resolved_path.relative_to(repo_root.resolve())
-        if resolved_path.exists():
-            return DiffInputResult(
-                changed_files=[relative_path.as_posix()],
-                source="task-target-path",
-                task_source_ref=task_source_ref,
-            )
+    path_files = collect_changed_files_for_path_ref(repo_root, ref)
+    if path_files:
+        source = "task-target-path"
+        if len(path_files) > 1 or not (repo_root / path_files[0]).exists():
+            source = "task-target-path-worktree"
+        return DiffInputResult(changed_files=path_files, source=source, task_source_ref=task_source_ref)
 
     if is_commit_ref(repo_root, ref):
         files = collect_changed_files_from_commit(repo_root, ref)
@@ -288,7 +371,35 @@ def collect_changed_files_from_task_source_ref(repo_root: Path, task_source_ref:
                 task_source_ref=task_source_ref,
             )
 
-    return DiffInputResult(changed_files=[], source="unresolved-task-source-ref", task_source_ref=task_source_ref)
+    return DiffInputResult(
+        changed_files=[],
+        source="unresolved-task-source-ref",
+        task_source_ref=task_source_ref,
+        error="unresolved-task-source-ref",
+        error_detail=f"unable to resolve task_source_ref: {task_source_ref}",
+    )
+
+
+def attach_live_worktree_context(
+    repo_root: Path,
+    diff_input: DiffInputResult,
+    *,
+    exclude_prefixes: list[str],
+) -> DiffInputResult:
+    worktree_files = collect_changed_files(repo_root)
+    diff_input.live_worktree_files = worktree_files
+
+    worktree_effective, _ = filter_effective_changed_files(worktree_files, exclude_prefixes)
+    resolved_effective, _ = filter_effective_changed_files(diff_input.changed_files, exclude_prefixes)
+    resolved_effective_set = set(resolved_effective)
+    extra_files = [path for path in worktree_effective if path not in resolved_effective_set]
+    if extra_files:
+        diff_input.error = "live-worktree-conflict"
+        diff_input.error_detail = (
+            "resolved source has additional live worktree changes outside the task source ref"
+        )
+        diff_input.conflict_files = extra_files
+    return diff_input
 
 
 def resolve_diff_input(
@@ -298,28 +409,52 @@ def resolve_diff_input(
     task_source_ref: str | None,
     diff_range: str | None,
     commit_ref: str | None,
+    exclude_prefixes: list[str] | None = None,
 ) -> DiffInputResult:
+    exclude_prefixes = exclude_prefixes or []
     if diff_range:
-        return DiffInputResult(
-            changed_files=collect_changed_files_from_diff_range(repo_root, diff_range),
-            source="explicit-diff-range",
-            task_source_ref=task_source_ref,
+        return attach_live_worktree_context(
+            repo_root,
+            DiffInputResult(
+                changed_files=collect_changed_files_from_diff_range(repo_root, diff_range),
+                source="explicit-diff-range",
+                task_source_ref=task_source_ref,
+            ),
+            exclude_prefixes=exclude_prefixes,
         )
 
     if commit_ref:
-        return DiffInputResult(
-            changed_files=collect_changed_files_from_commit(repo_root, commit_ref),
-            source="explicit-commit",
-            task_source_ref=task_source_ref,
+        return attach_live_worktree_context(
+            repo_root,
+            DiffInputResult(
+                changed_files=collect_changed_files_from_commit(repo_root, commit_ref),
+                source="explicit-commit",
+                task_source_ref=task_source_ref,
+            ),
+            exclude_prefixes=exclude_prefixes,
         )
 
     ref = task_source_ref or parse_runtime_task_source_ref(harness_file)
     if ref and ref != "pending":
-        return collect_changed_files_from_task_source_ref(repo_root, ref)
+        diff_input = collect_changed_files_from_task_source_ref(repo_root, ref)
+        if diff_input.error:
+            diff_input.live_worktree_files = collect_changed_files(repo_root)
+            return diff_input
+        return attach_live_worktree_context(repo_root, diff_input, exclude_prefixes=exclude_prefixes)
 
     worktree_files = collect_changed_files(repo_root)
-    if worktree_files:
+    worktree_effective, _ = filter_effective_changed_files(worktree_files, exclude_prefixes)
+    if worktree_effective:
         return DiffInputResult(changed_files=worktree_files, source="worktree-status", task_source_ref=ref)
+    if worktree_files:
+        return DiffInputResult(
+            changed_files=worktree_files,
+            source="worktree-status-excluded-only",
+            task_source_ref=ref,
+            error="excluded-runtime-noise-only",
+            error_detail="live worktree only contains excluded runtime artifacts",
+            live_worktree_files=worktree_files,
+        )
 
     fallback = collect_changed_files_from_fallback(repo_root)
     fallback.task_source_ref = ref
@@ -331,18 +466,17 @@ def check_scope(
     include_prefixes: list[str],
     exclude_prefixes: list[str],
 ) -> ScopeGateResult:
+    effective_changed_files, ignored_files = filter_effective_changed_files(changed_files, exclude_prefixes)
     violations: list[str] = []
-    for path in changed_files:
-        if path.startswith(".git"):
-            continue
-        if any(path.startswith(prefix) for prefix in exclude_prefixes):
-            continue
+    for path in effective_changed_files:
         if include_prefixes and not any(path.startswith(prefix) for prefix in include_prefixes):
             violations.append(path)
 
     return ScopeGateResult(
         passed=not violations,
         changed_files=changed_files,
+        effective_changed_files=effective_changed_files,
+        ignored_files=ignored_files,
         violations=violations,
         include_prefixes=include_prefixes,
         exclude_prefixes=exclude_prefixes,
@@ -370,29 +504,57 @@ def main() -> int:
         task_source_ref=args.task_source_ref,
         diff_range=args.diff_range,
         commit_ref=args.commit,
+        exclude_prefixes=exclude_prefixes,
     )
-    changed_files = diff_input.changed_files
-    if not changed_files and not args.allow_empty:
+    result = check_scope(diff_input.changed_files, include_prefixes, exclude_prefixes)
+    if diff_input.error:
         payload = {
             "passed": False,
-            "changed_files": [],
-            "violations": [],
+            "changed_files": diff_input.changed_files,
+            "effective_changed_files": result.effective_changed_files,
+            "ignored_files": result.ignored_files,
+            "violations": result.violations,
+            "conflict_files": diff_input.conflict_files,
+            "live_worktree_files": diff_input.live_worktree_files,
             "include_prefixes": include_prefixes,
             "exclude_prefixes": exclude_prefixes,
             "harness_file": str(harness_file),
             "source": diff_input.source,
             "task_source_ref": diff_input.task_source_ref,
-            "error": "no changed files resolved from diff/worktree input",
+            "error": diff_input.error,
+            "error_detail": diff_input.error_detail,
         }
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 1
 
-    result = check_scope(changed_files, include_prefixes, exclude_prefixes)
+    if not result.effective_changed_files and not args.allow_empty:
+        payload = {
+            "passed": False,
+            "changed_files": diff_input.changed_files,
+            "effective_changed_files": [],
+            "ignored_files": result.ignored_files,
+            "violations": result.violations,
+            "conflict_files": diff_input.conflict_files,
+            "live_worktree_files": diff_input.live_worktree_files,
+            "include_prefixes": include_prefixes,
+            "exclude_prefixes": exclude_prefixes,
+            "harness_file": str(harness_file),
+            "source": diff_input.source,
+            "task_source_ref": diff_input.task_source_ref,
+            "error": "no-effective-changed-files",
+            "error_detail": "no non-excluded changed files resolved from diff/worktree input",
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 1
 
     payload = {
         "passed": result.passed,
         "changed_files": result.changed_files,
+        "effective_changed_files": result.effective_changed_files,
+        "ignored_files": result.ignored_files,
         "violations": result.violations,
+        "conflict_files": diff_input.conflict_files,
+        "live_worktree_files": diff_input.live_worktree_files,
         "include_prefixes": result.include_prefixes,
         "exclude_prefixes": result.exclude_prefixes,
         "harness_file": str(harness_file),

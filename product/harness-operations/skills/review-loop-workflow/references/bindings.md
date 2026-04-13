@@ -15,4 +15,5 @@
 ## Runtime Placeholders
 
 - `${WORKFLOW_ID}`：当前 review-loop 的 workflow 标识。
-- `${TASK_SOURCE_REF}`：commit / PR / diff range / target path。
+- `${TASK_SOURCE_REF}`：commit / PR / diff range / target path；它是当前 workflow 的来源锚点。
+- 若宿主同时提供显式输入与 `runtime.task_source_ref`，显式输入优先。

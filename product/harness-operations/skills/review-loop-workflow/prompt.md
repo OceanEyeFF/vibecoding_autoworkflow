@@ -12,6 +12,9 @@
 - 若遇到环境缺失、运行中断、范围冲突、修复越界，立即停下并报告。
 - 每轮都要留下结构化记录，便于下一轮复查。
 - 禁止静默降级：修复阶段不得自行 fallback 到简单但不完整方案；如需降级必须先说明影响并等待确认。
+- `${TASK_SOURCE_REF}` 是当前 workflow 的来源锚点，不是忽略 live worktree 状态的豁免开关。
+- 若显式输入或 `runtime.task_source_ref` 无法解析，立即停止并报告 `unresolved-source`，不得再回退到本地推断。
+- 若来源已解析，但 live worktree 仍有额外的非排除路径变更，立即停止并报告 dirty / scope conflict。
 - 启用 Harness 状态管控：每轮阶段切换前后更新 `${HARNESS_STATE_FILE}`。
 
 【Harness 必选项】
