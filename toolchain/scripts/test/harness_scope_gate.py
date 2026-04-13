@@ -13,6 +13,14 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+FIXED_SOURCE_TYPES = {
+    "explicit-diff-range",
+    "explicit-commit",
+    "task-diff-range",
+    "task-commit",
+    "task-embedded-range",
+    "task-embedded-commit",
+}
 
 
 @dataclass(frozen=True)
@@ -251,7 +259,7 @@ def filter_effective_changed_files(changed_files: list[str], exclude_prefixes: l
     effective: list[str] = []
     ignored: list[str] = []
     for path in changed_files:
-        if path.startswith(".git") or any(path.startswith(prefix) for prefix in exclude_prefixes):
+        if any(path.startswith(prefix) for prefix in exclude_prefixes):
             ignored.append(path)
             continue
         effective.append(path)
@@ -268,10 +276,8 @@ def collect_changed_files(repo_root: Path) -> list[str]:
 
 
 def collect_changed_files_from_diff_range(repo_root: Path, diff_range: str) -> list[str]:
-    completed = run_git(repo_root, "diff", "--name-status", "--find-renames", diff_range)
-    if completed.returncode != 0:
-        return []
-    return flatten_changed_entries(parse_git_name_status_entries(completed.stdout))
+    files, _ = resolve_diff_range(repo_root, diff_range)
+    return files
 
 
 def resolve_diff_range(repo_root: Path, diff_range: str) -> tuple[list[str], bool]:
@@ -282,6 +288,11 @@ def resolve_diff_range(repo_root: Path, diff_range: str) -> tuple[list[str], boo
 
 
 def collect_changed_files_from_commit(repo_root: Path, commit_ref: str) -> list[str]:
+    files, _ = resolve_commit_ref(repo_root, commit_ref)
+    return files
+
+
+def resolve_commit_ref(repo_root: Path, commit_ref: str) -> tuple[list[str], bool]:
     completed = run_git(
         repo_root,
         "diff-tree",
@@ -294,8 +305,8 @@ def collect_changed_files_from_commit(repo_root: Path, commit_ref: str) -> list[
         commit_ref,
     )
     if completed.returncode != 0:
-        return []
-    return flatten_changed_entries(parse_git_name_status_entries(completed.stdout))
+        return [], False
+    return flatten_changed_entries(parse_git_name_status_entries(completed.stdout)), True
 
 
 def is_commit_ref(repo_root: Path, ref: str) -> bool:
@@ -362,8 +373,8 @@ def collect_changed_files_from_task_source_ref(repo_root: Path, task_source_ref:
         return DiffInputResult(changed_files=path_files, source=source, task_source_ref=task_source_ref)
 
     if is_commit_ref(repo_root, ref):
-        files = collect_changed_files_from_commit(repo_root, ref)
-        if files:
+        files, resolved = resolve_commit_ref(repo_root, ref)
+        if resolved:
             return DiffInputResult(changed_files=files, source="task-commit", task_source_ref=task_source_ref)
 
     range_match = re.search(r"([A-Za-z0-9._/-]+\.{2,3}[A-Za-z0-9._/-]+)", ref)
@@ -376,8 +387,8 @@ def collect_changed_files_from_task_source_ref(repo_root: Path, task_source_ref:
     commit_match = re.search(r"\b([0-9a-f]{7,40})\b", ref, flags=re.IGNORECASE)
     if commit_match:
         commit_ref = commit_match.group(1)
-        files = collect_changed_files_from_commit(repo_root, commit_ref)
-        if files:
+        files, resolved = resolve_commit_ref(repo_root, commit_ref)
+        if resolved:
             return DiffInputResult(
                 changed_files=files,
                 source="task-embedded-commit",
@@ -403,6 +414,12 @@ def attach_live_worktree_context(
     diff_input.live_worktree_files = worktree_files
 
     worktree_effective, _ = filter_effective_changed_files(worktree_files, exclude_prefixes)
+    if diff_input.source in FIXED_SOURCE_TYPES and worktree_effective:
+        diff_input.error = "live-worktree-conflict"
+        diff_input.error_detail = "live worktree differs from the resolved fixed source ref"
+        diff_input.conflict_files = worktree_effective
+        return diff_input
+
     resolved_effective, _ = filter_effective_changed_files(diff_input.changed_files, exclude_prefixes)
     resolved_effective_set = set(resolved_effective)
     extra_files = [path for path in worktree_effective if path not in resolved_effective_set]
@@ -426,24 +443,38 @@ def resolve_diff_input(
 ) -> DiffInputResult:
     exclude_prefixes = exclude_prefixes or []
     if diff_range:
+        files, resolved = resolve_diff_range(repo_root, diff_range)
+        diff_input = DiffInputResult(
+            changed_files=files,
+            source="explicit-diff-range",
+            task_source_ref=diff_range,
+        )
+        if not resolved:
+            diff_input.error = "unresolved-explicit-diff-range"
+            diff_input.error_detail = f"unable to resolve explicit diff range: {diff_range}"
+            diff_input.live_worktree_files = collect_changed_files(repo_root)
+            return diff_input
         return attach_live_worktree_context(
             repo_root,
-            DiffInputResult(
-                changed_files=collect_changed_files_from_diff_range(repo_root, diff_range),
-                source="explicit-diff-range",
-                task_source_ref=task_source_ref,
-            ),
+            diff_input,
             exclude_prefixes=exclude_prefixes,
         )
 
     if commit_ref:
+        files, resolved = resolve_commit_ref(repo_root, commit_ref)
+        diff_input = DiffInputResult(
+            changed_files=files,
+            source="explicit-commit",
+            task_source_ref=commit_ref,
+        )
+        if not resolved:
+            diff_input.error = "unresolved-explicit-commit"
+            diff_input.error_detail = f"unable to resolve explicit commit: {commit_ref}"
+            diff_input.live_worktree_files = collect_changed_files(repo_root)
+            return diff_input
         return attach_live_worktree_context(
             repo_root,
-            DiffInputResult(
-                changed_files=collect_changed_files_from_commit(repo_root, commit_ref),
-                source="explicit-commit",
-                task_source_ref=task_source_ref,
-            ),
+            diff_input,
             exclude_prefixes=exclude_prefixes,
         )
 

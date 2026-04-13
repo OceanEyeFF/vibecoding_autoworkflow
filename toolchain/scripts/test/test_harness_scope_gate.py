@@ -168,6 +168,19 @@ def test_check_scope_ignores_excluded_runtime_paths() -> None:
     assert result.violations == []
 
 
+def test_check_scope_keeps_git_infra_paths_in_effective_changes() -> None:
+    result = check_scope(
+        changed_files=[".github/workflows/review.yml", ".gitignore", ".gitattributes"],
+        include_prefixes=INCLUDE_PREFIXES,
+        exclude_prefixes=EXCLUDE_PREFIXES,
+    )
+
+    assert result.passed is False
+    assert result.effective_changed_files == [".github/workflows/review.yml", ".gitignore", ".gitattributes"]
+    assert result.ignored_files == []
+    assert result.violations == [".github/workflows/review.yml", ".gitignore", ".gitattributes"]
+
+
 def test_check_scope_flags_out_of_scope_changes() -> None:
     result = check_scope(
         changed_files=["README.md", "product/harness-operations/README.md"],
@@ -335,6 +348,37 @@ def test_resolve_diff_input_reports_live_worktree_conflict_for_extra_non_exclude
     assert diff_input.error == "live-worktree-conflict"
     assert diff_input.conflict_files == ["docs/guide.md"]
     assert diff_input.changed_files == ["product/harness-operations/README.md"]
+
+
+def test_resolve_diff_input_reports_live_worktree_conflict_for_same_path_drift_on_fixed_source(
+    tmp_path: Path,
+) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir(parents=True, exist_ok=True)
+    init_repo(repo_root)
+
+    commit_file(repo_root, "product/harness-operations/README.md", "init\n", "init")
+    commit_ref = commit_file(repo_root, "docs/guide.md", "stable\n", "add docs")
+
+    harness_file = repo_root / ".autoworkflow" / "harness.yaml"
+    write_harness(harness_file, task_source_ref=commit_ref)
+    commit_harness(repo_root, harness_file)
+
+    write_file(repo_root, "docs/guide.md", "dirty\n")
+
+    diff_input = resolve_diff_input(
+        repo_root,
+        harness_file,
+        task_source_ref=None,
+        diff_range=None,
+        commit_ref=None,
+        exclude_prefixes=EXCLUDE_PREFIXES,
+    )
+
+    assert diff_input.source == "task-commit"
+    assert diff_input.changed_files == ["docs/guide.md"]
+    assert diff_input.error == "live-worktree-conflict"
+    assert diff_input.conflict_files == ["docs/guide.md"]
 
 
 def test_resolve_diff_input_ignores_excluded_runtime_noise_when_ref_is_resolved(tmp_path: Path) -> None:
@@ -586,6 +630,52 @@ def test_scope_gate_empty_diff_range_allows_empty_when_requested(tmp_path: Path)
     assert payload["source"] == "task-diff-range"
     assert payload["changed_files"] == []
     assert payload["effective_changed_files"] == []
+
+
+def test_scope_gate_invalid_explicit_diff_range_fails_even_with_allow_empty(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir(parents=True, exist_ok=True)
+    init_repo(repo_root)
+
+    commit_file(repo_root, "product/harness-operations/README.md", "base\n", "base")
+    harness_file = repo_root / ".autoworkflow" / "harness.yaml"
+    write_harness(harness_file, task_source_ref="pending")
+
+    completed, payload = run_scope_gate_with_args(
+        repo_root,
+        harness_file,
+        "--diff-range",
+        "missing..HEAD",
+        "--allow-empty",
+    )
+
+    assert completed.returncode == 1
+    assert payload["source"] == "explicit-diff-range"
+    assert payload["task_source_ref"] == "missing..HEAD"
+    assert payload["error"] == "unresolved-explicit-diff-range"
+
+
+def test_scope_gate_invalid_explicit_commit_fails_even_with_allow_empty(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir(parents=True, exist_ok=True)
+    init_repo(repo_root)
+
+    commit_file(repo_root, "product/harness-operations/README.md", "base\n", "base")
+    harness_file = repo_root / ".autoworkflow" / "harness.yaml"
+    write_harness(harness_file, task_source_ref="pending")
+
+    completed, payload = run_scope_gate_with_args(
+        repo_root,
+        harness_file,
+        "--commit",
+        "missing-commit",
+        "--allow-empty",
+    )
+
+    assert completed.returncode == 1
+    assert payload["source"] == "explicit-commit"
+    assert payload["task_source_ref"] == "missing-commit"
+    assert payload["error"] == "unresolved-explicit-commit"
 
 
 def test_resolve_diff_input_without_task_source_ref_uses_upstream_diff_first(tmp_path: Path) -> None:
