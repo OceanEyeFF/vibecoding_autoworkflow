@@ -513,7 +513,7 @@ Harness 不能只有 `Gate`，必须同时有 `Evidence`。
 这和仓库现有主线是一致的：
 
 - `docs/harness/adjacent-systems/task-interface/task-contract.md` 负责固定 `Task Contract` 的职责与字段边界
-- `docs/harness/foundations/control-plane-vs-execution-plane.md` 已继续强调控制平面与执行平面的边界
+- 本主文档与 `Harness运行协议` 已继续强调控制平面与执行平面的边界
 
 ## 十四、判断标准
 

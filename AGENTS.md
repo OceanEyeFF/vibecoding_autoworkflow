@@ -20,7 +20,7 @@
 5. `docs/project-maintenance/governance/review-verify-handbook.md`
 6. `toolchain/toolchain-layering.md`
 7. `docs/harness/README.md`
-8. `docs/harness/foundations/definition.md`
+8. `docs/harness/foundations/Harness指导思想.md`
 9. `docs/harness/adjacent-systems/task-interface/task-contract.md`
 10. `docs/harness/adjacent-systems/memory-side/layer-boundary.md`
 11. `docs/harness/adjacent-systems/memory-side/overview.md`
@@ -31,7 +31,7 @@
 - `read_next`：
   - `docs/harness/foundations/README.md`
   - `docs/harness/scope/README.md`
-  - `docs/harness/governance/README.md`
+  - `docs/harness/artifact/README.md`
   - `docs/harness/adjacent-systems/memory-side/overview.md`
   - `docs/harness/adjacent-systems/memory-side/skill-agent-model.md`
   - `docs/harness/adjacent-systems/task-interface/task-contract.md`
@@ -127,7 +127,7 @@
 - `docs/autoresearch/README.md`
 - `docs/project-maintenance/foundations/README.md`
 - `docs/project-maintenance/foundations/root-directory-layering.md`
-- `docs/harness/foundations/definition.md`
+- `docs/harness/foundations/Harness指导思想.md`
 - `docs/harness/adjacent-systems/task-interface/task-contract.md`
 - `docs/harness/adjacent-systems/memory-side/layer-boundary.md`
 - `docs/harness/adjacent-systems/memory-side/overview.md`

@@ -14,7 +14,7 @@
 ## 当前结构
 
 - [project-maintenance/README.md](./project-maintenance/README.md)：项目维护、治理、deploy 与 backend usage
-- [harness/README.md](./harness/README.md)：Harness 主线 doctrine、scope/function/artifact/governance 与 adjacent systems
+- [harness/README.md](./harness/README.md)：Harness 主线 doctrine、scope、artifact、workflow families 与 adjacent systems
 - [deployable-skills/README.md](./deployable-skills/README.md)：迁移期兼容入口与 legacy asset 承接层
 - [autoresearch/README.md](./autoresearch/README.md)：`autoresearch` 模块的 knowledge、references 与 runbooks
 

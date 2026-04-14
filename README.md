@@ -80,7 +80,7 @@ last_verified: 2026-04-14
 
 ### 3. Harness Doctrine
 
-负责承接 Harness 的 doctrine、scope/function/artifact/governance 与 workflow family 定义。
+负责承接 Harness 的 doctrine、scope、artifact、workflow family 与 adjacent-system 定义。
 
 对应文档入口：
 

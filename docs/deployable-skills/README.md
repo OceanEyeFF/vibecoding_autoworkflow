@@ -23,7 +23,7 @@
 
 迁移期约束：
 
-- 新的 Harness doctrine、scope/function/artifact/governance 不再写回这里
+- 新的 Harness doctrine 与主线结构不再写回这里
 - 如果旧入口仍被保留，必须显式指向 `docs/harness/` 的新主线
 - 兼容入口可以保留已验证资产，但不能伪装成新的 ontology 主入口
 
