@@ -4,7 +4,7 @@
 
 当前阶段：
 
-- 本目录只建立骨架，不预置任何 legacy skill 包
+- 首个目标是 [harness-skill/](./harness-skill/)：顶层 supervisor 入口
 - 后续新增内容应从 `docs/harness/` 的 operator / workflow / governance truth 反推
 - 不应先复制旧 prompt，再反向让它生长 ontology
 
