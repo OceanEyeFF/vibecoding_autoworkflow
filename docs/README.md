@@ -4,7 +4,8 @@
 
 ## 核心定位
 
-- 本项目是一个 AI coding 的 repo-side contract layer。
+- 本项目的核心目标，是构建一个 `Codex-first` 的 AI coding harness 平台、将其分发到多个项目中使用，并建设一个面向 skills 的 `autoresearch` 系统。
+- 当前仓库以 AI coding 的 repo-side contract layer 形态承接这些目标。
 - `docs/` 只负责路径、分层、阅读边界和真相落点，不负责具体 `skills / agents / subagents` 的实现设计。
 - 具体的 canonical skills 与 adapters 在 `product/`，部署、评测和治理脚本在 `toolchain/`。
 - 如果 AI 进入仓库后能立刻知道先读什么、先不要读什么、改完后写回哪里，那么 `docs/` 就发挥了作用。

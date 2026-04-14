@@ -1,12 +1,12 @@
 # Product
 
-`product/` 是当前仓库第一块正式内容区：业务代码唯一源码根。
+`product/` 是当前仓库第一块正式内容区，也是业务代码唯一源码根；这里承接 `Harness` 平台搭建与分发相关的业务源码。
 
 当前主线包括：
 
-- [memory-side/README.md](./memory-side/README.md)：Memory Side canonical skill 与 adapter 源码入口
-- [task-interface/README.md](./task-interface/README.md)：Task Interface canonical skill 与 adapter 源码入口
-- [harness-operations/README.md](./harness-operations/README.md)：Harness Operations canonical skill、adapter 与 manifests 入口
+- [memory-side/README.md](./memory-side/README.md)：支撑 `Harness` 的 `Memory Side` 内部实现面与源码入口
+- [task-interface/README.md](./task-interface/README.md)：支撑 `Harness` 的 `Task Interface` 内部实现面与源码入口
+- [harness-operations/README.md](./harness-operations/README.md)：承接 `Harness` 平台搭建与分发的源码入口
 
 规则：
 

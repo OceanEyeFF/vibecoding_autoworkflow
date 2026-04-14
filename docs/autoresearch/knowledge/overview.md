@@ -1,17 +1,17 @@
 ---
 title: "Autoresearch 模块总览"
 status: active
-updated: 2026-04-08
+updated: 2026-04-14
 owner: aw-kernel
-last_verified: 2026-04-08
+last_verified: 2026-04-14
 ---
 # Autoresearch 模块总览
 
-> 目的：把当前仓库里的 `autoresearch` 从“散落在 `toolchain / docs/project-maintenance / docs/autoresearch / .autoworkflow` 的一组对象”收束成一个可识别的 repo 模块入口，说明它是什么、边界在哪、不同层分别承接什么。
+> 目的：把当前仓库里的 `autoresearch` 作为项目核心目标之一对应的模块总览入口来收束，说明它是什么、边界在哪、不同层分别承接什么，同时保留 `docs/autoresearch / docs/project-maintenance / toolchain / .autoworkflow` 的稳定分流。
 
 ## 一、模块定位
 
-`autoresearch` 是当前仓库中的一个 repo 模块。
+`autoresearch` 是当前仓库中的一个 repo module，也是项目核心目标之一的知识与研究承接入口。
 
 它不是：
 
@@ -22,7 +22,7 @@ last_verified: 2026-04-08
 它是：
 
 - 一套围绕 `toolchain/scripts/research/` 组织起来的 contract-driven research loop
-- 当前仓库里负责 baseline、round、mutation、worker contract、feedback distill、decision 和 replay 的实现主题
+- 当前仓库里承接 `Autoresearch` 目标闭环的研究模块入口
 - 一个需要跨 `docs/autoresearch`、`docs/project-maintenance`、`toolchain/` 和 `.autoworkflow/` 共同描述，但必须由稳定入口统一分流的模块
 
 ## 二、模块边界
@@ -81,7 +81,7 @@ last_verified: 2026-04-08
 - [toolchain/evals/fixtures/README.md](../../../toolchain/evals/fixtures/README.md)
 
 `toolchain/scripts/research/` 是当前 `autoresearch` 实现面的 source of truth；
-`docs/autoresearch/knowledge/` 只负责模块知识入口，不替代实现文档。
+`docs/autoresearch/knowledge/` 只负责模块知识入口，不替代实现文档，也不扩写实现细节。
 
 ### 5. `.autoworkflow/`
 

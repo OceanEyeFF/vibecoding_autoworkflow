@@ -4,7 +4,8 @@
 
 ## Core
 
-- 本项目是一个 AI coding 的 repo-side contract layer。
+- 本项目的核心目标，是构建一个 `Codex-first` 的 AI coding harness 平台、将其分发到多个项目中使用，并建设一个面向 skills 的 `autoresearch` 系统。
+- 当前仓库以 AI coding 的 repo-side contract layer 形态承接这些目标。
 - `docs/` 负责 truth boundary，`product/` 负责 canonical skills 与 adapters，`toolchain/` 负责部署、评测与治理脚本。
 - `.agents/`、`.claude/`、`.opencode/` 只是 deploy target，不是源码层。
 - 如果一个新目录说不清 owner 和层级，不要直接加到根目录。

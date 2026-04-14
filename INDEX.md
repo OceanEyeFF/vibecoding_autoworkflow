@@ -1,9 +1,9 @@
 ---
 title: "根目录索引"
 status: active
-updated: 2026-03-26
+updated: 2026-04-14
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-04-14
 ---
 # 根目录索引
 
@@ -23,9 +23,10 @@ last_verified: 2026-03-26
 
 | 任务目标 | 入口 |
 |------|------|
-| 理解项目是什么、根目录怎么分层 | [`README.md`](./README.md) |
+| 理解项目目标、承接结构和根目录分层 | [`README.md`](./README.md) |
 | 看文档真相层与阅读顺序 | [`docs/README.md`](./docs/README.md) |
 | 看稳定规则与分层合同 | [`docs/deployable-skills/README.md`](./docs/deployable-skills/README.md) |
+| 看 `Autoresearch` 主线 | [`docs/autoresearch/README.md`](./docs/autoresearch/README.md) |
 | 改 `Memory Side` 主线文档 | [`docs/deployable-skills/memory-side/README.md`](./docs/deployable-skills/memory-side/README.md) |
 | 改 `Task Interface` 主线文档 | [`docs/deployable-skills/task-interface/README.md`](./docs/deployable-skills/task-interface/README.md) |
 | 改业务源码 | [`product/README.md`](./product/README.md) |
