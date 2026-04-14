@@ -1,6 +1,6 @@
 # Task Interface Knowledge
 
-`docs/deployable-skills/task-interface/` 当前是迁移期保留的 legacy 合同入口。
+`docs/deployable-skills/task-interface/` 当前只保留迁移期兼容角色。
 
 新的 Harness-first 入口已经迁到：
 
@@ -8,7 +8,7 @@
 
 当前这里仍保留：
 
-- 已验证的 `Task Contract` 正文
+- superseded 的 `Task Contract` 正文副本
 - 尚未切走的旧路径引用
 - [../../../product/task-interface/skills/README.md](../../../product/task-interface/skills/README.md)
 - [../../../product/task-interface/skills/task-contract-skill/SKILL.md](../../../product/task-interface/skills/task-contract-skill/SKILL.md)

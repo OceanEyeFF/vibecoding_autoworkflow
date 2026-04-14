@@ -1,13 +1,11 @@
 ---
 title: "Writeback & Cleanup 输出格式"
-status: superseded
+status: active
 updated: 2026-04-14
 owner: aw-kernel
 last_verified: 2026-04-14
 ---
 # Writeback & Cleanup 输出格式
-
-> 本页已降级为 legacy 副本。canonical 文档已迁到 [../../../harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md](../../../harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md)。
 
 > 目的：为 `Writeback & Cleanup` 规定固定输出格式，避免不同 AI 后端在任务收尾时产出风格差异很大的回写说明。
 
@@ -124,8 +122,8 @@ write_to_exploratory_records:
 followups:
 - 起草 Writeback & Cleanup 的规则文档、Prompt 和输出格式
 docs_to_sync:
-- docs/deployable-skills/memory-side/context-routing.md
-- docs/deployable-skills/memory-side/overview.md
+- docs/harness/adjacent-systems/memory-side/context-routing.md
+- docs/harness/adjacent-systems/memory-side/overview.md
 notes_for_next_round:
 - 下一轮应优先补任务结束后的文档回写规则
 ```

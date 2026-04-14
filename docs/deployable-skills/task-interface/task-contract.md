@@ -1,11 +1,13 @@
 ---
 title: "Task Contract 基线"
-status: active
-updated: 2026-04-13
+status: superseded
+updated: 2026-04-14
 owner: aw-kernel
-last_verified: 2026-04-13
+last_verified: 2026-04-14
 ---
 # Task Contract 基线
+
+> 本页已降级为 legacy 副本。canonical 文档已迁到 [../../harness/adjacent-systems/task-interface/task-contract.md](../../harness/adjacent-systems/task-interface/task-contract.md)。
 
 > 目的：定义 `Task Contract` 作为 `Task Interface` 对象的职责和边界，并说明它如何被固定为可直接调用的 skill 载体，而不把它并入 `Memory Side`。
 

@@ -1,13 +1,11 @@
 ---
 title: "Context Routing 输出格式"
-status: superseded
+status: active
 updated: 2026-04-14
 owner: aw-kernel
 last_verified: 2026-04-14
 ---
 # Context Routing 输出格式
-
-> 本页已降级为 legacy 副本。canonical 文档已迁到 [../../../harness/adjacent-systems/memory-side/formats/context-routing-output-format.md](../../../harness/adjacent-systems/memory-side/formats/context-routing-output-format.md)。
 
 > 目的：为 `Context Routing` 规定固定输出格式，避免不同 AI 后端各自生成风格差异很大的阅读入口说明。
 
@@ -92,14 +90,14 @@ task_type: Feature
 goal: 为目标仓库补一条新的写回规则，并保持现有知识分层不变。
 scope_hint: 只涉及目标仓库的 Memory Side 文档，不进入运行时实现设计。
 read_first:
-- docs/deployable-skills/memory-side/overview.md
-- docs/deployable-skills/memory-side/knowledge-base.md
-- docs/deployable-skills/memory-side/context-routing.md
+- docs/harness/adjacent-systems/memory-side/overview.md
+- docs/harness/adjacent-systems/memory-side/knowledge-base.md
+- docs/harness/adjacent-systems/memory-side/context-routing.md
 read_next:
-- docs/deployable-skills/memory-side/context-routing-rules.md
+- docs/harness/adjacent-systems/memory-side/context-routing-rules.md
 - docs/project-maintenance/foundations/root-directory-layering.md
 code_entry:
-- docs/deployable-skills/
+- docs/harness/adjacent-systems/
 do_not_read_yet:
 - 无关的参考背景资料
 - 宿主调用层实现细节

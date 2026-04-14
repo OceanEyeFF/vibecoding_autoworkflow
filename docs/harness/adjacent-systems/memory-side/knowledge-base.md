@@ -1,13 +1,11 @@
 ---
 title: "Knowledge Base 基线"
-status: superseded
+status: active
 updated: 2026-04-14
 owner: aw-kernel
 last_verified: 2026-04-14
 ---
 # Knowledge Base 基线
-
-> 本页已降级为 legacy 副本。canonical 文档已迁到 [../../harness/adjacent-systems/memory-side/knowledge-base.md](../../harness/adjacent-systems/memory-side/knowledge-base.md)。
 
 > 目的：定义 `Knowledge Base` 在 `Memory Side` 中的职责，只回答“项目长期真相如何在仓库中存在”。
 
@@ -206,4 +204,4 @@ docs/
 
 为了把 `Knowledge Base` 继续落成可执行载体，当前配套文档包括：
 
-- [knowledge-base-skill/SKILL.md](../../../product/memory-side/skills/knowledge-base-skill/SKILL.md)
+- [knowledge-base-skill/SKILL.md](../../../../product/memory-side/skills/knowledge-base-skill/SKILL.md)

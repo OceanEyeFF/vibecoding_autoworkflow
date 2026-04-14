@@ -1,13 +1,11 @@
 ---
 title: "Writeback & Cleanup 回写规则"
-status: superseded
+status: active
 updated: 2026-04-14
 owner: aw-kernel
 last_verified: 2026-04-14
 ---
 # Writeback & Cleanup 回写规则
-
-> 本页已降级为 legacy 副本。canonical 文档已迁到 [../../harness/adjacent-systems/memory-side/writeback-cleanup-rules.md](../../harness/adjacent-systems/memory-side/writeback-cleanup-rules.md)。
 
 > 目的：把 `Writeback & Cleanup` 从抽象职责落实成实际的任务收尾规则，回答“本轮结果哪些要写回、写到哪里、哪些不要写、哪些旧内容要清理”。
 

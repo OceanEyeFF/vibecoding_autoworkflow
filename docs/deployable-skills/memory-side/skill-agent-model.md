@@ -1,11 +1,13 @@
 ---
 title: "Memory Side Skill 与 Agent 模型"
-status: active
-updated: 2026-04-13
+status: superseded
+updated: 2026-04-14
 owner: aw-kernel
-last_verified: 2026-04-13
+last_verified: 2026-04-14
 ---
 # Memory Side Skill 与 Agent 模型
+
+> 本页已降级为 legacy 副本。canonical 文档已迁到 [../../harness/adjacent-systems/memory-side/skill-agent-model.md](../../harness/adjacent-systems/memory-side/skill-agent-model.md)。
 
 > 目的：定义 `Memory Side` 中合同正文、`Skill` 与可选调用层的关系，并明确 `Task Contract` 这个任务接口对象如何与它们衔接。
 

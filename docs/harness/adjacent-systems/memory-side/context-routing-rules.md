@@ -1,13 +1,11 @@
 ---
 title: "Context Routing 分流规则"
-status: superseded
+status: active
 updated: 2026-04-14
 owner: aw-kernel
 last_verified: 2026-04-14
 ---
 # Context Routing 分流规则
-
-> 本页已降级为 legacy 副本。canonical 文档已迁到 [../../harness/adjacent-systems/memory-side/context-routing-rules.md](../../harness/adjacent-systems/memory-side/context-routing-rules.md)。
 
 > 目的：把 `Context Routing` 从抽象原则落实成实际的任务分流规则，回答“不同任务开始前应读取什么、按什么顺序读、哪些先不要读”。
 

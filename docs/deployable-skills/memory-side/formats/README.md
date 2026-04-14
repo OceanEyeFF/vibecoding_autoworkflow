@@ -1,20 +1,12 @@
 # Memory Side Formats
 
-`docs/deployable-skills/memory-side/formats/` 只保存 `Memory Side` 的固定输出格式合同。
+`docs/deployable-skills/memory-side/formats/` 当前只保留迁移期 wrapper。
 
 当前入口：
 
-1. [context-routing-output-format.md](./context-routing-output-format.md)
-2. [writeback-cleanup-output-format.md](./writeback-cleanup-output-format.md)
+1. [../../../harness/adjacent-systems/memory-side/formats/context-routing-output-format.md](../../../harness/adjacent-systems/memory-side/formats/context-routing-output-format.md)
+2. [../../../harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md](../../../harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md)
+3. [context-routing-output-format.md](./context-routing-output-format.md)
+4. [writeback-cleanup-output-format.md](./writeback-cleanup-output-format.md)
 
-这里适合放：
-
-- 稳定输出结构
-- 字段级约束
-- 需要跨 backend 复用的格式合同
-
-这里不适合放：
-
-- repo-local prompt
-- backend-specific deploy 说明
-- skill 执行骨架
+其中 `docs/harness/.../formats/*` 是 canonical 主线，当前目录下的同名文件只是过渡副本。

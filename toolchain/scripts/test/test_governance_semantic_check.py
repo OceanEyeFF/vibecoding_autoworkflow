@@ -37,14 +37,15 @@ def test_check_required_handoffs_flags_missing_link(tmp_path: Path) -> None:
     write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/overview.md", "")
     write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/layer-boundary.md", "")
     write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/skill-agent-model.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/context-routing.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/writeback-cleanup.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md", "")
     write_doc(tmp_path / "toolchain/scripts/README.md", "# scripts\n")
     write_doc(tmp_path / "toolchain/evals/README.md", "# evals\n")
     write_doc(tmp_path / "docs/deployable-skills/README.md", "")
-    write_doc(tmp_path / "docs/deployable-skills/memory-side/formats/context-routing-output-format.md", "")
-    write_doc(tmp_path / "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md", "")
-    write_doc(tmp_path / "docs/deployable-skills/task-interface/task-contract.md", "")
-    write_doc(tmp_path / "docs/deployable-skills/memory-side/context-routing.md", "")
-    write_doc(tmp_path / "docs/deployable-skills/memory-side/writeback-cleanup.md", "")
+    write_doc(tmp_path / "docs/deployable-skills/memory-side/README.md", "")
+    write_doc(tmp_path / "docs/deployable-skills/task-interface/README.md", "")
     write_doc(tmp_path / "docs/autoresearch/knowledge/README.md", "")
 
     report = SemanticReport()
@@ -267,18 +268,18 @@ def test_check_harness_adapters_are_header_driven_rejects_wrong_symlink_target(t
 def test_check_canonical_entrypoints_cover_required_formats_flags_missing_link(tmp_path: Path) -> None:
     write_doc(
         tmp_path / "product/memory-side/skills/context-routing-skill/references/entrypoints.md",
-        "# refs\n\n- `docs/deployable-skills/memory-side/context-routing-rules.md`\n",
+        "# refs\n\n- `docs/harness/adjacent-systems/memory-side/context-routing-rules.md`\n",
     )
     write_doc(
         tmp_path / "product/memory-side/skills/writeback-cleanup-skill/references/entrypoints.md",
-        "# refs\n\n- `docs/deployable-skills/memory-side/writeback-cleanup-rules.md`\n",
+        "# refs\n\n- `docs/harness/adjacent-systems/memory-side/writeback-cleanup-rules.md`\n",
     )
     write_doc(
-        tmp_path / "docs/deployable-skills/memory-side/formats/context-routing-output-format.md",
+        tmp_path / "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md",
         "# format\n",
     )
     write_doc(
-        tmp_path / "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md",
+        tmp_path / "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md",
         "# format\n",
     )
 

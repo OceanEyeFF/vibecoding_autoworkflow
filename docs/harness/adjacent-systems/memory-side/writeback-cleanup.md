@@ -1,13 +1,11 @@
 ---
 title: "Writeback & Cleanup 基线"
-status: superseded
+status: active
 updated: 2026-04-14
 owner: aw-kernel
 last_verified: 2026-04-14
 ---
 # Writeback & Cleanup 基线
-
-> 本页已降级为 legacy 副本。canonical 文档已迁到 [../../harness/adjacent-systems/memory-side/writeback-cleanup.md](../../harness/adjacent-systems/memory-side/writeback-cleanup.md)。
 
 > 目的：定义 `Writeback & Cleanup` 在 `Memory Side` 中的职责，只回答“任务结束后怎么统一回写项目真相并清理噪声”。
 
@@ -74,4 +72,4 @@ last_verified: 2026-04-14
 
 - [Writeback & Cleanup 回写规则](./writeback-cleanup-rules.md)
 - [Writeback & Cleanup 输出格式](./formats/writeback-cleanup-output-format.md)
-- [writeback-cleanup-skill/SKILL.md](../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md)
+- [writeback-cleanup-skill/SKILL.md](../../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md)

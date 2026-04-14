@@ -1,13 +1,13 @@
 # Memory Side Formats
 
-`docs/harness/adjacent-systems/memory-side/formats/` 预留给迁入 Harness-first 主线后的固定输出格式。
+`docs/harness/adjacent-systems/memory-side/formats/` 保存 `Memory Side` 的固定输出格式合同。
 
-当前迁移状态：
+当前 canonical 入口：
 
-- 格式正文仍保留在 legacy 路径
-- canonical executable source 仍继续引用 legacy 格式文档，直到完整迁移完成
+- [context-routing-output-format.md](./context-routing-output-format.md)
+- [writeback-cleanup-output-format.md](./writeback-cleanup-output-format.md)
 
-当前 legacy 入口：
+迁移说明：
 
-- [../../../../deployable-skills/memory-side/formats/context-routing-output-format.md](../../../../deployable-skills/memory-side/formats/context-routing-output-format.md)
-- [../../../../deployable-skills/memory-side/formats/writeback-cleanup-output-format.md](../../../../deployable-skills/memory-side/formats/writeback-cleanup-output-format.md)
+- legacy wrapper 仍保留在 [../../../../deployable-skills/memory-side/formats/README.md](../../../../deployable-skills/memory-side/formats/README.md)
+- `product/memory-side/*` 的 canonical executable source 现在应优先引用本目录

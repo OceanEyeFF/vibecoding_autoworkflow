@@ -4,13 +4,13 @@ Load the generic Memory Side contract docs in this order.
 
 ## Always Read First
 
-- `docs/deployable-skills/memory-side/layer-boundary.md`
-- `docs/deployable-skills/memory-side/overview.md`
-- `docs/deployable-skills/memory-side/knowledge-base.md`
+- `docs/harness/adjacent-systems/memory-side/layer-boundary.md`
+- `docs/harness/adjacent-systems/memory-side/overview.md`
+- `docs/harness/adjacent-systems/memory-side/knowledge-base.md`
 
 ## Read When You Need Memory Side Boundaries
 
-- `docs/deployable-skills/memory-side/skill-agent-model.md`
+- `docs/harness/adjacent-systems/memory-side/skill-agent-model.md`
 
 ## Reading Policy
 

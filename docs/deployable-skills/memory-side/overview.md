@@ -1,11 +1,13 @@
 ---
 title: "Memory Side 总览"
-status: active
-updated: 2026-04-13
+status: superseded
+updated: 2026-04-14
 owner: aw-kernel
-last_verified: 2026-04-13
+last_verified: 2026-04-14
 ---
 # Memory Side 总览
+
+> 本页已降级为 legacy 副本。canonical 文档已迁到 [../../harness/adjacent-systems/memory-side/overview.md](../../harness/adjacent-systems/memory-side/overview.md)。
 
 > 目的：作为 `Memory Side` 的总文档，统一说明三个 Partition 的角色、关系和共用原则，避免设计继续发散。
 

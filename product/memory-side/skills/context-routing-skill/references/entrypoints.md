@@ -4,19 +4,19 @@ Load the generic Memory Side contract docs in this order.
 
 ## Always Read First
 
-- `docs/deployable-skills/memory-side/layer-boundary.md`
-- `docs/deployable-skills/memory-side/overview.md`
-- `docs/deployable-skills/memory-side/context-routing.md`
+- `docs/harness/adjacent-systems/memory-side/layer-boundary.md`
+- `docs/harness/adjacent-systems/memory-side/overview.md`
+- `docs/harness/adjacent-systems/memory-side/context-routing.md`
 
 ## Read For Routing Logic
 
-- `docs/deployable-skills/memory-side/context-routing-rules.md`
-- `docs/deployable-skills/memory-side/formats/context-routing-output-format.md`
+- `docs/harness/adjacent-systems/memory-side/context-routing-rules.md`
+- `docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md`
 
 ## Read Only If Boundaries Are Unclear
 
-- `docs/deployable-skills/memory-side/knowledge-base.md`
-- `docs/deployable-skills/memory-side/skill-agent-model.md`
+- `docs/harness/adjacent-systems/memory-side/knowledge-base.md`
+- `docs/harness/adjacent-systems/memory-side/skill-agent-model.md`
 
 ## Reading Policy
 

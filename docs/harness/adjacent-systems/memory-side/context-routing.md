@@ -1,13 +1,11 @@
 ---
 title: "Context Routing 基线"
-status: superseded
+status: active
 updated: 2026-04-14
 owner: aw-kernel
 last_verified: 2026-04-14
 ---
 # Context Routing 基线
-
-> 本页已降级为 legacy 副本。canonical 文档已迁到 [../../harness/adjacent-systems/memory-side/context-routing.md](../../harness/adjacent-systems/memory-side/context-routing.md)。
 
 > 目的：定义 `Context Routing` 在 `Memory Side` 中的职责，只回答“任务开始前怎么为 AI 整理阅读入口”。
 
@@ -73,4 +71,4 @@ last_verified: 2026-04-14
 
 - [Context Routing 分流规则](./context-routing-rules.md)
 - [Context Routing 输出格式](./formats/context-routing-output-format.md)
-- [context-routing-skill/SKILL.md](../../../product/memory-side/skills/context-routing-skill/SKILL.md)
+- [context-routing-skill/SKILL.md](../../../../product/memory-side/skills/context-routing-skill/SKILL.md)

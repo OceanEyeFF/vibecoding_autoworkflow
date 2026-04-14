@@ -15,9 +15,9 @@ from path_governance_check import iter_relative_markdown_targets, resolve_markdo
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FOUNDATIONS_DIR = "docs/project-maintenance/foundations"
 REQUIRED_TEMPLATE_PATHS = [
-    "docs/deployable-skills/memory-side/formats/context-routing-output-format.md",
-    "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md",
-    "docs/deployable-skills/task-interface/task-contract.md",
+    "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md",
+    "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md",
+    "docs/harness/adjacent-systems/task-interface/task-contract.md",
 ]
 REQUIRED_HANDOFF_LINKS = {
     "toolchain/toolchain-layering.md": [
@@ -37,12 +37,16 @@ REQUIRED_HANDOFF_LINKS = {
         "docs/harness/adjacent-systems/memory-side/layer-boundary.md",
         "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
     ],
-    "docs/deployable-skills/README.md": REQUIRED_TEMPLATE_PATHS,
-    "docs/deployable-skills/memory-side/context-routing.md": [
-        "docs/deployable-skills/memory-side/formats/context-routing-output-format.md",
+    "docs/deployable-skills/README.md": [
+        "docs/harness/README.md",
+        "docs/deployable-skills/memory-side/README.md",
+        "docs/deployable-skills/task-interface/README.md",
     ],
-    "docs/deployable-skills/memory-side/writeback-cleanup.md": [
-        "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md",
+    "docs/harness/adjacent-systems/memory-side/context-routing.md": [
+        "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md",
+    ],
+    "docs/harness/adjacent-systems/memory-side/writeback-cleanup.md": [
+        "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md",
     ],
     "docs/autoresearch/knowledge/README.md": [
         "docs/autoresearch/knowledge/overview.md",
@@ -100,10 +104,10 @@ HARNESS_ADAPTER_REQUIRED_FILES = [
 ]
 CANONICAL_ENTRYPOINT_REQUIRED_LINKS = {
     "product/memory-side/skills/context-routing-skill/references/entrypoints.md": [
-        "docs/deployable-skills/memory-side/formats/context-routing-output-format.md",
+        "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md",
     ],
     "product/memory-side/skills/writeback-cleanup-skill/references/entrypoints.md": [
-        "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md",
+        "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md",
     ],
 }
 

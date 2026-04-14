@@ -1,11 +1,13 @@
 ---
 title: "Memory Side 层级边界"
-status: active
-updated: 2026-04-13
+status: superseded
+updated: 2026-04-14
 owner: aw-kernel
-last_verified: 2026-04-13
+last_verified: 2026-04-14
 ---
 # Memory Side 层级边界
+
+> 本页已降级为 legacy 副本。canonical 文档已迁到 [../../harness/adjacent-systems/memory-side/layer-boundary.md](../../harness/adjacent-systems/memory-side/layer-boundary.md)。
 
 > 目的：把 `Memory Side` 里的通用能力合同、业务源码、repo-local deploy target 和评测资产明确拆开，避免继续把“框架语义”“源码实现”“本地挂载结果”混成一层。
 
