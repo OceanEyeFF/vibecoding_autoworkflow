@@ -10,8 +10,9 @@ Load the minimum harness docs in this order.
 
 ## Read For Harness Contract
 
-- `product/harness-operations/skills/harness-contract-shape/prompt.md`
-- `product/harness-operations/skills/repo-governance-evaluation/prompt.md`
+- `product/harness/workflows/repo-evolution/review-repair.loop.md`
+- `product/harness/core/contracts/harness-contract.template.json`
+- `product/harness/core/governance/repo-governance-evaluation.contract.md`
 
 ## Reading Policy
 

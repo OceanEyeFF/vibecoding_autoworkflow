@@ -18,3 +18,9 @@ last_verified: 2026-04-14
 5. 形成 gate verdict
 6. fail 时 recover，pass 时 integrate / close
 7. 回写 repo 级状态
+
+当前对应的 product source：
+
+- [../../../../product/harness/workflows/repo-evolution/standard-worktrack.workflow.md](../../../../product/harness/workflows/repo-evolution/standard-worktrack.workflow.md)
+- [../../../../product/harness/workflows/repo-evolution/task-batching.pattern.md](../../../../product/harness/workflows/repo-evolution/task-batching.pattern.md)
+- [../../../../product/harness/workflows/repo-evolution/review-repair.loop.md](../../../../product/harness/workflows/repo-evolution/review-repair.loop.md)

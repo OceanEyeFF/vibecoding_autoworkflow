@@ -44,3 +44,11 @@
 - `core/governance/`
   - [harness-governance-fields.md](./core/governance/harness-governance-fields.md)
   - [repo-governance-evaluation.contract.md](./core/governance/repo-governance-evaluation.contract.md)
+- `workflows/repo-evolution/`
+  - [standard-worktrack.workflow.md](./workflows/repo-evolution/standard-worktrack.workflow.md)
+  - [task-batching.pattern.md](./workflows/repo-evolution/task-batching.pattern.md)
+  - [review-repair.loop.md](./workflows/repo-evolution/review-repair.loop.md)
+- `profiles/`
+  - [simple.profile.md](./profiles/simple.profile.md)
+  - [strict.profile.md](./profiles/strict.profile.md)
+  - [task-list.variant.md](./profiles/task-list.variant.md)

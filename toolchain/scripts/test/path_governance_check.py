@@ -86,7 +86,13 @@ REQUIRED_ENTRY_PATHS = [
     "product/harness/core/shared/gate-discipline.md",
     "product/harness/core/shared/state-discipline.md",
     "product/harness/workflows/repo-evolution/README.md",
+    "product/harness/workflows/repo-evolution/standard-worktrack.workflow.md",
+    "product/harness/workflows/repo-evolution/task-batching.pattern.md",
+    "product/harness/workflows/repo-evolution/review-repair.loop.md",
     "product/harness/profiles/README.md",
+    "product/harness/profiles/simple.profile.md",
+    "product/harness/profiles/strict.profile.md",
+    "product/harness/profiles/task-list.variant.md",
     "product/harness/adapters/README.md",
     "product/harness/manifests/README.md",
     "product/harness-operations/README.md",
@@ -218,10 +224,14 @@ ENTRYPOINT_LINK_RULES = {
     ],
     "docs/harness/workflow-families/README.md": [
         "docs/harness/workflow-families/repo-evolution/README.md",
+        "product/harness/workflows/repo-evolution/README.md",
+        "product/harness/profiles/README.md",
     ],
     "docs/harness/workflow-families/repo-evolution/README.md": [
         "docs/harness/workflow-families/repo-evolution/standard-worktrack.md",
         "docs/harness/workflow-families/repo-evolution/policy-profiles.md",
+        "product/harness/workflows/repo-evolution/README.md",
+        "product/harness/profiles/README.md",
     ],
     PROJECT_MAINTENANCE_README: [
         "docs/project-maintenance/foundations/README.md",
@@ -296,6 +306,16 @@ ENTRYPOINT_LINK_RULES = {
         "product/harness/core/shared/runtime-binding-policy.md",
         "product/harness/core/shared/gate-discipline.md",
         "product/harness/core/shared/state-discipline.md",
+    ],
+    "product/harness/workflows/repo-evolution/README.md": [
+        "product/harness/workflows/repo-evolution/standard-worktrack.workflow.md",
+        "product/harness/workflows/repo-evolution/task-batching.pattern.md",
+        "product/harness/workflows/repo-evolution/review-repair.loop.md",
+    ],
+    "product/harness/profiles/README.md": [
+        "product/harness/profiles/simple.profile.md",
+        "product/harness/profiles/strict.profile.md",
+        "product/harness/profiles/task-list.variant.md",
     ],
     DEPLOYABLE_SKILLS_README: [
         HARNESS_README,

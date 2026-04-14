@@ -25,10 +25,10 @@
 | `harness-contract-shape` | `split` | `product/harness/core/contracts/` + `product/harness/core/governance/` |
 | `task-planning-contract` | `split` | `product/harness/core/contracts/` + `product/harness/workflows/repo-evolution/` |
 | `repo-governance-evaluation` | `downgrade` | `product/harness/core/governance/` 子能力 |
-| `review-loop-workflow` | `deprecate` | legacy workflow asset |
-| `simple-workflow` | `deprecate` | legacy profile |
-| `strict-workflow` | `deprecate` | legacy profile |
-| `task-list-workflow` | `downgrade` | workflow/profile 变体 |
+| `review-loop-workflow` | `deprecate` | `product/harness/workflows/repo-evolution/review-repair.loop.md` |
+| `simple-workflow` | `deprecate` | `product/harness/profiles/simple.profile.md` |
+| `strict-workflow` | `deprecate` | `product/harness/profiles/strict.profile.md` |
+| `task-list-workflow` | `downgrade` | `product/harness/workflows/repo-evolution/` + `product/harness/profiles/task-list.variant.md` |
 
 路由权威以 `AGENTS.md` 为准。
 当 authority 已确认进入 canonical skill source layer 时，本目录只建议继续读取：

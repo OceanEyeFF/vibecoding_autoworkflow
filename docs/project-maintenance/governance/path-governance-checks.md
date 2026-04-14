@@ -28,6 +28,7 @@ last_verified: 2026-04-13
 - 已退役的 placeholder 口径是否回流到关键入口文档
 - `product/memory-side|task-interface/adapters/*/skills/*/SKILL.md` 是否仍保持 thin wrapper，而不是重新长出重复语义正文
 - `product/harness-operations/adapters/*/skills/*/` 是否保持 `header.yaml` source，并把 `SKILL.md` 限定为指向 canonical 的 symlink shim
+- `product/harness/workflows/repo-evolution/` 与 `product/harness/profiles/` 是否已经从 README 占位升级为真实 source 入口，并被 README 与 docs 显式链接
 
 它不替代人工审阅，也不检查所有 anchor 片段。
 
@@ -92,6 +93,8 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 24. `product/harness/core/shared/README.md` 是否仍链接 `contract-runtime-boundary.md`、`runtime-binding-policy.md`、`gate-discipline.md` 与 `state-discipline.md`
 25. `product/harness/core/contracts/README.md` 是否仍链接 `execution-contract.template.md`、`harness-contract.template.json` 与 `task-planning-contract.template.md`
 26. `product/harness/core/governance/README.md` 是否仍链接 `harness-governance-fields.md` 与 `repo-governance-evaluation.contract.md`
+27. `product/harness/workflows/repo-evolution/README.md` 是否仍链接 `standard-worktrack.workflow.md`、`task-batching.pattern.md` 与 `review-repair.loop.md`
+28. `product/harness/profiles/README.md` 是否仍链接 `simple.profile.md`、`strict.profile.md` 与 `task-list.variant.md`
 
 说明：
 

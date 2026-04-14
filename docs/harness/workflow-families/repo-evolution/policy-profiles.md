@@ -21,3 +21,9 @@ last_verified: 2026-04-14
 - `repo-governance-evaluation`：治理子能力
 
 这些资产可以继续回收其 prompt、gate、entrypoint 经验，但不再承接 Harness 主线定义。
+
+当前对应的 product source：
+
+- [../../../../product/harness/profiles/simple.profile.md](../../../../product/harness/profiles/simple.profile.md)
+- [../../../../product/harness/profiles/strict.profile.md](../../../../product/harness/profiles/strict.profile.md)
+- [../../../../product/harness/profiles/task-list.variant.md](../../../../product/harness/profiles/task-list.variant.md)
