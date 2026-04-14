@@ -1,9 +1,9 @@
 ---
 title: "Skill Deployment 维护流"
 status: active
-updated: 2026-04-13
+updated: 2026-04-14
 owner: aw-kernel
-last_verified: 2026-04-13
+last_verified: 2026-04-14
 ---
 # Skill Deployment 维护流
 
@@ -26,29 +26,21 @@ last_verified: 2026-04-13
 - 你怀疑 mounts 和 source 漂移了
 - 你需要判断是否该用 `--prune`
 - 你在处理 stale target、坏链路或 rename / remove 后残留
-- 你看到 `missing-build-source`、`wrong-target-type`、`unexpected-target-entry` 之类的错误码
+- 你看到 `wrong-target-type`、`unexpected-target-entry` 之类的错误码
 
 ## 二、推荐维护循环
 
 默认顺序固定为：
 
-1. 如需刷新或检查 harness 组装产物，先跑 `build`
-2. `verify`
-3. `local` 或 `global` deploy
-4. 再跑一次 `verify`
+1. `verify`
+2. `local` 或 `global` deploy
+3. 再跑一次 `verify`
 
 这个顺序的目的：
 
-- 先把需要的 harness 组装产物准备好，同时保持 `verify` 本身只读
-- 再看清 drift 是什么
+- 先看清 drift 是什么
 - 再决定只是重同步，还是要顺手清理 stale target
 - 最后确认 deploy 后问题是否真的消失
-
-如果本仓库还没有 harness runtime，而你接下来要跑 harness-driven workflow，先执行：
-
-```bash
-python3 toolchain/scripts/deploy/init_harness_project.py
-```
 
 ## 三、`verify` 在看什么
 
@@ -58,19 +50,12 @@ python3 toolchain/scripts/deploy/init_harness_project.py
 
 - 检查 deploy target 是否和 `product/.../adapters/<backend>/skills/` 同步
 - 发现缺失 mount、坏链路、错误类型和陈旧 target
-- 对 `harness-operations` 的 local mounts 额外检查 symlink 是否指向当前 build root，以及 build output 是否和 canonical snapshot 一致
 - 对 global copied targets 额外检查 copy 内容是否和当前 canonical snapshot 一致
 
 执行入口：
 
 ```bash
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend <backend>
-```
-
-如果命中 `missing-build-source`，说明当前 backend 的 harness assembled source 不存在；先执行：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend <backend>
 ```
 
 global target 复验时，优先显式传该 backend 对应的 root 参数：
@@ -88,24 +73,12 @@ global target 复验时，优先显式传该 backend 对应的 root 参数：
 - `global`
   检查全局 target 是否是目录 copy，以及 copy 出来的文件内容是否和当前 source snapshot 一致。
 
-对 harness skills，差异更明显：
-
-- `local verify`
-  关注 repo-local symlink 是否指向 `.autoworkflow/build/adapter-sources/<backend>/<skill>/`，并检查 build root 里的 `SKILL.md + references/` 是否与 `header.yaml + harness-standard.md + prompt.md + references/` 的当前快照一致。
-- `global verify`
-  不关心 symlink，而是直接检查全局目录 copy 的文件内容是否与当前 harness assembled snapshot 一致。
-
 这里的 operator-facing 目标形态是固定的：
 
 - `local` 预期是 symlink
 - `global` 预期是目录 copy
 
 如果手工改过 target，或使用了和默认形态相反的 `--method`，`verify` 会把它报成 `wrong-target-type`。
-
-因此：
-
-- 你想确认 harness build 产物有没有过期，看 `local verify`
-- 你想确认全局安装是不是拷贝了旧内容，看 `global verify`
 
 ### 3. `smoke verify`
 
@@ -134,14 +107,6 @@ backend-specific smoke verify 口径看：
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend claude
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend opencode
-```
-
-需要显式检查组装产物时，可先跑：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend claude
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend opencode
 ```
 
 重新同步 repo-local mounts：
@@ -197,9 +162,7 @@ python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --o
 | `unexpected-target-entry` | target 残留 source 已不承认的旧目录 | 先确认不是手工实验目录，再按需 `deploy --prune` |
 | `wrong-target-root-type` | target root 存在，但不是目录 | 修正 root 后重跑 deploy |
 | `wrong-target-type` | local 本应是 symlink，或 global 本应是目录 copy | 重跑对应 deploy；必要时先清理坏 target |
-| `broken-symlink` / `wrong-symlink-target` | repo-local mount 指向错了，或指向对象已不存在 | 重跑 local deploy；如是 harness，再检查 build root |
-| `missing-build-source` | harness assembled source 不存在；`verify` 不会自动 build | 先 `build --backend <backend>`，再复验或重新 deploy |
-| `missing-build-source-file` / `stale-build-source-file` / `unexpected-build-source-file` | harness build root 的组装内容已经和当前 canonical snapshot 不一致 | 先 `build` 刷新组装产物，再看是否还需 deploy |
+| `broken-symlink` / `wrong-symlink-target` | repo-local mount 指向错了，或指向对象已不存在 | 重跑 local deploy |
 | `missing-target-file` / `stale-target-file` / `unexpected-target-file` | global copy 内容已经和当前 source snapshot 不一致 | 重新执行对应 backend 的 global deploy，再复验 |
 
 ## 七、`--prune` 的边界

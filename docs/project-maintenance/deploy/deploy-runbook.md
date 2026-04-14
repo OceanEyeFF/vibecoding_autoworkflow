@@ -1,13 +1,13 @@
 ---
 title: "Deploy Runbook"
 status: active
-updated: 2026-04-13
+updated: 2026-04-14
 owner: aw-kernel
-last_verified: 2026-04-13
+last_verified: 2026-04-14
 ---
 # Deploy Runbook
 
-> 目的：提供当前仓库的 deploy Quick Start，回答“支持哪些 backend、target 在哪里、首次安装怎么做、为什么 harness 要先 build、已有安装的最小更新路径是什么”。
+> 目的：提供当前仓库的 deploy Quick Start，回答“支持哪些 backend、target 在哪里、首次安装怎么做、已有安装的最小更新路径是什么”。
 
 本页属于 [Deploy Runbooks](./README.md) 路径簇。
 
@@ -28,8 +28,6 @@ last_verified: 2026-04-13
 - 你第一次给某个 backend 做 repo-local 挂载
 - 你第一次做全局安装
 - 你要先弄清 `agents / claude / opencode` 的 target 对照
-- 你需要先知道 harness 为什么和 `memory-side / task-interface` 不一样
-- 你需要确认 Harness-first ontology 已迁移，但当前 deploy source 还没迁移完
 - 你只想走一遍最小更新路径，再决定是否需要进入 maintenance
 
 ## 二、支持哪些 backend
@@ -67,61 +65,12 @@ python3 toolchain/scripts/deploy/adapter_deploy.py
 
 - `product/*/adapters/<backend>/skills/`
 
-其中 `memory-side` 与 `task-interface` 直接把 adapter source 作为 deploy source；`harness-operations` 先经过组装。
+当前 source 只包括：
 
-补充边界：
-
-- Harness-first ontology 与目标分层见 `docs/harness/` 与 `product/harness/`
-- 当前 deploy source 仍在 `product/harness-operations/`，直到 adapter/source 迁移完成
-
-## 四、为什么 harness 要先 build
-
-`harness-operations` 不是普通 thin-wrapper source。当前 source 由三部分组成：
-
-- canonical prompt：`product/harness-operations/skills/<skill>/prompt.md`
-- shared harness body：`product/harness-operations/skills/harness-standard.md`
-- backend header：`product/harness-operations/adapters/<backend>/skills/<skill>/header.yaml`
-
-`adapter_deploy.py build --backend <backend>` 会把这三部分组装成 `.autoworkflow/build/adapter-sources/<backend>/<skill>/SKILL.md`。
-
-关键边界：
-
-- `local` / `global` deploy 在处理 harness skills 时会自动刷新当前 backend 的 assembled source
-- `verify` 保持只读，不自动触发 build
-- 如果你修改了 harness prompt、shared standard 或 backend header，并且想先看组装结果或处理 `missing-build-source`，就先跑 `build`
-- `memory-side` 与 `task-interface` 不需要这个组装步骤
+- `product/memory-side/adapters/<backend>/skills/`
+- `product/task-interface/adapters/<backend>/skills/`
 
 ## 五、首次安装最小步骤
-
-### 0. 首次初始化 harness runtime
-
-如果你要跑 `Harness Operations` 相关 workflow，先把 repo-local harness runtime 初始化出来：
-
-```bash
-python3 toolchain/scripts/deploy/init_harness_project.py
-```
-
-需要把 harness 配置写到自定义路径时，可显式传：
-
-```bash
-python3 toolchain/scripts/deploy/init_harness_project.py --harness-file custom-runtime/harness/config.yaml
-```
-
-### 0.5 需要时预构建 harness adapter source
-
-如果你要先检查组装产物、在不部署的情况下刷新 build cache，或准备运行只读 `verify`，可以先显式执行：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend claude
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend opencode
-```
-
-说明：
-
-- `local` / `global` 在部署 `harness-operations` 时也会自动组装当前 backend 的产物
-- `verify` 保持只读，不会自动触发 build
-- 如果 `verify` 报 `missing-build-source`，先跑一次 `build` 或重新执行对应 deploy
 
 ### 1. 首次本地挂载
 
@@ -170,9 +119,8 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --back
 如果你只是更新已有 mounts，而不是处理 rename / remove：
 
 1. 先跑一次 `verify`
-2. 如需只读复验 harness build output，先跑一次 `build`
-3. 执行对应的 `local` 或 `global` deploy
-4. 再跑一次 `verify`
+2. 执行对应的 `local` 或 `global` deploy
+3. 再跑一次 `verify`
 
 repo-local 示例：
 
@@ -195,5 +143,5 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --back
 ## 七、下一步去哪页
 
 - 你要做 `add / update / rename / remove`：看 [skill-lifecycle.md](./skill-lifecycle.md)
-- 你要处理 drift、坏链路、`--prune`、`missing-build-source`、stale target：看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)
+- 你要处理 drift、坏链路、`--prune`、stale target：看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)
 - 你只想看 backend 特有 global path、smoke verify 或限制：看 [Codex](../usage-help/codex.md)、[Claude](../usage-help/claude.md)、[OpenCode](../usage-help/opencode.md)

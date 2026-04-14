@@ -1,9 +1,9 @@
 ---
 title: "Skill 生命周期维护"
 status: active
-updated: 2026-04-13
+updated: 2026-04-14
 owner: aw-kernel
-last_verified: 2026-04-13
+last_verified: 2026-04-14
 ---
 # Skill 生命周期维护
 
@@ -45,30 +45,20 @@ last_verified: 2026-04-13
 - 改 skill 内容时先改 `product/`
 - 只有 deploy 后，repo-local / global target 才会反映 source 变化
 - 只有已经验证过的变化，才写回 `docs/`
-## 三、Harness source 变更和其他 backend source 的区别
-
-`memory-side` 与 `task-interface` 的 adapter source 直接位于：
+## 三、当前 source 布局
 
 - `product/<partition>/adapters/<backend>/skills/<skill>/`
 
-`harness-operations` 不一样。它的 source 由三段正文加一个 adapter shim 组成：
+当前仓库只保留两个可部署 partition：
 
-- canonical prompt：`product/harness-operations/skills/<skill>/prompt.md`
-- shared standard：`product/harness-operations/skills/harness-standard.md`
-- backend header：`product/harness-operations/adapters/<backend>/skills/<skill>/header.yaml`
-- adapter `SKILL.md`：保留为指向 canonical `product/harness-operations/skills/<skill>/SKILL.md` 的 symlink shim
+- `memory-side`
+- `task-interface`
 
-补充说明：
-
-- Harness-first ontology 已迁到 `docs/harness/` 与 `product/harness/`
-- 但在 adapter/source 迁移完成前，实际 deploy source 仍保持在 `product/harness-operations/`
-
-因此当你修改 harness skill 时：
+因此当你修改 skill 时：
 
 - 不要把 deploy target 当 source 去改
-- 不要把 backend 差异重新写回 canonical `prompt.md`
-- 不要删掉 adapter source 里的 `SKILL.md` symlink shim；`governance_semantic_check.py` 仍会把它当必需项
-- 需要通过 `build` 或后续 `local/global` deploy 刷新 assembled `SKILL.md`
+- 不要把 backend 差异写回 canonical skill 正文
+- 直接通过后续 `local/global` deploy 刷新 target
 
 ## 四、动作矩阵
 
@@ -87,7 +77,6 @@ last_verified: 2026-04-13
 
 - 新增 canonical skill 时，改 `product/<partition>/skills/`
 - 新增 backend adapter source 时，改 `product/<partition>/adapters/<backend>/skills/`
-- 新增 harness skill 时，同时检查 `prompt.md`、`references/`、`header.yaml`，以及 adapter source 里的 `SKILL.md` symlink shim 是否齐全且指向 canonical `SKILL.md`
 - 对使用中的 target scope 执行 deploy，再跑对应 scope 的 verify：
 
 ```bash
@@ -100,12 +89,6 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend <backend>
 ### 2. `Update`
 
 - 只改 `product/` 下 source，不手工改 `.agents/`、`.claude/`、`.opencode/`
-- harness source 变更后，如果你要先看组装结果，可先跑：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend <backend>
-```
-
 - 最小节奏仍然是：
 
 1. `verify`

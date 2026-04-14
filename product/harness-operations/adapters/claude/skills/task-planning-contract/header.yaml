@@ -1,3 +1,0 @@
-name: task-planning-contract
-description: Repo-local Claude adapter for the Harness Operations Task Planning Contract skill.
-allowed-tools: Read, Grep, Glob, Bash

@@ -21,8 +21,6 @@ DEFAULT_ALLOWED_PREFIXES = (
     "docs/deployable-skills/",
     "docs/autoresearch/",
     "product/README.md",
-    "product/harness/",
-    "product/harness-operations/",
     "toolchain/scripts/test/",
     "tools/closeout_acceptance_gate.py",
     "tools/gate_status_backfill.py",

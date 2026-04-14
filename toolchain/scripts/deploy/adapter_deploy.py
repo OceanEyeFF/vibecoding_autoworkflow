@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import contextlib
 import os
 import shutil
 import sys
@@ -14,14 +13,13 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PRODUCT_ROOT = REPO_ROOT / "product"
-PRODUCT_PARTITIONS = ("memory-side", "task-interface", "harness-operations")
+PRODUCT_PARTITIONS = ("memory-side", "task-interface")
 LOCAL_TARGET_ROOTS = {
     "claude": REPO_ROOT / ".claude" / "skills",
     "agents": REPO_ROOT / ".agents" / "skills",
     "opencode": REPO_ROOT / ".opencode" / "skills",
 }
 DEFAULT_BUILD_ROOT = REPO_ROOT / ".autoworkflow" / "build" / "adapter-sources"
-HARNESS_PARTITION = "harness-operations"
 
 
 class DeployError(RuntimeError):
@@ -161,22 +159,6 @@ def resolve_build_root(args: argparse.Namespace) -> Path:
     return build_root.resolve()
 
 
-def harness_skills_root() -> Path:
-    return PRODUCT_ROOT / HARNESS_PARTITION / "skills"
-
-
-def harness_standard_path() -> Path:
-    return harness_skills_root() / "harness-standard.md"
-
-
-def canonical_harness_skill_dir(skill_name: str) -> Path:
-    return harness_skills_root() / skill_name
-
-
-def canonical_harness_references_dir(skill_name: str) -> Path:
-    return canonical_harness_skill_dir(skill_name) / "references"
-
-
 def build_backend_root_for(backend: str, args: argparse.Namespace) -> Path:
     return resolve_build_root(args) / backend
 
@@ -208,89 +190,6 @@ def remove_existing_path(path: Path, dry_run: bool, action: str = "remove") -> N
     shutil.rmtree(path)
 
 
-def maybe_build_harness_skill(
-    backend: str,
-    partition: str,
-    source_path: Path,
-    args: argparse.Namespace,
-    *,
-    dry_run: bool,
-    allow_build: bool,
-) -> Path:
-    """Assemble harness adapter SKILL.md when header.yaml is used as source."""
-
-    header_path = source_path / "header.yaml"
-    if partition != HARNESS_PARTITION:
-        return source_path
-    if not header_path.exists():
-        raise DeployError(f"Missing harness adapter header: {header_path}")
-    if not header_path.is_file():
-        raise DeployError(f"Harness adapter header is not a file: {header_path}")
-
-    skill_name = source_path.name
-    prompt_path = harness_skills_root() / skill_name / "prompt.md"
-    standard_path = harness_standard_path()
-    references_path = canonical_harness_references_dir(skill_name)
-
-    if not prompt_path.exists():
-        raise DeployError(f"Missing harness prompt source: {prompt_path}")
-    if not standard_path.exists():
-        raise DeployError(f"Missing harness shared standard: {standard_path}")
-    if not references_path.exists():
-        raise DeployError(f"Missing harness canonical references: {references_path}")
-    if not references_path.is_dir():
-        raise DeployError(f"Harness canonical references is not a directory: {references_path}")
-
-    build_skill_root = build_backend_root_for(backend, args) / skill_name
-    if not allow_build:
-        return build_skill_root
-
-    remove_existing_path(build_skill_root, dry_run, action="rebuild")
-
-    if dry_run:
-        print(
-            f"would assemble harness skill {backend}/{skill_name} "
-            f"from {header_path}, {standard_path}, {prompt_path}, {references_path}"
-        )
-        return build_skill_root
-
-    build_skill_root.mkdir(parents=True, exist_ok=True)
-
-    for child in sorted(source_path.iterdir()):
-        if child.name in {"header.yaml", "SKILL.md"}:
-            continue
-        target = build_skill_root / child.name
-        if child.is_dir():
-            shutil.copytree(child, target)
-        else:
-            shutil.copy2(child, target)
-
-    shutil.copytree(references_path, build_skill_root / "references", dirs_exist_ok=True)
-
-    header_text = header_path.read_text(encoding="utf-8").strip()
-    if not header_text:
-        raise DeployError(f"Harness adapter header is empty: {header_path}")
-
-    standard_text = standard_path.read_text(encoding="utf-8").strip()
-    prompt_text = prompt_path.read_text(encoding="utf-8").strip()
-
-    rendered_skill = "\n".join(
-        [
-            "---",
-            header_text,
-            "---",
-            "",
-            standard_text,
-            "",
-            prompt_text,
-            "",
-        ]
-    )
-    (build_skill_root / "SKILL.md").write_text(rendered_skill, encoding="utf-8")
-    print(f"assembled {backend} harness skill {skill_name} -> {build_skill_root / 'SKILL.md'}")
-    return build_skill_root
-
-
 def expected_sources_for(
     backend: str,
     args: argparse.Namespace,
@@ -299,23 +198,8 @@ def expected_sources_for(
     allow_build: bool = True,
 ) -> tuple[dict[str, Path], int]:
     """Map expected target entry names to their adapter source directories."""
-
-    expected: dict[str, Path] = {}
-    assembled = 0
-    for partition, source_root in source_roots_for(backend):
-        for source_path in sorted(path for path in source_root.iterdir() if path.is_dir()):
-            final_source = maybe_build_harness_skill(
-                backend,
-                partition,
-                source_path,
-                args,
-                dry_run=dry_run,
-                allow_build=allow_build,
-            )
-            if final_source != source_path:
-                assembled += 1
-            expected[source_path.name] = final_source
-    return expected, assembled
+    del args, dry_run, allow_build
+    return source_entries_for(backend), 0
 
 
 def source_entries_for(backend: str) -> dict[str, Path]:
@@ -324,12 +208,6 @@ def source_entries_for(backend: str) -> dict[str, Path]:
     expected: dict[str, Path] = {}
     for partition, source_root in source_roots_for(backend):
         for source_path in sorted(path for path in source_root.iterdir() if path.is_dir()):
-            if partition == HARNESS_PARTITION:
-                header_path = source_path / "header.yaml"
-                if not header_path.exists():
-                    raise DeployError(f"Missing harness adapter header: {header_path}")
-                if not header_path.is_file():
-                    raise DeployError(f"Harness adapter header is not a file: {header_path}")
             expected[source_path.name] = source_path
     return expected
 
@@ -424,16 +302,7 @@ def build_backend(backend: str, args: argparse.Namespace) -> None:
     build_backend_root = build_backend_root_for(backend, args)
     if args.clean:
         remove_existing_path(build_backend_root, args.dry_run, action="clean")
-
-    expected_sources, assembled = expected_sources_for(backend, args, dry_run=args.dry_run)
-    if assembled == 0:
-        print(f"[{backend}] no harness sources required assembly")
-        return
-
-    print(
-        f"[{backend}] assembled {assembled} harness skill(s) under "
-        f"{build_backend_root} (expected total sources: {len(expected_sources)})"
-    )
+    print(f"[{backend}] no build step required for current source partitions")
 
 
 def deploy_backend(backend: str, args: argparse.Namespace) -> None:
@@ -615,67 +484,9 @@ def collected_file_bytes(root: Path, *, skip_paths: set[Path] | None = None) -> 
     return files
 
 
-def render_harness_skill(source_path: Path) -> bytes:
-    """Render one harness adapter skill snapshot from current canonical sources."""
-
-    skill_name = source_path.name
-    header_path = source_path / "header.yaml"
-    if not header_path.exists():
-        raise DeployError(f"Missing harness adapter header: {header_path}")
-    if not header_path.is_file():
-        raise DeployError(f"Harness adapter header is not a file: {header_path}")
-
-    prompt_path = canonical_harness_skill_dir(skill_name) / "prompt.md"
-    standard_path = harness_standard_path()
-    if not prompt_path.exists():
-        raise DeployError(f"Missing harness prompt source: {prompt_path}")
-    if not standard_path.exists():
-        raise DeployError(f"Missing harness shared standard: {standard_path}")
-
-    header_text = header_path.read_text(encoding="utf-8").strip()
-    if not header_text:
-        raise DeployError(f"Harness adapter header is empty: {header_path}")
-    standard_text = standard_path.read_text(encoding="utf-8").strip()
-    prompt_text = prompt_path.read_text(encoding="utf-8").strip()
-
-    rendered = "\n".join(
-        [
-            "---",
-            header_text,
-            "---",
-            "",
-            standard_text,
-            "",
-            prompt_text,
-            "",
-        ]
-    )
-    return rendered.encode("utf-8")
-
-
-def canonical_harness_reference_snapshot(skill_name: str) -> dict[Path, bytes]:
-    """Build expected references/* snapshot from canonical harness skill sources."""
-
-    references_root = canonical_harness_references_dir(skill_name)
-    if not references_root.exists():
-        raise DeployError(f"Missing harness canonical references: {references_root}")
-    if not references_root.is_dir():
-        raise DeployError(f"Harness canonical references is not a directory: {references_root}")
-
-    snapshot: dict[Path, bytes] = {}
-    for relative_path, content in collected_file_bytes(references_root).items():
-        snapshot[Path("references") / relative_path] = content
-    return snapshot
-
-
 def expected_global_source_snapshot(backend: str, source_path: Path) -> dict[Path, bytes]:
     """Build expected file snapshot for one source directory in global copy mode."""
-
-    if is_harness_adapter_source(backend, source_path):
-        snapshot = collected_file_bytes(source_path, skip_paths={Path("header.yaml"), Path("SKILL.md")})
-        snapshot.update(canonical_harness_reference_snapshot(source_path.name))
-        snapshot[Path("SKILL.md")] = render_harness_skill(source_path)
-        return snapshot
+    del backend
     return collected_file_bytes(source_path)
 
 
@@ -689,30 +500,6 @@ def verify_global_target_content(target_path: Path, expected_files: dict[Path, b
         stale_code="stale-target-file",
         unexpected_code="unexpected-target-file",
     )
-
-
-def harness_adapter_root_for(backend: str) -> Path:
-    return PRODUCT_ROOT / HARNESS_PARTITION / "adapters" / backend / "skills"
-
-
-def is_harness_adapter_source(backend: str, source_path: Path) -> bool:
-    """Return True when a source directory belongs to harness adapter sources."""
-
-    with contextlib.suppress(ValueError):
-        source_path.relative_to(harness_adapter_root_for(backend))
-        return True
-    return False
-
-
-def resolved_symlink_target_path(target_path: Path) -> Path | None:
-    """Resolve absolute target path for one symlink entry."""
-
-    if not target_path.is_symlink():
-        return None
-    with contextlib.suppress(OSError):
-        raw_link = Path(os.readlink(target_path))
-        return (target_path.parent / raw_link).resolve()
-    return None
 
 
 def verify_backend(backend: str, args: argparse.Namespace) -> VerifyResult:
@@ -742,24 +529,9 @@ def verify_backend(backend: str, args: argparse.Namespace) -> VerifyResult:
         )
 
     actual_targets = {path.name: path for path in target_root.iterdir()}
-    build_root = resolve_build_root(args)
-
     for name in sorted(expected_sources):
         source_path = expected_sources[name]
-        raw_source: Path | None = source_entries.get(name) if source_entries else None
         if not source_path.exists():
-            if source_path.is_relative_to(build_root):
-                issues.append(
-                    VerifyIssue(
-                        code="missing-build-source",
-                        path=source_path,
-                        detail=(
-                            "expected assembled source is missing; run "
-                            f"`adapter_deploy.py build --backend {backend}` first"
-                        ),
-                    )
-                )
-                continue
             issues.append(
                 VerifyIssue(
                     code="missing-source-entry",
@@ -787,19 +559,6 @@ def verify_backend(backend: str, args: argparse.Namespace) -> VerifyResult:
                     source_path,
                 )
             )
-            if raw_source is not None and is_harness_adapter_source(backend, raw_source):
-                resolved_target = resolved_symlink_target_path(target_path)
-                expected_build_source = (build_backend_root_for(backend, args) / name).resolve()
-                if resolved_target == expected_build_source and expected_build_source.exists():
-                    issues.extend(
-                        verify_directory_content(
-                            expected_build_source,
-                            expected_global_source_snapshot(backend, raw_source),
-                            missing_code="missing-build-source-file",
-                            stale_code="stale-build-source-file",
-                            unexpected_code="unexpected-build-source-file",
-                        )
-                    )
         else:
             issues.extend(verify_global_target(target_path))
             issues.extend(

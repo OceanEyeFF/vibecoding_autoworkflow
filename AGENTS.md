@@ -117,7 +117,7 @@
 
 - `.nav/` 现在只保留 `@docs` 与 `@skills` 两个有效兼容入口。
 - `tools/` 只是 compatibility shim，真逻辑仍应落在 `toolchain/scripts/test/`。
-- `product/harness-operations/` 与 `docs/deployable-skills/` 仍保留迁移期资产；阅读和改动时必须先确认它是 canonical source、legacy asset 还是 transition wrapper。
+- `docs/deployable-skills/` 仍保留迁移期资产；阅读和改动时必须先确认它是 legacy asset 还是 transition wrapper。
 
 ## Canonical References
 

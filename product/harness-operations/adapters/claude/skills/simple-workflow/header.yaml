@@ -1,3 +1,0 @@
-name: simple-workflow
-description: Repo-local Claude adapter for the Harness Operations Simple Workflow skill.
-allowed-tools: Read, Grep, Glob, Bash

@@ -4,14 +4,15 @@
 
 当前主线包括：
 
-- [harness/README.md](./harness/README.md)：Harness-first 源码叙事入口与目标分层
 - [memory-side/README.md](./memory-side/README.md)：作为 Harness adjacent system 保留独立源码根
 - [task-interface/README.md](./task-interface/README.md)：作为 Harness adjacent system 保留独立源码根
-- [harness-operations/README.md](./harness-operations/README.md)：迁移期保留的 legacy Harness workflow 资产与 adapter source
+
+当前不再保留独立的 `product/harness/` 或 `product/harness-operations/` 源码分区。
+Harness doctrine 继续承接在 `docs/harness/`，可执行 skill source 只保留上述两个 adjacent-system 分区。
 
 规则：
 
 - 业务源码只改这里，不直接改 `.claude/`、`.agents/` 或 `.opencode/`
 - `.claude/`、`.agents/` 与 `.opencode/` 只作为 repo-local deploy target
 - 本地或全局部署统一走 `toolchain/scripts/deploy/adapter_deploy.py`
-- 新的 Harness ontology 先落到 `product/harness/`，旧 `product/harness-operations/` 先按可回收资产保留，不直接推翻
+- 新的 Harness ontology 落在 `docs/harness/`，不要再为 Harness doctrine 新开 `product/` 分区

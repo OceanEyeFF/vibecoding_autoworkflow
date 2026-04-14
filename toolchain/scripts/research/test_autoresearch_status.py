@@ -38,7 +38,6 @@ class AutoresearchStatusTest(unittest.TestCase):
                 root / "product" / "memory-side" / "skills" / "knowledge-base-skill" / "SKILL.md",
                 root / "product" / "memory-side" / "skills" / "writeback-cleanup-skill" / "SKILL.md",
                 root / "product" / "task-interface" / "skills" / "task-contract-skill" / "SKILL.md",
-                root / "product" / "harness-operations" / "skills" / "simple-workflow" / "SKILL.md",
             ):
                 skill_path.parent.mkdir(parents=True, exist_ok=True)
                 skill_path.write_text("# skill\n", encoding="utf-8")
@@ -189,10 +188,6 @@ class AutoresearchStatusTest(unittest.TestCase):
             self.assertEqual(skills["context-routing-skill"]["latest_run_id"], "demo-context")
             self.assertEqual(skills["knowledge-base-skill"]["training_status"], "round_candidate_active")
             self.assertEqual(skills["task-contract-skill"]["training_status"], "not_started")
-            self.assertEqual(
-                skills["simple-workflow"]["training_status"],
-                "not_supported_by_autoresearch",
-            )
 
     def test_refresh_status_indexes_preserves_interrupted_active_round_states(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

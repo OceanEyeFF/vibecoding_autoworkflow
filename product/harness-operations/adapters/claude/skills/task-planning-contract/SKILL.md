@@ -1,1 +1,0 @@
-../../../../skills/task-planning-contract/SKILL.md

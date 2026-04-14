@@ -6,7 +6,4 @@
 
 - [repo-evolution/README.md](./repo-evolution/README.md)
 
-对应的 product source 入口：
-
-- [../../../product/harness/workflows/repo-evolution/README.md](../../../product/harness/workflows/repo-evolution/README.md)
-- [../../../product/harness/profiles/README.md](../../../product/harness/profiles/README.md)
+当前这些 workflow family 先固定在文档真相层；仓库内不再保留独立的 `product/harness/` workflow/profile source 分区。

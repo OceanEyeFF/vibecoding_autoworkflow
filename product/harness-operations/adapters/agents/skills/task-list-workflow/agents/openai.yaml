@@ -1,4 +1,0 @@
-interface:
-  display_name: "Task List Workflow (Repo)"
-  short_description: "Apply the repo-local Harness Operations task-list adapter"
-  default_prompt: "Use the repo-local $task-list-workflow wrapper in .agents/skills to detect multiple tasks, normalize a task matrix, execute by batches, and close through integration gates."

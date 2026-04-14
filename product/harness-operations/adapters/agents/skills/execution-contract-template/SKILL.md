@@ -1,1 +1,0 @@
-../../../../skills/execution-contract-template/SKILL.md

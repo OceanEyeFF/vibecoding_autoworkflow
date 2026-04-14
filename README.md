@@ -78,13 +78,15 @@ last_verified: 2026-04-14
 
 - [`product/task-interface/`](./product/task-interface/README.md)
 
-### 3. Harness Operations
+### 3. Harness Doctrine
 
-负责承接执行壳层和 workflow 级能力，例如 task planning、review loop、strict/simple workflow、execution contract 等。
+负责承接 Harness 的 doctrine、scope/function/artifact/governance 与 workflow family 定义。
 
-对应源码入口：
+对应文档入口：
 
-- [`product/harness-operations/`](./product/harness-operations/README.md)
+- [`docs/harness/`](./docs/harness/README.md)
+
+当前这部分以文档真相层为主，不再对应仓库内单独的 harness skill/source 分区。
 
 ### 4. Autoresearch
 

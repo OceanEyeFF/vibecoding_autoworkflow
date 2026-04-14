@@ -8,3 +8,4 @@
 - [non-goals.md](./non-goals.md)
 - [controlled-variables.md](./controlled-variables.md)
 - [control-plane-vs-execution-plane.md](./control-plane-vs-execution-plane.md)
+- [Harness指导思想.md](./Harness指导思想.md)

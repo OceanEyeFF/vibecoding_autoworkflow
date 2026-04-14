@@ -119,13 +119,9 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
             "--allowed-prefix",
             "product/README.md",
             "--allowed-prefix",
-            "product/harness/",
-            "--allowed-prefix",
             "product/memory-side/",
             "--allowed-prefix",
             "product/task-interface/",
-            "--allowed-prefix",
-            "product/harness-operations/",
         ],
         cwd=repo_root,
     )

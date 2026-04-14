@@ -113,10 +113,7 @@ product/
     adapters/
       agents/
       claude/
-  harness-operations/
-    skills/
-      execution-contract-template/
-      task-planning-contract/
+      opencode/
 ```
 
 ## 九、判断标准

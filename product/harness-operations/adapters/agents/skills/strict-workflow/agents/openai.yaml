@@ -1,4 +1,0 @@
-interface:
-  display_name: "Strict Workflow (Repo)"
-  short_description: "Apply the repo-local Harness Operations strict workflow adapter"
-  default_prompt: "Use the repo-local $strict-workflow wrapper in .agents/skills to execute one high-risk task under frozen boundaries, staged evidence, and strict stop conditions."

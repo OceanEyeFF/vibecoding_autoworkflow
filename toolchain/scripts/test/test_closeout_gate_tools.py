@@ -25,10 +25,8 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "docs/deployable-skills/README.md",
             "docs/autoresearch/README.md",
             "product/README.md",
-            "product/harness/README.md",
             "product/memory-side/README.md",
             "product/task-interface/README.md",
-            "product/harness-operations/README.md",
             "docs/project-maintenance/governance/review-verify-handbook.md",
             "docs/project-maintenance/governance/path-governance-checks.md",
             ".autoworkflow/closeout/demo/summary.json",
@@ -47,10 +45,8 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "docs/deployable-skills/",
             "docs/autoresearch/",
             "product/README.md",
-            "product/harness/",
             "product/memory-side/",
             "product/task-interface/",
-            "product/harness-operations/",
             "toolchain/scripts/test/",
             "tools/scope_gate_check.py",
         ),
@@ -148,10 +144,8 @@ def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path
     assert "docs/deployable-skills/README.md" in command
     assert "docs/autoresearch/README.md" in command
     assert "product/README.md" in command
-    assert "product/harness/" in command
     assert "product/memory-side/" in command
     assert "product/task-interface/" in command
-    assert "product/harness-operations/" in command
     assert "docs/autoresearch/knowledge/README.md" in command
     assert "docs/autoresearch/knowledge/overview.md" in command
     assert "docs/project-maintenance/foundations/root-directory-layering.md" in command

@@ -135,9 +135,8 @@ last_verified: 2026-04-14
 2. [Memory Side Skill 与 Agent 模型](./skill-agent-model.md)
 3. `product/memory-side/skills/`
 4. `docs/project-maintenance/usage-help/`
-5. `product/harness-operations/`
-6. `toolchain/scripts/`
-7. `.agents/skills/`、`.claude/skills/` 或 `.opencode/skills/`
+5. `toolchain/scripts/`
+6. `.agents/skills/`、`.claude/skills/` 或 `.opencode/skills/`
 
 ## 四、措辞规范
 

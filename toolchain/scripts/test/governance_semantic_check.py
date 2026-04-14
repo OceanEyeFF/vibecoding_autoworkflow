@@ -74,9 +74,6 @@ ADAPTER_SKILL_GLOBS = [
     "product/memory-side/adapters/*/skills/*/SKILL.md",
     "product/task-interface/adapters/*/skills/*/SKILL.md",
 ]
-HARNESS_ADAPTER_SKILL_GLOBS = [
-    "product/harness-operations/adapters/*/skills/*",
-]
 CANONICAL_SKILL_REQUIRED_HEADINGS = [
     "## Overview",
     "## When To Use",
@@ -98,9 +95,6 @@ THIN_WRAPPER_REQUIRED_HEADINGS = [
 THIN_WRAPPER_FORBIDDEN_HEADINGS = [
     "## Execution Rules",
     "## Output Contract",
-]
-HARNESS_ADAPTER_REQUIRED_FILES = [
-    "header.yaml",
 ]
 CANONICAL_ENTRYPOINT_REQUIRED_LINKS = {
     "product/memory-side/skills/context-routing-skill/references/entrypoints.md": [
@@ -260,25 +254,6 @@ def check_canonical_skill_packages_are_minimal(repo_root: Path, report: Semantic
             )
             continue
 
-        if "product/harness-operations/skills/" in relative_path:
-            prompt_path = canonical_file.parent / "prompt.md"
-            if not prompt_path.exists():
-                report.add_failure(
-                    f"harness canonical skill missing prompt.md: {relative_path}"
-                )
-
-            bindings_path = canonical_file.parent / "references" / "bindings.md"
-            if not bindings_path.exists():
-                report.add_failure(
-                    f"harness canonical skill missing references/bindings.md: {relative_path}"
-                )
-
-            shared_standard = repo_root / "product/harness-operations/skills/harness-standard.md"
-            if not shared_standard.exists():
-                report.add_failure(
-                    "missing shared harness standard: product/harness-operations/skills/harness-standard.md"
-                )
-
         references_text = references_path.read_text(encoding="utf-8")
         if "## Reading Policy" not in references_text:
             report.add_failure(
@@ -312,65 +287,6 @@ def check_adapter_wrappers_are_thin(repo_root: Path, report: SemanticReport) -> 
     report.add_info(f"checked {checked} adapter wrappers for thin-shell structure")
 
 
-def iter_harness_adapter_skill_dirs(repo_root: Path) -> list[Path]:
-    harness_dirs: list[Path] = []
-    seen: set[Path] = set()
-    for pattern in HARNESS_ADAPTER_SKILL_GLOBS:
-        for path in sorted(repo_root.glob(pattern)):
-            if path not in seen and path.is_dir():
-                seen.add(path)
-                harness_dirs.append(path)
-    return harness_dirs
-
-
-def check_harness_adapters_are_header_driven(repo_root: Path, report: SemanticReport) -> None:
-    harness_dirs = iter_harness_adapter_skill_dirs(repo_root)
-    if not harness_dirs:
-        report.add_failure(
-            "missing harness adapter skill directories under product/harness-operations/adapters/*/skills/*"
-        )
-        return
-
-    checked = 0
-    for skill_dir in harness_dirs:
-        checked += 1
-        relative_path = to_relative_posix(skill_dir, repo_root)
-        for required_file in HARNESS_ADAPTER_REQUIRED_FILES:
-            if not (skill_dir / required_file).exists():
-                report.add_failure(
-                    f"harness adapter missing required source file {required_file!r}: {relative_path}"
-                )
-        skill_file = skill_dir / "SKILL.md"
-        if not skill_file.exists() and not skill_file.is_symlink():
-            report.add_failure(
-                f"harness adapter missing required symlink shim 'SKILL.md': {relative_path}"
-            )
-            continue
-        if not skill_file.is_symlink():
-            report.add_failure(
-                f"harness adapter source should be header-driven; SKILL.md must be symlink shim: {relative_path}"
-            )
-            continue
-        expected_target = (
-            repo_root / "product" / "harness-operations" / "skills" / skill_dir.name / "SKILL.md"
-        )
-        if not expected_target.exists():
-            report.add_failure(
-                f"harness adapter shim points to missing canonical SKILL.md target: {relative_path}"
-            )
-            continue
-        if not skill_file.exists():
-            report.add_failure(
-                f"harness adapter SKILL.md shim is broken symlink: {relative_path}"
-            )
-            continue
-        if skill_file.resolve() != expected_target.resolve():
-            report.add_failure(
-                f"harness adapter SKILL.md shim must target canonical SKILL.md: {relative_path}"
-            )
-    report.add_info(f"checked {checked} harness adapter skill source directories")
-
-
 def check_canonical_entrypoints_cover_required_formats(repo_root: Path, report: SemanticReport) -> None:
     checked = 0
     for relative_path, expected_targets in CANONICAL_ENTRYPOINT_REQUIRED_LINKS.items():
@@ -399,7 +315,6 @@ def main() -> int:
     check_canonical_skill_packages_are_minimal(repo_root, report)
     check_canonical_entrypoints_cover_required_formats(repo_root, report)
     check_adapter_wrappers_are_thin(repo_root, report)
-    check_harness_adapters_are_header_driven(repo_root, report)
 
     payload = {
         "passed": not report.failures,
