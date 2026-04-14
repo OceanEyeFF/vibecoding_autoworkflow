@@ -59,8 +59,8 @@ last_verified: 2026-04-14
 
 对应合同入口：
 
-- [`docs/deployable-skills/memory-side/overview.md`](./docs/deployable-skills/memory-side/overview.md)
-- [`docs/deployable-skills/memory-side/skill-agent-model.md`](./docs/deployable-skills/memory-side/skill-agent-model.md)
+- [`docs/harness/adjacent-systems/memory-side/overview.md`](./docs/harness/adjacent-systems/memory-side/overview.md)
+- [`docs/harness/adjacent-systems/memory-side/skill-agent-model.md`](./docs/harness/adjacent-systems/memory-side/skill-agent-model.md)
 
 对应源码入口：
 
@@ -72,7 +72,7 @@ last_verified: 2026-04-14
 
 对应合同入口：
 
-- [`docs/deployable-skills/task-interface/task-contract.md`](./docs/deployable-skills/task-interface/task-contract.md)
+- [`docs/harness/adjacent-systems/task-interface/task-contract.md`](./docs/harness/adjacent-systems/task-interface/task-contract.md)
 
 对应源码入口：
 
@@ -128,7 +128,7 @@ Autoresearch 评测与改进
 `README.md` 负责讲清楚项目目标、当前承接结构和主线入口。
 `INDEX.md` 负责按任务目标把人或 agent 导向正确入口。
 `GUIDE.md` / `ROADMAP.md` 只是兼容入口，不单独定义主线。
-`AGENTS.md` 是 agent-facing 的最小工作规则入口；若冲突，以 `docs/project-maintenance/`、`docs/deployable-skills/` 与 `docs/autoresearch/` 为准。
+`AGENTS.md` 是 agent-facing 的最小工作规则入口；若冲突，以 `docs/project-maintenance/`、`docs/harness/` 与 `docs/autoresearch/` 为准。
 
 ## 从哪里进入
 
@@ -137,7 +137,7 @@ Autoresearch 评测与改进
 3. [`docs/project-maintenance/foundations/root-directory-layering.md`](./docs/project-maintenance/foundations/root-directory-layering.md)
 4. [`AGENTS.md`](./AGENTS.md)
 5. 按任务进入：
-   - 能力合同：[`docs/deployable-skills/README.md`](./docs/deployable-skills/README.md)
+   - Harness 主线与 adjacent-system 合同：[`docs/harness/README.md`](./docs/harness/README.md)
    - 业务源码：[`product/README.md`](./product/README.md)
    - 工具层：[`toolchain/README.md`](./toolchain/README.md)
    - `autoresearch` 文档：[`docs/autoresearch/README.md`](./docs/autoresearch/README.md)
@@ -147,7 +147,8 @@ Autoresearch 评测与改进
 - 想快速按任务定位入口：看 [`INDEX.md`](./INDEX.md)
 - 想理解文档真相层：看 [`docs/README.md`](./docs/README.md)
 - 想理解 `Harness 平台` 的承接结构：看 [`product/README.md`](./product/README.md)
-- 想理解 `Task Contract`：看 [`docs/deployable-skills/task-interface/task-contract.md`](./docs/deployable-skills/task-interface/task-contract.md)
+- 想理解 `Task Contract`：看 [`docs/harness/adjacent-systems/task-interface/task-contract.md`](./docs/harness/adjacent-systems/task-interface/task-contract.md)
+- 想理解 `Memory Side`：看 [`docs/harness/adjacent-systems/memory-side/README.md`](./docs/harness/adjacent-systems/memory-side/README.md)
 - 想看 `Autoresearch`：看 [`docs/autoresearch/README.md`](./docs/autoresearch/README.md)
 - 想部署或跑治理检查：看 [`toolchain/README.md`](./toolchain/README.md)
 - 想看 repo-local 使用帮助：看 [`docs/project-maintenance/usage-help/README.md`](./docs/project-maintenance/usage-help/README.md)

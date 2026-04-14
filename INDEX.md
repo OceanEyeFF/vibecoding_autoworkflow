@@ -15,7 +15,7 @@ last_verified: 2026-04-14
 |------|------|
 | 建立 docs 模块边界 | [`docs/README.md`](./docs/README.md) |
 | 进入项目维护主线 | [`docs/project-maintenance/README.md`](./docs/project-maintenance/README.md) |
-| 进入 deployable skills 主线 | [`docs/deployable-skills/README.md`](./docs/deployable-skills/README.md) |
+| 进入 Harness 主线 | [`docs/harness/README.md`](./docs/harness/README.md) |
 | 建立根目录边界 | [`docs/project-maintenance/foundations/root-directory-layering.md`](./docs/project-maintenance/foundations/root-directory-layering.md) |
 | 建立路径与文档治理边界 | [`AGENTS.md`](./AGENTS.md) |
 
@@ -25,10 +25,10 @@ last_verified: 2026-04-14
 |------|------|
 | 理解项目目标、承接结构和根目录分层 | [`README.md`](./README.md) |
 | 看文档真相层与阅读顺序 | [`docs/README.md`](./docs/README.md) |
-| 看稳定规则与分层合同 | [`docs/deployable-skills/README.md`](./docs/deployable-skills/README.md) |
+| 看 Harness 主线与分层合同 | [`docs/harness/README.md`](./docs/harness/README.md) |
 | 看 `Autoresearch` 主线 | [`docs/autoresearch/README.md`](./docs/autoresearch/README.md) |
-| 改 `Memory Side` 主线文档 | [`docs/deployable-skills/memory-side/README.md`](./docs/deployable-skills/memory-side/README.md) |
-| 改 `Task Interface` 主线文档 | [`docs/deployable-skills/task-interface/README.md`](./docs/deployable-skills/task-interface/README.md) |
+| 改 `Memory Side` 主线文档 | [`docs/harness/adjacent-systems/memory-side/README.md`](./docs/harness/adjacent-systems/memory-side/README.md) |
+| 改 `Task Interface` 主线文档 | [`docs/harness/adjacent-systems/task-interface/README.md`](./docs/harness/adjacent-systems/task-interface/README.md) |
 | 改业务源码 | [`product/README.md`](./product/README.md) |
 | 改工具脚本、部署或评测 | [`toolchain/README.md`](./toolchain/README.md) |
 | 看 repo-local runbook | [`docs/project-maintenance/README.md`](./docs/project-maintenance/README.md) |
