@@ -1,39 +1,30 @@
 # Deployable Skills
 
-`docs/deployable-skills/` 是当前仓库 deployable skills 的 canonical truth 主线，负责承载稳定规则、分层合同、格式与能力边界。
+`docs/deployable-skills/` 当前只保留迁移期兼容角色，不再承接 Harness 总纲主入口。
 
-当前子层与模块入口：
+新的主线已经迁到：
 
-- [harness-operations/README.md](./harness-operations/README.md)：`Harness Operations`
-- [memory-side/README.md](./memory-side/README.md)：`Knowledge Base / Context Routing / Writeback & Cleanup`
-- [task-interface/README.md](./task-interface/README.md)：`Task Contract`
+- [../harness/README.md](../harness/README.md)
 
-当前结构化承接入口：
+当前这里保留的内容主要有两类：
 
-- [harness-operations/Harness指导思想.md](./harness-operations/Harness指导思想.md)
+- 尚未完全迁入 `docs/harness/adjacent-systems/` 的已验证 adjacent-system 合同
+- 迁移期需要保留的 legacy navigation 与历史资产入口
+
+当前兼容入口：
+
+- [harness-operations/README.md](./harness-operations/README.md)：Harness 母文档与 legacy doctrine 资产
+- [memory-side/README.md](./memory-side/README.md)：`Memory Side` 的 legacy 合同入口
+- [task-interface/README.md](./task-interface/README.md)：`Task Interface` 的 legacy 合同入口
 - [memory-side/formats/context-routing-output-format.md](./memory-side/formats/context-routing-output-format.md)
 - [memory-side/formats/writeback-cleanup-output-format.md](./memory-side/formats/writeback-cleanup-output-format.md)
 - [task-interface/task-contract.md](./task-interface/task-contract.md)
+- [../../AGENTS.md](../../AGENTS.md)：当前统一阅读顺序与 route contract
 
-先建立治理边界，再进入子层：
+迁移期约束：
 
-- [AGENTS.md](../../AGENTS.md)
+- 新的 Harness doctrine、scope/function/artifact/governance 不再写回这里
+- 如果旧入口仍被保留，必须显式指向 `docs/harness/` 的新主线
+- 兼容入口可以保留已验证资产，但不能伪装成新的 ontology 主入口
 
-建议阅读顺序由 [AGENTS.md](../../AGENTS.md) 统一定义。
-本页只保留 deployable skills 的模块入口，避免重复 `read_first/read_next/do_not_read_yet` 的主线合同。
-
-这里适合放：
-
-- 当前有效的技能合同正文
-- 稳定阅读入口
-- 输出格式、规则与能力边界说明
-- 跨 backend 可复用的能力边界
-
-这里不适合放：
-
-- repo-local runbook
-- 模块专属 repo-local references/runbooks
-- 项目级治理流程
-- 阶段性研究记录
-- 外部参考资料
-- 未准入主线的想法
+建议阅读顺序仍由 [AGENTS.md](../../AGENTS.md) 统一定义。

@@ -24,6 +24,19 @@ REQUIRED_HANDOFF_LINKS = {
         "toolchain/scripts/README.md",
         "toolchain/evals/README.md",
     ],
+    "docs/harness/README.md": [
+        "docs/harness/foundations/README.md",
+        "docs/harness/adjacent-systems/README.md",
+        "docs/harness/workflow-families/README.md",
+    ],
+    "docs/harness/adjacent-systems/task-interface/README.md": [
+        "docs/harness/adjacent-systems/task-interface/task-contract.md",
+    ],
+    "docs/harness/adjacent-systems/memory-side/README.md": [
+        "docs/harness/adjacent-systems/memory-side/overview.md",
+        "docs/harness/adjacent-systems/memory-side/layer-boundary.md",
+        "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
+    ],
     "docs/deployable-skills/README.md": REQUIRED_TEMPLATE_PATHS,
     "docs/deployable-skills/memory-side/context-routing.md": [
         "docs/deployable-skills/memory-side/formats/context-routing-output-format.md",

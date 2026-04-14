@@ -4,13 +4,13 @@ Load the minimum contract docs in this order.
 
 ## Always Read First
 
-- `docs/deployable-skills/README.md`
+- `docs/harness/README.md`
 - `AGENTS.md`
 
 ## Read For Contract Shape
 
-- `docs/deployable-skills/task-interface/task-contract.md`
-- `docs/deployable-skills/task-interface/task-contract.md`
+- `docs/harness/adjacent-systems/task-interface/task-contract.md`
+- `docs/harness/adjacent-systems/task-interface/task-contract.md`
 
 ## Read For Closeout
 

@@ -1,33 +1,24 @@
 # Task Interface Knowledge
 
-`docs/deployable-skills/task-interface/` 固定 `Task Interface` 的主线知识，当前核心对象只有 `Task Contract`。
+`docs/deployable-skills/task-interface/` 当前是迁移期保留的 legacy 合同入口。
 
-当前稳定主线：
+新的 Harness-first 入口已经迁到：
 
-- [task-contract.md](./task-contract.md)
+- [../../harness/adjacent-systems/task-interface/README.md](../../harness/adjacent-systems/task-interface/README.md)
 
-Canonical skill package 入口：
+当前这里仍保留：
 
+- 已验证的 `Task Contract` 正文
+- 尚未切走的旧路径引用
 - [../../../product/task-interface/skills/README.md](../../../product/task-interface/skills/README.md)
 - [../../../product/task-interface/skills/task-contract-skill/SKILL.md](../../../product/task-interface/skills/task-contract-skill/SKILL.md)
 
-建议阅读顺序：
+迁移约束：
 
-1. [task-contract.md](./task-contract.md)
-2. 只有需要看 executable skill 时，再进入 [../../../product/task-interface/skills/README.md](../../../product/task-interface/skills/README.md)
+- `Task Interface` 现在被表述为 Harness 的 adjacent system，而不是 Harness 本体
+- 新的上位 ontology、主入口与路径路由不再写回这里
+- 旧路径保留期间，必须显式回链到新的 adjacent-system 入口
 
-补充入口：
+当前 legacy 正文：
 
-- 如果需要看上游模板，回到 [./task-contract.md](./task-contract.md)
-- 如果需要看 repo-local 部署帮助，再进入 [../../project-maintenance/usage-help/README.md](../../project-maintenance/usage-help/README.md)
-
-这里适合放：
-
-- `Task Contract` 的对象边界
-- `Task Contract` 对应的 canonical skill 入口
-
-这里不适合放：
-
-- repo-local adapter runbook
-- runtime 编排说明
-- 研究阶段草案
+- [task-contract.md](./task-contract.md)

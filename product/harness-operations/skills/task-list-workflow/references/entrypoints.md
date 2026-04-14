@@ -4,8 +4,8 @@ Load the minimum harness docs in this order.
 
 ## Always Read First
 
-- `docs/deployable-skills/README.md`
-- `docs/deployable-skills/task-interface/task-contract.md`
+- `docs/harness/README.md`
+- `docs/harness/adjacent-systems/task-interface/task-contract.md`
 - `docs/project-maintenance/governance/review-verify-handbook.md`
 
 ## Read For Harness Contract

@@ -36,7 +36,8 @@ last_verified: 2026-04-13
 
 - source of truth 在 `product/`
 - deploy target 在 `.agents/`、`.claude/`、`.opencode/` 或对应 global roots
-- `docs/deployable-skills/` 负责合同与入口，不替代源码
+- `docs/harness/` 负责 Harness-first doctrine、workflow family 与 adjacent-system 主入口
+- `docs/deployable-skills/` 只保留迁移期兼容入口与 legacy asset 文档，不替代源码
 - `usage-help/` 只补 backend 特有差异，不重复通用 deploy 流程
 
 因此：
@@ -56,6 +57,11 @@ last_verified: 2026-04-13
 - shared standard：`product/harness-operations/skills/harness-standard.md`
 - backend header：`product/harness-operations/adapters/<backend>/skills/<skill>/header.yaml`
 - adapter `SKILL.md`：保留为指向 canonical `product/harness-operations/skills/<skill>/SKILL.md` 的 symlink shim
+
+补充说明：
+
+- Harness-first ontology 已迁到 `docs/harness/` 与 `product/harness/`
+- 但在 adapter/source 迁移完成前，实际 deploy source 仍保持在 `product/harness-operations/`
 
 因此当你修改 harness skill 时：
 
@@ -140,13 +146,14 @@ python3 toolchain/scripts/deploy/adapter_deploy.py build --backend <backend>
 
 如果这个新增来源改变了：
 
-- deployable skill 正式入口
+- Harness 或 adjacent-system 正式入口
 - backend 支持边界
 - operator 该去哪里看文档
 
 还需要同步更新：
 
-- `docs/deployable-skills/` 对应入口
+- `docs/harness/` 对应入口
+- 迁移期若仍涉及 legacy path，再同步 `docs/deployable-skills/` 对应入口
 - `docs/project-maintenance/deploy/` 对应入口
 - 必要时对应 backend 的 `usage-help`
 

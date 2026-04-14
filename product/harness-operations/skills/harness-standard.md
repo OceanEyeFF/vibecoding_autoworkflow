@@ -34,5 +34,6 @@
 ## State Discipline
 
 - Runtime status updates must only touch `.autoworkflow/` state files.
-- Canonical docs under `docs/deployable-skills/` and `docs/project-maintenance/` are writeback targets only for verified facts.
+- Canonical docs under `docs/harness/` and `docs/project-maintenance/` are writeback targets only for verified facts.
+- `docs/deployable-skills/` is transition-only and should receive writeback only when a legacy path still needs compatibility maintenance.
 - Adapter deploy targets (`.agents/`, `.claude/`, `.opencode/`) are never truth sources.

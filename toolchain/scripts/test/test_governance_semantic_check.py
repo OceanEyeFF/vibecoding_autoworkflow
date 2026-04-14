@@ -27,6 +27,16 @@ def test_check_required_handoffs_flags_missing_link(tmp_path: Path) -> None:
         tmp_path / "toolchain/toolchain-layering.md",
         "[scripts](../../../toolchain/scripts/README.md)\n",
     )
+    write_doc(tmp_path / "docs/harness/README.md", "")
+    write_doc(tmp_path / "docs/harness/foundations/README.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/README.md", "")
+    write_doc(tmp_path / "docs/harness/workflow-families/README.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/task-interface/README.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/task-interface/task-contract.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/README.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/overview.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/layer-boundary.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/skill-agent-model.md", "")
     write_doc(tmp_path / "toolchain/scripts/README.md", "# scripts\n")
     write_doc(tmp_path / "toolchain/evals/README.md", "# evals\n")
     write_doc(tmp_path / "docs/deployable-skills/README.md", "")

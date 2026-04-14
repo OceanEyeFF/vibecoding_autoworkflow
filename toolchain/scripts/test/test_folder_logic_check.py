@@ -52,9 +52,11 @@ def create_valid_repo(tmp_path: Path) -> Path:
 
     for directory in (
         ".codex/rules",
+        "product/harness",
         "product/memory-side/skills",
         "product/task-interface",
         "docs/project-maintenance",
+        "docs/harness",
         "docs/deployable-skills",
         "docs/autoresearch",
         "toolchain/scripts",
@@ -213,6 +215,17 @@ def test_harness_operations_partition_is_allowed_under_product(tmp_path: Path) -
     report = run_checks(repo_root)
 
     assert "product/harness-operations" not in issue_paths(report)
+
+
+def test_harness_partition_is_allowed_under_product_and_docs(tmp_path: Path) -> None:
+    repo_root = create_valid_repo(tmp_path)
+    (repo_root / "product/harness").mkdir(parents=True, exist_ok=True)
+    (repo_root / "docs/harness").mkdir(parents=True, exist_ok=True)
+
+    report = run_checks(repo_root)
+
+    assert "product/harness" not in issue_paths(report)
+    assert "docs/harness" not in issue_paths(report)
 
 
 def test_misplaced_content_patterns_fail(tmp_path: Path) -> None:

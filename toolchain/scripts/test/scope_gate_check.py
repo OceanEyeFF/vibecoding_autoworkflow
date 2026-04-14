@@ -12,12 +12,17 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_ALLOWED_PREFIXES = (
+    "docs/README.md",
     ".autoworkflow/contracts/",
     ".autoworkflow/closeout/",
     ".autoworkflow/state/",
     "docs/project-maintenance/",
+    "docs/harness/",
     "docs/deployable-skills/",
     "docs/autoresearch/",
+    "product/README.md",
+    "product/harness/",
+    "product/harness-operations/",
     "toolchain/scripts/test/",
     "tools/closeout_acceptance_gate.py",
     "tools/gate_status_backfill.py",

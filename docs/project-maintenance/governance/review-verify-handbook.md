@@ -55,9 +55,10 @@ last_verified: 2026-04-13
 - 如果改了 root / partition / path 规则，是否同步 foundations 和治理检查
 - 如果改了 `AGENTS.md` 或执行流程，是否同步本文
 - 如果改了 deploy / adapter 行为，是否同步对应 `docs/project-maintenance/deploy/` runbook
-- 如果改了 `docs/deployable-skills/`、`product/*/skills/*/` 或 `product/*/adapters/*/skills/*/`，是否仍保持三段式分工：合同层、canonical executable layer、backend adapter layer
+- 如果改了 `docs/harness/`、`docs/deployable-skills/`、`product/*/skills/*/` 或 `product/*/adapters/*/skills/*/`，是否仍保持三段式分工：合同层、canonical executable layer、backend adapter layer
 - 如果改了 `product/memory-side|task-interface/adapters/*/skills/*/SKILL.md`，是否仍保持 thin wrapper（`Canonical Source / Backend Notes / Deploy Target`）而没有重新复制 canonical 语义正文
 - 如果改了 `product/*/skills/*/SKILL.md`，是否保持最小 executable body + `references/entrypoints.md`，而没有吸收 repo-local execution template 内容
+- 如果改了 `product/harness/` 入口或分类文档，是否仍明确 `product/harness-operations/` 只是迁移期 deploy-source / legacy asset 层
 - 如果改了 `product/harness-operations/skills/*/`，是否保持 `prompt.md`（backend-agnostic）+ shared `harness-standard.md` + `references/entrypoints.md|bindings.md` 的分层
 - 如果改了 `product/harness-operations/adapters/*/skills/*/`，是否保持 `header.yaml` + backend metadata 的 source 形态，并只把 `SKILL.md` 保留为指向 canonical 的 symlink shim
 
@@ -91,7 +92,8 @@ last_verified: 2026-04-13
 
 ### 4. 回写要求
 
-- 已验证结果写进 `docs/deployable-skills/`、`docs/project-maintenance/` 或 `docs/autoresearch/`
+- 已验证结果优先写进 `docs/harness/`、`docs/project-maintenance/` 或 `docs/autoresearch/`
+- `docs/deployable-skills/` 只在迁移期兼容入口或 legacy asset 仍未切走时承接回写
 - repo-local 维护动作写进 `docs/project-maintenance/`
 - 不把临时推理、未验证猜测或执行噪音写成长期真相
 - 如果需要固定输出结构，优先复用现有模板而不是新发明格式

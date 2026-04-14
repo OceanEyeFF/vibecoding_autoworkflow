@@ -4,7 +4,7 @@ Load the minimum governance docs in this order.
 
 ## Always Read First
 
-- `docs/deployable-skills/README.md`
+- `docs/harness/README.md`
 - `AGENTS.md`
 - `docs/project-maintenance/foundations/root-directory-layering.md`
 

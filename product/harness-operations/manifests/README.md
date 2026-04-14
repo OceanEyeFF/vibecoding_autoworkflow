@@ -10,3 +10,8 @@
 - `harness.template.yaml` 是 canonical harness runtime/init 模板
 - `harness-template.deferred-issues.md` 记录已确认但暂缓处理的 manifest/runtime 合同问题
 - `toolchain/scripts/deploy/init_harness_project.py` 负责把模板实例化到 repo-local 或自定义 harness 路径
+
+迁移说明：
+
+- manifest/runtime init 行为在迁移完成前仍以 `product/harness-operations/` 为实际 source
+- Harness-first ontology 和目标分层已经迁到 [../../harness/README.md](../../harness/README.md)

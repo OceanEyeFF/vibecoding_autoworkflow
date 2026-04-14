@@ -25,6 +25,12 @@
 | 我在新增、改名、删除 skill source | [skill-lifecycle.md](./skill-lifecycle.md) | 这里回答 source 改哪、deploy 跟什么、docs 何时同步 |
 | 我只想看 `agents / claude / opencode` 差异 | [usage-help/README.md](../usage-help/README.md) | backend-specific 页面只保留 target、smoke verify 和限制 |
 
+## 当前迁移状态
+
+- Harness-first ontology 已迁到 [../../harness/README.md](../../harness/README.md) 与 [../../../product/harness/README.md](../../../product/harness/README.md)
+- 当前实际 deploy/build source 仍保留在 `product/harness-operations/`
+- 因此本目录继续描述 `harness-operations` 的 deploy 行为，但不把它再写成 Harness 本体定义
+
 ## 页面职责
 
 - [deploy-runbook.md](./deploy-runbook.md)

@@ -18,7 +18,7 @@ last_verified: 2026-04-13
 - markdown 相对链接是否仍然可达
 - 关键主入口文件是否存在
 - `AGENTS.md` 是否仍被关键入口页回链
-- `docs/project-maintenance/`、`docs/deployable-skills/` 与 `docs/autoresearch/` 主线入口是否仍然完整
+- `docs/project-maintenance/`、`docs/harness/`、`docs/deployable-skills/` 与 `docs/autoresearch/` 主线入口是否仍然完整
 - `.gitignore` 是否仍继续忽略关键 hidden layers
 - `docs/` 下正文文档的 frontmatter 是否齐全
 - `status` 是否仍和目录语义、生命周期语义一致
@@ -68,11 +68,11 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 9. 根入口与文档主线入口是否存在
 10. `docs/`、`product/`、`toolchain/`、根入口页和 `.nav/README.md` 内的 markdown 相对链接是否指向存在路径
 11. `AGENTS.md` 是否仍被关键入口页显式引用
-12. `docs/deployable-skills/README.md` 与关键子入口是否仍存在，并继续链接 Memory Side 与 Task Interface 主线；`docs/project-maintenance/README.md` 是否仍链接 foundations / governance / deploy / usage-help
+12. `docs/harness/README.md` 与关键子入口是否仍存在，并继续链接 foundations / scope / function / artifact / governance / adjacent-systems / workflow-families；`docs/deployable-skills/README.md` 是否已明确降为 transition 入口
 13. `docs/` 下除 `README.md` 以外的正文文档是否仍保留最小 frontmatter
-14. `docs/project-maintenance/`、`docs/deployable-skills/`、`docs/autoresearch/` 的 `status` 是否仍匹配目录与生命周期语义
+14. `docs/project-maintenance/`、`docs/harness/`、`docs/deployable-skills/`、`docs/autoresearch/` 的 `status` 是否仍匹配目录与生命周期语义
 15. `docs/` 正文文档是否仍避免使用 `status: suspended`；暂停中的共享文档应改成 `superseded`，非共享 scratch 应移出 `docs/`
-16. `docs/project-maintenance/README.md`、`docs/deployable-skills/README.md` 与 `docs/autoresearch/README.md` 是否仍维持当前三分入口分流
+16. `docs/project-maintenance/README.md`、`docs/harness/README.md`、`docs/deployable-skills/README.md` 与 `docs/autoresearch/README.md` 是否仍维持当前入口分流，并清楚区分 canonical 与 transition
 17. `.gitignore` 是否仍忽略：
    - `.agents/`
    - `.claude/`

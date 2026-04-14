@@ -1,8 +1,27 @@
 # Memory Side Knowledge
 
-`docs/deployable-skills/memory-side/` 固定 `Memory Side` 的通用合同层，不直接描述 repo-local 部署步骤。
+`docs/deployable-skills/memory-side/` 当前是迁移期保留的 legacy 合同入口。
 
-当前稳定主线：
+新的 Harness-first 入口已经迁到：
+
+- [../../harness/adjacent-systems/memory-side/README.md](../../harness/adjacent-systems/memory-side/README.md)
+
+当前这里仍保留：
+
+- 尚未迁移完成的详细 partition 正文
+- 旧路径引用仍依赖的格式与规则文档
+- [../../../product/memory-side/skills/README.md](../../../product/memory-side/skills/README.md)
+- [../../../product/memory-side/skills/knowledge-base-skill/SKILL.md](../../../product/memory-side/skills/knowledge-base-skill/SKILL.md)
+- [../../../product/memory-side/skills/context-routing-skill/SKILL.md](../../../product/memory-side/skills/context-routing-skill/SKILL.md)
+- [../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md](../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md)
+
+迁移约束：
+
+- `Memory Side` 现在被表述为 Harness 的 adjacent system，而不是 Harness 本体
+- 新的总纲、上位 ontology 与入口导航不再写回这里
+- 在旧路径仍然存在期间，必须显式回链到新的 adjacent-system 入口
+
+仍可继续阅读的 legacy 正文包括：
 
 - [overview.md](./overview.md)
 - [layer-boundary.md](./layer-boundary.md)
@@ -12,39 +31,6 @@
 - [writeback-cleanup.md](./writeback-cleanup.md)
 - [writeback-cleanup-rules.md](./writeback-cleanup-rules.md)
 - [skill-agent-model.md](./skill-agent-model.md)
-
-固定格式合同：
-
+- [formats/README.md](./formats/README.md)
 - [formats/context-routing-output-format.md](./formats/context-routing-output-format.md)
 - [formats/writeback-cleanup-output-format.md](./formats/writeback-cleanup-output-format.md)
-- [formats/README.md](./formats/README.md)：目录导航
-
-Canonical skill package 入口：
-
-- [../../../product/memory-side/skills/README.md](../../../product/memory-side/skills/README.md)
-- [../../../product/memory-side/skills/knowledge-base-skill/SKILL.md](../../../product/memory-side/skills/knowledge-base-skill/SKILL.md)
-- [../../../product/memory-side/skills/context-routing-skill/SKILL.md](../../../product/memory-side/skills/context-routing-skill/SKILL.md)
-- [../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md](../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md)
-
-建议阅读顺序：
-
-1. [overview.md](./overview.md)
-2. [layer-boundary.md](./layer-boundary.md)
-3. [knowledge-base.md](./knowledge-base.md)
-4. [context-routing.md](./context-routing.md)
-5. [writeback-cleanup.md](./writeback-cleanup.md)
-6. [skill-agent-model.md](./skill-agent-model.md)
-
-按主题下钻：
-
-- `Knowledge Base`：先读 [knowledge-base.md](./knowledge-base.md)
-- `Context Routing`：先读 [context-routing.md](./context-routing.md) 和 [context-routing-rules.md](./context-routing-rules.md)
-- `Writeback & Cleanup`：先读 [writeback-cleanup.md](./writeback-cleanup.md) 和 [writeback-cleanup-rules.md](./writeback-cleanup-rules.md)
-- 固定格式：先读 [formats/README.md](./formats/README.md)
-- executable skill：先读 [../../../product/memory-side/skills/README.md](../../../product/memory-side/skills/README.md)
-
-这里不适合放：
-
-- adapter 部署帮助
-- research runner 使用说明
-- repo-local mount 细节

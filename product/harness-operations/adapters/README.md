@@ -2,6 +2,11 @@
 
 `product/harness-operations/adapters/` 保存 `Harness Operations` 的后端 adapter 源码，用来把同一套 canonical skills 暴露给不同执行端。
 
+迁移说明：
+
+- 当前 backend deploy source 仍保留在这里，因为 `adapter_deploy.py` 仍以 `product/harness-operations/adapters/<backend>/skills/*/header.yaml` 为实际组装输入
+- Harness-first ontology 与目标分层已迁到 [../../harness/README.md](../../harness/README.md)
+
 当前主线：
 
 - `agents/`：Codex / OpenAI adapter 源码

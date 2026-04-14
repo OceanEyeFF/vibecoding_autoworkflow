@@ -29,6 +29,7 @@ last_verified: 2026-04-13
 - 你第一次做全局安装
 - 你要先弄清 `agents / claude / opencode` 的 target 对照
 - 你需要先知道 harness 为什么和 `memory-side / task-interface` 不一样
+- 你需要确认 Harness-first ontology 已迁移，但当前 deploy source 还没迁移完
 - 你只想走一遍最小更新路径，再决定是否需要进入 maintenance
 
 ## 二、支持哪些 backend
@@ -67,6 +68,11 @@ python3 toolchain/scripts/deploy/adapter_deploy.py
 - `product/*/adapters/<backend>/skills/`
 
 其中 `memory-side` 与 `task-interface` 直接把 adapter source 作为 deploy source；`harness-operations` 先经过组装。
+
+补充边界：
+
+- Harness-first ontology 与目标分层见 `docs/harness/` 与 `product/harness/`
+- 当前 deploy source 仍在 `product/harness-operations/`，直到 adapter/source 迁移完成
 
 ## 四、为什么 harness 要先 build
 

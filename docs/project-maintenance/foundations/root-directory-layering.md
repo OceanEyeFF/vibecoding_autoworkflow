@@ -82,8 +82,22 @@ last_verified: 2026-04-10
 
 只有能稳定落在上述某一层，才应放到根目录。
 
-## 五、相关文档
+## 五、文档域补充
+
+`docs/` 当前一级文档域包括：
+
+- `project-maintenance/`
+- `harness/`
+- `deployable-skills/`（迁移期兼容层）
+- `autoresearch/`
+
+其中：
+
+- `docs/harness/` 是 Harness-first 主线
+- `docs/deployable-skills/` 只保留兼容导航与 legacy asset 承接位
+
+## 六、相关文档
 
 - [AGENTS.md](../../../AGENTS.md)
 - [Toolchain 分层](../../../toolchain/toolchain-layering.md)
-- [Memory Side 层级边界](../../deployable-skills/memory-side/layer-boundary.md)
+- [Memory Side 层级边界](../../harness/adjacent-systems/memory-side/layer-boundary.md)
