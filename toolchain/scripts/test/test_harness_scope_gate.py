@@ -156,8 +156,8 @@ def test_check_scope_accepts_included_changes() -> None:
 def test_check_scope_ignores_excluded_runtime_paths() -> None:
     result = check_scope(
         changed_files=[
-            ".agents/skills/review-loop-workflow/SKILL.md",
-            ".autoworkflow/build/adapter-sources/agents/review-loop-workflow/SKILL.md",
+            ".agents/skills/task-contract-skill/SKILL.md",
+            ".autoworkflow/runtime/state.json",
         ],
         include_prefixes=INCLUDE_PREFIXES,
         exclude_prefixes=EXCLUDE_PREFIXES,
@@ -539,7 +539,7 @@ def test_resolve_diff_input_path_task_rename_resolves_old_and_new_paths(tmp_path
     init_repo(repo_root)
 
     old_path = "product/task-interface/README.md"
-    new_path = "docs/review-loop-workflow.md"
+    new_path = "docs/task-interface-note.md"
     commit_file(repo_root, old_path, "init\n", "init")
 
     harness_file = repo_root / ".autoworkflow" / "harness.yaml"
