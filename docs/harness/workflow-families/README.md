@@ -6,4 +6,5 @@
 
 - [repo-evolution/README.md](./repo-evolution/README.md)
 
-当前这些 workflow family 先固定在文档真相层；仓库内不再保留独立的 `product/harness/` workflow/profile source 分区。
+当前这些 workflow family 仍先固定在文档真相层。
+如果后续在 `product/harness/` 中出现对应的 executable source，它也应以下游实现层身份消费这里的定义，而不是反向定义 ontology。

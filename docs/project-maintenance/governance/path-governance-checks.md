@@ -1,9 +1,9 @@
 ---
 title: "路径与文档治理检查运行说明"
 status: active
-updated: 2026-04-13
+updated: 2026-04-15
 owner: aw-kernel
-last_verified: 2026-04-13
+last_verified: 2026-04-15
 ---
 # 路径与文档治理检查运行说明
 
@@ -27,7 +27,8 @@ last_verified: 2026-04-13
 - foundations 中关键 authority/template 文档是否被影子文件分叉
 - 已退役的 placeholder 口径是否回流到关键入口文档
 - `product/memory-side|task-interface/adapters/*/skills/*/SKILL.md` 是否仍保持 thin wrapper，而不是重新长出重复语义正文
-- `docs/harness/workflow-families/` 是否仍明确承接文档真相，而不是继续链接已删除的 `product/harness/` source
+- `product/harness/` 是否仍保持最小 executable root 骨架，而没有回退成 doctrine 正文区
+- `docs/harness/workflow-families/` 是否仍明确承接文档真相；若链接 `product/harness/`，也只把它当作下游 executable root
 
 它不替代人工审阅，也不检查所有 anchor 片段。
 
@@ -88,7 +89,8 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 20. foundations 权威文档是否出现同名前缀 shadow 文件
 21. 关键入口文档是否重新出现已退役的“预留位 / 占位”口径
 22. `product/memory-side|task-interface/adapters/*/skills/*/SKILL.md` 是否同时保留 `Canonical Source / Backend Notes / Deploy Target` 薄壳结构，并移除 `Execution Rules / Output Contract` 这类重复章节
-23. `docs/harness/workflow-families/README.md` 与 `docs/harness/workflow-families/repo-evolution/README.md` 是否仍避免链接不存在的 `product/harness/` source
+23. `product/harness/README.md`、`product/harness/skills/README.md`、`product/harness/adapters/README.md` 与 `product/harness/manifests/README.md` 是否仍作为最小 executable root 骨架存在
+24. `docs/harness/workflow-families/README.md` 与 `docs/harness/workflow-families/repo-evolution/README.md` 是否仍把 `docs/` 作为 ontology 上游，而不是反向从 `product/harness/` 生长定义
 
 说明：
 

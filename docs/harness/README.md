@@ -17,12 +17,13 @@
 - `Harness` 升为一级认知与文档域
 - 文档树按 `Scope / Function / Artifact / Governance` 组织，而不是按旧 skill 包名组织
 - `memory-side` 与 `task-interface` 不再被表述为 Harness 本体，而是 Harness 的 adjacent systems
-- 已验证的 legacy skills 已降级为可回收资产；当前 repo 不再保留独立的 harness skill/source 分区
+- 已验证的 legacy skills 已降级为可回收资产；新的 Harness executable source 进入 [../../product/harness/README.md](../../product/harness/README.md)，但 doctrine 仍以上游文档真相为准
 
 ## 迁移边界
 
 - `docs/deployable-skills/` 只保留迁移期兼容导航与 legacy asset，不再新增新的主线 doctrine
+- [../../product/harness/README.md](../../product/harness/README.md) 作为干净重建的 executable root，只承接实现层，不承接 ontology 正文
 - `product/memory-side/` 与 `product/task-interface/` 第一阶段继续保留独立源码根
-- 当前仓库中的 Harness 主线以 `docs/harness/` 为准；如果需要可执行 skill source，应优先判断它是否属于 adjacent systems，而不是回退到已删除的 legacy harness package
+- 当前仓库中的 Harness 主线以 `docs/harness/` 为准；如果需要可执行 skill source，应优先落到 `product/harness/` 或对应 adjacent systems，而不是回退到已删除的 legacy harness package
 
 建议阅读顺序由 [AGENTS.md](../../AGENTS.md) 统一定义。

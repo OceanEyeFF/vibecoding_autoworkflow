@@ -1,9 +1,9 @@
 ---
 title: "根目录分层"
 status: active
-updated: 2026-04-10
+updated: 2026-04-15
 owner: aw-kernel
-last_verified: 2026-04-10
+last_verified: 2026-04-15
 ---
 # 根目录分层
 
@@ -95,6 +95,12 @@ last_verified: 2026-04-10
 
 - `docs/harness/` 是 Harness-first 主线
 - `docs/deployable-skills/` 只保留兼容导航与 legacy asset 承接位
+
+`product/` 当前一级源码根包括：
+
+- `harness/`
+- `memory-side/`
+- `task-interface/`
 
 ## 六、相关文档
 

@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 治理入口"
 status: active
-updated: 2026-04-13
+updated: 2026-04-15
 owner: aw-kernel
-last_verified: 2026-04-13
+last_verified: 2026-04-15
 ---
 # Review / Verify 治理入口
 
@@ -58,7 +58,7 @@ last_verified: 2026-04-13
 - 如果改了 `docs/harness/`、`docs/deployable-skills/`、`product/*/skills/*/` 或 `product/*/adapters/*/skills/*/`，是否仍保持三段式分工：合同层、canonical executable layer、backend adapter layer
 - 如果改了 `product/memory-side|task-interface/adapters/*/skills/*/SKILL.md`，是否仍保持 thin wrapper（`Canonical Source / Backend Notes / Deploy Target`）而没有重新复制 canonical 语义正文
 - 如果改了 `product/*/skills/*/SKILL.md`，是否保持最小 executable body + `references/entrypoints.md`，而没有吸收 repo-local execution template 内容
-- 如果改了 `docs/harness/workflow-families/`，是否仍明确它当前承接的是文档真相层，而不是指向不存在的 `product/harness/` source
+- 如果改了 `docs/harness/workflow-families/`，是否仍明确它承接的是文档真相层；若链接 `product/harness/`，也只能把它当作下游 executable root，而不是 ontology 上游
 
 ### 3. 验证结果
 

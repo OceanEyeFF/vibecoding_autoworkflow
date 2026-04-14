@@ -20,6 +20,11 @@ REQUIRED_TEMPLATE_PATHS = [
     "docs/harness/adjacent-systems/task-interface/task-contract.md",
 ]
 REQUIRED_HANDOFF_LINKS = {
+    "product/README.md": [
+        "product/harness/README.md",
+        "product/memory-side/README.md",
+        "product/task-interface/README.md",
+    ],
     "toolchain/toolchain-layering.md": [
         "toolchain/scripts/README.md",
         "toolchain/evals/README.md",
@@ -28,6 +33,13 @@ REQUIRED_HANDOFF_LINKS = {
         "docs/harness/foundations/README.md",
         "docs/harness/adjacent-systems/README.md",
         "docs/harness/workflow-families/README.md",
+        "product/harness/README.md",
+    ],
+    "product/harness/README.md": [
+        "docs/harness/README.md",
+        "product/harness/skills/README.md",
+        "product/harness/adapters/README.md",
+        "product/harness/manifests/README.md",
     ],
     "docs/harness/adjacent-systems/task-interface/README.md": [
         "docs/harness/adjacent-systems/task-interface/task-contract.md",
@@ -56,6 +68,12 @@ FOUNDATIONS_AUTHORITY_STEMS = [
     "root-directory-layering",
 ]
 OUTDATED_PLACEHOLDER_PHRASES = {
+    "docs/harness/README.md": [
+        "已验证的 legacy skills 已降级为可回收资产；当前 repo 不再保留独立的 harness skill/source 分区",
+    ],
+    "docs/harness/workflow-families/README.md": [
+        "当前这些 workflow family 先固定在文档真相层；仓库内不再保留独立的 `product/harness/` workflow/profile source 分区。",
+    ],
     "toolchain/toolchain-layering.md": [
         "`research/` 目录当前只保留占位入口，不承载 active runner；其中 `OpenCode` 仍是 research backend 预留位",
         "`research/` 与 `evals/` 保留为预留位，只有在方案重新准入后才继续扩展。",

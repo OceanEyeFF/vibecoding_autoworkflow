@@ -23,6 +23,17 @@ def write_doc(path: Path, content: str) -> None:
 
 def test_check_required_handoffs_flags_missing_link(tmp_path: Path) -> None:
     write_doc(
+        tmp_path / "product/README.md",
+        "[harness](./harness/README.md)\n[memory](./memory-side/README.md)\n[task](./task-interface/README.md)\n",
+    )
+    write_doc(
+        tmp_path / "product/harness/README.md",
+        "[docs](../../docs/harness/README.md)\n[skills](./skills/README.md)\n[adapters](./adapters/README.md)\n[manifests](./manifests/README.md)\n",
+    )
+    write_doc(tmp_path / "product/harness/skills/README.md", "# skills\n")
+    write_doc(tmp_path / "product/harness/adapters/README.md", "# adapters\n")
+    write_doc(tmp_path / "product/harness/manifests/README.md", "# manifests\n")
+    write_doc(
         tmp_path / "toolchain/toolchain-layering.md",
         "[scripts](../../../toolchain/scripts/README.md)\n",
     )

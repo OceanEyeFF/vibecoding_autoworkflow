@@ -52,6 +52,7 @@ def create_valid_repo(tmp_path: Path) -> Path:
 
     for directory in (
         ".codex/rules",
+        "product/harness",
         "product/memory-side/skills",
         "product/task-interface",
         "docs/project-maintenance",
@@ -209,10 +210,12 @@ def test_first_level_allowlist_drift_fails(tmp_path: Path) -> None:
 
 def test_harness_partition_is_allowed_under_product_and_docs(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
+    (repo_root / "product/harness").mkdir(parents=True, exist_ok=True)
     (repo_root / "docs/harness").mkdir(parents=True, exist_ok=True)
 
     report = run_checks(repo_root)
 
+    assert "product/harness" not in issue_paths(report)
     assert "docs/harness" not in issue_paths(report)
 
 

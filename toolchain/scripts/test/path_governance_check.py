@@ -72,6 +72,10 @@ REQUIRED_ENTRY_PATHS = [
     "docs/project-maintenance/foundations/root-directory-layering.md",
     "toolchain/toolchain-layering.md",
     "product/README.md",
+    "product/harness/README.md",
+    "product/harness/skills/README.md",
+    "product/harness/adapters/README.md",
+    "product/harness/manifests/README.md",
     "product/memory-side/README.md",
     "product/memory-side/skills/README.md",
     "product/memory-side/adapters/README.md",
@@ -249,8 +253,15 @@ ENTRYPOINT_LINK_RULES = {
         "docs/autoresearch/runbooks/tmp-exrepo-maintenance.md",
     ],
     "product/README.md": [
+        "product/harness/README.md",
         "product/memory-side/README.md",
         "product/task-interface/README.md",
+    ],
+    "product/harness/README.md": [
+        "docs/harness/README.md",
+        "product/harness/skills/README.md",
+        "product/harness/adapters/README.md",
+        "product/harness/manifests/README.md",
     ],
     DEPLOYABLE_SKILLS_README: [
         HARNESS_README,
