@@ -8,7 +8,9 @@
 
 当前保留内容：
 
-- [../../harness/foundations/Harness指导思想.md](../../harness/foundations/Harness指导思想.md)：已迁入 `docs/harness/foundations/` 的母文档来源
+- [../../harness/foundations/Harness指导思想.md](../../harness/foundations/Harness指导思想.md)：版本化草稿的稳定入口
+- [../../harness/foundations/Harness指导思想_v1.5.md](../../harness/foundations/Harness指导思想_v1.5.md)：当前在重审中的母文档 draft
+- [../../harness/foundations/Harness运行协议.md](../../harness/foundations/Harness运行协议.md)：从旧草稿提取并补全的运行协议 draft
 
 迁移原则：
 
