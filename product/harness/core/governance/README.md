@@ -1,6 +1,11 @@
 # Harness Core Governance
 
-这里预留给 Harness core 的治理实现与共享约束。
+这里承接 Harness core 的治理实现与共享约束。
+
+当前 extracted source：
+
+- [harness-governance-fields.md](./harness-governance-fields.md)
+- [repo-governance-evaluation.contract.md](./repo-governance-evaluation.contract.md)
 
 当前阶段优先承接：
 

@@ -59,6 +59,7 @@ last_verified: 2026-04-13
 - 如果改了 `product/memory-side|task-interface/adapters/*/skills/*/SKILL.md`，是否仍保持 thin wrapper（`Canonical Source / Backend Notes / Deploy Target`）而没有重新复制 canonical 语义正文
 - 如果改了 `product/*/skills/*/SKILL.md`，是否保持最小 executable body + `references/entrypoints.md`，而没有吸收 repo-local execution template 内容
 - 如果改了 `product/harness/` 入口或分类文档，是否仍明确 `product/harness-operations/` 只是迁移期 deploy-source / legacy asset 层
+- 如果改了 `product/harness/core/shared|contracts|governance/`，是否同步更新对应 README 导航和路径治理检查，避免再次退回“只有分类没有 source”的空壳状态
 - 如果改了 `product/harness-operations/skills/*/`，是否保持 `prompt.md`（backend-agnostic）+ shared `harness-standard.md` + `references/entrypoints.md|bindings.md` 的分层
 - 如果改了 `product/harness-operations/adapters/*/skills/*/`，是否保持 `header.yaml` + backend metadata 的 source 形态，并只把 `SKILL.md` 保留为指向 canonical 的 symlink shim
 

@@ -89,6 +89,9 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 21. 关键入口文档是否重新出现已退役的“预留位 / 占位”口径
 22. `product/memory-side|task-interface/adapters/*/skills/*/SKILL.md` 是否同时保留 `Canonical Source / Backend Notes / Deploy Target` 薄壳结构，并移除 `Execution Rules / Output Contract` 这类重复章节
 23. `product/harness-operations/adapters/*/skills/*/` 是否至少包含 `header.yaml`，并且 source 层 `SKILL.md` 只作为指向 canonical `SKILL.md` 的 symlink shim
+24. `product/harness/core/shared/README.md` 是否仍链接 `contract-runtime-boundary.md`、`runtime-binding-policy.md`、`gate-discipline.md` 与 `state-discipline.md`
+25. `product/harness/core/contracts/README.md` 是否仍链接 `execution-contract.template.md`、`harness-contract.template.json` 与 `task-planning-contract.template.md`
+26. `product/harness/core/governance/README.md` 是否仍链接 `harness-governance-fields.md` 与 `repo-governance-evaluation.contract.md`
 
 说明：
 

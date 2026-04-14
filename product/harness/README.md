@@ -29,3 +29,18 @@
 - 当前 legacy skill 与 adapter source 仍主要保留在 [../harness-operations/README.md](../harness-operations/README.md)
 - 新的 ontology、源码叙事与后续重组应优先落到本目录
 - 新增 Harness-first 语义时，先决定它属于 `core / workflows / profiles / adapters / manifests` 哪一层，再决定是否需要回收 legacy asset
+
+当前已抽出的第一批正式 source：
+
+- `core/shared/`
+  - [contract-runtime-boundary.md](./core/shared/contract-runtime-boundary.md)
+  - [runtime-binding-policy.md](./core/shared/runtime-binding-policy.md)
+  - [gate-discipline.md](./core/shared/gate-discipline.md)
+  - [state-discipline.md](./core/shared/state-discipline.md)
+- `core/contracts/`
+  - [execution-contract.template.md](./core/contracts/execution-contract.template.md)
+  - [harness-contract.template.json](./core/contracts/harness-contract.template.json)
+  - [task-planning-contract.template.md](./core/contracts/task-planning-contract.template.md)
+- `core/governance/`
+  - [harness-governance-fields.md](./core/governance/harness-governance-fields.md)
+  - [repo-governance-evaluation.contract.md](./core/governance/repo-governance-evaluation.contract.md)
