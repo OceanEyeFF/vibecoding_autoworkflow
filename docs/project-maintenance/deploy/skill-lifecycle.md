@@ -15,6 +15,8 @@ last_verified: 2026-04-15
 
 - [根目录分层](../foundations/root-directory-layering.md)
 - [Deploy Runbook](./deploy-runbook.md)
+- [Deploy Mapping Spec](./deploy-mapping-spec.md)
+- [Template Consumption Spec](./template-consumption-spec.md)
 
 ## 一、适用范围
 
@@ -26,29 +28,31 @@ last_verified: 2026-04-15
 
 本页不负责：
 
-- drift 故障诊断展开
+- drift（偏离）故障诊断展开
 - canonical skill 合同正文
 
 ## 二、Source of Truth 与 Deploy Target 边界
 
 固定边界：
 
-- source of truth 在 `product/`
+- source of truth（唯一真相来源）在 `product/`
 - 当前 deploy target 只在 `.agents/` 或对应 global root
 - `docs/harness/` 负责 Harness-first doctrine、workflow family 与 adjacent-system 主入口
+- canonical source 到 target entry 的正式映射规则见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
 
 因此：
 
 - 改 skill 内容时先改 `product/`
-- 当前 deploy 不会读取 skill 内容，也不会同步 skill 目录
+- 当前 deploy 不会把 `.aw_template/` 当 deploy payload source（部署负载来源），也不会把它直接发往 target
+- `.aw_template/` 的模板消费规则见 [Template Consumption Spec](./template-consumption-spec.md)
 - 只有已经验证过的 root 状态，才写回 `docs/`
-- 若出于 repo-local 安装兼容、文件分发或运行试验需要，`.agents/skills/` 可以承接 tracked install payload；但这不属于当前 deploy 接口的职责
+- 若出于 repo-local 安装兼容、文件分发或运行试验需要，`.agents/skills/` 可以承接 tracked install payload（已跟踪的安装负载）；但这不属于当前 deploy 接口的职责
 
 ## 三、当前执行边界
 
 - 当前 deploy 接口只管理 runtime target root
-- 它不定义 skills 的 source 映射
-- `.aw_template/` 与 canonical skills 的映射仍待后续重定
+- skills 的 canonical source、backend payload source、部署负载规则与 verify 口径，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
+- `.aw_template/` 只在 A1 里作为边界或 `template_inputs` 引用面出现，不作为 deploy source
 
 因此当你修改 skills / `.aw_template/` 时：
 
