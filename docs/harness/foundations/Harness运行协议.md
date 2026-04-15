@@ -258,6 +258,26 @@ last_verified: 2026-04-15
 也就是说：
 
 - `Function` 回答“控制器此刻在做什么”
+- `Skill` 回答“在 `Codex` 里这一轮实际调用什么能力”
+
+在当前项目的 `Codex` 语境里，不应为了文档整洁再额外引入一层脱离运行时的 `Function -> Skill` 转译目录。对实际 product 生成更重要的是：
+
+- supervisor 当前会选什么 skills
+- 当前 work item 会如何被 dispatch
+- 没有专门 skill 时 fallback 到什么执行体
+
+### 1. Worktrack dispatch fallback
+
+`WorktrackScope` 下允许存在一个 `dispatch-skills` 类能力，用来为当前任务选择下游执行方式。
+
+它必须遵守下面的 fallback 规则：
+
+- 如果存在合适的专门 skill，优先使用该专门 skill
+- 如果不存在合适的专门 skill，不得因此让系统停摆
+- 此时必须自动 fallback 到一个通用任务完成 `SubAgent`
+- fallback 仍然必须保持 bounded task、最小信息包和 evidence 回传
+
+也就是说，系统不应把“没有专门 skill”解释成“不能继续执行”；它只意味着本轮应退化到通用任务完成执行体。
 - `Skill` 回答“在当前 backend / agent 环境里，哪个执行单元来实现这个控制动作”
 
 因此，在 `Codex` 内部，真正被调度的是 `Skills`；但在 doctrine 层，仍应先保留 `Function` 这个更稳定的协议抽象。
