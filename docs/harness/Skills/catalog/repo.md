@@ -15,6 +15,7 @@ last_verified: 2026-04-15
 
 - `RepoScope` skills 负责长期基线的观察、判断、目标变更和 repo 状态刷新
 - 这些 skills 不直接承担编码执行
+- `RepoScope` 内可以挂载有界分析模式，但不应为了分析框架本身继续新增 skill 数量或层级
 - 如果一轮需要实际改动系统状态，应由 supervisor 决定是否切入 `WorktrackScope` 或派发下游执行体
 
 ## Catalog
@@ -47,6 +48,9 @@ canonical executable source：
 
 - 基于当前 repo 状态判断下一步最合理的演进方向
 - 明确是切入 worktrack、刷新 baseline，还是进入 goal change control
+- 在默认 next-step 判断仍偏松时，启用轻量 `priority reframe / contradiction analysis` 模式
+- 用 `Facts / Inferences / Unknowns`、单一 `Current Primary Contradiction`、`Primary Aspect`、`Top Priority Now`、`Do Not Do`、`Recommended Repo Action` 与 `Minimal Missing Info` 压缩 repo 级优先级判断
+- 该模式属于 `RepoScope` 分析模式，不是新的 skill，也不是 `WorktrackScope` skill
 
 主要依赖：
 
@@ -60,7 +64,7 @@ canonical executable source：
 
 当前状态：
 
-- `initial canonical executable skeleton landed`
+- `initial canonical executable skeleton landed, with bounded priority reframe mode folded into the same skill`
 
 ### 3. goal-change-control-skill
 
