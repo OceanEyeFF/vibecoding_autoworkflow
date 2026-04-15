@@ -8,7 +8,7 @@
 
 受控辅助层：
 
-- [.aw_template/README.md](./.aw_template/README.md)：repo-local execution template layer，承接可复制的 Harness artifact 模板，不承接 canonical truth
+- [.aw_template/README.md](./.aw_template/README.md)：repo-local execution template layer，承接 `.aw/` 运行目录的 scaffold 模板，不承接 canonical truth
 
 `docs/harness/` 继续承接 Harness doctrine 与运行协议真相层。
 `product/harness/` 只承接 Harness executable source。
@@ -21,4 +21,4 @@
 - 本地或全局部署统一走 `toolchain/scripts/deploy/adapter_deploy.py`
 - 新的 Harness ontology 仍落在 `docs/harness/`
 - 新的 Harness executable source 应进入 `product/harness/`
-- `.aw_template/` 只承接 execution templates，不是第四个源码根
+- `.aw_template/` 只承接 `.aw/` scaffold templates，不是第四个源码根，也不是 artifact 模板的长期 owner

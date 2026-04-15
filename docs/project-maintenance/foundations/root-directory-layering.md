@@ -1,9 +1,9 @@
 ---
 title: "根目录分层"
 status: active
-updated: 2026-04-15
+updated: 2026-04-16
 owner: aw-kernel
-last_verified: 2026-04-15
+last_verified: 2026-04-16
 ---
 # 根目录分层
 
@@ -108,7 +108,7 @@ last_verified: 2026-04-15
 
 `product/` 下还允许一个受控辅助层：
 
-- `.aw_template/`：repo-local execution template layer，用于承接可复制的 Harness artifact 模板，但不是新的源码根
+- `.aw_template/`：repo-local execution template layer，用于承接 `.aw/` 运行目录的 scaffold 模板；artifact 模板的长期 owner 不应默认落在这里
 
 ## 六、相关文档
 
