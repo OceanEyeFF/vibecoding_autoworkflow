@@ -1,9 +1,9 @@
 # AW Template / Worktrack
 
-`product/.aw_template/worktrack/` 承接 `WorktrackScope` 相关 artifact 的可填写模板。
+`product/.aw_template/worktrack/` 承接 `.aw/worktrack/` 下的 worktrack 级管理文档模板。
 
 当前入口：
 
-- [contract.template.md](./contract.template.md)
-- [plan-task-queue.template.md](./plan-task-queue.template.md)
-- [gate-evidence.template.md](./gate-evidence.template.md)
+- [contract.md](./contract.md)
+- [plan-task-queue.md](./plan-task-queue.md)
+- [gate-evidence.md](./gate-evidence.md)

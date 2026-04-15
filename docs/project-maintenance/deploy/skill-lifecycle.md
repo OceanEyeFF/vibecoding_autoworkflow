@@ -1,9 +1,9 @@
 ---
 title: "Skill 生命周期维护"
 status: active
-updated: 2026-04-15
+updated: 2026-04-16
 owner: aw-kernel
-last_verified: 2026-04-15
+last_verified: 2026-04-16
 ---
 # Skill 生命周期维护
 
@@ -44,7 +44,7 @@ last_verified: 2026-04-15
 
 - 改 skill 内容时先改 `product/`
 - 当前 deploy 不会把 `.aw_template/` 当 deploy payload source（部署负载来源），也不会把它直接发往 target
-- `.aw_template/` 的模板消费规则见 [Template Consumption Spec](./template-consumption-spec.md)
+- `.aw_template/` 的 `.aw/` 目录结构、管理文档模板和待迁移模板边界见 [Template Consumption Spec](./template-consumption-spec.md)
 - 只有已经验证过的 root 状态，才写回 `docs/`
 - 若出于 repo-local 安装兼容、文件分发或运行试验需要，`.agents/skills/` 可以承接 tracked install payload（已跟踪的安装负载）；但这不属于当前 deploy 接口的职责
 
@@ -52,7 +52,7 @@ last_verified: 2026-04-15
 
 - 当前 deploy 接口只管理 runtime target root
 - skills 的 canonical source、backend payload source、部署负载规则与 verify 口径，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
-- `.aw_template/` 只在 A1 里作为边界或 `template_inputs` 引用面出现，不作为 deploy source
+- `.aw_template/` 当前只在 deploy 文档里作为 `.aw/` 目录结构与运行管理文档模板的来源出现，不作为 deploy source，也不自动证明其中模板的最终 owner
 
 因此当你修改 skills / `.aw_template/` 时：
 

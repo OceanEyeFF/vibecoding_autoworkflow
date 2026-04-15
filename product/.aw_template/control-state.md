@@ -1,6 +1,6 @@
-# Harness Control State Template
+# Harness Control State
 
-> 使用方式：复制本模板，维护当前 Harness supervisor 的控制面状态，不要把业务真相写进来。
+> 这是 `.aw/control-state.md` 的模板来源，用来维护当前 Harness supervisor 的控制面状态，不要把业务真相写进来。
 
 ## Metadata
 

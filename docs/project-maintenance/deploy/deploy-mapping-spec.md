@@ -1,9 +1,9 @@
 ---
 title: "Deploy Mapping Spec"
 status: active
-updated: 2026-04-15
+updated: 2026-04-16
 owner: aw-kernel
-last_verified: 2026-04-15
+last_verified: 2026-04-16
 ---
 # Deploy Mapping Spec
 
@@ -31,7 +31,7 @@ last_verified: 2026-04-15
 
 - `adapter_deploy.py` 的实现细节
 - 清单的概念体系扩展
-- `.aw_template/` 的生成系统
+- `.aw_template/` 生成 `.aw/` 目录结构与管理文档的实现细节
 - B1 / B2 / B3 / B4 的具体实现
 - `claude` / `opencode` 等后端的后续细节
 
@@ -151,18 +151,18 @@ last_verified: 2026-04-15
 
 ## 五、`.aw_template` 边界
 
-`.aw_template/` 不参与部署包分发，也不是部署来源。
+`.aw_template/` 不参与部署包分发，也不是 skill deploy source。
 
 允许的提及方式：
 
-- 作为边界说明，明确它不在 A1 的部署链路中
-- 作为清单的 `template_inputs` 引用，表示某个 skill 依赖哪些模板类型
+- 作为边界说明，明确它不在 A1 的 skill deploy 链路中
+- 作为 `.aw/` 目录结构与管理文档模板来源的说明对象，描述 deploy 后如何初始化 `.aw/`
 
 禁止的提及方式：
 
 - 将 `.aw_template/` 直接作为权威来源复制到目标
 - 将 `.aw_template/` 当作部署包的默认来源
-- 将 `.aw_template/` 的生命周期细节提前写进部署约定
+- 将 `.aw_template/` 当前目录中的模板文件位置，直接当作 skill owner 结论写进部署约定
 
 ## 六、验收标准
 

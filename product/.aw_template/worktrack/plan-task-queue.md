@@ -1,6 +1,6 @@
-# Plan / Task Queue Template
+# Plan / Task Queue
 
-> 使用方式：复制本模板，把 worktrack contract 展开成当前执行队列。
+> 这是 `.aw/worktrack/plan-task-queue.md` 的模板来源，用来把 worktrack contract 展开成当前执行队列。
 
 ## Metadata
 
