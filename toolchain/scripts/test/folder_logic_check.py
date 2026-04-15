@@ -40,11 +40,11 @@ ROOT_ALLOWED_NAMES = {
 ROOT_ALLOWED_PREFIXES = (".git",)
 NAV_SLOT_TARGETS = {
     "@docs": "docs",
-    "@skills": "product/memory-side/skills",
+    "@skills": "product/harness/skills",
 }
 FIRST_LEVEL_ALLOWLIST = {
-    "product": {"README.md", ".aw_template", "harness", "memory-side", "task-interface"},
-    "docs": {"README.md", "project-maintenance", "harness", "deployable-skills", "autoresearch"},
+    "product": {"README.md", ".aw_template", "harness"},
+    "docs": {"README.md", "project-maintenance", "harness", "autoresearch"},
     "toolchain": {"README.md", "toolchain-layering.md", "evals", "scripts"},
 }
 TOOLS_TRACKED_ALLOWLIST = {

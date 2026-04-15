@@ -21,9 +21,8 @@
 
 ## 迁移边界
 
-- `docs/deployable-skills/` 只保留迁移期兼容导航与 legacy asset，不再新增新的主线 doctrine
 - [../../product/harness/README.md](../../product/harness/README.md) 作为干净重建的 executable root，只承接实现层，不承接 ontology 正文
-- `product/memory-side/` 与 `product/task-interface/` 第一阶段继续保留独立源码根
+- `memory-side` 与 `task-interface` 当前只保留在 `docs/harness/adjacent-systems/` 的合同层，不再保留独立的 `product/` 源码根
 - 当前仓库中的 Harness 主线以 `docs/harness/` 为准；如果需要可执行 skill source，应优先落到 `product/harness/` 或对应 adjacent systems，而不是回退到已删除的 legacy harness package
 
 建议阅读顺序由 [AGENTS.md](../../AGENTS.md) 统一定义。

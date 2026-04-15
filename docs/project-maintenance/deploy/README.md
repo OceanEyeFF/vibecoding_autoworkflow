@@ -28,9 +28,9 @@
 
 ## 当前 source 边界
 
-- 当前可部署 source 只在 `product/memory-side/` 与 `product/task-interface/`
-- `adapter_deploy.py` 直接读取 `product/<partition>/adapters/<backend>/skills/`
-- `docs/harness/` 继续承接 Harness doctrine，但当前不对应 repo 内独立的 harness skill/source 分区
+- 当前仓库不再保留 `product/memory-side/` 与 `product/task-interface/` 的可部署 source 树
+- `docs/harness/` 继续承接 Harness doctrine；repo 内实际保留的 executable source 只在 `product/harness/`
+- `adapter_deploy.py` 的 backend/target 约定仍保留在工具层，但不应再把已删除 adjacent-system source 树当成当前前提
 
 ## 页面职责
 

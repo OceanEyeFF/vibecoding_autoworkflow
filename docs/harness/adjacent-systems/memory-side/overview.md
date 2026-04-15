@@ -130,7 +130,6 @@ Knowledge Base
 当前仓库中与 `Task Contract` 对应的实际落点包括：
 
 - [Task Contract 基线](../task-interface/task-contract.md)
-- [task-contract-skill/SKILL.md](../../../../product/task-interface/skills/task-contract-skill/SKILL.md)
 
 如果你要理解通用能力模型，先读：
 

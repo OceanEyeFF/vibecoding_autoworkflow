@@ -55,8 +55,8 @@ last_verified: 2026-04-15
 - 如果改了 root / partition / path 规则，是否同步 foundations 和治理检查
 - 如果改了 `AGENTS.md` 或执行流程，是否同步本文
 - 如果改了 deploy / adapter 行为，是否同步对应 `docs/project-maintenance/deploy/` runbook
-- 如果改了 `docs/harness/`、`docs/deployable-skills/`、`product/*/skills/*/` 或 `product/*/adapters/*/skills/*/`，是否仍保持三段式分工：合同层、canonical executable layer、backend adapter layer
-- 如果改了 `product/memory-side|task-interface/adapters/*/skills/*/SKILL.md`，是否仍保持 thin wrapper（`Canonical Source / Backend Notes / Deploy Target`）而没有重新复制 canonical 语义正文
+- 如果改了 `docs/harness/`、`product/harness/skills/*/` 或 `product/harness/adapters/*/skills/*/`，是否仍保持合同层与 executable layer 分工
+- 如果改了 adjacent-system 文档，是否同步清理已经删除的 `product/memory-side/`、`product/task-interface/` 和 `docs/deployable-skills/` 旧路径引用
 - 如果改了 `product/*/skills/*/SKILL.md`，是否保持最小 executable body + `references/entrypoints.md`，而没有吸收 repo-local execution template 内容
 - 如果改了 `product/.aw_template/`，是否仍只承接可填写模板，而没有长出 canonical truth、backend wrapper 或运行状态
 - 如果改了 `docs/harness/workflow-families/`，是否仍明确它承接的是文档真相层；若链接 `product/harness/`，也只能把它当作下游 executable root，而不是 ontology 上游
@@ -91,7 +91,6 @@ last_verified: 2026-04-15
 ### 4. 回写要求
 
 - 已验证结果优先写进 `docs/harness/`、`docs/project-maintenance/` 或 `docs/autoresearch/`
-- `docs/deployable-skills/` 只在迁移期兼容入口或 legacy asset 仍未切走时承接回写
 - repo-local 维护动作写进 `docs/project-maintenance/`
 - 不把临时推理、未验证猜测或执行噪音写成长期真相
 - 如果需要固定输出结构，优先复用现有模板而不是新发明格式

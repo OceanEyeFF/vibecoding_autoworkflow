@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> 这是当前仓库的 agent-facing 最小工作规则入口。若与 `docs/project-maintenance/`、`docs/harness/` 或 `docs/autoresearch/` 冲突，以对应承接层文档为准。`docs/deployable-skills/` 当前只保留迁移期兼容角色，不再承接新的总纲。
+> 这是当前仓库的 agent-facing 最小工作规则入口。若与 `docs/project-maintenance/`、`docs/harness/` 或 `docs/autoresearch/` 冲突，以对应承接层文档为准。
 
 ## Core
 
@@ -64,14 +64,13 @@
 - deployment / adapter 行为变化时，必须同步更新相关 `docs/project-maintenance/deploy/` 文档和 verify 命令说明。
 - autoresearch 模块路径、入口或运行/参考文档变化时，必须同步更新 `docs/autoresearch/` 入口与对应治理检查。
 - Harness doctrine、workflow family、adjacent-system 合同或 canonical skill 入口路径变化时，必须同步更新 `docs/harness/`、`product/*/skills/` 入口与对应治理检查。
-- 迁移期如果旧 `docs/deployable-skills/` 仍保留兼容入口，主入口变更后也必须同步更新它的 transition 标注，避免双份主线。
 - 只有已验证结果才可以回写为长期真相；未验证的结论不要写进知识层。
 
 ## Root Rules
 
 - `product/` 是业务代码唯一源码根。
-- `docs/` 是文档层，内部再分 `project-maintenance / harness / deployable-skills / autoresearch / analysis / ideas / archive`。
-- `docs/harness/` 是 Harness-first 文档主线；`docs/deployable-skills/` 只保留迁移期兼容导航与残余承接位。
+- `docs/` 是文档层，内部再分 `project-maintenance / harness / autoresearch / analysis / ideas / archive`。
+- `docs/harness/` 是 Harness-first 文档主线。
 - `toolchain/` 只放脚本、评测、测试、打包、部署工具。
 - `.autoworkflow/`、`.spec-workflow/` 只属于 repo-local state layer。
 - `.serena/` 是 repo-local state/config layer，可保留受控入库的项目级配置与记忆，但不是主线真相层。
@@ -79,15 +78,14 @@
 
 ## Docs Governance Baseline
 
-- `docs/README.md`、`docs/project-maintenance/README.md`、`docs/harness/README.md`、`docs/deployable-skills/README.md`、`docs/autoresearch/README.md` 和 `docs/*/README.md` 只做入口导航，不承载独占规则正文。
+- `docs/README.md`、`docs/project-maintenance/README.md`、`docs/harness/README.md`、`docs/autoresearch/README.md` 和 `docs/*/README.md` 只做入口导航，不承载独占规则正文。
 - `docs/` 下除 `README.md` 外的正文文档必须有 frontmatter：`title / status / updated / owner / last_verified`。
 - `status` 只允许：
-  - `docs/project-maintenance/`、`docs/harness/`、`docs/deployable-skills/` 与 `docs/autoresearch/`：`active | draft | superseded`
+  - `docs/project-maintenance/`、`docs/harness/` 与 `docs/autoresearch/`：`active | draft | superseded`
 - 不在 `docs/` 长期使用 `status: suspended`。共享保留内容转 `superseded`，非共享草稿移出 `docs/`。
 - 研究结论准入后必须升格到承接层：
   - 项目维护规则、governance、deploy、usage-help 写 `docs/project-maintenance/`
   - Harness doctrine、workflow family、artifact 与 adjacent-system 合同写 `docs/harness/`
-  - `docs/deployable-skills/` 只保留迁移期兼容入口或尚未迁走的已验证资产，不再新增主线总纲
   - autoresearch 模块专属知识、runbook 与 references 写 `docs/autoresearch/`
   - 实现合同落 `product/` 或 `toolchain/`
 - 新增或接管文档作用域时，必须同步更新最近入口页并清理旧入口，避免双份主线。
@@ -108,7 +106,6 @@
 
 - 项目维护与治理正文写到 `docs/project-maintenance/`。
 - Harness doctrine、workflow family 与 adjacent-system 合同写到 `docs/harness/`。
-- 迁移期兼容说明可写到 `docs/deployable-skills/`，但不要再把新的总纲写回那里。
 - autoresearch 模块文档写到 `docs/autoresearch/`。
 - template / checklist 只在它们能稳定承接执行时才保留。
 - 不要把项目真相写进 `.agents/`、`.claude/`、`.opencode/`、`.nav/`。
@@ -117,7 +114,7 @@
 
 - `.nav/` 现在只保留 `@docs` 与 `@skills` 两个有效兼容入口。
 - `tools/` 只是 compatibility shim，真逻辑仍应落在 `toolchain/scripts/test/`。
-- `docs/deployable-skills/` 仍保留迁移期资产；阅读和改动时必须先确认它是 legacy asset 还是 transition wrapper。
+- `product/memory-side/` 与 `product/task-interface/` 当前不再保留源码树；相关语义只以 `docs/harness/adjacent-systems/` 为准。
 
 ## Canonical References
 

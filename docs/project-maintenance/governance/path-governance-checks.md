@@ -18,7 +18,7 @@ last_verified: 2026-04-15
 - markdown 相对链接是否仍然可达
 - 关键主入口文件是否存在
 - `AGENTS.md` 是否仍被关键入口页回链
-- `docs/project-maintenance/`、`docs/harness/`、`docs/deployable-skills/` 与 `docs/autoresearch/` 主线入口是否仍然完整
+- `docs/project-maintenance/`、`docs/harness/` 与 `docs/autoresearch/` 主线入口是否仍然完整
 - `.gitignore` 是否仍继续忽略关键 hidden layers
 - `docs/` 下正文文档的 frontmatter 是否齐全
 - `status` 是否仍和目录语义、生命周期语义一致
@@ -26,7 +26,6 @@ last_verified: 2026-04-15
 - foundations / memory-side / module entry 的关键承接关系是否仍存在
 - foundations 中关键 authority/template 文档是否被影子文件分叉
 - 已退役的 placeholder 口径是否回流到关键入口文档
-- `product/memory-side|task-interface/adapters/*/skills/*/SKILL.md` 是否仍保持 thin wrapper，而不是重新长出重复语义正文
 - `product/harness/` 是否仍保持最小 executable root 骨架，而没有回退成 doctrine 正文区
 - `docs/harness/workflow-families/` 是否仍明确承接文档真相；若链接 `product/harness/`，也只把它当作下游 executable root
 
@@ -69,11 +68,11 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 9. 根入口与文档主线入口是否存在
 10. `docs/`、`product/`、`toolchain/`、根入口页和 `.nav/README.md` 内的 markdown 相对链接是否指向存在路径
 11. `AGENTS.md` 是否仍被关键入口页显式引用
-12. `docs/harness/README.md` 与关键子入口是否仍存在，并继续链接 foundations / scope / artifact / adjacent-systems / workflow-families；`docs/deployable-skills/README.md` 是否已明确降为 transition 入口
+12. `docs/harness/README.md` 与关键子入口是否仍存在，并继续链接 foundations / scope / artifact / Skills / adjacent-systems / workflow-families
 13. `docs/` 下除 `README.md` 以外的正文文档是否仍保留最小 frontmatter
-14. `docs/project-maintenance/`、`docs/harness/`、`docs/deployable-skills/`、`docs/autoresearch/` 的 `status` 是否仍匹配目录与生命周期语义
+14. `docs/project-maintenance/`、`docs/harness/`、`docs/autoresearch/` 的 `status` 是否仍匹配目录与生命周期语义
 15. `docs/` 正文文档是否仍避免使用 `status: suspended`；暂停中的共享文档应改成 `superseded`，非共享 scratch 应移出 `docs/`
-16. `docs/project-maintenance/README.md`、`docs/harness/README.md`、`docs/deployable-skills/README.md` 与 `docs/autoresearch/README.md` 是否仍维持当前入口分流，并清楚区分 canonical 与 transition
+16. `docs/project-maintenance/README.md`、`docs/harness/README.md` 与 `docs/autoresearch/README.md` 是否仍维持当前入口分流
 17. `.gitignore` 是否仍忽略：
    - `.agents/`
    - `.claude/`
@@ -88,7 +87,7 @@ python3 toolchain/scripts/test/governance_semantic_check.py
    - `writeback-cleanup.md -> writeback-cleanup-output-format.md`
 20. foundations 权威文档是否出现同名前缀 shadow 文件
 21. 关键入口文档是否重新出现已退役的“预留位 / 占位”口径
-22. `product/memory-side|task-interface/adapters/*/skills/*/SKILL.md` 是否同时保留 `Canonical Source / Backend Notes / Deploy Target` 薄壳结构，并移除 `Execution Rules / Output Contract` 这类重复章节
+22. 相邻系统文档是否已清理对已删除 product roots 的坏链，且没有把 adjacent systems 重新写回新的源码根
 23. `product/harness/README.md`、`product/harness/skills/README.md`、`product/harness/adapters/README.md` 与 `product/harness/manifests/README.md` 是否仍作为最小 executable root 骨架存在
 24. `docs/harness/workflow-families/README.md` 与 `docs/harness/workflow-families/repo-evolution/README.md` 是否仍把 `docs/` 作为 ontology 上游，而不是反向从 `product/harness/` 生长定义
 

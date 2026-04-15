@@ -204,4 +204,4 @@ docs/
 
 为了把 `Knowledge Base` 继续落成可执行载体，当前配套文档包括：
 
-- [knowledge-base-skill/SKILL.md](../../../../product/memory-side/skills/knowledge-base-skill/SKILL.md)
+- [Memory Side Skill 与 Agent 模型](./skill-agent-model.md)

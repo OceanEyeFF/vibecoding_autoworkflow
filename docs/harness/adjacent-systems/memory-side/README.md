@@ -14,15 +14,8 @@
 - [writeback-cleanup-rules.md](./writeback-cleanup-rules.md)
 - [formats/README.md](./formats/README.md)
 
-对应源码入口：
+当前边界：
 
-- [../../../../product/memory-side/README.md](../../../../product/memory-side/README.md)
-- [../../../../product/memory-side/skills/README.md](../../../../product/memory-side/skills/README.md)
-- [../../../../product/memory-side/skills/knowledge-base-skill/SKILL.md](../../../../product/memory-side/skills/knowledge-base-skill/SKILL.md)
-- [../../../../product/memory-side/skills/context-routing-skill/SKILL.md](../../../../product/memory-side/skills/context-routing-skill/SKILL.md)
-- [../../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md](../../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md)
-
-迁移说明：
-
-- legacy wrapper 仍保留在 [../../../deployable-skills/memory-side/README.md](../../../deployable-skills/memory-side/README.md)
-- `docs/deployable-skills/memory-side/*` 现在只用于兼容旧路径，不再承接 canonical 正文
+- `Memory Side` 在当前仓库只保留合同正文与格式约束
+- 本仓库当前不再保留 `product/memory-side/` 对应的 executable source tree
+- 如果未来恢复执行载体，应以上述合同正文为上游真相

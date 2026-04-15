@@ -65,10 +65,8 @@ python3 toolchain/scripts/deploy/adapter_deploy.py
 
 - `product/*/adapters/<backend>/skills/`
 
-当前 source 只包括：
-
-- `product/memory-side/adapters/<backend>/skills/`
-- `product/task-interface/adapters/<backend>/skills/`
+当前仓库不再保留 `product/memory-side/` 与 `product/task-interface/` 的 adapter source tree。
+如果后续恢复可部署 source，应在新的 `product/harness/adapters/<backend>/skills/` 或其他已准入目录下落地，并同步更新本页。
 
 ## 五、首次安装最小步骤
 

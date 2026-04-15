@@ -22,8 +22,6 @@ REQUIRED_TEMPLATE_PATHS = [
 REQUIRED_HANDOFF_LINKS = {
     "product/README.md": [
         "product/harness/README.md",
-        "product/memory-side/README.md",
-        "product/task-interface/README.md",
     ],
     "toolchain/toolchain-layering.md": [
         "toolchain/scripts/README.md",
@@ -48,11 +46,6 @@ REQUIRED_HANDOFF_LINKS = {
         "docs/harness/adjacent-systems/memory-side/overview.md",
         "docs/harness/adjacent-systems/memory-side/layer-boundary.md",
         "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
-    ],
-    "docs/deployable-skills/README.md": [
-        "docs/harness/README.md",
-        "docs/deployable-skills/memory-side/README.md",
-        "docs/deployable-skills/task-interface/README.md",
     ],
     "docs/harness/adjacent-systems/memory-side/context-routing.md": [
         "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md",
@@ -88,10 +81,7 @@ OUTDATED_PLACEHOLDER_PHRASES = {
 CANONICAL_SKILL_GLOBS = [
     "product/*/skills/*/SKILL.md",
 ]
-ADAPTER_SKILL_GLOBS = [
-    "product/memory-side/adapters/*/skills/*/SKILL.md",
-    "product/task-interface/adapters/*/skills/*/SKILL.md",
-]
+ADAPTER_SKILL_GLOBS = []
 CANONICAL_SKILL_REQUIRED_HEADINGS = [
     "## Overview",
     "## When To Use",
@@ -114,14 +104,7 @@ THIN_WRAPPER_FORBIDDEN_HEADINGS = [
     "## Execution Rules",
     "## Output Contract",
 ]
-CANONICAL_ENTRYPOINT_REQUIRED_LINKS = {
-    "product/memory-side/skills/context-routing-skill/references/entrypoints.md": [
-        "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md",
-    ],
-    "product/memory-side/skills/writeback-cleanup-skill/references/entrypoints.md": [
-        "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md",
-    ],
-}
+CANONICAL_ENTRYPOINT_REQUIRED_LINKS = {}
 
 
 @dataclass
@@ -284,7 +267,7 @@ def check_canonical_skill_packages_are_minimal(repo_root: Path, report: Semantic
 def check_adapter_wrappers_are_thin(repo_root: Path, report: SemanticReport) -> None:
     adapter_files = iter_adapter_skill_files(repo_root)
     if not adapter_files:
-        report.add_failure("missing adapter wrapper skills under product/*/adapters/*/skills/*/SKILL.md")
+        report.add_info("checked 0 adapter wrappers for thin-shell structure")
         return
 
     checked = 0

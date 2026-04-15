@@ -15,11 +15,9 @@ last_verified: 2026-04-14
 
 ## 一、为什么要拆
 
-当前仓库里同时存在四类对象：
+当前仓库里当前主要存在三类对象，以及一层 repo-local 挂载：
 
 - 定义 `Memory Side` 通用边界的知识文档
-- 定义 canonical skill 的业务源码
-- 定义后端 adapter 的业务源码
 - repo-local `.agents/`、`.claude/`、`.opencode/` 下的部署结果与评测资产
 
 如果这几类对象继续混写，后续开发很容易出现下面几种问题：
@@ -29,7 +27,7 @@ last_verified: 2026-04-14
 - 把本仓库目录结构误当成其他仓库的默认前提
 - 把本仓库评测基线误当成跨仓库通用验收标准
 
-## 二、四层主体 + 一层挂载
+## 二、三层主体 + 一层挂载
 
 ### 1. 通用合同层
 
@@ -56,12 +54,10 @@ last_verified: 2026-04-14
 - 把通用合同变成可部署的 skill 与 adapter 源码
 - 作为实际实现的 source of truth
 
-当前属于这一层的内容：
+当前状态：
 
-- `product/memory-side/skills/`
-- `product/memory-side/adapters/agents/`
-- `product/memory-side/adapters/claude/`
-- `product/memory-side/adapters/opencode/`
+- 当前仓库已移除 `product/memory-side/` 对应的源码树
+- 如果未来恢复 executable source，应继续落在 `product/`，而不是写回 repo-local deploy target
 
 硬要求：
 
@@ -122,8 +118,7 @@ last_verified: 2026-04-14
 
 1. [Memory Side 总览](./overview.md)
 2. [Memory Side Skill 与 Agent 模型](./skill-agent-model.md)
-3. `product/memory-side/skills/`
-4. `product/memory-side/adapters/`
+3. 确认当前仓库是否重新准入了 `product/` 下的对应源码层
 
 ### 3. 需要在本仓库部署或维护时
 
@@ -131,10 +126,9 @@ last_verified: 2026-04-14
 
 1. [Memory Side 总览](./overview.md)
 2. [Memory Side Skill 与 Agent 模型](./skill-agent-model.md)
-3. `product/memory-side/skills/`
-4. `docs/project-maintenance/usage-help/`
-5. `toolchain/scripts/`
-6. `.agents/skills/`、`.claude/skills/` 或 `.opencode/skills/`
+3. `docs/project-maintenance/usage-help/`
+4. `toolchain/scripts/`
+5. `.agents/skills/`、`.claude/skills/` 或 `.opencode/skills/`
 
 ## 四、措辞规范
 

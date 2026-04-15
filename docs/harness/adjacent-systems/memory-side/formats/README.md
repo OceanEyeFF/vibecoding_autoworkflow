@@ -9,5 +9,4 @@
 
 迁移说明：
 
-- legacy wrapper 仍保留在 [../../../../deployable-skills/memory-side/formats/README.md](../../../../deployable-skills/memory-side/formats/README.md)
-- `product/memory-side/*` 的 canonical executable source 现在应优先引用本目录
+- 当前仓库不再保留 `product/memory-side/*` 的 executable source tree；本目录只承接合同格式本体

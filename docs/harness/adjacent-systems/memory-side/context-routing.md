@@ -71,4 +71,3 @@ last_verified: 2026-04-14
 
 - [Context Routing 分流规则](./context-routing-rules.md)
 - [Context Routing 输出格式](./formats/context-routing-output-format.md)
-- [context-routing-skill/SKILL.md](../../../../product/memory-side/skills/context-routing-skill/SKILL.md)

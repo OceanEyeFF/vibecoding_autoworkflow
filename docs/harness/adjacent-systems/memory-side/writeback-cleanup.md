@@ -72,4 +72,3 @@ last_verified: 2026-04-14
 
 - [Writeback & Cleanup 回写规则](./writeback-cleanup-rules.md)
 - [Writeback & Cleanup 输出格式](./formats/writeback-cleanup-output-format.md)
-- [writeback-cleanup-skill/SKILL.md](../../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md)

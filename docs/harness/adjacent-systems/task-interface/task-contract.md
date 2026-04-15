@@ -55,13 +55,12 @@ last_verified: 2026-04-14
 当前仓库中，`Task Contract` 由两类载体承载：
 
 - `docs/harness/adjacent-systems/task-interface/task-contract.md`
-- `product/task-interface/skills/task-contract-skill/`
 
 说明：
 
 - 本文负责固定结构与字段约束
-- canonical skill package 负责把同一结构变成可直接调用的稳定能力
-- 两者都属于 `Task Interface`，不属于 `Memory Side`
+- 当前仓库不再保留对应 canonical skill package
+- 如果未来恢复执行载体，它仍属于 `Task Interface`，不属于 `Memory Side`
 - Harness 可以消费这份基线，但不能把它改写成自己的 truth
 
 ## 六、固定输出结构
@@ -108,15 +107,6 @@ docs/harness/
 
 docs/project-maintenance/
   usage-help/  # repo-local backend usage help
-
-product/
-  task-interface/
-    skills/
-      task-contract-skill/
-    adapters/
-      agents/
-      claude/
-      opencode/
 ```
 
 ## 九、判断标准
@@ -131,8 +121,6 @@ product/
 ## 十、相关文档
 
 - [根目录分层](../../../project-maintenance/foundations/root-directory-layering.md)
-- [task-contract-skill/SKILL.md](../../../../product/task-interface/skills/task-contract-skill/SKILL.md)
-- [task-contract-skill/references/entrypoints.md](../../../../product/task-interface/skills/task-contract-skill/references/entrypoints.md)
 - [Usage Help 总入口](../../../project-maintenance/usage-help/README.md)
 - [Codex Repo-local Usage Help](../../../project-maintenance/usage-help/codex.md)
 - [Claude Repo-local Usage Help](../../../project-maintenance/usage-help/claude.md)

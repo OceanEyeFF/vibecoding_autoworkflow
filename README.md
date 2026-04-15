@@ -62,9 +62,10 @@ last_verified: 2026-04-14
 - [`docs/harness/adjacent-systems/memory-side/overview.md`](./docs/harness/adjacent-systems/memory-side/overview.md)
 - [`docs/harness/adjacent-systems/memory-side/skill-agent-model.md`](./docs/harness/adjacent-systems/memory-side/skill-agent-model.md)
 
-对应源码入口：
+当前仓库状态：
 
-- [`product/memory-side/`](./product/memory-side/README.md)
+- `Memory Side` 目前只保留在 `docs/harness/adjacent-systems/memory-side/` 的合同层
+- repo 内不再保留独立的 `product/memory-side/` 源码树
 
 ### 2. Task Interface
 
@@ -74,9 +75,10 @@ last_verified: 2026-04-14
 
 - [`docs/harness/adjacent-systems/task-interface/task-contract.md`](./docs/harness/adjacent-systems/task-interface/task-contract.md)
 
-对应源码入口：
+当前仓库状态：
 
-- [`product/task-interface/`](./product/task-interface/README.md)
+- `Task Interface` 目前只保留在 `docs/harness/adjacent-systems/task-interface/` 的合同层
+- repo 内不再保留独立的 `product/task-interface/` 源码树
 
 ### 3. Harness Doctrine
 

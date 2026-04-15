@@ -14,7 +14,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 AGENTS_CONTRACT_DOC = "AGENTS.md"
 PROJECT_MAINTENANCE_README = "docs/project-maintenance/README.md"
 HARNESS_README = "docs/harness/README.md"
-DEPLOYABLE_SKILLS_README = "docs/deployable-skills/README.md"
 DEFAULT_SCAN_PATHS = [
     "README.md",
     "INDEX.md",
@@ -40,6 +39,11 @@ REQUIRED_ENTRY_PATHS = [
     "docs/harness/foundations/Harness运行协议.md",
     "docs/harness/scope/README.md",
     "docs/harness/artifact/README.md",
+    "docs/harness/Skills/README.md",
+    "docs/harness/Skills/catalog/README.md",
+    "docs/harness/Skills/catalog/supervisor.md",
+    "docs/harness/Skills/catalog/repo.md",
+    "docs/harness/Skills/catalog/worktrack.md",
     "docs/harness/artifact/repo/README.md",
     "docs/harness/artifact/repo/goal-charter.md",
     "docs/harness/artifact/repo/snapshot-status.md",
@@ -72,9 +76,6 @@ REQUIRED_ENTRY_PATHS = [
     "docs/project-maintenance/deploy/README.md",
     "docs/project-maintenance/usage-help/README.md",
     "docs/project-maintenance/governance/path-governance-checks.md",
-    DEPLOYABLE_SKILLS_README,
-    "docs/deployable-skills/memory-side/README.md",
-    "docs/deployable-skills/task-interface/README.md",
     "docs/autoresearch/README.md",
     "docs/autoresearch/knowledge/README.md",
     "docs/autoresearch/references/README.md",
@@ -86,12 +87,6 @@ REQUIRED_ENTRY_PATHS = [
     "product/harness/skills/README.md",
     "product/harness/adapters/README.md",
     "product/harness/manifests/README.md",
-    "product/memory-side/README.md",
-    "product/memory-side/skills/README.md",
-    "product/memory-side/adapters/README.md",
-    "product/task-interface/README.md",
-    "product/task-interface/skills/README.md",
-    "product/task-interface/adapters/README.md",
     "toolchain/README.md",
     "toolchain/scripts/README.md",
     "toolchain/scripts/test/README.md",
@@ -107,7 +102,6 @@ AGENTS_CONTRACT_BACKLINK_PATHS = [
     "docs/README.md",
     PROJECT_MAINTENANCE_README,
     HARNESS_README,
-    DEPLOYABLE_SKILLS_README,
     "docs/project-maintenance/foundations/README.md",
     "docs/autoresearch/README.md",
     "docs/project-maintenance/governance/path-governance-checks.md",
@@ -132,16 +126,27 @@ ENTRYPOINT_LINK_RULES = {
     "docs/README.md": [
         PROJECT_MAINTENANCE_README,
         HARNESS_README,
-        DEPLOYABLE_SKILLS_README,
         "docs/autoresearch/README.md",
     ],
     HARNESS_README: [
         "docs/harness/foundations/README.md",
         "docs/harness/scope/README.md",
         "docs/harness/artifact/README.md",
+        "docs/harness/Skills/README.md",
         "docs/harness/adjacent-systems/README.md",
         "docs/harness/workflow-families/README.md",
         AGENTS_CONTRACT_DOC,
+    ],
+    "docs/harness/Skills/README.md": [
+        "docs/harness/Skills/catalog/README.md",
+        "docs/harness/foundations/Harness指导思想.md",
+        "docs/harness/foundations/Harness运行协议.md",
+        "product/harness/skills/README.md",
+    ],
+    "docs/harness/Skills/catalog/README.md": [
+        "docs/harness/Skills/catalog/supervisor.md",
+        "docs/harness/Skills/catalog/repo.md",
+        "docs/harness/Skills/catalog/worktrack.md",
     ],
     "docs/harness/foundations/README.md": [
         "docs/harness/foundations/Harness指导思想.md",
@@ -176,9 +181,6 @@ ENTRYPOINT_LINK_RULES = {
     ],
     "docs/harness/adjacent-systems/task-interface/README.md": [
         "docs/harness/adjacent-systems/task-interface/task-contract.md",
-        "product/task-interface/README.md",
-        "product/task-interface/skills/README.md",
-        "product/task-interface/skills/task-contract-skill/SKILL.md",
     ],
     "docs/harness/adjacent-systems/memory-side/README.md": [
         "docs/harness/adjacent-systems/memory-side/overview.md",
@@ -190,11 +192,6 @@ ENTRYPOINT_LINK_RULES = {
         "docs/harness/adjacent-systems/memory-side/writeback-cleanup-rules.md",
         "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
         "docs/harness/adjacent-systems/memory-side/formats/README.md",
-        "product/memory-side/README.md",
-        "product/memory-side/skills/README.md",
-        "product/memory-side/skills/knowledge-base-skill/SKILL.md",
-        "product/memory-side/skills/context-routing-skill/SKILL.md",
-        "product/memory-side/skills/writeback-cleanup-skill/SKILL.md",
     ],
     "docs/harness/adjacent-systems/memory-side/formats/README.md": [
         "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md",
@@ -252,43 +249,12 @@ ENTRYPOINT_LINK_RULES = {
     ],
     "product/README.md": [
         "product/harness/README.md",
-        "product/memory-side/README.md",
-        "product/task-interface/README.md",
     ],
     "product/harness/README.md": [
         "docs/harness/README.md",
         "product/harness/skills/README.md",
         "product/harness/adapters/README.md",
         "product/harness/manifests/README.md",
-    ],
-    DEPLOYABLE_SKILLS_README: [
-        HARNESS_README,
-        "docs/deployable-skills/memory-side/README.md",
-        "docs/deployable-skills/task-interface/README.md",
-        AGENTS_CONTRACT_DOC,
-    ],
-    "docs/deployable-skills/memory-side/README.md": [
-        "docs/harness/adjacent-systems/memory-side/README.md",
-        "docs/deployable-skills/memory-side/overview.md",
-        "docs/deployable-skills/memory-side/layer-boundary.md",
-        "docs/deployable-skills/memory-side/knowledge-base.md",
-        "docs/deployable-skills/memory-side/context-routing.md",
-        "docs/deployable-skills/memory-side/context-routing-rules.md",
-        "docs/deployable-skills/memory-side/writeback-cleanup.md",
-        "docs/deployable-skills/memory-side/writeback-cleanup-rules.md",
-        "docs/deployable-skills/memory-side/skill-agent-model.md",
-        "docs/deployable-skills/memory-side/formats/context-routing-output-format.md",
-        "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md",
-        "product/memory-side/skills/README.md",
-        "product/memory-side/skills/knowledge-base-skill/SKILL.md",
-        "product/memory-side/skills/context-routing-skill/SKILL.md",
-        "product/memory-side/skills/writeback-cleanup-skill/SKILL.md",
-    ],
-    "docs/deployable-skills/task-interface/README.md": [
-        "docs/harness/adjacent-systems/task-interface/README.md",
-        "docs/deployable-skills/task-interface/task-contract.md",
-        "product/task-interface/skills/README.md",
-        "product/task-interface/skills/task-contract-skill/SKILL.md",
     ],
 }
 REQUIRED_GITIGNORE_ENTRIES = [
@@ -308,7 +274,6 @@ FRONTMATTER_REQUIRED_KEYS = [
 STATUS_RULES = [
     ("docs/project-maintenance/", {"active", "draft", "superseded"}),
     ("docs/harness/", {"active", "draft", "superseded"}),
-    ("docs/deployable-skills/", {"active", "draft", "superseded"}),
     ("docs/autoresearch/", {"active", "draft", "superseded"}),
 ]
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")

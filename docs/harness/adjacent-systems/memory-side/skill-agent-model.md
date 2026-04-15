@@ -69,14 +69,13 @@ last_verified: 2026-04-14
 
 - `docs/harness/adjacent-systems/memory-side/` 下的基线、规则、格式和模型说明
 
-### 2. 业务源码层
+### 2. 可执行源码层
 
-包括：
+说明：
 
-- `product/memory-side/skills/` 下的 canonical skill 源码
-- `product/memory-side/adapters/agents/` 下的 Codex / OpenAI adapter 源码
-- `product/memory-side/adapters/claude/` 下的 Claude adapter 源码
-- `product/memory-side/adapters/opencode/` 下的 OpenCode adapter 源码
+- 这层在概念上仍然存在
+- 但当前仓库已不再保留 `product/memory-side/` 与 `product/task-interface/` 的对应源码树
+- 如果未来重新引入 executable source，仍应回到 `product/`，而不是写进 deploy target 或 docs
 
 ### 3. 部署结果层
 
@@ -149,54 +148,18 @@ last_verified: 2026-04-14
 - `Route Card`
 - `Writeback Card`
 
-当前仓库还提供一个 `Task Interface` 层的直接调用载体：
-
-- `product/task-interface/skills/task-contract-skill/`
-- `product/task-interface/adapters/agents/skills/task-contract-skill/`
-- `product/task-interface/adapters/claude/skills/task-contract-skill/`
-- `product/task-interface/adapters/opencode/skills/task-contract-skill/`
-
-但这些 caller 的命名和编排方式不属于当前仓库知识主线。
+当前仓库不再保留 `Task Interface` 的直接 product 调用载体；若未来恢复，也只应作为合同正文的下游实现。
 
 ## 六、当前仓库中的落点
 
-### 1. Canonical skill 源码
+### 1. 合同与模型正文
 
-```text
-product/
-  memory-side/
-    skills/
-      knowledge-base-skill/
-      context-routing-skill/
-      writeback-cleanup-skill/
-```
+当前仓库保留：
 
-当前入口：
+- `docs/harness/adjacent-systems/memory-side/` 下的合同正文
+- `docs/harness/adjacent-systems/task-interface/` 下的任务接口合同
 
-- [knowledge-base-skill/SKILL.md](../../../../product/memory-side/skills/knowledge-base-skill/SKILL.md)
-- [context-routing-skill/SKILL.md](../../../../product/memory-side/skills/context-routing-skill/SKILL.md)
-- [writeback-cleanup-skill/SKILL.md](../../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md)
-
-### 2. Backend adapter 源码
-
-```text
-product/
-  memory-side/
-    adapters/
-      agents/
-        skills/
-      claude/
-        skills/
-      opencode/
-        skills/
-```
-
-说明：
-
-- adapter 源码也在 `product/`
-- 这样本地测试、全局安装、后续市场分发都可以共用一套 source
-
-### 3. Repo-local deploy target
+### 2. Repo-local deploy target
 
 ```text
 .agents/
@@ -215,7 +178,7 @@ product/
 - 它们通过 `toolchain/scripts/deploy/adapter_deploy.py` 从 `product/` 同步
 - 不应再手工维护源码
 
-### 4. Toolchain
+### 3. Toolchain
 
 ```text
 toolchain/
@@ -254,10 +217,6 @@ toolchain/
 ## 九、配套文档
 
 - [Memory Side 层级边界](./layer-boundary.md)
-- [product/memory-side/skills/README.md](../../../../product/memory-side/skills/README.md)
-- [knowledge-base-skill/SKILL.md](../../../../product/memory-side/skills/knowledge-base-skill/SKILL.md)
-- [context-routing-skill/SKILL.md](../../../../product/memory-side/skills/context-routing-skill/SKILL.md)
-- [writeback-cleanup-skill/SKILL.md](../../../../product/memory-side/skills/writeback-cleanup-skill/SKILL.md)
 - [Usage Help 总入口](../../../project-maintenance/usage-help/README.md)
 - [Codex Repo-local Usage Help](../../../project-maintenance/usage-help/codex.md)
 - [Claude Repo-local Usage Help](../../../project-maintenance/usage-help/claude.md)

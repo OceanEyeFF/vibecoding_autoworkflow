@@ -5,8 +5,6 @@
 当前主线包括：
 
 - [harness/README.md](./harness/README.md)：`Harness` 的最小可执行源码根，承接后续 `operator -> skill -> subagent` 实现层
-- [memory-side/README.md](./memory-side/README.md)：作为 Harness adjacent system 保留独立源码根
-- [task-interface/README.md](./task-interface/README.md)：作为 Harness adjacent system 保留独立源码根
 
 受控辅助层：
 
@@ -14,6 +12,7 @@
 
 `docs/harness/` 继续承接 Harness doctrine 与运行协议真相层。
 `product/harness/` 只承接新的 Harness executable source，不等于回填旧 `product/harness-operations/`。
+`memory-side` 与 `task-interface` 当前只保留在 `docs/harness/adjacent-systems/` 的合同层，不再保留 repo 内独立源码根。
 
 规则：
 

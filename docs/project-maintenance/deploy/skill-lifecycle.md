@@ -37,7 +37,6 @@ last_verified: 2026-04-14
 - source of truth 在 `product/`
 - deploy target 在 `.agents/`、`.claude/`、`.opencode/` 或对应 global roots
 - `docs/harness/` 负责 Harness-first doctrine、workflow family 与 adjacent-system 主入口
-- `docs/deployable-skills/` 只保留迁移期兼容入口与 legacy asset 文档，不替代源码
 - `usage-help/` 只补 backend 特有差异，不重复通用 deploy 流程
 
 因此：
@@ -49,10 +48,8 @@ last_verified: 2026-04-14
 
 - `product/<partition>/adapters/<backend>/skills/<skill>/`
 
-当前仓库只保留两个可部署 partition：
-
-- `memory-side`
-- `task-interface`
+当前仓库当前保留的 executable source 只在 `product/harness/`。
+如果未来恢复新的 adapter source，仍应落在 `product/<partition>/adapters/<backend>/skills/` 的准入路径下。
 
 因此当你修改 skill 时：
 
@@ -136,7 +133,6 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend <backend>
 还需要同步更新：
 
 - `docs/harness/` 对应入口
-- 迁移期若仍涉及 legacy path，再同步 `docs/deployable-skills/` 对应入口
 - `docs/project-maintenance/deploy/` 对应入口
 - 必要时对应 backend 的 `usage-help`
 

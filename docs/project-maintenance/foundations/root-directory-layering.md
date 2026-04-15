@@ -64,7 +64,7 @@ last_verified: 2026-04-15
 - 只允许 `README.md`、`@docs`、`@skills`。
 - `@docs` 与 `@skills` 必须是 symlink。
 - `@docs` 必须解析到 `docs/`。
-- `@skills` 必须解析到 `product/memory-side/skills/`。
+- `@skills` 必须解析到 `product/harness/skills/`。
 
 ### 5. `.pytest_cache/`
 
@@ -88,19 +88,15 @@ last_verified: 2026-04-15
 
 - `project-maintenance/`
 - `harness/`
-- `deployable-skills/`（迁移期兼容层）
 - `autoresearch/`
 
 其中：
 
 - `docs/harness/` 是 Harness-first 主线
-- `docs/deployable-skills/` 只保留兼容导航与 legacy asset 承接位
 
 `product/` 当前一级源码根包括：
 
 - `harness/`
-- `memory-side/`
-- `task-interface/`
 
 `product/` 下还允许一个受控辅助层：
 

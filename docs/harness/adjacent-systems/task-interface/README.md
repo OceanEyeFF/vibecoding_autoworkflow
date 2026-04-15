@@ -5,11 +5,9 @@
 当前入口：
 
 - [task-contract.md](./task-contract.md)
-- [../../../../product/task-interface/README.md](../../../../product/task-interface/README.md)
-- [../../../../product/task-interface/skills/README.md](../../../../product/task-interface/skills/README.md)
-- [../../../../product/task-interface/skills/task-contract-skill/SKILL.md](../../../../product/task-interface/skills/task-contract-skill/SKILL.md)
 
-迁移说明：
+当前边界：
 
-- legacy 路径仍保留在 [../../../deployable-skills/task-interface/README.md](../../../deployable-skills/task-interface/README.md)
-- 新的 Harness-first 阅读入口以本目录为准
+- `Task Interface` 在当前仓库只保留合同正文
+- 本仓库当前不再保留 `product/task-interface/` 对应的 executable source tree
+- 如果未来重新引入执行载体，应以本目录合同正文为上游真相
