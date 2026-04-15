@@ -32,9 +32,14 @@ last_verified: 2026-04-15
 - `Plan / Task Queue`
 - `Harness Control State`
 
+canonical executable source：
+
+- [../../../../product/harness/skills/init-worktrack-skill/SKILL.md](../../../../product/harness/skills/init-worktrack-skill/SKILL.md)
+- [../../../../product/harness/skills/init-worktrack-skill/references/entrypoints.md](../../../../product/harness/skills/init-worktrack-skill/references/entrypoints.md)
+
 当前状态：
 
-- `draft catalog target`
+- `initial canonical executable skeleton landed`
 
 ### 2. schedule-worktrack-skill
 
@@ -49,9 +54,14 @@ last_verified: 2026-04-15
 - `Plan / Task Queue`
 - `Gate Evidence`
 
+canonical executable source：
+
+- [../../../../product/harness/skills/schedule-worktrack-skill/SKILL.md](../../../../product/harness/skills/schedule-worktrack-skill/SKILL.md)
+- [../../../../product/harness/skills/schedule-worktrack-skill/references/entrypoints.md](../../../../product/harness/skills/schedule-worktrack-skill/references/entrypoints.md)
+
 当前状态：
 
-- `draft catalog target`
+- `initial canonical executable skeleton landed`
 
 ### 3. dispatch-skills
 
@@ -71,9 +81,47 @@ last_verified: 2026-04-15
 - `Harness Control State`
 - 当前任务相关的最小上下文
 
+dispatch contract：
+
+- `Dispatch Task Brief`
+  - `task`
+  - `goal`
+  - `in_scope`
+  - `out_of_scope`
+  - `constraints`
+  - `verification_requirements`
+  - `done_signal`
+- `Dispatch Info Packet`
+  - `current_worktrack_state`
+  - `relevant_artifacts`
+  - `required_context`
+  - `known_risks`
+  - `executor_candidates`
+  - `fallback_reason`
+- `Dispatch Result`
+  - `selected_executor`
+  - `selection_reason`
+  - `fallback_used`
+  - `actions_taken`
+  - `files_touched_or_expected`
+  - `evidence_collected`
+  - `open_issues`
+  - `recommended_next_action`
+
+选择规则：
+
+- 只有在专门 skill 对当前 work item 有清晰语义贴合时，才优先绑定该 skill
+- 没有清晰贴合的专门 skill 时，必须 fallback 到通用任务完成 `SubAgent`
+- fallback 不得扩大 scope，也不得绕过 `verification_requirements`
+
+canonical executable source：
+
+- [../../../../product/harness/skills/dispatch-skills/SKILL.md](../../../../product/harness/skills/dispatch-skills/SKILL.md)
+- [../../../../product/harness/skills/dispatch-skills/references/entrypoints.md](../../../../product/harness/skills/dispatch-skills/references/entrypoints.md)
+
 当前状态：
 
-- `draft catalog target`
+- `initial canonical executable skeleton landed`
 
 ### 4. review-evidence-skill
 
@@ -86,9 +134,14 @@ last_verified: 2026-04-15
 
 - `Gate Evidence`
 
+canonical executable source：
+
+- [../../../../product/harness/skills/review-evidence-skill/SKILL.md](../../../../product/harness/skills/review-evidence-skill/SKILL.md)
+- [../../../../product/harness/skills/review-evidence-skill/references/entrypoints.md](../../../../product/harness/skills/review-evidence-skill/references/entrypoints.md)
+
 当前状态：
 
-- `draft catalog target`
+- `initial canonical executable skeleton landed`
 
 ### 5. test-evidence-skill
 
@@ -102,9 +155,14 @@ last_verified: 2026-04-15
 - `Gate Evidence`
 - `Worktrack Contract`
 
+canonical executable source：
+
+- [../../../../product/harness/skills/test-evidence-skill/SKILL.md](../../../../product/harness/skills/test-evidence-skill/SKILL.md)
+- [../../../../product/harness/skills/test-evidence-skill/references/entrypoints.md](../../../../product/harness/skills/test-evidence-skill/references/entrypoints.md)
+
 当前状态：
 
-- `draft catalog target`
+- `initial canonical executable skeleton landed`
 
 ### 6. rule-check-skill
 
@@ -118,9 +176,14 @@ last_verified: 2026-04-15
 - `Gate Evidence`
 - repo governance rules
 
+canonical executable source：
+
+- [../../../../product/harness/skills/rule-check-skill/SKILL.md](../../../../product/harness/skills/rule-check-skill/SKILL.md)
+- [../../../../product/harness/skills/rule-check-skill/references/entrypoints.md](../../../../product/harness/skills/rule-check-skill/references/entrypoints.md)
+
 当前状态：
 
-- `draft catalog target`
+- `initial canonical executable skeleton landed`
 
 ### 7. gate-skill
 
@@ -133,9 +196,14 @@ last_verified: 2026-04-15
 
 - `Gate Evidence`
 
+canonical executable source：
+
+- [../../../../product/harness/skills/gate-skill/SKILL.md](../../../../product/harness/skills/gate-skill/SKILL.md)
+- [../../../../product/harness/skills/gate-skill/references/entrypoints.md](../../../../product/harness/skills/gate-skill/references/entrypoints.md)
+
 当前状态：
 
-- `draft catalog target`
+- `initial canonical executable skeleton landed`
 
 ### 8. recover-worktrack-skill
 
@@ -149,9 +217,14 @@ last_verified: 2026-04-15
 - `Plan / Task Queue`
 - `Harness Control State`
 
+canonical executable source：
+
+- [../../../../product/harness/skills/recover-worktrack-skill/SKILL.md](../../../../product/harness/skills/recover-worktrack-skill/SKILL.md)
+- [../../../../product/harness/skills/recover-worktrack-skill/references/entrypoints.md](../../../../product/harness/skills/recover-worktrack-skill/references/entrypoints.md)
+
 当前状态：
 
-- `draft catalog target`
+- `initial canonical executable skeleton landed`
 
 ### 9. close-worktrack-skill
 
@@ -165,6 +238,11 @@ last_verified: 2026-04-15
 - `Gate Evidence`
 - `Harness Control State`
 
+canonical executable source：
+
+- [../../../../product/harness/skills/close-worktrack-skill/SKILL.md](../../../../product/harness/skills/close-worktrack-skill/SKILL.md)
+- [../../../../product/harness/skills/close-worktrack-skill/references/entrypoints.md](../../../../product/harness/skills/close-worktrack-skill/references/entrypoints.md)
+
 当前状态：
 
-- `draft catalog target`
+- `initial canonical executable skeleton landed`

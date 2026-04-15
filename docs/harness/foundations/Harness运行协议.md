@@ -278,6 +278,37 @@ last_verified: 2026-04-15
 - fallback 仍然必须保持 bounded task、最小信息包和 evidence 回传
 
 也就是说，系统不应把“没有专门 skill”解释成“不能继续执行”；它只意味着本轮应退化到通用任务完成执行体。
+
+无论命中专门 skill 还是 fallback 到通用 `SubAgent`，`dispatch-skills` 都必须保持同一套最小 dispatch contract：
+
+- `Dispatch Task Brief`
+  - `task`
+  - `goal`
+  - `in_scope`
+  - `out_of_scope`
+  - `constraints`
+  - `verification_requirements`
+  - `done_signal`
+- `Dispatch Info Packet`
+  - `current_worktrack_state`
+  - `relevant_artifacts`
+  - `required_context`
+  - `known_risks`
+  - `executor_candidates`
+  - `fallback_reason`
+- `Dispatch Result`
+  - `selected_executor`
+  - `actions_taken`
+  - `files_touched_or_expected`
+  - `evidence_collected`
+  - `open_issues`
+  - `recommended_next_action`
+
+补充约束：
+
+- `Dispatch Task Brief` 是面向当前 round 的 bounded execution contract，不替代上游 `Task Contract`
+- `Dispatch Info Packet` 只允许携带本轮必需上下文，不应退化成“把整个 repo 扔给 subagent”
+- fallback 到通用 `SubAgent` 时，输入输出结构不得放宽；变化的只是执行载体，不是控制边界
 - `Skill` 回答“在当前 backend / agent 环境里，哪个执行单元来实现这个控制动作”
 
 因此，在 `Codex` 内部，真正被调度的是 `Skills`；但在 doctrine 层，仍应先保留 `Function` 这个更稳定的协议抽象。

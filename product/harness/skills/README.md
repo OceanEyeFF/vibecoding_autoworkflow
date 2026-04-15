@@ -4,7 +4,23 @@
 
 当前阶段：
 
-- 首个目标是 [harness-skill/](./harness-skill/)：顶层 supervisor 入口
+- 已落地的顶层入口是 [harness-skill/](./harness-skill/)：top-level supervisor
+- 已落地的 dispatch 入口是 [dispatch-skills/](./dispatch-skills/)：`WorktrackScope` 下的 bounded dispatch 与 fallback subagent
+- 已落地的 `RepoScope` skill skeleton：
+  - [repo-status-skill/](./repo-status-skill/)
+  - [repo-whats-next-skill/](./repo-whats-next-skill/)
+  - [goal-change-control-skill/](./goal-change-control-skill/)
+  - [repo-refresh-skill/](./repo-refresh-skill/)
+- 已落地的 `WorktrackScope` skill skeleton：
+  - [init-worktrack-skill/](./init-worktrack-skill/)
+  - [schedule-worktrack-skill/](./schedule-worktrack-skill/)
+  - [review-evidence-skill/](./review-evidence-skill/)
+  - [test-evidence-skill/](./test-evidence-skill/)
+  - [rule-check-skill/](./rule-check-skill/)
+  - [gate-skill/](./gate-skill/)
+  - [recover-worktrack-skill/](./recover-worktrack-skill/)
+  - [close-worktrack-skill/](./close-worktrack-skill/)
+- 上游 skill catalog 见 [../../../docs/harness/Skills/README.md](../../../docs/harness/Skills/README.md)
 - 后续新增内容应从 `docs/harness/` 的 operator / workflow / governance truth 反推
 - 不应先复制旧 prompt，再反向让它生长 ontology
 
