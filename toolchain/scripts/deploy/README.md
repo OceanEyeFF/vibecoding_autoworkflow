@@ -4,22 +4,19 @@
 
 当前主线：
 
-- `adapter_deploy.py`：构建并部署 `product/` 下的 adapter 源码到 repo-local mount 或全局技能目录，并提供 deploy target 校验与清理能力
+- `adapter_deploy.py`：激活并复验当前 `agents` runtime target root
 
 最小维护流：
 
-1. 先跑 `sync verify`
-2. 再跑 `local` 或 `global` 部署
-3. 最后再跑一次 `sync verify`
-4. 如 backend 支持，再补 `smoke verify`
+1. 先跑 `verify`
+2. 再跑 `local` 或 `global` endpoint
+3. 最后再跑一次 `verify`
 
 额外说明：
 
-- `sync verify` 由 `adapter_deploy.py verify` 提供，用于检查缺失 mount、陈旧 target、坏链路、错误路径类型和全局 copy 的内容漂移
-- `smoke verify` 是 backend-specific 的最小可用性确认，不属于 deploy 脚本本身
-- 当前 `smoke verify` 只对 `agents` 与 `claude` 建立口径，`opencode` 仍停在 `sync verify`
-- `--prune` 用于在部署时清理已经没有 source 对应关系的 target
-- 该目录只负责部署维护，不负责 research runner
+- `verify` 由 `adapter_deploy.py verify` 提供，用于检查缺失 root、错误路径类型和坏链路
+- 当前接口只实现 `agents`
+- `claude` 与 `opencode` 后续如需恢复，应先重定义 contract 再实现
 
 回归测试入口：
 
@@ -29,8 +26,6 @@ python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
 
 当前测试覆盖：
 
-- local / global 首次部署到空 target
-- source 更新后的重新部署
-- source 删除后的 drift 检测、`--prune` 清理与复验
-- `verify` 的 missing / unexpected / broken symlink / wrong type 结构错误
-- 现存 `memory-side` 与 `task-interface` source 的 target content 校验
+- local / global 首次激活到空 root
+- 已有 root 的重复激活
+- `verify` 的 missing / broken symlink / wrong root type 结构错误

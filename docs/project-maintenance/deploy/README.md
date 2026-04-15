@@ -1,44 +1,43 @@
 # Deploy Runbooks
 
-`docs/project-maintenance/deploy/` 只保存当前仓库的 operator-facing deploy / verify / maintenance 文档。这里解释 repo-local 与 global target 怎么装、怎么复验、怎么诊断 drift，但不承接 canonical skill 合同正文，也不恢复旧 `docs/operations/*` 的 backend 分叉结构。
+`docs/project-maintenance/deploy/` 只保存当前仓库的 operator-facing deploy / verify / maintenance 文档。这里现在只解释 runtime target root 怎么激活、怎么复验、怎么诊断 root 层 drift，不承接 canonical skill 合同正文，也不定义 skills 与 `.aw_template/` 的映射结构。
 
 这里适合放：
 
-- 当前仓库的 deploy backend、target 和入口命令
-- 首次安装与已有 mounts 的最小操作路径
-- `verify`、drift、`--prune` 与 lifecycle 同步闭环
-- 当前仍存在的 canonical skill source 如何同步到 repo-local / global target
+- 当前仓库的 deploy backend、target root 和入口命令
+- runtime target root 的最小激活与复验路径
+- `verify` 与 root drift 的诊断闭环
+- 当前哪些 backend 已实现，哪些暂不实现
 
 这里不适合放：
 
 - canonical skill 真相正文
-- 按 `memory-side/`、`task-interface/` 再拆的 backend help 子树
-- 已删除 harness skill/source 的历史部署细节
+- skills 与 `.aw_template/` 的业务映射方案
+- 尚未实现 backend 的安装细节
 - research runner 或评测主流程
 
 ## 按问题进入
 
 | 你要回答什么问题 | 先看哪里 | 说明 |
 |---|---|---|
-| 我第一次给某个 backend 装 skill | [deploy-runbook.md](./deploy-runbook.md) | Quick Start，只保留首次 local/global install、target 对照和最小复验 |
-| 我已有 mounts，只想更新或复验 | [skill-deployment-maintenance.md](./skill-deployment-maintenance.md) | 按 `verify -> deploy -> verify` 做 |
-| 我看到 drift / stale / `wrong-target-type` | [skill-deployment-maintenance.md](./skill-deployment-maintenance.md) | 这里集中解释错误信号、local/global drift 口径和 `--prune` |
-| 我在新增、改名、删除 skill source | [skill-lifecycle.md](./skill-lifecycle.md) | 这里回答 source 改哪、deploy 跟什么、docs 何时同步 |
-| 我只想看 `agents / claude / opencode` 差异 | [usage-help/README.md](../usage-help/README.md) | backend-specific 页面只保留 target、smoke verify 和限制 |
+| 我第一次激活当前 runtime target root | [deploy-runbook.md](./deploy-runbook.md) | Quick Start，只保留 local/global root 激活与最小复验 |
+| 我已有 root，只想复验 | [skill-deployment-maintenance.md](./skill-deployment-maintenance.md) | 按 `verify -> endpoint -> verify` 做 |
+| 我看到 drift / `wrong-target-root-type` | [skill-deployment-maintenance.md](./skill-deployment-maintenance.md) | 这里集中解释 root 级错误信号和恢复口径 |
+| 我在改 skills 或 `.aw_template/` | [skill-lifecycle.md](./skill-lifecycle.md) | 这里说明当前 deploy 不承接这些业务变化 |
+| 我想看 backend 当前实现状态 | [deploy-runbook.md](./deploy-runbook.md) | 这里只保留 `agents` 已实现、`claude/opencode` 暂未实现的状态说明 |
 
-## 当前 source 边界
+## 当前执行边界
 
-- 当前仓库不再保留 `product/memory-side/` 与 `product/task-interface/` 的可部署 source 树
-- `docs/harness/` 继续承接 Harness doctrine；repo 内实际保留的 executable source 只在 `product/harness/`
-- `adapter_deploy.py` 的 backend/target 约定仍保留在工具层，但不应再把已删除 adjacent-system source 树当成当前前提
+- 当前 deploy 工具只实现 `agents`
+- 当前 deploy 工具只管理 target root，不复制或比对 skill 内容
+- `docs/harness/` 继续承接 Harness doctrine；deploy 文档不定义 `.aw_template/` 与 canonical skills 的最终映射关系
+- `adapter_deploy.py` 只保留 runtime endpoint，不承接 skills/source 的业务同步
 
 ## 页面职责
 
 - [deploy-runbook.md](./deploy-runbook.md)
-  quick start。回答首次安装、repo-local / global target 对照与最小复验。
+  quick start。回答首次激活、repo-local / global target 对照与最小复验。
 - [skill-lifecycle.md](./skill-lifecycle.md)
-  lifecycle。回答 add / update / rename / remove 的 source of truth、deploy follow-up 与 writeback。
+  lifecycle。回答为什么当前 deploy 不承接 add / update / rename / remove 的业务同步。
 - [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)
-  maintenance / diagnosis。回答只读 `verify`、drift 类型、`--prune` 边界，以及 local/global verify 的不同关注点。
-- `usage-help/`
-  backend-specific。只解释 `agents`、`claude`、`opencode` 的差异，不重复通用 deploy 流程。
+  maintenance / diagnosis。回答只读 `verify`、root drift 类型，以及 local/global verify 的不同关注点。
