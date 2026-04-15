@@ -3,7 +3,7 @@
 .spec-workflow/
 .exrepos/
 
-# Repo-local adapter mounts are generated from product/, never tracked.
+# Repo-local install/mount targets remain ignored by default.
 .agents/
 .claude/
 .opencode/

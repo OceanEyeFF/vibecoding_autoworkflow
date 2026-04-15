@@ -61,6 +61,11 @@ SERENA_TRACKED_ALLOWLIST = {
     ".serena/memories/Claude-Workspace-Architecture.md",
     ".serena/project.yml",
 }
+MOUNT_TRACKED_ALLOWED_PREFIXES = (
+    ".agents/skills/",
+    ".claude/skills/",
+    ".opencode/skills/",
+)
 CODEX_ALLOWED_ENTRIES = {"config.toml", "rules"}
 CODEX_RULES_ALLOWED_ENTRIES = {"repo.rules"}
 NAV_ALLOWED_ENTRIES = {"README.md", "@docs", "@skills"}
@@ -357,7 +362,12 @@ def check_tracked_exceptions(tracked_paths: set[str], report: FolderLogicReport,
                 report.add_issue("FL016", tracked_path, ".codex/ only allows the explicit tracked whitelist")
             continue
         if tracked_path.startswith((".agents/", ".claude/", ".opencode/")):
-            report.add_issue("FL007", tracked_path, "repo-local mount layers must not contain tracked content")
+            if not tracked_path.startswith(MOUNT_TRACKED_ALLOWED_PREFIXES):
+                report.add_issue(
+                    "FL007",
+                    tracked_path,
+                    "repo-local install/mount layers only allow tracked content under */skills/",
+                )
             continue
         if tracked_path.startswith(".serena/") and tracked_path not in rules.serena_tracked_allowlist:
             report.add_issue("FL008", tracked_path, ".serena/ only allows the explicit tracked whitelist")

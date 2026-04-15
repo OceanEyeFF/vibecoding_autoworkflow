@@ -196,6 +196,24 @@ def test_serena_whitelist_passes_and_non_whitelist_tracked_fails(tmp_path: Path)
     assert ".serena/cache/runtime.json" in issue_paths(report)
 
 
+def test_repo_local_skill_payloads_may_be_tracked_but_other_mount_content_still_fails(tmp_path: Path) -> None:
+    repo_root = create_valid_repo(tmp_path)
+    write_file(repo_root / ".agents/skills/demo-skill/SKILL.md", "---\nname: demo-skill\ndescription: demo\n---\n")
+    git(repo_root, "add", ".agents/skills/demo-skill/SKILL.md", force=True)
+
+    allowed_report = run_checks(repo_root)
+
+    assert "FL007" not in issue_codes(allowed_report)
+
+    write_file(repo_root / ".agents/runtime.json", "{}\n")
+    git(repo_root, "add", ".agents/runtime.json", force=True)
+
+    blocked_report = run_checks(repo_root)
+
+    assert "FL007" in issue_codes(blocked_report)
+    assert ".agents/runtime.json" in issue_paths(blocked_report)
+
+
 def test_first_level_allowlist_drift_fails(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
     (repo_root / "toolchain/misc").mkdir()

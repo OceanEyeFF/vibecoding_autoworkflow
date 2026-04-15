@@ -44,6 +44,7 @@ last_verified: 2026-04-14
 - 改 skill 内容时先改 `product/`
 - 只有 deploy 后，repo-local / global target 才会反映 source 变化
 - 只有已经验证过的变化，才写回 `docs/`
+- 若出于 repo-local 安装兼容、文件分发或运行试验需要，`.agents/skills/`、`.claude/skills/`、`.opencode/skills/` 可以承接 tracked install payload；但这不改变 `product/` 作为 canonical source 的定义权
 ## 三、当前 source 布局
 
 - `product/<partition>/adapters/<backend>/skills/<skill>/`
@@ -85,7 +86,8 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend <backend>
 
 ### 2. `Update`
 
-- 只改 `product/` 下 source，不手工改 `.agents/`、`.claude/`、`.opencode/`
+- 默认只改 `product/` 下 source，不手工改 `.agents/`、`.claude/`、`.opencode/` 的 deploy 镜像
+- 如果明确在维护 repo-local install payload，本轮也可以改 `*/skills/` 下对应文件；但应把它视为 compatibility payload，而不是 canonical source
 - 最小节奏仍然是：
 
 1. `verify`
@@ -138,7 +140,7 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend <backend>
 
 ## 七、常见误区
 
-- 直接改 `.agents/`、`.claude/`、`.opencode/`，把 deploy target 当 source of truth
+- 把 `.agents/`、`.claude/`、`.opencode/` 下的 install payload 当 source of truth，反向压过 `product/`
 - 把 harness backend 差异写进 canonical prompt，而不是写进 `header.yaml`
 - 新增或删除 skill 后只跑 deploy，不先看 `verify` 暴露出来的 drift
 - rename 后只确认新名存在，没有检查旧 target 是否残留

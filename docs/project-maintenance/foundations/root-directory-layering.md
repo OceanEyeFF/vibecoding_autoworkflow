@@ -25,7 +25,7 @@ last_verified: 2026-04-15
 | Product Layer | `product/` | 业务源码 | 真相正文、运行状态 |
 | Truth Layer | `docs/` | 知识与治理文档 | deploy 结果、mount/state |
 | Toolchain Layer | `toolchain/` | 脚本与评测工具 | 业务源码真相 |
-| Repo-local Mount Layer | `.claude/` `.agents/` `.opencode/` | 本地挂载与 deploy target | 主线真相、业务源码 |
+| Repo-local Install / Mount Layer | `.claude/` `.agents/` `.opencode/` | repo-local 安装载荷、挂载与 deploy target | 主线真相、业务源码 |
 | Repo-local State Layer | `.autoworkflow/` `.spec-workflow/` `.serena/` | 运行状态与项目级配置记忆 | 主线入口、业务源码 |
 | Repo-local Execution Config Layer | `.codex/` | repo-local 执行配置 | 长期真相正文、运行产物 |
 | Compatibility Navigation Layer | `.nav/` | 兼容导航 | 结构定义与规则正文 |
@@ -34,6 +34,14 @@ last_verified: 2026-04-15
 | Repo Infra Layer | `.github/` `.git/` `.gitignore` `.gitattributes` `.claudeignore` `LICENSE` `CONTRIBUTING.md` | 仓库基础设施 | 业务规则正文 |
 
 ## 三、受控例外与白名单
+
+### 0. Repo-local install payloads
+
+- `.agents/skills/`、`.claude/skills/`、`.opencode/skills/` 允许承接 tracked 的 repo-local install payload。
+- 这些 payload 可以用于 repo 内试用、安装兼容与文件分发，不再一律视为“不得入库”的纯 mount 垃圾层。
+- 但它们仍不是 canonical truth，也不是业务源码根。
+- `product/` 仍然是业务代码唯一源码根；repo-local install payload 不应反向替代 `product/` 或 `docs/` 的定义权。
+- 如果某个 payload 只是 deploy 结果镜像、临时 smoke 产物或 repo-local 噪音，仍不应入库。
 
 ### 1. `tools/`
 

@@ -57,7 +57,8 @@ python3 toolchain/scripts/test/governance_semantic_check.py
    - `docs/` 中的脚本、可执行文件、运行产物、缓存
    - `toolchain/` 中的 canonical 业务源码目录、repo-local mount/state 内容、运行日志
 5. hidden/state/mount 层的 tracked 真实状态是否仍受控：
-   - `.agents/`、`.claude/`、`.opencode/` 默认不允许 tracked 内容
+   - `.agents/skills/`、`.claude/skills/`、`.opencode/skills/` 允许 tracked 的 repo-local install payload
+   - 这些目录之外的 mount-layer tracked 内容仍应失败
    - `.serena/` 只允许显式白名单 tracked 文件
    - `.codex/` 只允许 `config.toml` 与 `rules/repo.rules`
    - `tools/` 只允许显式 compat shim tracked 文件
@@ -94,7 +95,7 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 说明：
 
 - `.serena/` 当前不在这组忽略项里，因为本仓库允许受控保留项目级 Serena 配置与记忆
-- `.opencode/` 与 `.agents/`、`.claude/` 一样，属于 repo-local mount/deploy target，运行说明只负责确认它仍然被忽略，不承担它的生成逻辑
+- `.agents/`、`.claude/`、`.opencode/` 仍应默认被 `.gitignore` 忽略；允许 tracked 的 install payload 属于受控例外，不改变默认忽略策略
 - `folder_logic_check.py` 使用 `git ls-files` 的真实 tracked 状态，而不只看 `.gitignore`
 
 ## 四、什么时候运行
