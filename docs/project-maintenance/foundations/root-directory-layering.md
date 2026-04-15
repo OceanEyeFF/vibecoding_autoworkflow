@@ -102,6 +102,10 @@ last_verified: 2026-04-15
 - `memory-side/`
 - `task-interface/`
 
+`product/` 下还允许一个受控辅助层：
+
+- `.aw_template/`：repo-local execution template layer，用于承接可复制的 Harness artifact 模板，但不是新的源码根
+
 ## 六、相关文档
 
 - [AGENTS.md](../../../AGENTS.md)

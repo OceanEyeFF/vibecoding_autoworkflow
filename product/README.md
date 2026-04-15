@@ -8,6 +8,10 @@
 - [memory-side/README.md](./memory-side/README.md)：作为 Harness adjacent system 保留独立源码根
 - [task-interface/README.md](./task-interface/README.md)：作为 Harness adjacent system 保留独立源码根
 
+受控辅助层：
+
+- [.aw_template/README.md](./.aw_template/README.md)：repo-local execution template layer，承接可复制的 Harness artifact 模板，不承接 canonical truth
+
 `docs/harness/` 继续承接 Harness doctrine 与运行协议真相层。
 `product/harness/` 只承接新的 Harness executable source，不等于回填旧 `product/harness-operations/`。
 
@@ -18,3 +22,4 @@
 - 本地或全局部署统一走 `toolchain/scripts/deploy/adapter_deploy.py`
 - 新的 Harness ontology 仍落在 `docs/harness/`
 - 新的 Harness executable source 应进入 `product/harness/`
+- `.aw_template/` 只承接 execution templates，不是第四个源码根

@@ -43,7 +43,7 @@ NAV_SLOT_TARGETS = {
     "@skills": "product/memory-side/skills",
 }
 FIRST_LEVEL_ALLOWLIST = {
-    "product": {"README.md", "harness", "memory-side", "task-interface"},
+    "product": {"README.md", ".aw_template", "harness", "memory-side", "task-interface"},
     "docs": {"README.md", "project-maintenance", "harness", "deployable-skills", "autoresearch"},
     "toolchain": {"README.md", "toolchain-layering.md", "evals", "scripts"},
 }
@@ -78,6 +78,9 @@ PRODUCT_BANNED_SEGMENTS = {
     "operations",
     "runbook",
     "runbooks",
+}
+PRODUCT_ALLOWED_HIDDEN_DIRS = {
+    "product/.aw_template",
 }
 DOCS_BANNED_SEGMENTS = {
     "__pycache__",
@@ -291,6 +294,8 @@ def check_product_patterns(repo_root: Path, report: FolderLogicReport) -> None:
     for relative_path in iter_relative_paths(repo_root / "product", repo_root):
         checked += 1
         name = Path(relative_path).name
+        if relative_path == "product/.aw_template" or relative_path.startswith("product/.aw_template/"):
+            continue
         if path_has_segment(relative_path, PRODUCT_BANNED_SEGMENTS):
             report.add_issue("FL004", relative_path, "product/ must not contain runbook, cache, log, or state directories")
             continue
