@@ -40,7 +40,7 @@ def build_contract_payload(
         "label": "Demo",
         "objective": "Baseline aggregation",
         "target_surface": "memory-side",
-        "mutable_paths": mutable_paths or ["product/memory-side/skills"],
+        "mutable_paths": mutable_paths or ["product/harness/skills"],
         "frozen_paths": ["docs"],
         "train_suites": [train_suite],
         "validation_suites": [validation_suite],
@@ -107,7 +107,7 @@ def build_mutation_payload(round_number: int = 1, mutation_id: str = "mut-001") 
         "round": round_number,
         "mutation_id": mutation_id,
         "kind": "text_rephrase",
-        "target_paths": ["product/memory-side/skills"],
+        "target_paths": ["product/harness/skills"],
         "allowed_actions": ["edit"],
         "instruction": "Tighten skill wording.",
         "expected_effect": "Improve train score without validation regression.",
@@ -154,9 +154,9 @@ def init_git_repo(root: Path) -> None:
     subprocess.run(["git", "config", "user.name", "tester"], cwd=root, check=True, capture_output=True, text=True)
     (root / ".gitignore").write_text(".autoworkflow/\n", encoding="utf-8")
     (root / "README.md").write_text("initial\n", encoding="utf-8")
-    (root / "product" / "memory-side" / "skills").mkdir(parents=True, exist_ok=True)
+    (root / "product" / "harness" / "skills").mkdir(parents=True, exist_ok=True)
     (root / "docs").mkdir(parents=True, exist_ok=True)
-    (root / "product" / "memory-side" / "skills" / "skill.md").write_text("initial skill\n", encoding="utf-8")
+    (root / "product" / "harness" / "skills" / "skill.md").write_text("initial skill\n", encoding="utf-8")
     (root / "docs" / "README.md").write_text("frozen\n", encoding="utf-8")
     subprocess.run(["git", "add", ".gitignore", "README.md", "product", "docs"], cwd=root, check=True, capture_output=True, text=True)
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=root, check=True, capture_output=True, text=True)
@@ -208,26 +208,26 @@ class RunAutoresearchTest(unittest.TestCase):
             exrepo = root / ".exrepos" / "fmt"
             skill_dir = exrepo / ".agents" / "skills" / "context-routing-skill"
             skill_dir.mkdir(parents=True, exist_ok=True)
-            (exrepo / "product" / "memory-side" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
-            (exrepo / "docs" / "deployable-skills" / "memory-side").mkdir(parents=True, exist_ok=True)
-            (exrepo / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
+            (exrepo / "product" / "harness" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
+            (exrepo / "docs" / "harness" / "adjacent-systems" / "memory-side").mkdir(parents=True, exist_ok=True)
+            (exrepo / "product" / "harness" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
                 "canonical\n",
                 encoding="utf-8",
             )
-            (exrepo / "product" / "memory-side" / "skills" / "context-routing-skill" / "references").mkdir(
+            (exrepo / "product" / "harness" / "skills" / "context-routing-skill" / "references").mkdir(
                 parents=True,
                 exist_ok=True,
             )
-            (exrepo / "product" / "memory-side" / "skills" / "context-routing-skill" / "references" / "entrypoints.md").write_text(
+            (exrepo / "product" / "harness" / "skills" / "context-routing-skill" / "references" / "entrypoints.md").write_text(
                 "entrypoints\n",
                 encoding="utf-8",
             )
-            (exrepo / "docs" / "deployable-skills" / "memory-side" / "overview.md").write_text("overview\n", encoding="utf-8")
+            (exrepo / "docs" / "harness" / "adjacent-systems" / "memory-side" / "overview.md").write_text("overview\n", encoding="utf-8")
             (skill_dir / "SKILL.md").write_text(
                 "## Canonical Sources\n"
-                "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
-                "2. `product/memory-side/skills/context-routing-skill/references/entrypoints.md`\n"
-                "3. `docs/deployable-skills/memory-side/overview.md`\n",
+                "1. `product/harness/skills/context-routing-skill/SKILL.md`\n"
+                "2. `product/harness/skills/context-routing-skill/references/entrypoints.md`\n"
+                "3. `docs/harness/adjacent-systems/memory-side/overview.md`\n",
                 encoding="utf-8",
             )
 
@@ -264,8 +264,8 @@ class RunAutoresearchTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_git_repo(root)
-            (root / "product" / "memory-side" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
-            (root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
+            (root / "product" / "harness" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
+            (root / "product" / "harness" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
                 "# skill\n",
                 encoding="utf-8",
             )
@@ -302,9 +302,9 @@ class RunAutoresearchTest(unittest.TestCase):
             root = Path(tmp)
             init_git_repo(root)
             for skill_path in (
-                root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md",
-                root / "product" / "memory-side" / "skills" / "knowledge-base-skill" / "SKILL.md",
-                root / "product" / "memory-side" / "skills" / "writeback-cleanup-skill" / "SKILL.md",
+                root / "product" / "harness" / "skills" / "context-routing-skill" / "SKILL.md",
+                root / "product" / "harness" / "skills" / "knowledge-base-skill" / "SKILL.md",
+                root / "product" / "harness" / "skills" / "writeback-cleanup-skill" / "SKILL.md",
                 root / "product" / "task-interface" / "skills" / "task-contract-skill" / "SKILL.md",
             ):
                 skill_path.parent.mkdir(parents=True, exist_ok=True)
@@ -377,7 +377,7 @@ class RunAutoresearchTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_git_repo(root)
-            skill_path = root / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md"
+            skill_path = root / "product" / "harness" / "skills" / "context-routing-skill" / "SKILL.md"
             skill_path.parent.mkdir(parents=True, exist_ok=True)
             skill_path.write_text("# skill\n", encoding="utf-8")
 
@@ -844,8 +844,8 @@ class RunAutoresearchTest(unittest.TestCase):
             skill_path = skill_dir / "SKILL.md"
             skill_path.write_text(
                 "## Canonical Sources\n"
-                "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
-                "2. `docs/deployable-skills/memory-side/overview.md`\n",
+                "1. `product/harness/skills/context-routing-skill/SKILL.md`\n"
+                "2. `docs/harness/adjacent-systems/memory-side/overview.md`\n",
                 encoding="utf-8",
             )
             write_suite_manifest(
@@ -965,16 +965,16 @@ class RunAutoresearchTest(unittest.TestCase):
             train_repo = root / ".exrepos" / "fmt"
             train_skill_dir = train_repo / ".agents" / "skills" / "context-routing-skill"
             train_skill_dir.mkdir(parents=True, exist_ok=True)
-            (train_repo / "product" / "memory-side" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
-            (train_repo / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
+            (train_repo / "product" / "harness" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
+            (train_repo / "product" / "harness" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
                 "canonical\n",
                 encoding="utf-8",
             )
-            (train_repo / "docs" / "deployable-skills" / "memory-side").mkdir(parents=True, exist_ok=True)
+            (train_repo / "docs" / "harness" / "adjacent-systems" / "memory-side").mkdir(parents=True, exist_ok=True)
             (train_skill_dir / "SKILL.md").write_text(
                 "## Canonical Sources\n"
-                "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
-                "2. `docs/deployable-skills/memory-side/`\n",
+                "1. `product/harness/skills/context-routing-skill/SKILL.md`\n"
+                "2. `docs/harness/adjacent-systems/memory-side/`\n",
                 encoding="utf-8",
             )
 
@@ -1141,7 +1141,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:intro-tighten-v1",
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Tighten skill wording.",
                             "expected_effect": {
@@ -1274,7 +1274,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": mutation_key,
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Tighten skill wording.",
                             "expected_effect": {
@@ -1611,7 +1611,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": mutation_key,
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Tighten skill wording.",
                             "expected_effect": {
@@ -1703,7 +1703,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": mutation_key,
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Tighten skill wording.",
                             "expected_effect": {
@@ -1815,7 +1815,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": mutation_key,
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Tighten skill wording.",
                             "expected_effect": {
@@ -1946,7 +1946,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": mutation_key,
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Tighten skill wording.",
                             "expected_effect": {
@@ -2029,7 +2029,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:stop-gate",
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "tighten",
                             "expected_effect": {
@@ -2104,7 +2104,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:inactive",
                             "kind": "text_rephrase",
                             "status": "disabled",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "inactive entry only",
                             "expected_effect": {
@@ -2301,7 +2301,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:intro-tighten-v1",
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Tighten wording.",
                             "expected_effect": {
@@ -2323,7 +2323,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "instruction_reorder:demo:sections-v1",
                             "kind": "instruction_reorder",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Reorder sections.",
                             "expected_effect": {
@@ -2432,7 +2432,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:intro-tighten-v1",
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Tighten wording.",
                             "expected_effect": {
@@ -2507,7 +2507,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:first",
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "First mutation.",
                             "expected_effect": {
@@ -2529,7 +2529,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:second",
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Second mutation.",
                             "expected_effect": {
@@ -2602,7 +2602,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:first",
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "First mutation.",
                             "expected_effect": {
@@ -2624,7 +2624,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:second",
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Second mutation.",
                             "expected_effect": {
@@ -2710,7 +2710,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:disabled",
                             "kind": "text_rephrase",
                             "status": "disabled",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Disabled mutation.",
                             "expected_effect": {
@@ -2732,7 +2732,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:active",
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Active mutation.",
                             "expected_effect": {
@@ -2806,7 +2806,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:exhausted",
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Exhausted mutation.",
                             "expected_effect": {
@@ -2902,7 +2902,7 @@ class RunAutoresearchTest(unittest.TestCase):
                         "mutation_key": "text_rephrase:demo:available",
                         "kind": "text_rephrase",
                         "status": "active",
-                        "target_paths": ["product/memory-side/skills"],
+                        "target_paths": ["product/harness/skills"],
                         "allowed_actions": ["edit"],
                         "instruction_seed": "Available mutation.",
                         "expected_effect": {
@@ -2974,7 +2974,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:auto-would-pick-this",
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "First mutation.",
                             "expected_effect": {
@@ -2996,7 +2996,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:explicit",
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Second mutation.",
                             "expected_effect": {
@@ -3077,7 +3077,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:duplicate",
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Duplicate mutation.",
                             "expected_effect": {
@@ -3099,7 +3099,7 @@ class RunAutoresearchTest(unittest.TestCase):
                             "mutation_key": "text_rephrase:demo:fresh",
                             "kind": "text_rephrase",
                             "status": "active",
-                            "target_paths": ["product/memory-side/skills"],
+                            "target_paths": ["product/harness/skills"],
                             "allowed_actions": ["edit"],
                             "instruction_seed": "Fresh mutation.",
                             "expected_effect": {

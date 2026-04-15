@@ -8,7 +8,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from governance_semantic_check import (
     SemanticReport,
     check_adapter_wrappers_are_thin,
-    check_canonical_entrypoints_cover_required_formats,
     check_canonical_skill_packages_are_minimal,
     check_foundations_authority_shadows,
     check_outdated_placeholder_phrases,
@@ -24,7 +23,7 @@ def write_doc(path: Path, content: str) -> None:
 def test_check_required_handoffs_flags_missing_link(tmp_path: Path) -> None:
     write_doc(
         tmp_path / "product/README.md",
-        "[harness](./harness/README.md)\n[memory](./memory-side/README.md)\n[task](./task-interface/README.md)\n",
+        "[harness](./harness/README.md)\n",
     )
     write_doc(
         tmp_path / "product/harness/README.md",
@@ -53,9 +52,6 @@ def test_check_required_handoffs_flags_missing_link(tmp_path: Path) -> None:
     write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md", "")
     write_doc(tmp_path / "toolchain/scripts/README.md", "# scripts\n")
     write_doc(tmp_path / "toolchain/evals/README.md", "# evals\n")
-    write_doc(tmp_path / "docs/deployable-skills/README.md", "")
-    write_doc(tmp_path / "docs/deployable-skills/memory-side/README.md", "")
-    write_doc(tmp_path / "docs/deployable-skills/task-interface/README.md", "")
     write_doc(tmp_path / "docs/autoresearch/knowledge/README.md", "")
 
     report = SemanticReport()
@@ -93,30 +89,15 @@ def test_check_outdated_placeholder_phrases_flags_stale_text(tmp_path: Path) -> 
     assert any("toolchain/scripts/README.md" in item for item in report.failures)
 
 
-def test_check_adapter_wrappers_are_thin_flags_legacy_sections(tmp_path: Path) -> None:
-    write_doc(
-        tmp_path / "product/memory-side/adapters/agents/skills/context-routing-skill/SKILL.md",
-        "\n".join(
-            [
-                "# Wrapper",
-                "## Canonical Source",
-                "## Backend Notes",
-                "## Deploy Target",
-                "## Execution Rules",
-            ]
-        )
-        + "\n",
-    )
-
+def test_check_adapter_wrappers_are_thin_ignores_absent_adapter_layer(tmp_path: Path) -> None:
     report = SemanticReport()
     check_adapter_wrappers_are_thin(tmp_path, report)
-
-    assert any("Execution Rules" in item for item in report.failures)
+    assert report.failures == []
 
 
 def test_check_canonical_skill_packages_are_minimal_accepts_valid_package(tmp_path: Path) -> None:
     write_doc(
-        tmp_path / "product/memory-side/skills/demo-skill/SKILL.md",
+        tmp_path / "product/harness/skills/demo-skill/SKILL.md",
         "\n".join(
             [
                 "# Demo Skill",
@@ -131,7 +112,7 @@ def test_check_canonical_skill_packages_are_minimal_accepts_valid_package(tmp_pa
         + "\n",
     )
     write_doc(
-        tmp_path / "product/memory-side/skills/demo-skill/references/entrypoints.md",
+        tmp_path / "product/harness/skills/demo-skill/references/entrypoints.md",
         "# Demo references\n\n## Reading Policy\n",
     )
 
@@ -143,7 +124,7 @@ def test_check_canonical_skill_packages_are_minimal_accepts_valid_package(tmp_pa
 
 def test_check_canonical_skill_packages_are_minimal_flags_adapter_leakage(tmp_path: Path) -> None:
     write_doc(
-        tmp_path / "product/task-interface/skills/demo-skill/SKILL.md",
+        tmp_path / "product/harness/skills/demo-skill/SKILL.md",
         "\n".join(
             [
                 "# Demo Skill",
@@ -159,7 +140,7 @@ def test_check_canonical_skill_packages_are_minimal_flags_adapter_leakage(tmp_pa
         + "\n",
     )
     write_doc(
-        tmp_path / "product/task-interface/skills/demo-skill/references/entrypoints.md",
+        tmp_path / "product/harness/skills/demo-skill/references/entrypoints.md",
         "# Demo references\n\n## Reading Policy\n",
     )
 
@@ -167,15 +148,3 @@ def test_check_canonical_skill_packages_are_minimal_flags_adapter_leakage(tmp_pa
     check_canonical_skill_packages_are_minimal(tmp_path, report)
 
     assert any("Backend Notes" in item for item in report.failures)
-
-
-def test_check_canonical_entrypoints_cover_required_formats_flags_missing_link(tmp_path: Path) -> None:
-    write_doc(
-        tmp_path / "product/memory-side/skills/context-routing-skill/references/entrypoints.md",
-        "# entrypoints\n",
-    )
-
-    report = SemanticReport()
-    check_canonical_entrypoints_cover_required_formats(tmp_path, report)
-
-    assert any("context-routing-output-format.md" in item for item in report.failures)

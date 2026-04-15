@@ -23,7 +23,7 @@ def build_contract_payload(train_suite: str, validation_suite: str, acceptance_s
         "label": "Demo",
         "objective": "P1.3 smoke",
         "target_surface": "memory-side",
-        "mutable_paths": ["product/memory-side/skills"],
+        "mutable_paths": ["product/harness/skills"],
         "frozen_paths": ["docs"],
         "train_suites": [train_suite],
         "validation_suites": [validation_suite],
@@ -44,9 +44,9 @@ def init_git_repo(root: Path) -> None:
     subprocess.run(["git", "config", "user.name", "tester"], cwd=root, check=True, capture_output=True, text=True)
     (root / ".gitignore").write_text(".autoworkflow/\n", encoding="utf-8")
     (root / "README.md").write_text("initial\n", encoding="utf-8")
-    (root / "product" / "memory-side" / "skills").mkdir(parents=True, exist_ok=True)
+    (root / "product" / "harness" / "skills").mkdir(parents=True, exist_ok=True)
     (root / "docs").mkdir(parents=True, exist_ok=True)
-    (root / "product" / "memory-side" / "skills" / "skill.md").write_text("initial skill\n", encoding="utf-8")
+    (root / "product" / "harness" / "skills" / "skill.md").write_text("initial skill\n", encoding="utf-8")
     (root / "docs" / "README.md").write_text("frozen\n", encoding="utf-8")
     subprocess.run(["git", "add", ".gitignore", "README.md", "product", "docs"], cwd=root, check=True, capture_output=True, text=True)
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=root, check=True, capture_output=True, text=True)
@@ -127,7 +127,7 @@ def make_registry_entry(*, mutation_key: str, attempts: int = 0) -> dict[str, ob
         "mutation_key": mutation_key,
         "kind": "text_rephrase",
         "status": "active",
-        "target_paths": ["product/memory-side/skills"],
+        "target_paths": ["product/harness/skills"],
         "allowed_actions": ["edit"],
         "instruction_seed": f"instruction for {mutation_key}",
         "expected_effect": {
@@ -207,7 +207,7 @@ class AutoresearchP13SmokeTest(unittest.TestCase):
                 self.assertEqual(run_autoresearch.main(["prepare-round", "--contract", str(contract_path)]), 0)
                 first_round_dir = run_dir / "rounds" / "round-001"
                 first_candidate = run_dir / "worktrees" / "round-001"
-                (first_candidate / "product" / "memory-side" / "skills" / "skill.md").write_text(
+                (first_candidate / "product" / "harness" / "skills" / "skill.md").write_text(
                     "candidate change one\n",
                     encoding="utf-8",
                 )

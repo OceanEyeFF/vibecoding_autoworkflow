@@ -11,7 +11,7 @@
 
 | 链接 | 目标 | 用途 |
 |------|------|------|
-| `@skills` | `product/memory-side/skills/` | canonical skill 资产 |
+| `@skills` | `product/harness/skills/` | canonical skill 资产 |
 | `@docs` | `docs/` | 文档中心 |
 
 ## 使用方式

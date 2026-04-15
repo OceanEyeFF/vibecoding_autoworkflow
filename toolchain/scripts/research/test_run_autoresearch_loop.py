@@ -495,7 +495,7 @@ class RunAutoresearchLoopTest(unittest.TestCase):
                 "label": "Non-P2",
                 "objective": "Demo",
                 "target_surface": "memory-side",
-                "mutable_paths": ["product/memory-side/skills"],
+                "mutable_paths": ["product/harness/skills"],
                 "frozen_paths": ["docs"],
                 "train_suites": ["train.yaml"],
                 "validation_suites": ["validation.yaml"],

@@ -52,7 +52,7 @@ def build_contract_payload(
         "label": "Demo",
         "objective": "Round execution",
         "target_surface": "memory-side",
-        "mutable_paths": mutable_paths or ["product/memory-side/skills"],
+        "mutable_paths": mutable_paths or ["product/harness/skills"],
         "frozen_paths": ["docs"],
         "train_suites": [train_suite],
         "validation_suites": [validation_suite],
@@ -86,7 +86,7 @@ def build_mutation_payload(round_number: int = 1, mutation_id: str = "mut-001") 
         "attempt": 1,
         "fingerprint": "sha256:test",
         "kind": "text_rephrase",
-        "target_paths": ["product/memory-side/skills"],
+        "target_paths": ["product/harness/skills"],
         "allowed_actions": ["edit"],
         "instruction": "Tighten skill wording.",
         "expected_effect": {
@@ -187,13 +187,13 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         self._git("config", "user.name", "tester")
         (self.repo_root / ".gitignore").write_text(".autoworkflow/\n", encoding="utf-8")
         (self.repo_root / "README.md").write_text("initial\n", encoding="utf-8")
-        (self.repo_root / "product" / "memory-side" / "skills").mkdir(parents=True, exist_ok=True)
+        (self.repo_root / "product" / "harness" / "skills").mkdir(parents=True, exist_ok=True)
         (self.repo_root / "docs").mkdir(parents=True, exist_ok=True)
-        (self.repo_root / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (self.repo_root / "product" / "harness" / "skills" / "skill.md").write_text(
             "initial skill\n",
             encoding="utf-8",
         )
-        (self.repo_root / "product" / "memory-side" / "skills" / "secondary.md").write_text(
+        (self.repo_root / "product" / "harness" / "skills" / "secondary.md").write_text(
             "initial secondary skill\n",
             encoding="utf-8",
         )
@@ -310,7 +310,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_run_round_writes_round_scoreboard_and_captures_candidate_sha(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate change\n",
             encoding="utf-8",
         )
@@ -340,7 +340,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_run_round_uses_frozen_worker_contract_comparison_baseline(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate change\n",
             encoding="utf-8",
         )
@@ -365,7 +365,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_run_round_accepts_prepared_v2_worker_contract_with_round_hashes(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "compat candidate change\n",
             encoding="utf-8",
         )
@@ -408,7 +408,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_run_round_accepts_legacy_worker_contract_without_round_hashes(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "legacy candidate change\n",
             encoding="utf-8",
         )
@@ -739,7 +739,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_prepare_round_rejects_parent_target_path_that_widens_mutable_scope(self) -> None:
         mutation_payload = build_mutation_payload()
-        mutation_payload["target_paths"] = ["product/memory-side"]
+        mutation_payload["target_paths"] = ["product/harness"]
         with self.assertRaisesRegex(ValueError, "Mutation target_paths must stay within contract.mutable_paths"):
             self.round_manager.ensure_prepare_allowed(self.contract, mutation_payload)
 
@@ -854,7 +854,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_run_round_rejects_disallowed_create_action(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "new-skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "new-skill.md").write_text(
             "new file\n",
             encoding="utf-8",
         )
@@ -882,7 +882,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_run_round_requires_worker_contract(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate change\n",
             encoding="utf-8",
         )
@@ -892,7 +892,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_run_round_rejects_tampered_worker_contract(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate change\n",
             encoding="utf-8",
         )
@@ -905,7 +905,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_run_round_rejects_value_preserving_worker_contract_rewrite(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate change\n",
             encoding="utf-8",
         )
@@ -918,9 +918,9 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_run_round_rejects_tampered_frozen_round_authority(self) -> None:
         mutation_payload = build_mutation_payload()
-        mutation_payload["target_paths"] = ["product/memory-side/skills/skill.md"]
+        mutation_payload["target_paths"] = ["product/harness/skills/skill.md"]
         candidate_worktree, _ = self._prepare_active_round(mutation_payload)
-        (candidate_worktree / "product" / "memory-side" / "skills" / "secondary.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "secondary.md").write_text(
             "candidate change\n",
             encoding="utf-8",
         )
@@ -934,14 +934,14 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         registry = load_mutation_registry(registry_path, contract=self.contract, repo_root=self.repo_root)
         registry_payload = dict(registry.payload)
         registry_entry = registry_payload["entries"][0]
-        registry_entry["target_paths"] = ["product/memory-side/skills"]
-        registry_entry["fingerprint_basis"]["target_paths"] = ["product/memory-side/skills"]
+        registry_entry["target_paths"] = ["product/harness/skills"]
+        registry_entry["fingerprint_basis"]["target_paths"] = ["product/harness/skills"]
         registry_entry["fingerprint"] = compute_mutation_fingerprint(registry_entry)
         write_mutation_registry(registry_path, registry_payload)
 
         mutation_path = self.round_manager.mutation_path(self.contract.run_id, 1)
         tampered_mutation = read_json(mutation_path)
-        tampered_mutation["target_paths"] = ["product/memory-side/skills"]
+        tampered_mutation["target_paths"] = ["product/harness/skills"]
         tampered_mutation["fingerprint"] = registry_entry["fingerprint"]
         mutation_path.write_text(json.dumps(tampered_mutation, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
 
@@ -975,7 +975,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_run_round_rejects_value_preserving_mutation_rewrite(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate change\n",
             encoding="utf-8",
         )
@@ -1000,11 +1000,11 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
             "extra_frozen_paths": [],
         }
         candidate_worktree, _ = self._prepare_active_round(mutation_payload)
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate change one\n",
             encoding="utf-8",
         )
-        (candidate_worktree / "product" / "memory-side" / "skills" / "secondary.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "secondary.md").write_text(
             "candidate change two\n",
             encoding="utf-8",
         )
@@ -1017,10 +1017,10 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         mutation_payload["guardrails"] = {
             "require_non_empty_diff": True,
             "max_files_touched": 2,
-            "extra_frozen_paths": ["product/memory-side/skills/skill.md"],
+            "extra_frozen_paths": ["product/harness/skills/skill.md"],
         }
         candidate_worktree, _ = self._prepare_active_round(mutation_payload)
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate frozen path change\n",
             encoding="utf-8",
         )
@@ -1030,7 +1030,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_decide_round_keeps_candidate_and_updates_history(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate keep\n",
             encoding="utf-8",
         )
@@ -1075,7 +1075,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_decide_round_rejects_moved_candidate_branch_after_evaluation(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate keep\n",
             encoding="utf-8",
         )
@@ -1091,11 +1091,11 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         )
         write_scoreboard(self.round_manager.round_scoreboard_path(self.contract.run_id, 1), build_scoreboard(10.0, 8.0))
 
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate retarget\n",
             encoding="utf-8",
         )
-        self._git("add", "product/memory-side/skills/skill.md", cwd=candidate_worktree)
+        self._git("add", "product/harness/skills/skill.md", cwd=candidate_worktree)
         self._git("commit", "-q", "-m", "retarget candidate", cwd=candidate_worktree)
 
         with self.assertRaisesRegex(RuntimeError, "pinned round candidate_sha"):
@@ -1103,7 +1103,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_decide_round_ignores_tampered_runtime_champion_branch(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate retarget guard\n",
             encoding="utf-8",
         )
@@ -1138,7 +1138,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_decide_round_discards_validation_regression(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate discard\n",
             encoding="utf-8",
         )
@@ -1175,7 +1175,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_decide_round_replays_only_when_replay_keeps_round_validation_stable(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate keep with replay\n",
             encoding="utf-8",
         )
@@ -1227,7 +1227,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
     def test_decide_round_replay_failure_discards_candidate_without_promotion(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
         original_champion_sha = self._git_output("rev-parse", champion_branch_name(self.contract.run_id))
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate replay failure\n",
             encoding="utf-8",
         )
@@ -1281,7 +1281,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
     def test_decide_round_replay_execution_failure_discards_candidate_without_promotion(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
         original_champion_sha = self._git_output("rev-parse", champion_branch_name(self.contract.run_id))
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate replay execution failure\n",
             encoding="utf-8",
         )
@@ -1327,7 +1327,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_decide_round_replay_failure_triggers_on_round_validation_drop_even_if_above_champion(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate replay threshold\n",
             encoding="utf-8",
         )
@@ -1370,7 +1370,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_decide_round_replay_output_surfaces_provisional_and_replay_fields(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate replay final check\n",
             encoding="utf-8",
         )
@@ -1508,7 +1508,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_decide_round_compares_against_current_champion_scoreboard(self) -> None:
         first_candidate, _ = self._prepare_active_round()
-        (first_candidate / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (first_candidate / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate keep round one\n",
             encoding="utf-8",
         )
@@ -1551,7 +1551,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
         second_round_dir = self.worktree_manager.round_dir(self.contract.run_id, 2)
         (second_round_dir / "agent-report.md").write_text("# Agent Report\n\nApplied mutation.\n", encoding="utf-8")
         second_candidate = Path(str(second_prepare["worktree"]["path"]))
-        (second_candidate / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (second_candidate / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate discard round two\n",
             encoding="utf-8",
         )
@@ -1579,7 +1579,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_decide_round_discards_parse_error_regression(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate parse regression\n",
             encoding="utf-8",
         )
@@ -1605,7 +1605,7 @@ class AutoresearchRoundManagerTest(unittest.TestCase):
 
     def test_decide_round_discards_pass_rate_regression(self) -> None:
         candidate_worktree, _ = self._prepare_active_round()
-        (candidate_worktree / "product" / "memory-side" / "skills" / "skill.md").write_text(
+        (candidate_worktree / "product" / "harness" / "skills" / "skill.md").write_text(
             "candidate hard fail regression\n",
             encoding="utf-8",
         )

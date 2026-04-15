@@ -18,7 +18,6 @@ DEFAULT_ALLOWED_PREFIXES = (
     ".autoworkflow/state/",
     "docs/project-maintenance/",
     "docs/harness/",
-    "docs/deployable-skills/",
     "docs/autoresearch/",
     "product/README.md",
     "toolchain/scripts/test/",

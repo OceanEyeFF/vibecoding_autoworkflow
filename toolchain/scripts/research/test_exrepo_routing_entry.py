@@ -30,17 +30,22 @@ class ExrepoRoutingEntryTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             repo = root / ".exrepos" / "fmt"
-            (repo / "product" / "memory-side" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
-            (repo / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
+            (repo / "docs" / "harness" / "adjacent-systems" / "memory-side" / "formats").mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+            (repo / "docs" / "harness" / "adjacent-systems" / "memory-side" / "context-routing.md").write_text(
                 "canonical\n",
                 encoding="utf-8",
             )
-            (repo / "docs" / "deployable-skills" / "memory-side").mkdir(parents=True, exist_ok=True)
+            (
+                repo / "docs" / "harness" / "adjacent-systems" / "memory-side" / "formats" / "context-routing-output-format.md"
+            ).write_text("format\n", encoding="utf-8")
             write_skill_wrapper(
                 repo / ".agents" / "skills" / "context-routing-skill" / "SKILL.md",
                 "## Canonical Sources\n"
-                "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
-                "2. `docs/deployable-skills/memory-side/`\n",
+                "1. `docs/harness/adjacent-systems/memory-side/context-routing.md`\n"
+                "2. `docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md`\n",
             )
 
             payload = classify_context_routing_repo_skill(repo, repo_root=root)
@@ -53,17 +58,22 @@ class ExrepoRoutingEntryTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             repo = root / ".exrepos" / "fmt"
-            (repo / "product" / "memory-side" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
-            (repo / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
+            (repo / "docs" / "harness" / "adjacent-systems" / "memory-side" / "formats").mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+            (repo / "docs" / "harness" / "adjacent-systems" / "memory-side" / "context-routing.md").write_text(
                 "canonical\n",
                 encoding="utf-8",
             )
-            (repo / "docs" / "deployable-skills" / "memory-side").mkdir(parents=True, exist_ok=True)
+            (
+                repo / "docs" / "harness" / "adjacent-systems" / "memory-side" / "formats" / "context-routing-output-format.md"
+            ).write_text("format\n", encoding="utf-8")
             write_skill_wrapper(
                 repo / ".agents" / "skills" / "context-routing-skill" / "SKILL.md",
                 "## Canonical Source\n"
-                "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
-                "2. `docs/deployable-skills/memory-side/`\n",
+                "1. `docs/harness/adjacent-systems/memory-side/context-routing.md`\n"
+                "2. `docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md`\n",
             )
 
             payload = classify_context_routing_repo_skill(repo, repo_root=root)
@@ -91,8 +101,8 @@ class ExrepoRoutingEntryTest(unittest.TestCase):
             write_skill_wrapper(
                 repo / ".agents" / "skills" / "context-routing-skill" / "SKILL.md",
                 "## Canonical Sources\n"
-                "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
-                "2. `docs/deployable-skills/memory-side/overview.md`\n",
+                "1. `docs/harness/adjacent-systems/memory-side/context-routing.md`\n"
+                "2. `docs/harness/adjacent-systems/memory-side/overview.md`\n",
             )
 
             payload = classify_context_routing_repo_skill(repo, repo_root=root)
@@ -102,8 +112,8 @@ class ExrepoRoutingEntryTest(unittest.TestCase):
             self.assertEqual(
                 payload["missing_paths"],
                 [
-                    "product/memory-side/skills/context-routing-skill/SKILL.md",
-                    "docs/deployable-skills/memory-side/overview.md",
+                    "docs/harness/adjacent-systems/memory-side/context-routing.md",
+                    "docs/harness/adjacent-systems/memory-side/overview.md",
                 ],
             )
 
@@ -139,17 +149,22 @@ class ExrepoRoutingEntryTest(unittest.TestCase):
             root = Path(tmp)
             tmp_exrepos_root = root / "tmp-exrepos"
             repo = tmp_exrepos_root / "typer"
-            (repo / "product" / "memory-side" / "skills" / "context-routing-skill").mkdir(parents=True, exist_ok=True)
-            (repo / "product" / "memory-side" / "skills" / "context-routing-skill" / "SKILL.md").write_text(
+            (repo / "docs" / "harness" / "adjacent-systems" / "memory-side" / "formats").mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+            (repo / "docs" / "harness" / "adjacent-systems" / "memory-side" / "context-routing.md").write_text(
                 "canonical\n",
                 encoding="utf-8",
             )
-            (repo / "docs" / "deployable-skills" / "memory-side").mkdir(parents=True, exist_ok=True)
+            (
+                repo / "docs" / "harness" / "adjacent-systems" / "memory-side" / "formats" / "context-routing-output-format.md"
+            ).write_text("format\n", encoding="utf-8")
             write_skill_wrapper(
                 repo / ".agents" / "skills" / "context-routing-skill" / "SKILL.md",
                 "## Canonical Sources\n"
-                "1. `product/memory-side/skills/context-routing-skill/SKILL.md`\n"
-                "2. `docs/deployable-skills/memory-side/`\n",
+                "1. `docs/harness/adjacent-systems/memory-side/context-routing.md`\n"
+                "2. `docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md`\n",
             )
 
             payload = classify_context_routing_repo_skill(

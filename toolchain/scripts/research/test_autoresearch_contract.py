@@ -28,7 +28,7 @@ def build_contract_payload(
         "label": "P0.1 Demo",
         "objective": "Improve baseline quality.",
         "target_surface": "memory-side",
-        "mutable_paths": mutable_paths or ["product/memory-side/skills"],
+        "mutable_paths": mutable_paths or ["product/harness/skills"],
         "frozen_paths": ["docs"],
         "train_suites": [suite_name],
         "validation_suites": [suite_name],
@@ -89,8 +89,8 @@ class AutoresearchContractTest(unittest.TestCase):
             root = Path(tmp)
             (root / "lane.yaml").write_text("version: 1\nruns: []\n", encoding="utf-8")
             payload = build_contract_payload()
-            payload["mutable_paths"] = ["product/memory-side"]
-            payload["frozen_paths"] = ["product/memory-side/skills"]
+            payload["mutable_paths"] = ["product/harness"]
+            payload["frozen_paths"] = ["product/harness/skills"]
             contract_path = root / "contract.json"
             contract_path.write_text(json.dumps(payload), encoding="utf-8")
 

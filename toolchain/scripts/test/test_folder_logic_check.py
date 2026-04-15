@@ -53,11 +53,9 @@ def create_valid_repo(tmp_path: Path) -> Path:
     for directory in (
         ".codex/rules",
         "product/harness",
-        "product/memory-side/skills",
-        "product/task-interface",
+        "product/harness/skills",
         "docs/project-maintenance",
         "docs/harness",
-        "docs/deployable-skills",
         "docs/autoresearch",
         "toolchain/scripts",
         "toolchain/evals",
@@ -89,7 +87,7 @@ def create_valid_repo(tmp_path: Path) -> Path:
     (repo_root / ".nav").mkdir(parents=True, exist_ok=True)
     write_file(repo_root / ".nav/README.md", "# nav\n")
     create_nav_symlink(repo_root / ".nav/@docs", repo_root / "docs")
-    create_nav_symlink(repo_root / ".nav/@skills", repo_root / "product/memory-side/skills")
+    create_nav_symlink(repo_root / ".nav/@skills", repo_root / "product/harness/skills")
 
     git(
         repo_root,
@@ -255,7 +253,7 @@ def test_nav_required_slots_must_be_symlinks(tmp_path: Path) -> None:
 def test_nav_symlink_target_must_be_allowed(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
     (repo_root / ".nav/@skills").unlink()
-    create_nav_symlink(repo_root / ".nav/@skills", repo_root / "product/task-interface")
+    create_nav_symlink(repo_root / ".nav/@skills", repo_root / "product/harness")
 
     report = run_checks(repo_root)
 

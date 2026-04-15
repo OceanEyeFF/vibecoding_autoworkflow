@@ -30,7 +30,7 @@ def build_contract_payload(
         "label": "P1.1 Demo",
         "objective": "Registry loading",
         "target_surface": "memory-side",
-        "mutable_paths": mutable_paths or ["product/memory-side/skills"],
+        "mutable_paths": mutable_paths or ["product/harness/skills"],
         "frozen_paths": ["docs"],
         "train_suites": [suite_name],
         "validation_suites": [suite_name],
@@ -55,7 +55,7 @@ def build_entry_payload(*, mutation_key: str = "text_rephrase:demo:intro-tighten
         "mutation_key": mutation_key,
         "kind": "text_rephrase",
         "status": "active",
-        "target_paths": ["product/memory-side/skills"],
+        "target_paths": ["product/harness/skills"],
         "allowed_actions": ["edit"],
         "instruction_seed": "Tighten wording.\nKeep boundaries explicit.\n",
         "expected_effect": {
@@ -99,8 +99,8 @@ class AutoresearchMutationRegistryTest(unittest.TestCase):
 
             entry = build_entry_payload()
             entry["target_paths"] = [
-                "product/memory-side/skills/b.md",
-                "product/memory-side/skills/a.md",
+                "product/harness/skills/b.md",
+                "product/harness/skills/a.md",
             ]
             # Remove placeholder computed fields and let loader fill them.
             entry.pop("fingerprint_basis")
@@ -128,8 +128,8 @@ class AutoresearchMutationRegistryTest(unittest.TestCase):
                 "mutation_key": "text_rephrase:demo:intro-tighten-v1",
                 "instruction_seed": "Tighten wording.\nKeep boundaries explicit.\n",
                 "target_paths": [
-                    "product/memory-side/skills/a.md",
-                    "product/memory-side/skills/b.md",
+                    "product/harness/skills/a.md",
+                    "product/harness/skills/b.md",
                 ],
                 "expected_effect": {
                     "guard_metrics": ["timeout_rate", "parse_error_rate"],
@@ -318,7 +318,7 @@ class AutoresearchMutationRegistryTest(unittest.TestCase):
             contract = load_contract(contract_path, repo_root=root)
             contract_fp = compute_contract_fingerprint(contract)
             entry = build_entry_payload()
-            entry["target_paths"] = ["product/memory-side"]
+            entry["target_paths"] = ["product/harness"]
             entry.pop("fingerprint_basis")
             entry.pop("fingerprint")
             registry_payload = {
@@ -340,7 +340,7 @@ class AutoresearchMutationRegistryTest(unittest.TestCase):
             contract = load_contract(contract_path, repo_root=root)
             contract_fp = compute_contract_fingerprint(contract)
             entry = build_entry_payload()
-            entry["target_paths"] = ["product/memory-side/skills/skill.md"]
+            entry["target_paths"] = ["product/harness/skills/skill.md"]
             entry.pop("fingerprint_basis")
             entry.pop("fingerprint")
             registry_payload = {
@@ -354,7 +354,7 @@ class AutoresearchMutationRegistryTest(unittest.TestCase):
 
             loaded = load_mutation_registry(registry_path, contract=contract, repo_root=root)
 
-        self.assertEqual(loaded.entries[0]["target_paths"], ["product/memory-side/skills/skill.md"])
+        self.assertEqual(loaded.entries[0]["target_paths"], ["product/harness/skills/skill.md"])
 
     def test_load_mutation_registry_rejects_p2_target_paths_not_equal_to_target_prompt_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -391,7 +391,7 @@ class AutoresearchMutationRegistryTest(unittest.TestCase):
             payload = build_contract_payload()
             # White-box contract fixture: overlap between mutable and frozen is normally rejected by load_contract(),
             # but the registry must still defend against frozen overlaps at the entry boundary.
-            payload["frozen_paths"] = ["product/memory-side/skills/skill.md"]
+            payload["frozen_paths"] = ["product/harness/skills/skill.md"]
             contract = AutoresearchContract(
                 source_path=contract_path,
                 payload=payload,
@@ -469,7 +469,7 @@ class AutoresearchMutationRegistryTest(unittest.TestCase):
             contract = load_contract(contract_path, repo_root=root)
             contract_fp = compute_contract_fingerprint(contract)
             entry = build_entry_payload()
-            entry["guardrails"]["extra_frozen_paths"] = ["product/memory-side"]  # type: ignore[index]
+            entry["guardrails"]["extra_frozen_paths"] = ["product/harness"]  # type: ignore[index]
             entry.pop("fingerprint_basis")
             entry.pop("fingerprint")
             registry_payload = {
@@ -562,7 +562,7 @@ class AutoresearchMutationRegistryTest(unittest.TestCase):
                 {
                     "mutation_id": "mut-001",
                     "kind": "text_rephrase",
-                    "target_paths": ["product/memory-side/skills"],
+                    "target_paths": ["product/harness/skills"],
                     "allowed_actions": ["edit"],
                     "instruction": "Tighten wording.",
                     "expected_effect": "Improve train score without validation regression.",

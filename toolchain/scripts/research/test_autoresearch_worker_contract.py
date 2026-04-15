@@ -25,7 +25,7 @@ def build_contract_payload(*, suite_name: str = "lane.yaml") -> dict[str, object
         "label": "P1.1 Demo",
         "objective": "Worker contract",
         "target_surface": "memory-side",
-        "mutable_paths": ["product/memory-side/skills"],
+        "mutable_paths": ["product/harness/skills"],
         "frozen_paths": ["docs"],
         "train_suites": [suite_name],
         "validation_suites": [suite_name],
@@ -85,7 +85,7 @@ class AutoresearchWorkerContractTest(unittest.TestCase):
                 "attempt": 1,
                 "fingerprint": "sha256:fp",
                 "kind": "text_rephrase",
-                "target_paths": ["product/memory-side/skills"],
+                "target_paths": ["product/harness/skills"],
                 "allowed_actions": ["edit"],
                 "instruction": "Do the thing.",
                 "expected_effect": {
@@ -135,7 +135,7 @@ class AutoresearchWorkerContractTest(unittest.TestCase):
                     "mutation_key": "k",
                     "attempt": 1,
                     "fingerprint": "sha256:fp",
-                    "target_paths": ["product/memory-side/skills"],
+                    "target_paths": ["product/harness/skills"],
                     "allowed_actions": ["edit"],
                     "instruction": "Do the thing.",
                     "expected_effect": {
@@ -180,7 +180,7 @@ class AutoresearchWorkerContractTest(unittest.TestCase):
                     "mutation_key": "k",
                     "attempt": 1,
                     "fingerprint": "sha256:fp",
-                    "target_paths": ["product/memory-side/skills"],
+                    "target_paths": ["product/harness/skills"],
                     "allowed_actions": ["edit"],
                     "instruction": "Do the thing.",
                     "expected_effect": {

@@ -126,7 +126,7 @@ last_verified: 2026-04-11
   "objective": "Run one minimal autoresearch loop against typer with the context-routing skill on the Claude adapter surface.",
   "target_surface": "claude context-routing adapter",
   "mutable_paths": [
-    "product/memory-side/adapters/claude/skills/context-routing-skill/SKILL.md"
+    "docs/harness/adjacent-systems/memory-side/context-routing.md"
   ],
   "frozen_paths": [
     "docs",
@@ -229,7 +229,7 @@ runs:
   "mutation_id": "cr-wrapper-tighten-v1",
   "kind": "text_rephrase",
   "target_paths": [
-    "product/memory-side/adapters/claude/skills/context-routing-skill/SKILL.md"
+    "docs/harness/adjacent-systems/memory-side/context-routing.md"
   ],
   "allowed_actions": ["edit"],
   "instruction": "Tighten the repo-adapter wording in the Claude context-routing skill wrapper while preserving the canonical-source order and the output contract.",
@@ -475,7 +475,7 @@ python3 -m unittest \
 但当前 contract / registry 路径校验会把路径归一化到仓库真实路径，最终落到：
 
 ```text
-product/memory-side/adapters/claude/skills/context-routing-skill/SKILL.md
+docs/harness/adjacent-systems/memory-side/context-routing.md
 ```
 
 另外，当前 `target_paths` 校验已经是严格子集语义：
@@ -492,7 +492,7 @@ mutable_paths and frozen_paths overlap
 因此当前仓库跑 wrapper surface 的最小 round 时，建议直接写 canonical path：
 
 ```text
-product/memory-side/adapters/claude/skills/context-routing-skill/SKILL.md
+docs/harness/adjacent-systems/memory-side/context-routing.md
 ```
 
 ### 3. Batch 1 的单 Prompt P2 profile 不是自由组合
