@@ -1,6 +1,6 @@
 # Workflow Families
 
-`docs/harness/workflow-families/` 固定可复用的 Harness workflow family，而不是旧 skill 名称本身。
+`docs/harness/workflow-families/` 固定可复用的 Harness workflow family，而不是技能目录本身。
 
 当前入口：
 

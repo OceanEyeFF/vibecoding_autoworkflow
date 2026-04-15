@@ -17,12 +17,12 @@
 - 当前不再保留旧的 `function/` 与 `governance/` 噪声拆分；相关层将在后续按新 ontology 重做
 - `memory-side` 与 `task-interface` 不再被表述为 Harness 本体，而是 Harness 的 adjacent systems
 - 在 `Codex` 语境下，Harness 直接以 skills catalog 表达，不再维持一层独立的 `function -> skill` 转译目录
-- 已验证的 legacy skills 已降级为可回收资产；新的 Harness executable source 进入 [../../product/harness/README.md](../../product/harness/README.md)，但 doctrine 仍以上游文档真相为准
+- Harness executable source 进入 [../../product/harness/README.md](../../product/harness/README.md)，但 doctrine 仍以上游文档真相为准
 
 ## 迁移边界
 
 - [../../product/harness/README.md](../../product/harness/README.md) 作为干净重建的 executable root，只承接实现层，不承接 ontology 正文
 - `memory-side` 与 `task-interface` 当前只保留在 `docs/harness/adjacent-systems/` 的合同层，不再保留独立的 `product/` 源码根
-- 当前仓库中的 Harness 主线以 `docs/harness/` 为准；如果需要可执行 skill source，应优先落到 `product/harness/` 或对应 adjacent systems，而不是回退到已删除的 legacy harness package
+- 当前仓库中的 Harness 主线以 `docs/harness/` 为准；如果需要可执行 skill source，应优先落到 `product/harness/` 或对应 adjacent systems
 
 建议阅读顺序由 [AGENTS.md](../../AGENTS.md) 统一定义。

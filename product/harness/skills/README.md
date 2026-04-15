@@ -22,7 +22,7 @@
   - [close-worktrack-skill/](./close-worktrack-skill/)
 - 上游 skill catalog 见 [../../../docs/harness/Skills/README.md](../../../docs/harness/Skills/README.md)
 - 后续新增内容应从 `docs/harness/` 的 operator / workflow / governance truth 反推
-- 不应先复制旧 prompt，再反向让它生长 ontology
+- 不应先复制局部 prompt，再反向让它生长 ontology
 
 这里适合放：
 

@@ -458,7 +458,7 @@ last_verified: 2026-04-15
 - `Task Contract` 仍然是 `discussion -> execution` 之间的正式执行基线
 - `Harness` 可以消费 `Task Contract`，但不能改写它的 truth 边界
 - `docs/harness/` 当前承接 Harness doctrine、workflow family 与运行协议真相层
-- `product/harness/` 是新的 Harness executable root，但当前阶段只建立最小骨架，不回填 legacy noisy skills
+- `product/harness/` 是当前仓库中的 Harness executable root，但当前阶段只建立最小骨架
 - `memory-side` 与 `task-interface` 当前只保留 adjacent-system 合同层，不再在本仓库维持独立 `product/` skill roots
 - 当前仓库中的具体 executable source 只保留在 `product/harness/`
 - repo-local runtime state 应继续留在 repo-local state layer

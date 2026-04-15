@@ -11,7 +11,7 @@
 - [.aw_template/README.md](./.aw_template/README.md)：repo-local execution template layer，承接可复制的 Harness artifact 模板，不承接 canonical truth
 
 `docs/harness/` 继续承接 Harness doctrine 与运行协议真相层。
-`product/harness/` 只承接新的 Harness executable source，不等于回填旧 `product/harness-operations/`。
+`product/harness/` 只承接 Harness executable source。
 `memory-side` 与 `task-interface` 当前只保留在 `docs/harness/adjacent-systems/` 的合同层，不再保留 repo 内独立源码根。
 
 规则：
