@@ -8,21 +8,21 @@ Load the Harness supervisor docs in this order.
 - `docs/harness/foundations/Harness指导思想.md`
 - `docs/harness/foundations/Harness运行协议.md`
 - `docs/harness/scope/state-loop.md`
-- `docs/harness/artifact/control-state.md`
+- `docs/harness/artifact/control/control-state.md`
 
 ## Read For RepoScope Rounds
 
 - `docs/harness/scope/repo-scope.md`
-- `docs/harness/artifact/repo-goal-charter.md`
-- `docs/harness/artifact/repo-snapshot-status.md`
-- `docs/harness/artifact/goal-change-request.md`
+- `docs/harness/artifact/repo/goal-charter.md`
+- `docs/harness/artifact/repo/snapshot-status.md`
+- `docs/harness/artifact/control/goal-change-request.md`
 
 ## Read For WorktrackScope Rounds
 
 - `docs/harness/scope/worktrack-scope.md`
-- `docs/harness/artifact/worktrack-contract.md`
-- `docs/harness/artifact/plan-task-queue.md`
-- `docs/harness/artifact/gate-evidence.md`
+- `docs/harness/artifact/worktrack/contract.md`
+- `docs/harness/artifact/worktrack/plan-task-queue.md`
+- `docs/harness/artifact/worktrack/gate-evidence.md`
 
 ## Read Only If The Round Crosses Adjacent Systems
 
