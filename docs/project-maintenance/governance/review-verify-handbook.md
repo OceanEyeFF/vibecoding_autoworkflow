@@ -75,6 +75,9 @@ last_verified: 2026-04-16
 - closeout / gate / backfill 变更
   - `python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`
   - 对应的最小 pytest
+- deploy mapping / manifest contract 变更
+  - `python3 -m pytest toolchain/scripts/test/test_skill_manifest_contract.py`
+  - 如同时改了 gate 链路，再补 `python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`
 - adapter / deploy 变更
   - `python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend <backend>`
 

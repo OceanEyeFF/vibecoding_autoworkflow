@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Harness Skill Manifest v1",
+  "description": "Minimal machine-readable manifest for first-wave Harness skills.",
+  "type": "object",
+  "additionalProperties": false,
+  "definitions": {
+    "relative_path_no_dot_segments": {
+      "type": "string",
+      "pattern": "^(?!.*(?:^|/)\\.{1,2}(?:/|$))[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+    },
+    "relative_dir_no_dot_segments": {
+      "type": "string",
+      "pattern": "^(?!.*(?:^|/)\\.{1,2}(?:/|$))[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)+$"
+    }
+  },
+  "required": [
+    "manifest_version",
+    "backend",
+    "skill_id",
+    "canonical_dir",
+    "entrypoint",
+    "included_paths",
+    "target_dir",
+    "first_wave_profile",
+    "first_wave_scope_kind"
+  ],
+  "properties": {
+    "manifest_version": {
+      "const": "skill-manifest.v1"
+    },
+    "backend": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "skill_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "canonical_dir": {
+      "type": "string",
+      "pattern": "^product/harness/skills/[a-z0-9][a-z0-9-]*$"
+    },
+    "entrypoint": {
+      "$ref": "#/definitions/relative_path_no_dot_segments"
+    },
+    "included_paths": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/relative_path_no_dot_segments"
+      },
+      "uniqueItems": true
+    },
+    "target_dir": {
+      "$ref": "#/definitions/relative_dir_no_dot_segments"
+    },
+    "first_wave_profile": {
+      "const": "a3-first-wave"
+    },
+    "first_wave_scope_kind": {
+      "type": "string",
+      "enum": ["full-skill", "subset-by-a3-freeze"]
+    },
+    "supported_repo_actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]*$"
+      },
+      "uniqueItems": true
+    }
+  }
+}

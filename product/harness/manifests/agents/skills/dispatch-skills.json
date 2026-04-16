@@ -1,0 +1,14 @@
+{
+  "manifest_version": "skill-manifest.v1",
+  "backend": "agents",
+  "skill_id": "dispatch-skills",
+  "canonical_dir": "product/harness/skills/dispatch-skills",
+  "entrypoint": "references/entrypoints.md",
+  "included_paths": [
+    "SKILL.md",
+    "references/entrypoints.md"
+  ],
+  "target_dir": "skills/dispatch-skills",
+  "first_wave_profile": "a3-first-wave",
+  "first_wave_scope_kind": "subset-by-a3-freeze"
+}
