@@ -24,6 +24,7 @@
 |---|---|---|
 | 我第一次激活当前 runtime target root | [deploy-runbook.md](./deploy-runbook.md) | Quick Start，只保留 local/global root 激活与最小复验 |
 | 我想看 canonical source 到 target entry 的正式映射 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | 最小 deploy 合同，定义 canonical source / backend payload source / manifest / target / verify |
+| 我想看首发实现阶段到底只承接哪些 skill 和分支子集 | [first-wave-skill-freeze.md](./first-wave-skill-freeze.md) | 前瞻性实现约束；回答首发纳入哪些 canonical skills 与可达分支子集，不描述当前 deploy 已实现行为 |
 | 我已有 root，只想复验 | [skill-deployment-maintenance.md](./skill-deployment-maintenance.md) | 按 `verify -> endpoint -> verify` 做 |
 | 我看到 drift / `wrong-target-root-type` | [skill-deployment-maintenance.md](./skill-deployment-maintenance.md) | 这里集中解释 root 级错误信号和恢复口径 |
 | 我在改 skills 或 `.aw_template/` | [skill-lifecycle.md](./skill-lifecycle.md) | 这里说明 lifecycle（生命周期）边界；`.aw_template/` 不作为 deploy payload source |
@@ -47,5 +48,7 @@
   maintenance / diagnosis。回答只读 `verify`、root drift 类型，以及 local/global verify 的不同关注点。
 - [deploy-mapping-spec.md](./deploy-mapping-spec.md)
   mapping contract。回答 canonical source / backend payload source / manifest / target / verify 的最小正式规则。
+- [first-wave-skill-freeze.md](./first-wave-skill-freeze.md)
+  first-wave freeze。回答首发实现阶段的 skill 范围与支持分支子集；它是 B1-B4 的前瞻性约束，不是当前 deploy 行为说明。
 - [template-consumption-spec.md](./template-consumption-spec.md)
   template contract。回答 `.aw_template/` 中哪些内容属于 `.aw/` 运行管理面，哪些只是待迁移模板，以及 owner 重定前的使用规则。
