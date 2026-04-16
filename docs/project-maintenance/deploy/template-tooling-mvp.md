@@ -7,7 +7,7 @@ last_verified: 2026-04-16
 ---
 # Template Tooling MVP
 
-> 目的：为 B2 提供一个最小可执行工作面，只负责把 `product/.aw_template/` 渲染成 `.aw/` 运行样例，并在生成前检查源模板的基本完整性。
+> 目的：为 B2（Template Tooling 第二阶段）提供一个最小可执行工作面，只负责把 `product/.aw_template/` 渲染成 `.aw/` 运行样例，并在生成前检查源模板的基本完整性。
 
 本页属于 [Deploy Runbooks](./README.md) 系列文档。
 
@@ -21,8 +21,8 @@ last_verified: 2026-04-16
 
 当前 B2 只承接下面三件事：
 
-- 从 `product/.aw_template/` 生成 `.aw/` 运行样例文件
-- 给生成结果补最小 provenance frontmatter（来源头信息） 和非空 placeholder（占位值）
+- 从 `product/.aw_template/` 读取源模板并生成 `.aw/` 运行样例文件
+- 给生成结果补充最小 provenance（来源追溯）frontmatter（来源头信息），并对未提供值的关键字段写入非空 placeholder（占位值）
 - 对源模板做最小结构校验，避免空字段、缺 section（章节） 或缺关键 keyed field（键值字段）
 
 当前 B2 不承接：
@@ -30,9 +30,9 @@ last_verified: 2026-04-16
 - `manifest` 消费
 - `adapter payload` 生成
 - deploy target（部署目标） 同步
-- backend-specific（后端专属） wrapper
-- 全 skill 树通用 orchestrator（编排器）
-- `gate / recover / closeout` 的完整生命周期初始化
+- backend-specific（后端专属） wrapper（封装层）
+- 全 skill 树（skill 的层级依赖结构）通用 orchestrator（编排器）
+- `gate`（阶段准入）/ `recover`（异常恢复）/ `closeout`（收尾关闭）的完整生命周期初始化
 
 ## 二、工具入口
 
@@ -43,7 +43,7 @@ last_verified: 2026-04-16
 支持 3 个子命令：
 
 - `list`
-  - 列出当前 profile（模板集合） 与 template id（模板标识）
+  - 列出当前所有可用的 profile（模板集合，即一组需要一起生成的模板配置）及其包含的 template id（模板标识）
 - `validate`
   - 校验所选 `.aw_template` 源文件是否仍满足 B2 需要的最小结构
 - `generate`
@@ -77,11 +77,11 @@ last_verified: 2026-04-16
 - `updated`
 - `owner`
 
-这组 frontmatter 只服务于 B2 的生成追踪，不是 `docs/` 真相层 frontmatter 合同，也不意味着 `.aw/` 文档升级成长期知识文档。
+这组 frontmatter 只服务于 B2 的生成追踪，并不等同于 `docs/` 目录下作为权威来源的 frontmatter 规范，也不表示 `.aw/` 文档会被提升为长期维护的知识文档。
 
 ### 2. 非空占位策略
 
-当前生成器不允许把关键字段留空。
+当前生成器不允许把已定义的关键字段留空；若调用方未提供值，则写入占位符。
 
 如果调用方没有传入某个上下文值，生成器会写入可见 placeholder，例如：
 
@@ -92,11 +92,11 @@ last_verified: 2026-04-16
 这样做的目的只有两个：
 
 - 让生成样例可直接被人类补全，而不是留下空壳
-- 让后续校验能区分“未填写但位置存在”和“字段直接丢失”
+- 让后续校验能区分"未填写但位置存在"和"字段直接丢失"
 
 ### 3. 链接字段
 
-`control-state.md` 中的 linked formal document（关联正式文档） 字段遵守下面规则：
+`control-state.md` 中指向其他正式文档的链接字段（即 `control-state` 中通过字段引用的其他 `.aw/` 文档）遵守下面规则：
 
 - 如果本次 profile / template 也会生成对应文件，则写相对路径
 - 如果本次没有生成对应文件，则保留 placeholder
@@ -107,7 +107,7 @@ last_verified: 2026-04-16
 - `worktrack_contract`
 - `plan_task_queue`
 
-会落成相对路径；
+这些字段会写成指向对应生成文件的相对路径；
 
 - `gate_evidence`
 
@@ -167,7 +167,7 @@ python3 toolchain/scripts/deploy/aw_scaffold.py generate \
 
 - 能在自定义输出根目录生成首发 `.aw/` 最小样例
 - 生成结果具有非空 frontmatter 与 placeholder
-- 源模板缺 section 或缺 keyed field 时，`validate` 能失败并指出问题
+- 当源模板缺少必需 section 或必需 keyed field 时，`validate` 能失败并在 stderr 或输出报告中指出具体缺失项
 - 工具不消费 `manifest`，不触碰 `adapter payload` 或 deploy target
 
 ## 八、后续边界
@@ -175,5 +175,5 @@ python3 toolchain/scripts/deploy/aw_scaffold.py generate \
 以下内容继续留给后续任务包：
 
 - C1：把 B2 的结构检查扩成更完整的 template regression（模板回归） 测试面
-- B3：把 canonical skill source（规范 skill 来源） 映射到 `agents` payload
+- B3：把 canonical skill source（规范 skill 来源） 映射到 `agents` payload（向 AI Agent 发送的请求数据体）
 - B4：把 deploy / verify 真正接上 mapping + manifest + payload
