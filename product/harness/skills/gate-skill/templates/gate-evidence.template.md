@@ -20,14 +20,37 @@
 
 - 
 
+## Low-Severity Absorption
+
+- applied:
+- representative_findings:
+- residual_only_items:
+
 ## Unresolved Issues
+
+- 
+
+## Upstream Constraint Signals
 
 - 
 
 ## Gate Status
 
-- pass:
+- implementation_gate:
+- validation_gate:
+- policy_gate:
+- overall_verdict:
+- upstream_route_required:
 - why:
+
+## Allowed Next Routes
+
+- 
+
+## Recommended Route
+
+- route_reason:
+- 
 
 ## Next Actions
 

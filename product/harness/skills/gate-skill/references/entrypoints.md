@@ -35,5 +35,7 @@ Load the Harness worktrack gate docs in this order.
   - implementation, validation, and policy evidence
   - known evidence gaps, conflicts, or unresolved issues
 - Do not reopen full execution discovery when the current evidence packet is already sufficient.
+- Apply low-severity absorption before overall verdicting: duplicated or single-surface `P2 / P3` residue should stay residual unless it crosses the documented escalation fence.
+- If the packet contains `possible_upstream_constraint_issue`, judge whether the route must move to rule-check, contract/doc repair, or worktrack recovery instead of another pure code-fix request.
 - If evidence is missing or contradictory, return that in the verdict; do not silently synthesize a pass.
 - Return allowed next routes and review guidance, not the downstream execution plan itself.

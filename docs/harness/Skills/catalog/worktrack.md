@@ -1,9 +1,9 @@
 ---
 title: "Harness Skill Catalog / WorktrackScope"
 status: draft
-updated: 2026-04-15
+updated: 2026-04-16
 owner: aw-kernel
-last_verified: 2026-04-15
+last_verified: 2026-04-16
 ---
 # WorktrackScope Skill Catalog
 
@@ -129,6 +129,7 @@ canonical executable source：
 
 - 汇总 code review、静态检查和结构评估结果
 - 形成 review 证据面
+- 对低严重度噪声做截断，并把重复症状标成可能的上游约束问题
 
 主要依赖：
 
@@ -191,6 +192,7 @@ canonical executable source：
 
 - 汇总 implementation / validation / policy 三类证据
 - 生成当前 round 的 gate verdict
+- 吸收低严重度 residual risks，并在命中上游约束信号时强制改道路由
 
 主要依赖：
 

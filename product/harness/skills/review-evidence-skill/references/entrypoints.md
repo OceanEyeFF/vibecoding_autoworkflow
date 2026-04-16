@@ -31,4 +31,6 @@ Load the Harness review-evidence docs in this order.
 - Start from the current review target and `Gate Evidence` need; load only the additional context required to explain review findings and confidence.
 - If canonical review inputs are sufficient, stop there; do not widen into broad repo reading or final adjudication logic.
 - Use `Task Contract` only when the review question needs a stricter upstream execution boundary than the current `Worktrack Contract` already provides.
+- Apply a low-severity cutoff before returning the slice: keep only representative `P2 / P3`-style items in `findings`, fold the rest into `residual_risks`, and avoid generating new `follow_up_actions` for non-blocking residue.
+- When repeated symptoms or boundary ambiguity show up, mark the representative finding with `possible_upstream_constraint_issue` so `gate-skill` can decide whether to reroute upstream instead of asking for more code churn.
 - Return one bounded `Gate Evidence Review Slice` for downstream synthesis instead of deciding the final worktrack gate outcome here.
