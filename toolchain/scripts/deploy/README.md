@@ -5,12 +5,19 @@
 当前主线：
 
 - `adapter_deploy.py`：激活并复验当前 `agents` runtime target root
+- `aw_scaffold.py`：从 `product/.aw_template/` 生成 `.aw/` 运行样例，并校验模板最小结构
 
 最小维护流：
 
 1. 先跑 `verify`
 2. 再跑 `local` 或 `global` endpoint
 3. 最后再跑一次 `verify`
+
+`.aw_template` 相关最小流：
+
+1. 先跑 `python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal`
+2. 再跑 `python3 toolchain/scripts/deploy/aw_scaffold.py generate --profile first-wave-minimal --output-root /tmp/demo-aw`
+3. 如需覆盖已有样例，再显式加 `--force`
 
 额外说明：
 
@@ -29,3 +36,5 @@ python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
 - local / global 首次激活到空 root
 - 已有 root 的重复激活
 - `verify` 的 missing / broken symlink / wrong root type 结构错误
+- `.aw_template` 到 `.aw/` 的首发 profile 生成
+- `.aw_template` 的最小结构校验与 overwrite guard

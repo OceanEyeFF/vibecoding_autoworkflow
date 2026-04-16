@@ -72,6 +72,9 @@ last_verified: 2026-04-16
 - skills / templates 分层规则变更
   - `python3 toolchain/scripts/test/path_governance_check.py`
   - `python3 toolchain/scripts/test/governance_semantic_check.py`
+- `.aw_template` 初始化工具或 `.aw/` scaffold 生成逻辑变更
+  - `python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal`
+  - `python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_aw_scaffold.py'`
 - closeout / gate / backfill 变更
   - `python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`
   - 对应的最小 pytest

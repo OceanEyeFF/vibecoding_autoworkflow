@@ -26,6 +26,7 @@
 | 我想看 canonical source 到 target entry 的正式映射 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | 最小 deploy 合同，定义 canonical source / backend payload source / manifest / target / verify |
 | 我想看 B1 的过渡性 manifest 读取面和边界 | [skill-manifest-schema.md](./skill-manifest-schema.md) | B1 只固定 canonical read-surface schema 与首发冻结投影；不是 A1 最终 manifest 落地，仍早于 B3 payload 与 B4 deploy/verify 实现 |
 | 我想看首发实现阶段到底只承接哪些 skill 和分支子集 | [first-wave-skill-freeze.md](./first-wave-skill-freeze.md) | 前瞻性实现约束；回答首发纳入哪些 canonical skills 与可达分支子集，不描述当前 deploy 已实现行为 |
+| 我想初始化 `.aw/` 样例并校验 `.aw_template` 最小结构 | [template-tooling-mvp.md](./template-tooling-mvp.md) | B2 的最小工作面，只做 `.aw_template -> .aw` 样例生成与前置校验；不读取 manifest，也不触碰 payload / deploy target |
 | 我已有 root，只想复验 | [skill-deployment-maintenance.md](./skill-deployment-maintenance.md) | 按 `verify -> endpoint -> verify` 做 |
 | 我看到 drift / `wrong-target-root-type` | [skill-deployment-maintenance.md](./skill-deployment-maintenance.md) | 这里集中解释 root 级错误信号和恢复口径 |
 | 我在改 skills 或 `.aw_template/` | [skill-lifecycle.md](./skill-lifecycle.md) | 这里说明 lifecycle（生命周期）边界；`.aw_template/` 不作为 deploy payload source |
@@ -35,6 +36,7 @@
 
 - 当前 deploy 工具只实现 `agents`
 - 当前 deploy 工具只管理 target root，不复制或比对 skill 内容
+- 当前 B2 初始化工具只处理 `.aw_template -> .aw` 样例，不消费 `manifest`、不生成 payload，也不写入 deploy target
 - `docs/harness/` 继续承接 Harness doctrine；deploy 文档只定义 operator-facing（面向操作者）的 deploy 映射合同，不定义 skill doctrine
 - `adapter_deploy.py` 只保留 runtime endpoint，不承接 skills/source 的业务同步
 - `.aw_template/` 的 `.aw/` 目录结构、管理文档模板和待迁移模板边界见 [template-consumption-spec.md](./template-consumption-spec.md)
@@ -55,3 +57,5 @@
   first-wave freeze。回答首发实现阶段的 skill 范围与支持分支子集；它是 B1-B4 的前瞻性约束，不是当前 deploy 行为说明。
 - [template-consumption-spec.md](./template-consumption-spec.md)
   template contract。回答 `.aw_template/` 中哪些内容属于 `.aw/` 运行管理面，哪些只是待迁移模板，以及 owner 重定前的使用规则。
+- [template-tooling-mvp.md](./template-tooling-mvp.md)
+  template tooling。回答 B2 当前已经提供的最小生成 / 校验面，以及如何在临时目录或 repo-local `.aw/` 下初始化首发样例。
