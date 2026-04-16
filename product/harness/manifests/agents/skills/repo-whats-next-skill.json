@@ -9,7 +9,7 @@
     "references/entrypoints.md",
     "references/priority-reframe-mode.md"
   ],
-  "target_dir": "skills/repo-whats-next-skill",
+  "target_dir": "repo-whats-next-skill",
   "first_wave_profile": "a3-first-wave",
   "first_wave_scope_kind": "subset-by-a3-freeze",
   "supported_repo_actions": [

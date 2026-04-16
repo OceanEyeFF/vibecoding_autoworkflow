@@ -82,6 +82,8 @@ last_verified: 2026-04-16
   - `python3 -m pytest toolchain/scripts/test/test_skill_manifest_contract.py`
   - 如同时改了 gate 链路，再补 `python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`
 - adapter / deploy 变更
+  - `python3 -m pytest toolchain/scripts/test/test_agents_adapter_contract.py`
+  - `python3 -m pytest toolchain/scripts/test/test_governance_semantic_check.py`
   - `python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend <backend>`
 
 ### 3.1 修复完整性

@@ -9,7 +9,7 @@
     "references/entrypoints.md",
     "templates/contract.template.md"
   ],
-  "target_dir": "skills/init-worktrack-skill",
+  "target_dir": "init-worktrack-skill",
   "first_wave_profile": "a3-first-wave",
   "first_wave_scope_kind": "subset-by-a3-freeze"
 }

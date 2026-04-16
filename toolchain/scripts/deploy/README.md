@@ -6,6 +6,7 @@
 
 - `adapter_deploy.py`：激活并复验当前 `agents` runtime target root
 - `aw_scaffold.py`：从 `product/.aw_template/` 生成 `.aw/` 运行样例，并校验模板最小结构
+- `product/harness/adapters/agents/skills/`：B3 的 `agents` thin-shell payload source；当前仍由文档和契约测试约束，尚未进入 `adapter_deploy.py` 同步逻辑
 
 最小维护流：
 
@@ -23,6 +24,7 @@
 
 - `verify` 由 `adapter_deploy.py verify` 提供，用于检查缺失 root、错误路径类型和坏链路
 - 当前接口只实现 `agents`
+- 当前 B3 payload source 已存在，但 deploy 脚本仍只管理 target root；内容同步留给 B4
 - `claude` 与 `opencode` 后续如需恢复，应先重定义 contract 再实现
 
 回归测试入口：

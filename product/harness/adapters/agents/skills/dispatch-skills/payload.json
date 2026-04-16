@@ -1,0 +1,24 @@
+{
+  "payload_version": "agents-skill-payload.v1",
+  "backend": "agents",
+  "skill_id": "dispatch-skills",
+  "manifest_path": "product/harness/manifests/agents/skills/dispatch-skills.json",
+  "canonical_dir": "product/harness/skills/dispatch-skills",
+  "canonical_paths": [
+    "product/harness/skills/dispatch-skills/SKILL.md",
+    "product/harness/skills/dispatch-skills/references/entrypoints.md"
+  ],
+  "target_dir": "dispatch-skills",
+  "target_entry_name": "SKILL.md",
+  "payload_policy": "thin-shell",
+  "supported_target_scopes": [
+    "local"
+  ],
+  "reference_distribution": "repo-read-through-local-only",
+  "required_payload_files": [
+    "SKILL.md",
+    "payload.json"
+  ],
+  "first_wave_profile": "a3-first-wave",
+  "first_wave_scope_kind": "subset-by-a3-freeze"
+}

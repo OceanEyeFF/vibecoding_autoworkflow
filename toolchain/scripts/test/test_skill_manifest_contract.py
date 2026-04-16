@@ -89,7 +89,7 @@ class SkillManifestContractTest(unittest.TestCase):
                 self.assertEqual(set(actual_repo_actions), expected_repo_actions)
 
             self.assertEqual(Path(canonical_dir).name, skill_id)
-            self.assertEqual(Path(target_dir).name, skill_id)
+            self.assertEqual(target_dir, skill_id)
             self.assertIn(entrypoint, included_paths)
 
             all_relative_paths = [entrypoint, target_dir, *included_paths]

@@ -53,7 +53,7 @@
       "uniqueItems": true
     },
     "target_dir": {
-      "$ref": "#/definitions/relative_dir_no_dot_segments"
+      "$ref": "#/definitions/relative_path_no_dot_segments"
     },
     "first_wave_profile": {
       "const": "a3-first-wave"

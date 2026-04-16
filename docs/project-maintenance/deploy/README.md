@@ -25,6 +25,7 @@
 | 我第一次激活当前 runtime target root | [deploy-runbook.md](./deploy-runbook.md) | Quick Start，只保留 local/global root 激活与最小复验 |
 | 我想看 canonical source 到 target entry 的正式映射 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | 最小 deploy 合同，定义 canonical source / backend payload source / manifest / target / verify |
 | 我想看 B1 的过渡性 manifest 读取面和边界 | [skill-manifest-schema.md](./skill-manifest-schema.md) | B1 只固定 canonical read-surface schema 与首发冻结投影；不是 A1 最终 manifest 落地，仍早于 B3 payload 与 B4 deploy/verify 实现 |
+| 我想看 B3 的 `agents` thin-shell payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | B3 只定义 `product/harness/adapters/agents/skills/` 的 payload source 结构、thin-shell policy 和 first-wave 收窄；不触碰 deploy target 同步 |
 | 我想看首发实现阶段到底只承接哪些 skill 和分支子集 | [first-wave-skill-freeze.md](./first-wave-skill-freeze.md) | 前瞻性实现约束；回答首发纳入哪些 canonical skills 与可达分支子集，不描述当前 deploy 已实现行为 |
 | 我想初始化 `.aw/` 样例并校验 `.aw_template` 最小结构 | [template-tooling-mvp.md](./template-tooling-mvp.md) | B2 的最小工作面，只做 `.aw_template -> .aw` 样例生成与前置校验；不读取 manifest，也不触碰 payload / deploy target |
 | 我已有 root，只想复验 | [skill-deployment-maintenance.md](./skill-deployment-maintenance.md) | 按 `verify -> endpoint -> verify` 做 |
@@ -36,6 +37,7 @@
 
 - 当前 deploy 工具只实现 `agents`
 - 当前 deploy 工具只管理 target root，不复制或比对 skill 内容
+- 当前 B3 已在 `product/harness/adapters/agents/skills/` 落 first-wave payload source，但 deploy 工具在 B4 前仍不消费这些 payload
 - 当前 B2 初始化工具只处理 `.aw_template -> .aw` 样例，不消费 `manifest`、不生成 payload，也不写入 deploy target
 - `docs/harness/` 继续承接 Harness doctrine；deploy 文档只定义 operator-facing（面向操作者）的 deploy 映射合同，不定义 skill doctrine
 - `adapter_deploy.py` 只保留 runtime endpoint，不承接 skills/source 的业务同步
@@ -53,6 +55,8 @@
   mapping contract。回答 canonical source / backend payload source / manifest / target / verify 的最小正式规则。
 - [skill-manifest-schema.md](./skill-manifest-schema.md)
   manifest schema。回答 B1 的过渡性 manifest 读取面、首发冻结投影，以及与 A1/A2/A3 的边界；不提前定义 B3 payload 或 B4 deploy/verify 行为。
+- [agents-adapter-source.md](./agents-adapter-source.md)
+  adapter source。回答 B3 的 `agents` thin-shell payload source 目录、descriptor 和首发收窄；不声明 deploy target 已经同步。
 - [first-wave-skill-freeze.md](./first-wave-skill-freeze.md)
   first-wave freeze。回答首发实现阶段的 skill 范围与支持分支子集；它是 B1-B4 的前瞻性约束，不是当前 deploy 行为说明。
 - [template-consumption-spec.md](./template-consumption-spec.md)

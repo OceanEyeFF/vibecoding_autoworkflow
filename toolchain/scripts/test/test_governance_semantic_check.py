@@ -95,6 +95,47 @@ def test_check_adapter_wrappers_are_thin_ignores_absent_adapter_layer(tmp_path: 
     assert report.failures == []
 
 
+def test_check_adapter_wrappers_are_thin_accepts_valid_wrapper(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/harness/adapters/agents/skills/demo-skill/SKILL.md",
+        "\n".join(
+            [
+                "# Demo Adapter Wrapper",
+                "## Canonical Source",
+                "## Backend Notes",
+                "## Deploy Target",
+            ]
+        )
+        + "\n",
+    )
+
+    report = SemanticReport()
+    check_adapter_wrappers_are_thin(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_adapter_wrappers_are_thin_flags_missing_heading_and_duplication(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/harness/adapters/agents/skills/demo-skill/SKILL.md",
+        "\n".join(
+            [
+                "# Demo Adapter Wrapper",
+                "## Canonical Source",
+                "## Backend Notes",
+                "## Execution Rules",
+            ]
+        )
+        + "\n",
+    )
+
+    report = SemanticReport()
+    check_adapter_wrappers_are_thin(tmp_path, report)
+
+    assert any("Deploy Target" in item for item in report.failures)
+    assert any("Execution Rules" in item for item in report.failures)
+
+
 def test_check_canonical_skill_packages_are_minimal_accepts_valid_package(tmp_path: Path) -> None:
     write_doc(
         tmp_path / "product/harness/skills/demo-skill/SKILL.md",

@@ -8,7 +8,7 @@
     "SKILL.md",
     "references/entrypoints.md"
   ],
-  "target_dir": "skills/harness-skill",
+  "target_dir": "harness-skill",
   "first_wave_profile": "a3-first-wave",
   "first_wave_scope_kind": "full-skill"
 }

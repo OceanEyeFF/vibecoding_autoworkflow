@@ -123,7 +123,7 @@ last_verified: 2026-04-16
 ### 7. `target_dir`
 
 - 相对 `backend target root`（后端目标根目录） 的目标目录
-- 仅表达 backend root 下的相对落点，例如 `skills/<skill_id>`
+- 仅表达 backend skills root 下的相对落点；当前 `agents` 首发实例使用 `<skill_id>`，不重复写 `skills/` 根段
 - 不编码 `repo-local`（仓库本地） 或 `global`（全局） 的绝对根目录
 
 ### 8. `first_wave_profile`
@@ -162,6 +162,7 @@ last_verified: 2026-04-16
 ### 2. 字段耦合约束
 
 - v1 machine schema 当前仅分别校验 `skill_id`、`canonical_dir` 与 `target_dir` 的独立格式
+- 当前 `agents` 首发实例中，`target_dir` 应直接等于 `skill_id`
 - `skill_id`、`canonical_dir` 的末段与 `target_dir` 的末段应保持一致，这仍属于 B1 的清单编写与人工审阅（manifest authoring / review）规则
 - `entrypoint` 必须同时出现在 `included_paths` 中，这也属于 B1 的清单编写与人工审阅规则
 - B1 通过专门的 manifest contract test（清单契约测试） 锁定这些语义关系，但不将其强制写入 v1 JSON Schema

@@ -81,7 +81,9 @@ OUTDATED_PLACEHOLDER_PHRASES = {
 CANONICAL_SKILL_GLOBS = [
     "product/*/skills/*/SKILL.md",
 ]
-ADAPTER_SKILL_GLOBS = []
+ADAPTER_SKILL_GLOBS = [
+    "product/*/adapters/*/skills/*/SKILL.md",
+]
 CANONICAL_SKILL_REQUIRED_HEADINGS = [
     "## Overview",
     "## When To Use",

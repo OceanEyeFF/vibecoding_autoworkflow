@@ -1,0 +1,24 @@
+{
+  "payload_version": "agents-skill-payload.v1",
+  "backend": "agents",
+  "skill_id": "harness-skill",
+  "manifest_path": "product/harness/manifests/agents/skills/harness-skill.json",
+  "canonical_dir": "product/harness/skills/harness-skill",
+  "canonical_paths": [
+    "product/harness/skills/harness-skill/SKILL.md",
+    "product/harness/skills/harness-skill/references/entrypoints.md"
+  ],
+  "target_dir": "harness-skill",
+  "target_entry_name": "SKILL.md",
+  "payload_policy": "thin-shell",
+  "supported_target_scopes": [
+    "local"
+  ],
+  "reference_distribution": "repo-read-through-local-only",
+  "required_payload_files": [
+    "SKILL.md",
+    "payload.json"
+  ],
+  "first_wave_profile": "a3-first-wave",
+  "first_wave_scope_kind": "full-skill"
+}
