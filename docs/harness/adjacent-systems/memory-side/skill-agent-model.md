@@ -1,9 +1,9 @@
 ---
 title: "Memory Side Skill 与 Agent 模型"
 status: active
-updated: 2026-04-14
+updated: 2026-04-17
 owner: aw-kernel
-last_verified: 2026-04-14
+last_verified: 2026-04-17
 ---
 # Memory Side Skill 与 Agent 模型
 
@@ -175,7 +175,8 @@ last_verified: 2026-04-14
 说明：
 
 - 这些目录只保留部署结果
-- 它们通过 `toolchain/scripts/deploy/adapter_deploy.py` 从 `product/` 同步
+- 当前只有 `.agents/skills/` 通过 `toolchain/scripts/deploy/adapter_deploy.py` 从 `product/` destructive reinstall 到 repo-local target
+- `.claude/skills/` 与 `.opencode/skills/` 可以作为 repo-local deploy target 保留，但当前仓库没有稳定的 `claude` / `opencode` deploy adapter CLI
 - 不应再手工维护源码
 
 ### 3. Toolchain
@@ -188,7 +189,7 @@ toolchain/
 
 说明：
 
-- `deploy/adapter_deploy.py` 负责本地挂载与全局安装
+- `deploy/adapter_deploy.py` 当前负责 `agents` backend 的 repo-local destructive reinstall 与只读 `verify`
 - `test/path_governance_check.py` 负责轻量路径治理回归
 
 ## 七、与不同后端的关系

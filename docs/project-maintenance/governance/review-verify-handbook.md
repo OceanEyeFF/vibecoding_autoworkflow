@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 治理入口"
 status: active
-updated: 2026-04-16
+updated: 2026-04-17
 owner: aw-kernel
-last_verified: 2026-04-16
+last_verified: 2026-04-17
 ---
 # Review / Verify 治理入口
 
@@ -54,7 +54,7 @@ last_verified: 2026-04-16
 
 - 如果改了 root / partition / path 规则，是否同步 foundations 和治理检查
 - 如果改了 `AGENTS.md` 或执行流程，是否同步本文
-- 如果改了 deploy / adapter 行为，是否同步对应 `docs/project-maintenance/deploy/` runbook
+- 如果改了 deploy / adapter 行为，是否同步对应 `docs/project-maintenance/deploy/` runbook、maintenance 与 usage-help，并确保文档口径仍是 destructive reinstall model
 - 如果改了 `docs/harness/`、`product/harness/skills/*/` 或 `product/harness/adapters/*/skills/*/`，是否仍保持合同层与 executable layer 分工
 - 如果改了 adjacent-system 文档，是否同步清理已经删除的 `product/memory-side/`、`product/task-interface/` 和 `docs/deployable-skills/` 旧路径引用
 - 如果改了 `product/*/skills/*/SKILL.md`，是否保持最小 executable body + `references/entrypoints.md`，而没有吸收 repo-local execution template 内容
@@ -84,7 +84,10 @@ last_verified: 2026-04-16
 - adapter / deploy 变更
   - `python3 -m pytest toolchain/scripts/test/test_agents_adapter_contract.py`
   - `python3 -m pytest toolchain/scripts/test/test_governance_semantic_check.py`
-  - `python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend <backend>`
+  - `python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents`
+  - `python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents`
+  - `python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents`
+  - `python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents`
 
 ### 3.1 修复完整性
 
@@ -95,6 +98,7 @@ last_verified: 2026-04-16
 - 是否检查了 operator-facing 视图、状态聚合、CLI 返回码和文档承诺之间仍然一致
 - 是否补了能锁住该问题及其直接相邻变体的回归测试
 - 是否确认修复后不会把已有 healthy path、dirty state path 或 malformed artifact path 重新打坏
+- 如果本轮 review 的问题建立在某种路径形态或输入形态上，是否先确认该形态已经被当前 contract 和文档声明支持；对 deploy / adapter 任务，未声明支持的 nested target layout 应标成 contract expansion topic，而不是直接当作当前 patch bug
 
 ### 4. 回写要求
 

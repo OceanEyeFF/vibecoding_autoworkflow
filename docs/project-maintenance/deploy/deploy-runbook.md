@@ -1,13 +1,13 @@
 ---
 title: "Deploy Runbook"
 status: active
-updated: 2026-04-15
+updated: 2026-04-17
 owner: aw-kernel
-last_verified: 2026-04-15
+last_verified: 2026-04-17
 ---
 # Deploy Runbook
 
-> 目的：提供当前仓库的部署快速上手指南，回答四个核心问题：当前支持哪些运行端点、目标根目录在哪里、首次激活怎么操作、已有根目录的最小更新路径是什么。
+> 目的：提供当前仓库的 deploy 快速上手指南，固定 destructive reinstall model：`prune --all -> check_paths_exist -> install --backend agents`。`verify` 只保留为辅助、只读的诊断与复验命令。
 
 本页属于 [Deploy Runbooks](./README.md) 系列文档。
 
@@ -17,16 +17,16 @@ last_verified: 2026-04-15
 - [Toolchain 分层](../../../toolchain/toolchain-layering.md)
 - [Deploy Mapping Spec](./deploy-mapping-spec.md) —— 部署映射规范
 
-本页只保留快速入门和目标根目录总览。维护诊断请查看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)，业务生命周期边界请查看 [skill-lifecycle.md](./skill-lifecycle.md)。
+本页只保留快速入门和主流程。维护诊断请查看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)，业务生命周期边界请查看 [skill-lifecycle.md](./skill-lifecycle.md)。
 
 ## 一、什么时候看这页
 
 以下场景建议先读本文：
 
-- 首次激活当前仓库的本地（repo-local）目标根目录
-- 首次激活全局目标根目录
-- 想先了解当前实现了哪些后端（backend）
-- 只想走一遍最小更新路径，再决定是否进入维护流程
+- 首次给 `agents` backend 做安装
+- 已有安装，但想按当前 live source 完整重装
+- 想确认 deploy 主流程现在到底只剩哪三步
+- 想确认 `verify` 还做什么、但不再属于哪条主线
 
 ## 二、当前实现状态
 
@@ -47,70 +47,82 @@ python3 toolchain/scripts/deploy/adapter_deploy.py
 
 当前边界说明：
 
-- 仅支持 `agents` 的 `local` / `global` 端点，以及 `verify`（校验）
-- 当前部署脚本只负责管理目标根目录（创建/校验目录结构），不复制 skill 内容
+- 当前只实现 `agents`
+- 主流程固定为：
+  - `prune --all`
+  - `check_paths_exist`
+  - `install --backend agents`
+- `verify --backend agents` 是只读辅助命令，不属于安装主线
 - 原始来源（canonical source）、后端部署包（backend payload source）、清单（manifest）、目标入口（target entry）之间的正式映射规则，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
-- 未来若恢复其他后端，应先重新定义目标端契约（target contract），再扩展本文档
+- `prune --all` 只删除带可识别、且属于当前 backend 的受管 `aw.marker` 目录；无 marker、不可识别 marker 或 foreign 目录一律不碰
+- `check_paths_exist` 会基于当前 source 声明的 live bindings 解析目标路径；只要任一路径已存在，就全量列出冲突并失败退出，不做任何业务写入
+- `install --backend agents` 只写当前 source 声明的 live payload；若 source 存在重复 `target_dir` 或目标路径冲突，必须在写入前失败
+- `aw.marker` 是 runtime-generated artifact，只表达“这是当前 backend 的受管 live install 目录”
+- 不再承接 `retired-target-dir`、`prune --outdated`、archive/history、增量修复、旧版本保活或 “确认新目录可用再删旧目录”
+- backend-specific target root 解析与 override 参数见 [Codex Usage Help](../usage-help/codex.md)
 
-## 三、本地 / 全局目标对照
+## 三、三步主流程
 
-| backend | 本地目标路径 | 全局目标路径 |
-|---|---|---|
-| `agents` | `.agents/skills/` | `$CODEX_HOME/skills` 或通过 `--agents-root` 显式指定 |
-
-当前执行接口只保证目标根目录可被激活和复验。原始来源到目标入口的正式映射、部署包文件规则与校验口径，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)。
-
-## 四、首次激活最小步骤
-
-### 1. 首次本地激活
+默认主流程固定为：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py local --backend agents
+python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents
+python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents
+python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents
+```
+
+如果当前 backend 需要显式 root override，例如 `agents` 通过 `--agents-root` 指到非默认 target root，就在这三条命令上附加对应参数。参数来源见 [Codex Usage Help](../usage-help/codex.md)。
+
+### 1. `prune --all`
+
+- 清理当前 backend 受管的旧安装目录
+- 删除条件只有一个：目录里存在可识别、属于当前 backend 的 `aw.marker`
+- 没有 marker、marker 不可识别、或明显不是我方受管目录时，脚本不会碰它们
+- 这一步是 destructive reinstall 的显式清理阶段，不负责保留历史副本
+
+### 2. `check_paths_exist`
+
+- 基于当前 source 声明的 live bindings，解析即将写入的全部目标路径
+- 如果任何目标路径已经存在，命令必须一次性列出全部冲突并非零退出
+- 这一步不写任何业务文件，也不替 operator 做“可不可以覆盖”的判断
+
+### 3. `install --backend agents`
+
+- 只写当前 source 声明的 live payload
+- 这一步不承接 archive/history、增量修复或旧版本保活
+- 如果 source 中出现重复 `target_dir` 或其他 source contract 非法情形，必须在写入前失败
+- 如果冲突路径未清理完，也必须在写入前失败
+
+## 四、可选复验
+
+主流程跑完后，如需只读复验，再执行：
+
+```bash
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
 ```
 
-### 2. 首次全局激活
+`verify` 当前只负责：
 
-如果 `agents` 后端想走脚本默认解析，先确保当前 shell 已设置环境变量：
+- source 合法性
+- target root 是否存在、是否是目录、是否是坏链路
+- live install 与当前 source 的对齐状态
+- target root 下的 conflict / unrecognized 情形
 
-```bash
-export CODEX_HOME=/your/codex/home
-```
+## 五、常见恢复路径
 
-默认解析示例：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --create-roots
-```
-
-显式传 root 示例：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root /your/codex/home/skills --create-roots
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root /your/codex/home/skills
-```
-
-## 五、已有根目录的最小更新路径
-
-如果只是确认已有根目录仍可用：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py local --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
-```
-
-global 示例：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root /your/codex/home/skills
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root /your/codex/home/skills --create-roots
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root /your/codex/home/skills
-```
+- `check_paths_exist` 报出冲突路径：
+  - 先由 operator 手工清理这些目录或修正 source
+  - 然后从 `prune --all` 重新开始
+- `install` 在写入前失败：
+  - 先修 source contract，例如重复 `target_dir`
+  - 再从 `prune --all` 重新开始
+- `verify` 报 drift：
+  - 先确认是 source 问题、target root 问题还是 unrecognized / foreign 目录
+  - 修正后重新跑三步主流程
 
 ## 六、下一步去哪页
 
 - 根目录不一致（drift）、损坏链路、root 类型错误：查看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)
 - skills / `.aw_template` 的增删改查：查看 [skill-lifecycle.md](./skill-lifecycle.md)
 - 原始来源、后端部署包、清单、目标入口的正式规则：查看 [Deploy Mapping Spec](./deploy-mapping-spec.md)
-- `claude` / `opencode` 当前暂不在部署接口中实现；恢复前不要将它们写成稳定的运维操作流程
+- `claude` / `opencode` 当前暂不在部署接口中实现；恢复前不要将它们写成稳定的 operator 流程
