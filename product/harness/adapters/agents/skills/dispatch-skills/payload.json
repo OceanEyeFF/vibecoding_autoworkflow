@@ -17,7 +17,8 @@
   "reference_distribution": "repo-read-through-local-only",
   "required_payload_files": [
     "SKILL.md",
-    "payload.json"
+    "payload.json",
+    "aw.marker"
   ],
   "first_wave_profile": "a3-first-wave",
   "first_wave_scope_kind": "subset-by-a3-freeze"

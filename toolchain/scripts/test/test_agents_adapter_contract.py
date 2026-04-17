@@ -46,6 +46,7 @@ class AgentsAdapterContractTest(unittest.TestCase):
 
             self.assertTrue(wrapper_path.is_file(), wrapper_path)
             self.assertTrue(payload_path.is_file(), payload_path)
+            self.assertFalse((ADAPTER_SKILLS_DIR / skill_id / "aw.marker").exists())
             self.assertTrue(manifest_path.is_file(), manifest_path)
 
             wrapper_text = wrapper_path.read_text(encoding="utf-8")
@@ -69,7 +70,10 @@ class AgentsAdapterContractTest(unittest.TestCase):
             self.assertEqual(payload["payload_policy"], "thin-shell")
             self.assertEqual(payload["supported_target_scopes"], ["local"])
             self.assertEqual(payload["reference_distribution"], "repo-read-through-local-only")
-            self.assertEqual(payload["required_payload_files"], ["SKILL.md", "payload.json"])
+            self.assertEqual(
+                payload["required_payload_files"],
+                ["SKILL.md", "payload.json", "aw.marker"],
+            )
             self.assertEqual(payload["first_wave_profile"], manifest["first_wave_profile"])
             self.assertEqual(
                 payload["first_wave_scope_kind"],
@@ -98,6 +102,38 @@ class AgentsAdapterContractTest(unittest.TestCase):
             for canonical_path in expected_canonical_paths:
                 self.assertIn(f"`{canonical_path}`", wrapper_text)
                 self.assertTrue((REPO_ROOT / canonical_path).is_file(), canonical_path)
+
+    def test_first_wave_agents_adapter_target_dirs_are_unique(self) -> None:
+        target_dir_to_skills: dict[str, list[str]] = {}
+
+        for manifest_path in sorted(MANIFEST_DIR.glob("*.json")):
+            skill_id = manifest_path.stem
+            payload_path = ADAPTER_SKILLS_DIR / skill_id / "payload.json"
+
+            self.assertTrue(payload_path.is_file(), payload_path)
+
+            manifest = load_json(manifest_path)
+            payload = load_json(payload_path)
+            target_dir = payload["target_dir"]
+
+            self.assertEqual(
+                target_dir,
+                manifest["target_dir"],
+                f"{skill_id} manifest/payload target_dir mismatch",
+            )
+            self.assertIsInstance(target_dir, str)
+            target_dir_to_skills.setdefault(target_dir, []).append(skill_id)
+
+        duplicates = {
+            target_dir: sorted(skill_ids)
+            for target_dir, skill_ids in target_dir_to_skills.items()
+            if len(skill_ids) > 1
+        }
+        self.assertEqual(
+            duplicates,
+            {},
+            f"duplicate target_dir bindings are not allowed: {duplicates}",
+        )
 
 
 if __name__ == "__main__":

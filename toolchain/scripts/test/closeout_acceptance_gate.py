@@ -19,6 +19,7 @@ LOCAL_DEPLOY_TARGET_ROOTS = {
     "claude": REPO_ROOT / ".claude" / "skills",
     "opencode": REPO_ROOT / ".opencode" / "skills",
 }
+SUPPORTED_DEPLOY_VERIFY_BACKENDS = ("agents",)
 
 
 @dataclass
@@ -188,8 +189,6 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
             "verify",
             "--backend",
             backend,
-            "--target",
-            "local",
         ]
         result = run_command(command, cwd=repo_root)
         issue_codes = extract_verify_issue_codes(result["stdout"])
@@ -222,19 +221,14 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
             "manifest_contract_tests",
             run_command([python, "-m", "pytest", "toolchain/scripts/test/test_skill_manifest_contract.py"], cwd=repo_root),
         ),
-        (
-            "deploy_verify_agents",
-            run_local_deploy_verify("agents"),
-        ),
-        (
-            "deploy_verify_claude",
-            run_local_deploy_verify("claude"),
-        ),
-        (
-            "deploy_verify_opencode",
-            run_local_deploy_verify("opencode"),
-        ),
     ]
+    subchecks.extend(
+        (
+            f"deploy_verify_{backend}",
+            run_local_deploy_verify(backend),
+        )
+        for backend in SUPPORTED_DEPLOY_VERIFY_BACKENDS
+    )
     passed = all(result["passed"] for _, result in subchecks)
     skipped = any(result.get("skipped", False) for _, result in subchecks)
     return {

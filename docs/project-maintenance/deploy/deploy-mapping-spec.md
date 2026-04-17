@@ -1,13 +1,13 @@
 ---
 title: "Deploy Mapping Spec"
 status: active
-updated: 2026-04-16
+updated: 2026-04-17
 owner: aw-kernel
-last_verified: 2026-04-16
+last_verified: 2026-04-17
 ---
 # Deploy Mapping Spec
 
-> 目的：定义部署流程中 `原始来源 -> 后端部署包 -> 清单 -> 目标入口 -> 校验` 这条链路的最小操作者约定。
+> 目的：定义 destructive reinstall model 下 `原始来源 -> 后端部署包 -> 清单 -> 目标入口 -> 校验` 这条链路的最小操作者约定。
 
 本页属于 [Deploy Runbooks](./README.md) 系列。
 
@@ -25,12 +25,13 @@ last_verified: 2026-04-16
 - 如何从原始来源派生出后端部署包
 - 清单如何描述可分发对象
 - 目标入口如何命名与落点
-- 如何校验分发结果
+- 如何校验 live install 结果
 
 本规范不定义：
 
 - `adapter_deploy.py` 的实现细节
-- 清单的概念体系扩展
+- archive / history 策略
+- 旧 `local/global` deploy mode
 - `.aw_template/` 生成 `.aw/` 目录结构与管理文档的实现细节
 - B1 / B2 / B3 / B4 的具体实现
 - `claude` / `opencode` 等后端的后续细节
@@ -53,8 +54,8 @@ last_verified: 2026-04-16
   - 路径示例：`product/harness/manifests/<backend>/skills/<skill>.md` 或同层约定路径
   - 只描述分发与校验所需的最小信息
 - **目标入口（target entry）**
-  - `repo-local` 或 `global` 目标根目录下的最终落点
-  - 是运行时可见的入口，只读，不回写原始来源
+  - backend target root 下的最终落点
+  - 是运行时可见的 live install 入口，只读，不回写原始来源
 - **校验（verify）**
   - 检查目标入口、部署包文件以及各层之间是否一致
 
@@ -65,6 +66,7 @@ last_verified: 2026-04-16
 - 必须能唯一定位 skill 的原始来源
 - 必须能回溯到 `skill_id`
 - 必须稳定，不能依赖目标根目录推导
+- `canonical_dir` 必须保持为相对 repo root 的安全路径，不能使用绝对路径，也不能包含 `.` / `..` 路径段跳出仓库
 
 ### 2. 后端部署包路径
 
@@ -80,26 +82,35 @@ last_verified: 2026-04-16
 
 ### 4. 目标入口命名
 
-- 在 repo-local 与 global 目标中必须保持同义
 - 必须体现后端、skill 与入口角色
 - 必须避免与原始来源路径冲突
+- `target_dir`、`target_entry_name` 与 `required_payload_files` 必须保持为相对 target root 的安全路径，不能使用绝对路径，也不能包含 `.` / `..` 路径段跳出目标根
+- 当前 live bindings 内，`target_dir` 必须唯一；这是一条运行时硬断言，不是测试侧建议
 
-### 5. repo-local / global 目标规则
+### 5. backend target root 规则
 
-- `repo-local` 目标只落在仓库内约定的运行时根目录
-- `global` 目标只落在用户级的运行时根目录
-- 两者共享同一命名逻辑，差异仅在根目录作用域
+- target root 由 backend 自己解析
+- operator-facing 主流程不再区分 `local/global` deploy mode
+- install 只面向“当前 backend 的 resolved target root”
+
+### 5.1 当前 `agents` target contract
+
+- 当前 `agents` live install 仍按单个 skill 目录落在 backend target root 下
+- 当前 first-wave skills 继续约束 `payload.target_dir == manifest.target_dir == skill_id`
+- 若未来要支持 nested target layout，必须先升级 deploy contract，再同步更新 runbook、verify 口径与测试矩阵
 
 ### 6. 必需部署文件
 
 - 必须显式列出最小必需文件
+- 对当前 `agents` first-wave payload，live install 至少应包含 target entry、顶层 `payload.json` 与 runtime-generated `aw.marker`
+- 当前实现中，`aw.marker` 只表达 deploy 指纹：`marker_version / backend / skill_id / payload_version / payload_fingerprint`
 - 缺失任一必需文件时，校验必须失败
 - 必需文件只覆盖运行所需，不覆盖文档全量内容
 
 ### 7. 复制 / 软链接策略
 
 - 必须显式声明采用复制、软链接（symlink）还是 thin-shell 载体
-- 策略必须能按后端和目标作用域判定
+- 策略必须能按后端判定
 - 校验必须能识别策略偏离
 
 ### 8. 引用分发
@@ -112,11 +123,17 @@ last_verified: 2026-04-16
 
 校验至少检查以下内容：
 
+- source 本身是否合法，例如 live bindings 是否出现重复 `target_dir`
+- target root 是否存在、是否是目录、是否是坏链路
 - 目标入口存在
 - 目标入口类型正确
 - 必需部署文件存在且可读
+- `canonical_dir`、`entrypoint`、`included_paths` 与 `target_dir` 都留在各自声明的相对根目录内
+- payload descriptor 的固定身份字段与当前 binding 一致，例如 `payload_version`、`backend`、`skill_id`
 - 清单约束与实际部署包一致
 - 复制 / 软链接策略与实际落点一致
+- target root 下的 live install 是否与当前 source 对齐
+- 是否存在 conflict / unrecognized 目录
 - 各层之间是否出现不一致（drift）
 
 ## 四、不一致（drift）与错误码
@@ -145,11 +162,21 @@ last_verified: 2026-04-16
 - `payload-policy-mismatch`：部署包策略不匹配
 - `reference-policy-mismatch`：引用策略不匹配
 - `manifest-payload-drift`：清单与部署包不一致
+- `unrecognized-target-directory`：目标目录存在，但没有可识别或可安全匹配的 runtime marker
+- `target-payload-drift`：target payload 与当前 source 不一致
+- `unexpected-managed-directory`：target root 下残留了带可识别 marker、但已不在当前 source live bindings 里的受管目录
 - `unknown-target-root`：未知目标根目录
 
 代码名仅作为可读分类，不要求在此定义完整的错误枚举体系。
 
-## 五、`.aw_template` 边界
+## 五、install / prune 约束
+
+- `prune --all` 只删除带可识别、且属于当前 backend 的受管 `aw.marker` 目录
+- `check_paths_exist` 必须基于当前 source 声明的 live bindings 全量列出冲突路径；命令失败时不允许有业务写入
+- `install` 只写当前 source 声明的 live payload
+- `install` 不承接 archive/history、旧版本保活、增量修复，或“确认新目录可用再删旧目录”
+
+## 六、`.aw_template` 边界
 
 `.aw_template/` 不参与部署包分发，也不是 skill deploy source。
 
@@ -164,15 +191,16 @@ last_verified: 2026-04-16
 - 将 `.aw_template/` 当作部署包的默认来源
 - 将 `.aw_template/` 当前目录中的模板文件位置，直接当作 skill owner 结论写进部署约定
 
-## 六、验收标准
+## 七、验收标准
 
 后续实现至少应满足：
 
 - 仅凭本规范和清单，即可实现 B1 / B3 / B4 的最小读取面
 - 部署入口页可以直接引用本规范，无需再以"这里不定义映射"回避约定
-- 校验能区分缺失、不一致、类型错误和策略偏离
+- 校验能区分缺失、不一致、类型错误、source 非法和冲突目录
+- destructive reinstall 流程不会把 foreign / unrecognized 目录当作可自动接管对象
 
-## 七、保留项
+## 八、保留项
 
 以下内容留给后续任务包：
 

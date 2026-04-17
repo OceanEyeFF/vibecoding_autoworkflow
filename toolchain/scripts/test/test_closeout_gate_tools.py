@@ -198,6 +198,10 @@ def test_run_test_gate_includes_manifest_contract_tests(monkeypatch, tmp_path) -
     ]
     assert any(command[-1] == "toolchain/scripts/test/test_folder_logic_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_skill_manifest_contract.py" for command in commands)
+    deploy_verify_commands = [command for command in commands if "adapter_deploy.py" in command[1]]
+    assert len(deploy_verify_commands) == 1
+    assert deploy_verify_commands[0][-2:] == ["--backend", "agents"]
+    assert "--target" not in deploy_verify_commands[0]
 
 
 def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path) -> None:
@@ -233,6 +237,7 @@ def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path)
     deploy_results = {
         item["name"]: item for item in result["subchecks"] if item["name"].startswith("deploy_verify_")
     }
+    assert set(deploy_results) == {"deploy_verify_agents"}
     assert all(item["passed"] is True for item in deploy_results.values())
     assert all(item["skipped"] is True for item in deploy_results.values())
     assert any("adapter_deploy.py" in command[1] for command in commands)

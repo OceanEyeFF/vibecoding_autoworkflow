@@ -159,7 +159,7 @@ last_verified: 2026-04-16
 - B1 只需要为上述五个首发 skills 提供最小 `manifest` 读取接口
 - B2 只需要支持首发链路真正需要的最小模板初始化，不为全 skill 树做通用 orchestrator（编排器）
 - B3 只需要在 `agents` backend 下为这五个 skills 准备可追踪 payload，并覆盖 `dispatch-skills` 的 fallback / general executor 路径
-- B4 只需要让 `local`（本地部署） / `global`（全局部署） / `verify`（验证） 能处理首发 skill 子集与上述支持分支，不为暂缓 skill 预留复杂分支
+- B4 只需要让 `prune --all`、`check_paths_exist`、`install --backend agents` 与 `verify` 能处理首发 skill 子集与上述支持分支，不为暂缓 skill 预留复杂分支
 
 禁止的范围扩大方式：
 

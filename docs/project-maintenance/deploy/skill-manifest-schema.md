@@ -40,7 +40,7 @@ last_verified: 2026-04-16
 - `backend payload source`（后端载荷来源）的目录形态
 - `required payload files`、`payload policy` 与 `reference distribution`（引用分发包）的最终字段形态
 - adapter / deploy 工具的具体实现逻辑
-- `repo-local`（仓库本地）/ `global`（全局）`target root`（目标根目录）的绝对落点
+- backend `target root`（目标根目录）的绝对落点
 - `runtime state`（运行时状态）、安装结果或内容哈希
 - B2 模板初始化工具
 - B3 `payload` source 结构
@@ -124,7 +124,8 @@ last_verified: 2026-04-16
 
 - 相对 `backend target root`（后端目标根目录） 的目标目录
 - 仅表达 backend skills root 下的相对落点；当前 `agents` 首发实例使用 `<skill_id>`，不重复写 `skills/` 根段
-- 不编码 `repo-local`（仓库本地） 或 `global`（全局） 的绝对根目录
+- 对当前 `agents` first-wave contract，`target_dir` 的业务语义固定为 backend skills root 下的直接子目录名，不承接 nested / multi-segment target layout
+- 不编码 backend target root 的绝对根目录
 
 ### 8. `first_wave_profile`
 
@@ -157,12 +158,13 @@ last_verified: 2026-04-16
 - `entrypoint` 与 `included_paths` 必须相对 `canonical_dir`
 - `target_dir` 必须相对 `backend target root`（后端目标根目录）
 - 这些路径都不应包含绝对根目录
-- v1 machine schema 会拒绝 `entrypoint`、`included_paths` 与 `target_dir` 中的 `.` / `..` 路径段（path segment），因此不能通过点段（dot segment） 跳出各自声明的相对根目录
+- v1 machine schema 会拒绝 `canonical_dir`、`entrypoint`、`included_paths` 与 `target_dir` 中的 `.` / `..` 路径段（path segment），因此不能通过点段（dot segment） 跳出各自声明的相对根目录
 
 ### 2. 字段耦合约束
 
 - v1 machine schema 当前仅分别校验 `skill_id`、`canonical_dir` 与 `target_dir` 的独立格式
 - 当前 `agents` 首发实例中，`target_dir` 应直接等于 `skill_id`
+- 因此当前 review / verify 不应把 nested `target_dir` 推导出的中间父路径冲突当作现行 contract 下的 correctness 前提
 - `skill_id`、`canonical_dir` 的末段与 `target_dir` 的末段应保持一致，这仍属于 B1 的清单编写与人工审阅（manifest authoring / review）规则
 - `entrypoint` 必须同时出现在 `included_paths` 中，这也属于 B1 的清单编写与人工审阅规则
 - B1 通过专门的 manifest contract test（清单契约测试） 锁定这些语义关系，但不将其强制写入 v1 JSON Schema

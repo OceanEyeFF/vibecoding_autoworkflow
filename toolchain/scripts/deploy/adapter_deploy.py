@@ -1,19 +1,39 @@
 #!/usr/bin/env python3
-"""Runtime deploy endpoints for agents skill target roots."""
+"""Runtime install and verify endpoints for agents skill payload targets."""
 
 from __future__ import annotations
 
 import argparse
-import os
+import hashlib
+import json
+import shutil
 import sys
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import Any
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 LOCAL_TARGET_ROOTS = {
     "agents": REPO_ROOT / ".agents" / "skills",
 }
+MANIFEST_SKILL_DIRS = {
+    "agents": REPO_ROOT / "product" / "harness" / "manifests" / "agents" / "skills",
+}
+ADAPTER_SKILL_DIRS = {
+    "agents": REPO_ROOT / "product" / "harness" / "adapters" / "agents" / "skills",
+}
+EXPECTED_PAYLOAD_POLICIES = {
+    "agents": "thin-shell",
+}
+EXPECTED_REFERENCE_DISTRIBUTION = {
+    "agents": "repo-read-through-local-only",
+}
+EXPECTED_PAYLOAD_VERSIONS = {
+    "agents": "agents-skill-payload.v1",
+}
+MANAGED_SKILL_MARKER = "aw.marker"
+MANAGED_SKILL_MARKER_VERSION = "aw-managed-skill-marker.v2"
 
 
 class DeployError(RuntimeError):
@@ -34,9 +54,60 @@ class VerifyResult:
     """Collected verification state for one backend target root."""
 
     backend: str
-    target_scope: str
     target_root: Path
     issues: list[VerifyIssue]
+
+
+@dataclass
+class SkillBinding:
+    """Resolved manifest/payload source records for one backend skill."""
+
+    backend: str
+    skill_id: str
+    manifest_path: Path
+    payload_dir: Path
+    payload_path: Path
+    wrapper_path: Path
+
+
+@dataclass(frozen=True)
+class PayloadTargetMetadata:
+    """Normalized target metadata derived from one payload descriptor."""
+
+    target_dir: str
+    target_entry_name: str
+    required_payload_files: list[str]
+
+
+@dataclass(frozen=True)
+class InstallPlan:
+    """Resolved install plan for one binding and target directory."""
+
+    binding: SkillBinding
+    target_metadata: PayloadTargetMetadata
+    target_skill_dir: Path
+    payload_version: str
+    payload_fingerprint: str
+
+
+@dataclass(frozen=True)
+class RuntimeMarker:
+    """Runtime-generated marker stored in managed target directories."""
+
+    marker_version: str
+    backend: str
+    skill_id: str
+    payload_version: str
+    payload_fingerprint: str
+
+
+@dataclass(frozen=True)
+class PathConflict:
+    """One target path conflict that blocks install."""
+
+    skill_id: str
+    path: Path
+    detail: str
 
 
 def add_backend_args(subparser: argparse.ArgumentParser) -> None:
@@ -52,46 +123,35 @@ def add_target_override_args(subparser: argparse.ArgumentParser) -> None:
     subparser.add_argument(
         "--agents-root",
         type=Path,
-        help="Override the Agents/Codex skills target root.",
+        help="Override the managed agents skills target root.",
     )
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Manage runtime endpoints for agents skill target roots."
+        description="Install and verify managed agents skill payloads."
     )
     subparsers = parser.add_subparsers(dest="mode", required=True)
 
-    local_parser = subparsers.add_parser("local")
-    add_backend_args(local_parser)
-    local_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Print planned actions without changing files.",
-    )
+    install_parser = subparsers.add_parser("install")
+    add_backend_args(install_parser)
+    add_target_override_args(install_parser)
 
-    global_parser = subparsers.add_parser("global")
-    add_backend_args(global_parser)
-    global_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Print planned actions without changing files.",
-    )
-    global_parser.add_argument(
-        "--create-roots",
-        action="store_true",
-        help="Allow creating missing target roots for global runtime endpoints.",
-    )
-    add_target_override_args(global_parser)
+    check_parser = subparsers.add_parser("check_paths_exist")
+    add_backend_args(check_parser)
+    add_target_override_args(check_parser)
 
     verify_parser = subparsers.add_parser("verify")
     add_backend_args(verify_parser)
     add_target_override_args(verify_parser)
-    verify_parser.add_argument(
-        "--target",
-        choices=("local", "global"),
-        default="local",
-        help="Which target scope to verify. Defaults to local repo endpoints.",
+
+    prune_parser = subparsers.add_parser("prune")
+    add_backend_args(prune_parser)
+    add_target_override_args(prune_parser)
+    prune_parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Delete every recognized managed install directory in the target root.",
     )
 
     return parser.parse_args()
@@ -101,32 +161,16 @@ def iter_backends(selected: str) -> list[str]:
     return [selected]
 
 
-def global_target_root_for(backend: str, args: argparse.Namespace) -> Path:
-    if backend == "agents":
-        if args.agents_root:
-            return args.agents_root
-
-        codex_home = os.environ.get("CODEX_HOME")
-        if not codex_home:
-            raise DeployError("CODEX_HOME is not set. Use --agents-root or export CODEX_HOME.")
-        return Path(codex_home) / "skills"
-
-    raise DeployError(f"Unsupported backend target root resolution: {backend}")
-
-
-def target_scope_for(args: argparse.Namespace) -> str:
-    if args.mode in ("local", "global"):
-        return args.mode
-    return args.target
-
-
 def target_root_for(backend: str, args: argparse.Namespace) -> Path:
-    if target_scope_for(args) == "local":
+    if backend == "agents" and args.agents_root is not None:
+        return args.agents_root
+    try:
         return LOCAL_TARGET_ROOTS[backend]
-    return global_target_root_for(backend, args)
+    except KeyError as exc:
+        raise DeployError(f"Unsupported backend target root resolution: {backend}") from exc
 
 
-def ensure_target_root(path: Path, args: argparse.Namespace) -> None:
+def ensure_install_target_root(path: Path) -> None:
     if path.is_symlink():
         if path.exists():
             raise DeployError(f"Target root must be a real directory, not a symlink: {path}")
@@ -138,23 +182,8 @@ def ensure_target_root(path: Path, args: argparse.Namespace) -> None:
         print(f"ready target root {path}")
         return
 
-    should_create = args.mode == "local" or args.create_roots
-    if not should_create:
-        raise DeployError(
-            f"Target root does not exist: {path}. Re-run with --create-roots if you want to create it."
-        )
-
-    if args.dry_run:
-        print(f"would create target root {path}")
-        return
-
     path.mkdir(parents=True, exist_ok=True)
     print(f"created target root {path}")
-
-
-def activate_runtime_endpoint(backend: str, args: argparse.Namespace) -> None:
-    target_root = target_root_for(backend, args)
-    ensure_target_root(target_root, args)
 
 
 def verify_target_root(backend: str, target_root: Path) -> list[VerifyIssue]:
@@ -195,25 +224,1078 @@ def verify_target_root(backend: str, target_root: Path) -> list[VerifyIssue]:
     ]
 
 
-def verify_backend(backend: str, args: argparse.Namespace) -> VerifyResult:
-    target_scope = target_scope_for(args)
-    target_root = target_root_for(backend, args)
-    return VerifyResult(
-        backend=backend,
-        target_scope=target_scope,
-        target_root=target_root,
-        issues=verify_target_root(backend, target_root),
+def manifest_skills_dir_for(backend: str) -> Path:
+    try:
+        return MANIFEST_SKILL_DIRS[backend]
+    except KeyError as exc:
+        raise DeployError(f"Unsupported manifest directory for backend: {backend}") from exc
+
+
+def adapter_skills_dir_for(backend: str) -> Path:
+    try:
+        return ADAPTER_SKILL_DIRS[backend]
+    except KeyError as exc:
+        raise DeployError(f"Unsupported adapter directory for backend: {backend}") from exc
+
+
+def collect_skill_bindings(backend: str) -> list[SkillBinding]:
+    manifest_dir = manifest_skills_dir_for(backend)
+    adapter_dir = adapter_skills_dir_for(backend)
+
+    manifest_skill_ids = (
+        {path.stem for path in manifest_dir.glob("*.json") if path.is_file()}
+        if manifest_dir.is_dir()
+        else set()
+    )
+    adapter_skill_ids = (
+        {path.name for path in adapter_dir.iterdir() if path.is_dir()}
+        if adapter_dir.is_dir()
+        else set()
+    )
+
+    skill_ids = sorted(manifest_skill_ids | adapter_skill_ids)
+    return [
+        SkillBinding(
+            backend=backend,
+            skill_id=skill_id,
+            manifest_path=manifest_dir / f"{skill_id}.json",
+            payload_dir=adapter_dir / skill_id,
+            payload_path=adapter_dir / skill_id / "payload.json",
+            wrapper_path=adapter_dir / skill_id / "SKILL.md",
+        )
+        for skill_id in skill_ids
+    ]
+
+
+def load_json_file(path: Path) -> dict[str, Any]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise DeployError(f"Missing JSON file: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise DeployError(f"Invalid JSON in {path}: {exc}") from exc
+
+    if not isinstance(data, dict):
+        raise DeployError(f"JSON payload must be an object: {path}")
+    return data
+
+
+def relative_repo_path(path: Path) -> str:
+    return path.relative_to(REPO_ROOT).as_posix()
+
+
+def string_list(value: object) -> list[str] | None:
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        return None
+    return value
+
+
+def normalize_relative_target_path(value: str, *, field_name: str, skill_id: str) -> str:
+    windows_path = PureWindowsPath(value)
+    if (
+        PurePosixPath(value).is_absolute()
+        or windows_path.is_absolute()
+        or bool(windows_path.drive)
+        or bool(windows_path.root)
+    ):
+        raise DeployError(
+            f"{field_name} must stay within the backend target root for skill {skill_id}: {value}"
+        )
+
+    segments = [segment for segment in value.replace("\\", "/").split("/") if segment]
+    if not segments:
+        raise DeployError(f"{field_name} must be a non-empty relative path for skill {skill_id}")
+
+    invalid_segment = next((segment for segment in segments if segment in (".", "..")), None)
+    if invalid_segment is not None:
+        raise DeployError(
+            f"{field_name} must not contain {invalid_segment!r} path segments for skill {skill_id}: {value}"
+        )
+
+    return PurePosixPath(*segments).as_posix()
+
+
+def normalize_relative_canonical_path(value: str, *, field_name: str, skill_id: str) -> str:
+    try:
+        return normalize_relative_target_path(value, field_name=field_name, skill_id=skill_id)
+    except DeployError as exc:
+        detail = str(exc).replace("backend target root", "canonical skill directory")
+        raise DeployError(detail) from exc
+
+
+def normalize_relative_repo_path(value: str, *, field_name: str, skill_id: str) -> str:
+    try:
+        return normalize_relative_target_path(value, field_name=field_name, skill_id=skill_id)
+    except DeployError as exc:
+        detail = str(exc).replace("backend target root", "repository root")
+        raise DeployError(detail) from exc
+
+
+def payload_target_metadata(payload: dict[str, Any], binding: SkillBinding) -> PayloadTargetMetadata:
+    target_dir_value = payload.get("target_dir")
+    target_entry_name = payload.get("target_entry_name")
+    required_payload_files = string_list(payload.get("required_payload_files"))
+
+    if not isinstance(target_dir_value, str) or not isinstance(target_entry_name, str):
+        raise DeployError(f"payload target metadata is invalid for skill {binding.skill_id}")
+
+    if required_payload_files is None:
+        raise DeployError(
+            f"payload required_payload_files must be a string array for skill {binding.skill_id}"
+        )
+
+    normalized_target_dir = normalize_relative_target_path(
+        target_dir_value,
+        field_name="payload target_dir",
+        skill_id=binding.skill_id,
+    )
+    if "/" in normalized_target_dir:
+        raise DeployError(
+            f"payload target_dir must be a single directory name for skill {binding.skill_id}: {target_dir_value}"
+        )
+
+    normalized_target_entry_name = normalize_relative_target_path(
+        target_entry_name,
+        field_name="payload target_entry_name",
+        skill_id=binding.skill_id,
+    )
+    normalized_required_payload_files = [
+        normalize_relative_target_path(
+            relative_name,
+            field_name="payload required_payload_files entry",
+            skill_id=binding.skill_id,
+        )
+        for relative_name in required_payload_files
+    ]
+
+    if normalized_target_entry_name not in normalized_required_payload_files:
+        raise DeployError(
+            f"payload target_entry_name {target_entry_name} must be listed in "
+            f"required_payload_files for skill {binding.skill_id}"
+        )
+
+    if "payload.json" not in normalized_required_payload_files:
+        raise DeployError(
+            f"payload required_payload_files must include payload.json for skill {binding.skill_id}"
+        )
+
+    if MANAGED_SKILL_MARKER not in normalized_required_payload_files:
+        raise DeployError(
+            f"payload required_payload_files must include {MANAGED_SKILL_MARKER} for skill {binding.skill_id}"
+        )
+
+    return PayloadTargetMetadata(
+        target_dir=normalized_target_dir,
+        target_entry_name=normalized_target_entry_name,
+        required_payload_files=normalized_required_payload_files,
     )
 
 
+def load_binding_target_metadata(binding: SkillBinding) -> PayloadTargetMetadata:
+    return payload_target_metadata(load_json_file(binding.payload_path), binding)
+
+
+def current_target_dirs_by_skill_id(bindings: list[SkillBinding]) -> dict[str, str]:
+    target_dirs: set[str] = set()
+    target_dirs_by_skill_id: dict[str, str] = {}
+    for binding in bindings:
+        target_dir = load_binding_target_metadata(binding).target_dir
+        if target_dir in target_dirs:
+            raise DeployError(
+                f"Multiple skills map to the same target_dir for backend {binding.backend}: {target_dir}"
+            )
+        target_dirs.add(target_dir)
+        target_dirs_by_skill_id[binding.skill_id] = target_dir
+    return target_dirs_by_skill_id
+
+
+def expected_target_dirs(bindings: list[SkillBinding]) -> set[str]:
+    return set(current_target_dirs_by_skill_id(bindings).values())
+
+
+def managed_skill_marker_path(target_skill_dir: Path) -> Path:
+    return target_skill_dir / MANAGED_SKILL_MARKER
+
+
+def load_binding_payload(binding: SkillBinding) -> dict[str, Any]:
+    return load_json_file(binding.payload_path)
+
+
+def payload_version_from_descriptor(payload: dict[str, Any], *, binding: SkillBinding) -> str:
+    payload_version = payload.get("payload_version")
+    if not isinstance(payload_version, str):
+        raise DeployError(f"payload payload_version must be a string for skill {binding.skill_id}")
+    return payload_version
+
+
+def compute_payload_fingerprint(binding: SkillBinding, *, payload: dict[str, Any] | None = None) -> str:
+    if payload is None:
+        payload = load_binding_payload(binding)
+
+    payload_version = payload_version_from_descriptor(payload, binding=binding)
+    try:
+        wrapper_text = binding.wrapper_path.read_text(encoding="utf-8")
+        payload_text = binding.payload_path.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise DeployError(
+            f"Missing payload source file while computing fingerprint: {exc.filename}"
+        ) from exc
+
+    fingerprint_input = (
+        f"backend={binding.backend}\n"
+        f"skill_id={binding.skill_id}\n"
+        f"payload_version={payload_version}\n"
+        f"file:SKILL.md\n{wrapper_text}\n"
+        f"file:payload.json\n{payload_text}\n"
+    )
+    return hashlib.sha256(fingerprint_input.encode("utf-8")).hexdigest()
+
+
+def runtime_marker_to_dict(marker: RuntimeMarker) -> dict[str, str]:
+    return {
+        "marker_version": marker.marker_version,
+        "backend": marker.backend,
+        "skill_id": marker.skill_id,
+        "payload_version": marker.payload_version,
+        "payload_fingerprint": marker.payload_fingerprint,
+    }
+
+
+def runtime_marker_text(marker: RuntimeMarker) -> str:
+    return json.dumps(runtime_marker_to_dict(marker), indent=2) + "\n"
+
+
+def build_runtime_marker(
+    backend: str,
+    skill_id: str,
+    payload_version: str,
+    payload_fingerprint: str,
+) -> RuntimeMarker:
+    return RuntimeMarker(
+        marker_version=MANAGED_SKILL_MARKER_VERSION,
+        backend=backend,
+        skill_id=skill_id,
+        payload_version=payload_version,
+        payload_fingerprint=payload_fingerprint,
+    )
+
+
+def parse_runtime_marker(marker: dict[str, Any]) -> RuntimeMarker | None:
+    expected_keys = {
+        "marker_version",
+        "backend",
+        "skill_id",
+        "payload_version",
+        "payload_fingerprint",
+    }
+    if set(marker) != expected_keys:
+        return None
+
+    marker_version = marker.get("marker_version")
+    backend = marker.get("backend")
+    skill_id = marker.get("skill_id")
+    payload_version = marker.get("payload_version")
+    payload_fingerprint = marker.get("payload_fingerprint")
+    if not all(
+        isinstance(value, str)
+        for value in (
+            marker_version,
+            backend,
+            skill_id,
+            payload_version,
+            payload_fingerprint,
+        )
+    ):
+        return None
+    if marker_version != MANAGED_SKILL_MARKER_VERSION:
+        return None
+
+    return RuntimeMarker(
+        marker_version=marker_version,
+        backend=backend,
+        skill_id=skill_id,
+        payload_version=payload_version,
+        payload_fingerprint=payload_fingerprint,
+    )
+
+
+def load_runtime_marker(path: Path) -> RuntimeMarker | None:
+    if path.is_symlink() or not path.is_file():
+        return None
+
+    try:
+        marker = load_json_file(path)
+    except DeployError:
+        return None
+
+    return parse_runtime_marker(marker)
+
+
+def build_install_plan(binding: SkillBinding, target_root: Path) -> InstallPlan:
+    payload = load_binding_payload(binding)
+    target_metadata = payload_target_metadata(payload, binding)
+    payload_version = payload_version_from_descriptor(payload, binding=binding)
+    return InstallPlan(
+        binding=binding,
+        target_metadata=target_metadata,
+        target_skill_dir=target_root / target_metadata.target_dir,
+        payload_version=payload_version,
+        payload_fingerprint=compute_payload_fingerprint(binding, payload=payload),
+    )
+
+
+def path_exists_or_is_symlink(path: Path) -> bool:
+    return path.exists() or path.is_symlink()
+
+
+def describe_existing_target_path(path: Path) -> str:
+    if path.is_symlink():
+        if path.exists():
+            return "existing target path is a symlink"
+        return "existing target path is a broken symlink"
+    if path.is_dir():
+        return "existing target path is a directory"
+    if path.is_file():
+        return "existing target path is a file"
+    return "existing target path already exists"
+
+
+def collect_path_conflicts(plans: list[InstallPlan]) -> list[PathConflict]:
+    conflicts: list[PathConflict] = []
+    for plan in plans:
+        if not path_exists_or_is_symlink(plan.target_skill_dir):
+            continue
+        conflicts.append(
+            PathConflict(
+                skill_id=plan.binding.skill_id,
+                path=plan.target_skill_dir,
+                detail=describe_existing_target_path(plan.target_skill_dir),
+            )
+        )
+    return conflicts
+
+
+def format_path_conflicts(conflicts: list[PathConflict]) -> str:
+    lines = ["target path conflicts:"]
+    for conflict in conflicts:
+        lines.append(f"- {conflict.skill_id}: {conflict.path} ({conflict.detail})")
+    return "\n".join(lines)
+
+
+def verify_source_binding(binding: SkillBinding) -> list[VerifyIssue]:
+    issues: list[VerifyIssue] = []
+
+    if not binding.manifest_path.is_file():
+        issues.append(
+            VerifyIssue(
+                code="missing-manifest",
+                path=binding.manifest_path,
+                detail=f"missing manifest for skill {binding.skill_id}",
+            )
+        )
+        return issues
+
+    if not binding.payload_dir.is_dir():
+        issues.append(
+            VerifyIssue(
+                code="missing-backend-payload-source",
+                path=binding.payload_dir,
+                detail=f"missing backend payload source for skill {binding.skill_id}",
+            )
+        )
+        return issues
+
+    try:
+        manifest = load_json_file(binding.manifest_path)
+    except DeployError as exc:
+        issues.append(
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.manifest_path,
+                detail=str(exc),
+            )
+        )
+        return issues
+
+    required_source_files = {
+        "SKILL.md": binding.wrapper_path,
+        "payload.json": binding.payload_path,
+    }
+    for relative_name, source_path in required_source_files.items():
+        if not source_path.is_file():
+            issues.append(
+                VerifyIssue(
+                    code="missing-required-payload",
+                    path=source_path,
+                    detail=f"missing payload source file {relative_name} for skill {binding.skill_id}",
+                )
+            )
+
+    if issues:
+        return issues
+
+    try:
+        payload = load_json_file(binding.payload_path)
+    except DeployError as exc:
+        issues.append(
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.payload_path,
+                detail=str(exc),
+            )
+        )
+        return issues
+
+    canonical_dir_value = manifest.get("canonical_dir")
+    included_paths_value = string_list(manifest.get("included_paths"))
+    entrypoint_value = manifest.get("entrypoint")
+    target_dir_value = manifest.get("target_dir")
+
+    if not isinstance(canonical_dir_value, str):
+        issues.append(
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.manifest_path,
+                detail="manifest canonical_dir must be a string",
+            )
+        )
+        return issues
+
+    if included_paths_value is None or not isinstance(entrypoint_value, str) or not isinstance(
+        target_dir_value, str
+    ):
+        issues.append(
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.manifest_path,
+                detail="manifest entrypoint, included_paths, and target_dir must be defined",
+            )
+        )
+        return issues
+
+    try:
+        normalized_manifest_canonical_dir = normalize_relative_repo_path(
+            canonical_dir_value,
+            field_name="manifest canonical_dir",
+            skill_id=binding.skill_id,
+        )
+    except DeployError as exc:
+        issues.append(
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.manifest_path,
+                detail=str(exc),
+            )
+        )
+        normalized_manifest_canonical_dir = None
+
+    try:
+        normalized_manifest_entrypoint = normalize_relative_canonical_path(
+            entrypoint_value,
+            field_name="manifest entrypoint",
+            skill_id=binding.skill_id,
+        )
+    except DeployError as exc:
+        issues.append(
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.manifest_path,
+                detail=str(exc),
+            )
+        )
+        normalized_manifest_entrypoint = None
+
+    try:
+        normalized_manifest_target_dir = normalize_relative_target_path(
+            target_dir_value,
+            field_name="manifest target_dir",
+            skill_id=binding.skill_id,
+        )
+    except DeployError as exc:
+        issues.append(
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.manifest_path,
+                detail=str(exc),
+            )
+        )
+        normalized_manifest_target_dir = None
+    else:
+        if "/" in normalized_manifest_target_dir:
+            issues.append(
+                VerifyIssue(
+                    code="manifest-payload-drift",
+                    path=binding.manifest_path,
+                    detail=(
+                        f"manifest target_dir must be a single directory name for skill "
+                        f"{binding.skill_id}: {target_dir_value}"
+                    ),
+                )
+            )
+
+    normalized_included_paths: list[str] = []
+    for included_path in included_paths_value:
+        try:
+            normalized_included_paths.append(
+                normalize_relative_canonical_path(
+                    included_path,
+                    field_name="manifest included_paths entry",
+                    skill_id=binding.skill_id,
+                )
+            )
+        except DeployError as exc:
+            issues.append(
+                VerifyIssue(
+                    code="manifest-payload-drift",
+                    path=binding.manifest_path,
+                    detail=str(exc),
+                )
+            )
+
+    canonical_dir = REPO_ROOT / (
+        normalized_manifest_canonical_dir
+        if normalized_manifest_canonical_dir is not None
+        else canonical_dir_value
+    )
+    if not canonical_dir.is_dir():
+        issues.append(
+            VerifyIssue(
+                code="missing-canonical-source",
+                path=canonical_dir,
+                detail=f"missing canonical directory for skill {binding.skill_id}",
+            )
+        )
+    for included_path in normalized_included_paths:
+        canonical_file = canonical_dir / included_path
+        if not canonical_file.is_file():
+            issues.append(
+                VerifyIssue(
+                    code="missing-canonical-source",
+                    path=canonical_file,
+                    detail=f"missing canonical file {included_path} for skill {binding.skill_id}",
+                )
+            )
+
+    expected_payload_version = EXPECTED_PAYLOAD_VERSIONS[binding.backend]
+    if payload.get("payload_version") != expected_payload_version:
+        issues.append(
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.payload_path,
+                detail=(
+                    f"payload payload_version must be {expected_payload_version} for "
+                    f"backend {binding.backend} skill {binding.skill_id}"
+                ),
+            )
+        )
+
+    if payload.get("backend") != binding.backend:
+        issues.append(
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.payload_path,
+                detail=f"payload backend must be {binding.backend} for skill {binding.skill_id}",
+            )
+        )
+
+    if payload.get("skill_id") != binding.skill_id:
+        issues.append(
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.payload_path,
+                detail=f"payload skill_id must be {binding.skill_id}",
+            )
+        )
+
+    expected_manifest_path = relative_repo_path(binding.manifest_path)
+    if payload.get("manifest_path") != expected_manifest_path:
+        issues.append(
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.payload_path,
+                detail=(
+                    f"payload manifest_path does not match {expected_manifest_path} "
+                    f"for skill {binding.skill_id}"
+                ),
+            )
+        )
+
+    if payload.get("canonical_dir") != canonical_dir_value:
+        issues.append(
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.payload_path,
+                detail=f"payload canonical_dir does not match manifest for skill {binding.skill_id}",
+            )
+        )
+
+    expected_canonical_paths = [
+        f"{canonical_dir_value}/{included_path}" for included_path in normalized_included_paths
+    ]
+    if string_list(payload.get("canonical_paths")) != expected_canonical_paths:
+        issues.append(
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.payload_path,
+                detail=f"payload canonical_paths do not match manifest for skill {binding.skill_id}",
+            )
+        )
+
+    if payload.get("target_dir") != target_dir_value:
+        issues.append(
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.payload_path,
+                detail=f"payload target_dir does not match manifest for skill {binding.skill_id}",
+            )
+        )
+
+    try:
+        target_metadata = payload_target_metadata(payload, binding)
+    except DeployError as exc:
+        issues.append(
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.payload_path,
+                detail=str(exc),
+            )
+        )
+    else:
+        for relative_name in target_metadata.required_payload_files:
+            if relative_name == MANAGED_SKILL_MARKER:
+                continue
+            source_path = binding.payload_dir / relative_name
+            if not source_path.is_file():
+                issues.append(
+                    VerifyIssue(
+                        code="missing-required-payload",
+                        path=source_path,
+                        detail=(
+                            f"required payload source file {relative_name} is missing for skill "
+                            f"{binding.skill_id}"
+                        ),
+                    )
+                )
+        if normalized_manifest_target_dir is not None and target_metadata.target_dir != normalized_manifest_target_dir:
+            issues.append(
+                VerifyIssue(
+                    code="manifest-payload-drift",
+                    path=binding.payload_path,
+                    detail=f"payload target_dir does not match manifest for skill {binding.skill_id}",
+                )
+            )
+
+    if normalized_manifest_entrypoint is not None:
+        canonical_entrypoint = canonical_dir / normalized_manifest_entrypoint
+        if not canonical_entrypoint.is_file():
+            issues.append(
+                VerifyIssue(
+                    code="missing-canonical-source",
+                    path=canonical_entrypoint,
+                    detail=(
+                        f"missing canonical entrypoint {normalized_manifest_entrypoint} "
+                        f"for skill {binding.skill_id}"
+                    ),
+                )
+            )
+
+    expected_payload_policy = EXPECTED_PAYLOAD_POLICIES[binding.backend]
+    if payload.get("payload_policy") != expected_payload_policy:
+        issues.append(
+            VerifyIssue(
+                code="payload-policy-mismatch",
+                path=binding.payload_path,
+                detail=(
+                    f"payload_policy must be {expected_payload_policy} for backend "
+                    f"{binding.backend} skill {binding.skill_id}"
+                ),
+            )
+        )
+
+    expected_reference_distribution = EXPECTED_REFERENCE_DISTRIBUTION[binding.backend]
+    if payload.get("reference_distribution") != expected_reference_distribution:
+        issues.append(
+            VerifyIssue(
+                code="reference-policy-mismatch",
+                path=binding.payload_path,
+                detail=(
+                    f"reference_distribution must be {expected_reference_distribution} for backend "
+                    f"{binding.backend} skill {binding.skill_id}"
+                ),
+            )
+        )
+
+    return issues
+
+
+def install_backend_payloads(backend: str, args: argparse.Namespace) -> None:
+    bindings = collect_skill_bindings(backend)
+    if not bindings:
+        raise DeployError(f"No payload bindings found for backend {backend}.")
+
+    validation_issues: list[VerifyIssue] = []
+    for binding in bindings:
+        validation_issues.extend(verify_source_binding(binding))
+    if validation_issues:
+        details = "\n".join(
+            f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in validation_issues
+        )
+        raise DeployError(f"Cannot install because source validation failed:\n{details}")
+
+    target_root = target_root_for(backend, args)
+    target_root_issues = [
+        issue
+        for issue in verify_target_root(backend, target_root)
+        if issue.code != "missing-target-root"
+    ]
+    if target_root_issues:
+        details = "\n".join(
+            f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in target_root_issues
+        )
+        raise DeployError(f"Cannot install because target root is not ready:\n{details}")
+
+    current_target_dirs_by_skill_id(bindings)
+    plans = [build_install_plan(binding, target_root) for binding in bindings]
+    conflicts = collect_path_conflicts(plans)
+    if conflicts:
+        raise DeployError(
+            f"[{backend}] install blocked by {len(conflicts)} existing target path(s)\n\n"
+            f"{format_path_conflicts(conflicts)}"
+        )
+
+    ensure_install_target_root(target_root)
+    for plan in plans:
+        binding = plan.binding
+        target_metadata = plan.target_metadata
+        target_skill_dir = plan.target_skill_dir
+        target_skill_dir.mkdir(parents=True, exist_ok=False)
+        for relative_name in target_metadata.required_payload_files:
+            target_path = target_skill_dir / relative_name
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            if relative_name == MANAGED_SKILL_MARKER:
+                target_path.write_text(
+                    runtime_marker_text(
+                        build_runtime_marker(
+                            binding.backend,
+                            binding.skill_id,
+                            plan.payload_version,
+                            plan.payload_fingerprint,
+                        )
+                    ),
+                    encoding="utf-8",
+                )
+                continue
+            source_path = binding.payload_dir / relative_name
+            shutil.copy2(source_path, target_path)
+        print(f"installed skill {binding.skill_id} -> {target_skill_dir}")
+
+
+def check_backend_target_paths(backend: str, args: argparse.Namespace) -> None:
+    bindings = collect_skill_bindings(backend)
+    if not bindings:
+        raise DeployError(f"No payload bindings found for backend {backend}.")
+
+    validation_issues: list[VerifyIssue] = []
+    for binding in bindings:
+        validation_issues.extend(verify_source_binding(binding))
+    if validation_issues:
+        details = "\n".join(
+            f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in validation_issues
+        )
+        raise DeployError(f"Cannot check target paths because source validation failed:\n{details}")
+
+    target_root = target_root_for(backend, args)
+    target_root_issues = [
+        issue
+        for issue in verify_target_root(backend, target_root)
+        if issue.code != "missing-target-root"
+    ]
+    if target_root_issues:
+        details = "\n".join(
+            f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in target_root_issues
+        )
+        raise DeployError(f"Cannot check target paths because target root is not ready:\n{details}")
+
+    current_target_dirs_by_skill_id(bindings)
+    plans = [build_install_plan(binding, target_root) for binding in bindings]
+    conflicts = collect_path_conflicts(plans)
+    if conflicts:
+        raise DeployError(
+            f"[{backend}] found {len(conflicts)} conflicting target path(s)\n\n"
+            f"{format_path_conflicts(conflicts)}"
+        )
+
+    print(f"[{backend}] ok: no conflicting target paths at {target_root}")
+
+
+def verify_deployed_skill(binding: SkillBinding, target_root: Path) -> list[VerifyIssue]:
+    try:
+        plan = build_install_plan(binding, target_root)
+    except DeployError as exc:
+        return [
+            VerifyIssue(
+                code="manifest-payload-drift",
+                path=binding.payload_path,
+                detail=str(exc),
+            )
+        ]
+
+    issues: list[VerifyIssue] = []
+    target_metadata = plan.target_metadata
+    target_skill_dir = plan.target_skill_dir
+    if not target_skill_dir.exists():
+        return [
+            VerifyIssue(
+                code="missing-target-entry",
+                path=target_skill_dir,
+                detail=f"missing deployed skill directory for skill {binding.skill_id}",
+            )
+        ]
+
+    if target_skill_dir.is_symlink() or not target_skill_dir.is_dir():
+        return [
+            VerifyIssue(
+                code="wrong-target-entry-type",
+                path=target_skill_dir,
+                detail=f"deployed skill directory must be a real directory for skill {binding.skill_id}",
+            )
+        ]
+
+    marker_path = managed_skill_marker_path(target_skill_dir)
+    marker = load_runtime_marker(marker_path)
+    if marker is None:
+        return [
+            VerifyIssue(
+                code="unrecognized-target-directory",
+                path=target_skill_dir,
+                detail=f"existing deployed directory has no recognized {MANAGED_SKILL_MARKER}",
+            )
+        ]
+    if (
+        marker.backend != plan.binding.backend
+        or marker.skill_id != plan.binding.skill_id
+        or marker.payload_version != plan.payload_version
+    ):
+        return [
+            VerifyIssue(
+                code="unrecognized-target-directory",
+                path=target_skill_dir,
+                detail=(
+                    f"recognized {MANAGED_SKILL_MARKER} does not match current backend/skill/"
+                    "payload_version"
+                ),
+            )
+        ]
+
+    expected_marker = build_runtime_marker(
+        plan.binding.backend,
+        plan.binding.skill_id,
+        plan.payload_version,
+        plan.payload_fingerprint,
+    )
+    marker_matches_source = marker.payload_fingerprint == plan.payload_fingerprint
+    if not marker_matches_source:
+        issues.append(
+            VerifyIssue(
+                code="target-payload-drift",
+                path=marker_path,
+                detail=(
+                    f"deployed payload fingerprint drifted from adapter source for skill "
+                    f"{binding.skill_id}"
+                ),
+            )
+        )
+
+    for relative_name in target_metadata.required_payload_files:
+        target_path = target_skill_dir / relative_name
+        if not target_path.exists():
+            issues.append(
+                VerifyIssue(
+                    code="missing-required-payload",
+                    path=target_path,
+                    detail=f"missing deployed payload file {relative_name} for skill {binding.skill_id}",
+                )
+            )
+            continue
+        if target_path.is_symlink() or not target_path.is_file():
+            issues.append(
+                VerifyIssue(
+                    code="wrong-target-entry-type",
+                    path=target_path,
+                    detail=(
+                        f"deployed payload file {relative_name} must be a real file for skill "
+                        f"{binding.skill_id}"
+                    ),
+                )
+            )
+            continue
+        if relative_name == MANAGED_SKILL_MARKER:
+            if marker_matches_source and target_path.read_text(encoding="utf-8") != runtime_marker_text(
+                expected_marker
+            ):
+                issues.append(
+                    VerifyIssue(
+                        code="target-payload-drift",
+                        path=target_path,
+                        detail=(
+                            f"deployed payload file {relative_name} drifted from adapter source "
+                            f"for skill {binding.skill_id}"
+                        ),
+                    )
+                )
+            continue
+        source_path = binding.payload_dir / relative_name
+        if source_path.read_text(encoding="utf-8") != target_path.read_text(encoding="utf-8"):
+            issues.append(
+                VerifyIssue(
+                    code="target-payload-drift",
+                    path=target_path,
+                    detail=(
+                        f"deployed payload file {relative_name} drifted from adapter source "
+                        f"for skill {binding.skill_id}"
+                    ),
+                )
+            )
+
+    target_entry = target_skill_dir / target_metadata.target_entry_name
+    if not target_entry.exists():
+        issues.append(
+            VerifyIssue(
+                code="missing-target-entry",
+                path=target_entry,
+                detail=(
+                    f"missing target entry {target_metadata.target_entry_name} "
+                    f"for skill {binding.skill_id}"
+                ),
+            )
+        )
+    elif target_entry.is_symlink() or not target_entry.is_file():
+        issues.append(
+            VerifyIssue(
+                code="wrong-target-entry-type",
+                path=target_entry,
+                detail=(
+                    f"target entry {target_metadata.target_entry_name} must be a real file "
+                    f"for skill {binding.skill_id}"
+                ),
+            )
+        )
+
+    return issues
+
+
+def unexpected_managed_target_dirs(
+    backend: str,
+    target_root: Path,
+    expected_target_dir_names: set[str],
+) -> list[VerifyIssue]:
+    if not target_root.is_dir():
+        return []
+
+    issues: list[VerifyIssue] = []
+    for child in sorted(target_root.iterdir()):
+        if child.is_symlink() or not child.is_dir():
+            continue
+        if child.name in expected_target_dir_names:
+            continue
+
+        marker = load_runtime_marker(managed_skill_marker_path(child))
+        if marker is None or marker.backend != backend:
+            continue
+
+        issues.append(
+            VerifyIssue(
+                code="unexpected-managed-directory",
+                path=child,
+                detail=(
+                    f"recognized managed install for skill {marker.skill_id} is not part of the "
+                    "current source bindings"
+                ),
+            )
+        )
+
+    return issues
+
+
+def verify_backend(backend: str, args: argparse.Namespace) -> VerifyResult:
+    target_root = target_root_for(backend, args)
+    issues = verify_target_root(backend, target_root)
+
+    bindings = collect_skill_bindings(backend)
+    for binding in bindings:
+        issues.extend(verify_source_binding(binding))
+
+    expected_target_dir_names: set[str] = set()
+    if not issues:
+        try:
+            expected_target_dir_names = expected_target_dirs(bindings)
+        except DeployError as exc:
+            issues.append(
+                VerifyIssue(
+                    code="manifest-payload-drift",
+                    path=manifest_skills_dir_for(backend),
+                    detail=str(exc),
+                )
+            )
+
+    if not issues and target_root.is_dir():
+        for binding in bindings:
+            issues.extend(verify_deployed_skill(binding, target_root))
+        issues.extend(
+            unexpected_managed_target_dirs(backend, target_root, expected_target_dir_names)
+        )
+
+    return VerifyResult(
+        backend=backend,
+        target_root=target_root,
+        issues=issues,
+    )
+
+
+def prune_all_managed_target_dirs(backend: str, args: argparse.Namespace) -> None:
+    target_root = target_root_for(backend, args)
+    target_root_issues = [
+        issue
+        for issue in verify_target_root(backend, target_root)
+        if issue.code != "missing-target-root"
+    ]
+    if target_root_issues:
+        details = "\n".join(
+            f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in target_root_issues
+        )
+        raise DeployError(f"Cannot prune managed installs because target root is not ready:\n{details}")
+
+    if not target_root.exists():
+        print(f"no managed skill dirs found at {target_root}")
+        return
+
+    removed_count = 0
+    for child in sorted(target_root.iterdir()):
+        if child.is_symlink() or not child.is_dir():
+            continue
+
+        marker = load_runtime_marker(managed_skill_marker_path(child))
+        if marker is None or marker.backend != backend:
+            continue
+
+        try:
+            shutil.rmtree(child)
+        except Exception as exc:
+            raise DeployError(f"Failed to remove managed skill dir {child}: {exc}") from exc
+        removed_count += 1
+        print(f"removed managed skill dir {child}")
+
+    if removed_count == 0:
+        print(f"no managed skill dirs found at {target_root}")
+
+
 def print_verify_result(result: VerifyResult) -> None:
-    scope_label = f"{result.target_scope} target"
     if not result.issues:
-        print(f"[{result.backend}] ok: {scope_label} is ready at {result.target_root}")
+        print(f"[{result.backend}] ok: target root is ready at {result.target_root}")
         return
 
     print(
-        f"[{result.backend}] drift: {len(result.issues)} issue(s) in {scope_label} at {result.target_root}"
+        f"[{result.backend}] drift: {len(result.issues)} issue(s) in target root at {result.target_root}"
     )
     for issue in result.issues:
         print(f"  - {issue.code}: {issue.path} ({issue.detail})")
@@ -228,8 +1310,22 @@ def main() -> int:
                 print_verify_result(result)
             return 1 if any(result.issues for result in results) else 0
 
-        for backend in iter_backends(args.backend):
-            activate_runtime_endpoint(backend, args)
+        if args.mode == "prune":
+            if not args.all:
+                raise DeployError("prune currently requires --all")
+            for backend in iter_backends(args.backend):
+                prune_all_managed_target_dirs(backend, args)
+            return 0
+
+        if args.mode == "check_paths_exist":
+            for backend in iter_backends(args.backend):
+                check_backend_target_paths(backend, args)
+            return 0
+
+        if args.mode == "install":
+            for backend in iter_backends(args.backend):
+                install_backend_payloads(backend, args)
+            return 0
     except DeployError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
