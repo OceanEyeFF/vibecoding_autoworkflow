@@ -1,9 +1,9 @@
 ---
 title: Harness 运行协议
 status: draft
-updated: 2026-04-15
+updated: 2026-04-18
 owner: vibecoding
-last_verified: 2026-04-15
+last_verified: 2026-04-18
 ---
 
 # Harness 运行协议
@@ -251,6 +251,30 @@ last_verified: 2026-04-15
 7. fail 则进入 `recovering`，pass 则进入 `integrating`
 8. 关闭 worktrack 后返回 `RepoScope.observing` 刷新 repo 状态
 
+### 4. 连续推进与停止条件
+
+`Harness` 的默认语义应当是连续推进，而不是每完成一个局部 skill round 就自动把控制权交还给 programmer。
+
+也就是说：
+
+- 单个 skill 的 `bounded round` 约束的是这次局部判断或局部执行包的边界
+- 它不自动等价于“整个 Harness 本轮必须停机”
+- 只要没有命中正式 stop condition，supervisor 应继续推进到下一个合法状态转移
+
+最小 stop conditions 至少包括：
+
+- 需要 programmer 明确批准的 goal change、scope expansion、destructive action 或其他 authority boundary
+- 必需 artifact 或 evidence 缺失、过时、冲突，导致当前状态估计不再可靠
+- `Gate` 给出 `soft-fail`、`hard-fail` 或 `blocked`
+- 当前 host runtime 缺少合法的 execution carrier / dispatch shell，无法按受约束的 task/info 包继续执行
+- 下一动作会把系统推出已批准的 `Task Contract`、`Worktrack Contract` 或 repo baseline
+
+补充约束：
+
+- 不得把“skill 已经返回结构化结果”本身当作 stop condition
+- 不得把“没有专门 skill”本身当作 stop condition；命中这种情况时应优先转入 fallback execution carrier
+- 如果 stop 的根因只是 runtime dispatch shell 缺位，必须显式报告为 runtime gap，而不是伪装成已完成的 subagent 执行
+
 ## 六、Function 与 Skill 的关系
 
 `Function` 是协议层的控制算子，`Skill` 是这些算子在 `Codex` 环境中的可执行实现。
@@ -274,12 +298,12 @@ last_verified: 2026-04-15
 
 - 如果存在合适的专门 skill，优先使用该专门 skill
 - 如果不存在合适的专门 skill，不得因此让系统停摆
-- 此时必须自动 fallback 到一个通用任务完成 `SubAgent`
+- 此时必须自动 fallback 到一个通用任务完成执行载体
 - fallback 仍然必须保持 bounded task、最小信息包和 evidence 回传
 
 也就是说，系统不应把“没有专门 skill”解释成“不能继续执行”；它只意味着本轮应退化到通用任务完成执行体。
 
-无论命中专门 skill 还是 fallback 到通用 `SubAgent`，`dispatch-skills` 都必须保持同一套最小 dispatch contract：
+无论命中专门 skill 还是 fallback 到通用执行载体，`dispatch-skills` 都必须保持同一套最小 dispatch contract：
 
 - `Dispatch Task Brief`
   - `task`
@@ -298,6 +322,7 @@ last_verified: 2026-04-15
   - `fallback_reason`
 - `Dispatch Result`
   - `selected_executor`
+  - `runtime_dispatch_mode`
   - `actions_taken`
   - `files_touched_or_expected`
   - `evidence_collected`
@@ -308,7 +333,8 @@ last_verified: 2026-04-15
 
 - `Dispatch Task Brief` 是面向当前 round 的 bounded execution contract，不替代上游 `Task Contract`
 - `Dispatch Info Packet` 只允许携带本轮必需上下文，不应退化成“把整个 repo 扔给 subagent”
-- fallback 到通用 `SubAgent` 时，输入输出结构不得放宽；变化的只是执行载体，不是控制边界
+- fallback 到通用执行载体时，输入输出结构不得放宽；变化的只是执行载体，不是控制边界
+- `runtime_dispatch_mode` 必须显式区分“delegated subagent dispatch”和“current-carrier runtime fallback”
 - `Skill` 回答“在当前 backend / agent 环境里，哪个执行单元来实现这个控制动作”
 
 因此，在 `Codex` 内部，真正被调度的是 `Skills`；但在 doctrine 层，仍应先保留 `Function` 这个更稳定的协议抽象。
@@ -317,6 +343,13 @@ last_verified: 2026-04-15
 
 - `Harness Dispatch`：选择合适的 skill binding，并向执行载体提供受约束的 task 和 info
 - `SubAgent`：实际承接这次执行的运行时载体
+
+当前仓库需要特别区分两件事：
+
+- 选择了某个 `Skill`
+- 实际已经把该 skill round 交给一个独立 `SubAgent`
+
+前者是当前 canonical executable source 已经具备的合同层能力；后者仍然依赖 host runtime 的 dispatch shell，不应被自动假定为已经发生。
 
 也就是说，在 `Codex / Claude` 里更完整的实践映射应当是：
 
@@ -347,6 +380,15 @@ last_verified: 2026-04-15
 - `collect evidence`：收集 review / test / rule-check / trace / diff 等证据
 - `adjudicate`：形成 gate verdict
 - `update state`：只有在证据支持下，才更新 repo/worktrack/control state
+
+如果当前 host runtime 还没有稳定的 subagent dispatch shell，则允许暂时退化为：
+
+`state estimate -> choose operator -> bind skill(s) -> package task/info -> execute in current carrier -> collect evidence -> adjudicate -> update state`
+
+但此时必须显式标注：
+
+- 当前是 runtime fallback，而不是完整 `subagent dispatch`
+- 不得在报告里把“当前 carrier 内执行”写成“已经成功派发独立 subagent”
 
 ## 七、Scope 下的最小控制算子
 

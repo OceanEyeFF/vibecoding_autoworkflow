@@ -30,9 +30,17 @@ class AgentsFirstWaveSmokeTest(unittest.TestCase):
             report["route"][2]["recommended_repo_action"],
             "enter-worktrack",
         )
+        self.assertEqual(report["route"][0]["continuation_decision"], "continue")
+        self.assertEqual(report["route"][0]["stop_conditions_hit"], [])
+        self.assertTrue(report["route"][2]["continuation_ready"])
+        self.assertTrue(report["route"][3]["continuation_ready"])
         self.assertEqual(
             report["route"][4]["selected_executor"],
-            "general-task-completion-subagent",
+            "general-task-completion-executor",
+        )
+        self.assertEqual(
+            report["route"][4]["runtime_dispatch_mode"],
+            "current-carrier-fallback",
         )
         self.assertTrue(report["route"][4]["fallback_used"])
         self.assertEqual(report["install_cycle"]["verify_result"]["issues"], [])
@@ -67,9 +75,17 @@ class AgentsFirstWaveSmokeTest(unittest.TestCase):
         payload = json.loads(stdout.getvalue())
         self.assertTrue(payload["passed"])
         self.assertEqual(payload["route"][0]["skill_id"], "harness-skill")
+        self.assertEqual(payload["route"][0]["continuation_decision"], "continue")
+        self.assertEqual(payload["route"][0]["stop_conditions_hit"], [])
+        self.assertTrue(payload["route"][2]["continuation_ready"])
+        self.assertTrue(payload["route"][3]["continuation_ready"])
         self.assertEqual(
             payload["route"][-1]["selected_executor"],
-            "general-task-completion-subagent",
+            "general-task-completion-executor",
+        )
+        self.assertEqual(
+            payload["route"][-1]["runtime_dispatch_mode"],
+            "current-carrier-fallback",
         )
 
 

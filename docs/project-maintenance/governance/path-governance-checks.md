@@ -1,9 +1,9 @@
 ---
 title: "路径与文档治理检查运行说明"
 status: active
-updated: 2026-04-15
+updated: 2026-04-19
 owner: aw-kernel
-last_verified: 2026-04-15
+last_verified: 2026-04-19
 ---
 # 路径与文档治理检查运行说明
 
@@ -47,7 +47,7 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 2. 根目录对象是否仍落在声明的 allowlist 内：
    - 正式内容区：`product/`、`docs/`、`toolchain/`
    - repo-local execution config：`.codex/`
-   - mount / state / navigation：`.agents/`、`.claude/`、`.opencode/`、`.autoworkflow/`、`.spec-workflow/`、`.serena/`、`.nav/`
+   - mount / state / navigation：`.agents/`、`.claude/`、`.opencode/`、`.autoworkflow/`、`.spec-workflow/`、`.nav/`
    - compatibility shim：`tools/`
    - local ephemeral cache：`.pytest_cache/`
    - entry / infra：`README.md`、`INDEX.md`、`GUIDE.md`、`ROADMAP.md`、`AGENTS.md`、`CONTRIBUTING.md`、`.github/`、`.git*`、`.claudeignore`、`LICENSE`
@@ -59,7 +59,6 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 5. hidden/state/mount 层的 tracked 真实状态是否仍受控：
    - `.agents/skills/`、`.claude/skills/`、`.opencode/skills/` 允许 tracked 的 repo-local install payload
    - 这些目录之外的 mount-layer tracked 内容仍应失败
-   - `.serena/` 只允许显式白名单 tracked 文件
    - `.codex/` 只允许 `config.toml` 与 `rules/repo.rules`
    - `tools/` 只允许显式 compat shim tracked 文件
    - `.pytest_cache/` 允许本地存在，但 tracked 时失败
@@ -94,7 +93,6 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 
 说明：
 
-- `.serena/` 当前不在这组忽略项里，因为本仓库允许受控保留项目级 Serena 配置与记忆
 - `.agents/`、`.claude/`、`.opencode/` 仍应默认被 `.gitignore` 忽略；允许 tracked 的 install payload 属于受控例外，不改变默认忽略策略
 - `folder_logic_check.py` 使用 `git ls-files` 的真实 tracked 状态，而不只看 `.gitignore`
 

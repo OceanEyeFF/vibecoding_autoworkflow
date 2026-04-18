@@ -1,9 +1,9 @@
 ---
 title: "First-Wave Skill Freeze"
 status: active
-updated: 2026-04-16
+updated: 2026-04-18
 owner: aw-kernel
-last_verified: 2026-04-16
+last_verified: 2026-04-18
 ---
 # First-Wave Skill Freeze
 
@@ -61,7 +61,7 @@ last_verified: 2026-04-16
 
 - `harness-skill`
   - 顶层 supervisor 入口
-  - 负责识别当前层级并运行一轮 bounded Harness loop（受限的 Harness 主控循环）
+  - 负责识别当前层级并在未命中 formal stop condition 前继续推进合法状态转移
 - `repo-status-skill`
   - `RepoScope`（仓库作用域） 的状态观察入口
   - 为下一步判断提供最小 repo baseline（仓库基线状态）
@@ -104,7 +104,7 @@ last_verified: 2026-04-16
 
 ## 五、首发停止边界
 
-首发链路止于 `dispatch-skills`，当前不把下面这些能力纳入首发闭环：
+当前 `agents` first-wave deploy / smoke 的最小合同链路止于 `dispatch-skills`，当前不把下面这些能力纳入已落地 deploy 闭环：
 
 - review evidence 汇总
 - test evidence 汇总
@@ -114,7 +114,19 @@ last_verified: 2026-04-16
 - closeout（收尾） / merge（合并） / cleanup（清理） / repo refresh（仓库刷新）
 - `schedule-worktrack-skill` 驱动的队列刷新与 current-next-action 重选
 
-这意味着首发目标不是“完整 Worktrack 生命周期产品化”，而是“先把最小 supervisor -> repo judgment（仓库判断） -> worktrack init -> direct-dispatch 主链路产品化”。
+这意味着当前首发 deploy 目标不是“完整 Worktrack 生命周期产品化”，而是“先把最小 supervisor -> repo judgment（仓库判断） -> worktrack init -> direct-dispatch 主链路产品化”。
+
+但这不应被误读为：
+
+- `Harness` 的 canonical protocol 本体只支持单回合停机
+- 现有 first-wave smoke 已经证明 autonomous continuation（自主连续推进）
+- 现有 first-wave dispatch 已经证明 runtime-level `SubAgent` dispatch（子代理派发） 真正落地
+
+当前更准确的解释是：
+
+- 这批首发 deploy 只证明最小 skill contract、payload copy 和 bounded route 可读
+- 它没有完成 `stop/continue policy` 的 autonomy repair
+- 它也没有完成 `skill -> subagent dispatch shell` 的 runtime repair
 
 ## 六、不进入首发的 skills
 
@@ -151,6 +163,7 @@ last_verified: 2026-04-16
 - canonical workflow 仍然保留“schedule 后再 dispatch”的完整边界
 - 首发只是先收窄为“`init-worktrack-skill` 种下的首任务可直接 dispatch”的特例
 - 这不构成对 `schedule-worktrack-skill` canonical 角色的删除或改写
+- 如果后续要把 Harness 修到“默认连续推进，只在 formal stop condition 停下”，则 `schedule-worktrack-skill` 需要回到 autonomy repair 的主链上，而不能长期停留在 deploy 外
 
 ## 七、对后续任务包的约束
 

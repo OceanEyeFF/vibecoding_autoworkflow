@@ -29,5 +29,7 @@ Load the Harness worktrack dispatch docs in this order.
 - This skill is a worktrack dispatcher, not the supervisor and not the executor ontology itself.
 - Start from the current work item, then load only the artifacts needed to package one bounded dispatch round.
 - Use `Task Contract` only when the current dispatch round needs an upstream execution boundary; do not always pull it in by default.
-- Keep the fallback `SubAgent` on the same bounded task/info contract as a specialized skill would receive.
+- Keep the fallback execution carrier on the same bounded task/info contract as a specialized skill would receive.
+- Report `runtime_dispatch_mode` explicitly so the result distinguishes delegated subagent dispatch from `current-carrier` runtime fallback.
+- Do not imply that a delegated `SubAgent` path exists when the host runtime lacks a real dispatch shell.
 - Do not read repo-local deploy targets during canonical dispatch generation.

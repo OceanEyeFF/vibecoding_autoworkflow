@@ -1,9 +1,9 @@
 ---
 title: "Harness Skill Catalog / Supervisor"
 status: active
-updated: 2026-04-15
+updated: 2026-04-18
 owner: aw-kernel
-last_verified: 2026-04-15
+last_verified: 2026-04-18
 ---
 # Supervisor Skill Catalog
 
@@ -16,9 +16,9 @@ last_verified: 2026-04-15
 职责：
 
 - 判断当前在 `RepoScope` 还是 `WorktrackScope`
-- 在当前层级内跑完一轮 bounded Harness loop
-- 汇总本轮动作、证据、状态和下一步建议
-- 在 authority boundary 停下并向 programmer 请求批准
+- 在当前层级内按合法状态转移连续推进，直到命中正式 stop condition
+- 汇总已完成的局部 rounds、证据、状态和下一步建议
+- 只在 authority boundary 或其他 formal stop condition 停下并向 programmer 请求批准
 
 canonical executable source：
 

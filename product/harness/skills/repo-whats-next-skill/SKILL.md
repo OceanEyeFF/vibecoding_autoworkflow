@@ -27,7 +27,7 @@ Use this skill when the current question is not "who should execute a work item"
 - explain why that direction is the best current move
 - reframe repo priority when there are multiple plausible directions but no decisive first move
 - surface the minimum prerequisites and bounded context for the next round
-- return the recommendation to `Harness` and the programmer for approval
+- return the recommendation to `Harness`; only surface programmer approval when the selected route actually crosses a formal approval boundary
 
 Use the embedded `priority reframe / contradiction analysis` mode when at least one of these conditions holds:
 
@@ -53,7 +53,8 @@ Do not use this skill as a substitute for worktrack planning or execution dispat
    - `goal-change-control`
    - `hold-and-observe`
 7. Recommend exactly one repo action, explain why it is the top priority now, and state what should not be done now.
-8. Stop at the recommendation boundary and return one fixed-format `Repo Whats Next Decision` to `Harness`.
+8. Return one fixed-format `Repo Whats Next Decision` to `Harness`.
+9. If the selected route is already approved and no formal stop condition is hit, allow the supervisor to continue directly into the corresponding next scope.
 
 ## Priority Reframe / Contradiction Analysis Mode
 
@@ -67,13 +68,14 @@ When this mode is active, compress the round to one bounded repo-level contradic
 - map that priority to exactly one `Recommended Repo Action`
 - surface only the `Minimal Missing Info` needed for the next repo decision
 
-If evidence is too weak to support a decisive repo action, recommend `hold-and-observe` plus the minimum missing info. If the contradiction can only be resolved by changing repo goals, route to `goal-change-control`. If the contradiction is ready for execution, recommend entering `WorktrackScope`, but do not start execution here.
+If evidence is too weak to support a decisive repo action, recommend `hold-and-observe` plus the minimum missing info. If the contradiction can only be resolved by changing repo goals, route to `goal-change-control`. If the contradiction is ready for execution, recommend entering `WorktrackScope`; when the next route is already approved and safe, supervisor continuation may proceed without an extra programmer handoff.
 
 ## Hard Constraints
 
 - Do not mutate `Harness Control State`.
 - Do not start, schedule, or execute a `WorktrackScope` round directly from this skill.
 - Do not rewrite repo goals inside this skill; route real goal changes to `goal change control`.
+- Do not treat "one bounded repo judgment" as an instruction that the whole Harness loop must stop.
 - Do not dump full-repo context into the reasoning round when a bounded info packet is sufficient.
 - Do not treat the embedded contradiction analysis mode as a separate skill or a new layer in the skill tree.
 - Do not collapse facts, inferences, unknowns, and recommended action into one vague narrative.
@@ -117,6 +119,7 @@ Inside the result, include at least these fields or equivalents:
 - `selection_reason`
 - `minimal_missing_info`
 - `control_state_change_requested`
+- `continuation_ready`
 - `needs_programmer_approval`
 - `how_to_review`
 

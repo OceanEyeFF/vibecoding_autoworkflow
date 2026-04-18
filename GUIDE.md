@@ -19,6 +19,6 @@ last_verified: 2026-03-26
 - 当前边界入口：`docs/harness/adjacent-systems/memory-side/layer-boundary.md`
 - 当前总览入口：`docs/harness/adjacent-systems/memory-side/overview.md`
 - 当前模型入口：`docs/harness/adjacent-systems/memory-side/skill-agent-model.md`
-- `.agents/`、`.claude/`、`.autoworkflow/`、`.spec-workflow/`、`.serena/`、`.nav/` 默认都不是主线入口
+- `.agents/`、`.claude/`、`.autoworkflow/`、`.spec-workflow/`、`.nav/` 默认都不是主线入口
 - 保留本文件的原因：兼容历史链接，避免旧文档直接断链
 - 不要在这里维护主线规则

@@ -33,7 +33,8 @@ Use this skill when the current question is not "who should execute this task", 
    - defer or block items that are not ready
 5. Select one `current next action`, or return `no safe next action` with the blocking reason.
 6. Produce one fixed-format `Schedule Result`.
-7. Stop before downstream execution.
+7. If the selected route is dispatch-ready and no formal stop condition is hit, allow supervisor continuation into `dispatch-skills`.
+8. Otherwise return the scheduling result as the current stop boundary.
 
 ## Scheduling Packet
 
@@ -85,6 +86,7 @@ Inside the result, include at least these fields or equivalents:
 - `required_context_for_next_round`
 - `evidence_used`
 - `open_issues`
+- `continuation_ready`
 - `recommended_next_skill_or_route`
 
 ## Resources

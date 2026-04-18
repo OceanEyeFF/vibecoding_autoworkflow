@@ -1,9 +1,9 @@
 ---
 title: "根目录分层"
 status: active
-updated: 2026-04-16
+updated: 2026-04-19
 owner: aw-kernel
-last_verified: 2026-04-16
+last_verified: 2026-04-19
 ---
 # 根目录分层
 
@@ -26,7 +26,7 @@ last_verified: 2026-04-16
 | Truth Layer | `docs/` | 知识与治理文档 | deploy 结果、mount/state |
 | Toolchain Layer | `toolchain/` | 脚本与评测工具 | 业务源码真相 |
 | Repo-local Install / Mount Layer | `.claude/` `.agents/` `.opencode/` | repo-local 安装载荷、挂载与 deploy target | 主线真相、业务源码 |
-| Repo-local State Layer | `.autoworkflow/` `.spec-workflow/` `.serena/` | 运行状态与项目级配置记忆 | 主线入口、业务源码 |
+| Repo-local State Layer | `.autoworkflow/` `.spec-workflow/` | 运行状态与项目级配置记忆 | 主线入口、业务源码 |
 | Repo-local Execution Config Layer | `.codex/` | repo-local 执行配置 | 长期真相正文、运行产物 |
 | Compatibility Navigation Layer | `.nav/` | 兼容导航 | 结构定义与规则正文 |
 | Compatibility Shim Layer | `tools/` | 兼容入口 shim | canonical 逻辑实现 |
@@ -52,29 +52,21 @@ last_verified: 2026-04-16
   - `tools/scope_gate_check.py`
 - 真逻辑必须在 `toolchain/scripts/test/`。
 
-### 2. `.serena/`
-
-- `.serena/` 属于 repo-local state/config。
-- 允许 tracked 白名单：
-  - `.serena/.gitignore`
-  - `.serena/project.yml`
-  - `.serena/memories/Claude-Workspace-Architecture.md`
-
-### 3. `.codex/`
+### 2. `.codex/`
 
 - `.codex/` 属于 repo-local execution config。
 - 允许 tracked 白名单：
   - `.codex/config.toml`
   - `.codex/rules/repo.rules`
 
-### 4. `.nav/`
+### 3. `.nav/`
 
 - 只允许 `README.md`、`@docs`、`@skills`。
 - `@docs` 与 `@skills` 必须是 symlink。
 - `@docs` 必须解析到 `docs/`。
 - `@skills` 必须解析到 `product/harness/skills/`。
 
-### 5. `.pytest_cache/`
+### 4. `.pytest_cache/`
 
 - 可存在于根目录，但不得有 tracked 内容。
 

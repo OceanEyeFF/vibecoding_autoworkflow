@@ -42,7 +42,7 @@ last_verified: 2026-04-14
 这三块之外：
 
 - `.agents/`、`.claude/`、`.opencode/` 是 repo-local deploy target
-- `.autoworkflow/`、`.spec-workflow/`、`.serena/` 是 repo-local state / config
+- `.autoworkflow/`、`.spec-workflow/` 是 repo-local state / config
 - `.nav/` 只是 compatibility navigation，不是结构定义层
 
 更完整的分层定义见 [`根目录分层`](./docs/project-maintenance/foundations/root-directory-layering.md)。
@@ -168,7 +168,7 @@ Autoresearch 评测与改进
 ## 当前提醒
 
 - `.agents/`、`.claude/`、`.opencode/` 只是 deploy target，不是源码层或真相层
-- `.autoworkflow/`、`.spec-workflow/`、`.serena/` 只是 repo-local state / config，不是默认阅读主线
+- `.autoworkflow/`、`.spec-workflow/` 只是 repo-local state / config，不是默认阅读主线
 - `.nav/` 只是 compatibility navigation，不是结构定义层
 - 某个后端的 prompt / wrapper 不能替代跨后端共享 truth
 

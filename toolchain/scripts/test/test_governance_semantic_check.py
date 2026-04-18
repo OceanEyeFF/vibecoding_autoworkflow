@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from governance_semantic_check import (
     SemanticReport,
     check_adapter_wrappers_are_thin,
+    check_canonical_entrypoints_match_required_policy,
     check_canonical_skill_packages_are_minimal,
     check_foundations_authority_shadows,
     check_outdated_placeholder_phrases,
@@ -189,3 +190,77 @@ def test_check_canonical_skill_packages_are_minimal_flags_adapter_leakage(tmp_pa
     check_canonical_skill_packages_are_minimal(tmp_path, report)
 
     assert any("Backend Notes" in item for item in report.failures)
+
+
+def test_check_canonical_entrypoints_match_required_policy_accepts_current_contract_terms(
+    tmp_path: Path,
+) -> None:
+    write_doc(
+        tmp_path / "product/harness/skills/harness-skill/references/entrypoints.md",
+        "\n".join(
+            [
+                "# Harness",
+                "Continue across legal state transitions",
+                "Stop only when a formal stop condition is hit",
+                "the route is continuation-ready",
+            ]
+        )
+        + "\n",
+    )
+    write_doc(
+        tmp_path / "product/harness/skills/init-worktrack-skill/references/entrypoints.md",
+        "\n".join(
+            [
+                "# Init",
+                "general execution carrier",
+                "continuation-ready",
+                "`schedule-worktrack-skill` or `dispatch-skills`",
+            ]
+        )
+        + "\n",
+    )
+    write_doc(
+        tmp_path / "product/harness/skills/dispatch-skills/references/entrypoints.md",
+        "\n".join(
+            [
+                "# Dispatch",
+                "runtime_dispatch_mode",
+                "current-carrier",
+                "fallback execution carrier",
+            ]
+        )
+        + "\n",
+    )
+
+    report = SemanticReport()
+    check_canonical_entrypoints_match_required_policy(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_canonical_entrypoints_match_required_policy_flags_stale_entrypoint_phrases(
+    tmp_path: Path,
+) -> None:
+    write_doc(
+        tmp_path / "product/harness/skills/harness-skill/references/entrypoints.md",
+        "Stop after one bounded Harness round\n",
+    )
+    write_doc(
+        tmp_path / "product/harness/skills/init-worktrack-skill/references/entrypoints.md",
+        "\n".join(
+            [
+                "fallback `SubAgent`, but do not dispatch that executor from this skill",
+                "Stop once the `Worktrack` is ready for a later execution round.",
+            ]
+        )
+        + "\n",
+    )
+    write_doc(
+        tmp_path / "product/harness/skills/dispatch-skills/references/entrypoints.md",
+        "Keep the fallback `SubAgent` on the same bounded task/info contract as a specialized skill would receive.\n",
+    )
+
+    report = SemanticReport()
+    check_canonical_entrypoints_match_required_policy(tmp_path, report)
+
+    assert any("stale policy phrase" in item for item in report.failures)

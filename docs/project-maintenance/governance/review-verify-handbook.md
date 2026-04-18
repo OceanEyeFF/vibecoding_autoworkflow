@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 治理入口"
 status: active
-updated: 2026-04-17
+updated: 2026-04-19
 owner: aw-kernel
-last_verified: 2026-04-17
+last_verified: 2026-04-19
 ---
 # Review / Verify 治理入口
 
@@ -52,7 +52,7 @@ last_verified: 2026-04-17
 
 ### 2. 规则同步
 
-- 如果改了 root / partition / path 规则，是否同步 foundations 和治理检查
+- 如果改了 root / partition / path / hidden-layer 规则，是否同步 foundations、关键入口页和治理检查
 - 如果改了 `AGENTS.md` 或执行流程，是否同步本文
 - 如果改了 deploy / adapter 行为，是否同步对应 `docs/project-maintenance/deploy/` runbook、maintenance 与 usage-help，并确保文档口径仍是 destructive reinstall model
 - 如果改了 `docs/harness/`、`product/harness/skills/*/` 或 `product/harness/adapters/*/skills/*/`，是否仍保持合同层与 executable layer 分工

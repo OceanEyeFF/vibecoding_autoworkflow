@@ -34,7 +34,6 @@ ROOT_ALLOWED_NAMES = {
     ".nav",
     ".opencode",
     ".pytest_cache",
-    ".serena",
     ".spec-workflow",
 }
 ROOT_ALLOWED_PREFIXES = (".git",)
@@ -56,11 +55,6 @@ CODEX_TRACKED_ALLOWLIST = {
     ".codex/config.toml",
     ".codex/rules/repo.rules",
 }
-SERENA_TRACKED_ALLOWLIST = {
-    ".serena/.gitignore",
-    ".serena/memories/Claude-Workspace-Architecture.md",
-    ".serena/project.yml",
-}
 MOUNT_TRACKED_ALLOWED_PREFIXES = (
     ".agents/skills/",
     ".claude/skills/",
@@ -77,7 +71,6 @@ PRODUCT_BANNED_SEGMENTS = {
     ".pytest_cache",
     ".autoworkflow",
     ".spec-workflow",
-    ".serena",
     "cache",
     "logs",
     "operations",
@@ -103,7 +96,6 @@ TOOLCHAIN_BANNED_SEGMENTS = {
     ".claude",
     ".nav",
     ".opencode",
-    ".serena",
     ".spec-workflow",
     "adapters",
     "logs",
@@ -128,7 +120,6 @@ class FolderRules:
     )
     tools_tracked_allowlist: set[str] = field(default_factory=lambda: set(TOOLS_TRACKED_ALLOWLIST))
     codex_tracked_allowlist: set[str] = field(default_factory=lambda: set(CODEX_TRACKED_ALLOWLIST))
-    serena_tracked_allowlist: set[str] = field(default_factory=lambda: set(SERENA_TRACKED_ALLOWLIST))
 
 
 @dataclass
@@ -369,8 +360,6 @@ def check_tracked_exceptions(tracked_paths: set[str], report: FolderLogicReport,
                     "repo-local install/mount layers only allow tracked content under */skills/",
                 )
             continue
-        if tracked_path.startswith(".serena/") and tracked_path not in rules.serena_tracked_allowlist:
-            report.add_issue("FL008", tracked_path, ".serena/ only allows the explicit tracked whitelist")
     report.add_info(f"checked {checked} tracked paths for hidden-layer exceptions")
 
 

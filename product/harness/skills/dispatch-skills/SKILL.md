@@ -1,6 +1,6 @@
 ---
 name: dispatch-skills
-description: Use this skill when Harness is in WorktrackScope and needs one bounded dispatch round that selects a specialized skill or falls back to a general task-completion SubAgent without widening scope.
+description: Use this skill when Harness is in WorktrackScope and needs one bounded dispatch round that selects a specialized skill or execution carrier without widening scope.
 ---
 
 # Dispatch Skills
@@ -9,7 +9,9 @@ description: Use this skill when Harness is in WorktrackScope and needs one boun
 
 Use this skill when `Harness` already has a current `Worktrack` action and needs to bind that action to the right execution carrier for one bounded round.
 
-This skill packages a bounded task, selects the most appropriate specialized skill when one clearly fits, and automatically falls back to a general task-completion `SubAgent` when no specialized skill is a clean match.
+This skill packages a bounded task, selects the most appropriate specialized skill when one clearly fits, and falls back to a general task-completion execution carrier when no specialized skill is a clean match.
+
+If the host runtime provides a real subagent dispatch shell, that fallback carrier may be a delegated `SubAgent`. If the host runtime does not provide one, the same bounded task/info contract must still be executed in the current carrier and explicitly reported as runtime fallback rather than fake subagent dispatch.
 
 ## When To Use
 
@@ -17,7 +19,7 @@ Use this skill when the current question is not "what is the next worktrack acti
 
 - package the current work item into a bounded execution contract
 - decide whether a specialized skill is available and semantically appropriate
-- fall back to a general task-completion `SubAgent` if not
+- fall back to a general task-completion execution carrier if not
 - run one bounded dispatch round
 - return structured evidence and handoff data to `Harness`
 
@@ -28,15 +30,19 @@ Use this skill when the current question is not "what is the next worktrack acti
 3. Build one `Dispatch Task Brief` and one `Dispatch Info Packet`.
 4. Check whether a specialized skill is a clear semantic fit for the current work item.
 5. If yes, dispatch via that specialized skill.
-6. If no, dispatch via a general task-completion `SubAgent` using the same bounded task/info contract.
-7. Stop after one bounded dispatch round and return one fixed-format `Dispatch Result`.
+6. If no, dispatch via a general task-completion carrier using the same bounded task/info contract.
+7. Record whether the round used:
+   - delegated `SubAgent` dispatch
+   - current-carrier runtime fallback
+8. Return one fixed-format `Dispatch Result`.
 
 ## Hard Constraints
 
 - Do not widen the work item beyond the current `Worktrack Contract` and `Plan / Task Queue`.
 - Do not treat "no specialized skill exists" as a blocked state by itself.
 - Do not pass full-repo context when a bounded info packet is sufficient.
-- Do not let the fallback `SubAgent` redefine acceptance criteria, non-goals, or verification requirements.
+- Do not let the fallback execution carrier redefine acceptance criteria, non-goals, or verification requirements.
+- Do not claim a delegated `SubAgent` was used unless the host runtime actually spawned one.
 - Do not mutate `Harness Control State` or issue a gate verdict directly from this skill.
 - Do not collapse selection reason, execution result, and evidence into one vague summary.
 
@@ -55,6 +61,7 @@ When you use this skill, produce a `Dispatch Result` with at least these section
 Inside the result, include at least these fields or equivalents:
 
 - `selected_executor`
+- `runtime_dispatch_mode`
 - `selection_reason`
 - `fallback_used`
 - `task`

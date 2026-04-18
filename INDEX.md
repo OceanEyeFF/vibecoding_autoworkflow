@@ -41,7 +41,7 @@ last_verified: 2026-04-14
 - `docs/`：文档真相与知识主线
 - `toolchain/`：脚本、部署、测试、评测工具
 - `.agents/`、`.claude/`、`.opencode/`：repo-local mount / deploy target
-- `.autoworkflow/`、`.spec-workflow/`、`.serena/`：repo-local state / config
+- `.autoworkflow/`、`.spec-workflow/`：repo-local state / config
 - `.nav/`：compatibility navigation
 
 ## 默认先不要读
@@ -51,7 +51,6 @@ last_verified: 2026-04-14
 - `.opencode/`
 - `.autoworkflow/`
 - `.spec-workflow/`
-- `.serena/`
 - `.nav/`
 
 ## 停止继续扩读的条件

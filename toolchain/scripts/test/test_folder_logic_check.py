@@ -60,7 +60,6 @@ def create_valid_repo(tmp_path: Path) -> Path:
         "toolchain/scripts",
         "toolchain/evals",
         "tools",
-        ".serena/memories",
     ):
         (repo_root / directory).mkdir(parents=True, exist_ok=True)
 
@@ -70,10 +69,6 @@ def create_valid_repo(tmp_path: Path) -> Path:
         "tools/scope_gate_check.py",
     ):
         write_file(repo_root / tool_path, "# shim\n")
-
-    write_file(repo_root / ".serena/.gitignore", ".serena/\n")
-    write_file(repo_root / ".serena/project.yml", "project: demo\n")
-    write_file(repo_root / ".serena/memories/Claude-Workspace-Architecture.md", "# memory\n")
 
     write_file(
         repo_root / ".codex/config.toml",
@@ -102,7 +97,7 @@ def create_valid_repo(tmp_path: Path) -> Path:
         ".claudeignore",
         force=True,
     )
-    git(repo_root, "add", "product", "docs", "toolchain", "tools", ".serena", ".nav", ".codex", force=True)
+    git(repo_root, "add", "product", "docs", "toolchain", "tools", ".nav", ".codex", force=True)
     return repo_root
 
 
@@ -183,17 +178,13 @@ def test_codex_tracked_non_whitelist_fails(tmp_path: Path) -> None:
     assert ".codex/notes.md" in issue_paths(report)
 
 
-def test_serena_whitelist_passes_and_non_whitelist_tracked_fails(tmp_path: Path) -> None:
+def test_retired_serena_root_directory_fails(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
-    baseline_report = run_checks(repo_root)
-    assert "FL008" not in issue_codes(baseline_report)
-
-    write_file(repo_root / ".serena/cache/runtime.json", "{}\n")
-    git(repo_root, "add", ".serena/cache/runtime.json", force=True)
+    (repo_root / ".serena").mkdir()
     report = run_checks(repo_root)
 
-    assert "FL008" in issue_codes(report)
-    assert ".serena/cache/runtime.json" in issue_paths(report)
+    assert "FL001" in issue_codes(report)
+    assert ".serena" in issue_paths(report)
 
 
 def test_repo_local_skill_payloads_may_be_tracked_but_other_mount_content_still_fails(tmp_path: Path) -> None:

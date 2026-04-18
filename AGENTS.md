@@ -42,7 +42,6 @@
   - `.opencode/`
   - `.autoworkflow/`
   - `.spec-workflow/`
-  - `.serena/`
   - `.nav/`
 - `stop_reading_when`：
   - 已确认当前任务落在哪一块正式内容区
@@ -73,7 +72,6 @@
 - `docs/harness/` 是 Harness-first 文档主线。
 - `toolchain/` 只放脚本、评测、测试、打包、部署工具。
 - `.autoworkflow/`、`.spec-workflow/` 只属于 repo-local state layer。
-- `.serena/` 是 repo-local state/config layer，可保留受控入库的项目级配置与记忆，但不是主线真相层。
 - `.nav/` 只是 compatibility navigation layer，不能当真实结构定义。
 
 ## Docs Governance Baseline

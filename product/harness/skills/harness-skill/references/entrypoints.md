@@ -36,4 +36,6 @@ Load the Harness supervisor docs in this order.
 - Start from `Harness Control State`, then load only the artifacts required by the current scope.
 - Treat `Harness指导思想` as doctrine and `Harness运行协议` as runtime behavior guidance.
 - Do not read repo-local deploy targets during Harness supervision.
-- Stop after one bounded Harness round and hand control back to the programmer when approval is needed.
+- Continue across legal state transitions instead of stopping just because one bounded local round returned structured output.
+- A `RepoScope` to `WorktrackScope` switch may continue without a fresh programmer handoff only when the current route has already marked that transition as continuation-ready and no formal stop condition requires approval.
+- Stop and hand control back only when a formal stop condition is hit, including approval boundaries, missing or stale evidence, gate failure or block, runtime dispatch gaps, or contract-boundary violations.

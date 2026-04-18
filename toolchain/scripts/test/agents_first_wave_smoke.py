@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run a repeatable first-wave agents smoke path."""
+"""Run a repeatable first-wave agents contract smoke path."""
 
 from __future__ import annotations
 
@@ -41,6 +41,8 @@ MINIMUM_PROTOCOL_FIELDS = {
         "status_or_verdict",
         "recommended_next_scope",
         "recommended_next_action",
+        "continuation_decision",
+        "stop_conditions_hit",
         "needs_approval",
     ),
     "repo-status-skill": (
@@ -57,6 +59,7 @@ MINIMUM_PROTOCOL_FIELDS = {
         "recommended_next_scope",
         "allowed_repo_actions",
         "selection_reason",
+        "continuation_ready",
         "needs_programmer_approval",
     ),
     "init-worktrack-skill": (
@@ -67,9 +70,11 @@ MINIMUM_PROTOCOL_FIELDS = {
         "next_action",
         "executor_handoff_packet",
         "execution_not_started",
+        "continuation_ready",
     ),
     "dispatch-skills": (
         "selected_executor",
+        "runtime_dispatch_mode",
         "selection_reason",
         "fallback_used",
         "task",
@@ -458,7 +463,7 @@ def seed_worktrack_artifacts(aw_root: Path) -> None:
     replace_section_bullet(
         contract,
         "Acceptance Criteria",
-        "Installed agents payloads are readable and the first-wave route reaches dispatch fallback with bounded I/O.",
+        "Installed agents payloads are readable and the first-wave route reaches dispatch selection with bounded I/O plus explicit runtime-dispatch reporting.",
     )
     replace_section_bullet(
         contract,
@@ -474,7 +479,7 @@ def seed_worktrack_artifacts(aw_root: Path) -> None:
     replace_keyed_value(plan, "current_phase", "dispatch-ready")
     replace_checkbox(plan, 1, "Validate the installed first-wave skill copies and payload descriptors.")
     replace_checkbox(plan, 2, "Package a bounded C2 work item for dispatch.")
-    replace_checkbox(plan, 3, "Return one dispatch result that proves the fallback path.")
+    replace_checkbox(plan, 3, "Return one dispatch result that proves the fallback-selection path without claiming real subagent execution.")
     replace_section_bullet(
         plan,
         "Execution Order Notes",
@@ -537,6 +542,8 @@ def run_harness_round(skill: InstalledSkill, aw_root: Path) -> dict[str, Any]:
         "status_or_verdict": "repo baseline ready for a bounded next-direction round",
         "recommended_next_scope": "RepoScope",
         "recommended_next_action": "repo-status-skill",
+        "continuation_decision": "continue",
+        "stop_conditions_hit": [],
         "needs_approval": False,
         "approval_to_apply": "none",
         "how_to_review": "inspect the installed harness skill copy, payload descriptor, and seeded control-state",
@@ -624,6 +631,7 @@ def run_repo_whats_next_round(
         "selection_reason": "C2 requires a repeatable worktrack path and the repo baseline is ready.",
         "minimal_missing_info": [],
         "control_state_change_requested": True,
+        "continuation_ready": True,
         "needs_programmer_approval": False,
         "how_to_review": "confirm the selected repo action stays inside the frozen first-wave action set",
     }
@@ -655,7 +663,7 @@ def run_init_worktrack_round(skill: InstalledSkill, aw_root: Path) -> dict[str, 
         "verification_requirements": [
             "agents_first_wave_smoke.py must pass in one bounded round",
         ],
-        "done_signal": "return one dispatch result that preserves bounded scope and fallback evidence",
+        "done_signal": "return one dispatch result that preserves bounded scope and reports the runtime dispatch mode honestly",
         "required_context": [
             str(aw_root / "worktrack" / "contract.md"),
             str(aw_root / "worktrack" / "plan-task-queue.md"),
@@ -702,6 +710,7 @@ def run_init_worktrack_round(skill: InstalledSkill, aw_root: Path) -> dict[str, 
         "known_risks": handoff_packet["known_risks"],
         "executor_handoff_packet": handoff_packet,
         "execution_not_started": True,
+        "continuation_ready": True,
         "recommended_next_action": "dispatch-skills",
         "needs_approval": False,
         "approval_to_apply": "none",
@@ -716,9 +725,10 @@ def run_dispatch_round(
 ) -> dict[str, Any]:
     handoff_packet = init_output["executor_handoff_packet"]
     output = {
-        "selected_executor": "general-task-completion-subagent",
+        "selected_executor": "general-task-completion-executor",
+        "runtime_dispatch_mode": "current-carrier-fallback",
         "selection_reason": (
-            "no first-wave specialized downstream skill is required for this bounded smoke work item"
+            "no first-wave specialized downstream skill is required and this smoke does not provide a real delegated subagent shell"
         ),
         "fallback_used": True,
         "task": handoff_packet["task"],
@@ -733,16 +743,18 @@ def run_dispatch_round(
             "packaged one dispatch task brief",
             "carried forward the bounded info packet",
             "selected fallback general executor without widening scope",
+            "reported current-carrier runtime fallback instead of claiming delegated subagent execution",
         ],
         "files_touched_or_expected": handoff_packet["required_context"],
         "evidence_collected": [
             "fallback path preserved the same task and verification contract",
             "no specialized downstream skill coverage was required to keep the route live",
+            "the smoke reports runtime-dispatch gap explicitly instead of treating selection as real subagent execution",
         ],
         "open_issues": [],
-        "recommended_next_action": "return the dispatch result to Harness and stop the smoke round",
+        "recommended_next_action": "return the dispatch result to Harness; this smoke does not prove real delegated execution",
     }
-    if output["selected_executor"] != "general-task-completion-subagent":
+    if output["selected_executor"] != "general-task-completion-executor":
         raise SmokeError("dispatch did not prove the fallback/general-executor path")
     if not output["fallback_used"]:
         raise SmokeError("dispatch smoke must exercise the fallback path")
@@ -801,6 +813,8 @@ def run_smoke(agents_root: Path, aw_root: Path) -> dict[str, Any]:
                 "skill_id": "harness-skill",
                 "recommended_next_action": harness_output["recommended_next_action"],
                 "recommended_next_scope": harness_output["recommended_next_scope"],
+                "continuation_decision": harness_output["continuation_decision"],
+                "stop_conditions_hit": harness_output["stop_conditions_hit"],
             },
             {
                 "skill_id": "repo-status-skill",
@@ -810,15 +824,18 @@ def run_smoke(agents_root: Path, aw_root: Path) -> dict[str, Any]:
                 "skill_id": "repo-whats-next-skill",
                 "recommended_repo_action": repo_whats_next_output["recommended_repo_action"],
                 "recommended_next_scope": repo_whats_next_output["recommended_next_scope"],
+                "continuation_ready": repo_whats_next_output["continuation_ready"],
             },
             {
                 "skill_id": "init-worktrack-skill",
                 "next_action": init_output["next_action"],
                 "execution_not_started": init_output["execution_not_started"],
+                "continuation_ready": init_output["continuation_ready"],
             },
             {
                 "skill_id": "dispatch-skills",
                 "selected_executor": dispatch_output["selected_executor"],
+                "runtime_dispatch_mode": dispatch_output["runtime_dispatch_mode"],
                 "fallback_used": dispatch_output["fallback_used"],
             },
         ],

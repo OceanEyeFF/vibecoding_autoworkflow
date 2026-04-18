@@ -7,7 +7,6 @@
 .agents/
 .claude/
 .opencode/
-.serena/
 
 # Official documentation mirror (auto-fetched, do not commit)
 Claude_Official_Docs/

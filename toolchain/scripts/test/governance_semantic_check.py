@@ -107,6 +107,35 @@ THIN_WRAPPER_FORBIDDEN_HEADINGS = [
     "## Output Contract",
 ]
 CANONICAL_ENTRYPOINT_REQUIRED_LINKS = {}
+CANONICAL_ENTRYPOINT_REQUIRED_PHRASES = {
+    "product/harness/skills/harness-skill/references/entrypoints.md": [
+        "Continue across legal state transitions",
+        "formal stop condition",
+        "continuation-ready",
+    ],
+    "product/harness/skills/init-worktrack-skill/references/entrypoints.md": [
+        "general execution carrier",
+        "continuation-ready",
+        "`schedule-worktrack-skill` or `dispatch-skills`",
+    ],
+    "product/harness/skills/dispatch-skills/references/entrypoints.md": [
+        "runtime_dispatch_mode",
+        "current-carrier",
+        "fallback execution carrier",
+    ],
+}
+CANONICAL_ENTRYPOINT_FORBIDDEN_PHRASES = {
+    "product/harness/skills/harness-skill/references/entrypoints.md": [
+        "Stop after one bounded Harness round",
+    ],
+    "product/harness/skills/init-worktrack-skill/references/entrypoints.md": [
+        "fallback `SubAgent`, but do not dispatch that executor from this skill",
+        "Stop once the `Worktrack` is ready for a later execution round.",
+    ],
+    "product/harness/skills/dispatch-skills/references/entrypoints.md": [
+        "Keep the fallback `SubAgent` on the same bounded task/info contract as a specialized skill would receive.",
+    ],
+}
 
 
 @dataclass
@@ -307,6 +336,32 @@ def check_canonical_entrypoints_cover_required_formats(repo_root: Path, report: 
     report.add_info(f"checked {checked} canonical entrypoint format links")
 
 
+def check_canonical_entrypoints_match_required_policy(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    for relative_path, expected_phrases in CANONICAL_ENTRYPOINT_REQUIRED_PHRASES.items():
+        source = repo_root / relative_path
+        if not source.exists():
+            report.add_failure(f"missing canonical entrypoints document: {relative_path}")
+            continue
+
+        text = source.read_text(encoding="utf-8")
+        for phrase in expected_phrases:
+            checked += 1
+            if phrase not in text:
+                report.add_failure(
+                    f"canonical entrypoints missing required policy phrase: {relative_path} -> {phrase}"
+                )
+
+        for phrase in CANONICAL_ENTRYPOINT_FORBIDDEN_PHRASES.get(relative_path, []):
+            checked += 1
+            if phrase in text:
+                report.add_failure(
+                    f"canonical entrypoints still contain stale policy phrase: {relative_path} -> {phrase}"
+                )
+
+    report.add_info(f"checked {checked} canonical entrypoint policy phrases")
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -317,6 +372,7 @@ def main() -> int:
     check_outdated_placeholder_phrases(repo_root, report)
     check_canonical_skill_packages_are_minimal(repo_root, report)
     check_canonical_entrypoints_cover_required_formats(repo_root, report)
+    check_canonical_entrypoints_match_required_policy(repo_root, report)
     check_adapter_wrappers_are_thin(repo_root, report)
 
     payload = {

@@ -1,6 +1,6 @@
 ---
 name: init-worktrack-skill
-description: Use this skill when Harness is in WorktrackScope.initializing and needs one bounded round that sets up branch, baseline, contract, and initial plan, then stops before execution.
+description: Use this skill when Harness is in WorktrackScope.initializing and needs one bounded round that sets up branch, baseline, contract, and initial plan, then hands off cleanly into the next legal worktrack action.
 ---
 
 # Init Worktrack Skill
@@ -9,9 +9,9 @@ description: Use this skill when Harness is in WorktrackScope.initializing and n
 
 Use this skill when `Harness` has already decided to open or repair a specific `Worktrack` and now needs one bounded initialization round.
 
-This skill makes branch and baseline handling explicit, builds or refreshes the initial `Worktrack Contract`, seeds the first `Plan / Task Queue`, and prepares a minimal executor handoff packet for the next specialized skill or fallback `SubAgent`.
+This skill makes branch and baseline handling explicit, builds or refreshes the initial `Worktrack Contract`, seeds the first `Plan / Task Queue`, and prepares a minimal executor handoff packet for the next specialized skill or execution carrier.
 
-It stops before implementation, verification, or gate judgment.
+It does not perform implementation, verification, or gate judgment itself, but it should leave the worktrack continuation-ready whenever the next legal action is clear.
 
 ## When To Use
 
@@ -22,7 +22,7 @@ Use this skill when the current question is not "how should this task be execute
 - translate the approved work item into a bounded `Worktrack Contract`
 - expand that contract into an initial `Plan / Task Queue`
 - package the minimum context the next execution round will need
-- stop and return control before any execution starts
+- surface whether the next route is continuation-ready or blocked by a formal stop condition
 
 ## Workflow
 
@@ -38,7 +38,8 @@ Use this skill when the current question is not "how should this task be execute
 6. Build or refresh one `Worktrack Contract`.
 7. Seed one initial `Plan / Task Queue`.
 8. Produce one fixed-format `Worktrack Initialization Result`.
-9. Stop before dispatching any executor or starting implementation.
+9. If the next work item is clear and no formal stop condition is hit, hand off directly to `schedule-worktrack-skill` or `dispatch-skills`.
+10. If the next route is not continuation-ready, return a blocked or approval-gated initialization result instead of pretending execution started.
 
 ## Hard Constraints
 
@@ -48,7 +49,8 @@ Use this skill when the current question is not "how should this task be execute
 - Do not widen scope beyond the approved worktrack goal, non-goals, and current repo baseline.
 - Do not silently mutate `Harness Control State` without surfacing the intended next state and required approval.
 - Do not rewrite upstream `Task Contract` truth; consume it only as an input boundary when it exists.
-- Do not hand the next executor full-repo context when a bounded handoff packet is sufficient.
+- Do not hand the next execution carrier full-repo context when a bounded handoff packet is sufficient.
+- Do not claim a fallback `SubAgent` is ready unless the host runtime can actually dispatch one.
 
 ## Expected Output
 
@@ -86,6 +88,7 @@ Inside the result, include at least these fields or equivalents:
 - `known_risks`
 - `executor_handoff_packet`
 - `execution_not_started`
+- `continuation_ready`
 - `recommended_next_action`
 - `needs_approval`
 - `approval_to_apply`

@@ -1,9 +1,9 @@
 ---
 title: "Memory Side Skill 与 Agent 模型"
 status: active
-updated: 2026-04-17
+updated: 2026-04-18
 owner: aw-kernel
-last_verified: 2026-04-17
+last_verified: 2026-04-18
 ---
 # Memory Side Skill 与 Agent 模型
 
@@ -60,6 +60,9 @@ last_verified: 2026-04-17
 
 - 这是可选调用层，不是当前仓库知识主线的一部分
 - 当前仓库不固定 `task-entry-agent`、`task-closeout-agent` 一类命名
+- 当前仓库也还没有稳定产品化的 `skill -> subagent dispatch shell`
+- 因此，“选择了 skill” 不自动等于 “一定会 fork 一个独立 agent”
+- 如果 host runtime 没有显式 dispatch 能力，skill round 仍可能由当前 carrier 承接；这属于 runtime fallback，不应被伪装成独立 subagent 已经落地
 
 ## 三、当前仓库里的四层落点
 
