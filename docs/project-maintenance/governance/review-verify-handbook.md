@@ -88,6 +88,9 @@ last_verified: 2026-04-17
   - `python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents`
   - `python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents`
   - `python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents`
+- `agents` first-wave smoke / C2 路径变更
+  - `python3 -m pytest toolchain/scripts/test/test_agents_first_wave_smoke.py`
+  - `python3 toolchain/scripts/test/agents_first_wave_smoke.py`
 
 ### 3.1 修复完整性
 

@@ -6,7 +6,7 @@
 
 - `schema/skill-manifest.v1.schema.json` 固定 B1 的最小 schema
 - `agents/skills/*.json` 只包含五个 first-wave skills 的实例
-- 这套 v1 manifest 不是 A1 最终 manifest 落地；required payload files、payload policy 与 reference distribution 仍留给后续 manifest revision
+- 这套 v1 manifest 继续固定 canonical read surface；`agents` 当前的 canonical-copy payload 会直接复用 `included_paths` 作为 target content 集合
 - `product/harness/skills/` 继续承接 canonical skill source，而 Harness doctrine 与相邻系统合同仍以 `docs/harness/` 和相关治理文档为准
 - repo-local deploy/runtime state 继续留在 `.autoworkflow/`、`.agents/`、`.claude/` 与 `.opencode/`
 

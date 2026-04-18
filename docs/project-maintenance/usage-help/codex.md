@@ -29,7 +29,7 @@ last_verified: 2026-04-17
 
 ## 二、最小 smoke verify 口径
 
-`agents` 是当前有稳定 smoke verify 口径的 backend 之一。前提是先完成主流程，再跑一次只读 `verify`，然后做最小 skill entry 可读性确认。
+`agents` 是当前有稳定 smoke verify 口径的 backend 之一。前提是先完成主流程，再跑一次只读 `verify`，然后执行仓库内的 repeatable smoke harness。
 
 推荐顺序：
 
@@ -42,15 +42,31 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
 
 建议做法：
 
-- 显式调用当前 target root 下的一个已安装 skill entry
-- 选一个你当前在用、且输出结构稳定的 skill 做最小读取确认
-- 只确认 “skill entry 能被 Codex 读取，输出结构仍符合对应 skill 的固定契约”
+- 直接运行：
+
+```bash
+python3 toolchain/scripts/test/agents_first_wave_smoke.py
+```
+
+- 这条 smoke 会在隔离 install root 和生成的 `.aw` fixture 上完成：
+  - `prune --all -> check_paths_exist -> install -> verify`
+  - 已安装 first-wave skill copy 的真实读取
+  - `harness -> repo-status -> repo-whats-next -> init-worktrack -> dispatch` 最小路径
+  - `dispatch-skills` 的 fallback / general-executor 路径
+- 如需保留现场，显式传 root：
+
+```bash
+python3 toolchain/scripts/test/agents_first_wave_smoke.py \
+  --agents-root .autoworkflow/state/agents-first-wave-smoke/.agents/skills \
+  --aw-root .autoworkflow/state/agents-first-wave-smoke/.aw
+```
 
 判断标准：
 
-- Codex 能读取对应 skill entry
-- 输出仍符合固定结构
-- 这一步是 backend runtime 可读性确认，不替代 `adapter_deploy.py verify`
+- smoke 命令返回 `PASS`
+- five-skill first-wave 路径全部经过
+- `dispatch-skills` 证明 fallback/general-executor 路径，而不是只验证 mount 存在
+- 这一步是 backend runtime smoke，不替代 `adapter_deploy.py verify`
 
 ## 三、和其他 backend 的区别
 

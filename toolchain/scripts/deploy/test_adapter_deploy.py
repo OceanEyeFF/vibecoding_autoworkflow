@@ -139,10 +139,10 @@ class AdapterDeployTest(unittest.TestCase):
         )
         return skill_dir
 
-    def _mutate_source_wrapper(self, skill_id: str, extra_text: str = "\n# source drift\n") -> None:
-        wrapper_path = self.adapter_dir / skill_id / "SKILL.md"
-        wrapper_path.write_text(
-            wrapper_path.read_text(encoding="utf-8") + extra_text,
+    def _mutate_canonical_skill(self, skill_id: str, extra_text: str = "\n# source drift\n") -> None:
+        skill_path = self.fake_repo_root / "product" / "harness" / "skills" / skill_id / "SKILL.md"
+        skill_path.write_text(
+            skill_path.read_text(encoding="utf-8") + extra_text,
             encoding="utf-8",
         )
 
@@ -171,19 +171,29 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("created target root", stdout)
 
         for source_payload_dir in sorted(path for path in self.adapter_dir.iterdir() if path.is_dir()):
-            target_skill_dir = self.local_root / source_payload_dir.name
+            skill_id = source_payload_dir.name
+            target_skill_dir = self.local_root / skill_id
+            manifest = self._load_json(self.manifest_dir / f"{skill_id}.json")
             self.assertTrue(target_skill_dir.is_dir(), target_skill_dir)
-            self.assertEqual(
-                (target_skill_dir / "SKILL.md").read_text(encoding="utf-8"),
-                (source_payload_dir / "SKILL.md").read_text(encoding="utf-8"),
-            )
             self.assertEqual(
                 (target_skill_dir / "payload.json").read_text(encoding="utf-8"),
                 (source_payload_dir / "payload.json").read_text(encoding="utf-8"),
             )
+            for included_path in manifest["included_paths"]:
+                self.assertEqual(
+                    (target_skill_dir / included_path).read_text(encoding="utf-8"),
+                    (
+                        self.fake_repo_root
+                        / "product"
+                        / "harness"
+                        / "skills"
+                        / skill_id
+                        / included_path
+                    ).read_text(encoding="utf-8"),
+                )
             self.assertEqual(
                 (target_skill_dir / "aw.marker").read_text(encoding="utf-8"),
-                self._runtime_marker_text(source_payload_dir.name),
+                self._runtime_marker_text(skill_id),
             )
 
     def test_install_uses_override_root(self) -> None:
@@ -246,7 +256,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(code, 0, stderr)
         target_wrapper_path = self.local_root / "harness-skill" / "SKILL.md"
         original_target_wrapper = target_wrapper_path.read_text(encoding="utf-8")
-        self._mutate_source_wrapper("harness-skill", "\n# new live source\n")
+        self._mutate_canonical_skill("harness-skill", "\n# new live source\n")
 
         code, stdout, stderr = self._install()
 
@@ -259,7 +269,14 @@ class AdapterDeployTest(unittest.TestCase):
         )
         self.assertNotEqual(
             target_wrapper_path.read_text(encoding="utf-8"),
-            (self.adapter_dir / "harness-skill" / "SKILL.md").read_text(encoding="utf-8"),
+            (
+                self.fake_repo_root
+                / "product"
+                / "harness"
+                / "skills"
+                / "harness-skill"
+                / "SKILL.md"
+            ).read_text(encoding="utf-8"),
         )
 
     def test_install_fails_on_duplicate_target_dir_bindings_before_writing(self) -> None:
@@ -430,7 +447,7 @@ class AdapterDeployTest(unittest.TestCase):
     def test_verify_reports_target_payload_drift_for_source_fingerprint_change(self) -> None:
         code, stdout, stderr = self._install()
         self.assertEqual(code, 0, stderr)
-        self._mutate_source_wrapper("harness-skill")
+        self._mutate_canonical_skill("harness-skill")
 
         code, stdout, stderr = self._verify()
 

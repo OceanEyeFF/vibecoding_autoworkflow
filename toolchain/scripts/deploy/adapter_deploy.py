@@ -24,10 +24,10 @@ ADAPTER_SKILL_DIRS = {
     "agents": REPO_ROOT / "product" / "harness" / "adapters" / "agents" / "skills",
 }
 EXPECTED_PAYLOAD_POLICIES = {
-    "agents": "thin-shell",
+    "agents": "canonical-copy",
 }
 EXPECTED_REFERENCE_DISTRIBUTION = {
-    "agents": "repo-read-through-local-only",
+    "agents": "copy-listed-canonical-paths",
 }
 EXPECTED_PAYLOAD_VERSIONS = {
     "agents": "agents-skill-payload.v1",
@@ -421,6 +421,10 @@ def load_binding_payload(binding: SkillBinding) -> dict[str, Any]:
     return load_json_file(binding.payload_path)
 
 
+def load_binding_manifest(binding: SkillBinding) -> dict[str, Any]:
+    return load_json_file(binding.manifest_path)
+
+
 def payload_version_from_descriptor(payload: dict[str, Any], *, binding: SkillBinding) -> str:
     payload_version = payload.get("payload_version")
     if not isinstance(payload_version, str):
@@ -428,27 +432,94 @@ def payload_version_from_descriptor(payload: dict[str, Any], *, binding: SkillBi
     return payload_version
 
 
+def canonical_source_files_by_target_relative_path(
+    binding: SkillBinding, *, manifest: dict[str, Any] | None = None
+) -> dict[str, Path]:
+    if manifest is None:
+        manifest = load_binding_manifest(binding)
+
+    canonical_dir_value = manifest.get("canonical_dir")
+    included_paths_value = string_list(manifest.get("included_paths"))
+    if not isinstance(canonical_dir_value, str) or included_paths_value is None:
+        raise DeployError(
+            f"manifest canonical_dir and included_paths must be defined for skill {binding.skill_id}"
+        )
+
+    normalized_canonical_dir = normalize_relative_repo_path(
+        canonical_dir_value,
+        field_name="manifest canonical_dir",
+        skill_id=binding.skill_id,
+    )
+    canonical_dir = REPO_ROOT / normalized_canonical_dir
+    canonical_files: dict[str, Path] = {}
+    for included_path in included_paths_value:
+        normalized_included_path = normalize_relative_canonical_path(
+            included_path,
+            field_name="manifest included_paths entry",
+            skill_id=binding.skill_id,
+        )
+        canonical_files[normalized_included_path] = canonical_dir / normalized_included_path
+    return canonical_files
+
+
+def source_path_for_target_relative_file(
+    binding: SkillBinding,
+    relative_name: str,
+    *,
+    manifest: dict[str, Any] | None = None,
+) -> Path:
+    if relative_name == "payload.json":
+        return binding.payload_path
+    if relative_name == MANAGED_SKILL_MARKER:
+        raise DeployError(f"{MANAGED_SKILL_MARKER} is runtime-generated for skill {binding.skill_id}")
+
+    canonical_files = canonical_source_files_by_target_relative_path(binding, manifest=manifest)
+    try:
+        return canonical_files[relative_name]
+    except KeyError as exc:
+        raise DeployError(
+            f"payload required file {relative_name} is not declared in manifest included_paths "
+            f"for skill {binding.skill_id}"
+        ) from exc
+
+
 def compute_payload_fingerprint(binding: SkillBinding, *, payload: dict[str, Any] | None = None) -> str:
     if payload is None:
         payload = load_binding_payload(binding)
 
     payload_version = payload_version_from_descriptor(payload, binding=binding)
+    manifest = load_binding_manifest(binding)
+    target_metadata = payload_target_metadata(payload, binding)
     try:
-        wrapper_text = binding.wrapper_path.read_text(encoding="utf-8")
         payload_text = binding.payload_path.read_text(encoding="utf-8")
     except FileNotFoundError as exc:
         raise DeployError(
             f"Missing payload source file while computing fingerprint: {exc.filename}"
         ) from exc
 
-    fingerprint_input = (
+    fingerprint_parts = [
         f"backend={binding.backend}\n"
         f"skill_id={binding.skill_id}\n"
         f"payload_version={payload_version}\n"
-        f"file:SKILL.md\n{wrapper_text}\n"
-        f"file:payload.json\n{payload_text}\n"
-    )
-    return hashlib.sha256(fingerprint_input.encode("utf-8")).hexdigest()
+    ]
+    for relative_name in target_metadata.required_payload_files:
+        if relative_name == MANAGED_SKILL_MARKER:
+            continue
+        source_path = source_path_for_target_relative_file(
+            binding,
+            relative_name,
+            manifest=manifest,
+        )
+        try:
+            source_text = source_path.read_text(encoding="utf-8")
+        except FileNotFoundError as exc:
+            raise DeployError(
+                f"Missing payload source file while computing fingerprint: {exc.filename}"
+            ) from exc
+        fingerprint_parts.append(f"file:{relative_name}\n{source_text}\n")
+
+    fingerprint_parts.append(f"file:payload.json\n{payload_text}\n")
+    return hashlib.sha256("".join(fingerprint_parts).encode("utf-8")).hexdigest()
 
 
 def runtime_marker_to_dict(marker: RuntimeMarker) -> dict[str, str]:
@@ -617,19 +688,14 @@ def verify_source_binding(binding: SkillBinding) -> list[VerifyIssue]:
         )
         return issues
 
-    required_source_files = {
-        "SKILL.md": binding.wrapper_path,
-        "payload.json": binding.payload_path,
-    }
-    for relative_name, source_path in required_source_files.items():
-        if not source_path.is_file():
-            issues.append(
-                VerifyIssue(
-                    code="missing-required-payload",
-                    path=source_path,
-                    detail=f"missing payload source file {relative_name} for skill {binding.skill_id}",
-                )
+    if not binding.payload_path.is_file():
+        issues.append(
+            VerifyIssue(
+                code="missing-required-payload",
+                path=binding.payload_path,
+                detail=f"missing payload source file payload.json for skill {binding.skill_id}",
             )
+        )
 
     if issues:
         return issues
@@ -861,21 +927,23 @@ def verify_source_binding(binding: SkillBinding) -> list[VerifyIssue]:
             )
         )
     else:
-        for relative_name in target_metadata.required_payload_files:
-            if relative_name == MANAGED_SKILL_MARKER:
-                continue
-            source_path = binding.payload_dir / relative_name
-            if not source_path.is_file():
-                issues.append(
-                    VerifyIssue(
-                        code="missing-required-payload",
-                        path=source_path,
-                        detail=(
-                            f"required payload source file {relative_name} is missing for skill "
-                            f"{binding.skill_id}"
-                        ),
-                    )
+        expected_required_payload_files = [
+            *normalized_included_paths,
+            "payload.json",
+            MANAGED_SKILL_MARKER,
+        ]
+        if target_metadata.required_payload_files != expected_required_payload_files:
+            issues.append(
+                VerifyIssue(
+                    code="manifest-payload-drift",
+                    path=binding.payload_path,
+                    detail=(
+                        "payload required_payload_files must equal manifest included_paths plus "
+                        "payload.json and aw.marker "
+                        f"for skill {binding.skill_id}"
+                    ),
                 )
+            )
         if normalized_manifest_target_dir is not None and target_metadata.target_dir != normalized_manifest_target_dir:
             issues.append(
                 VerifyIssue(
@@ -968,6 +1036,7 @@ def install_backend_payloads(backend: str, args: argparse.Namespace) -> None:
         binding = plan.binding
         target_metadata = plan.target_metadata
         target_skill_dir = plan.target_skill_dir
+        manifest = load_binding_manifest(binding)
         target_skill_dir.mkdir(parents=True, exist_ok=False)
         for relative_name in target_metadata.required_payload_files:
             target_path = target_skill_dir / relative_name
@@ -985,7 +1054,11 @@ def install_backend_payloads(backend: str, args: argparse.Namespace) -> None:
                     encoding="utf-8",
                 )
                 continue
-            source_path = binding.payload_dir / relative_name
+            source_path = source_path_for_target_relative_file(
+                binding,
+                relative_name,
+                manifest=manifest,
+            )
             shutil.copy2(source_path, target_path)
         print(f"installed skill {binding.skill_id} -> {target_skill_dir}")
 
@@ -1087,6 +1160,7 @@ def verify_deployed_skill(binding: SkillBinding, target_root: Path) -> list[Veri
             )
         ]
 
+    manifest = load_binding_manifest(binding)
     expected_marker = build_runtime_marker(
         plan.binding.backend,
         plan.binding.skill_id,
@@ -1144,7 +1218,11 @@ def verify_deployed_skill(binding: SkillBinding, target_root: Path) -> list[Veri
                     )
                 )
             continue
-        source_path = binding.payload_dir / relative_name
+        source_path = source_path_for_target_relative_file(
+            binding,
+            relative_name,
+            manifest=manifest,
+        )
         if source_path.read_text(encoding="utf-8") != target_path.read_text(encoding="utf-8"):
             issues.append(
                 VerifyIssue(

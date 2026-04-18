@@ -7,7 +7,7 @@ last_verified: 2026-04-17
 ---
 # Agents Adapter Source
 
-> 目的：固定 `agents` backend payload source（后端负载源，即实际交付给后端使用的文件集合）结构，让 `install --backend agents` 与 `verify --backend agents` 都按同一读取面消费 thin-shell wrapper，同时避免将 canonical skill truth 或 deploy target 硬编码到 adapter 层。
+> 目的：固定 `agents` backend payload source（后端负载源，即实际交付给后端使用的文件集合）结构，让 `install --backend agents` 与 `verify --backend agents` 都按同一读取面消费 canonical-copy payload descriptor，并把完整 canonical skill 内容复制到 target，而不是把 target 做成 repo-read-through 脚手架。
 
 本页属于 [Deploy Runbooks](./README.md) 系列文档。
 
@@ -23,7 +23,7 @@ last_verified: 2026-04-17
 
 - `agents` backend 的 payload source 放在哪里
 - 每个 payload 目录最小包含什么文件
-- thin-shell wrapper（薄壳包装文件）必须遵守哪些 backend-specific（后端特定的）约束
+- canonical skill copy（规范 skill 内容复制）必须遵守哪些 backend-specific（后端特定的）约束
 - runtime `aw.marker` 在 destructive reinstall model 下承担什么角色
 
 本页不定义：
@@ -57,32 +57,9 @@ machine-readable manifest 仍在：
 
 ## 三、每个 payload 目录的最小文件
 
-每个 `agents` payload 目录最小只包含两类 source 文件：
+每个 `agents` payload 目录当前最小只包含一个 source 文件：
 
-### 1. `SKILL.md`
-
-这是 deploy target（部署目标）未来要暴露的 target entry（目标入口文件）原型文件。
-
-它必须是 thin-shell wrapper，且至少包含：
-
-- `## Canonical Source`
-- `## Backend Notes`
-- `## Deploy Target`
-
-它必须做的事：
-
-- 指向 canonical skill package 在仓库中的实际读取路径
-- 指向对应 manifest 与 payload descriptor
-- 明确记录 backend-specific 的 first-wave 约束
-- 声明 target entry 名称、payload policy 和 references 分发策略
-
-它不能做的事：
-
-- 复制 canonical workflow 正文
-- 复制 canonical output contract
-- 重新定义 skill ontology（技能本体/概念体系）
-
-### 2. `payload.json`
+### `payload.json`
 
 这是 machine-readable payload descriptor（机器可读的负载描述文件）。
 
@@ -107,7 +84,7 @@ machine-readable manifest 仍在：
 
 - `supported_repo_actions`
 
-### 3. runtime `aw.marker`
+### runtime `aw.marker`
 
 这是 deploy 写入 target 时动态生成的 machine-readable runtime artifact，不是 adapter source 文件。
 
@@ -137,21 +114,21 @@ machine-readable manifest 仍在：
 
 `agents` first-wave payload 当前统一采用：
 
-- `payload_policy: thin-shell`
+- `payload_policy: canonical-copy`
 - `supported_target_scopes: ["local"]`
-- `reference_distribution: repo-read-through-local-only`
+- `reference_distribution: copy-listed-canonical-paths`
 
 含义如下：
 
-- deploy source 只提供 thin-shell wrapper，不复制 canonical skill 正文
-- wrapper 当前通过相对于仓库根目录的 canonical path，回读 `product/harness/skills/` 中的权威内容
-- B3 不把 `references/`（引用资料）、`templates/`（模板）或其他 canonical（权威的）附件复制进 adapter source（适配器源目录）
+- deploy source 只保留 payload descriptor；它不再保存 backend wrapper `SKILL.md`
+- install 按 `manifest.included_paths` 与 `payload.required_payload_files`，把 `product/harness/skills/` 中声明过的 canonical 文件复制到 target
+- 当前 target 至少包含 canonical `SKILL.md`、已声明的 `references/` 或 `templates/`、顶层 `payload.json` 与 runtime-generated `aw.marker`
 - `supported_target_scopes` 仍保留在 payload descriptor 中，但它不再对应 operator-facing 的 `local/global` 命令面；当前主流程只通过 `install --backend agents` 写入 resolved target root
 - `target_dir` 相对 backend skills root；当前 `agents` 首发实例使用 `<skill_id>`，而不是 `skills/<skill_id>`，并且不得使用绝对路径或带 `.` / `..` 的跳出式路径段
 - 对当前 `agents` first-wave payload，`target_dir` 的业务语义固定为 backend skills root 下的直接子目录名，不承接 nested / multi-segment target layout
 - 当前 live bindings 内，`target_dir` 必须唯一；install 不会尝试用覆盖顺序解决冲突
 - `included_paths` 必须保持在各自 skill 的 `canonical_dir` 内，不能通过 `.` / `..` 路径段跳出 skill 包
-- `required_payload_files` 当前必须至少包含顶层 `SKILL.md`、`payload.json` 与 `aw.marker`；其中 `aw.marker` 是 sync 写入 target 的 runtime-generated marker，而不是 adapter source 文件
+- `required_payload_files` 当前必须等于 `included_paths + payload.json + aw.marker`；其中 `aw.marker` 是 sync 写入 target 的 runtime-generated marker，而不是 adapter source 文件
 - operator-facing deploy 主流程不再区分 `local/global` mode；install 只负责把当前 source 声明的 live payload 写入 resolved backend target root
 - 这套 payload source 不承接 archive/history、旧版本保活或增量修复语义
 
@@ -178,7 +155,7 @@ B3 完成后至少应满足：
 
 - `product/harness/adapters/agents/skills/<skill>/` 已对五个 first-wave skills 建立 payload source
 - 每个 payload 目录都能从 `payload.json` 追溯到 manifest 和 canonical source
-- 每个 wrapper 都保持 thin-shell，不复制 canonical workflow / output contract
+- `install --backend agents` 产出的 target skill 目录都包含完整 canonical skill copy，而不是 wrapper 快捷方式
 - 每个 `payload.json` 都能支持 destructive reinstall model 下的 install / verify 读取面
 
 建议验证：

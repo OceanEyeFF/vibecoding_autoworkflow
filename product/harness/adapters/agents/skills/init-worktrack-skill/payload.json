@@ -11,13 +11,15 @@
   ],
   "target_dir": "init-worktrack-skill",
   "target_entry_name": "SKILL.md",
-  "payload_policy": "thin-shell",
+  "payload_policy": "canonical-copy",
   "supported_target_scopes": [
     "local"
   ],
-  "reference_distribution": "repo-read-through-local-only",
+  "reference_distribution": "copy-listed-canonical-paths",
   "required_payload_files": [
     "SKILL.md",
+    "references/entrypoints.md",
+    "templates/contract.template.md",
     "payload.json",
     "aw.marker"
   ],

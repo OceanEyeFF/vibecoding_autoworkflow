@@ -6,7 +6,7 @@
 
 - `adapter_deploy.py`：为 `agents` 提供 destructive reinstall workflow 和只读 `verify`
 - `aw_scaffold.py`：从 `product/.aw_template/` 生成 `.aw/` 运行样例，并校验模板最小结构
-- `product/harness/adapters/agents/skills/`：`agents` thin-shell payload source，由 `install --backend agents` 消费
+- `product/harness/adapters/agents/skills/`：`agents` canonical-copy payload descriptor source，由 `install --backend agents` 消费
 
 最小维护流：
 

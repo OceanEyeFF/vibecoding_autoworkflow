@@ -4,17 +4,17 @@
 
 当前阶段：
 
-- 只落 first-wave skills 的 thin-shell payload source
-- payload 负责把 `agents` runtime entry 绑定回 canonical skill source
-- payload 不复制 canonical workflow 正文，也不承接 deploy target runtime state
+- 只落 first-wave skills 的 canonical-copy payload descriptor source
+- payload 负责声明 `agents` target 应复制哪些 canonical skill 文件
+- payload 不承接 deploy target runtime state
 
 当前入口：
 
-- [skills/README.md](./skills/README.md)：首发 `agents` skill payload source
+- [skills/README.md](./skills/README.md)：首发 `agents` skill payload descriptor source
 
 这里适合放：
 
-- `agents` backend 的 thin-shell wrapper
+- `agents` backend 的 payload descriptor
 - backend-specific 的 payload 元数据
 - 后续 B4 要消费的 source layer
 

@@ -40,16 +40,16 @@ class AgentsAdapterContractTest(unittest.TestCase):
         self.assertEqual(adapter_skill_dirs, sorted(EXPECTED_FIRST_WAVE_SKILLS))
 
         for skill_id in adapter_skill_dirs:
-            wrapper_path = ADAPTER_SKILLS_DIR / skill_id / "SKILL.md"
             payload_path = ADAPTER_SKILLS_DIR / skill_id / "payload.json"
             manifest_path = MANIFEST_DIR / f"{skill_id}.json"
 
-            self.assertTrue(wrapper_path.is_file(), wrapper_path)
             self.assertTrue(payload_path.is_file(), payload_path)
-            self.assertFalse((ADAPTER_SKILLS_DIR / skill_id / "aw.marker").exists())
+            self.assertEqual(
+                sorted(path.name for path in (ADAPTER_SKILLS_DIR / skill_id).iterdir() if path.is_file()),
+                ["payload.json"],
+            )
             self.assertTrue(manifest_path.is_file(), manifest_path)
 
-            wrapper_text = wrapper_path.read_text(encoding="utf-8")
             payload = load_json(payload_path)
             manifest = load_json(manifest_path)
 
@@ -67,12 +67,12 @@ class AgentsAdapterContractTest(unittest.TestCase):
             self.assertEqual(payload["target_dir"], manifest["target_dir"])
             self.assertEqual(payload["target_dir"], skill_id)
             self.assertEqual(payload["target_entry_name"], "SKILL.md")
-            self.assertEqual(payload["payload_policy"], "thin-shell")
+            self.assertEqual(payload["payload_policy"], "canonical-copy")
             self.assertEqual(payload["supported_target_scopes"], ["local"])
-            self.assertEqual(payload["reference_distribution"], "repo-read-through-local-only")
+            self.assertEqual(payload["reference_distribution"], "copy-listed-canonical-paths")
             self.assertEqual(
                 payload["required_payload_files"],
-                ["SKILL.md", "payload.json", "aw.marker"],
+                [*manifest["included_paths"], "payload.json", "aw.marker"],
             )
             self.assertEqual(payload["first_wave_profile"], manifest["first_wave_profile"])
             self.assertEqual(
@@ -87,20 +87,7 @@ class AgentsAdapterContractTest(unittest.TestCase):
             else:
                 self.assertEqual(actual_repo_actions, expected_repo_actions)
 
-            self.assertIn("## Canonical Source", wrapper_text)
-            self.assertIn("## Backend Notes", wrapper_text)
-            self.assertIn("## Deploy Target", wrapper_text)
-            self.assertNotIn("## Execution Rules", wrapper_text)
-            self.assertNotIn("## Output Contract", wrapper_text)
-
-            self.assertIn(f"`{payload['manifest_path']}`", wrapper_text)
-            self.assertIn(f"`{payload_path.relative_to(REPO_ROOT).as_posix()}`", wrapper_text)
-            self.assertIn(f"`{payload['target_dir']}`", wrapper_text)
-            self.assertIn(f"`{payload['target_entry_name']}`", wrapper_text)
-            self.assertIn("`local`", wrapper_text)
-            self.assertIn(f"`{payload['reference_distribution']}`", wrapper_text)
             for canonical_path in expected_canonical_paths:
-                self.assertIn(f"`{canonical_path}`", wrapper_text)
                 self.assertTrue((REPO_ROOT / canonical_path).is_file(), canonical_path)
 
     def test_first_wave_agents_adapter_target_dirs_are_unique(self) -> None:
