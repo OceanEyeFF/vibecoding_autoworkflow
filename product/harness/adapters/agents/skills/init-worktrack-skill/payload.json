@@ -2,8 +2,8 @@
   "payload_version": "agents-skill-payload.v1",
   "backend": "agents",
   "skill_id": "init-worktrack-skill",
-  "manifest_path": "product/harness/manifests/agents/skills/init-worktrack-skill.json",
   "canonical_dir": "product/harness/skills/init-worktrack-skill",
+  "entrypoint": "references/entrypoints.md",
   "canonical_paths": [
     "product/harness/skills/init-worktrack-skill/SKILL.md",
     "product/harness/skills/init-worktrack-skill/references/entrypoints.md",

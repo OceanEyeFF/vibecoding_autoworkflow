@@ -22,8 +22,7 @@
 | 你要回答什么问题 | 先看哪里 | 说明 |
 |---|---|---|
 | 我要给当前 backend 做一次完整重装 | [deploy-runbook.md](./deploy-runbook.md) | Quick Start，只保留 `prune --all` / `check_paths_exist` / `install` 三步主流程，`verify` 作为辅助复验 |
-| 我想看 canonical source 到 target entry 的正式映射 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | 最小 deploy 合同，定义 canonical source / backend payload source / manifest / target / verify |
-| 我想看 B1 的过渡性 manifest 读取面和边界 | [skill-manifest-schema.md](./skill-manifest-schema.md) | B1 只固定 canonical read-surface schema 与首发冻结投影；不是 deploy 主流程正文 |
+| 我想看 canonical source 到 target entry 的正式映射 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | 最小 deploy 合同，定义 canonical source / backend payload source / target / verify |
 | 我想看 `agents` canonical-copy payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | 定义 `product/harness/adapters/agents/skills/` 的 payload descriptor 结构，以及 target 如何复制 canonical skill 内容 |
 | 我想看首发实现阶段到底只承接哪些 skill 和分支子集 | [first-wave-skill-freeze.md](./first-wave-skill-freeze.md) | 前瞻性实现约束；回答首发纳入哪些 canonical skills 与可达分支子集 |
 | 我想初始化 `.aw/` 样例并校验 `.aw_template` 最小结构 | [template-tooling-mvp.md](./template-tooling-mvp.md) | B2 的最小工作面，只做 `.aw_template -> .aw` 样例生成与前置校验 |
@@ -51,8 +50,8 @@
   - “确认新目录可用再删旧目录”
   - `local/global` deploy modes
 - `aw.marker` 是 runtime-generated artifact，只用于标识“这是当前 backend 受管的 live install 目录”；它不是 source truth，也不是历史接管记录
-- deploy target 不是 source of truth。skills / manifests / payload source 的正式 owner 仍在 `product/`
-- 当前 B2 初始化工具只处理 `.aw_template -> .aw` 样例，不消费 `manifest`、不生成 payload，也不写入 deploy target
+- deploy target 不是 source of truth。skills / payload source 的正式 owner 仍在 `product/`
+- 当前 B2 初始化工具只处理 `.aw_template -> .aw` 样例，不消费 payload descriptor、不生成 deploy payload，也不写入 deploy target
 - `docs/harness/` 继续承接 Harness doctrine；deploy 文档只定义 operator-facing deploy 合同
 - `.aw_template/` 的 `.aw/` 目录结构、管理文档模板和待迁移模板边界见 [template-consumption-spec.md](./template-consumption-spec.md)
 
@@ -65,9 +64,7 @@
 - [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)
   maintenance / diagnosis。回答只读 `verify`、冲突扫描、drift 与恢复路径。
 - [deploy-mapping-spec.md](./deploy-mapping-spec.md)
-  mapping contract。回答 canonical source / backend payload source / manifest / target / verify 的最小正式规则。
-- [skill-manifest-schema.md](./skill-manifest-schema.md)
-  manifest schema。回答 B1 的过渡性 manifest 读取面与冻结投影。
+  mapping contract。回答 canonical source / backend payload source / target / verify 的最小正式规则。
 - [agents-adapter-source.md](./agents-adapter-source.md)
   adapter source。回答 `agents` canonical-copy payload descriptor、copied skill files 与 runtime marker 边界。
 - [first-wave-skill-freeze.md](./first-wave-skill-freeze.md)

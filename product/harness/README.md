@@ -8,7 +8,6 @@
 
 - [skills/README.md](./skills/README.md)：后续的 Harness canonical executable source
 - [adapters/README.md](./adapters/README.md)：后续的 backend wrapper source
-- [manifests/README.md](./manifests/README.md)：后续的打包与分发元数据
 
 当前阶段：
 

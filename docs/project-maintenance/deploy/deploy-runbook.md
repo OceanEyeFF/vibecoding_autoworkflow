@@ -1,9 +1,9 @@
 ---
 title: "Deploy Runbook"
 status: active
-updated: 2026-04-17
+updated: 2026-04-19
 owner: aw-kernel
-last_verified: 2026-04-17
+last_verified: 2026-04-19
 ---
 # Deploy Runbook
 
@@ -53,7 +53,7 @@ python3 toolchain/scripts/deploy/adapter_deploy.py
   - `check_paths_exist`
   - `install --backend agents`
 - `verify --backend agents` 是只读辅助命令，不属于安装主线
-- 原始来源（canonical source）、后端部署包（backend payload source）、清单（manifest）、目标入口（target entry）之间的正式映射规则，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
+- 原始来源（canonical source）、后端部署包（backend payload source）、目标入口（target entry）之间的正式映射规则，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
 - `prune --all` 只删除带可识别、且属于当前 backend 的受管 `aw.marker` 目录；无 marker、不可识别 marker 或 foreign 目录一律不碰
 - `check_paths_exist` 会基于当前 source 声明的 live bindings 解析目标路径；只要任一路径已存在，就全量列出冲突并失败退出，不做任何业务写入
 - `install --backend agents` 只写当前 source 声明的 live payload；若 source 存在重复 `target_dir` 或目标路径冲突，必须在写入前失败
@@ -124,5 +124,5 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
 
 - 根目录不一致（drift）、损坏链路、root 类型错误：查看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)
 - skills / `.aw_template` 的增删改查：查看 [skill-lifecycle.md](./skill-lifecycle.md)
-- 原始来源、后端部署包、清单、目标入口的正式规则：查看 [Deploy Mapping Spec](./deploy-mapping-spec.md)
+- 原始来源、后端部署包、目标入口的正式规则：查看 [Deploy Mapping Spec](./deploy-mapping-spec.md)
 - `claude` / `opencode` 当前暂不在部署接口中实现；恢复前不要将它们写成稳定的 operator 流程

@@ -1,13 +1,13 @@
 ---
 title: "Deploy Mapping Spec"
 status: active
-updated: 2026-04-17
+updated: 2026-04-19
 owner: aw-kernel
-last_verified: 2026-04-17
+last_verified: 2026-04-19
 ---
 # Deploy Mapping Spec
 
-> 目的：定义 destructive reinstall model 下 `原始来源 -> 后端部署包 -> 清单 -> 目标入口 -> 校验` 这条链路的最小操作者约定。
+> 目的：定义 destructive reinstall model 下 `原始来源 -> 后端部署包 -> 目标入口 -> 校验` 这条链路的最小操作者约定。
 
 本页属于 [Deploy Runbooks](./README.md) 系列。
 
@@ -23,7 +23,7 @@ last_verified: 2026-04-17
 
 - 如何识别 skill 的原始来源
 - 如何从原始来源派生出后端部署包
-- 清单如何描述可分发对象
+- payload descriptor 如何描述可分发对象
 - 目标入口如何命名与落点
 - 如何校验 live install 结果
 
@@ -33,14 +33,14 @@ last_verified: 2026-04-17
 - archive / history 策略
 - 旧 `local/global` deploy mode
 - `.aw_template/` 生成 `.aw/` 目录结构与管理文档的实现细节
-- B1 / B2 / B3 / B4 的具体实现
+- payload contract / template tooling / deploy 阶段的具体实现
 - `claude` / `opencode` 等后端的后续细节
 
 ## 二、术语与链路
 
 规范链路如下：
 
-`原始来源 -> 后端部署包 -> 清单 -> 目标入口 -> 校验`
+`原始来源 -> 后端部署包 -> 目标入口 -> 校验`
 
 各环节定义：
 
@@ -50,8 +50,8 @@ last_verified: 2026-04-17
 - **后端部署包（backend payload source）**
   - 路径示例：`product/harness/adapters/<backend>/skills/<skill>/`
   - 是面向具体后端的分发载体，由原始来源生成，不是权威来源
-- **清单（manifest）**
-  - 路径示例：`product/harness/manifests/<backend>/skills/<skill>.md` 或同层约定路径
+- **payload descriptor**
+  - 路径示例：`product/harness/adapters/<backend>/skills/<skill>/payload.json`
   - 只描述分发与校验所需的最小信息
 - **目标入口（target entry）**
   - backend target root 下的最终落点
@@ -74,7 +74,7 @@ last_verified: 2026-04-17
 - 必须能从原始来源追踪其生成来源
 - 必须体现生成关系，而非手工约定
 
-### 3. 清单位置
+### 3. payload descriptor 位置
 
 - 必须唯一
 - 必须与 `skill_id` 和后端保持稳定的对应关系
@@ -96,7 +96,7 @@ last_verified: 2026-04-17
 ### 5.1 当前 `agents` target contract
 
 - 当前 `agents` live install 仍按单个 skill 目录落在 backend target root 下
-- 当前 first-wave skills 继续约束 `payload.target_dir == manifest.target_dir == skill_id`
+- 当前 first-wave skills 继续约束 `payload.target_dir == skill_id`
 - 若未来要支持 nested target layout，必须先升级 deploy contract，再同步更新 runbook、verify 口径与测试矩阵
 
 ### 6. 必需部署文件
@@ -128,9 +128,9 @@ last_verified: 2026-04-17
 - 目标入口存在
 - 目标入口类型正确
 - 必需部署文件存在且可读
-- `canonical_dir`、`entrypoint`、`included_paths` 与 `target_dir` 都留在各自声明的相对根目录内
+- `canonical_dir`、`entrypoint`、`canonical_paths` 与 `target_dir` 都留在各自声明的相对根目录内
 - payload descriptor 的固定身份字段与当前 binding 一致，例如 `payload_version`、`backend`、`skill_id`
-- 清单约束与实际部署包一致
+- payload descriptor 自身字段与实际部署包一致
 - 复制 / 软链接策略与实际落点一致
 - target root 下的 live install 是否与当前 source 对齐
 - 是否存在 conflict / unrecognized 目录
@@ -143,11 +143,11 @@ last_verified: 2026-04-17
 出现下列任一情况，即视为不一致（drift）：
 
 - 原始来源与后端部署包不一致
-- 清单与后端部署包不一致
-- 目标入口与清单不一致
+- payload descriptor 与后端部署包不一致
+- 目标入口与 payload descriptor 不一致
 - 必需部署文件缺失或类型错误
 - 复制 / 软链接策略偏离约定
-- 引用处理方式偏离清单声明
+- 引用处理方式偏离 payload descriptor 声明
 
 ### 错误码
 
@@ -155,13 +155,12 @@ last_verified: 2026-04-17
 
 - `missing-canonical-source`：缺失原始来源
 - `missing-backend-payload-source`：缺失后端部署包
-- `missing-manifest`：缺失清单
 - `missing-target-entry`：缺失目标入口
 - `wrong-target-entry-type`：目标入口类型错误
 - `missing-required-payload`：缺失必需部署文件
 - `payload-policy-mismatch`：部署包策略不匹配
 - `reference-policy-mismatch`：引用策略不匹配
-- `manifest-payload-drift`：清单与部署包不一致
+- `payload-contract-invalid`：payload descriptor 字段、路径或目标约束不一致
 - `unrecognized-target-directory`：目标目录存在，但没有可识别或可安全匹配的 runtime marker
 - `target-payload-drift`：target payload 与当前 source 不一致
 - `unexpected-managed-directory`：target root 下残留了带可识别 marker、但已不在当前 source live bindings 里的受管目录
@@ -195,7 +194,7 @@ last_verified: 2026-04-17
 
 后续实现至少应满足：
 
-- 仅凭本规范和清单，即可实现 B1 / B3 / B4 的最小读取面
+- 仅凭本规范和 payload descriptor，即可实现当前最小 deploy 读取面
 - 部署入口页可以直接引用本规范，无需再以"这里不定义映射"回避约定
 - 校验能区分缺失、不一致、类型错误、source 非法和冲突目录
 - destructive reinstall 流程不会把 foreign / unrecognized 目录当作可自动接管对象
@@ -204,7 +203,7 @@ last_verified: 2026-04-17
 
 以下内容留给后续任务包：
 
-- B1：清单 schema 的正式落地
-- B2：模板工具的生成约束
-- B3：agents 后端部署包的具体形态
-- B4：部署脚本的读取与同步行为
+- payload contract：payload descriptor 的进一步收敛
+- 模板工具：模板工具的生成约束
+- `agents` payload：后端部署包的具体形态
+- deploy：部署脚本的读取与同步行为

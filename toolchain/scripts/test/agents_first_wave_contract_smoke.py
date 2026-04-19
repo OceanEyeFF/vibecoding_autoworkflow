@@ -216,18 +216,16 @@ def assert_installed_payload_contract(skill: InstalledSkill) -> None:
     if skill.payload.get("target_entry_name") != "SKILL.md":
         raise SmokeError(f"{skill.skill_id} target_entry_name drifted from SKILL.md")
 
-    manifest_path = skill.payload.get("manifest_path")
-    if not isinstance(manifest_path, str):
-        raise SmokeError(f"{skill.skill_id} payload is missing manifest_path")
-    manifest = load_json(REPO_ROOT / manifest_path)
-    included_paths = manifest.get("included_paths")
-    if not isinstance(included_paths, list) or not all(
-        isinstance(item, str) for item in included_paths
-    ):
-        raise SmokeError(f"{skill.skill_id} manifest included_paths is invalid")
+    try:
+        canonical_source = adapter_deploy.payload_canonical_source_metadata(
+            skill.payload,
+            SimpleNamespace(skill_id=skill.skill_id),
+        )
+    except adapter_deploy.DeployError as exc:
+        raise SmokeError(f"{skill.skill_id} payload canonical source is invalid: {exc}") from exc
 
     required_payload_files = skill.payload.get("required_payload_files")
-    expected_required_payload_files = [*included_paths, "payload.json", "aw.marker"]
+    expected_required_payload_files = [*canonical_source.included_paths, "payload.json", "aw.marker"]
     if required_payload_files != expected_required_payload_files:
         raise SmokeError(
             f"{skill.skill_id} required_payload_files drifted: {required_payload_files!r}"
@@ -236,8 +234,7 @@ def assert_installed_payload_contract(skill: InstalledSkill) -> None:
     canonical_paths = skill.payload.get("canonical_paths")
     if not isinstance(canonical_paths, list) or not canonical_paths:
         raise SmokeError(f"{skill.skill_id} payload is missing canonical_paths")
-    for included_path in included_paths:
-        canonical_path = REPO_ROOT / manifest["canonical_dir"] / included_path
+    for included_path, canonical_path in canonical_source.canonical_files_by_relative_path.items():
         target_path = skill.target_dir / included_path
         if not canonical_path.is_file():
             raise SmokeError(f"{skill.skill_id} canonical path does not exist: {canonical_path}")
@@ -691,7 +688,7 @@ def run_init_worktrack_round(skill: InstalledSkill, aw_root: Path) -> dict[str, 
             "one command proves the installed first-wave route is readable and bounded",
         ],
         "rollback_conditions": [
-            "remove the contract smoke harness if it starts redefining deploy or manifest truth",
+            "remove the contract smoke harness if it starts redefining deploy or payload truth",
         ],
         "initial_tasks": [
             "validate installed skill copies",

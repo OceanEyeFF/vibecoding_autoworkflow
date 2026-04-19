@@ -1,9 +1,9 @@
 ---
 title: "Agents Adapter Source"
 status: active
-updated: 2026-04-17
+updated: 2026-04-19
 owner: aw-kernel
-last_verified: 2026-04-17
+last_verified: 2026-04-19
 ---
 # Agents Adapter Source
 
@@ -15,7 +15,6 @@ last_verified: 2026-04-17
 
 - [Deploy Mapping Spec](./deploy-mapping-spec.md)
 - [First-Wave Skill Freeze](./first-wave-skill-freeze.md)
-- [Skill Manifest Schema](./skill-manifest-schema.md)
 
 ## 一、范围
 
@@ -51,10 +50,6 @@ canonical truth（权威源）仍在：
 
 - `product/harness/skills/<skill>/`
 
-machine-readable manifest 仍在：
-
-- `product/harness/manifests/agents/skills/<skill>.json`
-
 ## 三、每个 payload 目录的最小文件
 
 每个 `agents` payload 目录当前最小只包含一个 source 文件：
@@ -69,8 +64,8 @@ machine-readable manifest 仍在：
 - `payload_policy`
 - `backend`
 - `skill_id`
-- `manifest_path`
 - `canonical_dir`
+- `entrypoint`
 - `canonical_paths`
 - `target_dir`
 - `target_entry_name`
@@ -80,7 +75,7 @@ machine-readable manifest 仍在：
 - `first_wave_profile`
 - `first_wave_scope_kind`
 
-只有当上游 manifest 已声明 `supported_repo_actions` 时，才允许将该字段投影到 `payload.json` 中：
+只有当当前首发 contract 需要投影 canonical repo action 子集时，才允许将该字段写进 `payload.json` 中：
 
 - `supported_repo_actions`
 
@@ -121,14 +116,14 @@ machine-readable manifest 仍在：
 含义如下：
 
 - deploy source 只保留 payload descriptor；它不再保存 backend wrapper `SKILL.md`
-- install 按 `manifest.included_paths` 与 `payload.required_payload_files`，把 `product/harness/skills/` 中声明过的 canonical 文件复制到 target
+- install 按 `payload.canonical_paths` 与 `payload.required_payload_files`，把 `product/harness/skills/` 中声明过的 canonical 文件复制到 target
 - 当前 target 至少包含 canonical `SKILL.md`、已声明的 `references/` 或 `templates/`、顶层 `payload.json` 与 runtime-generated `aw.marker`
 - `supported_target_scopes` 仍保留在 payload descriptor 中，但它不再对应 operator-facing 的 `local/global` 命令面；当前主流程只通过 `install --backend agents` 写入 resolved target root
 - `target_dir` 相对 backend skills root；当前 `agents` 首发实例使用 `<skill_id>`，而不是 `skills/<skill_id>`，并且不得使用绝对路径或带 `.` / `..` 的跳出式路径段
 - 对当前 `agents` first-wave payload，`target_dir` 的业务语义固定为 backend skills root 下的直接子目录名，不承接 nested / multi-segment target layout
 - 当前 live bindings 内，`target_dir` 必须唯一；install 不会尝试用覆盖顺序解决冲突
-- `included_paths` 必须保持在各自 skill 的 `canonical_dir` 内，不能通过 `.` / `..` 路径段跳出 skill 包
-- `required_payload_files` 当前必须等于 `included_paths + payload.json + aw.marker`；其中 `aw.marker` 是 sync 写入 target 的 runtime-generated marker，而不是 adapter source 文件
+- `canonical_paths` 必须保持在各自 skill 的 `canonical_dir` 内，不能通过 `.` / `..` 路径段跳出 skill 包
+- `required_payload_files` 当前必须等于 `canonical_paths` 在 `canonical_dir` 下的相对路径集合，再加上 `payload.json + aw.marker`；其中 `aw.marker` 是 sync 写入 target 的 runtime-generated marker，而不是 adapter source 文件
 - operator-facing deploy 主流程不再区分 `local/global` mode；install 只负责把当前 source 声明的 live payload 写入 resolved backend target root
 - 这套 payload source 不承接 archive/history、旧版本保活或增量修复语义
 
@@ -154,12 +149,12 @@ machine-readable manifest 仍在：
 B3 完成后至少应满足：
 
 - `product/harness/adapters/agents/skills/<skill>/` 已对五个 first-wave skills 建立 payload source
-- 每个 payload 目录都能从 `payload.json` 追溯到 manifest 和 canonical source
+- 每个 payload 目录都能从 `payload.json` 直接追溯到 canonical source 与 target contract
 - `install --backend agents` 产出的 target skill 目录都包含完整 canonical skill copy，而不是 wrapper 快捷方式
 - 每个 `payload.json` 都能支持 destructive reinstall model 下的 install / verify 读取面
 
 建议验证：
 
-- `python3 -m pytest toolchain/scripts/test/test_skill_manifest_contract.py`
 - `python3 -m pytest toolchain/scripts/test/test_agents_adapter_contract.py`
+- `python3 -m pytest toolchain/scripts/deploy/test_adapter_deploy.py`
 - `python3 -m pytest toolchain/scripts/test/test_governance_semantic_check.py`

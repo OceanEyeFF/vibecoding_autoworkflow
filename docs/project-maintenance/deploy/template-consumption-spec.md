@@ -1,9 +1,9 @@
 ---
 title: "Template Consumption Spec"
 status: active
-updated: 2026-04-16
+updated: 2026-04-19
 owner: aw-kernel
-last_verified: 2026-04-16
+last_verified: 2026-04-19
 ---
 # Template Consumption Spec
 
@@ -33,7 +33,7 @@ last_verified: 2026-04-16
 - 模板迁移顺序
 - 模板生成脚本
 - `adapter_deploy.py` 的实现
-- manifest schema
+- payload descriptor schema
 - backend 扩展
 - `docs/harness/` 的产物定义体系
 
@@ -158,7 +158,7 @@ goal 修正文档单独处理：
 
 - 所有模板的最终 skill 归属结论
 - 部署来源设计
-- manifest schema 设计
+- payload descriptor 设计
 - backend payload 设计
 - 模板生成脚本设计
 

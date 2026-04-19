@@ -1,9 +1,9 @@
 ---
 title: "Skill Deployment 维护流"
 status: active
-updated: 2026-04-17
+updated: 2026-04-19
 owner: aw-kernel
-last_verified: 2026-04-17
+last_verified: 2026-04-19
 ---
 # Skill Deployment 维护流
 
@@ -49,7 +49,7 @@ last_verified: 2026-04-17
 用途：
 
 - 检查 deploy target root 是否存在、是否是目录、是否是坏链路
-- 检查 `manifest + payload` source 是否齐全、target path metadata 是否留在 backend target root 内，且没有 source drift
+- 检查 payload source 是否齐全、target path metadata 是否留在 backend target root 内，且没有 source drift
 - 检查 live install 的 target entry、required payload files 与当前 source 是否仍对齐
 - 检查 target root 下是否存在 conflict / unrecognized 目录
 - 检查 runtime `aw.marker` 是否仍能把目录识别为当前 backend 的受管安装物
@@ -95,9 +95,9 @@ python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents
 | `missing-target-root` | target root 还没建立，或已有 root 被删了 | 直接走三步主流程重建 |
 | `wrong-target-root-type` | target root 存在，但不是目录 | 修正 root 后重跑三步主流程 |
 | `broken-target-root-symlink` | target root 是坏链路 | 删除坏链路后重跑三步主流程 |
-| `missing-manifest` / `missing-backend-payload-source` | source layer 缺件，deploy 读取面不完整 | 回到 `product/harness/manifests/` 或 `product/harness/adapters/agents/skills/` 修正 source |
-| `missing-canonical-source` | manifest 指向的 canonical source 丢失或 included file 缺失 | 修正 `product/harness/skills/` 后再重装 |
-| `manifest-payload-drift` | manifest 与 payload descriptor 不一致 | 先修 source contract，再走三步主流程 |
+| `missing-backend-payload-source` / `missing-required-payload` | source layer 缺件，deploy 读取面不完整 | 回到 `product/harness/adapters/agents/skills/` 修正 payload source |
+| `missing-canonical-source` | payload 指向的 canonical source 丢失或 canonical file 缺失 | 修正 `product/harness/skills/` 后再重装 |
+| `payload-contract-invalid` | payload descriptor 自身字段、路径或 target contract 不一致 | 先修 source contract，再走三步主流程 |
 | `payload-policy-mismatch` / `reference-policy-mismatch` | payload descriptor 的策略字段偏离当前 contract | 先修 payload source，再走三步主流程 |
 | `duplicate target_dir` | 当前 source 把多个 live skill 指到同一目标目录 | 这是 source 非法；修 source，不能靠 install 猜测覆盖 |
 | `check_paths_exist` 冲突清单 | 当前 source 解析出的目标路径已存在 | 先由 operator 清理冲突目录，再从 `prune --all` 重跑 |

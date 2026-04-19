@@ -37,7 +37,6 @@ REQUIRED_HANDOFF_LINKS = {
         "docs/harness/README.md",
         "product/harness/skills/README.md",
         "product/harness/adapters/README.md",
-        "product/harness/manifests/README.md",
     ],
     "docs/harness/adjacent-systems/task-interface/README.md": [
         "docs/harness/adjacent-systems/task-interface/task-contract.md",

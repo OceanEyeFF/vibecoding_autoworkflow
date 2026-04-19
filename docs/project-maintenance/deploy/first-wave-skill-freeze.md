@@ -7,7 +7,7 @@ last_verified: 2026-04-19
 ---
 # First-Wave Skill Freeze
 
-> 目的：冻结首发 skill 产品化范围，作为后续 B1（`manifest` 阶段）、B2（模板初始化阶段）、B3（`agents` payload 阶段）、B4（deploy/verify 阶段）的前瞻性实现约束；它不描述当前 deploy 脚本已经具备的行为。
+> 目的：冻结首发 skill 产品化范围，作为后续 payload contract、模板初始化、`agents` payload 与 deploy/verify 阶段的前瞻性实现约束；它不描述当前 deploy 脚本已经具备的行为。
 
 本页属于 [Deploy Runbooks](./README.md) 系列文档。
 
@@ -23,14 +23,14 @@ last_verified: 2026-04-19
 
 - 首发要产品化哪些 canonical skills（规范 skill）
 - 当前哪些 skills 明确不进入首发
-- 首发链路在什么边界停止，不把 B1 之后的实现假设提前写死
+- 首发链路在什么边界停止，不把后续实现假设提前写死
 
 本页不定义：
 
-- `manifest` schema
+- payload descriptor schema
 - `.aw_template` 初始化脚本
 - backend payload 文件形态
-- deploy 脚本如何读取 `manifest`
+- deploy 脚本如何读取 payload descriptor
 - 第二批 skill 的排期承诺
 
 本页也不重写 canonical skill 本体合同。
@@ -42,7 +42,7 @@ last_verified: 2026-04-19
 
 - 能覆盖 `canonical skill -> adapter payload（适配器载荷） -> deploy target -> verify / contract smoke（验证与合同冒烟）` 的最小主链路
 - 优先覆盖 supervisor、`RepoScope`（仓库作用域） 判断、`Worktrack`（工作追踪单元） 初始化与 dispatch，不提前进入验证、gate 判定、恢复与收尾
-- 依赖关系尽量短，避免 B1-B4 一开始就承接整棵 skill 树
+- 依赖关系尽量短，避免首发实现一开始就承接整棵 skill 树
 - 不把当前未稳定的 owner 模板、closeout（收尾） 流程或 recovery（恢复） 策略一起产品化
 
 因此，首发只冻结到“能把一条最小 worktrack（工作追踪单元） 启动并交给执行载体”为止。
@@ -100,7 +100,7 @@ last_verified: 2026-04-19
   - 首发明确不承接：
     - 以 specialized downstream skills 为主的 dispatch packaging 完整覆盖
 
-如果当前 canonical skill 合同允许更宽的动作空间，应继续保留在 canonical source 中；只是这些分支不进入首发 B1-B4 的实现闭环。
+如果当前 canonical skill 合同允许更宽的动作空间，应继续保留在 canonical source 中；只是这些分支不进入当前首发实现闭环。
 
 ## 五、首发停止边界
 
@@ -157,7 +157,7 @@ last_verified: 2026-04-19
   - `repo-refresh-skill`
   - `schedule-worktrack-skill`
 
-这些 skill 仍保留为 canonical source（规范来源），但在 B1-B4 中不应被视为必须同时落地的首发对象。
+这些 skill 仍保留为 canonical source（规范来源），但在当前首发实现闭环中不应被视为必须同时落地的对象。
 
 其中 `schedule-worktrack-skill` 需要单独说明：
 
@@ -170,14 +170,14 @@ last_verified: 2026-04-19
 
 本冻结对后续任务包施加以下约束：
 
-- B1 只需要为上述五个首发 skills 提供最小 `manifest` 读取接口
-- B2 只需要支持首发链路真正需要的最小模板初始化，不为全 skill 树做通用 orchestrator（编排器）
-- B3 只需要在 `agents` backend 下为这五个 skills 准备可追踪 payload，并覆盖 `dispatch-skills` 的 fallback / general executor 路径
-- B4 只需要让 `prune --all`、`check_paths_exist`、`install --backend agents` 与 `verify` 能处理首发 skill 子集与上述支持分支，不为暂缓 skill 预留复杂分支
+- payload contract 只需要为上述五个首发 skills 提供最小自描述读取面
+- 模板初始化只需要支持首发链路真正需要的最小模板初始化，不为全 skill 树做通用 orchestrator（编排器）
+- `agents` payload 只需要为这五个 skills 准备可追踪 payload，并覆盖 `dispatch-skills` 的 fallback / general executor 路径
+- deploy / verify 只需要让 `prune --all`、`check_paths_exist`、`install --backend agents` 与 `verify` 能处理首发 skill 子集与上述支持分支，不为暂缓 skill 预留复杂分支
 
 禁止的范围扩大方式：
 
-- 禁止因目录已存在 skeleton（骨架/雏形） 而将全部 skills 一次性纳入 `manifest`
+- 禁止因目录已存在 skeleton（骨架/雏形） 而将全部 skills 一次性纳入首发 payload contract
 - 禁止以 verify 迟早要做为由，提前把 gate / recover / closeout 链路纳入首发
 - 禁止以 `RepoScope` 未来可能使用为由，将 `goal-change-control`、`repo-refresh` 或 `schedule-worktrack` 一并产品化
 - 禁止把 `repo-whats-next-skill` 当前 canonical 可输出的全部动作，都默认视为首发必须处理的 deploy 分支
@@ -188,7 +188,7 @@ last_verified: 2026-04-19
 本冻结完成后，至少应满足：
 
 - 首发 canonical skill（规范 skill） 子集有唯一、可引用的正式清单
-- 首发外 skills 有明确的非目标边界，不再默认进入 B1-B4
+- 首发外 skills 有明确的非目标边界，不再默认进入当前首发实现闭环
 - 首发支持的 repo / worktrack / dispatch 分支子集是明确的，不会与 canonical 全量动作空间混淆
 - 后续实现文档和脚本可直接引用本页确定首发 skill 范围与支持子路径，无需重复讨论
 - `agents` 首发 contract smoke 只需证明这五个 skills 的最小可读、`enter-worktrack` / `hold-and-observe` 子集，以及 direct-dispatch + fallback 路径，不承担完整生命周期验证

@@ -2,8 +2,8 @@
   "payload_version": "agents-skill-payload.v1",
   "backend": "agents",
   "skill_id": "repo-status-skill",
-  "manifest_path": "product/harness/manifests/agents/skills/repo-status-skill.json",
   "canonical_dir": "product/harness/skills/repo-status-skill",
+  "entrypoint": "references/entrypoints.md",
   "canonical_paths": [
     "product/harness/skills/repo-status-skill/SKILL.md",
     "product/harness/skills/repo-status-skill/references/entrypoints.md"

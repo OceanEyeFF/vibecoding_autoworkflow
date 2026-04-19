@@ -173,7 +173,7 @@ def test_run_spec_gate_includes_folder_logic(monkeypatch, tmp_path) -> None:
     assert any("docs/autoresearch" in command for command in commands)
 
 
-def test_run_test_gate_includes_manifest_contract_tests(monkeypatch, tmp_path) -> None:
+def test_run_test_gate_includes_agents_adapter_contract_tests(monkeypatch, tmp_path) -> None:
     commands: list[list[str]] = []
 
     def fake_run_command(command: list[str], *, cwd: Path) -> dict:
@@ -194,10 +194,10 @@ def test_run_test_gate_includes_manifest_contract_tests(monkeypatch, tmp_path) -
     assert [item["name"] for item in result["subchecks"][:3]] == [
         "gate_tool_tests",
         "folder_logic_tests",
-        "manifest_contract_tests",
+        "agents_adapter_contract_tests",
     ]
     assert any(command[-1] == "toolchain/scripts/test/test_folder_logic_check.py" for command in commands)
-    assert any(command[-1] == "toolchain/scripts/test/test_skill_manifest_contract.py" for command in commands)
+    assert any(command[-1] == "toolchain/scripts/test/test_agents_adapter_contract.py" for command in commands)
     deploy_verify_commands = [command for command in commands if "adapter_deploy.py" in command[1]]
     assert len(deploy_verify_commands) == 1
     assert deploy_verify_commands[0][-2:] == ["--backend", "agents"]

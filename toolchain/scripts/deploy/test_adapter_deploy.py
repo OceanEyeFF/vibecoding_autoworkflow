@@ -23,9 +23,6 @@ class AdapterDeployTest(unittest.TestCase):
         self.fake_repo_root = self.temp_root / "repo"
         self.local_root = self.fake_repo_root / ".agents" / "skills"
         self.override_root = self.temp_root / "custom-root" / "skills"
-        self.manifest_dir = (
-            self.fake_repo_root / "product" / "harness" / "manifests" / "agents" / "skills"
-        )
         self.adapter_dir = (
             self.fake_repo_root / "product" / "harness" / "adapters" / "agents" / "skills"
         )
@@ -35,7 +32,6 @@ class AdapterDeployTest(unittest.TestCase):
         self.patches = [
             mock.patch.object(adapter_deploy, "REPO_ROOT", self.fake_repo_root),
             mock.patch.object(adapter_deploy, "LOCAL_TARGET_ROOTS", {"agents": self.local_root}),
-            mock.patch.object(adapter_deploy, "MANIFEST_SKILL_DIRS", {"agents": self.manifest_dir}),
             mock.patch.object(adapter_deploy, "ADAPTER_SKILL_DIRS", {"agents": self.adapter_dir}),
         ]
         for patcher in self.patches:
@@ -44,10 +40,6 @@ class AdapterDeployTest(unittest.TestCase):
         self.addCleanup(self.temp_dir.cleanup)
 
     def _seed_fake_repo(self) -> None:
-        shutil.copytree(
-            self.source_repo_root / "product" / "harness" / "manifests",
-            self.fake_repo_root / "product" / "harness" / "manifests",
-        )
         shutil.copytree(
             self.source_repo_root / "product" / "harness" / "adapters",
             self.fake_repo_root / "product" / "harness" / "adapters",
@@ -147,11 +139,6 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
     def _mutate_target_dir(self, skill_id: str, target_dir: str) -> None:
-        manifest_path = self.manifest_dir / f"{skill_id}.json"
-        manifest = self._load_json(manifest_path)
-        manifest["target_dir"] = target_dir
-        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-
         payload_path = self.adapter_dir / skill_id / "payload.json"
         payload = self._load_json(payload_path)
         payload["target_dir"] = target_dir
@@ -173,13 +160,17 @@ class AdapterDeployTest(unittest.TestCase):
         for source_payload_dir in sorted(path for path in self.adapter_dir.iterdir() if path.is_dir()):
             skill_id = source_payload_dir.name
             target_skill_dir = self.local_root / skill_id
-            manifest = self._load_json(self.manifest_dir / f"{skill_id}.json")
+            payload = self._load_json(source_payload_dir / "payload.json")
+            canonical_source = adapter_deploy.payload_canonical_source_metadata(
+                payload,
+                self._binding(skill_id),
+            )
             self.assertTrue(target_skill_dir.is_dir(), target_skill_dir)
             self.assertEqual(
                 (target_skill_dir / "payload.json").read_text(encoding="utf-8"),
                 (source_payload_dir / "payload.json").read_text(encoding="utf-8"),
             )
-            for included_path in manifest["included_paths"]:
+            for included_path in canonical_source.included_paths:
                 self.assertEqual(
                     (target_skill_dir / included_path).read_text(encoding="utf-8"),
                     (
@@ -292,12 +283,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertFalse((self.local_root / "harness-skill").exists())
         self.assertFalse((self.local_root / "dispatch-skills").exists())
 
-    def test_install_rejects_manifest_target_dir_that_escapes_target_root(self) -> None:
-        manifest_path = self.manifest_dir / "harness-skill.json"
-        manifest = self._load_json(manifest_path)
-        manifest["target_dir"] = "../escaped-skill"
-        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-
+    def test_install_rejects_payload_target_dir_that_escapes_target_root(self) -> None:
         payload_path = self.adapter_dir / "harness-skill" / "payload.json"
         payload = self._load_json(payload_path)
         payload["target_dir"] = "../escaped-skill"
@@ -306,7 +292,7 @@ class AdapterDeployTest(unittest.TestCase):
         code, stdout, stderr = self._install()
 
         self.assertEqual(code, 1)
-        self.assertIn("manifest-payload-drift", stderr)
+        self.assertIn("payload-contract-invalid", stderr)
         self.assertIn("must not contain '..' path segments", stderr)
 
     def test_install_rejects_payload_identity_field_mismatches(self) -> None:
@@ -320,7 +306,7 @@ class AdapterDeployTest(unittest.TestCase):
         code, stdout, stderr = self._install()
 
         self.assertEqual(code, 1)
-        self.assertIn("manifest-payload-drift", stderr)
+        self.assertIn("payload-contract-invalid", stderr)
         self.assertIn("payload payload_version must be agents-skill-payload.v1", stderr)
         self.assertIn("payload backend must be agents", stderr)
         self.assertIn("payload skill_id must be harness-skill", stderr)

@@ -86,7 +86,6 @@ REQUIRED_ENTRY_PATHS = [
     "product/harness/README.md",
     "product/harness/skills/README.md",
     "product/harness/adapters/README.md",
-    "product/harness/manifests/README.md",
     "toolchain/README.md",
     "toolchain/scripts/README.md",
     "toolchain/scripts/test/README.md",
@@ -254,7 +253,6 @@ ENTRYPOINT_LINK_RULES = {
         "docs/harness/README.md",
         "product/harness/skills/README.md",
         "product/harness/adapters/README.md",
-        "product/harness/manifests/README.md",
     ],
 }
 REQUIRED_GITIGNORE_ENTRIES = [

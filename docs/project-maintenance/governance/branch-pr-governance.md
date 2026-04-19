@@ -1,9 +1,9 @@
 ---
 title: "Branch / PR 治理规则"
 status: active
-updated: 2026-04-16
+updated: 2026-04-19
 owner: aw-kernel
-last_verified: 2026-04-16
+last_verified: 2026-04-19
 ---
 # Branch / PR 治理规则
 
@@ -47,7 +47,7 @@ PR 阶段必须通过以下最小链：
 1. `python toolchain/scripts/test/folder_logic_check.py`
 2. `python toolchain/scripts/test/path_governance_check.py`
 3. `python toolchain/scripts/test/governance_semantic_check.py`
-4. `python -m pytest toolchain/scripts/test/test_folder_logic_check.py toolchain/scripts/test/test_closeout_gate_tools.py toolchain/scripts/test/test_skill_manifest_contract.py`
+4. `python -m pytest toolchain/scripts/test/test_folder_logic_check.py toolchain/scripts/test/test_closeout_gate_tools.py toolchain/scripts/test/test_agents_adapter_contract.py`
 
 ## 六、远端保护规则（Branch Protection Ruleset）
 

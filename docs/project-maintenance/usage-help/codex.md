@@ -53,7 +53,7 @@ python3 toolchain/scripts/test/agents_first_wave_contract_smoke.py
   - 已安装 first-wave skill copy 的真实读取
   - `harness -> repo-status -> repo-whats-next -> init-worktrack -> dispatch` 最小路径
   - `dispatch-skills` 的 fallback / general-executor 路径
-- 它证明的是 deploy target、payload copy、manifest / output field contract、`.aw` scaffold，以及一条最小 bounded route 到 `dispatch` 选择。
+- 它证明的是 deploy target、payload / output field contract、`.aw` scaffold，以及一条最小 bounded route 到 `dispatch` 选择。
 - 它不证明真实 Harness runtime、真实 Codex 无交互连续执行、真实任务连续推进，或真实 delegated subagent dispatch。
 - 如需保留现场，显式传 root：
 

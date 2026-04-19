@@ -88,7 +88,7 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 20. foundations 权威文档是否出现同名前缀 shadow 文件
 21. 关键入口文档是否重新出现已退役的“预留位 / 占位”口径
 22. 相邻系统文档是否已清理对已删除 product roots 的坏链，且没有把 adjacent systems 重新写回新的源码根
-23. `product/harness/README.md`、`product/harness/skills/README.md`、`product/harness/adapters/README.md` 与 `product/harness/manifests/README.md` 是否仍作为最小 executable root 骨架存在
+23. `product/harness/README.md`、`product/harness/skills/README.md` 与 `product/harness/adapters/README.md` 是否仍作为最小 executable root 骨架存在
 24. `docs/harness/workflow-families/README.md` 与 `docs/harness/workflow-families/repo-evolution/README.md` 是否仍把 `docs/` 作为 ontology 上游，而不是反向从 `product/harness/` 生长定义
 
 说明：

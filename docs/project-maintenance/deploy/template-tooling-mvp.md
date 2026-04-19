@@ -1,9 +1,9 @@
 ---
 title: "Template Tooling MVP"
 status: active
-updated: 2026-04-16
+updated: 2026-04-19
 owner: aw-kernel
-last_verified: 2026-04-16
+last_verified: 2026-04-19
 ---
 # Template Tooling MVP
 
@@ -15,7 +15,6 @@ last_verified: 2026-04-16
 
 - [Template Consumption Spec](./template-consumption-spec.md)
 - [First-Wave Skill Freeze](./first-wave-skill-freeze.md)
-- [Skill Manifest Schema](./skill-manifest-schema.md)
 
 ## 一、范围
 
@@ -27,7 +26,7 @@ last_verified: 2026-04-16
 
 当前 B2 不承接：
 
-- `manifest` 消费
+- payload descriptor 消费
 - `adapter payload` 生成
 - deploy target（部署目标） 同步
 - backend-specific（后端专属） wrapper（封装层）
@@ -168,7 +167,7 @@ python3 toolchain/scripts/deploy/aw_scaffold.py generate \
 - 能在自定义输出根目录生成首发 `.aw/` 最小样例
 - 生成结果具有非空 frontmatter 与 placeholder
 - 当源模板缺少必需 section 或必需 keyed field 时，`validate` 能失败并在 stderr 或输出报告中指出具体缺失项
-- 工具不消费 `manifest`，不触碰 `adapter payload` 或 deploy target
+- 工具不消费 payload descriptor，不触碰 `adapter payload` 或 deploy target
 
 ## 八、后续边界
 
@@ -176,4 +175,4 @@ python3 toolchain/scripts/deploy/aw_scaffold.py generate \
 
 - C1：把 B2 的结构检查扩成更完整的 template regression（模板回归） 测试面
 - B3：把 canonical skill source（规范 skill 来源） 映射到 `agents` payload（向 AI Agent 发送的请求数据体）
-- B4：把 deploy / verify 真正接上 mapping + manifest + payload
+- B4：把 deploy / verify 真正接上 mapping + payload

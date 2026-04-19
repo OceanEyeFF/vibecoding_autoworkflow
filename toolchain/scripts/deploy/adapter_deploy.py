@@ -17,9 +17,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 LOCAL_TARGET_ROOTS = {
     "agents": REPO_ROOT / ".agents" / "skills",
 }
-MANIFEST_SKILL_DIRS = {
-    "agents": REPO_ROOT / "product" / "harness" / "manifests" / "agents" / "skills",
-}
 ADAPTER_SKILL_DIRS = {
     "agents": REPO_ROOT / "product" / "harness" / "adapters" / "agents" / "skills",
 }
@@ -60,14 +57,22 @@ class VerifyResult:
 
 @dataclass
 class SkillBinding:
-    """Resolved manifest/payload source records for one backend skill."""
+    """Resolved payload source records for one backend skill."""
 
     backend: str
     skill_id: str
-    manifest_path: Path
     payload_dir: Path
     payload_path: Path
-    wrapper_path: Path
+
+
+@dataclass(frozen=True)
+class CanonicalSourceMetadata:
+    """Normalized canonical-source metadata derived from one payload descriptor."""
+
+    canonical_dir: str
+    entrypoint: str
+    included_paths: list[str]
+    canonical_files_by_relative_path: dict[str, Path]
 
 
 @dataclass(frozen=True)
@@ -224,13 +229,6 @@ def verify_target_root(backend: str, target_root: Path) -> list[VerifyIssue]:
     ]
 
 
-def manifest_skills_dir_for(backend: str) -> Path:
-    try:
-        return MANIFEST_SKILL_DIRS[backend]
-    except KeyError as exc:
-        raise DeployError(f"Unsupported manifest directory for backend: {backend}") from exc
-
-
 def adapter_skills_dir_for(backend: str) -> Path:
     try:
         return ADAPTER_SKILL_DIRS[backend]
@@ -239,29 +237,21 @@ def adapter_skills_dir_for(backend: str) -> Path:
 
 
 def collect_skill_bindings(backend: str) -> list[SkillBinding]:
-    manifest_dir = manifest_skills_dir_for(backend)
     adapter_dir = adapter_skills_dir_for(backend)
 
-    manifest_skill_ids = (
-        {path.stem for path in manifest_dir.glob("*.json") if path.is_file()}
-        if manifest_dir.is_dir()
-        else set()
-    )
     adapter_skill_ids = (
         {path.name for path in adapter_dir.iterdir() if path.is_dir()}
         if adapter_dir.is_dir()
         else set()
     )
 
-    skill_ids = sorted(manifest_skill_ids | adapter_skill_ids)
+    skill_ids = sorted(adapter_skill_ids)
     return [
         SkillBinding(
             backend=backend,
             skill_id=skill_id,
-            manifest_path=manifest_dir / f"{skill_id}.json",
             payload_dir=adapter_dir / skill_id,
             payload_path=adapter_dir / skill_id / "payload.json",
-            wrapper_path=adapter_dir / skill_id / "SKILL.md",
         )
         for skill_id in skill_ids
     ]
@@ -278,10 +268,6 @@ def load_json_file(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise DeployError(f"JSON payload must be an object: {path}")
     return data
-
-
-def relative_repo_path(path: Path) -> str:
-    return path.relative_to(REPO_ROOT).as_posix()
 
 
 def string_list(value: object) -> list[str] | None:
@@ -421,10 +407,6 @@ def load_binding_payload(binding: SkillBinding) -> dict[str, Any]:
     return load_json_file(binding.payload_path)
 
 
-def load_binding_manifest(binding: SkillBinding) -> dict[str, Any]:
-    return load_json_file(binding.manifest_path)
-
-
 def payload_version_from_descriptor(payload: dict[str, Any], *, binding: SkillBinding) -> str:
     payload_version = payload.get("payload_version")
     if not isinstance(payload_version, str):
@@ -432,53 +414,108 @@ def payload_version_from_descriptor(payload: dict[str, Any], *, binding: SkillBi
     return payload_version
 
 
-def canonical_source_files_by_target_relative_path(
-    binding: SkillBinding, *, manifest: dict[str, Any] | None = None
-) -> dict[str, Path]:
-    if manifest is None:
-        manifest = load_binding_manifest(binding)
+def payload_canonical_source_metadata(
+    payload: dict[str, Any], binding: SkillBinding
+) -> CanonicalSourceMetadata:
+    canonical_dir_value = payload.get("canonical_dir")
+    canonical_paths_value = string_list(payload.get("canonical_paths"))
+    entrypoint_value = payload.get("entrypoint")
 
-    canonical_dir_value = manifest.get("canonical_dir")
-    included_paths_value = string_list(manifest.get("included_paths"))
-    if not isinstance(canonical_dir_value, str) or included_paths_value is None:
+    if (
+        not isinstance(canonical_dir_value, str)
+        or canonical_paths_value is None
+        or not isinstance(entrypoint_value, str)
+    ):
         raise DeployError(
-            f"manifest canonical_dir and included_paths must be defined for skill {binding.skill_id}"
+            f"payload canonical_dir, canonical_paths, and entrypoint must be defined "
+            f"for skill {binding.skill_id}"
         )
 
     normalized_canonical_dir = normalize_relative_repo_path(
         canonical_dir_value,
-        field_name="manifest canonical_dir",
+        field_name="payload canonical_dir",
         skill_id=binding.skill_id,
     )
-    canonical_dir = REPO_ROOT / normalized_canonical_dir
-    canonical_files: dict[str, Path] = {}
-    for included_path in included_paths_value:
-        normalized_included_path = normalize_relative_canonical_path(
-            included_path,
-            field_name="manifest included_paths entry",
+    normalized_entrypoint = normalize_relative_canonical_path(
+        entrypoint_value,
+        field_name="payload entrypoint",
+        skill_id=binding.skill_id,
+    )
+    canonical_dir_path = PurePosixPath(normalized_canonical_dir)
+
+    included_paths: list[str] = []
+    canonical_files_by_relative_path: dict[str, Path] = {}
+    for canonical_path in canonical_paths_value:
+        normalized_canonical_path = normalize_relative_repo_path(
+            canonical_path,
+            field_name="payload canonical_paths entry",
             skill_id=binding.skill_id,
         )
-        canonical_files[normalized_included_path] = canonical_dir / normalized_included_path
-    return canonical_files
+        try:
+            relative_path = PurePosixPath(normalized_canonical_path).relative_to(canonical_dir_path)
+        except ValueError as exc:
+            raise DeployError(
+                f"payload canonical_paths entry must stay within canonical_dir for skill "
+                f"{binding.skill_id}: {canonical_path}"
+            ) from exc
+
+        normalized_included_path = relative_path.as_posix()
+        if normalized_included_path in ("", "."):
+            raise DeployError(
+                f"payload canonical_paths entry must point to a file inside canonical_dir "
+                f"for skill {binding.skill_id}: {canonical_path}"
+            )
+        if normalized_included_path in canonical_files_by_relative_path:
+            raise DeployError(
+                f"payload canonical_paths contain duplicate target-relative file "
+                f"{normalized_included_path} for skill {binding.skill_id}"
+            )
+
+        included_paths.append(normalized_included_path)
+        canonical_files_by_relative_path[normalized_included_path] = REPO_ROOT / normalized_canonical_path
+
+    if normalized_entrypoint not in canonical_files_by_relative_path:
+        raise DeployError(
+            f"payload entrypoint {entrypoint_value} must be listed in canonical_paths "
+            f"for skill {binding.skill_id}"
+        )
+
+    return CanonicalSourceMetadata(
+        canonical_dir=normalized_canonical_dir,
+        entrypoint=normalized_entrypoint,
+        included_paths=included_paths,
+        canonical_files_by_relative_path=canonical_files_by_relative_path,
+    )
+
+
+def canonical_source_files_by_target_relative_path(
+    binding: SkillBinding, *, payload: dict[str, Any] | None = None
+) -> dict[str, Path]:
+    if payload is None:
+        payload = load_binding_payload(binding)
+    return payload_canonical_source_metadata(
+        payload,
+        binding,
+    ).canonical_files_by_relative_path
 
 
 def source_path_for_target_relative_file(
     binding: SkillBinding,
     relative_name: str,
     *,
-    manifest: dict[str, Any] | None = None,
+    payload: dict[str, Any] | None = None,
 ) -> Path:
     if relative_name == "payload.json":
         return binding.payload_path
     if relative_name == MANAGED_SKILL_MARKER:
         raise DeployError(f"{MANAGED_SKILL_MARKER} is runtime-generated for skill {binding.skill_id}")
 
-    canonical_files = canonical_source_files_by_target_relative_path(binding, manifest=manifest)
+    canonical_files = canonical_source_files_by_target_relative_path(binding, payload=payload)
     try:
         return canonical_files[relative_name]
     except KeyError as exc:
         raise DeployError(
-            f"payload required file {relative_name} is not declared in manifest included_paths "
+            f"payload required file {relative_name} is not declared in payload canonical_paths "
             f"for skill {binding.skill_id}"
         ) from exc
 
@@ -488,7 +525,6 @@ def compute_payload_fingerprint(binding: SkillBinding, *, payload: dict[str, Any
         payload = load_binding_payload(binding)
 
     payload_version = payload_version_from_descriptor(payload, binding=binding)
-    manifest = load_binding_manifest(binding)
     target_metadata = payload_target_metadata(payload, binding)
     try:
         payload_text = binding.payload_path.read_text(encoding="utf-8")
@@ -508,7 +544,7 @@ def compute_payload_fingerprint(binding: SkillBinding, *, payload: dict[str, Any
         source_path = source_path_for_target_relative_file(
             binding,
             relative_name,
-            manifest=manifest,
+            payload=payload,
         )
         try:
             source_text = source_path.read_text(encoding="utf-8")
@@ -656,16 +692,6 @@ def format_path_conflicts(conflicts: list[PathConflict]) -> str:
 def verify_source_binding(binding: SkillBinding) -> list[VerifyIssue]:
     issues: list[VerifyIssue] = []
 
-    if not binding.manifest_path.is_file():
-        issues.append(
-            VerifyIssue(
-                code="missing-manifest",
-                path=binding.manifest_path,
-                detail=f"missing manifest for skill {binding.skill_id}",
-            )
-        )
-        return issues
-
     if not binding.payload_dir.is_dir():
         issues.append(
             VerifyIssue(
@@ -677,151 +703,34 @@ def verify_source_binding(binding: SkillBinding) -> list[VerifyIssue]:
         return issues
 
     try:
-        manifest = load_json_file(binding.manifest_path)
-    except DeployError as exc:
-        issues.append(
-            VerifyIssue(
-                code="manifest-payload-drift",
-                path=binding.manifest_path,
-                detail=str(exc),
-            )
-        )
-        return issues
-
-    if not binding.payload_path.is_file():
-        issues.append(
-            VerifyIssue(
-                code="missing-required-payload",
-                path=binding.payload_path,
-                detail=f"missing payload source file payload.json for skill {binding.skill_id}",
-            )
-        )
-
-    if issues:
-        return issues
-
-    try:
         payload = load_json_file(binding.payload_path)
     except DeployError as exc:
         issues.append(
             VerifyIssue(
-                code="manifest-payload-drift",
+                code="payload-contract-invalid",
                 path=binding.payload_path,
                 detail=str(exc),
             )
         )
         return issues
 
-    canonical_dir_value = manifest.get("canonical_dir")
-    included_paths_value = string_list(manifest.get("included_paths"))
-    entrypoint_value = manifest.get("entrypoint")
-    target_dir_value = manifest.get("target_dir")
-
-    if not isinstance(canonical_dir_value, str):
-        issues.append(
-            VerifyIssue(
-                code="manifest-payload-drift",
-                path=binding.manifest_path,
-                detail="manifest canonical_dir must be a string",
-            )
-        )
-        return issues
-
-    if included_paths_value is None or not isinstance(entrypoint_value, str) or not isinstance(
-        target_dir_value, str
-    ):
-        issues.append(
-            VerifyIssue(
-                code="manifest-payload-drift",
-                path=binding.manifest_path,
-                detail="manifest entrypoint, included_paths, and target_dir must be defined",
-            )
-        )
-        return issues
-
     try:
-        normalized_manifest_canonical_dir = normalize_relative_repo_path(
-            canonical_dir_value,
-            field_name="manifest canonical_dir",
-            skill_id=binding.skill_id,
-        )
+        canonical_source = payload_canonical_source_metadata(payload, binding)
     except DeployError as exc:
         issues.append(
             VerifyIssue(
-                code="manifest-payload-drift",
-                path=binding.manifest_path,
+                code="payload-contract-invalid",
+                path=binding.payload_path,
                 detail=str(exc),
             )
         )
-        normalized_manifest_canonical_dir = None
+        canonical_source = None
 
-    try:
-        normalized_manifest_entrypoint = normalize_relative_canonical_path(
-            entrypoint_value,
-            field_name="manifest entrypoint",
-            skill_id=binding.skill_id,
-        )
-    except DeployError as exc:
-        issues.append(
-            VerifyIssue(
-                code="manifest-payload-drift",
-                path=binding.manifest_path,
-                detail=str(exc),
-            )
-        )
-        normalized_manifest_entrypoint = None
-
-    try:
-        normalized_manifest_target_dir = normalize_relative_target_path(
-            target_dir_value,
-            field_name="manifest target_dir",
-            skill_id=binding.skill_id,
-        )
-    except DeployError as exc:
-        issues.append(
-            VerifyIssue(
-                code="manifest-payload-drift",
-                path=binding.manifest_path,
-                detail=str(exc),
-            )
-        )
-        normalized_manifest_target_dir = None
-    else:
-        if "/" in normalized_manifest_target_dir:
-            issues.append(
-                VerifyIssue(
-                    code="manifest-payload-drift",
-                    path=binding.manifest_path,
-                    detail=(
-                        f"manifest target_dir must be a single directory name for skill "
-                        f"{binding.skill_id}: {target_dir_value}"
-                    ),
-                )
-            )
-
-    normalized_included_paths: list[str] = []
-    for included_path in included_paths_value:
-        try:
-            normalized_included_paths.append(
-                normalize_relative_canonical_path(
-                    included_path,
-                    field_name="manifest included_paths entry",
-                    skill_id=binding.skill_id,
-                )
-            )
-        except DeployError as exc:
-            issues.append(
-                VerifyIssue(
-                    code="manifest-payload-drift",
-                    path=binding.manifest_path,
-                    detail=str(exc),
-                )
-            )
-
+    canonical_dir_value = payload.get("canonical_dir")
     canonical_dir = REPO_ROOT / (
-        normalized_manifest_canonical_dir
-        if normalized_manifest_canonical_dir is not None
-        else canonical_dir_value
+        canonical_source.canonical_dir
+        if canonical_source is not None
+        else str(canonical_dir_value)
     )
     if not canonical_dir.is_dir():
         issues.append(
@@ -831,8 +740,22 @@ def verify_source_binding(binding: SkillBinding) -> list[VerifyIssue]:
                 detail=f"missing canonical directory for skill {binding.skill_id}",
             )
         )
-    for included_path in normalized_included_paths:
-        canonical_file = canonical_dir / included_path
+    if canonical_source is not None and Path(canonical_source.canonical_dir).name != binding.skill_id:
+        issues.append(
+            VerifyIssue(
+                code="payload-contract-invalid",
+                path=binding.payload_path,
+                detail=(
+                    f"payload canonical_dir must end with {binding.skill_id} for skill "
+                    f"{binding.skill_id}"
+                ),
+            )
+        )
+    for included_path, canonical_file in (
+        canonical_source.canonical_files_by_relative_path.items()
+        if canonical_source is not None
+        else []
+    ):
         if not canonical_file.is_file():
             issues.append(
                 VerifyIssue(
@@ -846,7 +769,7 @@ def verify_source_binding(binding: SkillBinding) -> list[VerifyIssue]:
     if payload.get("payload_version") != expected_payload_version:
         issues.append(
             VerifyIssue(
-                code="manifest-payload-drift",
+                code="payload-contract-invalid",
                 path=binding.payload_path,
                 detail=(
                     f"payload payload_version must be {expected_payload_version} for "
@@ -858,7 +781,7 @@ def verify_source_binding(binding: SkillBinding) -> list[VerifyIssue]:
     if payload.get("backend") != binding.backend:
         issues.append(
             VerifyIssue(
-                code="manifest-payload-drift",
+                code="payload-contract-invalid",
                 path=binding.payload_path,
                 detail=f"payload backend must be {binding.backend} for skill {binding.skill_id}",
             )
@@ -867,52 +790,9 @@ def verify_source_binding(binding: SkillBinding) -> list[VerifyIssue]:
     if payload.get("skill_id") != binding.skill_id:
         issues.append(
             VerifyIssue(
-                code="manifest-payload-drift",
+                code="payload-contract-invalid",
                 path=binding.payload_path,
                 detail=f"payload skill_id must be {binding.skill_id}",
-            )
-        )
-
-    expected_manifest_path = relative_repo_path(binding.manifest_path)
-    if payload.get("manifest_path") != expected_manifest_path:
-        issues.append(
-            VerifyIssue(
-                code="manifest-payload-drift",
-                path=binding.payload_path,
-                detail=(
-                    f"payload manifest_path does not match {expected_manifest_path} "
-                    f"for skill {binding.skill_id}"
-                ),
-            )
-        )
-
-    if payload.get("canonical_dir") != canonical_dir_value:
-        issues.append(
-            VerifyIssue(
-                code="manifest-payload-drift",
-                path=binding.payload_path,
-                detail=f"payload canonical_dir does not match manifest for skill {binding.skill_id}",
-            )
-        )
-
-    expected_canonical_paths = [
-        f"{canonical_dir_value}/{included_path}" for included_path in normalized_included_paths
-    ]
-    if string_list(payload.get("canonical_paths")) != expected_canonical_paths:
-        issues.append(
-            VerifyIssue(
-                code="manifest-payload-drift",
-                path=binding.payload_path,
-                detail=f"payload canonical_paths do not match manifest for skill {binding.skill_id}",
-            )
-        )
-
-    if payload.get("target_dir") != target_dir_value:
-        issues.append(
-            VerifyIssue(
-                code="manifest-payload-drift",
-                path=binding.payload_path,
-                detail=f"payload target_dir does not match manifest for skill {binding.skill_id}",
             )
         )
 
@@ -921,47 +801,38 @@ def verify_source_binding(binding: SkillBinding) -> list[VerifyIssue]:
     except DeployError as exc:
         issues.append(
             VerifyIssue(
-                code="manifest-payload-drift",
+                code="payload-contract-invalid",
                 path=binding.payload_path,
                 detail=str(exc),
             )
         )
     else:
         expected_required_payload_files = [
-            *normalized_included_paths,
+            *(canonical_source.included_paths if canonical_source is not None else []),
             "payload.json",
             MANAGED_SKILL_MARKER,
         ]
         if target_metadata.required_payload_files != expected_required_payload_files:
             issues.append(
                 VerifyIssue(
-                    code="manifest-payload-drift",
+                    code="payload-contract-invalid",
                     path=binding.payload_path,
                     detail=(
-                        "payload required_payload_files must equal manifest included_paths plus "
+                        "payload required_payload_files must equal payload canonical_paths plus "
                         "payload.json and aw.marker "
                         f"for skill {binding.skill_id}"
                     ),
                 )
             )
-        if normalized_manifest_target_dir is not None and target_metadata.target_dir != normalized_manifest_target_dir:
-            issues.append(
-                VerifyIssue(
-                    code="manifest-payload-drift",
-                    path=binding.payload_path,
-                    detail=f"payload target_dir does not match manifest for skill {binding.skill_id}",
-                )
-            )
-
-    if normalized_manifest_entrypoint is not None:
-        canonical_entrypoint = canonical_dir / normalized_manifest_entrypoint
+    if canonical_source is not None:
+        canonical_entrypoint = canonical_dir / canonical_source.entrypoint
         if not canonical_entrypoint.is_file():
             issues.append(
                 VerifyIssue(
                     code="missing-canonical-source",
                     path=canonical_entrypoint,
                     detail=(
-                        f"missing canonical entrypoint {normalized_manifest_entrypoint} "
+                        f"missing canonical entrypoint {canonical_source.entrypoint} "
                         f"for skill {binding.skill_id}"
                     ),
                 )
@@ -1036,7 +907,7 @@ def install_backend_payloads(backend: str, args: argparse.Namespace) -> None:
         binding = plan.binding
         target_metadata = plan.target_metadata
         target_skill_dir = plan.target_skill_dir
-        manifest = load_binding_manifest(binding)
+        payload = load_binding_payload(binding)
         target_skill_dir.mkdir(parents=True, exist_ok=False)
         for relative_name in target_metadata.required_payload_files:
             target_path = target_skill_dir / relative_name
@@ -1057,7 +928,7 @@ def install_backend_payloads(backend: str, args: argparse.Namespace) -> None:
             source_path = source_path_for_target_relative_file(
                 binding,
                 relative_name,
-                manifest=manifest,
+                payload=payload,
             )
             shutil.copy2(source_path, target_path)
         print(f"installed skill {binding.skill_id} -> {target_skill_dir}")
@@ -1107,7 +978,7 @@ def verify_deployed_skill(binding: SkillBinding, target_root: Path) -> list[Veri
     except DeployError as exc:
         return [
             VerifyIssue(
-                code="manifest-payload-drift",
+                code="payload-contract-invalid",
                 path=binding.payload_path,
                 detail=str(exc),
             )
@@ -1160,7 +1031,7 @@ def verify_deployed_skill(binding: SkillBinding, target_root: Path) -> list[Veri
             )
         ]
 
-    manifest = load_binding_manifest(binding)
+    skill_payload = load_binding_payload(binding)
     expected_marker = build_runtime_marker(
         plan.binding.backend,
         plan.binding.skill_id,
@@ -1221,7 +1092,7 @@ def verify_deployed_skill(binding: SkillBinding, target_root: Path) -> list[Veri
         source_path = source_path_for_target_relative_file(
             binding,
             relative_name,
-            manifest=manifest,
+            payload=skill_payload,
         )
         if source_path.read_text(encoding="utf-8") != target_path.read_text(encoding="utf-8"):
             issues.append(
@@ -1310,8 +1181,8 @@ def verify_backend(backend: str, args: argparse.Namespace) -> VerifyResult:
         except DeployError as exc:
             issues.append(
                 VerifyIssue(
-                    code="manifest-payload-drift",
-                    path=manifest_skills_dir_for(backend),
+                    code="payload-contract-invalid",
+                    path=adapter_skills_dir_for(backend),
                     detail=str(exc),
                 )
             )
