@@ -9,7 +9,11 @@ description: Use this skill when Harness is in WorktrackScope and needs one boun
 
 Use this skill when `Harness` already has an active `Worktrack` and needs one bounded planning round to refresh the current `Plan / Task Queue`.
 
-This skill re-evaluates the queue against the current `Worktrack Contract`, blocker status, and available evidence, then selects one `current next action` or returns a clear `no safe next action` result.
+This skill re-evaluates the queue against the current `Worktrack Contract`, including the active acceptance criteria, blocker status, and available evidence, then selects one `current next action` or returns a clear `no safe next action` result.
+
+Inside `WorktrackScope`, this is the bounded planning round that turns the current task list into one dispatchable work item. `Harness` and `dispatch-skills` should consume that selection; they should not replace it.
+
+This skill should keep planning traceable to the current acceptance criteria, but it does not collect validation evidence or issue any gate verdict about whether those criteria are already satisfied.
 
 ## When To Use
 
@@ -18,6 +22,7 @@ Use this skill when the current question is not "who should execute this task", 
 - refresh the queue after contract clarification, new evidence, or a blocker change
 - split, reorder, defer, or mark blocked tasks inside the existing `Worktrack`
 - choose the current next action that is ready to hand off
+- show whether the selected action and remaining queue still cover the current acceptance criteria
 - determine whether the next step should go to `dispatch-skills`, recovery, or supervisor escalation
 - package the minimum context that the next bounded round needs
 
@@ -31,10 +36,11 @@ Use this skill when the current question is not "who should execute this task", 
    - reorder tasks when dependencies or evidence require it
    - split a task if the current item is too wide to dispatch safely
    - defer or block items that are not ready
-5. Select one `current next action`, or return `no safe next action` with the blocking reason.
-6. Produce one fixed-format `Schedule Result`.
-7. If the selected route is dispatch-ready and no formal stop condition is hit, allow supervisor continuation into `dispatch-skills`.
-8. Otherwise return the scheduling result as the current stop boundary.
+5. Check whether the refreshed queue still maps cleanly to the current acceptance criteria; surface any planning-level coverage gap explicitly.
+6. Select one `current next action`, or return `no safe next action` with the blocking reason.
+7. Produce one fixed-format `Schedule Result`.
+8. If the selected route is dispatch-ready and no formal stop condition is hit, allow supervisor continuation into `dispatch-skills`.
+9. Otherwise return the scheduling result as the current stop boundary.
 
 ## Scheduling Packet
 
@@ -55,7 +61,9 @@ If this skill is carried by a `gpt-5.4-xhigh` `SubAgent`, pass a bounded packet 
 
 - Do not widen scope beyond the current `Worktrack Contract`.
 - Do not execute the selected next action or dispatch downstream work from this skill.
+- Do not derive the dispatch task directly from repo goals or initialization notes when the current `Plan / Task Queue` has not yet selected a current next action.
 - Do not invent acceptance criteria, non-goals, or recovery policy.
+- Do not treat acceptance criteria as already validated or passed from this skill; use them only as planning constraints and coverage targets.
 - Do not mark a task done, ready, or unblocked without support from the current artifacts and evidence.
 - Do not rewrite the whole queue when a bounded refresh is sufficient.
 - Do not hide ambiguity; if no safe next action exists, return that explicitly.
@@ -67,6 +75,7 @@ When you use this skill, produce a `Schedule Result` with at least these section
 
 - `Current Worktrack Assessment`
 - `Queue Refresh Decisions`
+- `Acceptance Alignment`
 - `Current Next Action`
 - `Dispatch Or Escalation Readiness`
 - `Evidence Used`
@@ -79,6 +88,10 @@ Inside the result, include at least these fields or equivalents:
 - `queue_changes`
 - `ready_tasks`
 - `blocked_or_deferred_tasks`
+- `acceptance_criteria_considered`
+- `criteria_addressed_now`
+- `criteria_remaining`
+- `acceptance_coverage_gaps`
 - `selected_next_action`
 - `selection_reason`
 - `prerequisites_remaining`

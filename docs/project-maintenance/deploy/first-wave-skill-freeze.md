@@ -125,6 +125,7 @@ last_verified: 2026-04-19
 当前更准确的解释是：
 
 - 这批首发 deploy / contract smoke 只证明最小 skill contract、payload copy 和 bounded route 可读
+- `contract smoke` 只能作为 deploy / verify 侧的最小合同证明；skills 的测试不能用简单 smoke test 代替，也不能据此判定 skill 行为已经被充分验证
 - 它不是 live runtime test，也不是 Harness acceptance test
 - 它没有完成 `stop/continue policy` 的 autonomy repair
 - 它也没有完成 `skill -> subagent dispatch shell` 的 runtime repair

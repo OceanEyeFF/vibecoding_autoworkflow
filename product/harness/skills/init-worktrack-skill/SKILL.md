@@ -1,6 +1,6 @@
 ---
 name: init-worktrack-skill
-description: Use this skill when Harness is in WorktrackScope.initializing and needs one bounded round that sets up branch, baseline, contract, and initial plan, then hands off cleanly into the next legal worktrack action.
+description: Use this skill when Harness is in WorktrackScope.initializing and needs one bounded round that sets up branch, baseline, contract, and initial plan, then hands off cleanly into bounded worktrack scheduling.
 ---
 
 # Init Worktrack Skill
@@ -9,19 +9,19 @@ description: Use this skill when Harness is in WorktrackScope.initializing and n
 
 Use this skill when `Harness` has already decided to open or repair a specific `Worktrack` and now needs one bounded initialization round.
 
-This skill makes branch and baseline handling explicit, builds or refreshes the initial `Worktrack Contract`, seeds the first `Plan / Task Queue`, and prepares a minimal executor handoff packet for the next specialized skill or execution carrier.
+This skill creates the bounded branch for the `Worktrack`, makes the baseline explicit, builds or refreshes the initial `Worktrack Contract`, seeds the first `Plan / Task Queue`, and prepares a minimal handoff packet for the next scheduling round and later execution routing.
 
-It does not perform implementation, verification, or gate judgment itself, but it should leave the worktrack continuation-ready whenever the next legal action is clear.
+It does not perform implementation, verification, or gate judgment itself. Its job is to leave the worktrack ready for bounded scheduling, not to decide execution ownership by itself.
 
 ## When To Use
 
 Use this skill when the current question is not "how should this task be executed", but "is this worktrack initialized correctly":
 
-- determine whether this worktrack should create a new bounded branch or reuse an existing branch with an explicit reason
+- create the bounded branch that this `Worktrack` will run on
 - pin the current baseline branch or commit reference
 - translate the approved work item into a bounded `Worktrack Contract`
 - expand that contract into an initial `Plan / Task Queue`
-- package the minimum context the next execution round will need
+- package the minimum context the next scheduling or execution round will need
 - surface whether the next route is continuation-ready or blocked by a formal stop condition
 
 ## Workflow
@@ -31,20 +31,22 @@ Use this skill when the current question is not "how should this task be execute
 3. Determine whether this is:
    - a new `Worktrack`
    - a resumed `Worktrack` whose branch, baseline, contract, or plan needs repair
-4. Decide branch handling for this `Worktrack`:
-   - create a bounded branch
-   - reuse an existing bounded branch with explicit justification
-5. Record the baseline reference that this `Worktrack` will compare against.
-6. Build or refresh one `Worktrack Contract`.
-7. Seed one initial `Plan / Task Queue`.
-8. Produce one fixed-format `Worktrack Initialization Result`.
-9. If the next work item is clear and no formal stop condition is hit, hand off directly to `schedule-worktrack-skill` or `dispatch-skills`.
-10. If the next route is not continuation-ready, return a blocked or approval-gated initialization result instead of pretending execution started.
+4. Create the bounded branch for this `Worktrack`.
+5. If that branch cannot be created safely, return a blocked initialization result instead of silently reusing another branch.
+6. Record the baseline reference that this `Worktrack` will compare against.
+7. Build or refresh one `Worktrack Contract`.
+8. Seed one initial `Plan / Task Queue`.
+9. Produce one fixed-format `Worktrack Initialization Result`.
+10. If no formal stop condition is hit, hand off to `schedule-worktrack-skill` so the seeded queue is refreshed and one current next action is selected for this round.
+11. Only hand off directly to `dispatch-skills` when an already-valid current next action is explicitly present in the active queue and no additional scheduling judgment is required.
+12. If the next route is not continuation-ready, return a blocked or approval-gated initialization result instead of pretending execution started.
 
 ## Hard Constraints
 
 - Do not start implementation, verification, or gate judgment from this skill.
 - Do not treat branch setup alone as sufficient initialization; baseline, contract, and initial plan must also be explicit.
+- Do not treat reuse of an already-existing implementation branch as successful worktrack initialization.
+- Do not treat seeding an initial task list as equivalent to selecting the current next action for execution.
 - Do not guess branch, baseline, or scope when repo state is ambiguous; return a blocked initialization result instead.
 - Do not widen scope beyond the approved worktrack goal, non-goals, and current repo baseline.
 - Do not silently mutate `Harness Control State` without surfacing the intended next state and required approval.

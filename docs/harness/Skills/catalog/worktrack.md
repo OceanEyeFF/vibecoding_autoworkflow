@@ -1,9 +1,9 @@
 ---
 title: "Harness Skill Catalog / WorktrackScope"
 status: draft
-updated: 2026-04-16
+updated: 2026-04-19
 owner: aw-kernel
-last_verified: 2026-04-16
+last_verified: 2026-04-19
 ---
 # WorktrackScope Skill Catalog
 
@@ -23,7 +23,7 @@ last_verified: 2026-04-16
 
 职责：
 
-- 初始化 branch、baseline 和 `Worktrack Contract`
+- 创建 bounded branch、初始化 baseline 和 `Worktrack Contract`
 - 建立最小 `Plan / Task Queue`
 
 主要依赖：
@@ -45,8 +45,9 @@ canonical executable source：
 
 职责：
 
-- 根据当前 contract、证据和阻塞情况刷新任务队列
+- 根据当前 contract、验收条件、证据和阻塞情况刷新任务队列
 - 决定当前下一动作
+- 显式说明当前下一动作与剩余队列如何对齐验收条件
 
 主要依赖：
 
@@ -89,10 +90,12 @@ dispatch contract：
   - `in_scope`
   - `out_of_scope`
   - `constraints`
+  - `acceptance_criteria_for_this_round`
   - `verification_requirements`
   - `done_signal`
 - `Dispatch Info Packet`
   - `current_worktrack_state`
+  - `acceptance_alignment_used`
   - `relevant_artifacts`
   - `required_context`
   - `known_risks`

@@ -9,7 +9,7 @@ description: Use this skill when Harness is in WorktrackScope and needs one boun
 
 Use this skill when `Harness` already has a current `Worktrack` action and needs to bind that action to the right execution carrier for one bounded round.
 
-This skill packages a bounded task, selects the most appropriate specialized skill when one clearly fits, and falls back to a general task-completion execution carrier when no specialized skill is a clean match.
+This skill consumes one already-selected current work item, packages it as a bounded task together with its current acceptance boundary, selects the most appropriate specialized skill when one clearly fits, and falls back to a general task-completion execution carrier when no specialized skill is a clean match.
 
 If the host runtime provides a real subagent dispatch shell, that fallback carrier may be a delegated `SubAgent`. If the host runtime does not provide one, the same bounded task/info contract must still be executed in the current carrier and explicitly reported as runtime fallback rather than fake subagent dispatch.
 
@@ -17,7 +17,9 @@ If the host runtime provides a real subagent dispatch shell, that fallback carri
 
 Use this skill when the current question is not "what is the next worktrack action", but "how should this one action be dispatched right now":
 
+- consume the current next action that was already selected from the active `Plan / Task Queue`
 - package the current work item into a bounded execution contract
+- carry forward the acceptance criteria slice and acceptance-alignment result that justify this bounded execution round
 - decide whether a specialized skill is available and semantically appropriate
 - fall back to a general task-completion execution carrier if not
 - run one bounded dispatch round
@@ -26,19 +28,23 @@ Use this skill when the current question is not "what is the next worktrack acti
 ## Workflow
 
 1. Read `references/entrypoints.md`.
-2. Load the minimum `WorktrackScope` artifacts needed to understand the current work item.
-3. Build one `Dispatch Task Brief` and one `Dispatch Info Packet`.
-4. Check whether a specialized skill is a clear semantic fit for the current work item.
-5. If yes, dispatch via that specialized skill.
-6. If no, dispatch via a general task-completion carrier using the same bounded task/info contract.
-7. Record whether the round used:
+2. Load the minimum `WorktrackScope` artifacts needed to understand the current selected work item.
+3. Confirm that the current work item was already selected from the active `Plan / Task Queue`; if that selection does not exist, return to scheduling instead of inventing one here.
+4. Confirm that the current work item still has an explicit acceptance-boundary mapping from scheduling; if that mapping is missing, stale, or contradictory, return to scheduling instead of packaging blind execution.
+5. Build one `Dispatch Task Brief` and one `Dispatch Info Packet`.
+6. Check whether a specialized skill is a clear semantic fit for the current work item.
+7. If yes, dispatch via that specialized skill.
+8. If no, dispatch via a general task-completion carrier using the same bounded task/info contract.
+9. Record whether the round used:
    - delegated `SubAgent` dispatch
    - current-carrier runtime fallback
-8. Return one fixed-format `Dispatch Result`.
+10. Return one fixed-format `Dispatch Result`.
 
 ## Hard Constraints
 
 - Do not widen the work item beyond the current `Worktrack Contract` and `Plan / Task Queue`.
+- Do not choose, reorder, or invent the current next action inside this skill; consume the selected work item that planning already produced.
+- Do not detach the dispatched task from the acceptance criteria slice and acceptance-alignment result that scheduling already established.
 - Do not treat "no specialized skill exists" as a blocked state by itself.
 - Do not pass full-repo context when a bounded info packet is sufficient.
 - Do not let the fallback execution carrier redefine acceptance criteria, non-goals, or verification requirements.
@@ -69,6 +75,8 @@ Inside the result, include at least these fields or equivalents:
 - `in_scope`
 - `out_of_scope`
 - `constraints`
+- `acceptance_criteria_for_this_round`
+- `acceptance_alignment_used`
 - `verification_requirements`
 - `done_signal`
 - `required_context`

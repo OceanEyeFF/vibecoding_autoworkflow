@@ -30,6 +30,12 @@
 
 - 
 
+## Acceptance Alignment
+
+- acceptance criteria addressed now:
+- acceptance criteria remaining:
+- planning coverage gaps:
+
 ## Notes
 
 - 

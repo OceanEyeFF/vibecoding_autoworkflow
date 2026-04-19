@@ -173,6 +173,7 @@ last_verified: 2026-04-18
 - 依赖关系
 - 当前阻塞
 - 当前下一动作
+- 验收条件与任务队列的对齐关系
 
 ### 5. Gate Evidence
 
@@ -311,10 +312,12 @@ last_verified: 2026-04-18
   - `in_scope`
   - `out_of_scope`
   - `constraints`
+  - `acceptance_criteria_for_this_round`
   - `verification_requirements`
   - `done_signal`
 - `Dispatch Info Packet`
   - `current_worktrack_state`
+  - `acceptance_alignment_used`
   - `relevant_artifacts`
   - `required_context`
   - `known_risks`
@@ -332,6 +335,7 @@ last_verified: 2026-04-18
 补充约束：
 
 - `Dispatch Task Brief` 是面向当前 round 的 bounded execution contract，不替代上游 `Task Contract`
+- `Dispatch Task Brief` 与 `Dispatch Info Packet` 必须保留当前任务对应的 acceptance boundary，而不是让执行载体自行猜测本轮在覆盖哪些验收条件
 - `Dispatch Info Packet` 只允许携带本轮必需上下文，不应退化成“把整个 repo 扔给 subagent”
 - fallback 到通用执行载体时，输入输出结构不得放宽；变化的只是执行载体，不是控制边界
 - `runtime_dispatch_mode` 必须显式区分“delegated subagent dispatch”和“current-carrier runtime fallback”

@@ -28,6 +28,8 @@ Load the Harness worktrack scheduling docs in this order.
 
 - This skill is a worktrack scheduler, not the supervisor and not the downstream executor.
 - Start from the current queue snapshot and evidence delta, then load only the artifacts needed to refresh one bounded round.
+- Treat the `Worktrack Contract` acceptance criteria as planning constraints that the queue must still cover; do not turn this skill into validation or gate adjudication.
 - If you use a `gpt-5.4-xhigh` `SubAgent` as the reasoning carrier, pass only the bounded scheduling packet for this round instead of broad repo context.
+- This skill is the default owner of `current next action` selection inside `WorktrackScope`; downstream dispatch should consume that selection instead of replacing it.
 - Return one selected `current next action` or an explicit blocked result; do not dispatch implementation from here.
 - Do not read repo-local deploy targets during canonical scheduling generation.

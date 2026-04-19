@@ -35,6 +35,10 @@ Load the Harness supervisor docs in this order.
 - This skill is the supervisor layer, not the executor layer.
 - Start from `Harness Control State`, then load only the artifacts required by the current scope.
 - Treat `Harness指导思想` as doctrine and `Harness运行协议` as runtime behavior guidance.
+- Concrete repo/worktrack content comes from the downstream scope skills and their artifacts, not from ad hoc supervisor invention.
+- Default `RepoScope` continuation route: `repo-status-skill` -> `repo-whats-next-skill`.
+- Default `WorktrackScope` continuation route: `init-worktrack-skill` -> `schedule-worktrack-skill` -> `dispatch-skills`.
+- Do not let `dispatch-skills` run until `schedule-worktrack-skill` or an already-valid queue state has selected the current work item.
 - Do not read repo-local deploy targets during Harness supervision.
 - Continue across legal state transitions instead of stopping just because one bounded local round returned structured output.
 - A `RepoScope` to `WorktrackScope` switch may continue without a fresh programmer handoff only when the current route has already marked that transition as continuation-ready and no formal stop condition requires approval.
