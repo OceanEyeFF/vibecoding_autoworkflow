@@ -88,9 +88,9 @@ last_verified: 2026-04-19
   - `python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents`
   - `python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents`
   - `python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents`
-- `agents` first-wave smoke / C2 路径变更
-  - `python3 -m pytest toolchain/scripts/test/test_agents_first_wave_smoke.py`
-  - `python3 toolchain/scripts/test/agents_first_wave_smoke.py`
+- `agents` first-wave contract smoke / C2 bounded route 变更
+  - `python3 -m pytest toolchain/scripts/test/test_agents_first_wave_contract_smoke.py`
+  - `python3 toolchain/scripts/test/agents_first_wave_contract_smoke.py`
 
 ### 3.1 修复完整性
 
@@ -120,6 +120,10 @@ last_verified: 2026-04-19
 - 同步文档已经更新
 - writeback 已完成
 - 如果是修复类任务，相关相邻状态和回归路径也已验证，没有留下新的已知问题源
+
+补充要求：
+
+- 面向 operator 或协作者的人读收口说明，默认遵循 [全局语言风格](./global-language-style.md)，先交付结论与可执行性，再补充解释
 
 ## 五、相关文档
 

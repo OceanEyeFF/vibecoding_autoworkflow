@@ -87,7 +87,7 @@ MINIMUM_PROTOCOL_FIELDS = {
 
 KEYED_LINE_TEMPLATE = r"^- {key}:\s*.*$"
 class SmokeError(RuntimeError):
-    """Raised when the smoke path cannot be completed."""
+    """Raised when the contract smoke path cannot be completed."""
 
 
 @dataclass(frozen=True)
@@ -109,7 +109,7 @@ class InstalledSkill:
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Run the repeatable agents first-wave smoke path with an isolated install root and "
+            "Run the repeatable agents first-wave contract smoke path with an isolated install root and "
             "generated .aw fixture."
         )
     )
@@ -306,8 +306,8 @@ def scaffold_args(aw_root: Path) -> argparse.Namespace:
         owner="aw-kernel",
         updated="2026-04-17",
         baseline_branch="main",
-        worktrack_id="wt-first-wave-smoke",
-        branch="feature/agents-first-wave-smoke",
+        worktrack_id="wt-first-wave-contract-smoke",
+        branch="feature/agents-first-wave-contract-smoke",
     )
 
 
@@ -358,22 +358,22 @@ def seed_aw_fixture(aw_root: Path) -> None:
     replace_keyed_value(
         control_state,
         "reason",
-        "repeatable first-wave smoke stays inside the C2 boundary",
+        "repeatable first-wave contract smoke stays inside the C2 boundary",
     )
-    replace_section_bullet(control_state, "Active Worktrack", "wt-first-wave-smoke")
+    replace_section_bullet(control_state, "Active Worktrack", "wt-first-wave-contract-smoke")
     replace_section_bullet(control_state, "Baseline Branch", "main")
     replace_section_bullet(control_state, "Current Next Action", "repo-status-skill")
     replace_section_bullet(
         control_state,
         "Notes",
-        "generated and seeded by toolchain/scripts/test/agents_first_wave_smoke.py",
+        "generated and seeded by toolchain/scripts/test/agents_first_wave_contract_smoke.py",
     )
 
-    replace_keyed_value(goal_charter, "status", "active-smoke-fixture")
+    replace_keyed_value(goal_charter, "status", "active-contract-smoke-fixture")
     replace_section_bullet(
         goal_charter,
         "Project Vision",
-        "Ship a Codex-first harness platform with a repeatable first-wave agents smoke path.",
+        "Ship a Codex-first harness platform with a repeatable first-wave agents contract smoke path.",
     )
     replace_section_bullet(
         goal_charter,
@@ -383,7 +383,7 @@ def seed_aw_fixture(aw_root: Path) -> None:
     replace_section_bullet(
         goal_charter,
         "Technical Direction",
-        "Use canonical skill copies, generated .aw artifacts, and deterministic smoke checks.",
+        "Use canonical skill copies, generated .aw artifacts, and deterministic contract smoke checks.",
     )
     replace_section_bullet(
         goal_charter,
@@ -396,11 +396,11 @@ def seed_aw_fixture(aw_root: Path) -> None:
         "Do not promote .aw state into docs truth and do not widen into C3 backends.",
     )
 
-    replace_keyed_value(repo_snapshot, "status", "ready-for-c2-smoke")
+    replace_keyed_value(repo_snapshot, "status", "ready-for-c2-contract-smoke")
     replace_section_bullet(
         repo_snapshot,
         "Mainline Status",
-        "first-wave agents payload contract is installed in an isolated target root and ready for smoke",
+        "first-wave agents payload contract is installed in an isolated target root and ready for contract smoke",
     )
     replace_section_bullet(
         repo_snapshot,
@@ -410,7 +410,7 @@ def seed_aw_fixture(aw_root: Path) -> None:
     replace_section_bullet(
         repo_snapshot,
         "Active Branches And Purpose",
-        "feature/harness-system-workflow: complete A/B/C1 and close C2 with a repeatable smoke path",
+        "feature/harness-system-workflow: complete A/B/C1 and close C2 with a repeatable contract smoke path",
     )
     replace_section_bullet(
         repo_snapshot,
@@ -420,7 +420,7 @@ def seed_aw_fixture(aw_root: Path) -> None:
     replace_section_bullet(
         repo_snapshot,
         "Known Issues And Risks",
-        "dispatch smoke must prove fallback/general-executor behavior without requiring downstream specialized skills",
+        "dispatch contract smoke must prove fallback/general-executor behavior without requiring downstream specialized skills",
     )
 
 
@@ -438,7 +438,7 @@ def seed_worktrack_artifacts(aw_root: Path) -> None:
     replace_section_bullet(
         contract,
         "Task Goal",
-        "Lock the agents first-wave smoke path with one repeatable command.",
+        "Lock the agents first-wave contract smoke path with one repeatable command.",
     )
     replace_section_bullet(
         contract,
@@ -458,7 +458,7 @@ def seed_worktrack_artifacts(aw_root: Path) -> None:
     replace_section_bullet(
         contract,
         "Planned Next State",
-        "A passing first-wave smoke harness becomes the canonical C2 verification entry.",
+        "A passing first-wave contract smoke harness becomes the canonical C2 contract verification entry.",
     )
     replace_section_bullet(
         contract,
@@ -468,12 +468,12 @@ def seed_worktrack_artifacts(aw_root: Path) -> None:
     replace_section_bullet(
         contract,
         "Rollback Conditions",
-        "Remove or shrink the smoke harness if it starts redefining deploy truth or C3 scope.",
+        "Remove or shrink the contract smoke harness if it starts redefining deploy truth or C3 scope.",
     )
     replace_section_bullet(
         contract,
         "Notes",
-        "This contract is seeded inside an isolated .aw root for smoke only.",
+        "This contract is seeded inside an isolated .aw root for contract smoke only.",
     )
 
     replace_keyed_value(plan, "current_phase", "dispatch-ready")
@@ -493,7 +493,7 @@ def seed_worktrack_artifacts(aw_root: Path) -> None:
     replace_section_bullet(
         plan,
         "Current Blockers",
-        "None inside the isolated smoke workspace.",
+        "None inside the isolated contract smoke workspace.",
     )
     replace_section_bullet(
         plan,
@@ -558,14 +558,14 @@ def run_repo_status_round(skill: InstalledSkill, aw_root: Path) -> dict[str, Any
         "control_state": "RepoScope.observing",
         "snapshot_basis": str(aw_root / "repo" / "snapshot-status.md"),
         "goal_reference_used": str(aw_root / "goal-charter.md"),
-        "mainline_status": "first-wave agents payloads are installed and ready for one bounded smoke path",
+        "mainline_status": "first-wave agents payloads are installed and ready for one bounded contract smoke path",
         "active_branches": ["feature/harness-system-workflow"],
         "governance_signals": [
             "A/B/C1 are already complete",
             "C2 remains the only active delivery target",
         ],
         "known_risks": [
-            "do not mistake install/verify success for runtime smoke completion",
+            "do not mistake install/verify success for real runtime execution proof",
         ],
         "stale_or_missing_inputs": [],
         "bounded_sensor_checks": [
@@ -600,11 +600,11 @@ def run_repo_whats_next_round(
             "C3 backends remain explicitly out of scope",
         ],
         "inferences": [
-            "the next bounded move is to enter one minimal worktrack smoke path",
+            "the next bounded move is to enter one minimal worktrack contract smoke path",
         ],
         "unknowns": [],
         "current_primary_contradiction": (
-            "install and verify are complete, but the first-wave route still lacks a repeatable smoke proof"
+            "install and verify are complete, but the first-wave route still lacks a repeatable contract smoke proof"
         ),
         "primary_aspect": "C2 needs a real route proof, not another operator note",
         "top_priority_now": "prove one direct first-wave route into dispatch fallback",
@@ -617,7 +617,7 @@ def run_repo_whats_next_round(
         "recommended_next_scope": "WorktrackScope.initializing",
         "allowed_repo_actions": allowed_repo_actions,
         "in_scope": [
-            "one bounded C2 smoke worktrack",
+            "one bounded C2 contract-smoke worktrack",
         ],
         "out_of_scope": [
             "goal-change-control",
@@ -645,7 +645,7 @@ def run_init_worktrack_round(skill: InstalledSkill, aw_root: Path) -> dict[str, 
     seed_worktrack_artifacts(aw_root)
     handoff_packet = {
         "task": "prove the installed first-wave route and return a bounded dispatch result",
-        "goal": "Lock C2 with a repeatable agents first-wave smoke path.",
+        "goal": "Lock C2 with a repeatable agents first-wave contract smoke path.",
         "in_scope": [
             "installed skill-copy read-through",
             "repo-to-worktrack transition",
@@ -657,11 +657,11 @@ def run_init_worktrack_round(skill: InstalledSkill, aw_root: Path) -> dict[str, 
             "specialized downstream skill coverage",
         ],
         "constraints": [
-            "do not mutate docs truth from the smoke fixture",
+            "do not mutate docs truth from the contract smoke fixture",
             "do not widen beyond one direct-dispatch path",
         ],
         "verification_requirements": [
-            "agents_first_wave_smoke.py must pass in one bounded round",
+            "agents_first_wave_contract_smoke.py must pass in one bounded round",
         ],
         "done_signal": "return one dispatch result that preserves bounded scope and reports the runtime dispatch mode honestly",
         "required_context": [
@@ -673,12 +673,12 @@ def run_init_worktrack_round(skill: InstalledSkill, aw_root: Path) -> dict[str, 
         ],
     }
     output = {
-        "worktrack_identity": "wt-first-wave-smoke",
+        "worktrack_identity": "wt-first-wave-contract-smoke",
         "initialization_status": "ready-for-dispatch",
         "branch_action": "reuse-existing-bounded-branch",
-        "branch_name_or_rule": "feature/agents-first-wave-smoke",
+        "branch_name_or_rule": "feature/agents-first-wave-contract-smoke",
         "baseline_ref": "main",
-        "baseline_reason": "the smoke path compares first-wave behavior against the current mainline contract",
+        "baseline_reason": "the contract smoke path compares first-wave behavior against the current mainline contract",
         "goal": handoff_packet["goal"],
         "in_scope": handoff_packet["in_scope"],
         "out_of_scope": handoff_packet["out_of_scope"],
@@ -691,7 +691,7 @@ def run_init_worktrack_round(skill: InstalledSkill, aw_root: Path) -> dict[str, 
             "one command proves the installed first-wave route is readable and bounded",
         ],
         "rollback_conditions": [
-            "remove the smoke harness if it starts redefining deploy or manifest truth",
+            "remove the contract smoke harness if it starts redefining deploy or manifest truth",
         ],
         "initial_tasks": [
             "validate installed skill copies",
@@ -728,7 +728,7 @@ def run_dispatch_round(
         "selected_executor": "general-task-completion-executor",
         "runtime_dispatch_mode": "current-carrier-fallback",
         "selection_reason": (
-            "no first-wave specialized downstream skill is required and this smoke does not provide a real delegated subagent shell"
+            "no first-wave specialized downstream skill is required and this contract smoke does not provide a real delegated subagent shell"
         ),
         "fallback_used": True,
         "task": handoff_packet["task"],
@@ -749,15 +749,15 @@ def run_dispatch_round(
         "evidence_collected": [
             "fallback path preserved the same task and verification contract",
             "no specialized downstream skill coverage was required to keep the route live",
-            "the smoke reports runtime-dispatch gap explicitly instead of treating selection as real subagent execution",
+            "the contract smoke reports runtime-dispatch gap explicitly instead of treating selection as real subagent execution",
         ],
         "open_issues": [],
-        "recommended_next_action": "return the dispatch result to Harness; this smoke does not prove real delegated execution",
+        "recommended_next_action": "return the dispatch result to Harness; this contract smoke does not prove real delegated execution",
     }
     if output["selected_executor"] != "general-task-completion-executor":
         raise SmokeError("dispatch did not prove the fallback/general-executor path")
     if not output["fallback_used"]:
-        raise SmokeError("dispatch smoke must exercise the fallback path")
+        raise SmokeError("dispatch contract smoke must exercise the fallback path")
     validate_protocol_fields(skill, output)
     return output
 
@@ -771,7 +771,7 @@ def run_smoke(agents_root: Path, aw_root: Path) -> dict[str, Any]:
     verify_result, verify_log = capture_stdout(adapter_deploy.verify_backend, "agents", smoke_args)
     if verify_result.issues:
         raise SmokeError(
-            "agents install root failed verify before smoke:\n"
+            "agents install root failed verify before contract smoke:\n"
             + json.dumps(json_ready_verify_result(verify_result), indent=2, ensure_ascii=True)
         )
 
@@ -850,7 +850,7 @@ def run_smoke(agents_root: Path, aw_root: Path) -> dict[str, Any]:
 
 
 def print_human_report(report: dict[str, Any]) -> None:
-    print("agents first-wave smoke: PASS")
+    print("agents first-wave contract smoke: PASS")
     print(f"- agents_root: {report['agents_root']}")
     print(f"- aw_root: {report['aw_root']}")
     print("- route:")
@@ -866,7 +866,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.agents_root is None or args.aw_root is None:
-            workspace_root = Path(tempfile.mkdtemp(prefix="agents-first-wave-smoke-"))
+            workspace_root = Path(tempfile.mkdtemp(prefix="agents-first-wave-contract-smoke-"))
         agents_root = args.agents_root or (workspace_root / ".agents" / "skills")
         aw_root = args.aw_root or (workspace_root / ".aw")
 
@@ -883,7 +883,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.json:
             print(json.dumps(error_payload, indent=2, ensure_ascii=True))
         else:
-            print(f"agents first-wave smoke: FAIL\n- error: {exc}", file=sys.stderr)
+            print(f"agents first-wave contract smoke: FAIL\n- error: {exc}", file=sys.stderr)
         return 1
     finally:
         if workspace_root is not None and not args.keep_temp:

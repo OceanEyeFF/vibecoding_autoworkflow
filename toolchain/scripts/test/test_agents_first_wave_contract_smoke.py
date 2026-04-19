@@ -9,22 +9,22 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import agents_first_wave_smoke
+import agents_first_wave_contract_smoke
 
 
-class AgentsFirstWaveSmokeTest(unittest.TestCase):
+class AgentsFirstWaveContractSmokeTest(unittest.TestCase):
     def test_run_smoke_returns_repeatable_first_wave_route(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = Path(temp_dir)
             agents_root = workspace / ".agents" / "skills"
             aw_root = workspace / ".aw"
 
-            report = agents_first_wave_smoke.run_smoke(agents_root, aw_root)
+            report = agents_first_wave_contract_smoke.run_smoke(agents_root, aw_root)
 
         self.assertTrue(report["passed"])
         self.assertEqual(
             [step["skill_id"] for step in report["route"]],
-            list(agents_first_wave_smoke.FIRST_WAVE_SKILL_ORDER),
+            list(agents_first_wave_contract_smoke.FIRST_WAVE_SKILL_ORDER),
         )
         self.assertEqual(
             report["route"][2]["recommended_repo_action"],
@@ -58,7 +58,7 @@ class AgentsFirstWaveSmokeTest(unittest.TestCase):
                     sys,
                     "argv",
                     [
-                        "agents_first_wave_smoke.py",
+                        "agents_first_wave_contract_smoke.py",
                         "--agents-root",
                         str(agents_root),
                         "--aw-root",
@@ -69,7 +69,7 @@ class AgentsFirstWaveSmokeTest(unittest.TestCase):
                 contextlib.redirect_stdout(stdout),
                 contextlib.redirect_stderr(stderr),
             ):
-                exit_code = agents_first_wave_smoke.main()
+                exit_code = agents_first_wave_contract_smoke.main()
 
         self.assertEqual(exit_code, 0, stderr.getvalue())
         payload = json.loads(stdout.getvalue())

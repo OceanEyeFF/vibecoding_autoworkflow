@@ -1,12 +1,12 @@
 # Usage Help
 
-`docs/project-maintenance/usage-help/` 只保存按 backend 聚合的使用帮助。这里不再按 `memory-side/` 或 `task-interface/` 再拆子树；每页只回答这个 backend 自己的 target root 解析、override 参数、smoke verify 口径和当前限制。
+`docs/project-maintenance/usage-help/` 只保存按 backend 聚合的使用帮助。这里不再按 `memory-side/` 或 `task-interface/` 再拆子树；每页只回答这个 backend 自己的 target root 解析、override 参数、验证口径和当前限制。
 
 这里适合放：
 
 - backend 特有的 target root 解析方式
 - backend 特有的 root override 参数
-- backend 特有的 smoke verify 口径
+- backend 特有的验证口径
 - backend 当前支持边界
 
 这里不适合放：
@@ -19,7 +19,7 @@
 
 | backend | 页面 | 主要差异 |
 |---|---|---|
-| `agents` | [codex.md](./codex.md) | 默认 `.agents/skills/` / 可选 `--agents-root`、稳定 smoke verify |
+| `agents` | [codex.md](./codex.md) | 默认 `.agents/skills/` / 可选 `--agents-root`、稳定 deploy / contract smoke |
 | `claude` | [claude.md](./claude.md) | Claude runtime 路径约定、稳定 smoke verify；当前仓库不提供 `claude` deploy adapter CLI |
 | `opencode` | [opencode.md](./opencode.md) | OpenCode runtime 路径约定、仅 `sync verify`；当前仓库不提供 `opencode` deploy adapter CLI |
 

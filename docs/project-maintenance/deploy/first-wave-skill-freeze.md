@@ -1,9 +1,9 @@
 ---
 title: "First-Wave Skill Freeze"
 status: active
-updated: 2026-04-18
+updated: 2026-04-19
 owner: aw-kernel
-last_verified: 2026-04-18
+last_verified: 2026-04-19
 ---
 # First-Wave Skill Freeze
 
@@ -40,7 +40,7 @@ last_verified: 2026-04-18
 
 首发 skill 子集必须满足下面四条：
 
-- 能覆盖 `canonical skill -> adapter payload（适配器载荷） -> deploy target -> verify/smoke（验证与冒烟测试）` 的最小主链路
+- 能覆盖 `canonical skill -> adapter payload（适配器载荷） -> deploy target -> verify / contract smoke（验证与合同冒烟）` 的最小主链路
 - 优先覆盖 supervisor、`RepoScope`（仓库作用域） 判断、`Worktrack`（工作追踪单元） 初始化与 dispatch，不提前进入验证、gate 判定、恢复与收尾
 - 依赖关系尽量短，避免 B1-B4 一开始就承接整棵 skill 树
 - 不把当前未稳定的 owner 模板、closeout（收尾） 流程或 recovery（恢复） 策略一起产品化
@@ -104,7 +104,7 @@ last_verified: 2026-04-18
 
 ## 五、首发停止边界
 
-当前 `agents` first-wave deploy / smoke 的最小合同链路止于 `dispatch-skills`，当前不把下面这些能力纳入已落地 deploy 闭环：
+当前 `agents` first-wave deploy / contract smoke 的最小合同链路止于 `dispatch-skills`，当前不把下面这些能力纳入已落地 deploy 闭环：
 
 - review evidence 汇总
 - test evidence 汇总
@@ -119,12 +119,13 @@ last_verified: 2026-04-18
 但这不应被误读为：
 
 - `Harness` 的 canonical protocol 本体只支持单回合停机
-- 现有 first-wave smoke 已经证明 autonomous continuation（自主连续推进）
+- 现有 first-wave contract smoke 已经证明 autonomous continuation（自主连续推进）
 - 现有 first-wave dispatch 已经证明 runtime-level `SubAgent` dispatch（子代理派发） 真正落地
 
 当前更准确的解释是：
 
-- 这批首发 deploy 只证明最小 skill contract、payload copy 和 bounded route 可读
+- 这批首发 deploy / contract smoke 只证明最小 skill contract、payload copy 和 bounded route 可读
+- 它不是 live runtime test，也不是 Harness acceptance test
 - 它没有完成 `stop/continue policy` 的 autonomy repair
 - 它也没有完成 `skill -> subagent dispatch shell` 的 runtime repair
 
@@ -180,7 +181,7 @@ last_verified: 2026-04-18
 - 禁止以 verify 迟早要做为由，提前把 gate / recover / closeout 链路纳入首发
 - 禁止以 `RepoScope` 未来可能使用为由，将 `goal-change-control`、`repo-refresh` 或 `schedule-worktrack` 一并产品化
 - 禁止把 `repo-whats-next-skill` 当前 canonical 可输出的全部动作，都默认视为首发必须处理的 deploy 分支
-- 禁止把 `dispatch-skills` 的 specialized-skill 全覆盖，当作首发 smoke 的必要条件
+- 禁止把 `dispatch-skills` 的 specialized-skill 全覆盖，当作首发 contract smoke 的必要条件
 
 ## 八、验收标准
 
@@ -190,4 +191,4 @@ last_verified: 2026-04-18
 - 首发外 skills 有明确的非目标边界，不再默认进入 B1-B4
 - 首发支持的 repo / worktrack / dispatch 分支子集是明确的，不会与 canonical 全量动作空间混淆
 - 后续实现文档和脚本可直接引用本页确定首发 skill 范围与支持子路径，无需重复讨论
-- `agents` 首发冒烟测试（smoke test） 只需证明这五个 skills 的最小可读、`enter-worktrack` / `hold-and-observe` 子集，以及 direct-dispatch + fallback 路径，不承担完整生命周期验证
+- `agents` 首发 contract smoke 只需证明这五个 skills 的最小可读、`enter-worktrack` / `hold-and-observe` 子集，以及 direct-dispatch + fallback 路径，不承担完整生命周期验证
