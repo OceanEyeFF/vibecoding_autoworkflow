@@ -22,6 +22,7 @@
 | 你要回答什么问题 | 先看哪里 | 说明 |
 |---|---|---|
 | 我要给当前 backend 做一次完整重装 | [deploy-runbook.md](./deploy-runbook.md) | Quick Start，只保留 `prune --all` / `check_paths_exist` / `install` 三步主流程，`verify` 作为辅助复验 |
+| 我想在临时 repo 里手动跑多轮 `Codex` harness 观察真实执行 | [codex-harness-manual-runbook.md](./codex-harness-manual-runbook.md) | 固定题目、临时 repo 初始化、隔离 deploy、逐轮监督与观察产物收集 |
 | 我想看 canonical source 到 target entry 的正式映射 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | 最小 deploy 合同，定义 canonical source / backend payload source / target / verify |
 | 我想看 `agents` canonical-copy payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | 定义 `product/harness/adapters/agents/skills/` 的 payload descriptor 结构，以及 target 如何复制 canonical skill 内容 |
 | 我想看首发实现阶段到底只承接哪些 skill 和分支子集 | [first-wave-skill-freeze.md](./first-wave-skill-freeze.md) | 前瞻性实现约束；回答首发纳入哪些 canonical skills 与可达分支子集 |
@@ -57,6 +58,8 @@
 
 ## 页面职责
 
+- [codex-harness-manual-runbook.md](./codex-harness-manual-runbook.md)
+  manual harness runbook。回答如何在临时 repo 中准备隔离运行面、连续调用无交互 `Codex`，并监督每轮真实执行内容。
 - [deploy-runbook.md](./deploy-runbook.md)
   quick start。回答 destructive reinstall 主流程和最小复验。
 - [skill-lifecycle.md](./skill-lifecycle.md)
