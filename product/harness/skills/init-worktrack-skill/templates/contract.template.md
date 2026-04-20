@@ -7,6 +7,8 @@
 - worktrack_id:
 - branch:
 - baseline_branch:
+- baseline_ref:
+- contract_status:
 - owner:
 - updated:
 
@@ -31,6 +33,10 @@
 - 
 
 ## Acceptance Criteria
+
+- 
+
+## Constraints
 
 - 
 

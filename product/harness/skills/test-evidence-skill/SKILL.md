@@ -9,7 +9,7 @@ description: Use this skill when Harness is in WorktrackScope and needs one boun
 
 Use this skill when `Harness` already has an active `Worktrack` and needs one bounded validation round to collect test evidence for the current change.
 
-This skill packages the minimum validation context for one `gpt-5.4-xhigh` `SubAgent`, maps checks to the current acceptance criteria and verification requirements, and returns a structured evidence report for later gate judgment.
+This skill packages the minimum validation context for one `gpt-5.4-xhigh` `SubAgent`, maps checks to the current acceptance criteria and verification requirements, and returns a structured validation lane envelope for later gate judgment.
 
 ## When To Use
 
@@ -29,12 +29,14 @@ Use this skill when the current question is not "what should we build next", but
    - which acceptance criteria are in scope
    - which verification requirements apply
    - which checks, commands, or existing results can satisfy them
-4. Collect or refresh bounded validation evidence only for this round:
+4. Classify whether existing validation evidence is `fresh`, `reused-fresh`, `mixed`, `stale`, or `unknown` before reusing it.
+5. Collect or refresh bounded validation evidence only for this round:
    - reuse fresh and trustworthy results when they already satisfy the requirement
    - run the exact missing checks when the requirement still lacks evidence
    - mark a requirement as blocked or uncovered when the needed evidence cannot be produced safely
-5. Produce one fixed-format `Validation Evidence Report`.
-6. Stop before review synthesis, gate judgment, recovery planning, or closeout.
+6. Apply validation triage so failing, blocked, or uncovered requirements stay explicit, while only narrow low-severity residue may be folded into `residual_risks`.
+7. Produce one fixed-format `Validation Evidence Report`.
+8. Stop before review synthesis, gate judgment, recovery planning, or closeout.
 
 ## Test Evidence Contract
 
@@ -42,6 +44,8 @@ Use the same bounded contract shape every time this skill runs.
 
 ### Test Evidence Task Brief
 
+- `lane_id`
+- `evidence_round`
 - `trigger`
 - `validation_goal`
 - `current_work_item`
@@ -54,6 +58,8 @@ Use the same bounded contract shape every time this skill runs.
 
 ### Test Evidence Info Packet
 
+- `input_artifacts`
+- `freshness`
 - `current_worktrack_state`
 - `relevant_change_summary`
 - `impacted_modules`
@@ -65,13 +71,25 @@ Use the same bounded contract shape every time this skill runs.
 
 ### Validation Evidence Report
 
+- `lane_id`
+- `evidence_round`
+- `input_artifacts`
+- `freshness`
+- `lane_verdict`
 - `subagent_model`
 - `validation_scope`
 - `acceptance_coverage`
 - `verification_results`
 - `checks_run_or_reused`
 - `evidence_artifacts`
+- `confidence`
+- `confidence_reason`
+- `residual_risks`
+- `low_severity_absorption_applied`
+- `low_severity_absorption_reason`
+- `upstream_constraint_signals`
 - `uncovered_or_blocked_items`
+- `ready_for_gate`
 - `open_issues`
 - `recommended_next_action`
 
@@ -84,6 +102,9 @@ Use the same bounded contract shape every time this skill runs.
 - Do not pass broad repo context when a bounded validation packet is sufficient.
 - Do not mutate `Harness Control State`, close the worktrack, or recommend merge directly from this skill.
 - Do not hide failing or flaky checks; include them in the returned evidence surface.
+- Do not reuse validation evidence whose freshness basis is not explicit.
+- Do not absorb failing checks, blocked requirements, or uncovered requirements into `residual_risks`.
+- Do not report high confidence when the result is dominated by flaky or environment-constrained evidence.
 
 ## Expected Output
 
@@ -92,15 +113,22 @@ When you use this skill, produce a `Validation Evidence Report` with at least th
 - `Validation Target`
 - `Acceptance Coverage`
 - `Verification Execution`
+- `Freshness And Reuse Basis`
 - `Evidence Collected`
 - `Uncovered Or Blocked Items`
+- `Confidence And Residual Risks`
 - `Return To Harness`
 
 Inside the result, include at least these fields or equivalents:
 
 - `subagent_model`
+- `lane_id`
+- `evidence_round`
 - `validation_goal`
 - `current_work_item`
+- `input_artifacts`
+- `freshness`
+- `lane_verdict`
 - `acceptance_criteria_checked`
 - `verification_requirements_checked`
 - `coverage_summary`
@@ -108,6 +136,12 @@ Inside the result, include at least these fields or equivalents:
 - `checks_reused`
 - `results_by_check`
 - `evidence_paths_or_commands`
+- `confidence`
+- `confidence_reason`
+- `residual_risks`
+- `low_severity_absorption_applied`
+- `low_severity_absorption_reason`
+- `upstream_constraint_signals`
 - `uncovered_requirements`
 - `blocked_requirements`
 - `open_issues`
@@ -117,4 +151,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Use the current `WorktrackScope` artifacts, acceptance criteria, verification requirements, and only the extra task-interface context required by the current validation round.
+Use the current `WorktrackScope` artifacts, acceptance criteria, verification requirements, freshness basis for reused evidence, and only the extra task-interface context required by the current validation round.

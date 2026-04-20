@@ -81,8 +81,19 @@ class AwScaffoldTest(unittest.TestCase):
         self.assertIn("- worktrack_id: wt-demo", contract_text)
         self.assertIn("- branch: feat/wt-demo", contract_text)
         self.assertIn("- baseline_branch: main", contract_text)
+        self.assertIn("- baseline_ref: main", contract_text)
+        self.assertIn("## Constraints", contract_text)
+        self.assertIn("## Verification Requirements", contract_text)
         self.assertIn("这是 `.aw/worktrack/contract.md` 的运行样例", contract_text)
         self.assertNotIn("这是 `.aw/worktrack/contract.md` 的模板来源", contract_text)
+
+        plan_text = (self.output_root / "worktrack" / "plan-task-queue.md").read_text(encoding="utf-8")
+        self.assertIn("- contract_ref: TODO(contract_ref)", plan_text)
+        self.assertIn("- queue_status: TODO(queue_status)", plan_text)
+        self.assertIn("- selected_next_action_id: TODO(selected_next_action_id)", plan_text)
+        self.assertIn("## Dispatch Handoff Packet", plan_text)
+        self.assertIn("- dispatch_packet_ready: TODO(dispatch_packet_ready)", plan_text)
+        self.assertIn("- recommended_next_route: TODO(recommended_next_route)", plan_text)
 
         control_state_text = (self.output_root / "control-state.md").read_text(encoding="utf-8")
         self.assertIn("- repo_snapshot: repo/snapshot-status.md", control_state_text)
@@ -129,7 +140,10 @@ class AwScaffoldTest(unittest.TestCase):
         rendered = (self.output_root / "worktrack" / "gate-evidence.md").read_text(encoding="utf-8")
         self.assertIn("- worktrack_id: TODO(worktrack_id)", rendered)
         self.assertIn("- gate_round: TODO(gate_round)", rendered)
-        self.assertIn("- pass: pending", rendered)
+        self.assertIn("- required_evidence_lanes: TODO(required_evidence_lanes)", rendered)
+        self.assertIn("- overall_confidence: TODO(overall_confidence)", rendered)
+        self.assertIn("- recommended_next_route: TODO(recommended_next_route)", rendered)
+        self.assertIn("- approval_required: TODO(approval_required)", rendered)
         self.assertIn("- why: TODO(why)", rendered)
 
     def test_generate_profile_ignores_preexisting_unselected_linked_artifacts(self) -> None:

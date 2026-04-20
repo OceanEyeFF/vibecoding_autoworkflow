@@ -1,9 +1,9 @@
 ---
 title: "Gate Evidence"
 status: active
-updated: 2026-04-15
+updated: 2026-04-20
 owner: aw-kernel
-last_verified: 2026-04-15
+last_verified: 2026-04-20
 ---
 # Gate Evidence
 
@@ -11,10 +11,9 @@ last_verified: 2026-04-15
 
 最少应包含：
 
-- 实际变更摘要
-- 检查结果
-- review verdict
-- 未解决问题
-- 是否通过 gate
-- 为什么通过或不通过
+- review / validation / policy 三类证据面
+- 每条证据面的 freshness 或缺失状态
+- 每条证据面的残余风险与上游约束信号
+- gate intake readiness
+- gate verdict
 - 后续动作

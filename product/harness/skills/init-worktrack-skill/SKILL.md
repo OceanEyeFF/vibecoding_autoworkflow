@@ -9,9 +9,9 @@ description: Use this skill when Harness is in WorktrackScope.initializing and n
 
 Use this skill when `Harness` has already decided to open or repair a specific `Worktrack` and now needs one bounded initialization round.
 
-This skill creates the bounded branch for the `Worktrack`, makes the baseline explicit, builds or refreshes the initial `Worktrack Contract`, seeds the first `Plan / Task Queue`, and prepares a minimal handoff packet for the next scheduling round and later execution routing.
+This skill creates the bounded branch for the `Worktrack`, makes the baseline explicit, builds or refreshes the initial `Worktrack Contract`, seeds the first `Plan / Task Queue`, and prepares a minimal scheduling handoff packet for the next bounded planning round.
 
-It does not perform implementation, verification, or gate judgment itself. Its job is to leave the worktrack ready for bounded scheduling, not to decide execution ownership by itself.
+It does not perform implementation, verification, or gate judgment itself. Its job is to leave the worktrack ready for bounded scheduling, not to decide execution ownership by itself or mint a new authoritative dispatch packet.
 
 ## When To Use
 
@@ -21,7 +21,7 @@ Use this skill when the current question is not "how should this task be execute
 - pin the current baseline branch or commit reference
 - translate the approved work item into a bounded `Worktrack Contract`
 - expand that contract into an initial `Plan / Task Queue`
-- package the minimum context the next scheduling or execution round will need
+- package the minimum context the next scheduling round will need
 - surface whether the next route is continuation-ready or blocked by a formal stop condition
 
 ## Workflow
@@ -34,11 +34,12 @@ Use this skill when the current question is not "how should this task be execute
 4. If that branch cannot be created safely, return a blocked initialization result instead of silently reusing another branch.
 5. Record the baseline reference that this `Worktrack` will compare against.
 6. Build or refresh one `Worktrack Contract`; when useful, keep the draft aligned with `templates/contract.template.md`.
-7. Seed one initial `Plan / Task Queue`.
-8. Produce one fixed-format `Worktrack Initialization Result`.
-9. If no formal stop condition is hit, hand off to `schedule-worktrack-skill` so the seeded queue is refreshed and one current next action is selected for this round.
-10. Only hand off directly to `dispatch-skills` when an already-valid current next action is explicitly present in the active queue and no additional scheduling judgment is required.
-11. If the next route is not continuation-ready, return a blocked or approval-gated initialization result instead of pretending execution started.
+7. Seed one initial `Plan / Task Queue` using explicit queue items instead of only free-form task prose.
+8. Produce one `Schedule Handoff Packet` that tells `schedule-worktrack-skill` what was seeded, what still needs scheduling judgment, and whether a compatible downstream packet already exists from a prior round.
+9. Produce one fixed-format `Worktrack Initialization Result`.
+10. If no formal stop condition is hit, hand off to `schedule-worktrack-skill` so the seeded queue is refreshed and one current next action is selected for this round.
+11. Only allow direct continuation toward `dispatch-skills` when an already-valid schedule-authored dispatch packet is explicitly present in the active queue state and no additional scheduling judgment is required.
+12. If the next route is not continuation-ready, return a blocked or approval-gated initialization result instead of pretending execution started.
 
 ## Hard Constraints
 
@@ -46,6 +47,8 @@ Use this skill when the current question is not "how should this task be execute
 - Do not treat branch setup alone as sufficient initialization; baseline, contract, and initial plan must also be explicit.
 - Do not treat reuse of an already-existing implementation branch as successful worktrack initialization.
 - Do not treat seeding an initial task list as equivalent to selecting the current next action for execution.
+- Do not create a new authoritative dispatch packet from this skill; produce schedule-facing seed output instead.
+- Do not treat `executor_handoff_packet` as a replacement for the scheduling handoff packet.
 - Do not guess branch, baseline, or scope when repo state is ambiguous; return a blocked initialization result instead.
 - Do not widen scope beyond the approved worktrack goal, non-goals, and current repo baseline.
 - Do not silently mutate `Harness Control State` without surfacing the intended next state and required approval.
@@ -61,11 +64,13 @@ When you use this skill, produce a `Worktrack Initialization Result` with at lea
 - `Branch and Baseline`
 - `Worktrack Contract`
 - `Initial Plan / Task Queue`
+- `Schedule Handoff Packet`
 - `Executor Handoff Packet`
 - `Stop And Return To Harness`
 
 Inside the result, include at least these fields or equivalents:
 
+- `worktrack_id`
 - `worktrack_identity`
 - `initialization_status`
 - `branch_action`
@@ -78,15 +83,25 @@ Inside the result, include at least these fields or equivalents:
 - `impact_modules`
 - `next_state`
 - `acceptance_criteria`
+- `constraints`
 - `rollback_conditions`
+- `initial_queue_items`
+- `queue_seed_status`
 - `initial_tasks`
 - `task_order`
 - `dependencies`
 - `current_blockers`
+- `schedule_handoff_mode`
+- `schedule_handoff_packet`
+- `next_action_provenance`
 - `next_action`
 - `verification_requirements`
 - `required_context`
 - `known_risks`
+- `recommended_next_route`
+- `approval_required`
+- `approval_scope`
+- `approval_reason`
 - `executor_handoff_packet`
 - `execution_not_started`
 - `continuation_ready`
@@ -96,4 +111,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Use the current `Harness Control State`, the active repo/worktrack artifacts, and `templates/contract.template.md` when you need a stable contract draft shape for initialization.
+Use the current `Harness Control State`, the active repo/worktrack artifacts, the current queue state when it already exists, and `templates/contract.template.md` when you need a stable contract draft shape for initialization.

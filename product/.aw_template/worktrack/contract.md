@@ -7,8 +7,10 @@
 - worktrack_id:
 - branch:
 - baseline_branch:
+- baseline_ref:
 - owner:
 - updated:
+- contract_status:
 
 ## Task Goal
 
@@ -31,6 +33,14 @@
 - 
 
 ## Acceptance Criteria
+
+- 
+
+## Constraints
+
+- 
+
+## Verification Requirements
 
 - 
 

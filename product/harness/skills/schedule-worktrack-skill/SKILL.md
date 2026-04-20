@@ -11,7 +11,7 @@ Use this skill when `Harness` already has an active `Worktrack` and needs one bo
 
 This skill re-evaluates the queue against the current `Worktrack Contract`, including the active acceptance criteria, blocker status, and available evidence, then selects one `current next action` or returns a clear `no safe next action` result.
 
-Inside `WorktrackScope`, this is the bounded planning round that turns the current task list into one dispatchable work item. `Harness` and `dispatch-skills` should consume that selection; they should not replace it.
+Inside `WorktrackScope`, this is the bounded planning round that turns the current task list into one dispatchable work item plus one bounded dispatch handoff packet. `Harness` and `dispatch-skills` should consume that packet; they should not replace it.
 
 This skill should keep planning traceable to the current acceptance criteria, but it does not collect validation evidence or issue any gate verdict about whether those criteria are already satisfied.
 
@@ -37,9 +37,10 @@ Use this skill when the current question is not "who should execute this task", 
    - defer or block items that are not ready
 4. Check whether the refreshed queue still maps cleanly to the current acceptance criteria; surface any planning-level coverage gap explicitly.
 5. Select one `current next action`, or return `no safe next action` with the blocking reason.
-6. Produce one fixed-format `Schedule Result`; when useful, keep the queue draft aligned with `templates/plan-task-queue.template.md`.
-7. If the selected route is dispatch-ready and no formal stop condition is hit, allow supervisor continuation into `dispatch-skills`.
-8. Otherwise return the scheduling result as the current stop boundary.
+6. If one `current next action` exists, package it into one bounded `Dispatch Handoff Packet` with the task brief, info packet, and explicit return-to-schedule conditions for this round.
+7. Produce one fixed-format `Schedule Result`; when useful, keep the queue draft aligned with `templates/plan-task-queue.template.md`.
+8. If the selected route is dispatch-ready and no formal stop condition is hit, allow supervisor continuation into `dispatch-skills`.
+9. Otherwise return the scheduling result as the current stop boundary.
 
 ## Scheduling Packet
 
@@ -61,6 +62,8 @@ If this skill is carried by a `gpt-5.4-xhigh` `SubAgent`, pass a bounded packet 
 - Do not widen scope beyond the current `Worktrack Contract`.
 - Do not execute the selected next action or dispatch downstream work from this skill.
 - Do not derive the dispatch task directly from repo goals or initialization notes when the current `Plan / Task Queue` has not yet selected a current next action.
+- Do not treat `selected_next_action` alone as proof that the work is dispatch-ready; the dispatch handoff packet must also be complete.
+- Do not let this skill choose the executor or specialized skill binding; that belongs to `dispatch-skills`.
 - Do not invent acceptance criteria, non-goals, or recovery policy.
 - Do not treat acceptance criteria as already validated or passed from this skill; use them only as planning constraints and coverage targets.
 - Do not mark a task done, ready, or unblocked without support from the current artifacts and evidence.
@@ -76,6 +79,7 @@ When you use this skill, produce a `Schedule Result` with at least these section
 - `Queue Refresh Decisions`
 - `Acceptance Alignment`
 - `Current Next Action`
+- `Dispatch Handoff Packet`
 - `Dispatch Or Escalation Readiness`
 - `Evidence Used`
 - `Open Issues`
@@ -84,6 +88,7 @@ When you use this skill, produce a `Schedule Result` with at least these section
 Inside the result, include at least these fields or equivalents:
 
 - `current_worktrack_state`
+- `queue_snapshot_after_refresh`
 - `queue_changes`
 - `ready_tasks`
 - `blocked_or_deferred_tasks`
@@ -91,11 +96,17 @@ Inside the result, include at least these fields or equivalents:
 - `criteria_addressed_now`
 - `criteria_remaining`
 - `acceptance_coverage_gaps`
+- `selected_next_action_id`
 - `selected_next_action`
 - `selection_reason`
 - `prerequisites_remaining`
+- `dispatch_task_brief_draft`
+- `dispatch_info_packet_draft`
+- `dispatch_packet_ready`
+- `return_to_schedule_if`
 - `dispatch_ready`
 - `required_context_for_next_round`
+- `recommended_next_route`
 - `evidence_used`
 - `open_issues`
 - `continuation_ready`
@@ -103,4 +114,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Use the current worktrack queue, contract, evidence delta, and `templates/plan-task-queue.template.md` when you need a stable queue draft shape for this round.
+Use the current worktrack queue, contract, evidence delta, any init-produced scheduling handoff packet, and `templates/plan-task-queue.template.md` when you need a stable queue draft shape for this round.

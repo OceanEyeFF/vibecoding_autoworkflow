@@ -12,8 +12,37 @@
 
 - gate_trigger:
 
+## Lane Intake Summary
+
+### Review Lane
+
+- input_ref:
+- freshness:
+- confidence:
+- missing_evidence:
+- low_severity_absorption_applied:
+
+### Test Lane
+
+- input_ref:
+- freshness:
+- confidence:
+- missing_evidence:
+- low_severity_absorption_applied:
+
+### Policy Lane
+
+- input_ref:
+- freshness:
+- confidence:
+- missing_evidence:
+- low_severity_absorption_applied:
+
 ## Evidence Assessment
 
+- overall_confidence:
+- overall_confidence_reason:
+- freshness_blockers:
 - decisive_evidence:
 - missing_or_conflicting_evidence:
 - residual_risks:
@@ -25,6 +54,7 @@
 - policy_gate:
 - overall_verdict:
 - low_severity_absorption_applied:
+- low_severity_absorption_reason:
 - upstream_route_required:
 - route_reason:
 
@@ -35,4 +65,7 @@
 ## Recommended Next Route
 
 - recommended_next_route:
+- approval_required:
+- approval_scope:
+- approval_reason:
 - needs_programmer_approval:

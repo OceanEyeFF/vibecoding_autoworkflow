@@ -1,21 +1,8 @@
-# Repo Priority Reframe Mode
+# Repo Priority Reframe Mode Appendix
 
-Use this note when `repo-whats-next-skill` needs a stronger repo-level priority judgment and the default "what's next" framing is still too loose.
+Use this appendix only when `repo-whats-next-skill` enters `priority reframe / contradiction analysis` mode. It is a bounded `RepoScope` deciding aid, not a separate skill.
 
-This is a bounded `RepoScope` analysis mode, not a separate skill.
-
-## Purpose
-
-Use this mode to:
-
-- separate facts from wishes
-- identify the current primary contradiction at repo level
-- identify the primary aspect of that contradiction
-- decide the top repo priority now
-- state what should not be done now
-- surface the minimum missing info before the next repo decision
-
-## When To Trigger This Mode
+## Trigger Matrix
 
 Trigger this mode only when at least one of these conditions holds:
 
@@ -25,9 +12,9 @@ Trigger this mode only when at least one of these conditions holds:
 - a worktrack just closed or stalled and the repo-level priority may need to be reframed
 - the repo may need to choose between `enter-worktrack`, `refresh-repo-state`, `goal-change-control`, or `hold-and-observe`
 
-Do not trigger this mode when the next move is already obvious from current evidence.
+If none of those conditions holds, stay in the default `next-direction` mode instead of expanding into contradiction analysis.
 
-## Minimum Inputs
+## Minimum Input Contract
 
 Collect only the minimum bounded repo packet:
 
@@ -39,37 +26,35 @@ Collect only the minimum bounded repo packet:
 
 If a key input is missing, say so explicitly instead of filling it in by imagination.
 
-## Required Output Shape
-
-When this mode is used, fold the result back into the normal `Repo Whats Next Decision` and make sure it contains:
-
-- `Facts`
-- `Inferences`
-- `Unknowns`
-- `Current Primary Contradiction`
-- `Primary Aspect`
-- `Top Priority Now`
-- `Do Not Do`
-- `Recommended Repo Action`
-- `Minimal Missing Info`
-
-## Judgment Rules
+## Compression Rules
 
 - facts first; do not promote assumptions into facts
 - only one current primary contradiction
 - only one top priority now
-- "do not do" must remove distraction, not pad the answer
+- `Do Not Do` must remove distraction, not pad the answer
 - if evidence is too weak, recommend `hold-and-observe` plus the minimum missing info
 - if a real goal change is needed, route to `goal-change-control`
 - if execution should start, recommend entering `WorktrackScope`; do not start execution here
+- do not output a long strategic report
 
-## Compression Rule
+## Output Mapping Back To Main Decision Contract
 
-Do not output a long strategic report.
+When this mode is used, fold the result back into the normal `Repo Whats Next Decision` and make sure it sets:
 
-Keep the analysis compressed enough that `Harness` can review it in one round and decide whether to:
-
-- approve the repo action
-- request missing info
-- switch scope
-- hold the current layer
+- `mode: priority-reframe`
+- `mode_trigger_reason`
+- `facts`
+- `inferences`
+- `unknowns`
+- `current_primary_contradiction`
+- `primary_aspect`
+- `top_priority_now`
+- `do_not_do`
+- `recommended_repo_action`
+- `recommended_next_route`
+- `continuation_ready`
+- `continuation_blockers`
+- `approval_required`
+- `approval_scope`
+- `approval_reason`
+- `minimal_missing_info`

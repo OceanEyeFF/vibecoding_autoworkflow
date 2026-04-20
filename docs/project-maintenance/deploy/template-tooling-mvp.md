@@ -1,9 +1,9 @@
 ---
 title: "Template Tooling MVP"
 status: active
-updated: 2026-04-19
+updated: 2026-04-20
 owner: aw-kernel
-last_verified: 2026-04-19
+last_verified: 2026-04-20
 ---
 # Template Tooling MVP
 
@@ -23,6 +23,12 @@ last_verified: 2026-04-19
 - 从 `product/.aw_template/` 读取源模板并生成 `.aw/` 运行样例文件
 - 给生成结果补充最小 provenance（来源追溯）frontmatter（来源头信息），并对未提供值的关键字段写入非空 placeholder（占位值）
 - 对源模板做最小结构校验，避免空字段、缺 section（章节） 或缺关键 keyed field（键值字段）
+
+当前 `.aw/` 样板与 canonical artifact contract 的最低对齐面至少包括：
+
+- `worktrack/contract.md` 要带上 `Constraints` 与 `Verification Requirements`
+- `worktrack/plan-task-queue.md` 要显式暴露 `selected_next_action_id` 与 dispatch handoff packet
+- `worktrack/gate-evidence.md` 要按 review / validation / policy lane 提供 freshness、confidence 与 route decision
 
 当前 B2 不承接：
 

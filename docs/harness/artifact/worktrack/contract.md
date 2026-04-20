@@ -1,9 +1,9 @@
 ---
 title: "Worktrack Contract"
 status: active
-updated: 2026-04-15
+updated: 2026-04-20
 owner: aw-kernel
-last_verified: 2026-04-15
+last_verified: 2026-04-20
 ---
 # Worktrack Contract
 
@@ -17,4 +17,6 @@ last_verified: 2026-04-15
 - 影响模块
 - 计划中的 next state
 - 验收条件
+- 约束条件
+- 验证要求
 - 回滚条件

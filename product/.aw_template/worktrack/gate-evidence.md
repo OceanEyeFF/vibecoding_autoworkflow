@@ -7,28 +7,64 @@
 - worktrack_id:
 - updated:
 - gate_round:
+- required_evidence_lanes:
 
-## Change Summary
+## Review Lane
 
-- 
+- input_ref:
+- freshness:
+- confidence:
+- missing_evidence:
+- residual_risks:
+- upstream_constraint_signals:
+- low_severity_absorption_applied:
+- ready_for_gate:
 
-## Check Results
+## Validation Lane
 
-- 
+- input_ref:
+- freshness:
+- confidence:
+- missing_evidence:
+- residual_risks:
+- upstream_constraint_signals:
+- low_severity_absorption_applied:
+- ready_for_gate:
 
-## Review Verdict
+## Policy Lane
 
-- 
+- input_ref:
+- freshness:
+- confidence:
+- missing_evidence:
+- residual_risks:
+- upstream_constraint_signals:
+- low_severity_absorption_applied:
+- ready_for_gate:
 
-## Unresolved Issues
+## Evidence Assessment
 
-- 
+- overall_confidence:
+- overall_confidence_reason:
+- freshness_blockers:
 
-## Gate Status
+## Per-Surface Verdicts
 
-- pass:
+- implementation_surface:
+- validation_surface:
+- policy_surface:
+- low_severity_absorption_reason:
+
+## Recommended Next Route
+
+- allowed_next_routes:
+- recommended_next_route:
+- approval_required:
+- approval_scope:
+- approval_reason:
+- needs_programmer_approval:
 - why:
 
-## Next Actions
+## Follow-up Actions
 
 - 

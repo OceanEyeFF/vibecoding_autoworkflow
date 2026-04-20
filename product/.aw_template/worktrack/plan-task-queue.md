@@ -7,6 +7,8 @@
 - worktrack_id:
 - updated:
 - current_phase:
+- contract_ref:
+- queue_status:
 
 ## Task List
 
@@ -28,7 +30,25 @@
 
 ## Current Next Action
 
-- 
+- selected_next_action_id:
+- selected_next_action:
+- selection_reason:
+
+## Dispatch Handoff Packet
+
+- task:
+- goal_for_this_round:
+- constraints_for_this_round:
+- acceptance_criteria_for_this_round:
+- verification_requirements:
+- done_signal:
+- required_context:
+- return_to_schedule_if:
+
+## Readiness
+
+- dispatch_packet_ready:
+- recommended_next_route:
 
 ## Notes
 

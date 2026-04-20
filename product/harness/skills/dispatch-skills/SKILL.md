@@ -9,7 +9,7 @@ description: Use this skill when Harness is in WorktrackScope and needs one boun
 
 Use this skill when `Harness` already has a current `Worktrack` action and needs to bind that action to the right execution carrier for one bounded round.
 
-This skill consumes one already-selected current work item, packages it as a bounded task together with its current acceptance boundary, selects the most appropriate specialized skill when one clearly fits, and falls back to a general task-completion execution carrier when no specialized skill is a clean match.
+This skill consumes one already-selected current work item plus the bounded dispatch handoff packet that `schedule-worktrack-skill` prepared for it, selects the most appropriate specialized skill when one clearly fits, and falls back to a general task-completion execution carrier when no specialized skill is a clean match.
 
 If the host runtime provides a real subagent dispatch shell, that fallback carrier may be a delegated `SubAgent`. If the host runtime does not provide one, the same bounded task/info contract must still be executed in the current carrier and explicitly reported as runtime fallback rather than fake subagent dispatch.
 
@@ -29,21 +29,23 @@ Use this skill when the current question is not "what is the next worktrack acti
 
 1. Load the minimum `WorktrackScope` artifacts needed to understand the current selected work item.
 2. Confirm that the current work item was already selected from the active `Plan / Task Queue`; if that selection does not exist, return to scheduling instead of inventing one here.
-3. Confirm that the current work item still has an explicit acceptance-boundary mapping from scheduling; if that mapping is missing, stale, or contradictory, return to scheduling instead of packaging blind execution.
-4. Build one `Dispatch Task Brief` and one `Dispatch Info Packet`.
-5. Check whether a specialized skill is a clear semantic fit for the current work item.
-6. If yes, dispatch via that specialized skill.
-7. If no, dispatch via a general task-completion carrier using the same bounded task/info contract.
-8. Record whether the round used:
+3. Confirm that a bounded dispatch handoff packet already exists for the current work item; if the packet is missing, stale, or contradictory, return to scheduling instead of packaging blind execution.
+4. Validate the packet before execution and record any contract gaps explicitly.
+5. Reuse the packet's `Dispatch Task Brief` and `Dispatch Info Packet` instead of rebuilding them from scratch.
+6. Check whether a specialized skill is a clear semantic fit for the current work item.
+7. If yes, dispatch via that specialized skill.
+8. If no, dispatch via a general task-completion carrier using the same bounded task/info contract.
+9. Record whether the round used:
    - delegated `SubAgent` dispatch
    - current-carrier runtime fallback
-9. Return one fixed-format `Dispatch Result`.
+10. Return one fixed-format `Dispatch Result`.
 
 ## Hard Constraints
 
 - Do not widen the work item beyond the current `Worktrack Contract` and `Plan / Task Queue`.
 - Do not choose, reorder, or invent the current next action inside this skill; consume the selected work item that planning already produced.
 - Do not detach the dispatched task from the acceptance criteria slice and acceptance-alignment result that scheduling already established.
+- Do not create a new authoritative `Dispatch Task Brief` or `Dispatch Info Packet` when the scheduling packet is missing; return to scheduling instead.
 - Do not treat "no specialized skill exists" as a blocked state by itself.
 - Do not pass full-repo context when a bounded info packet is sufficient.
 - Do not let the fallback execution carrier redefine acceptance criteria, non-goals, or verification requirements.
@@ -55,6 +57,7 @@ Use this skill when the current question is not "what is the next worktrack acti
 
 When you use this skill, produce a `Dispatch Result` with at least these sections:
 
+- `Handoff Validation`
 - `Dispatch Decision`
 - `Dispatch Task Brief`
 - `Dispatch Info Packet`
@@ -66,9 +69,14 @@ When you use this skill, produce a `Dispatch Result` with at least these section
 Inside the result, include at least these fields or equivalents:
 
 - `selected_executor`
+- `selected_executor_type`
 - `runtime_dispatch_mode`
 - `selection_reason`
 - `fallback_used`
+- `fallback_reason`
+- `handoff_packet_source`
+- `dispatch_packet_status`
+- `dispatch_contract_gaps`
 - `task`
 - `goal`
 - `in_scope`
@@ -83,8 +91,9 @@ Inside the result, include at least these fields or equivalents:
 - `files_touched_or_expected`
 - `evidence_collected`
 - `open_issues`
+- `return_route_if_not_dispatched`
 - `recommended_next_action`
 
 ## Resources
 
-Use the selected work item, scheduling output, and the bounded execution packet as the authority for this dispatch round.
+Use the selected work item, the scheduling output, and the schedule-authored bounded execution packet as the authority for this dispatch round.

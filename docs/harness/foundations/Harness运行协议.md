@@ -1,9 +1,9 @@
 ---
 title: Harness 运行协议
 status: draft
-updated: 2026-04-18
+updated: 2026-04-20
 owner: vibecoding
-last_verified: 2026-04-18
+last_verified: 2026-04-20
 ---
 
 # Harness 运行协议
@@ -160,6 +160,8 @@ last_verified: 2026-04-18
 - 影响模块
 - 计划中的 next state
 - 验收条件
+- 约束条件
+- 验证要求
 - 回滚条件
 
 ### 4. Plan / Task Queue
@@ -173,6 +175,8 @@ last_verified: 2026-04-18
 - 依赖关系
 - 当前阻塞
 - 当前下一动作
+- 当前下一动作的稳定标识
+- 当前 round 的 dispatch handoff packet
 - 验收条件与任务队列的对齐关系
 
 ### 5. Gate Evidence
@@ -181,11 +185,11 @@ last_verified: 2026-04-18
 
 最小字段：
 
-- 实际变更摘要
-- 检查结果
-- review verdict
-- 未解决问题
-- 是否通过 gate
+- review / validation / policy 三类证据面
+- 每条证据面的 freshness 或缺失状态
+- 每条证据面的残余风险与上游约束信号
+- 是否已经满足 gate intake
+- gate verdict 与 route decision
 - 为什么通过或不通过
 - 后续动作
 
@@ -276,6 +280,18 @@ last_verified: 2026-04-18
 - 不得把“没有专门 skill”本身当作 stop condition；命中这种情况时应优先转入 fallback execution carrier
 - 如果 stop 的根因只是 runtime dispatch shell 缺位，必须显式报告为 runtime gap，而不是伪装成已完成的 subagent 执行
 
+为了让 bounded rounds 可以被 supervisor 连续拼接，scope skills 在 handoff 时应优先显式给出：
+
+- `allowed_next_routes`
+- `recommended_next_route`
+- `continuation_ready`
+- `continuation_blockers`
+- `approval_required`
+- `approval_scope`
+- `approval_reason`
+
+在兼容迁移期内，runtime 或 backend 仍可镜像旧字段，例如 `recommended_next_action`、`needs_programmer_approval`、`approval_to_apply`；但这些旧字段应被视为兼容投影，而不是新的 authority source。
+
 ## 六、Function 与 Skill 的关系
 
 `Function` 是协议层的控制算子，`Skill` 是这些算子在 `Codex` 环境中的可执行实现。
@@ -304,6 +320,8 @@ last_verified: 2026-04-18
 
 也就是说，系统不应把“没有专门 skill”解释成“不能继续执行”；它只意味着本轮应退化到通用任务完成执行体。
 
+在当前 canonical worktrack chain 中，`schedule-worktrack-skill` 应当是 `current next action` 与 dispatch handoff packet 的唯一 authority。`init-worktrack-skill` 只负责种下 queue 和 schedule-facing handoff，`dispatch-skills` 只负责消费 schedule 已确认的 packet，而不是重新生成它。
+
 无论命中专门 skill 还是 fallback 到通用执行载体，`dispatch-skills` 都必须保持同一套最小 dispatch contract：
 
 - `Dispatch Task Brief`
@@ -326,6 +344,8 @@ last_verified: 2026-04-18
 - `Dispatch Result`
   - `selected_executor`
   - `runtime_dispatch_mode`
+  - `dispatch_packet_status`
+  - `dispatch_contract_gaps`
   - `actions_taken`
   - `files_touched_or_expected`
   - `evidence_collected`
@@ -336,6 +356,7 @@ last_verified: 2026-04-18
 
 - `Dispatch Task Brief` 是面向当前 round 的 bounded execution contract，不替代上游 `Task Contract`
 - `Dispatch Task Brief` 与 `Dispatch Info Packet` 必须保留当前任务对应的 acceptance boundary，而不是让执行载体自行猜测本轮在覆盖哪些验收条件
+- 当前 round 的 `Dispatch Task Brief` 与 `Dispatch Info Packet` 应优先由 `schedule-worktrack-skill` 产出并由 `dispatch-skills` 消费；若 packet 缺失，应返回 scheduling，而不是让 dispatch 侧重建权威合同
 - `Dispatch Info Packet` 只允许携带本轮必需上下文，不应退化成“把整个 repo 扔给 subagent”
 - fallback 到通用执行载体时，输入输出结构不得放宽；变化的只是执行载体，不是控制边界
 - `runtime_dispatch_mode` 必须显式区分“delegated subagent dispatch”和“current-carrier runtime fallback”

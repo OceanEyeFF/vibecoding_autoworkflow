@@ -11,6 +11,8 @@ Use this skill when `Harness` is already in `RepoScope` and needs one bounded ju
 
 This skill is a decision carrier for a `gpt-5.4-xhigh` `SubAgent`: it consumes a bounded repo context packet, evaluates the current repo baseline, and returns a recommendation to `Harness` without directly mutating `Harness Control State`.
 
+It realizes one bounded `RepoScope.deciding` round. Its job is to choose one repo action and then project that decision into one explicit continuation route, approval state, and blocker set that `Harness` can consume without reinterpreting the prose.
+
 This skill has one default decision path and one embedded `priority reframe / contradiction analysis` mode. That mode is part of this `RepoScope` skill. It is not a separate skill, not a `WorktrackScope` skill, and not a license to produce a long strategic report.
 
 This document is a canonical executable skeleton. It defines the bounded operating shape and output contract for the mode, but it does not claim that a fully automated planner or supervisor implementation already exists.
@@ -41,8 +43,8 @@ Do not use this skill as a substitute for worktrack planning or execution dispat
 ## Workflow
 
 1. Confirm this is a `RepoScope` decision round, not a `WorktrackScope` planning or execution round.
-2. Load the minimum repo artifacts and current control-state view needed for this decision round.
-3. Choose the operating mode:
+2. Load the minimum repo artifacts and current control-state view needed for this decision round, preferring the current `Repo Status Summary` when it already exists.
+3. Choose the operating mode and record the trigger reason:
    - default `next-direction` mode
    - `priority reframe / contradiction analysis` mode
 4. Build one bounded repo decision packet for the current `gpt-5.4-xhigh` reasoning round.
@@ -51,9 +53,17 @@ Do not use this skill as a substitute for worktrack planning or execution dispat
    - `refresh-repo-state`
    - `goal-change-control`
    - `hold-and-observe`
-6. Recommend exactly one repo action, explain why it is the top priority now, and state what should not be done now.
+6. Recommend exactly one repo action, explain why it is the top priority now, and project that decision into one explicit continuation route, blocker set, and approval state.
 7. Return one fixed-format `Repo Whats Next Decision` to `Harness`.
 8. If the selected route is already approved and no formal stop condition is hit, allow the supervisor to continue directly into the corresponding next scope.
+
+## Formal Stop Conditions
+
+Stop and return control when at least one of these conditions is true:
+
+- the evidence is too weak to support a decisive repo action, so the result must stay at `hold-and-observe`
+- the selected route crosses an authority boundary and therefore sets `approval_required: true`
+- no legal candidate route remains inside the allowed repo action set for this round
 
 ## Priority Reframe / Contradiction Analysis Mode
 
@@ -74,6 +84,7 @@ If evidence is too weak to support a decisive repo action, recommend `hold-and-o
 - Do not mutate `Harness Control State`.
 - Do not start, schedule, or execute a `WorktrackScope` round directly from this skill.
 - Do not rewrite repo goals inside this skill; route real goal changes to `goal change control`.
+- Do not collapse `recommended_repo_action` and `recommended_next_route` into one field; the former chooses the repo action, the latter tells supervisor how to continue.
 - Do not treat "one bounded repo judgment" as an instruction that the whole Harness loop must stop.
 - Do not dump full-repo context into the reasoning round when a bounded info packet is sufficient.
 - Do not treat the embedded contradiction analysis mode as a separate skill or a new layer in the skill tree.
@@ -87,6 +98,7 @@ If evidence is too weak to support a decisive repo action, recommend `hold-and-o
 When you use this skill, produce a `Repo Whats Next Decision` with at least these sections:
 
 - `Mode`
+- `Mode Trigger`
 - `Facts`
 - `Inferences`
 - `Unknowns`
@@ -95,12 +107,15 @@ When you use this skill, produce a `Repo Whats Next Decision` with at least thes
 - `Top Priority Now`
 - `Do Not Do`
 - `Recommended Repo Action`
+- `Route / Approval Decision`
 - `Minimal Missing Info`
 - `Return To Harness`
 
 Inside the result, include at least these fields or equivalents:
 
+- `current_phase`
 - `mode`
+- `mode_trigger_reason`
 - `facts`
 - `inferences`
 - `unknowns`
@@ -109,6 +124,8 @@ Inside the result, include at least these fields or equivalents:
 - `top_priority_now`
 - `do_not_do`
 - `recommended_repo_action`
+- `allowed_next_routes`
+- `recommended_next_route`
 - `recommended_next_scope`
 - `allowed_repo_actions`
 - `in_scope`
@@ -119,6 +136,10 @@ Inside the result, include at least these fields or equivalents:
 - `minimal_missing_info`
 - `control_state_change_requested`
 - `continuation_ready`
+- `continuation_blockers`
+- `approval_required`
+- `approval_scope`
+- `approval_reason`
 - `needs_programmer_approval`
 - `how_to_review`
 
@@ -126,4 +147,4 @@ If the default mode is enough and no full contradiction reframe is needed, keep 
 
 ## Resources
 
-Use the current `Harness Control State`, the repo-side `.aw/` artifacts, and, when needed, `references/priority-reframe-mode.md` as the bounded reference for contradiction analysis.
+Use the current `Harness Control State`, the current `Repo Status Summary`, and the repo-side `.aw/` artifacts as the primary inputs for this deciding round. Read `references/priority-reframe-mode.md` only when the current round actually enters `priority reframe / contradiction analysis` mode.
