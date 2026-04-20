@@ -3,10 +3,8 @@
   "backend": "agents",
   "skill_id": "dispatch-skills",
   "canonical_dir": "product/harness/skills/dispatch-skills",
-  "entrypoint": "references/entrypoints.md",
   "canonical_paths": [
-    "product/harness/skills/dispatch-skills/SKILL.md",
-    "product/harness/skills/dispatch-skills/references/entrypoints.md"
+    "product/harness/skills/dispatch-skills/SKILL.md"
   ],
   "target_dir": "dispatch-skills",
   "target_entry_name": "SKILL.md",
@@ -17,7 +15,6 @@
   "reference_distribution": "copy-listed-canonical-paths",
   "required_payload_files": [
     "SKILL.md",
-    "references/entrypoints.md",
     "payload.json",
     "aw.marker"
   ],

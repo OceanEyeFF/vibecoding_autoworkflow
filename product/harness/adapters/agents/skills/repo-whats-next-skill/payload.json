@@ -3,10 +3,8 @@
   "backend": "agents",
   "skill_id": "repo-whats-next-skill",
   "canonical_dir": "product/harness/skills/repo-whats-next-skill",
-  "entrypoint": "references/entrypoints.md",
   "canonical_paths": [
     "product/harness/skills/repo-whats-next-skill/SKILL.md",
-    "product/harness/skills/repo-whats-next-skill/references/entrypoints.md",
     "product/harness/skills/repo-whats-next-skill/references/priority-reframe-mode.md"
   ],
   "target_dir": "repo-whats-next-skill",
@@ -18,7 +16,6 @@
   "reference_distribution": "copy-listed-canonical-paths",
   "required_payload_files": [
     "SKILL.md",
-    "references/entrypoints.md",
     "references/priority-reframe-mode.md",
     "payload.json",
     "aw.marker"

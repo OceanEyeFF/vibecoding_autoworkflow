@@ -26,22 +26,21 @@ Use this skill when the task is not just "write code", but "run the current Harn
 
 ## Workflow
 
-1. Read `references/entrypoints.md`.
-2. Load the current `Harness Control State` and the minimum current-scope artifacts.
-3. Determine the active layer:
+1. Load the current `Harness Control State` and the minimum current-scope artifacts.
+2. Determine the active layer:
    - `RepoScope`
    - `WorktrackScope`
-4. If the active layer is `RepoScope`, run the repo-side judgment chain:
+3. If the active layer is `RepoScope`, run the repo-side judgment chain:
    - use `repo-status-skill` to refresh the bounded repo baseline state
    - use `repo-whats-next-skill` to decide the next repo action
    - continue into `WorktrackScope` only when that downstream judgment explicitly marks `enter-worktrack` as continuation-ready
-5. If the active layer is `WorktrackScope`, run the worktrack-side continuation chain:
+4. If the active layer is `WorktrackScope`, run the worktrack-side continuation chain:
    - use `init-worktrack-skill` when branch, baseline, contract, or initial queue still needs initialization or repair
    - use `schedule-worktrack-skill` to read the current `Plan / Task Queue`, refresh it for this round, and select one current next action
    - use `dispatch-skills` only after the current work item has already been selected from the worktrack queue and is continuation-ready
-6. Re-evaluate whether the next legal state transition can continue automatically.
-7. Continue until one formal stop condition is hit.
-8. Produce one fixed-format `Harness Turn Report`.
+5. Re-evaluate whether the next legal state transition can continue automatically.
+6. Continue until one formal stop condition is hit.
+7. Produce one fixed-format `Harness Turn Report`.
 
 ## Formal Stop Conditions
 
@@ -99,4 +98,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Read `references/entrypoints.md` first. It defines the minimum reading boundary for the current Harness round and tells you which artifacts to load for `RepoScope` and `WorktrackScope`.
+Use the current `Harness Control State`, the active `.aw/` artifacts, and bounded downstream skill outputs as the authority for this round.

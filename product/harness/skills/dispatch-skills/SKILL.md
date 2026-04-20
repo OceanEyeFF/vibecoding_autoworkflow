@@ -27,18 +27,17 @@ Use this skill when the current question is not "what is the next worktrack acti
 
 ## Workflow
 
-1. Read `references/entrypoints.md`.
-2. Load the minimum `WorktrackScope` artifacts needed to understand the current selected work item.
-3. Confirm that the current work item was already selected from the active `Plan / Task Queue`; if that selection does not exist, return to scheduling instead of inventing one here.
-4. Confirm that the current work item still has an explicit acceptance-boundary mapping from scheduling; if that mapping is missing, stale, or contradictory, return to scheduling instead of packaging blind execution.
-5. Build one `Dispatch Task Brief` and one `Dispatch Info Packet`.
-6. Check whether a specialized skill is a clear semantic fit for the current work item.
-7. If yes, dispatch via that specialized skill.
-8. If no, dispatch via a general task-completion carrier using the same bounded task/info contract.
-9. Record whether the round used:
+1. Load the minimum `WorktrackScope` artifacts needed to understand the current selected work item.
+2. Confirm that the current work item was already selected from the active `Plan / Task Queue`; if that selection does not exist, return to scheduling instead of inventing one here.
+3. Confirm that the current work item still has an explicit acceptance-boundary mapping from scheduling; if that mapping is missing, stale, or contradictory, return to scheduling instead of packaging blind execution.
+4. Build one `Dispatch Task Brief` and one `Dispatch Info Packet`.
+5. Check whether a specialized skill is a clear semantic fit for the current work item.
+6. If yes, dispatch via that specialized skill.
+7. If no, dispatch via a general task-completion carrier using the same bounded task/info contract.
+8. Record whether the round used:
    - delegated `SubAgent` dispatch
    - current-carrier runtime fallback
-10. Return one fixed-format `Dispatch Result`.
+9. Return one fixed-format `Dispatch Result`.
 
 ## Hard Constraints
 
@@ -88,4 +87,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Read `references/entrypoints.md` first. It defines the minimum reading boundary for one dispatch round and tells you when to pull in `Task Interface` or adjacent-system context.
+Use the selected work item, scheduling output, and the bounded execution packet as the authority for this dispatch round.

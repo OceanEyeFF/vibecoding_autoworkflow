@@ -1,9 +1,9 @@
 ---
 title: "Agents Adapter Source"
 status: active
-updated: 2026-04-19
+updated: 2026-04-20
 owner: aw-kernel
-last_verified: 2026-04-19
+last_verified: 2026-04-20
 ---
 # Agents Adapter Source
 
@@ -44,6 +44,7 @@ last_verified: 2026-04-19
 - `repo-status-skill`
 - `repo-whats-next-skill`
 - `init-worktrack-skill`
+- `schedule-worktrack-skill`
 - `dispatch-skills`
 
 canonical truth（权威源）仍在：
@@ -65,7 +66,6 @@ canonical truth（权威源）仍在：
 - `backend`
 - `skill_id`
 - `canonical_dir`
-- `entrypoint`
 - `canonical_paths`
 - `target_dir`
 - `target_entry_name`
@@ -139,6 +139,8 @@ canonical truth（权威源）仍在：
   - 只承接 `enter-worktrack` 与 `hold-and-observe` 两个动作
 - `init-worktrack-skill`
   - 只承接 branch、baseline、contract、initial queue 与 first handoff 五个概念域
+- `schedule-worktrack-skill`
+  - `full-skill`
 - `dispatch-skills`
   - 只承接 bounded dispatch contract 与 fallback / general-executor 路径
 
@@ -148,7 +150,7 @@ canonical truth（权威源）仍在：
 
 B3 完成后至少应满足：
 
-- `product/harness/adapters/agents/skills/<skill>/` 已对五个 first-wave skills 建立 payload source
+- `product/harness/adapters/agents/skills/<skill>/` 已对六个 first-wave skills 建立 payload source
 - 每个 payload 目录都能从 `payload.json` 直接追溯到 canonical source 与 target contract
 - `install --backend agents` 产出的 target skill 目录都包含完整 canonical skill copy，而不是 wrapper 快捷方式
 - 每个 `payload.json` 都能支持 destructive reinstall model 下的 install / verify 读取面

@@ -26,20 +26,19 @@ Use this skill when the current question is not "how should this task be execute
 
 ## Workflow
 
-1. Read `references/entrypoints.md`.
-2. Load the current `Harness Control State` and the minimum repo/worktrack artifacts needed for initialization.
-3. Determine whether this is:
+1. Load the current `Harness Control State` and the minimum repo/worktrack artifacts needed for initialization.
+2. Determine whether this is:
    - a new `Worktrack`
    - a resumed `Worktrack` whose branch, baseline, contract, or plan needs repair
-4. Create the bounded branch for this `Worktrack`.
-5. If that branch cannot be created safely, return a blocked initialization result instead of silently reusing another branch.
-6. Record the baseline reference that this `Worktrack` will compare against.
-7. Build or refresh one `Worktrack Contract`.
-8. Seed one initial `Plan / Task Queue`.
-9. Produce one fixed-format `Worktrack Initialization Result`.
-10. If no formal stop condition is hit, hand off to `schedule-worktrack-skill` so the seeded queue is refreshed and one current next action is selected for this round.
-11. Only hand off directly to `dispatch-skills` when an already-valid current next action is explicitly present in the active queue and no additional scheduling judgment is required.
-12. If the next route is not continuation-ready, return a blocked or approval-gated initialization result instead of pretending execution started.
+3. Create the bounded branch for this `Worktrack`.
+4. If that branch cannot be created safely, return a blocked initialization result instead of silently reusing another branch.
+5. Record the baseline reference that this `Worktrack` will compare against.
+6. Build or refresh one `Worktrack Contract`.
+7. Seed one initial `Plan / Task Queue`.
+8. Produce one fixed-format `Worktrack Initialization Result`.
+9. If no formal stop condition is hit, hand off to `schedule-worktrack-skill` so the seeded queue is refreshed and one current next action is selected for this round.
+10. Only hand off directly to `dispatch-skills` when an already-valid current next action is explicitly present in the active queue and no additional scheduling judgment is required.
+11. If the next route is not continuation-ready, return a blocked or approval-gated initialization result instead of pretending execution started.
 
 ## Hard Constraints
 
@@ -97,4 +96,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Read `references/entrypoints.md` first. It defines the minimum reading boundary for one bounded worktrack-initialization round and tells you when to pull `Repo` or adjacent-system context.
+Use the current `Harness Control State`, the active repo/worktrack artifacts, and the local worktrack template files as the bounded authority for initialization.

@@ -3,10 +3,8 @@
   "backend": "agents",
   "skill_id": "repo-status-skill",
   "canonical_dir": "product/harness/skills/repo-status-skill",
-  "entrypoint": "references/entrypoints.md",
   "canonical_paths": [
-    "product/harness/skills/repo-status-skill/SKILL.md",
-    "product/harness/skills/repo-status-skill/references/entrypoints.md"
+    "product/harness/skills/repo-status-skill/SKILL.md"
   ],
   "target_dir": "repo-status-skill",
   "target_entry_name": "SKILL.md",
@@ -17,7 +15,6 @@
   "reference_distribution": "copy-listed-canonical-paths",
   "required_payload_files": [
     "SKILL.md",
-    "references/entrypoints.md",
     "payload.json",
     "aw.marker"
   ],

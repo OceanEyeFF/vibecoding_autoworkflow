@@ -128,7 +128,7 @@ last_verified: 2026-04-19
 - 目标入口存在
 - 目标入口类型正确
 - 必需部署文件存在且可读
-- `canonical_dir`、`entrypoint`、`canonical_paths` 与 `target_dir` 都留在各自声明的相对根目录内
+- `canonical_dir`、`canonical_paths` 与 `target_dir` 都留在各自声明的相对根目录内
 - payload descriptor 的固定身份字段与当前 binding 一致，例如 `payload_version`、`backend`、`skill_id`
 - payload descriptor 自身字段与实际部署包一致
 - 复制 / 软链接策略与实际落点一致

@@ -22,13 +22,12 @@ Use this skill when the current question is not "what should we do next", but "w
 
 ## Workflow
 
-1. Read `references/entrypoints.md`.
-2. Confirm this is a `RepoScope` status-observation round, not worktrack dispatch, next-step decision, or direct execution.
-3. Load `Harness Control State`, `Repo Snapshot / Status`, and only the minimum additional artifacts required by the current question.
-4. If the canonical snapshot is missing, stale, or clearly insufficient, collect only the smallest sensor evidence needed to explain the gap.
-5. Summarize current repo baseline state, active branches, governance and freshness signals, and known risks.
-6. Return one fixed-format `Repo Status Summary` to `Harness`.
-7. If no formal stop condition is hit, allow the supervisor to continue directly into the next legal repo-level judgment.
+1. Confirm this is a `RepoScope` status-observation round, not worktrack dispatch, next-step decision, or direct execution.
+2. Load `Harness Control State`, `Repo Snapshot / Status`, and only the minimum additional artifacts required by the current question.
+3. If the canonical snapshot is missing, stale, or clearly insufficient, collect only the smallest sensor evidence needed to explain the gap.
+4. Summarize current repo baseline state, active branches, governance and freshness signals, and known risks.
+5. Return one fixed-format `Repo Status Summary` to `Harness`.
+6. If no formal stop condition is hit, allow the supervisor to continue directly into the next legal repo-level judgment.
 
 ## Hard Constraints
 
@@ -68,4 +67,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Read `references/entrypoints.md` first. It defines the minimum reading boundary for one `RepoScope` status round and the minimum context packet that should be handed to the `gpt-5.4-xhigh` `SubAgent`.
+Use the current `Harness Control State`, the repo snapshot artifacts, and the smallest bounded sensor evidence needed for this status round.

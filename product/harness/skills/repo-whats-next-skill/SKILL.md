@@ -40,21 +40,20 @@ Do not use this skill as a substitute for worktrack planning or execution dispat
 
 ## Workflow
 
-1. Read `references/entrypoints.md`.
-2. Confirm this is a `RepoScope` decision round, not a `WorktrackScope` planning or execution round.
-3. Load the minimum repo artifacts and current control-state view needed for this decision round.
-4. Choose the operating mode:
+1. Confirm this is a `RepoScope` decision round, not a `WorktrackScope` planning or execution round.
+2. Load the minimum repo artifacts and current control-state view needed for this decision round.
+3. Choose the operating mode:
    - default `next-direction` mode
    - `priority reframe / contradiction analysis` mode
-5. Build one bounded repo decision packet for the current `gpt-5.4-xhigh` reasoning round.
-6. Evaluate the allowed candidate repo actions:
+4. Build one bounded repo decision packet for the current `gpt-5.4-xhigh` reasoning round.
+5. Evaluate the allowed candidate repo actions:
    - `enter-worktrack`
    - `refresh-repo-state`
    - `goal-change-control`
    - `hold-and-observe`
-7. Recommend exactly one repo action, explain why it is the top priority now, and state what should not be done now.
-8. Return one fixed-format `Repo Whats Next Decision` to `Harness`.
-9. If the selected route is already approved and no formal stop condition is hit, allow the supervisor to continue directly into the corresponding next scope.
+6. Recommend exactly one repo action, explain why it is the top priority now, and state what should not be done now.
+7. Return one fixed-format `Repo Whats Next Decision` to `Harness`.
+8. If the selected route is already approved and no formal stop condition is hit, allow the supervisor to continue directly into the corresponding next scope.
 
 ## Priority Reframe / Contradiction Analysis Mode
 
@@ -127,4 +126,4 @@ If the default mode is enough and no full contradiction reframe is needed, keep 
 
 ## Resources
 
-Read `references/entrypoints.md` first. It defines the minimum repo-side reading boundary for one bounded `RepoScope` decision round, when to activate the embedded contradiction-analysis mode, and when to pull in goal-change, worktrack, or adjacent-system context.
+Use the current `Harness Control State`, the repo-side `.aw/` artifacts, and, when needed, `references/priority-reframe-mode.md` as the bounded reference for contradiction analysis.

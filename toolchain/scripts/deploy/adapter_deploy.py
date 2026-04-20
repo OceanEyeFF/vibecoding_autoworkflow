@@ -70,7 +70,6 @@ class CanonicalSourceMetadata:
     """Normalized canonical-source metadata derived from one payload descriptor."""
 
     canonical_dir: str
-    entrypoint: str
     included_paths: list[str]
     canonical_files_by_relative_path: dict[str, Path]
 
@@ -419,26 +418,18 @@ def payload_canonical_source_metadata(
 ) -> CanonicalSourceMetadata:
     canonical_dir_value = payload.get("canonical_dir")
     canonical_paths_value = string_list(payload.get("canonical_paths"))
-    entrypoint_value = payload.get("entrypoint")
 
     if (
         not isinstance(canonical_dir_value, str)
         or canonical_paths_value is None
-        or not isinstance(entrypoint_value, str)
     ):
         raise DeployError(
-            f"payload canonical_dir, canonical_paths, and entrypoint must be defined "
-            f"for skill {binding.skill_id}"
+            f"payload canonical_dir and canonical_paths must be defined for skill {binding.skill_id}"
         )
 
     normalized_canonical_dir = normalize_relative_repo_path(
         canonical_dir_value,
         field_name="payload canonical_dir",
-        skill_id=binding.skill_id,
-    )
-    normalized_entrypoint = normalize_relative_canonical_path(
-        entrypoint_value,
-        field_name="payload entrypoint",
         skill_id=binding.skill_id,
     )
     canonical_dir_path = PurePosixPath(normalized_canonical_dir)
@@ -474,15 +465,8 @@ def payload_canonical_source_metadata(
         included_paths.append(normalized_included_path)
         canonical_files_by_relative_path[normalized_included_path] = REPO_ROOT / normalized_canonical_path
 
-    if normalized_entrypoint not in canonical_files_by_relative_path:
-        raise DeployError(
-            f"payload entrypoint {entrypoint_value} must be listed in canonical_paths "
-            f"for skill {binding.skill_id}"
-        )
-
     return CanonicalSourceMetadata(
         canonical_dir=normalized_canonical_dir,
-        entrypoint=normalized_entrypoint,
         included_paths=included_paths,
         canonical_files_by_relative_path=canonical_files_by_relative_path,
     )
@@ -824,20 +808,6 @@ def verify_source_binding(binding: SkillBinding) -> list[VerifyIssue]:
                     ),
                 )
             )
-    if canonical_source is not None:
-        canonical_entrypoint = canonical_dir / canonical_source.entrypoint
-        if not canonical_entrypoint.is_file():
-            issues.append(
-                VerifyIssue(
-                    code="missing-canonical-source",
-                    path=canonical_entrypoint,
-                    detail=(
-                        f"missing canonical entrypoint {canonical_source.entrypoint} "
-                        f"for skill {binding.skill_id}"
-                    ),
-                )
-            )
-
     expected_payload_policy = EXPECTED_PAYLOAD_POLICIES[binding.backend]
     if payload.get("payload_policy") != expected_payload_policy:
         issues.append(

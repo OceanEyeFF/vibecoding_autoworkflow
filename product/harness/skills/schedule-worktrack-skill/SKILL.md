@@ -28,19 +28,18 @@ Use this skill when the current question is not "who should execute this task", 
 
 ## Workflow
 
-1. Read `references/entrypoints.md`.
-2. Load the minimum `WorktrackScope` artifacts for the current round.
-3. Build one bounded `Scheduling Packet` from the current contract, queue snapshot, evidence delta, and blocker state.
-4. Refresh the queue for this round only:
+1. Load the minimum `WorktrackScope` artifacts for the current round.
+2. Build one bounded `Scheduling Packet` from the current contract, queue snapshot, evidence delta, and blocker state.
+3. Refresh the queue for this round only:
    - keep ready items as-is
    - reorder tasks when dependencies or evidence require it
    - split a task if the current item is too wide to dispatch safely
    - defer or block items that are not ready
-5. Check whether the refreshed queue still maps cleanly to the current acceptance criteria; surface any planning-level coverage gap explicitly.
-6. Select one `current next action`, or return `no safe next action` with the blocking reason.
-7. Produce one fixed-format `Schedule Result`.
-8. If the selected route is dispatch-ready and no formal stop condition is hit, allow supervisor continuation into `dispatch-skills`.
-9. Otherwise return the scheduling result as the current stop boundary.
+4. Check whether the refreshed queue still maps cleanly to the current acceptance criteria; surface any planning-level coverage gap explicitly.
+5. Select one `current next action`, or return `no safe next action` with the blocking reason.
+6. Produce one fixed-format `Schedule Result`.
+7. If the selected route is dispatch-ready and no formal stop condition is hit, allow supervisor continuation into `dispatch-skills`.
+8. Otherwise return the scheduling result as the current stop boundary.
 
 ## Scheduling Packet
 
@@ -104,4 +103,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Read `references/entrypoints.md` first. It defines the minimum reading boundary for one bounded scheduling round and tells you when to pull in `Task Interface` or adjacent-system context.
+Use the current worktrack queue, contract, evidence delta, and local scheduling template files as the bounded authority for this round.

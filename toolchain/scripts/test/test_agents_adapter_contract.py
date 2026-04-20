@@ -24,6 +24,9 @@ EXPECTED_FIRST_WAVE_SKILLS = {
         "first_wave_scope_kind": "subset-by-a3-freeze",
         "supported_repo_actions": ["enter-worktrack", "hold-and-observe"],
     },
+    "schedule-worktrack-skill": {
+        "first_wave_scope_kind": "full-skill",
+    },
 }
 
 
@@ -70,7 +73,6 @@ class AgentsAdapterContractTest(unittest.TestCase):
             self.assertEqual(payload["backend"], "agents")
             self.assertEqual(payload["skill_id"], skill_id)
             self.assertEqual(payload["canonical_dir"], f"product/harness/skills/{skill_id}")
-            self.assertEqual(payload["entrypoint"], "references/entrypoints.md")
             self.assertEqual(payload["canonical_paths"], [f"{canonical_dir}/{path}" for path in included_paths])
             self.assertEqual(payload["target_dir"], skill_id)
             self.assertEqual(payload["target_entry_name"], "SKILL.md")
@@ -86,7 +88,6 @@ class AgentsAdapterContractTest(unittest.TestCase):
                 payload["first_wave_scope_kind"],
                 EXPECTED_FIRST_WAVE_SKILLS[skill_id]["first_wave_scope_kind"],
             )
-            self.assertIn(payload["entrypoint"], included_paths)
             self.assertEqual(Path(str(canonical_dir)).name, skill_id)
 
             expected_repo_actions = EXPECTED_FIRST_WAVE_SKILLS[skill_id].get("supported_repo_actions")

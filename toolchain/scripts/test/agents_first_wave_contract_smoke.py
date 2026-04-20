@@ -31,6 +31,7 @@ FIRST_WAVE_SKILL_ORDER = (
     "repo-status-skill",
     "repo-whats-next-skill",
     "init-worktrack-skill",
+    "schedule-worktrack-skill",
     "dispatch-skills",
 )
 
@@ -71,6 +72,16 @@ MINIMUM_PROTOCOL_FIELDS = {
         "executor_handoff_packet",
         "execution_not_started",
         "continuation_ready",
+    ),
+    "schedule-worktrack-skill": (
+        "current_worktrack_state",
+        "queue_changes",
+        "ready_tasks",
+        "blocked_or_deferred_tasks",
+        "selected_next_action",
+        "selection_reason",
+        "dispatch_ready",
+        "recommended_next_skill_or_route",
     ),
     "dispatch-skills": (
         "selected_executor",
@@ -385,7 +396,7 @@ def seed_aw_fixture(aw_root: Path) -> None:
     replace_section_bullet(
         goal_charter,
         "Success Criteria",
-        "One repo-local command proves harness, repo judgment, init, and dispatch continuity.",
+        "One repo-local command proves harness, repo judgment, init, schedule, and dispatch continuity.",
     )
     replace_section_bullet(
         goal_charter,
@@ -417,7 +428,7 @@ def seed_aw_fixture(aw_root: Path) -> None:
     replace_section_bullet(
         repo_snapshot,
         "Known Issues And Risks",
-        "dispatch contract smoke must prove fallback/general-executor behavior without requiring downstream specialized skills",
+        "schedule and dispatch contract smoke must prove queue selection plus fallback/general-executor behavior without requiring downstream specialized skills",
     )
 
 
@@ -475,12 +486,12 @@ def seed_worktrack_artifacts(aw_root: Path) -> None:
 
     replace_keyed_value(plan, "current_phase", "dispatch-ready")
     replace_checkbox(plan, 1, "Validate the installed first-wave skill copies and payload descriptors.")
-    replace_checkbox(plan, 2, "Package a bounded C2 work item for dispatch.")
-    replace_checkbox(plan, 3, "Return one dispatch result that proves the fallback-selection path without claiming real subagent execution.")
+    replace_checkbox(plan, 2, "Refresh the queue and select one bounded C2 work item.")
+    replace_checkbox(plan, 3, "Return one dispatch result for the selected work item without claiming real subagent execution.")
     replace_section_bullet(
         plan,
         "Execution Order Notes",
-        "The first two tasks stay inside C2; the third proves dispatch without entering implementation.",
+        "The first two tasks stay inside C2 planning; the third proves dispatch for the schedule-selected item without entering implementation.",
     )
     replace_section_bullet(
         plan,
@@ -495,12 +506,12 @@ def seed_worktrack_artifacts(aw_root: Path) -> None:
     replace_section_bullet(
         plan,
         "Current Next Action",
-        "prove the installed first-wave route and return a bounded dispatch result",
+        "TODO(select one current next action in schedule-worktrack-skill)",
     )
     replace_section_bullet(
         plan,
         "Notes",
-        "The plan is intentionally limited to one direct-dispatch path.",
+        "The plan is intentionally limited to one schedule-then-dispatch path.",
     )
 
 
@@ -640,8 +651,83 @@ def run_repo_whats_next_round(
 
 def run_init_worktrack_round(skill: InstalledSkill, aw_root: Path) -> dict[str, Any]:
     seed_worktrack_artifacts(aw_root)
+    output = {
+        "worktrack_identity": "wt-first-wave-contract-smoke",
+        "initialization_status": "ready-for-scheduling",
+        "branch_action": "reuse-existing-bounded-branch",
+        "branch_name_or_rule": "feature/agents-first-wave-contract-smoke",
+        "baseline_ref": "main",
+        "baseline_reason": "the contract smoke path compares first-wave behavior against the current mainline contract",
+        "goal": "Lock C2 with a repeatable agents first-wave contract smoke path.",
+        "in_scope": [
+            "installed skill-copy read-through",
+            "repo-to-worktrack transition",
+            "schedule selection continuity",
+            "dispatch fallback continuity",
+        ],
+        "out_of_scope": [
+            "C3 backends",
+            "full implementation lifecycle",
+            "specialized downstream skill coverage",
+        ],
+        "impact_modules": [
+            "toolchain/scripts/test",
+            "docs/project-maintenance/usage-help",
+        ],
+        "next_state": "WorktrackScope.scheduling via schedule-worktrack-skill",
+        "acceptance_criteria": [
+            "one command proves the installed first-wave route is readable and bounded through schedule then dispatch",
+        ],
+        "rollback_conditions": [
+            "remove the contract smoke harness if it starts redefining deploy or payload truth",
+        ],
+        "initial_tasks": [
+            "validate installed skill copies",
+            "seed one bounded scheduling queue",
+            "select one current next action",
+        ],
+        "task_order": [1, 2, 3],
+        "dependencies": [
+            "isolated agents install root",
+            "generated .aw fixture",
+        ],
+        "current_blockers": [],
+        "next_action": "refresh the worktrack queue and choose one current next action",
+        "verification_requirements": [
+            "agents_first_wave_contract_smoke.py must pass in one bounded route",
+        ],
+        "required_context": [
+            str(aw_root / "worktrack" / "contract.md"),
+            str(aw_root / "worktrack" / "plan-task-queue.md"),
+        ],
+        "known_risks": [
+            "mistaking readable payloads for full runtime execution",
+        ],
+        "executor_handoff_packet": {
+            "handoff_type": "schedule-worktrack",
+            "worktrack_contract": str(aw_root / "worktrack" / "contract.md"),
+            "plan_task_queue": str(aw_root / "worktrack" / "plan-task-queue.md"),
+            "verification_requirements": [
+                "agents_first_wave_contract_smoke.py must pass in one bounded route",
+            ],
+        },
+        "execution_not_started": True,
+        "continuation_ready": True,
+        "recommended_next_action": "schedule-worktrack-skill",
+        "needs_approval": False,
+        "approval_to_apply": "none",
+    }
+    validate_protocol_fields(skill, output)
+    return output
+
+
+def run_schedule_worktrack_round(
+    skill: InstalledSkill,
+    init_output: dict[str, Any],
+) -> dict[str, Any]:
+    selected_task = "package the selected bounded C2 work item and carry it into dispatch fallback"
     handoff_packet = {
-        "task": "prove the installed first-wave route and return a bounded dispatch result",
+        "task": selected_task,
         "goal": "Lock C2 with a repeatable agents first-wave contract smoke path.",
         "in_scope": [
             "installed skill-copy read-through",
@@ -655,62 +741,45 @@ def run_init_worktrack_round(skill: InstalledSkill, aw_root: Path) -> dict[str, 
         ],
         "constraints": [
             "do not mutate docs truth from the contract smoke fixture",
-            "do not widen beyond one direct-dispatch path",
+            "do not widen beyond one schedule-selected dispatch path",
         ],
-        "verification_requirements": [
-            "agents_first_wave_contract_smoke.py must pass in one bounded round",
-        ],
+        "verification_requirements": init_output["verification_requirements"],
         "done_signal": "return one dispatch result that preserves bounded scope and reports the runtime dispatch mode honestly",
-        "required_context": [
-            str(aw_root / "worktrack" / "contract.md"),
-            str(aw_root / "worktrack" / "plan-task-queue.md"),
-        ],
-        "known_risks": [
-            "mistaking readable payloads for full runtime execution",
-        ],
+        "required_context": init_output["required_context"],
+        "known_risks": init_output["known_risks"],
     }
     output = {
-        "worktrack_identity": "wt-first-wave-contract-smoke",
-        "initialization_status": "ready-for-dispatch",
-        "branch_action": "reuse-existing-bounded-branch",
-        "branch_name_or_rule": "feature/agents-first-wave-contract-smoke",
-        "baseline_ref": "main",
-        "baseline_reason": "the contract smoke path compares first-wave behavior against the current mainline contract",
-        "goal": handoff_packet["goal"],
-        "in_scope": handoff_packet["in_scope"],
-        "out_of_scope": handoff_packet["out_of_scope"],
-        "impact_modules": [
-            "toolchain/scripts/test",
-            "docs/project-maintenance/usage-help",
+        "current_worktrack_state": "queue refreshed from the seeded worktrack contract and ready for one bounded dispatch handoff",
+        "queue_changes": [
+            "kept the first validation task in the queue",
+            "selected one bounded C2 work item as the current next action",
+            "deferred the final dispatch proof to the next bounded execution carrier",
         ],
-        "next_state": "WorktrackScope.executing via dispatch-skills",
-        "acceptance_criteria": [
-            "one command proves the installed first-wave route is readable and bounded",
+        "ready_tasks": [
+            selected_task,
         ],
-        "rollback_conditions": [
-            "remove the contract smoke harness if it starts redefining deploy or payload truth",
+        "blocked_or_deferred_tasks": [],
+        "acceptance_criteria_considered": init_output["acceptance_criteria"],
+        "criteria_addressed_now": [
+            "installed agents payloads remain readable and the next action is now explicitly selected",
         ],
-        "initial_tasks": [
-            "validate installed skill copies",
-            "package bounded task brief",
-            "return dispatch result",
+        "criteria_remaining": [
+            "dispatch fallback still needs to return one bounded result",
         ],
-        "task_order": [1, 2, 3],
-        "dependencies": [
-            "isolated agents install root",
-            "generated .aw fixture",
+        "acceptance_coverage_gaps": [],
+        "selected_next_action": selected_task,
+        "selection_reason": "the queue now has enough bounded context to hand one work item to dispatch without widening scope",
+        "prerequisites_remaining": [],
+        "dispatch_ready": True,
+        "required_context_for_next_round": handoff_packet["required_context"],
+        "evidence_used": [
+            init_output["executor_handoff_packet"]["worktrack_contract"],
+            init_output["executor_handoff_packet"]["plan_task_queue"],
         ],
-        "current_blockers": [],
-        "next_action": handoff_packet["task"],
-        "verification_requirements": handoff_packet["verification_requirements"],
-        "required_context": handoff_packet["required_context"],
-        "known_risks": handoff_packet["known_risks"],
-        "executor_handoff_packet": handoff_packet,
-        "execution_not_started": True,
+        "open_issues": [],
         "continuation_ready": True,
-        "recommended_next_action": "dispatch-skills",
-        "needs_approval": False,
-        "approval_to_apply": "none",
+        "recommended_next_skill_or_route": "dispatch-skills",
+        "executor_handoff_packet": handoff_packet,
     }
     validate_protocol_fields(skill, output)
     return output
@@ -718,9 +787,9 @@ def run_init_worktrack_round(skill: InstalledSkill, aw_root: Path) -> dict[str, 
 
 def run_dispatch_round(
     skill: InstalledSkill,
-    init_output: dict[str, Any],
+    schedule_output: dict[str, Any],
 ) -> dict[str, Any]:
-    handoff_packet = init_output["executor_handoff_packet"]
+    handoff_packet = schedule_output["executor_handoff_packet"]
     output = {
         "selected_executor": "general-task-completion-executor",
         "runtime_dispatch_mode": "current-carrier-fallback",
@@ -783,7 +852,11 @@ def run_smoke(agents_root: Path, aw_root: Path) -> dict[str, Any]:
     )
     update_control_state_for_worktrack(aw_root)
     init_output = run_init_worktrack_round(installed_skills["init-worktrack-skill"], aw_root)
-    dispatch_output = run_dispatch_round(installed_skills["dispatch-skills"], init_output)
+    schedule_output = run_schedule_worktrack_round(
+        installed_skills["schedule-worktrack-skill"],
+        init_output,
+    )
+    dispatch_output = run_dispatch_round(installed_skills["dispatch-skills"], schedule_output)
 
     return {
         "passed": True,
@@ -830,6 +903,12 @@ def run_smoke(agents_root: Path, aw_root: Path) -> dict[str, Any]:
                 "continuation_ready": init_output["continuation_ready"],
             },
             {
+                "skill_id": "schedule-worktrack-skill",
+                "selected_next_action": schedule_output["selected_next_action"],
+                "dispatch_ready": schedule_output["dispatch_ready"],
+                "recommended_next_skill_or_route": schedule_output["recommended_next_skill_or_route"],
+            },
+            {
                 "skill_id": "dispatch-skills",
                 "selected_executor": dispatch_output["selected_executor"],
                 "runtime_dispatch_mode": dispatch_output["runtime_dispatch_mode"],
@@ -841,6 +920,7 @@ def run_smoke(agents_root: Path, aw_root: Path) -> dict[str, Any]:
             "repo-status-skill": repo_status_output,
             "repo-whats-next-skill": repo_whats_next_output,
             "init-worktrack-skill": init_output,
+            "schedule-worktrack-skill": schedule_output,
             "dispatch-skills": dispatch_output,
         },
     }
