@@ -26,23 +26,22 @@ Use this skill when the current question is not "should the worktrack pass the g
 
 ## Workflow
 
-1. Read `references/entrypoints.md`.
-2. Confirm this is a bounded `WorktrackScope.recovering` round, not initial planning, implementation dispatch, final gate judgment, or closeout.
-3. Load the minimum recovery artifacts for the current failure path.
-4. Build one `Recovery Choice Task Brief` and one `Recovery Choice Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
-5. Classify the current recovery trigger:
+1. Confirm this is a bounded `WorktrackScope.recovering` round, not initial planning, implementation dispatch, final gate judgment, or closeout.
+2. Load the minimum recovery artifacts for the current failure path.
+3. Build one `Recovery Choice Task Brief` and one `Recovery Choice Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
+4. Classify the current recovery trigger:
    - `soft-fail`
    - `hard-fail`
    - `blocked`
    - `baseline-drift`
-6. Evaluate the legal recovery choices:
+5. Evaluate the legal recovery choices:
    - `retry`
    - `rollback`
    - `split-worktrack`
    - `refresh-baseline`
-7. Select one primary recovery path and, if needed, one fallback recovery path.
-8. Return one fixed-format `Recovery Choice Result` plus one `Recovery Authority Handoff`.
-9. Stop before executing destructive rollback, opening new worktracks, or mutating repo truth.
+6. Select one primary recovery path and, if needed, one fallback recovery path.
+7. Return one fixed-format `Recovery Choice Result` plus one `Recovery Authority Handoff`.
+8. Stop before executing destructive rollback, opening new worktracks, or mutating repo truth.
 
 ## Recovery Choice Contract
 
@@ -148,4 +147,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Read `references/entrypoints.md` first. It defines the minimum reading boundary for one bounded worktrack-recovery round and the minimum context packet that should be handed to the `gpt-5.4-xhigh` `SubAgent`.
+Use the current failure-path evidence, `Worktrack Contract`, queue state, and only the extra repo or adjacent-system context required to choose a legal recovery operator.

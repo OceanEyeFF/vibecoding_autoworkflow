@@ -1,9 +1,9 @@
 ---
 title: "Harness Skill Catalog / RepoScope"
 status: draft
-updated: 2026-04-15
+updated: 2026-04-20
 owner: aw-kernel
-last_verified: 2026-04-15
+last_verified: 2026-04-20
 ---
 # RepoScope Skill Catalog
 
@@ -36,7 +36,6 @@ last_verified: 2026-04-15
 canonical executable source：
 
 - [../../../../product/harness/skills/repo-status-skill/SKILL.md](../../../../product/harness/skills/repo-status-skill/SKILL.md)
-- [../../../../product/harness/skills/repo-status-skill/references/entrypoints.md](../../../../product/harness/skills/repo-status-skill/references/entrypoints.md)
 
 当前状态：
 
@@ -60,7 +59,6 @@ canonical executable source：
 canonical executable source：
 
 - [../../../../product/harness/skills/repo-whats-next-skill/SKILL.md](../../../../product/harness/skills/repo-whats-next-skill/SKILL.md)
-- [../../../../product/harness/skills/repo-whats-next-skill/references/entrypoints.md](../../../../product/harness/skills/repo-whats-next-skill/references/entrypoints.md)
 
 当前状态：
 
@@ -81,7 +79,6 @@ canonical executable source：
 canonical executable source：
 
 - [../../../../product/harness/skills/goal-change-control-skill/SKILL.md](../../../../product/harness/skills/goal-change-control-skill/SKILL.md)
-- [../../../../product/harness/skills/goal-change-control-skill/references/entrypoints.md](../../../../product/harness/skills/goal-change-control-skill/references/entrypoints.md)
 
 当前状态：
 
@@ -102,7 +99,6 @@ canonical executable source：
 canonical executable source：
 
 - [../../../../product/harness/skills/repo-refresh-skill/SKILL.md](../../../../product/harness/skills/repo-refresh-skill/SKILL.md)
-- [../../../../product/harness/skills/repo-refresh-skill/references/entrypoints.md](../../../../product/harness/skills/repo-refresh-skill/references/entrypoints.md)
 
 当前状态：
 

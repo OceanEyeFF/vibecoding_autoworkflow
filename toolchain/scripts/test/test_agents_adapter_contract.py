@@ -7,6 +7,9 @@ from pathlib import Path, PurePosixPath
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ADAPTER_SKILLS_DIR = REPO_ROOT / "product" / "harness" / "adapters" / "agents" / "skills"
+FIRST_WAVE_FREEZE_DOC = (
+    REPO_ROOT / "docs" / "project-maintenance" / "deploy" / "first-wave-skill-freeze.md"
+)
 EXPECTED_FIRST_WAVE_SKILLS = {
     "dispatch-skills": {
         "first_wave_scope_kind": "subset-by-a3-freeze",
@@ -28,6 +31,14 @@ EXPECTED_FIRST_WAVE_SKILLS = {
         "first_wave_scope_kind": "full-skill",
     },
 }
+EXPECTED_FIRST_WAVE_SKILL_ORDER = [
+    "harness-skill",
+    "repo-status-skill",
+    "repo-whats-next-skill",
+    "init-worktrack-skill",
+    "schedule-worktrack-skill",
+    "dispatch-skills",
+]
 
 
 def load_json(path: Path) -> dict[str, object]:
@@ -46,6 +57,18 @@ def included_paths_from_payload(payload: dict[str, object]) -> list[str]:
         assert isinstance(canonical_path, str)
         included_paths.append(PurePosixPath(canonical_path).relative_to(canonical_dir_path).as_posix())
     return included_paths
+
+
+def extract_bullet_block(text: str, start_marker: str, end_marker: str) -> list[str]:
+    start = text.index(start_marker)
+    end = text.index(end_marker, start)
+    block = text[start:end]
+    lines = []
+    for raw_line in block.splitlines():
+        stripped = raw_line.strip()
+        if stripped.startswith("- `") and stripped.endswith("`"):
+            lines.append(stripped[len("- `") : -1])
+    return lines
 
 
 class AgentsAdapterContractTest(unittest.TestCase):
@@ -125,6 +148,23 @@ class AgentsAdapterContractTest(unittest.TestCase):
             {},
             f"duplicate target_dir bindings are not allowed: {duplicates}",
         )
+
+    def test_first_wave_freeze_doc_matches_live_skill_set(self) -> None:
+        text = FIRST_WAVE_FREEZE_DOC.read_text(encoding="utf-8")
+
+        in_scope = extract_bullet_block(
+            text,
+            "当前首发范围固定为以下六个 canonical skills",
+            "各自承担的最小角色如下：",
+        )
+        self.assertEqual(in_scope, EXPECTED_FIRST_WAVE_SKILL_ORDER)
+
+        out_of_scope = extract_bullet_block(
+            text,
+            "当前仓库里其余已存在的 canonical skills（规范 skill），全部不进入首发范围：",
+            "其中可按两类理解：",
+        )
+        self.assertNotIn("schedule-worktrack-skill", out_of_scope)
 
 
 if __name__ == "__main__":

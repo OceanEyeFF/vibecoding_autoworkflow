@@ -33,7 +33,7 @@ Use this skill when the current question is not "how should this task be execute
 3. Create the bounded branch for this `Worktrack`.
 4. If that branch cannot be created safely, return a blocked initialization result instead of silently reusing another branch.
 5. Record the baseline reference that this `Worktrack` will compare against.
-6. Build or refresh one `Worktrack Contract`.
+6. Build or refresh one `Worktrack Contract`; when useful, keep the draft aligned with `templates/contract.template.md`.
 7. Seed one initial `Plan / Task Queue`.
 8. Produce one fixed-format `Worktrack Initialization Result`.
 9. If no formal stop condition is hit, hand off to `schedule-worktrack-skill` so the seeded queue is refreshed and one current next action is selected for this round.
@@ -96,4 +96,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Use the current `Harness Control State`, the active repo/worktrack artifacts, and the local worktrack template files as the bounded authority for initialization.
+Use the current `Harness Control State`, the active repo/worktrack artifacts, and `templates/contract.template.md` when you need a stable contract draft shape for initialization.

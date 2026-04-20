@@ -105,38 +105,6 @@ THIN_WRAPPER_FORBIDDEN_HEADINGS = [
     "## Execution Rules",
     "## Output Contract",
 ]
-CANONICAL_ENTRYPOINT_REQUIRED_LINKS = {}
-CANONICAL_ENTRYPOINT_REQUIRED_PHRASES = {
-    "product/harness/skills/harness-skill/references/entrypoints.md": [
-        "Continue across legal state transitions",
-        "formal stop condition",
-        "continuation-ready",
-    ],
-    "product/harness/skills/init-worktrack-skill/references/entrypoints.md": [
-        "general execution carrier",
-        "continuation-ready",
-        "`schedule-worktrack-skill` or `dispatch-skills`",
-    ],
-    "product/harness/skills/dispatch-skills/references/entrypoints.md": [
-        "runtime_dispatch_mode",
-        "current-carrier",
-        "fallback execution carrier",
-    ],
-}
-CANONICAL_ENTRYPOINT_FORBIDDEN_PHRASES = {
-    "product/harness/skills/harness-skill/references/entrypoints.md": [
-        "Stop after one bounded Harness round",
-    ],
-    "product/harness/skills/init-worktrack-skill/references/entrypoints.md": [
-        "fallback `SubAgent`, but do not dispatch that executor from this skill",
-        "Stop once the `Worktrack` is ready for a later execution round.",
-    ],
-    "product/harness/skills/dispatch-skills/references/entrypoints.md": [
-        "Keep the fallback `SubAgent` on the same bounded task/info contract as a specialized skill would receive.",
-    ],
-}
-
-
 @dataclass
 class SemanticReport:
     failures: list[str] = field(default_factory=list)
@@ -171,12 +139,6 @@ def collect_repo_relative_markdown_links(repo_root: Path, relative_path: str) ->
         except ValueError:
             continue
     return resolved_targets
-
-
-def collect_repo_relative_code_paths(repo_root: Path, relative_path: str) -> set[str]:
-    text = (repo_root / relative_path).read_text(encoding="utf-8")
-    return {match.strip() for match in re.findall(r"`([^`]+)`", text) if match.strip()}
-
 
 
 def check_required_templates(repo_root: Path, report: SemanticReport) -> None:
@@ -278,17 +240,15 @@ def check_canonical_skill_packages_are_minimal(repo_root: Path, report: Semantic
                     f"canonical skill leaked adapter-style section {heading!r}: {relative_path}"
                 )
 
-        references_path = canonical_file.parent / "references/entrypoints.md"
-        if not references_path.exists():
+        if "references/entrypoints.md" in text:
             report.add_failure(
-                f"canonical skill missing references/entrypoints.md: {relative_path}"
+                f"canonical skill still references deprecated references/entrypoints.md: {relative_path}"
             )
-            continue
 
-        references_text = references_path.read_text(encoding="utf-8")
-        if "## Reading Policy" not in references_text:
+        references_path = canonical_file.parent / "references/entrypoints.md"
+        if references_path.exists():
             report.add_failure(
-                f"canonical skill references missing reading policy block: {relative_path}"
+                f"canonical skill still contains deprecated references/entrypoints.md file: {relative_path}"
             )
 
     report.add_info(f"checked {checked} canonical skill packages for minimal executable shape")
@@ -318,49 +278,6 @@ def check_adapter_wrappers_are_thin(repo_root: Path, report: SemanticReport) -> 
     report.add_info(f"checked {checked} adapter wrappers for thin-shell structure")
 
 
-def check_canonical_entrypoints_cover_required_formats(repo_root: Path, report: SemanticReport) -> None:
-    checked = 0
-    for relative_path, expected_targets in CANONICAL_ENTRYPOINT_REQUIRED_LINKS.items():
-        source = repo_root / relative_path
-        if not source.exists():
-            report.add_failure(f"missing canonical entrypoints document: {relative_path}")
-            continue
-        resolved_targets = collect_repo_relative_code_paths(repo_root, relative_path)
-        for target in expected_targets:
-            checked += 1
-            if target not in resolved_targets:
-                report.add_failure(
-                    f"canonical entrypoints missing required format link: {relative_path} -> {target}"
-                )
-    report.add_info(f"checked {checked} canonical entrypoint format links")
-
-
-def check_canonical_entrypoints_match_required_policy(repo_root: Path, report: SemanticReport) -> None:
-    checked = 0
-    for relative_path, expected_phrases in CANONICAL_ENTRYPOINT_REQUIRED_PHRASES.items():
-        source = repo_root / relative_path
-        if not source.exists():
-            report.add_failure(f"missing canonical entrypoints document: {relative_path}")
-            continue
-
-        text = source.read_text(encoding="utf-8")
-        for phrase in expected_phrases:
-            checked += 1
-            if phrase not in text:
-                report.add_failure(
-                    f"canonical entrypoints missing required policy phrase: {relative_path} -> {phrase}"
-                )
-
-        for phrase in CANONICAL_ENTRYPOINT_FORBIDDEN_PHRASES.get(relative_path, []):
-            checked += 1
-            if phrase in text:
-                report.add_failure(
-                    f"canonical entrypoints still contain stale policy phrase: {relative_path} -> {phrase}"
-                )
-
-    report.add_info(f"checked {checked} canonical entrypoint policy phrases")
-
-
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -370,8 +287,6 @@ def main() -> int:
     check_foundations_authority_shadows(repo_root, report)
     check_outdated_placeholder_phrases(repo_root, report)
     check_canonical_skill_packages_are_minimal(repo_root, report)
-    check_canonical_entrypoints_cover_required_formats(repo_root, report)
-    check_canonical_entrypoints_match_required_policy(repo_root, report)
     check_adapter_wrappers_are_thin(repo_root, report)
 
     payload = {

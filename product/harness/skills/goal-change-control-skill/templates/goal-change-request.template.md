@@ -1,6 +1,6 @@
-# Goal Change Request Template
+# Goal Change Control Report Template
 
-> 使用方式：在 Codex 对话中需要组织目标变更请求时，使用本模板整理回答。它不进入 `.aw/` 路径。
+> 使用方式：在 `goal-change-control-skill` 需要整理一轮 goal-level change-control 报告时，使用本模板组织输出。它不进入 `.aw/` 路径。
 
 ## Metadata
 
@@ -8,28 +8,31 @@
 - updated:
 - owner:
 
-## Change Reason
+## Goal Change Request
+
+- requested_change:
+- change_reason:
+
+## Goal Delta
 
 - 
 
 ## Impact Analysis
 
-- 
+- baseline_impact:
+- worktrack_impact:
+- invariants_at_risk:
+- evidence_or_gaps:
 
-## Impact On Existing Worktracks
+## Authority Boundary
 
-- 
+- approval_required:
+- approval_scope:
 
-## Requires Baseline Rebuild
+## Recommended Decision
 
-- yes_or_no:
-- why:
+- recommended_decision:
 
-## Dedicated Gate Verdict
+## Required Follow-up
 
-- status:
-- why:
-
-## Notes
-
-- 
+- required_follow_up:

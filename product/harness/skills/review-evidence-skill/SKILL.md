@@ -27,21 +27,20 @@ Use this skill when the current question is not "should the whole worktrack pass
 
 ## Workflow
 
-1. Read `references/entrypoints.md`.
-2. Confirm this is a bounded review-evidence round, not final gate adjudication, scheduling, or execution dispatch.
-3. Load the minimum `WorktrackScope` artifacts and current review inputs for the round.
-4. Build one `Review Evidence Task Brief` and one `Review Evidence Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
-5. Collect and synthesize the review lane only:
+1. Confirm this is a bounded review-evidence round, not final gate adjudication, scheduling, or execution dispatch.
+2. Load the minimum `WorktrackScope` artifacts and current review inputs for the round.
+3. Build one `Review Evidence Task Brief` and one `Review Evidence Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
+4. Collect and synthesize the review lane only:
    - diff and change-summary review signals
    - structural or architectural review signals
    - existing code-review comments or inline findings
    - static-review findings that matter to review quality
-6. Apply review triage before packaging the result:
+5. Apply review triage before packaging the result:
    - keep actionable findings focused on acceptance, verification credibility, contract integrity, recovery-path risk, or operator-facing semantic drift
    - keep low-severity residue as representative items plus `residual_risks`, not as an unbounded action queue
    - mark repeated or boundary-driven symptoms with `possible_upstream_constraint_issue`
-7. Normalize the result into one `Review Evidence Report` plus one `Gate Evidence Review Slice`.
-8. Stop before issuing the final gate verdict.
+6. Normalize the result into one `Review Evidence Report` plus one `Gate Evidence Review Slice`.
+7. Stop before issuing the final gate verdict.
 
 ## Review Triage Rules
 
@@ -136,4 +135,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Read `references/entrypoints.md` first. It defines the minimum reading boundary for one bounded review-evidence round and the minimum context packet that should be handed to the `gpt-5.4-xhigh` `SubAgent`.
+Use the bounded diff, current `Worktrack Contract`, current evidence surfaces, and only the extra adjacent-system context required for the review question.

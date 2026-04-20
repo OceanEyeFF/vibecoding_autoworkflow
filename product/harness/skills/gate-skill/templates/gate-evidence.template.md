@@ -1,6 +1,6 @@
-# Gate Evidence Template
+# Gate Report Template
 
-> 使用方式：在 `gate-skill` 需要整理当前 round 的 gate 证据草稿时，使用本模板组织输出。
+> 使用方式：在 `gate-skill` 需要整理当前 round 的 gate 报告时，使用本模板组织输出。
 
 ## Metadata
 
@@ -8,50 +8,31 @@
 - updated:
 - gate_round:
 
-## Change Summary
+## Gate Trigger
 
-- 
+- gate_trigger:
 
-## Check Results
+## Evidence Assessment
 
-- 
+- decisive_evidence:
+- missing_or_conflicting_evidence:
+- residual_risks:
 
-## Review Verdict
-
-- 
-
-## Low-Severity Absorption
-
-- applied:
-- representative_findings:
-- residual_only_items:
-
-## Unresolved Issues
-
-- 
-
-## Upstream Constraint Signals
-
-- 
-
-## Gate Status
+## Per-Surface Verdicts
 
 - implementation_gate:
 - validation_gate:
 - policy_gate:
 - overall_verdict:
+- low_severity_absorption_applied:
 - upstream_route_required:
-- why:
+- route_reason:
 
 ## Allowed Next Routes
 
 - 
 
-## Recommended Route
+## Recommended Next Route
 
-- route_reason:
-- 
-
-## Next Actions
-
-- 
+- recommended_next_route:
+- needs_programmer_approval:

@@ -25,23 +25,22 @@ Use this skill when the current question is not "what should we execute next", b
 
 ## Workflow
 
-1. Read `references/entrypoints.md`.
-2. Load the minimum `WorktrackScope` artifacts and current `Gate Evidence` for this round.
-3. Build one `Gate Task Brief` and one `Gate Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
-4. Evaluate the current round on three required surfaces:
+1. Load the minimum `WorktrackScope` artifacts and current `Gate Evidence` for this round.
+2. Build one `Gate Task Brief` and one `Gate Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
+3. Evaluate the current round on three required surfaces:
    - `implementation-gate`
    - `validation-gate`
    - `policy-gate`
-5. Apply gate adjudication rules before the overall verdict:
+4. Apply gate adjudication rules before the overall verdict:
    - absorb bounded low-severity `P2 / P3` residue into `residual_risks` unless it crosses the escalation fence
    - if evidence is flagged `possible_upstream_constraint_issue`, decide whether a pure code-fix route is no longer valid
-6. Determine the overall verdict:
+5. Determine the overall verdict:
    - `pass`
    - `soft-fail`
    - `hard-fail`
    - `blocked`
-7. Return one fixed-format `Gate Report` with decisive evidence, missing evidence, and allowed next routes.
-8. Stop before execution, recovery action, closeout, or repo refresh.
+6. Return one fixed-format `Gate Report` with decisive evidence, missing evidence, and allowed next routes; when useful, keep the result aligned with `templates/gate-evidence.template.md`.
+7. Stop before execution, recovery action, closeout, or repo refresh.
 
 ## Gate Adjudication Rules
 
@@ -144,4 +143,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Read `references/entrypoints.md` first. It defines the minimum reading boundary for one bounded gate adjudication round and tells you when to pull in `Task Interface` or adjacent-system context.
+Use the current round's `Gate Evidence`, `Worktrack Contract`, and `templates/gate-evidence.template.md` when you need a stable gate-report draft shape for this round.

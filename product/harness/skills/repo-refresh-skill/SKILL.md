@@ -23,15 +23,14 @@ Use this skill when the current question is not "how do we finish the worktrack"
 
 ## Workflow
 
-1. Read `references/entrypoints.md`.
-2. Load the minimum `RepoScope` artifacts plus the just-closed worktrack's verified `Gate Evidence`.
-3. Build one `Repo Refresh Task Brief` and one `Repo Refresh Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
-4. Refresh the repo-level assessment against `Repo Goal / Charter`, current `Repo Snapshot / Status`, and the verified closeout evidence.
-5. Separate items into:
+1. Load the minimum `RepoScope` artifacts plus the just-closed worktrack's verified `Gate Evidence`.
+2. Build one `Repo Refresh Task Brief` and one `Repo Refresh Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
+3. Refresh the repo-level assessment against `Repo Goal / Charter`, current `Repo Snapshot / Status`, and the verified closeout evidence.
+4. Separate items into:
    - verified writeback candidates
    - deferred or still-unverified items
    - repo-level risks that remain open after closeout
-6. Stop after one bounded repo refresh round and return one fixed-format `Repo Refresh Report` plus one `Verified Writeback Handoff`.
+5. Stop after one bounded repo refresh round and return one fixed-format `Repo Refresh Report` plus one `Verified Writeback Handoff`.
 
 ## Hard Constraints
 
@@ -108,4 +107,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Read `references/entrypoints.md` first. It defines the minimum reading boundary for one post-closeout repo refresh round and tells you when to pull in additional repo-control context.
+Use the just-closed worktrack's verified `Gate Evidence`, current repo-control artifacts, and only the extra repo context needed for post-closeout refresh.

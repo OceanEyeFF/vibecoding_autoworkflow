@@ -1,9 +1,9 @@
 ---
 title: "First-Wave Skill Freeze"
 status: active
-updated: 2026-04-19
+updated: 2026-04-20
 owner: aw-kernel
-last_verified: 2026-04-19
+last_verified: 2026-04-20
 ---
 # First-Wave Skill Freeze
 
@@ -49,12 +49,13 @@ last_verified: 2026-04-19
 
 ## 三、首发 skill 子集
 
-当前首发范围固定为以下五个 canonical skills（规范 skill）：
+当前首发范围固定为以下六个 canonical skills（规范 skill）：
 
 - `harness-skill`
 - `repo-status-skill`
 - `repo-whats-next-skill`
 - `init-worktrack-skill`
+- `schedule-worktrack-skill`
 - `dispatch-skills`
 
 各自承担的最小角色如下：
@@ -70,7 +71,10 @@ last_verified: 2026-04-19
   - 在首发里只产品化 `enter-worktrack` 与 `hold-and-observe` 两条输出分支
 - `init-worktrack-skill`
   - 建立 branch、baseline、`Worktrack Contract`（工作追踪契约） 与初始 `Plan / Task Queue`（计划与任务队列）
-  - 在首发里只覆盖“初始化后首个任务可直接 dispatch”的最小场景，不承接队列重排
+  - 在首发里只覆盖“初始化后把 worktrack 种下并交给调度”的最小场景，不承接验证、gate、恢复与收尾
+- `schedule-worktrack-skill`
+  - 在 `WorktrackScope` 内刷新当前 `Plan / Task Queue`
+  - 选出一个 `current next action`，并形成交给 `dispatch-skills` 的最小 handoff
 - `dispatch-skills`
   - 把当前 work item 绑定到 execution carrier（执行载体）
   - 在首发里只要求证明 fallback / general executor（通用执行器） 路径，不要求同步产品化下游 specialized skill（专用 skill） 包装
@@ -89,10 +93,17 @@ last_verified: 2026-04-19
 - `init-worktrack-skill`
   - 首发必须承接：
     - branch / baseline / contract / initial queue 的建立
-    - 一个可直接交给 `dispatch-skills` 的首任务 handoff
+    - 一个可继续进入 `schedule-worktrack-skill` 的最小初始化结果
   - 首发明确不承接：
-    - 初始化后的队列重排
-    - 基于新证据重新选择 current next action
+    - 初始化后的验证、gate、恢复或 closeout 路径
+- `schedule-worktrack-skill`
+  - 首发必须承接：
+    - 从当前 `Plan / Task Queue` 中刷新队列状态
+    - 选出一个 `current next action`
+    - 为 `dispatch-skills` 形成最小 handoff
+  - 首发明确不承接：
+    - 基于验证 / gate / recovery 证据重建整个 worktrack 策略
+    - 多轮 autonomous continuation 的完整证明
 - `dispatch-skills`
   - 首发必须承接：
     - bounded dispatch contract 的组装
@@ -112,9 +123,8 @@ last_verified: 2026-04-19
 - gate adjudication（门槛裁决/准入判定）
 - recovery choice（恢复策略选择）
 - closeout（收尾） / merge（合并） / cleanup（清理） / repo refresh（仓库刷新）
-- `schedule-worktrack-skill` 驱动的队列刷新与 current-next-action 重选
 
-这意味着当前首发 deploy 目标不是“完整 Worktrack 生命周期产品化”，而是“先把最小 supervisor -> repo judgment（仓库判断） -> worktrack init -> direct-dispatch 主链路产品化”。
+这意味着当前首发 deploy 目标不是“完整 Worktrack 生命周期产品化”，而是“先把最小 supervisor -> repo judgment（仓库判断） -> worktrack init -> schedule -> dispatch 主链路产品化”。
 
 但这不应被误读为：
 
@@ -136,7 +146,6 @@ last_verified: 2026-04-19
 
 - `goal-change-control-skill`
 - `repo-refresh-skill`
-- `schedule-worktrack-skill`
 - `review-evidence-skill`
 - `test-evidence-skill`
 - `rule-check-skill`
@@ -156,31 +165,23 @@ last_verified: 2026-04-19
 - 当前先不纳入首发产品化面的补充性 `RepoScope`（仓库作用域） / `WorktrackScope`（工作追踪作用域） 能力：
   - `goal-change-control-skill`
   - `repo-refresh-skill`
-  - `schedule-worktrack-skill`
 
 这些 skill 仍保留为 canonical source（规范来源），但在当前首发实现闭环中不应被视为必须同时落地的对象。
-
-其中 `schedule-worktrack-skill` 需要单独说明：
-
-- canonical workflow 仍然保留“schedule 后再 dispatch”的完整边界
-- 首发只是先收窄为“`init-worktrack-skill` 种下的首任务可直接 dispatch”的特例
-- 这不构成对 `schedule-worktrack-skill` canonical 角色的删除或改写
-- 如果后续要把 Harness 修到“默认连续推进，只在 formal stop condition 停下”，则 `schedule-worktrack-skill` 需要回到 autonomy repair 的主链上，而不能长期停留在 deploy 外
 
 ## 七、对后续任务包的约束
 
 本冻结对后续任务包施加以下约束：
 
-- payload contract 只需要为上述五个首发 skills 提供最小自描述读取面
+- payload contract 只需要为上述六个首发 skills 提供最小自描述读取面
 - 模板初始化只需要支持首发链路真正需要的最小模板初始化，不为全 skill 树做通用 orchestrator（编排器）
-- `agents` payload 只需要为这五个 skills 准备可追踪 payload，并覆盖 `dispatch-skills` 的 fallback / general executor 路径
+- `agents` payload 只需要为这六个 skills 准备可追踪 payload，并覆盖 `dispatch-skills` 的 fallback / general executor 路径
 - deploy / verify 只需要让 `prune --all`、`check_paths_exist`、`install --backend agents` 与 `verify` 能处理首发 skill 子集与上述支持分支，不为暂缓 skill 预留复杂分支
 
 禁止的范围扩大方式：
 
 - 禁止因目录已存在 skeleton（骨架/雏形） 而将全部 skills 一次性纳入首发 payload contract
 - 禁止以 verify 迟早要做为由，提前把 gate / recover / closeout 链路纳入首发
-- 禁止以 `RepoScope` 未来可能使用为由，将 `goal-change-control`、`repo-refresh` 或 `schedule-worktrack` 一并产品化
+- 禁止以 `RepoScope` 未来可能使用为由，将 `goal-change-control` 或 `repo-refresh` 一并产品化
 - 禁止把 `repo-whats-next-skill` 当前 canonical 可输出的全部动作，都默认视为首发必须处理的 deploy 分支
 - 禁止把 `dispatch-skills` 的 specialized-skill 全覆盖，当作首发 contract smoke 的必要条件
 
@@ -192,4 +193,4 @@ last_verified: 2026-04-19
 - 首发外 skills 有明确的非目标边界，不再默认进入当前首发实现闭环
 - 首发支持的 repo / worktrack / dispatch 分支子集是明确的，不会与 canonical 全量动作空间混淆
 - 后续实现文档和脚本可直接引用本页确定首发 skill 范围与支持子路径，无需重复讨论
-- `agents` 首发 contract smoke 只需证明这五个 skills 的最小可读、`enter-worktrack` / `hold-and-observe` 子集，以及 direct-dispatch + fallback 路径，不承担完整生命周期验证
+- `agents` 首发 contract smoke 只需证明这六个 skills 的最小可读、`enter-worktrack` / `hold-and-observe` 子集，以及 schedule + dispatch fallback 路径，不承担完整生命周期验证

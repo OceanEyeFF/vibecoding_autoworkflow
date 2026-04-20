@@ -37,7 +37,7 @@ Use this skill when the current question is not "who should execute this task", 
    - defer or block items that are not ready
 4. Check whether the refreshed queue still maps cleanly to the current acceptance criteria; surface any planning-level coverage gap explicitly.
 5. Select one `current next action`, or return `no safe next action` with the blocking reason.
-6. Produce one fixed-format `Schedule Result`.
+6. Produce one fixed-format `Schedule Result`; when useful, keep the queue draft aligned with `templates/plan-task-queue.template.md`.
 7. If the selected route is dispatch-ready and no formal stop condition is hit, allow supervisor continuation into `dispatch-skills`.
 8. Otherwise return the scheduling result as the current stop boundary.
 
@@ -103,4 +103,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Use the current worktrack queue, contract, evidence delta, and local scheduling template files as the bounded authority for this round.
+Use the current worktrack queue, contract, evidence delta, and `templates/plan-task-queue.template.md` when you need a stable queue draft shape for this round.

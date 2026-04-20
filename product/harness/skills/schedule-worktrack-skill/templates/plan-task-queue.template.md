@@ -30,6 +30,13 @@
 
 - 
 
+## Readiness
+
+- dispatch_ready:
+- continuation_ready:
+- recommended_next_skill_or_route:
+- no_safe_next_action_reason:
+
 ## Acceptance Alignment
 
 - acceptance criteria addressed now:

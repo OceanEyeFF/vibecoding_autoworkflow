@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 治理入口"
 status: active
-updated: 2026-04-19
+updated: 2026-04-20
 owner: aw-kernel
-last_verified: 2026-04-19
+last_verified: 2026-04-20
 ---
 # Review / Verify 治理入口
 
@@ -57,7 +57,7 @@ last_verified: 2026-04-19
 - 如果改了 deploy / adapter 行为，是否同步对应 `docs/project-maintenance/deploy/` runbook、maintenance 与 usage-help，并确保文档口径仍是 destructive reinstall model
 - 如果改了 `docs/harness/`、`product/harness/skills/*/` 或 `product/harness/adapters/*/skills/*/`，是否仍保持合同层与 executable layer 分工
 - 如果改了 adjacent-system 文档，是否同步清理已经删除的 `product/memory-side/`、`product/task-interface/` 和 `docs/deployable-skills/` 旧路径引用
-- 如果改了 `product/*/skills/*/SKILL.md`，是否保持最小 executable body + `references/entrypoints.md`，而没有吸收 repo-local execution template 内容
+- 如果改了 `product/*/skills/*/SKILL.md`，是否仍保持最小 executable body；若出现对已退役 `references/entrypoints.md` 的引用或文件回流，是否同步清理并更新对应治理检查与引用口径
 - 如果改了 `product/.aw_template/`，是否仍只承接 `.aw/` scaffold 模板或受控待迁移模板，而没有长出 canonical truth、backend wrapper 或运行状态
 - 如果改了 `docs/harness/workflow-families/`，是否仍明确它承接的是文档真相层；若链接 `product/harness/`，也只能把它当作下游 executable root，而不是 ontology 上游
 

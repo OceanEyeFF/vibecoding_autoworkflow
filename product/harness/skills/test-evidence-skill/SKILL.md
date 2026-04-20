@@ -23,19 +23,18 @@ Use this skill when the current question is not "what should we build next", but
 
 ## Workflow
 
-1. Read `references/entrypoints.md`.
-2. Load the minimum `WorktrackScope` artifacts for the current validation round.
-3. Build one `Test Evidence Task Brief` and one `Test Evidence Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
-4. Build a validation mapping for this round:
+1. Load the minimum `WorktrackScope` artifacts for the current validation round.
+2. Build one `Test Evidence Task Brief` and one `Test Evidence Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
+3. Build a validation mapping for this round:
    - which acceptance criteria are in scope
    - which verification requirements apply
    - which checks, commands, or existing results can satisfy them
-5. Collect or refresh bounded validation evidence only for this round:
+4. Collect or refresh bounded validation evidence only for this round:
    - reuse fresh and trustworthy results when they already satisfy the requirement
    - run the exact missing checks when the requirement still lacks evidence
    - mark a requirement as blocked or uncovered when the needed evidence cannot be produced safely
-6. Produce one fixed-format `Validation Evidence Report`.
-7. Stop before review synthesis, gate judgment, recovery planning, or closeout.
+5. Produce one fixed-format `Validation Evidence Report`.
+6. Stop before review synthesis, gate judgment, recovery planning, or closeout.
 
 ## Test Evidence Contract
 
@@ -118,4 +117,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Read `references/entrypoints.md` first. It defines the minimum reading boundary for one bounded validation round and tells you when to pull in task-interface context for stronger verification requirements.
+Use the current `WorktrackScope` artifacts, acceptance criteria, verification requirements, and only the extra task-interface context required by the current validation round.

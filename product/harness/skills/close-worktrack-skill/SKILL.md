@@ -23,10 +23,9 @@ Use this skill when the current question is not "how do we fix or judge the work
 
 ## Workflow
 
-1. Read `references/entrypoints.md`.
-2. Load the minimum `WorktrackScope` artifacts plus current branch, PR, and merge-status evidence relevant to closeout.
-3. Build one `Close Worktrack Task Brief` and one `Close Worktrack Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
-4. Assess the current closeout stage:
+1. Load the minimum `WorktrackScope` artifacts plus current branch, PR, and merge-status evidence relevant to closeout.
+2. Build one `Close Worktrack Task Brief` and one `Close Worktrack Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
+3. Assess the current closeout stage:
    - `ready-for-pr`
    - `pr-open`
    - `ready-to-merge`
@@ -34,12 +33,12 @@ Use this skill when the current question is not "how do we fix or judge the work
    - `cleanup-ready`
    - `repo-refresh-ready`
    - `blocked-closeout`
-5. Separate closeout results into:
+4. Separate closeout results into:
    - actions completed in this round
    - actions still waiting on programmer approval or external merge state
    - cleanup items that are safe only after merge is confirmed
    - verified material that should be handed off to `repo-refresh-skill`
-6. Stop after one bounded closeout round and return one fixed-format `Close Worktrack Report` plus one `Repo Refresh Handoff`.
+5. Stop after one bounded closeout round and return one fixed-format `Close Worktrack Report` plus one `Repo Refresh Handoff`.
 
 ## Closeout Contract
 
@@ -128,4 +127,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Read `references/entrypoints.md` first. It defines the minimum reading boundary for one closeout round and tells you when to pull in adjacent-system context for authority-boundary checks.
+Use the minimum `WorktrackScope` artifacts plus current branch, PR, merge-status, and repo-refresh handoff context needed for this closeout round.

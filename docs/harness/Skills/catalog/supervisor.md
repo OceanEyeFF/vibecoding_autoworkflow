@@ -1,9 +1,9 @@
 ---
 title: "Harness Skill Catalog / Supervisor"
 status: active
-updated: 2026-04-18
+updated: 2026-04-20
 owner: aw-kernel
-last_verified: 2026-04-18
+last_verified: 2026-04-20
 ---
 # Supervisor Skill Catalog
 
@@ -23,7 +23,6 @@ last_verified: 2026-04-18
 canonical executable source：
 
 - [../../../../product/harness/skills/harness-skill/SKILL.md](../../../../product/harness/skills/harness-skill/SKILL.md)
-- [../../../../product/harness/skills/harness-skill/references/entrypoints.md](../../../../product/harness/skills/harness-skill/references/entrypoints.md)
 
 固定输出：
 

@@ -214,20 +214,11 @@ class RunAutoresearchTest(unittest.TestCase):
                 "canonical\n",
                 encoding="utf-8",
             )
-            (exrepo / "product" / "harness" / "skills" / "context-routing-skill" / "references").mkdir(
-                parents=True,
-                exist_ok=True,
-            )
-            (exrepo / "product" / "harness" / "skills" / "context-routing-skill" / "references" / "entrypoints.md").write_text(
-                "entrypoints\n",
-                encoding="utf-8",
-            )
             (exrepo / "docs" / "harness" / "adjacent-systems" / "memory-side" / "overview.md").write_text("overview\n", encoding="utf-8")
             (skill_dir / "SKILL.md").write_text(
                 "## Canonical Sources\n"
                 "1. `product/harness/skills/context-routing-skill/SKILL.md`\n"
-                "2. `product/harness/skills/context-routing-skill/references/entrypoints.md`\n"
-                "3. `docs/harness/adjacent-systems/memory-side/overview.md`\n",
+                "2. `docs/harness/adjacent-systems/memory-side/overview.md`\n",
                 encoding="utf-8",
             )
 

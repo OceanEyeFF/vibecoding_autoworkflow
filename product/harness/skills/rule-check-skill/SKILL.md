@@ -23,22 +23,21 @@ Use this skill when the current question is not "does the worktrack pass the gat
 
 ## Workflow
 
-1. Read `references/entrypoints.md`.
-2. Load the minimum `WorktrackScope` and governance artifacts needed for the current diff surface.
-3. Build one `Rule Check Task Brief` and one `Rule Check Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
-4. Determine which governance surfaces are actually in play for this round:
+1. Load the minimum `WorktrackScope` and governance artifacts needed for the current diff surface.
+2. Build one `Rule Check Task Brief` and one `Rule Check Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
+3. Determine which governance surfaces are actually in play for this round:
    - root or path layering
    - docs or required-sync obligations
    - skill or template boundary rules
    - branch or review-flow governance, if the work item depends on them
-5. Run or inspect only the minimum applicable checks and rule sources for this round.
-6. Separate the result into:
+4. Run or inspect only the minimum applicable checks and rule sources for this round.
+5. Separate the result into:
    - policy evidence collected
    - violations or scope leaks
    - missing evidence
    - deferred or not-applicable checks
-7. Return one fixed-format `Rule Check Report` plus one `Policy Evidence Handoff`.
-8. Stop before final gate adjudication.
+6. Return one fixed-format `Rule Check Report` plus one `Policy Evidence Handoff`.
+7. Stop before final gate adjudication.
 
 ## Rule Check Contract
 
@@ -117,4 +116,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Read `references/entrypoints.md` first. It defines the minimum reading boundary for one bounded `rule-check` round and tells you when to pull in extra governance or adjacent-system context.
+Use the current diff surface, governance artifacts, and only the extra task or adjacent-system context required by the specific rule check.

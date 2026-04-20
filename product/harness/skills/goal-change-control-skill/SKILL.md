@@ -24,15 +24,14 @@ Do not use this skill for ordinary task replanning, local implementation detail 
 
 ## Workflow
 
-1. Read `references/entrypoints.md`.
-2. Load the current `Goal Change Request` and the minimum `RepoScope` artifacts needed to interpret it.
-3. Build one bounded `Goal Change Brief` and one `Goal Impact Packet` for a single `gpt-5.4-xhigh` `SubAgent`.
-4. Ask that `SubAgent` to analyze:
+1. Load the current `Goal Change Request` and the minimum `RepoScope` artifacts needed to interpret it.
+2. Build one bounded `Goal Change Brief` and one `Goal Impact Packet` for a single `gpt-5.4-xhigh` `SubAgent`.
+3. Ask that `SubAgent` to analyze:
    - what goal delta is being requested
    - which invariants, baselines, and active worktracks are affected
    - whether the request should be accepted, deferred, rejected, or redirected
-5. Normalize the result into one fixed-format `Goal Change Control Report`.
-6. Stop at the authority boundary and return the approval request to the programmer.
+4. Normalize the result into one fixed-format `Goal Change Control Report`; when useful, keep the request summary aligned with `templates/goal-change-request.template.md`.
+5. Stop at the authority boundary and return the approval request to the programmer.
 
 ## Hard Constraints
 
@@ -72,4 +71,4 @@ Inside the result, include at least these fields or equivalents:
 
 ## Resources
 
-Read `references/entrypoints.md` first. It defines the minimum reading boundary for one goal-change-control round and the bounded context that should be passed to the `gpt-5.4-xhigh` `SubAgent`.
+Use the current `Goal Change Request`, the minimum `RepoScope` artifacts, and `templates/goal-change-request.template.md` when you need a stable request/decision draft shape for this round.

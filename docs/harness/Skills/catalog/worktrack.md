@@ -1,9 +1,9 @@
 ---
 title: "Harness Skill Catalog / WorktrackScope"
 status: draft
-updated: 2026-04-19
+updated: 2026-04-20
 owner: aw-kernel
-last_verified: 2026-04-19
+last_verified: 2026-04-20
 ---
 # WorktrackScope Skill Catalog
 
@@ -35,7 +35,6 @@ last_verified: 2026-04-19
 canonical executable source：
 
 - [../../../../product/harness/skills/init-worktrack-skill/SKILL.md](../../../../product/harness/skills/init-worktrack-skill/SKILL.md)
-- [../../../../product/harness/skills/init-worktrack-skill/references/entrypoints.md](../../../../product/harness/skills/init-worktrack-skill/references/entrypoints.md)
 
 当前状态：
 
@@ -58,7 +57,6 @@ canonical executable source：
 canonical executable source：
 
 - [../../../../product/harness/skills/schedule-worktrack-skill/SKILL.md](../../../../product/harness/skills/schedule-worktrack-skill/SKILL.md)
-- [../../../../product/harness/skills/schedule-worktrack-skill/references/entrypoints.md](../../../../product/harness/skills/schedule-worktrack-skill/references/entrypoints.md)
 
 当前状态：
 
@@ -120,7 +118,6 @@ dispatch contract：
 canonical executable source：
 
 - [../../../../product/harness/skills/dispatch-skills/SKILL.md](../../../../product/harness/skills/dispatch-skills/SKILL.md)
-- [../../../../product/harness/skills/dispatch-skills/references/entrypoints.md](../../../../product/harness/skills/dispatch-skills/references/entrypoints.md)
 
 当前状态：
 
@@ -141,7 +138,6 @@ canonical executable source：
 canonical executable source：
 
 - [../../../../product/harness/skills/review-evidence-skill/SKILL.md](../../../../product/harness/skills/review-evidence-skill/SKILL.md)
-- [../../../../product/harness/skills/review-evidence-skill/references/entrypoints.md](../../../../product/harness/skills/review-evidence-skill/references/entrypoints.md)
 
 当前状态：
 
@@ -162,7 +158,6 @@ canonical executable source：
 canonical executable source：
 
 - [../../../../product/harness/skills/test-evidence-skill/SKILL.md](../../../../product/harness/skills/test-evidence-skill/SKILL.md)
-- [../../../../product/harness/skills/test-evidence-skill/references/entrypoints.md](../../../../product/harness/skills/test-evidence-skill/references/entrypoints.md)
 
 当前状态：
 
@@ -183,7 +178,6 @@ canonical executable source：
 canonical executable source：
 
 - [../../../../product/harness/skills/rule-check-skill/SKILL.md](../../../../product/harness/skills/rule-check-skill/SKILL.md)
-- [../../../../product/harness/skills/rule-check-skill/references/entrypoints.md](../../../../product/harness/skills/rule-check-skill/references/entrypoints.md)
 
 当前状态：
 
@@ -204,7 +198,6 @@ canonical executable source：
 canonical executable source：
 
 - [../../../../product/harness/skills/gate-skill/SKILL.md](../../../../product/harness/skills/gate-skill/SKILL.md)
-- [../../../../product/harness/skills/gate-skill/references/entrypoints.md](../../../../product/harness/skills/gate-skill/references/entrypoints.md)
 
 当前状态：
 
@@ -225,7 +218,6 @@ canonical executable source：
 canonical executable source：
 
 - [../../../../product/harness/skills/recover-worktrack-skill/SKILL.md](../../../../product/harness/skills/recover-worktrack-skill/SKILL.md)
-- [../../../../product/harness/skills/recover-worktrack-skill/references/entrypoints.md](../../../../product/harness/skills/recover-worktrack-skill/references/entrypoints.md)
 
 当前状态：
 
@@ -246,7 +238,6 @@ canonical executable source：
 canonical executable source：
 
 - [../../../../product/harness/skills/close-worktrack-skill/SKILL.md](../../../../product/harness/skills/close-worktrack-skill/SKILL.md)
-- [../../../../product/harness/skills/close-worktrack-skill/references/entrypoints.md](../../../../product/harness/skills/close-worktrack-skill/references/entrypoints.md)
 
 当前状态：
 
