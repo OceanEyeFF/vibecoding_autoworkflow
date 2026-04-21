@@ -1,9 +1,9 @@
 ---
 title: "First-Wave Skill Freeze"
 status: active
-updated: 2026-04-20
+updated: 2026-04-22
 owner: aw-kernel
-last_verified: 2026-04-20
+last_verified: 2026-04-22
 ---
 # First-Wave Skill Freeze
 
@@ -40,117 +40,29 @@ last_verified: 2026-04-20
 
 首发 skill 子集必须满足下面四条：
 
-- 能覆盖 `canonical skill -> adapter payload（适配器载荷） -> deploy target -> verify / contract smoke（验证与合同冒烟）` 的最小主链路
-- 优先覆盖 supervisor、`RepoScope`（仓库作用域） 判断、`Worktrack`（工作追踪单元） 初始化与 dispatch，不提前进入验证、gate 判定、恢复与收尾
-- 依赖关系尽量短，避免首发实现一开始就承接整棵 skill 树
-- 不把当前未稳定的 owner 模板、closeout（收尾） 流程或 recovery（恢复） 策略一起产品化
+- 能覆盖 `canonical skill -> adapter payload（适配器载荷） -> deploy target -> verify / contract smoke（验证与合同冒烟）` 的完整主链路
+- 覆盖 supervisor、`RepoScope`（仓库作用域） 全算子集（Observe / Decide / Close / ChangeControl）、`WorktrackScope`（工作追踪作用域） 全算子集（Init / Observe / Decide / Dispatch / Verify / Judge / Recover / Close）
+- 验证、gate 判定、恢复与收尾链路已进入首发，作为完整控制回路的必要组成
+- 所有 canonical skills 均具备 adapter payload 与 deploy target 支持
 
-因此，首发只冻结到“能把一条最小 worktrack（工作追踪单元） 启动并交给执行载体”为止。
+因此，首发冻结到"完整 Harness 控制回路可运行"为止，覆盖从 repo judgment 到 worktrack 全生命周期再到 handback 的最小闭环。
 
 ## 三、首发 skill 子集
 
-当前首发范围固定为以下六个 canonical skills（规范 skill）：
+当前首发范围固定为以下十五个 canonical skills（规范 skill）：
 
-- `harness-skill`
+**RepoScope（仓库作用域）**
+- `set-harness-goal-skill`
 - `repo-status-skill`
 - `repo-whats-next-skill`
-- `init-worktrack-skill`
-- `schedule-worktrack-skill`
-- `dispatch-skills`
-
-各自承担的最小角色如下：
-
-- `harness-skill`
-  - 顶层 supervisor 入口
-  - 负责识别当前层级并在未命中 formal stop condition 前继续推进合法状态转移
-- `repo-status-skill`
-  - `RepoScope`（仓库作用域） 的状态观察入口
-  - 为下一步判断提供最小 repo baseline（仓库基线状态）
-- `repo-whats-next-skill`
-  - `RepoScope`（仓库作用域） 的 next-direction（下一步方向） 判断入口
-  - 在首发里只产品化 `enter-worktrack` 与 `hold-and-observe` 两条输出分支
-- `init-worktrack-skill`
-  - 建立 branch、baseline、`Worktrack Contract`（工作追踪契约） 与初始 `Plan / Task Queue`（计划与任务队列）
-  - 在首发里只覆盖“初始化后把 worktrack 种下并交给调度”的最小场景，不承接验证、gate、恢复与收尾
-- `schedule-worktrack-skill`
-  - 在 `WorktrackScope` 内刷新当前 `Plan / Task Queue`
-  - 选出一个 `current next action`，并形成交给 `dispatch-skills` 的最小 handoff
-- `dispatch-skills`
-  - 把当前 work item 绑定到 execution carrier（执行载体）
-  - 在首发里只要求证明 fallback / general executor（通用执行器） 路径，不要求同步产品化下游 specialized skill（专用 skill） 包装
-
-## 四、首发实际承接的 canonical 分支子集
-
-首发不会重写 canonical skill 合同，但会把真正需要落地的可达分支收窄为下面这个子集：
-
-- `repo-whats-next-skill`
-  - 首发必须承接：
-    - `enter-worktrack`
-    - `hold-and-observe`
-  - 首发明确不承接：
-    - `goal-change-control`
-    - `refresh-repo-state`
-  - 首发输出约束：
-    - 如果当前 deploy profile 复制的是 canonical `SKILL.md`，被复制的 prompt surface 也必须显式重复这组收窄后的 `supported_repo_actions`
-    - 如果 broad canonical judgment 本来会落到 `goal-change-control` 或 `refresh-repo-state`，首发轮次必须退化为 `hold-and-observe`，并把更宽路线记录为 `out_of_scope`、`decision_constraints` 或 `minimal_missing_info`
-- `init-worktrack-skill`
-  - 首发必须承接：
-    - branch / baseline / contract / initial queue 的建立
-    - 一个可继续进入 `schedule-worktrack-skill` 的最小初始化结果
-  - 首发明确不承接：
-    - 初始化后的验证、gate、恢复或 closeout 路径
-- `schedule-worktrack-skill`
-  - 首发必须承接：
-    - 从当前 `Plan / Task Queue` 中刷新队列状态
-    - 选出一个 `current next action`
-    - 为 `dispatch-skills` 形成最小 handoff
-  - 首发明确不承接：
-    - 基于验证 / gate / recovery 证据重建整个 worktrack 策略
-    - 多轮 autonomous continuation 的完整证明
-- `dispatch-skills`
-  - 首发必须承接：
-    - bounded dispatch contract 的组装
-    - fallback / general executor 路径
-  - 首发明确不承接：
-    - 以 specialized downstream skills 为主的 dispatch packaging 完整覆盖
-
-如果当前 canonical skill 合同允许更宽的动作空间，应继续保留在 canonical source 中；只是这些分支不进入当前首发实现闭环。
-
-这里的“只是不进入首发实现闭环”不应停留在 adapter metadata。因为当前 `agents` first-wave payload 会直接复制 canonical `SKILL.md`，所以首发收窄必须在被复制的 skill prompt surface 上也明确可见，否则首发运行轮次仍可能产出超出冻结子集的路线。
-
-## 五、首发停止边界
-
-当前 `agents` first-wave deploy / contract smoke 的最小合同链路止于 `dispatch-skills`，当前不把下面这些能力纳入已落地 deploy 闭环：
-
-- review evidence 汇总
-- test evidence 汇总
-- rule / governance evidence 汇总
-- gate adjudication（门槛裁决/准入判定）
-- recovery choice（恢复策略选择）
-- closeout（收尾） / merge（合并） / cleanup（清理） / repo refresh（仓库刷新）
-
-这意味着当前首发 deploy 目标不是“完整 Worktrack 生命周期产品化”，而是“先把最小 supervisor -> repo judgment（仓库判断） -> worktrack init -> schedule -> dispatch 主链路产品化”。
-
-但这不应被误读为：
-
-- `Harness` 的 canonical protocol 本体只支持单回合停机
-- 现有 first-wave contract smoke 已经证明 autonomous continuation（自主连续推进）
-- 现有 first-wave dispatch 已经证明 runtime-level `SubAgent` dispatch（子代理派发） 真正落地
-
-当前更准确的解释是：
-
-- 这批首发 deploy / contract smoke 只证明最小 skill contract、payload copy 和 bounded route 可读
-- `contract smoke` 只能作为 deploy / verify 侧的最小合同证明；skills 的测试不能用简单 smoke test 代替，也不能据此判定 skill 行为已经被充分验证
-- 它不是 live runtime test，也不是 Harness acceptance test
-- 它没有完成 `stop/continue policy` 的 autonomy repair
-- 它也没有完成 `skill -> subagent dispatch shell` 的 runtime repair
-
-## 六、不进入首发的 skills
-
-当前仓库里其余已存在的 canonical skills（规范 skill），全部不进入首发范围：
-
-- `goal-change-control-skill`
 - `repo-refresh-skill`
+- `goal-change-control-skill`
+
+**WorktrackScope（工作追踪作用域）**
+- `init-worktrack-skill`
+- `worktrack-status-skill`
+- `schedule-worktrack-skill`
+- `dispatch-skills`
 - `review-evidence-skill`
 - `test-evidence-skill`
 - `rule-check-skill`
@@ -158,45 +70,178 @@ last_verified: 2026-04-20
 - `recover-worktrack-skill`
 - `close-worktrack-skill`
 
-其中可按两类理解：
+**Supervisor（监督器）**
+- `harness-skill`
 
-- 明确延后到首发之后再接入的验证、恢复与收尾链路：
-  - `review-evidence-skill`
-  - `test-evidence-skill`
-  - `rule-check-skill`
-  - `gate-skill`
-  - `recover-worktrack-skill`
-  - `close-worktrack-skill`
-- 当前先不纳入首发产品化面的补充性 `RepoScope`（仓库作用域） / `WorktrackScope`（工作追踪作用域） 能力：
-  - `goal-change-control-skill`
-  - `repo-refresh-skill`
+各自承担的最小角色如下：
 
-这些 skill 仍保留为 canonical source（规范来源），但在当前首发实现闭环中不应被视为必须同时落地的对象。
+- `harness-skill`
+  - 顶层 supervisor 入口
+  - 负责识别当前层级并在未命中 formal stop condition 前继续推进合法状态转移
+- `set-harness-goal-skill`
+  - `RepoScope.SetGoal`
+  - 在 `.aw/` 未初始化时，将用户自然语言需求转化为结构化的 `Goal Charter`、`Control State` 和 `Repo Snapshot`
+  - 设置默认 autonomy 策略（小步推进、逐层验证）
+  - 需要用户确认后才写入文件
+- `repo-status-skill`
+  - `RepoScope.Observe`
+  - 为 repo 级判断提供最小 repo baseline（仓库基线状态）
+- `repo-whats-next-skill`
+  - `RepoScope.Decide`
+  - repo 级 next-direction（下一步方向） 判断入口，输出 `enter-worktrack` / `hold-and-observe` / `goal-change-control` / `refresh-repo-state`
+- `repo-refresh-skill`
+  - `RepoScope.Close`
+  - worktrack 完成后刷新 repo 级状态快照与 control-state
+- `goal-change-control-skill`
+  - `RepoScope.ChangeControl`
+  - 处理目标级变更请求，单独 gate 和审批，不改变 `Goal Charter`
+- `init-worktrack-skill`
+  - `WorktrackScope.Init`
+  - 建立 branch、baseline、`Worktrack Contract`（工作追踪契约） 与初始 `Plan / Task Queue`（计划与任务队列）
+- `worktrack-status-skill`
+  - `WorktrackScope.Observe`
+  - 在 worktrack 执行过程中提供状态估计，供后续 Decide / Dispatch / Verify 使用
+- `schedule-worktrack-skill`
+  - `WorktrackScope.Decide`
+  - 刷新当前 `Plan / Task Queue`，选出 `current next action`，形成交给 `dispatch-skills` 的最小 handoff
+- `dispatch-skills`
+  - `WorktrackScope.Dispatch`
+  - 把当前 work item 绑定到 execution carrier（执行载体），包括 specialized downstream skills 与 fallback / general executor 路径
+- `review-evidence-skill`
+  - `WorktrackScope.Verify`（implementation lane）
+  - 审查实现层证据：代码变更、设计一致性、约定遵循
+- `test-evidence-skill`
+  - `WorktrackScope.Verify`（validation lane）
+  - 验证测试层证据：测试覆盖、验收标准满足度、回归安全
+- `rule-check-skill`
+  - `WorktrackScope.Verify`（policy lane）
+  - 检查策略层证据：编码规范、安全规则、架构约束
+- `gate-skill`
+  - `WorktrackScope.Judge`
+  - 基于三维度证据做关卡判定：通过 / 软失败 / 硬失败 / 阻塞
+- `recover-worktrack-skill`
+  - `WorktrackScope.Recover`
+  - 在 worktrack 偏离或失败后执行恢复：修复、重试、重新定界或终止
+- `close-worktrack-skill`
+  - `WorktrackScope.Close`
+  - 完成 worktrack 收尾：证据归档、约定更新、状态切换、repo handback
+
+## 四、首发实际承接的 canonical 分支子集
+
+首发不会重写 canonical skill 合同，但会把真正需要落地的可达分支收窄为下面这个子集：
+
+- `set-harness-goal-skill`
+  - 首发必须承接：
+    - 检查 `.aw/` 和 `goal-charter.md` 是否存在
+    - 将用户需求转化为结构化 `Goal Charter`
+    - 生成初始 `Control State`（含默认 autonomy 参数）
+    - 生成初始 `Repo Snapshot`
+    - 等待用户确认后写入文件
+  - 首发明确不承接：
+    - 覆盖已存在的 `goal-charter.md`
+    - 代替用户做目标级决策
+- `repo-whats-next-skill`
+  - 首发必须承接：
+    - `enter-worktrack`
+    - `hold-and-observe`
+    - `goal-change-control`
+    - `refresh-repo-state`
+- `repo-refresh-skill`
+  - 首发必须承接：
+    - worktrack 完成后刷新 repo 状态快照
+    - 更新 control-state 中的 handoff 标记与 autonomy ledger
+- `goal-change-control-skill`
+  - 首发必须承接：
+    - 接收并分析目标变更请求
+    - 输出目标变更控制报告（接受 / 暂缓 / 拒绝 / 重定向）
+  - 首发明确不承接：
+    - 直接改写 `Goal Charter`
+    - 代替程序员批准或拒绝目标级变更
+- `init-worktrack-skill`
+  - 首发必须承接：
+    - branch / baseline / contract / initial queue 的建立
+    - 一个可继续进入 `schedule-worktrack-skill` 的最小初始化结果
+- `worktrack-status-skill`
+  - 首发必须承接：
+    - 在 worktrack 执行轮次中读取当前 worktrack 产物与 repo 状态
+    - 输出结构化的 `WorktrackStateEstimate`
+- `schedule-worktrack-skill`
+  - 首发必须承接：
+    - 从当前 `Plan / Task Queue` 中刷新队列状态
+    - 选出一个 `current next action`
+    - 为 `dispatch-skills` 形成最小 handoff
+  - 首发明确不承接：
+    - 基于验证 / gate / recovery 证据重建整个 worktrack 策略（由 `recover-worktrack-skill` 承接）
+- `dispatch-skills`
+  - 首发必须承接：
+    - bounded dispatch contract 的组装
+    - specialized downstream skills 路径与 fallback / general executor 路径
+- `review-evidence-skill`
+  - 首发必须承接：
+    - 实现层证据的审查与汇总
+    - 输出 implementation evidence 报告
+- `test-evidence-skill`
+  - 首发必须承接：
+    - 测试层证据的验证与汇总
+    - 输出 validation evidence 报告
+- `rule-check-skill`
+  - 首发必须承接：
+    - 策略层规则的检查与汇总
+    - 输出 policy evidence 报告
+- `gate-skill`
+  - 首发必须承接：
+    - 接收三维度证据并做综合判定
+    - 输出 gate 报告（通过 / 软失败 / 硬失败 / 阻塞）与允许的下一路由
+- `recover-worktrack-skill`
+  - 首发必须承接：
+    - 分析 worktrack 偏离原因
+    - 输出恢复选项（修复 / 重试 / 重新定界 / 终止）
+- `close-worktrack-skill`
+  - 首发必须承接：
+    - worktrack 收尾：证据归档、约定更新、状态切换
+    - 返回 repo handback 与 autonomy ledger 更新
+
+如果当前 canonical skill 合同允许更宽的动作空间，应继续保留在 canonical source 中；只是这些分支不进入当前首发实现闭环。
+
+这里的“只是不进入首发实现闭环”不应停留在 adapter metadata。因为当前 `agents` first-wave payload 会直接复制 canonical `SKILL.md`，所以首发收窄必须在被复制的 skill prompt surface 上也明确可见，否则首发运行轮次仍可能产出超出冻结子集的路线。
+
+## 五、首发停止边界
+
+当前 `agents` first-wave deploy / contract smoke 覆盖完整 Harness 控制回路：
+
+- `RepoScope` 全算子：Observe -> Decide -> Close / ChangeControl
+- `WorktrackScope` 全算子：Init -> Observe -> Decide -> Dispatch -> Verify (implementation / validation / policy) -> Judge -> Recover / Close
+- repo handback 与 autonomy ledger 更新
+
+当前首发不承诺的能力：
+
+- runtime-level `SubAgent` dispatch（子代理派发） 真正落地（仅证明 skill -> dispatch contract 组装可读）
+- 多 worktrack 的 autonomous continuation 的完整证明（仅证明单 worktrack 生命周期内状态机可读）
+- stop/continue policy 在复杂场景下的 autonomy repair 完整覆盖
+
+当前更准确的解释是：
+
+- 这批首发 deploy / contract smoke 证明完整 skill contract、payload copy 和全 route 可读
+- `contract smoke` 只能作为 deploy / verify 侧的最小合同证明；skills 的测试不能用简单 smoke test 代替，也不能据此判定 skill 行为已经被充分验证
+- 它不是 live runtime test，也不是 Harness acceptance test
+- 它证明了完整控制回路的"结构可读"，但不证明"运行时正确"
 
 ## 七、对后续任务包的约束
 
 本冻结对后续任务包施加以下约束：
 
-- payload contract 只需要为上述六个首发 skills 提供最小自描述读取面
-- 模板初始化只需要支持首发链路真正需要的最小模板初始化，不为全 skill 树做通用 orchestrator（编排器）
-- `agents` payload 只需要为这六个 skills 准备可追踪 payload，并覆盖 `dispatch-skills` 的 fallback / general executor 路径
-- deploy / verify 只需要让 `prune --all`、`check_paths_exist`、`install --backend agents` 与 `verify` 能处理首发 skill 子集与上述支持分支，不为暂缓 skill 预留复杂分支
-- 对 `repo-whats-next-skill`，首发 payload / copied skill surface / contract smoke 看到的有效 repo action 子集必须一致，不能出现 metadata 只写两条、skill prompt 仍放行四条的情况
-
-禁止的范围扩大方式：
-
-- 禁止因目录已存在 skeleton（骨架/雏形） 而将全部 skills 一次性纳入首发 payload contract
-- 禁止以 verify 迟早要做为由，提前把 gate / recover / closeout 链路纳入首发
-- 禁止以 `RepoScope` 未来可能使用为由，将 `goal-change-control` 或 `repo-refresh` 一并产品化
-- 禁止把 `repo-whats-next-skill` 当前 canonical 可输出的全部动作，都默认视为首发必须处理的 deploy 分支
-- 禁止把 `dispatch-skills` 的 specialized-skill 全覆盖，当作首发 contract smoke 的必要条件
+- payload contract 为全部十五个首发 skills 提供自描述读取面
+- 模板初始化支持所有首发链路需要的模板初始化（contract、plan-task-queue、gate-evidence、goal-change-request）
+- `agents` payload 为全部十五个 skills 准备可追踪 payload，覆盖 `dispatch-skills` 的 specialized downstream skills 路径与 fallback / general executor 路径
+- deploy / verify 让 `prune --all`、`check_paths_exist`、`install --backend agents` 与 `verify` 能处理完整 skill 树
+- 对 `repo-whats-next-skill`，首发 payload / copied skill surface / contract smoke 看到的有效 repo action 子集必须一致：metadata、skill prompt 与 runtime 行为对齐
 
 ## 八、验收标准
 
 本冻结完成后，至少应满足：
 
-- 首发 canonical skill（规范 skill） 子集有唯一、可引用的正式清单
-- 首发外 skills 有明确的非目标边界，不再默认进入当前首发实现闭环
-- 首发支持的 repo / worktrack / dispatch 分支子集是明确的，不会与 canonical 全量动作空间混淆
+- 首发 canonical skill（规范 skill） 子集有唯一、可引用的正式清单（共15个）
+- 全部 skills 具备 adapter payload 与 deploy target 支持
+- 首发支持的 repo / worktrack 全算子分支是明确的，不会与 canonical 全量动作空间混淆
 - 后续实现文档和脚本可直接引用本页确定首发 skill 范围与支持子路径，无需重复讨论
-- `agents` 首发 contract smoke 只需证明这六个 skills 的最小可读、`enter-worktrack` / `hold-and-observe` 子集，以及 schedule + dispatch fallback 路径，不承担完整生命周期验证
+- `agents` 首发 contract smoke 证明全部十五个 skills 的最小可读、完整控制回路 route 可读，以及 specialized + fallback dispatch 路径

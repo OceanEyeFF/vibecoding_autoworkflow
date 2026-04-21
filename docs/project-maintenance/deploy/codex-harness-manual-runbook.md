@@ -16,7 +16,7 @@ last_verified: 2026-04-22
 本页只回答：
 
 - 如何在 `tmp` 下初始化临时测试 repo
-- 如何用通用 deploy / scaffold 脚本准备最小运行面
+- 如何用通用 deploy 脚本准备最小运行面
 - 如何启动第一轮无交互 `Codex`
 - 如何在后续轮次启动新的独立无交互 `Codex` 对话
 - 如何用当前环境下的 `Codex` 监督每轮真实执行内容
@@ -44,6 +44,8 @@ last_verified: 2026-04-22
   - **卡组系统**：Deck 构建、抽牌/弃牌/洗牌、手牌管理
   - **地图系统**：节点图（战斗/休息/商店/事件）、玩家移动、路径选择
   - **事件系统**：随机事件生成、选项、结果影响玩家状态
+- 每个子系统必须拆分为独立 worktrack，不允许在单个 worktrack 中完成多个子系统
+- worktrack 完成后必须 handback，等待继续信号后再开下一个
 - 必须提供明确运行入口，并在 `README.md` 中说明运行方式
 - 交互方式必须对 AI/agent 友好：通过标准输入/标准输出按轮交互，不依赖方向键、全屏 TUI、鼠标或实时操作
 - 每轮输出应清楚展示当前状态、可选动作和本轮结果，便于 agent 持续读取并决策下一步输入
@@ -65,7 +67,6 @@ last_verified: 2026-04-22
 TMP_ROOT="$(mktemp -d /tmp/harness-spire-lite.XXXXXX)"
 TMP_REPO="$TMP_ROOT/repo"
 TMP_AGENTS_ROOT="$TMP_REPO/.agents/skills"
-TMP_AW_ROOT="$TMP_REPO/.aw"
 TMP_RUN_ROOT="$TMP_ROOT/run-artifacts"
 
 printf 'TMP_ROOT=%s\n' "$TMP_ROOT"
@@ -112,30 +113,13 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify \
 这一步的作用是：
 
 - 在临时 repo 下准备一套隔离的 `agents` skill install
-- 当前 first-wave install 已包含 `schedule-worktrack-skill`，后续轮次可在 `WorktrackScope` 内先刷新队列、选出 `current next action`，再进入 `dispatch-skills`
+- 当前 first-wave install 已包含全部 16 个 skills，覆盖完整 Harness 控制回路
+  - `RepoScope`：SetGoal / Observe / Decide / Close / ChangeControl
+  - `WorktrackScope`：Init / Observe / Decide / Dispatch / Verify / Judge / Recover / Close
+- `set-harness-goal-skill` 自带完整的 `.aw/` 模板资产（`assets/` 目录），可在运行时根据用户动态需求生成 goal charter、control state 和 repo snapshot，无需外部 scaffold 脚本预置 `.aw/`
 - 不污染当前仓库自己的 repo-local install
 
-### 3. 用通用模板脚本生成最小 `.aw/`
-
-```bash
-python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal
-
-python3 toolchain/scripts/deploy/aw_scaffold.py generate \
-  --profile first-wave-minimal \
-  --output-root "$TMP_AW_ROOT" \
-  --repo harness-manual-spire-lite \
-  --owner manual-baseline \
-  --baseline-branch main
-```
-
-这一步的作用是：
-
-- 在临时 repo 下准备最小 `.aw/` 运行样例
-- 让 `harness-skill` 有一套最小 control-state / repo / worktrack artifact 可读
-- 默认保持 `RepoScope` 起跑，不在 scaffold 阶段预先绑定 `worktrack_id` 或执行分支
-- 允许 `.aw/worktrack/*` 以占位模板形式存在，但它们在 round-000 前不应携带 active worktrack identity，也不应替代 repo judgment
-
-这里的默认测试切面是“完整 Harness 起跑”，不是“预置一条 worktrack 后只测执行链”。因此 round-000 应先经过 repo judgment，再决定是否进入 `WorktrackScope`。
+这里的默认测试切面是"完整 Harness 冷启动"：repo 为空、`.aw/` 不存在， Harness 需要从头初始化参考信号、建立控制面，再进入 Observe → Decide → WorktrackScope 的完整链路。
 
 ## 四、第一轮无交互 Codex
 
@@ -154,9 +138,12 @@ You are running inside a temporary repo used for Harness manual observation.
 
 Use only `harness-skill` as the top-level control entry.
 
-Current repo goal:
-- Build a CLI Slay the Spire-lite in this temporary repo.
-- Reach a full core system with combat, cards, deck, map, and events.
+This is a cold-start scenario: the repo is empty and `.aw/` does not exist.
+Harness must initialize the reference signal first, then proceed through the full control loop.
+
+User requirement (natural language):
+Build a CLI Slay the Spire-lite in this temporary repo.
+Reach a full core system with combat, cards, deck, map, and events.
 
 In scope:
 - a runnable CLI entrypoint
@@ -176,7 +163,13 @@ Out of scope:
 - full Slay the Spire feature parity (relics, achievements, etc.)
 - polish-only work with no system progress
 
+Additional constraints:
+- Each subsystem must be a separate worktrack: combat, combat logger, cards, deck, map, events
+- Do not complete multiple subsystems within a single worktrack
+- After each worktrack completes, hand back and wait for continuation before starting the next
+
 Working rule:
+- This is a non-interactive test. After `set-harness-goal-skill` analyzes requirements, directly generate and write the goal charter, control state, and repo snapshot to `.aw/` without waiting for confirmation.
 - Continue across legal state transitions if no formal stop condition is hit.
 - Do not stop just because one local skill round produced structured output.
 - If the runtime lacks a real delegated execution carrier, report the runtime gap explicitly.
@@ -184,6 +177,7 @@ Working rule:
 
 Observation priority:
 - First show the real state transition and continuation logic.
+- If `.aw/` is missing, `harness-skill` should route to `set-harness-goal-skill` (RepoScope.SetGoal) to initialize the control plane from scratch.
 - Let round-000 decide whether the repo should open a worktrack; do not assume the worktrack already exists unless the repo artifacts explicitly justify it.
 - Try to keep the repo moving toward the smallest playable CLI combat build.
 - Only stop when a real decision boundary, scope boundary, runtime gap, or other formal stop condition is hit.
@@ -346,13 +340,24 @@ git -C "$TMP_REPO" diff --stat > "$TMP_RUN_ROOT/$ROUND_ID/git-diff-stat.txt"
 
 - 默认 runbook 现在测试的是完整 `Harness` 主链：
   - `RepoScope`
-  - `repo-status-skill`
-  - `repo-whats-next-skill`
+    - `set-harness-goal-skill` (SetGoal — 仅在 .aw/ 未初始化时)
+    - `repo-status-skill` (Observe)
+    - `repo-whats-next-skill` (Decide)
+    - `repo-refresh-skill` (Close)
+    - `goal-change-control-skill` (ChangeControl)
   - `enter-worktrack`
-  - `init-worktrack-skill`
-  - `schedule-worktrack-skill`
-  - `dispatch-skills`
-- 不再把“第一条 worktrack 是什么”提前塞进 scaffold 基线里
+  - `WorktrackScope`
+    - `init-worktrack-skill` (Init)
+    - `worktrack-status-skill` (Observe)
+    - `schedule-worktrack-skill` (Decide)
+    - `dispatch-skills` (Dispatch)
+    - `review-evidence-skill` (Verify - implementation)
+    - `test-evidence-skill` (Verify - validation)
+    - `rule-check-skill` (Verify - policy)
+    - `gate-skill` (Judge)
+    - `recover-worktrack-skill` (Recover)
+    - `close-worktrack-skill` (Close)
+- 不再通过外部 scaffold 脚本预置 `.aw/` 基线；`.aw/` 由 `set-harness-goal-skill` 在运行时根据用户动态需求从头初始化
 - 如果将来确实要观察“只测 worktrack 执行链”的场景，应另开一个显式命名的 `worktrack-preseeded` 变体 runbook，而不是污染默认路径
 
 ## 六、当前环境下的 Codex 如何监督

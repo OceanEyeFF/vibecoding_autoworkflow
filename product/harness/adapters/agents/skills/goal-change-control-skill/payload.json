@@ -1,0 +1,25 @@
+{
+  "payload_version": "agents-skill-payload.v1",
+  "backend": "agents",
+  "skill_id": "goal-change-control-skill",
+  "canonical_dir": "product/harness/skills/goal-change-control-skill",
+  "canonical_paths": [
+    "product/harness/skills/goal-change-control-skill/SKILL.md",
+    "product/harness/skills/goal-change-control-skill/templates/goal-change-request.template.md"
+  ],
+  "target_dir": "goal-change-control-skill",
+  "target_entry_name": "SKILL.md",
+  "payload_policy": "canonical-copy",
+  "supported_target_scopes": [
+    "local"
+  ],
+  "reference_distribution": "copy-listed-canonical-paths",
+  "required_payload_files": [
+    "SKILL.md",
+    "templates/goal-change-request.template.md",
+    "payload.json",
+    "aw.marker"
+  ],
+  "first_wave_profile": "a3-first-wave",
+  "first_wave_scope_kind": "full-skill"
+}

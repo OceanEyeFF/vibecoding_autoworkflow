@@ -1,0 +1,23 @@
+{
+  "payload_version": "agents-skill-payload.v1",
+  "backend": "agents",
+  "skill_id": "recover-worktrack-skill",
+  "canonical_dir": "product/harness/skills/recover-worktrack-skill",
+  "canonical_paths": [
+    "product/harness/skills/recover-worktrack-skill/SKILL.md"
+  ],
+  "target_dir": "recover-worktrack-skill",
+  "target_entry_name": "SKILL.md",
+  "payload_policy": "canonical-copy",
+  "supported_target_scopes": [
+    "local"
+  ],
+  "reference_distribution": "copy-listed-canonical-paths",
+  "required_payload_files": [
+    "SKILL.md",
+    "payload.json",
+    "aw.marker"
+  ],
+  "first_wave_profile": "a3-first-wave",
+  "first_wave_scope_kind": "full-skill"
+}

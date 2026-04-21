@@ -180,6 +180,7 @@ Harness 文档与控制逻辑应按 3 个正交维度组织：
 - `Recover` —— 恢复控制
 - `Close` —— 关闭并交接
 - `ChangeControl` —— 目标变更控制
+- `SetGoal` —— 初始化参考信号
 
 **约束**：`Function` 不是 skill 名字，而是状态转移算子。`Skill` 是这些算子在 `Codex / Claude` 里的相对稳定实现。`SubAgent` 是被 Harness 调度的执行载体。
 
@@ -205,6 +206,8 @@ Harness 文档与控制逻辑应按 3 个正交维度组织：
 `RepoScope` 是对长期基线的控制模式。
 
 ```
+SetGoal (set-harness-goal-skill) ──→ 仅在 .aw/ 未初始化时运行 ──→ Observe
+    ↓
 Observe (repo-status-skill)
     ↓
 Decide (repo-whats-next-skill)
@@ -244,7 +247,7 @@ Judge (gate-skill)
 ### 7.3 完整状态闭环
 
 ```
-RepoScope.Observe ──→ RepoScope.Decide ──→ WorktrackScope.Init
+RepoScope.SetGoal ──→ RepoScope.Observe ──→ RepoScope.Decide ──→ WorktrackScope.Init
                                                           ↓
                                                WorktrackScope.Observe
                                                           ↓
