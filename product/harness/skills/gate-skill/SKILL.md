@@ -1,172 +1,175 @@
 ---
 name: gate-skill
-description: Use this skill when Harness is in WorktrackScope.judging and needs one bounded gate adjudication round from existing evidence without re-executing work or refreshing repo state.
+description: 当 Harness 处于 WorktrackScope.judging，且需要基于现有证据完成一轮限定范围关卡判定，而不重新执行工作或刷新代码仓库状态时，使用这个技能。
 ---
 
-# Gate Skill
+# 关卡技能
 
-## Overview
+## 概览
 
-Use this skill when `Harness` already has the current round's evidence and needs one bounded adjudication pass inside `WorktrackScope.judging`.
+本技能实现 `WorktrackScope.Judge` 状态转移算子，对应 Harness 控制回路中的**裁决**阶段。它负责基于三个正交校验面（implementation/validation/policy）的证据，判断"当前状态是否允许推进"，生成 verdict 并决定允许的下一路由。
 
-This skill packages the minimum gate context for one `gpt-5.4-xhigh` `SubAgent`, evaluates the current evidence lanes, derives the current `implementation / validation / policy` judgment surfaces, absorbs bounded low-severity noise, and returns a structured verdict plus allowed next routes.
+当 `Harness` 已经掌握当前轮次的证据，并需要在 `WorktrackScope.judging` 内完成一轮限定范围判定时，使用这个技能。
 
-## When To Use
+这个技能会为一轮 `gpt-5.4-xhigh` `SubAgent` 打包最小关卡上下文，评估当前证据维度，推导当前 `实现/验证/策略` 判定层面，吸收限定范围的低严重度噪声，并返回结构化判定结果与允许的下一步路由。
 
-Use this skill when the current question is not "what should we execute next", but "does the current round have enough evidence to pass, fail, or stop":
+## 何时使用
 
-- review, test, and rule-check evidence has already been collected or summarized
-- `Harness` needs a current-round gate verdict from existing artifacts
-- evidence may be incomplete, contradictory, or uneven across surfaces
-- evidence may include many low-severity findings that should stay residual unless they form a cross-surface or systemic pattern
-- repeated symptoms may indicate an upstream contract or governance problem rather than another pure code-fix loop
-- the system must choose between `integrating`, `recovering`, or staying blocked
-- the adjudication must stay bounded to the current `Worktrack`
+当当前问题不是"接下来应该执行什么"，而是"本轮证据是否足以支持通过、失败或停止"时，使用这个技能：
 
-## Workflow
+- 审查、测试与规则检查证据已经被收集或汇总
+- `Harness` 需要基于现有产物得到当前轮次的关卡判定结果
+- 证据可能不完整、互相矛盾，或在不同层面之间分布不均
+- 证据中可能包含大量低严重度发现；除非它们形成跨层面或系统性模式，否则应保持为残留项
+- 重复症状可能表明存在上游约定或治理问题，而不是又一个纯代码修复循环
+- 系统必须在 `集成`、`恢复` 或继续阻塞之间做出选择
+- 判定必须严格保持在当前 `工作追踪` 的限定范围内
 
-1. Load the minimum `WorktrackScope` artifacts and current lane evidence for this round.
-2. Build one `Gate Task Brief` and one `Gate Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
-3. Validate the required evidence lanes before judging this round:
-   - `review`
-   - `test`
-   - `policy`
-4. Evaluate the current round on three required surfaces:
-   - `implementation-gate`
-   - `validation-gate`
-   - `policy-gate`
-5. Apply gate adjudication rules before the overall verdict:
-   - absorb bounded low-severity `P2 / P3` residue into `residual_risks` unless it crosses the escalation fence
-   - if evidence is flagged `possible_upstream_constraint_issue`, decide whether a pure code-fix route is no longer valid
-6. Determine the overall verdict:
-   - `pass`
-   - `soft-fail`
-   - `hard-fail`
-   - `blocked`
-7. Return one fixed-format `Gate Report` with lane intake, decisive evidence, missing evidence, and allowed next routes; when useful, keep the result aligned with `templates/gate-evidence.template.md`.
-8. Stop before execution, recovery action, closeout, or repo refresh.
+## 工作流
 
-## Gate Adjudication Rules
+1. 载入本轮所需的最小 `WorktrackScope` 产物和当前维度证据。
+2. 为限定范围的 `gpt-5.4-xhigh` `SubAgent` 构建一份 `关卡任务简报` 和一份 `关卡信息包`。
+3. 在判定本轮之前，先验证所需证据维度：
+   - `审查`
+   - `测试`
+   - `策略`
+4. 在三个必需层面上评估当前轮次：
+   - `实现关卡`
+   - `验证关卡`
+   - `策略关卡`
+5. 在给出整体判定结果前，先应用关卡判定规则：
+   - 吸收限定范围的低严重度 `P2/P3` 残留到 `残留风险` 中，除非它跨越升级围栏
+   - 如果证据被标记为 `可能存在上游约束问题`，判定纯代码修复路径是否不再有效
+6. 决定整体判定结果：
+   - `通过`
+   - `软失败`
+   - `硬失败`
+   - `阻塞`
+7. 返回一份固定格式的 `关卡报告`，其中包含维度接收情况、决定性证据、缺失证据和允许的下一步路由；有需要时，让结果与 `templates/关卡证据模板.md` 保持一致。
+8. 在执行、恢复动作、收尾或代码仓库刷新之前停止。
 
-- Low-severity findings, including `P2 / P3`, stay in `residual_risks` by default when they do not break acceptance, recovery-path safety, operator-facing semantics, or contract integrity on any surface.
-- A low-severity cluster may contribute to `soft-fail` or `hard-fail` only when at least one escalation fence is hit:
-  - the same low-severity pattern appears on at least two of `implementation / validation / policy`
-  - after deduplication, there are at least five distinct representative low-severity findings in the current round and the cluster materially reduces confidence in acceptance or recovery
-- Do not let raw count alone override the bounded-worktrack view; duplicated variants should be absorbed before verdicting.
-- If evidence includes a decisive finding marked `possible_upstream_constraint_issue`, or two or more findings point to the same unresolved contract, boundary, or governance dependency, `recommended_next_route` must not be pure code repair.
-- When the upstream-route fence is hit, route to `rule-check`, contract or doc revision, or `recover-worktrack` re-scoping before asking for more implementation churn.
+## 关卡判定规则
 
-## Gate Adjudication Contract
+- 低严重度发现，包括 `P2/P3`，默认保留在 `残留风险` 中，只要它们没有在任一层面破坏验收、恢复路径安全、面向操作员的语义，或约定完整性。
+- 只有在至少命中一个升级围栏时，低严重度簇才可以推动 `软失败` 或 `硬失败`：
+  - 同一低严重度模式出现在 `实现/验证/策略` 中至少两个层面
+  - 去重后，当前轮次中至少存在五个不同的代表性低严重度发现，且该簇实质性降低了对验收或恢复的信心
+- 不要让原始数量单独压过限定范围工作追踪视角；重复变体应在给出判定结果前先被吸收。
+- 如果证据中包含被标记为 `可能存在上游约束问题` 的决定性发现，或者两个及以上发现指向同一个尚未解决的约定、边界或治理依赖，那么 `建议下一路由` 就不能是纯代码修复。
+- 当命中上游路由围栏时，应先路由到 `规则检查`、约定或文档修订，或 `恢复工作追踪` 重新定界，再去要求更多实现层反复修改。
 
-Use the same bounded contract shape every time this skill runs.
+## 关卡判定约定
 
-### Gate Task Brief
+每次运行这个技能时，都使用同一套限定范围约定格式。
 
-- `trigger`
-- `goal`
-- `current_worktrack`
-- `current_round`
-- `in_scope`
-- `out_of_scope`
-- `verdict_options`
-- `adjudication_rules`
-- `done_signal`
+### 关卡任务简报
 
-### Gate Info Packet
+- `触发条件`
+- `目标`
+- `当前工作追踪`
+- `当前轮次`
+- `范围内`
+- `范围外`
+- `判定选项`
+- `判定规则`
+- `完成信号`
 
-- `required_evidence_lanes`
-- `evidence_lanes`
-- `current_worktrack_state`
-- `worktrack_contract_summary`
-- `queue_state_relevant_to_judgment`
-- `implementation_evidence`
-- `validation_evidence`
-- `policy_evidence`
-- `low_severity_finding_summary`
-- `upstream_constraint_signals`
-- `known_gaps_or_conflicts`
-- `required_context`
+### 关卡信息包
 
-### Gate Verdict Handoff
+- `所需证据维度`
+- `证据维度`
+- `当前工作追踪状态`
+- `工作追踪约定摘要`
+- `与判定相关的队列状态`
+- `实现证据`
+- `验证证据`
+- `策略证据`
+- `低严重度发现摘要`
+- `上游约束信号`
+- `已知缺口或冲突`
+- `所需上下文`
 
-- `implementation_gate`
-- `validation_gate`
-- `policy_gate`
-- `overall_verdict`
-- `overall_confidence`
-- `overall_confidence_reason`
-- `decisive_evidence`
-- `missing_or_conflicting_evidence`
-- `freshness_blockers`
-- `residual_risks`
-- `low_severity_absorption_applied`
-- `low_severity_absorption_reason`
-- `upstream_route_required`
-- `route_reason`
-- `allowed_next_routes`
-- `recommended_next_route`
-- `approval_required`
-- `approval_scope`
-- `approval_reason`
-- `approval_request`
+### 关卡判定交接
 
-## Hard Constraints
+- `实现关卡`
+- `验证关卡`
+- `策略关卡`
+- `整体判定结果`
+- `整体置信度`
+- `整体置信度理由`
+- `决定性证据`
+- `缺失或冲突证据`
+- `时效性阻塞项`
+- `残留风险`
+- `已应用低严重度吸收`
+- `低严重度吸收理由`
+- `需要上游路由`
+- `路由理由`
+- `允许的下一路由`
+- `建议下一路由`
+- `需要审批`
+- `审批范围`
+- `审批理由`
+- `审批请求`
 
-- Do not execute fixes, rerun implementation work, or collect fresh repo state from this skill.
-- Do not treat missing evidence as implied success; surface the gap explicitly.
-- Do not collapse per-surface judgments into one vague overall verdict.
-- Do not rewrite the `Worktrack Contract`, acceptance criteria, or non-goals.
-- Do not jump directly into recovery, merge, closeout, or repo refresh from this skill.
-- Do not mutate `Harness Control State`; return an adjudication result for supervisor use instead.
-- Do not expand into adjacent systems unless the current evidence boundary clearly depends on them.
-- Do not escalate a pile of bounded low-severity findings into `soft-fail` or `hard-fail` solely by count when they stay on one surface and do not threaten acceptance, recovery, or operator-facing semantics.
-- Do not recommend pure implementation retry when `possible_upstream_constraint_issue` is decisive or repeated; route upstream explicitly.
-- Do not keep expanding review/test intake as new flat top-level fields when `evidence_lanes` already carries the lane envelope.
-- Do not treat stale lane evidence as fresh once it is aggregated into gate judgment.
-- Do not synthesize high confidence when the lane envelope does not explain its confidence basis.
+## 硬约束
 
-## Expected Output
+- 本技能是控制回路的裁决层；负责基于证据做 gate 判定，不要在本技能中执行修复、重跑实现工作或变更 Harness 控制状态。
+- 不要从这个技能执行修复、重跑实现工作，或重新收集代码仓库新鲜状态。
+- 不要把缺失证据当成隐式成功；应显式暴露缺口。
+- 不要把各个层面的判断压缩成一个模糊的整体判定结果。
+- 不要改写 `工作追踪约定`、验收标准或排除目标。
+- 不要从这个技能直接跳进恢复、合并、收尾或代码仓库刷新。
+- 不要变更 `Harness 控制状态`；应返回一个供监督器使用的判定结果。
+- 除非当前证据边界明确依赖相邻系统，否则不要扩展进去。
+- 当一堆限定范围的低严重度发现仍停留在单一层面，且没有威胁验收、恢复或面向操作员的语义时，不要仅凭数量把它们升级成 `软失败` 或 `硬失败`。
+- 当 `可能存在上游约束问题` 是决定性或重复出现时，不要建议纯实现重试；应显式向上游路由。
+- 当 `证据维度` 已经承载了维度封套时，不要继续把审查/测试接收扩张成新的平铺顶层字段。
+- 一旦过期的维度证据被聚合进关卡判定，就不要再把它当成新鲜证据。
+- 当维度封套没有解释清楚置信度依据时，不要综合出高置信度。
 
-When you use this skill, produce a `Gate Report` with at least these sections:
+## 预期输出
 
-- `Gate Trigger`
-- `Lane Intake Summary`
-- `Evidence Assessment`
-- `Per-Surface Verdicts`
-- `Overall Gate Verdict`
-- `Allowed Next Routes`
-- `Programmer Review Request`
+使用这个技能时，产出一份至少包含以下章节的 `关卡报告`：
 
-Inside the result, include at least these fields or equivalents:
+- `关卡触发条件`
+- `维度接收摘要`
+- `证据评估`
+- `分层面判定结果`
+- `整体关卡判定结果`
+- `允许的下一路由`
+- `程序员审查请求`
 
-- `subagent_model`
-- `gate_trigger`
-- `current_worktrack`
-- `current_round`
-- `required_evidence_lanes`
-- `evidence_lanes`
-- `implementation_gate`
-- `validation_gate`
-- `policy_gate`
-- `overall_verdict`
-- `overall_confidence`
-- `overall_confidence_reason`
-- `decisive_evidence`
-- `missing_or_conflicting_evidence`
-- `freshness_blockers`
-- `residual_risks`
-- `low_severity_absorption_applied`
-- `low_severity_absorption_reason`
-- `upstream_route_required`
-- `route_reason`
-- `allowed_next_routes`
-- `recommended_next_route`
-- `approval_required`
-- `approval_scope`
-- `approval_reason`
-- `needs_programmer_approval`
-- `how_to_review`
+结果中至少应包含以下字段或等价表达：
 
-## Resources
+- `子代理模型`
+- `关卡触发条件`
+- `当前工作追踪`
+- `当前轮次`
+- `所需证据维度`
+- `证据维度`
+- `实现关卡`
+- `验证关卡`
+- `策略关卡`
+- `整体判定结果`
+- `整体置信度`
+- `整体置信度理由`
+- `决定性证据`
+- `缺失或冲突证据`
+- `时效性阻塞项`
+- `残留风险`
+- `已应用低严重度吸收`
+- `低严重度吸收理由`
+- `需要上游路由`
+- `路由理由`
+- `允许的下一路由`
+- `建议下一路由`
+- `需要审批`
+- `审批范围`
+- `审批理由`
+- `需要程序员审批`
+- `如何审查`
 
-Use the current round's lane evidence slices, `Worktrack Contract`, and `templates/gate-evidence.template.md` when you need a stable gate-report draft shape for this round. Treat the template as a presentation aid, not as the source of truth for the data model.
+## 资源
+
+当你需要本轮稳定的关卡报告草稿格式时，使用当前轮次的维度证据切片、`工作追踪约定` 和 `templates/关卡证据模板.md`。把模板当成展示辅助，而不是数据模型的真相来源。

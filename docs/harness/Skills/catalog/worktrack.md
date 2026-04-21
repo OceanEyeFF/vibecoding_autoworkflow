@@ -18,6 +18,7 @@ last_verified: 2026-04-20
 - 它们可以派发下游 subagent，但自身不应伪装成“控制平面 + 执行平面一体”
 - `schedule-worktrack-skill` 是当前 `selected_next_action` 与 dispatch handoff packet 的唯一 authority
 - `dispatch-skills` 只消费 scheduling packet，不反向改写 queue 选择
+- 在 freshly seeded 或 autonomous continuation 的首个 execution-facing round，初始 slice 必须先收紧到最小可验证子片段，再允许 dispatch
 
 ## Catalog
 
@@ -58,6 +59,7 @@ preferred initialization fields：
 
 - 根据当前 contract、验收条件、证据和阻塞情况刷新任务队列
 - 决定当前下一动作
+- 在首个 execution-facing round 优先选择最小可验证的 acceptance slice 或依赖解阻步骤，而不是直接放大成端到端包
 - 显式说明当前下一动作与剩余队列如何对齐验收条件
 - 产出唯一权威的 dispatch handoff packet
 
@@ -79,6 +81,7 @@ preferred scheduling fields：
 
 - `selected_next_action_id`
 - `selected_next_action`
+- `slice_boundary_reason`
 - `dispatch_task_brief_draft`
 - `dispatch_info_packet_draft`
 - `dispatch_packet_ready`
@@ -90,6 +93,7 @@ preferred scheduling fields：
 
 - 接收当前 `Worktrack` 的下一任务
 - 校验 scheduling 产出的 handoff packet
+- 拒收超过单轮边界的 oversized packet，并把它退回 `schedule-worktrack-skill`
 - 优先选择合适的专门 skill 或 subagent 执行方式
 - 当系统中没有合适的专门 skill 时，自动 fallback 到通用任务完成 `SubAgent`
 - 跑一轮 bounded execution
@@ -111,6 +115,7 @@ dispatch contract：
   - `out_of_scope`
   - `constraints`
   - `acceptance_criteria_for_this_round`
+  - `atomicity_justification`
   - `verification_requirements`
   - `done_signal`
 - `Dispatch Info Packet`
@@ -126,6 +131,7 @@ dispatch contract：
   - `selection_reason`
   - `fallback_used`
   - `dispatch_packet_status`
+  - `packet_boundedness_verdict`
   - `dispatch_contract_gaps`
   - `actions_taken`
   - `files_touched_or_expected`
@@ -139,6 +145,7 @@ dispatch contract：
 - 没有清晰贴合的专门 skill 时，必须 fallback 到通用任务完成 `SubAgent`
 - fallback 不得扩大 scope，也不得绕过 `verification_requirements`
 - handoff packet 缺失或不完整时，必须返回 `schedule-worktrack-skill`，而不是由 `dispatch-skills` 自己补齐
+- handoff packet 如果已经膨胀成多 acceptance slices、多队列项或“整包做完”的 execution tranche，也必须返回 `schedule-worktrack-skill`
 
 canonical executable source：
 

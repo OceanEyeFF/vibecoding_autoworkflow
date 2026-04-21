@@ -1,117 +1,131 @@
 ---
 name: schedule-worktrack-skill
-description: Use this skill when Harness is in WorktrackScope and needs one bounded scheduling round that refreshes the task queue and selects the current next action without dispatching downstream execution.
+description: 当 Harness 处于 WorktrackScope.scheduling，且需要一轮限定范围调度来刷新任务队列并选出当前下一步动作、但不直接分派下游执行时，使用这个技能。
 ---
 
-# Schedule Worktrack Skill
+# 调度工作追踪技能
 
-## Overview
+## 概览
 
-Use this skill when `Harness` already has an active `Worktrack` and needs one bounded planning round to refresh the current `Plan / Task Queue`.
+本技能实现 `WorktrackScope.Decide` 状态转移算子，对应 Harness 控制回路中的**算子选择**阶段。它基于状态估计结果（由 `worktrack-status-skill` 或等效状态估计提供）选择合法的下一步动作，而不是自行执行状态估计。
 
-This skill re-evaluates the queue against the current `Worktrack Contract`, including the active acceptance criteria, blocker status, and available evidence, then selects one `current next action` or returns a clear `no safe next action` result.
+当 `Harness` 已经有一个活动中的 `工作追踪`，并需要一轮限定范围规划来刷新当前 `计划/任务队列` 时，使用这个技能。
 
-Inside `WorktrackScope`, this is the bounded planning round that turns the current task list into one dispatchable work item plus one bounded dispatch handoff packet. `Harness` and `dispatch-skills` should consume that packet; they should not replace it.
+这个技能会消费当前 `工作追踪约定` 和状态估计结果，重新评估队列，纳入活动中的验收标准、阻塞状态与可用证据，然后选出一个 `当前下一步动作`，或者返回明确的 `没有安全的下一步动作` 结果。
 
-This skill should keep planning traceable to the current acceptance criteria, but it does not collect validation evidence or issue any gate verdict about whether those criteria are already satisfied.
+在 `工作追踪范围` 内，这是一轮限定范围规划：把当前任务列表转成一个可分派的工作项外加一份限定范围分派交接包。`Harness` 与 `分派技能` 应消费这个包，而不是替换它。
 
-## When To Use
+当队列刚被播种、刚恢复，或通过自动继续路径进入时，选出的工作项默认应是能安全推进 `工作追踪` 的最小可验证切片。初始调度应先收紧范围，再进入分派，而不是把第一个看起来可行的端到端打包块当成默认答案。
 
-Use this skill when the current question is not "who should execute this task", but "what is the right next bounded work item right now":
+这个技能应让规划始终可追溯到当前验收标准，但它不负责收集验证证据，也不负责判断这些标准是否已经满足。
 
-- refresh the queue after contract clarification, new evidence, or a blocker change
-- split, reorder, defer, or mark blocked tasks inside the existing `Worktrack`
-- choose the current next action that is ready to hand off
-- show whether the selected action and remaining queue still cover the current acceptance criteria
-- determine whether the next step should go to `dispatch-skills`, recovery, or supervisor escalation
-- package the minimum context that the next bounded round needs
+## 何时使用
 
-## Workflow
+当当前问题不是"谁来执行这个任务"，而是"此刻正确的下一项限定范围工作项是什么"时，使用这个技能：
 
-1. Load the minimum `WorktrackScope` artifacts for the current round.
-2. Build one bounded `Scheduling Packet` from the current contract, queue snapshot, evidence delta, and blocker state.
-3. Refresh the queue for this round only:
-   - keep ready items as-is
-   - reorder tasks when dependencies or evidence require it
-   - split a task if the current item is too wide to dispatch safely
-   - defer or block items that are not ready
-4. Check whether the refreshed queue still maps cleanly to the current acceptance criteria; surface any planning-level coverage gap explicitly.
-5. Select one `current next action`, or return `no safe next action` with the blocking reason.
-6. If one `current next action` exists, package it into one bounded `Dispatch Handoff Packet` with the task brief, info packet, and explicit return-to-schedule conditions for this round.
-7. Produce one fixed-format `Schedule Result`; when useful, keep the queue draft aligned with `templates/plan-task-queue.template.md`.
-8. If the selected route is dispatch-ready and no formal stop condition is hit, allow supervisor continuation into `dispatch-skills`.
-9. Otherwise return the scheduling result as the current stop boundary.
+- 在约定澄清、新证据出现或阻塞项变化后刷新队列
+- 在现有 `工作追踪` 内拆分、重排、延后或标记被阻塞的任务
+- 选出一个已经可以交接的当前下一步动作
+- 说明所选动作与剩余队列是否仍覆盖当前验收标准
+- 判断下一步应该进入 `分派技能`、恢复路径，还是监督器升级
+- 打包下一轮限定范围流程所需的最小上下文
 
-## Scheduling Packet
+## 工作流
 
-If this skill is carried by a `gpt-5.4-xhigh` `SubAgent`, pass a bounded packet with at least:
+1. 消费当前 `WorktrackStateEstimate`（由 Observe 阶段产出）和本轮所需的最小 `工作追踪范围` 产物。
+2. 基于状态估计结果中的约定、队列快照、证据变化和阻塞项状态构建一份限定范围 `调度包`。
+3. 只针对本轮刷新队列：
+   - 保持就绪项不变
+   - 当依赖或证据需要时重排任务
+   - 如果当前项太宽而无法安全分派，就拆分任务
+   - 推迟或阻塞未就绪的项
+   - 当这是当前队列状态首个面向执行的切片时，优先选择一个最小依赖解锁步骤或一个验收标准切片，而不是更大的包
+   - 如果当前候选跨越多个验收切片、多个子系统，或多个执行阶段，就拆出最小安全首个切片，除非约定明确要求原子性处理
+4. 检查刷新后的队列是否仍能干净映射到当前验收标准；若存在规划层覆盖缺口，要明确暴露。
+5. 选出一个 `当前下一步动作`，或者带上阻塞原因返回 `没有安全的下一步动作`。
+6. 如果存在 `当前下一步动作`，就把它封装成一份限定范围 `分派交接包`，其中包含任务简报、信息包，以及本轮明确的返回调度条件。
+7. 产出一份固定格式的 `调度结果`；有需要时，让队列草稿与 `templates/计划任务队列模板.md` 保持对齐。
+8. 如果选定路由已经分派就绪，且没有命中正式停止条件，就允许监督器继续进入 `分派技能`。
+9. 否则，把调度结果作为当前停止边界返回。
 
-- `worktrack_goal`
-- `in_scope`
-- `out_of_scope`
-- `acceptance_criteria`
-- `current_queue_snapshot`
-- `dependency_status`
-- `blocker_status`
-- `evidence_delta`
-- `planning_constraints`
-- `needed_decision`
+## 调度包
 
-## Hard Constraints
+如果这个技能由 `gpt-5.4-xhigh` `子代理` 承载，传入的限定范围包至少应包含：
 
-- Do not widen scope beyond the current `Worktrack Contract`.
-- Do not execute the selected next action or dispatch downstream work from this skill.
-- Do not derive the dispatch task directly from repo goals or initialization notes when the current `Plan / Task Queue` has not yet selected a current next action.
-- Do not treat `selected_next_action` alone as proof that the work is dispatch-ready; the dispatch handoff packet must also be complete.
-- Do not let this skill choose the executor or specialized skill binding; that belongs to `dispatch-skills`.
-- Do not invent acceptance criteria, non-goals, or recovery policy.
-- Do not treat acceptance criteria as already validated or passed from this skill; use them only as planning constraints and coverage targets.
-- Do not mark a task done, ready, or unblocked without support from the current artifacts and evidence.
-- Do not rewrite the whole queue when a bounded refresh is sufficient.
-- Do not hide ambiguity; if no safe next action exists, return that explicitly.
-- Do not mutate `Harness Control State` or issue a gate verdict directly from this skill.
+- `工作追踪目标`
+- `范围内`
+- `范围外`
+- `验收标准`
+- `当前队列快照`
+- `依赖状态`
+- `阻塞项状态`
+- `证据变化`
+- `规划约束`
+- `所需判定`
 
-## Expected Output
+## 硬约束
 
-When you use this skill, produce a `Schedule Result` with at least these sections:
+- 本技能是控制回路的算子选择层；基于状态估计结果选择下一步动作，不要在算子选择中混入状态估计或动作执行。
+- 不要把范围扩大到当前 `工作追踪约定` 之外。
+- 不要从这个技能执行已选下一步动作，也不要直接分派下游工作。
+- 在当前 `计划/任务队列` 还没有选出当前下一步动作时，不要直接根据代码仓库目标或初始化说明推导分派任务。
+- 不要把 `已选下一步动作` 本身当成工作已经分派就绪的证据；分派交接包也必须完整。
+- 不要让这个技能去选择执行者或专用技能绑定；那属于 `分派技能`。
+- 不要凭空发明验收标准、排除目标或恢复策略。
+- 不要把验收标准当成已经在这个技能里被验证或通过；它们在这里只能被当成规划约束和覆盖目标。
+- 当更窄的首个切片可以被安全调度时，不要让初始或自动继续切片吸收多个验收切片、多子系统变更，或端到端的实现加验证。
+- 除非当前约定、依赖形状或显式原子性要求确实要求更宽切片，否则不要保留更宽的首个切片；若确有必要，应显式给出理由。
+- 不要把过大的首个候选项藏在诸如"完成""结束""把所有东西连起来"这样的模糊动词里；应拆分它，或返回 `没有安全的下一步动作`。
+- 当限定范围刷新已经足够时，不要重写整个队列。
+- 不要隐藏歧义；如果不存在安全的下一步动作，就应明确返回。
+- 不要从这个技能变更 `Harness 控制状态`，也不要直接输出关卡判定结果。
 
-- `Current Worktrack Assessment`
-- `Queue Refresh Decisions`
-- `Acceptance Alignment`
-- `Current Next Action`
-- `Dispatch Handoff Packet`
-- `Dispatch Or Escalation Readiness`
-- `Evidence Used`
-- `Open Issues`
-- `Return To Harness`
+## 预期输出
 
-Inside the result, include at least these fields or equivalents:
+使用这个技能时，产出一份至少包含以下章节的 `调度结果`：
 
-- `current_worktrack_state`
-- `queue_snapshot_after_refresh`
-- `queue_changes`
-- `ready_tasks`
-- `blocked_or_deferred_tasks`
-- `acceptance_criteria_considered`
-- `criteria_addressed_now`
-- `criteria_remaining`
-- `acceptance_coverage_gaps`
-- `selected_next_action_id`
-- `selected_next_action`
-- `selection_reason`
-- `prerequisites_remaining`
-- `dispatch_task_brief_draft`
-- `dispatch_info_packet_draft`
-- `dispatch_packet_ready`
-- `return_to_schedule_if`
-- `dispatch_ready`
-- `required_context_for_next_round`
-- `recommended_next_route`
-- `evidence_used`
-- `open_issues`
-- `continuation_ready`
-- `recommended_next_skill_or_route`
+- `消费的状态估计`
+- `队列刷新决策`
+- `验收对齐`
+- `当前下一步动作`
+- `分派交接包`
+- `分派或升级就绪度`
+- `使用的证据`
+- `待解决问题`
+- `返回 Harness`
 
-## Resources
+结果中至少应包含以下字段或等价表达：
 
-Use the current worktrack queue, contract, evidence delta, any init-produced scheduling handoff packet, and `templates/plan-task-queue.template.md` when you need a stable queue draft shape for this round.
+**消费的状态估计（输入）**
+- `当前工作追踪状态`
+- `队列变化`
+- `就绪任务`
+- `被阻塞或推迟任务`
+- `已考虑验收标准`
+- `当前已处理标准`
+- `剩余标准`
+- `使用的证据`
+
+**产出的调度决策（输出）**
+- `刷新后队列快照`
+- `验收覆盖缺口`
+- `已选下一步动作编号`
+- `已选下一步动作`
+- `选择理由`
+- `切片边界理由`
+- `更宽切片理由`
+- `剩余前置条件`
+- `分派任务简报草稿`
+- `分派信息包草稿`
+- `分派包就绪`
+- `返回调度条件`
+- `分派就绪`
+- `下一轮所需上下文`
+- `建议下一路由`
+- `待解决问题`
+- `可继续`
+- `建议下一技能或路由`
+
+## 资源
+
+当你需要本轮稳定的队列草稿格式时，使用当前工作追踪队列、约定、证据变化、任意由初始化产出的调度交接包，以及 `templates/计划任务队列模板.md`。

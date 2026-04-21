@@ -1,150 +1,201 @@
 ---
 name: repo-whats-next-skill
-description: Use this skill when Harness is in RepoScope and needs one bounded next-direction round, including a lightweight priority reframe / contradiction analysis mode, without mutating control state.
+description: 当 Harness 处于代码仓库范围，且需要一轮不变更控制状态的限定范围下一步方向判断，并包含轻量级的优先级重构/矛盾分析模式时，使用这个技能。
 ---
 
-# Repo What's Next Skill
+# 代码仓库下一步技能
 
-## Overview
+## 概览
 
-Use this skill when `Harness` is already in `RepoScope` and needs one bounded judgment about the most appropriate next evolution direction for the repo.
+本技能实现 `RepoScope.Decide` 状态转移算子，对应 Harness 控制回路中的**算子选择**阶段。
 
-This skill is a decision carrier for a `gpt-5.4-xhigh` `SubAgent`: it consumes a bounded repo context packet, evaluates the current repo baseline, and returns a recommendation to `Harness` without directly mutating `Harness Control State`.
+这个技能消费上游 `RepoScope.Observe` 算子（如 `repo-status-skill`）产出的结构化状态估计，在合法的状态转移算子集合中（`Observe`、`ChangeControl`、`Init`/进入工作追踪、`保持并观察`）选择一个算子。它的决策必须投影成显式路由、阻塞项集合与审批状态，供 Harness 消费，而不是文字摘要。它不得直接变更 `Harness 控制状态`，只返回建议。
 
-It realizes one bounded `RepoScope.deciding` round. Its job is to choose one repo action and then project that decision into one explicit continuation route, approval state, and blocker set that `Harness` can consume without reinterpreting the prose.
+当 `Harness` 已经处于 `代码仓库范围`，并需要对代码仓库最合适的下一步演进方向做一轮限定范围判断时，使用这个技能。
 
-This skill has one default decision path and one embedded `priority reframe / contradiction analysis` mode. That mode is part of this `RepoScope` skill. It is not a separate skill, not a `WorktrackScope` skill, and not a license to produce a long strategic report.
+这个技能是一个供 `gpt-5.4-xhigh` `SubAgent` 使用的决策载体：它会消费一份限定范围代码仓库上下文包，评估当前代码仓库基准，并在不直接变更 `Harness 控制状态` 的前提下向 `Harness` 返回建议。
 
-This document is a canonical executable skeleton. It defines the bounded operating shape and output contract for the mode, but it does not claim that a fully automated planner or supervisor implementation already exists.
+它实现一轮限定范围的 `代码仓库范围.决策`。它的工作是选出一个代码仓库动作，然后把这个决策投影成显式的继续路由、审批状态与阻塞项集合，让 `Harness` 无需重新解释文字就能消费。
 
-## When To Use
+当已有新鲜的 `代码仓库状态摘要`，或者 `Harness` 明确希望先拿到稳定观察包时，这个技能可以消费该摘要。但在没有现成 `代码仓库状态技能` 输出时，它仍必须能直接基于代码仓库真相运行。
 
-Use this skill when the current question is not "who should execute a work item", but "what should the repo do next from `RepoScope`":
+它的主要判断依据是代码仓库级真相：
 
-- decide whether the next direction should be:
-  - enter a new `WorktrackScope`
-  - refresh repo baseline or repo state
-  - enter goal change control
-  - hold in `RepoScope` until missing evidence is filled
-- explain why that direction is the best current move
-- reframe repo priority when there are multiple plausible directions but no decisive first move
-- surface the minimum prerequisites and bounded context for the next round
-- return the recommendation to `Harness`; only surface programmer approval when the selected route actually crosses a formal approval boundary
+- `代码仓库目标/章程`
+- `代码仓库快照/状态`
+- 当前 `Harness 控制状态`
 
-Use the embedded `priority reframe / contradiction analysis` mode when at least one of these conditions holds:
+`工作追踪约定` 和 `计划/任务队列` 不是代码仓库级任务来源。它们只能作为关于当前活动中或刚关闭工作追踪的边界证据被查询，例如前一个切片是否完成、继续权限是否受限、或某个交接包是否仍在生效。一个关闭的队列不代表代码仓库没有下一步，只代表那个工作追踪的本地执行序列已经结束。这个技能不得更新或重写 `.aw/worktrack/*` 产物。
 
-- the repo has multiple plausible next directions and no clear first move
-- the current path looks busy but not decisive
-- time, scope, or resources are materially tighter than the stated goal
-- a `WorktrackScope` round just closed or stalled and repo-level priority may need reframing
+这个技能有一条默认决策路径，以及一个内嵌的 `优先级重构/矛盾分析` 模式。该模式属于这个 `代码仓库范围` 技能本身，不是独立技能，不是 `工作追踪范围` 技能，也不是产出长篇战略报告的许可。
 
-Do not use this skill as a substitute for worktrack planning or execution dispatch. This remains a `RepoScope` judgment round.
+这个文档是标准可执行骨架。它定义了该模式的限定范围操作格式与输出约定，但并不声称已经存在一套完全自动化的规划器或监督器实现。
 
-## Workflow
+## 路由边界
 
-1. Confirm this is a `RepoScope` decision round, not a `WorktrackScope` planning or execution round.
-2. Load the minimum repo artifacts and current control-state view needed for this decision round, preferring the current `Repo Status Summary` when it already exists.
-3. Choose the operating mode and record the trigger reason:
-   - default `next-direction` mode
-   - `priority reframe / contradiction analysis` mode
-4. Build one bounded repo decision packet for the current `gpt-5.4-xhigh` reasoning round.
-5. Evaluate the allowed candidate repo actions:
-   - `enter-worktrack`
-   - `refresh-repo-state`
-   - `goal-change-control`
-   - `hold-and-observe`
-6. Recommend exactly one repo action, explain why it is the top priority now, and project that decision into one explicit continuation route, blocker set, and approval state.
-7. Return one fixed-format `Repo Whats Next Decision` to `Harness`.
-8. If the selected route is already approved and no formal stop condition is hit, allow the supervisor to continue directly into the corresponding next scope.
+这个标准技能保留完整的 `代码仓库范围.决策` 动作空间，但任何缩窄路由支持范围的已部署负载配置，仍然是当前轮次的活动约定。
 
-## Formal Stop Conditions
+当这个技能通过一个被收窄的部署配置被消费时，应把该配置视为硬路由边界，而不是可选的适配器元数据。对当前 `agents` 第一波配置而言，有效的 `支持的代码仓库动作` 子集是：
 
-Stop and return control when at least one of these conditions is true:
+- `进入工作追踪`
+- `保持并观察`
 
-- the evidence is too weak to support a decisive repo action, so the result must stay at `hold-and-observe`
-- the selected route crosses an authority boundary and therefore sets `approval_required: true`
-- no legal candidate route remains inside the allowed repo action set for this round
+在这个第一波边界下：
 
-## Priority Reframe / Contradiction Analysis Mode
+- 继续把 `目标变更控制` 与 `刷新代码仓库状态` 作为标准可能性保留下来，但在当前轮中标记为 `范围外`
+- 不要仅仅因为标准技能能命名它们，就推荐或输出不受支持的代码仓库动作
+- 如果最佳的标准动作落在当前活动子集之外，就把本轮降级为 `保持并观察`，并在 `决策约束`、`继续阻塞项` 或 `最小缺失信息` 中解释缺失的配置支持或审批边界
 
-When this mode is active, compress the round to one bounded repo-level contradiction judgment:
+## 何时使用
 
-- separate `Facts`, `Inferences`, and `Unknowns`
-- identify exactly one `Current Primary Contradiction`
-- identify the current `Primary Aspect` of that contradiction
-- name exactly one `Top Priority Now`
-- state a short `Do Not Do` list that removes distraction instead of padding the answer
-- map that priority to exactly one `Recommended Repo Action`
-- surface only the `Minimal Missing Info` needed for the next repo decision
+当当前问题不是"谁来执行某个工作项"，而是"代码仓库在 `代码仓库范围` 下下一步应该做什么"时，使用这个技能：
 
-If evidence is too weak to support a decisive repo action, recommend `hold-and-observe` plus the minimum missing info. If the contradiction can only be resolved by changing repo goals, route to `goal-change-control`. If the contradiction is ready for execution, recommend entering `WorktrackScope`; when the next route is already approved and safe, supervisor continuation may proceed without an extra programmer handoff.
+- 判断下一方向是否应该是：
+  - 进入一个新的 `工作追踪范围`
+  - 刷新代码仓库基准或代码仓库状态
+  - 进入目标变更控制
+  - 继续停留在 `代码仓库范围`，直到缺失证据被补齐
+- 解释为什么这个方向是当前最优动作
+- 当存在多个看似合理但没有决定性首选项的方向时，重新框定代码仓库优先级
+- 暴露下一轮所需的最小前置条件和限定范围上下文
+- 把建议返回给 `Harness`；只有当所选路由真正跨越正式审批边界时，才显式提出程序员审批
 
-## Hard Constraints
+当以下至少一个条件成立时，使用内嵌的 `优先级重构/矛盾分析` 模式：
 
-- Do not mutate `Harness Control State`.
-- Do not start, schedule, or execute a `WorktrackScope` round directly from this skill.
-- Do not rewrite repo goals inside this skill; route real goal changes to `goal change control`.
-- Do not collapse `recommended_repo_action` and `recommended_next_route` into one field; the former chooses the repo action, the latter tells supervisor how to continue.
-- Do not treat "one bounded repo judgment" as an instruction that the whole Harness loop must stop.
-- Do not dump full-repo context into the reasoning round when a bounded info packet is sufficient.
-- Do not treat the embedded contradiction analysis mode as a separate skill or a new layer in the skill tree.
-- Do not collapse facts, inferences, unknowns, and recommended action into one vague narrative.
-- Do not issue a gate verdict from this skill.
-- Do not read repo-local deploy targets as truth sources.
-- Do not output a large strategic report; keep the result reviewable in one `RepoScope` round.
+- 代码仓库存在多个看似合理的下一方向，但没有明确的一步先手
+- 当前路径看起来很忙，但并不决定性
+- 时间、范围或资源相较于既定目标明显更紧
+- 某轮 `工作追踪范围` 刚关闭或停滞，代码仓库级优先级可能需要重构
 
-## Expected Output
+不要把这个技能当成工作追踪规划或执行分派的替代品。它仍然是一轮 `代码仓库范围` 判定。
 
-When you use this skill, produce a `Repo Whats Next Decision` with at least these sections:
+## 工作流
 
-- `Mode`
-- `Mode Trigger`
-- `Facts`
-- `Inferences`
-- `Unknowns`
-- `Current Primary Contradiction`
-- `Primary Aspect`
-- `Top Priority Now`
-- `Do Not Do`
-- `Recommended Repo Action`
-- `Route / Approval Decision`
-- `Minimal Missing Info`
-- `Return To Harness`
+1. 确认这是一轮 `代码仓库范围` 判定，而不是 `工作追踪范围` 规划或执行。
+2. 载入本轮判定所需的最小代码仓库产物与当前控制状态视图；如果当前 `代码仓库状态摘要` 已经存在，应优先使用，但不要把它当成硬前置条件。
+3. 从 `Harness 控制状态` 读取当前 `继续权限` 策略，尤其是在前一个工作追踪刚在 `约定边界` 收束时。
+4. 如果一个刚关闭或仍在活动中的工作追踪会影响判断，就只读取理解边界所需的最小 `工作追踪约定` 或 `计划/任务队列` 字段。不要把这些工作追踪产物重新当成代码仓库的全局待办列表。
+5. 解析当前安装或负载的活动路由边界。如果当前部署配置缩窄了 `支持的代码仓库动作`，要先记录这个收窄后的子集，再去推理下一步。
+6. 选择运行模式，并记录触发原因：
+   - 默认 `下一步方向` 模式
+   - `优先级重构/矛盾分析` 模式
+7. 为当前 `gpt-5.4-xhigh` 推理轮构建一份限定范围代码仓库判定包。
+8. 评估允许的候选代码仓库动作：
+   - `进入工作追踪`
+   - `刷新代码仓库状态`
+   - `目标变更控制`
+   - `保持并观察`
+9. 把标准动作集合与当前活动路由边界取交集。如果边界比标准集合更窄，就只把不受支持的动作保留为阻塞或范围外上下文。
+10. 如果前一个工作追踪刚关闭，且 `约定后自动性：最小委派` 正在生效，那么任何自动 `进入工作追踪` 建议都必须被限制在已批准的低风险类别中的一个同目标限定范围切片。
+11. 只推荐一个代码仓库动作，解释为什么它是当前最高优先级，并把该决策投影成显式继续路由、阻塞项集合与审批状态。
+12. 向 `Harness` 返回一份固定格式的 `代码仓库下一步判定`。
+13. 如果选中的路由已经获批，且没有命中正式停止条件，就允许监督器直接继续进入相应的下一范围。
 
-Inside the result, include at least these fields or equivalents:
+## 正式停止条件
 
-- `current_phase`
-- `mode`
-- `mode_trigger_reason`
-- `facts`
-- `inferences`
-- `unknowns`
-- `current_primary_contradiction`
-- `primary_aspect`
-- `top_priority_now`
-- `do_not_do`
-- `recommended_repo_action`
-- `allowed_next_routes`
-- `recommended_next_route`
-- `recommended_next_scope`
-- `allowed_repo_actions`
-- `in_scope`
-- `out_of_scope`
-- `decision_constraints`
-- `selection_basis`
-- `selection_reason`
-- `minimal_missing_info`
-- `control_state_change_requested`
-- `continuation_ready`
-- `continuation_blockers`
-- `approval_required`
-- `approval_scope`
-- `approval_reason`
-- `needs_programmer_approval`
-- `how_to_review`
+至少在以下任一条件成立时停止并返回控制权：
 
-If the default mode is enough and no full contradiction reframe is needed, keep the contradiction-related sections brief instead of expanding them into a report. The output is still expected to stay bounded and decision-oriented.
+- 证据太弱，无法支持决定性的代码仓库动作，因此结果必须停留在 `保持并观察`
+- 所选路由跨越了权限边界，因此需要把 `需要审批` 置为 `真`
+- 本轮允许的代码仓库动作集合中已经不存在合法候选路由
 
-## Resources
+## 优先级重构/矛盾分析模式
 
-Use the current `Harness Control State`, the current `Repo Status Summary`, and the repo-side `.aw/` artifacts as the primary inputs for this deciding round. Read `references/priority-reframe-mode.md` only when the current round actually enters `priority reframe / contradiction analysis` mode.
+当这个模式启用时，把本轮压缩成一次限定范围的代码仓库级矛盾判定：
+
+- 区分 `事实`、`推断` 与 `未知项`
+- 只识别一个 `当前主要矛盾`
+- 识别该矛盾当前的 `主要方面`
+- 只命名一个 `当前最高优先级`
+- 给出一份简短的 `不要做的事` 列表，用于剔除干扰而不是给答案注水
+- 把该优先级映射到一个明确的 `建议代码仓库动作`
+- 只暴露下一次代码仓库判定所需的 `最小缺失信息`
+
+如果证据太弱，无法支持决定性的代码仓库动作，就建议 `保持并观察` 并附带最小缺失信息。如果矛盾只能通过改变代码仓库目标才能解决，就路由到 `目标变更控制`。如果矛盾已经准备好进入执行，就建议进入 `工作追踪范围`；当下一条路由已经获批且安全时，监督器继续推进可以在无需额外程序员交接的情况下继续。
+
+如果活动路由边界比宽泛的标准答案更窄，不要仅仅因为某条路在概念上正确，就输出一条不受支持的路由。应把不受支持的分支保留在 `范围外`，解释约束，并回退到 `保持并观察`，除非当前配置明确允许更宽的路由。
+
+当当前矛盾是"已批准的工作追踪已完成，但当前目标仍允许一个明显的低风险后续切片"时，只有在以下条件全部满足时才允许自动继续：
+
+- `约定后自动性：最小委派`
+- `自动范围：仅当前目标`
+- 自动预算仍有余额
+- 候选切片必须停留在以下类别之一：
+  - `验证加固`
+  - `文档与代码对齐`
+  - `打包与入口清理`
+  - `不改变行为的小重构`
+
+如果这些条件有任意一个失败，就不要把 `继续工作` 重新解释成发明新范围的许可；应改为路由到 `目标变更控制` 或 `保持并观察`。
+
+## 硬约束
+
+- 本技能是控制回路的算子选择层；不要在本技能内部执行选中的动作，也不要直接变更 Harness 控制状态。
+- 判定一个代码仓库级下一步方向；不要直接开始、调度或执行一轮 `工作追踪范围`。
+- 把 `代码仓库目标/章程`、`代码仓库快照/状态` 和 `Harness 控制状态` 当作主要输入；只把工作追踪产物当作边界证据。
+- 不要把 `计划/任务队列` 当成代码仓库待办列表，也不要把 `队列状态：已完成` 当成代码仓库没有下一步的证据。
+- 停留在当前部署配置的活动路由边界内。
+- 不要从这个技能改写代码仓库目标、变更 `Harness 控制状态`，或重写 `.aw/worktrack/*`。
+- 保持结果限定范围且面向判定，而不是把它变成一份大型战略报告。
+
+## 预期输出
+
+使用这个技能时，产出一份至少包含以下章节的 `代码仓库下一步判定`：
+
+- `模式`
+- `模式触发原因`
+- `事实`
+- `推断`
+- `未知项`
+- `当前主要矛盾`
+- `主要方面`
+- `当前最高优先级`
+- `不要做的事`
+- `建议代码仓库动作`
+- `路由/审批判定`
+- `最小缺失信息`
+- `返回 Harness`
+
+结果中至少应包含以下字段或等价表达：
+
+- `当前阶段`
+- `模式`
+- `模式触发理由`
+- `事实`
+- `推断`
+- `未知项`
+- `当前主要矛盾`
+- `主要方面`
+- `当前最高优先级`
+- `不要做的事`
+- `建议代码仓库动作`
+- `允许的下一路由`
+- `建议下一路由`
+- `建议下一范围`
+- `允许的代码仓库动作`
+- `路由边界来源`
+- `约定后自动性`
+- `自动候选类别`
+- `剩余自动预算`
+- `范围内`
+- `范围外`
+- `决策约束`
+- `选择依据`
+- `选择理由`
+- `最小缺失信息`
+- `请求变更控制状态`
+- `可继续`
+- `继续阻塞项`
+- `需要审批`
+- `审批范围`
+- `审批理由`
+- `需要程序员审批`
+- `如何审查`
+
+当活动部署配置缩窄了路由空间时，`允许的代码仓库动作`、`允许的下一路由`、`范围外` 与 `决策约束` 必须反映这个收窄后的子集，而不是完整的标准动作空间。
+
+如果默认模式已经足够，且不需要完整的矛盾重构，就让与矛盾相关的章节保持简短，不要把它们展开成报告。输出仍应保持限定范围且面向判定。
+
+## 资源
+
+使用当前 `Harness 控制状态`、当前 `代码仓库目标/章程` 与当前 `代码仓库快照/状态` 作为本轮判定的主要输入。若当前 `代码仓库状态摘要` 可用，就使用它，但不要把它设成前置条件。只有当当前代码仓库判定依赖于一个活动中或刚关闭工作追踪的边界时，才读取 `工作追踪约定` 或 `计划/任务队列`，并把它们视为本地边界证据，而不是代码仓库级任务库存。只有当本轮实际进入 `优先级重构/矛盾分析` 模式时，才读取 `references/优先级重构模式.md`。

@@ -90,6 +90,9 @@ last_verified: 2026-04-20
   - 首发明确不承接：
     - `goal-change-control`
     - `refresh-repo-state`
+  - 首发输出约束：
+    - 如果当前 deploy profile 复制的是 canonical `SKILL.md`，被复制的 prompt surface 也必须显式重复这组收窄后的 `supported_repo_actions`
+    - 如果 broad canonical judgment 本来会落到 `goal-change-control` 或 `refresh-repo-state`，首发轮次必须退化为 `hold-and-observe`，并把更宽路线记录为 `out_of_scope`、`decision_constraints` 或 `minimal_missing_info`
 - `init-worktrack-skill`
   - 首发必须承接：
     - branch / baseline / contract / initial queue 的建立
@@ -112,6 +115,8 @@ last_verified: 2026-04-20
     - 以 specialized downstream skills 为主的 dispatch packaging 完整覆盖
 
 如果当前 canonical skill 合同允许更宽的动作空间，应继续保留在 canonical source 中；只是这些分支不进入当前首发实现闭环。
+
+这里的“只是不进入首发实现闭环”不应停留在 adapter metadata。因为当前 `agents` first-wave payload 会直接复制 canonical `SKILL.md`，所以首发收窄必须在被复制的 skill prompt surface 上也明确可见，否则首发运行轮次仍可能产出超出冻结子集的路线。
 
 ## 五、首发停止边界
 
@@ -176,6 +181,7 @@ last_verified: 2026-04-20
 - 模板初始化只需要支持首发链路真正需要的最小模板初始化，不为全 skill 树做通用 orchestrator（编排器）
 - `agents` payload 只需要为这六个 skills 准备可追踪 payload，并覆盖 `dispatch-skills` 的 fallback / general executor 路径
 - deploy / verify 只需要让 `prune --all`、`check_paths_exist`、`install --backend agents` 与 `verify` 能处理首发 skill 子集与上述支持分支，不为暂缓 skill 预留复杂分支
+- 对 `repo-whats-next-skill`，首发 payload / copied skill surface / contract smoke 看到的有效 repo action 子集必须一致，不能出现 metadata 只写两条、skill prompt 仍放行四条的情况
 
 禁止的范围扩大方式：
 

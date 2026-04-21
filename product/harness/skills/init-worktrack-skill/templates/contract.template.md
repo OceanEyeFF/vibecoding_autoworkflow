@@ -1,61 +1,61 @@
-# Worktrack Contract Template
+# 工作追踪约定模板
 
-> 使用方式：在 `init-worktrack-skill` 需要生成或重写 worktrack contract 草稿时，使用本模板组织输出。
+> 使用方式：在 `初始化工作追踪技能` 需要生成或重写工作追踪约定草稿时，使用本模板组织输出。
 
-## Metadata
+## 元数据
 
-- worktrack_id:
-- branch:
-- baseline_branch:
-- baseline_ref:
-- contract_status:
-- owner:
-- updated:
+- 工作追踪编号：
+- 分支：
+- 基准分支：
+- 基准引用：
+- 约定状态：
+- 负责人：
+- 更新时间：
 
-## Task Goal
+## 任务目标
 
-- 
+-
 
-## Scope
+## 范围
 
-- 
+-
 
-## Non-Goals
+## 非目标（不做的事）
 
-- 
+-
 
-## Impacted Modules
+## 受影响模块
 
-- 
+-
 
-## Planned Next State
+## 计划中的下一状态
 
-- 
+-
 
-## Acceptance Criteria
+## 验收标准
 
-- 
+-
 
-## Constraints
+## 约束
 
-- 
+-
 
-## Verification Requirements
+## 验证要求
 
-- 
+-
 
-## Rollback Conditions
+## 回滚条件
 
-- 
+-
 
-## Dependencies
+## 依赖项
 
-- 
+-
 
-## Current Blockers
+## 当前阻塞项
 
-- 
+-
 
-## Notes
+## 备注
 
-- 
+-

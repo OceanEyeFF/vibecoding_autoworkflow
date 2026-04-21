@@ -1,114 +1,117 @@
 ---
 name: init-worktrack-skill
-description: Use this skill when Harness is in WorktrackScope.initializing and needs one bounded round that sets up branch, baseline, contract, and initial plan, then hands off cleanly into bounded worktrack scheduling.
+description: 当 Harness 处于 WorktrackScope.initializing，且需要一轮限定范围流程来建立分支、基准、约定和初始计划，并干净地交给限定范围工作追踪调度时，使用这个技能。
 ---
 
-# Init Worktrack Skill
+# 初始化工作追踪技能
 
-## Overview
+## 概览
 
-Use this skill when `Harness` has already decided to open or repair a specific `Worktrack` and now needs one bounded initialization round.
+本技能实现 `WorktrackScope.Init` 状态转移算子，对应 Harness 控制回路中的**初始化**阶段。它负责建立分支、固定基准、构建约定和播种初始队列，使工作追踪进入可被调度的状态。
 
-This skill creates the bounded branch for the `Worktrack`, makes the baseline explicit, builds or refreshes the initial `Worktrack Contract`, seeds the first `Plan / Task Queue`, and prepares a minimal scheduling handoff packet for the next bounded planning round.
+当 `Harness` 已经决定开启或修复某个特定 `工作追踪`，并且现在需要一轮限定范围初始化时，使用这个技能。
 
-It does not perform implementation, verification, or gate judgment itself. Its job is to leave the worktrack ready for bounded scheduling, not to decide execution ownership by itself or mint a new authoritative dispatch packet.
+这个技能会为 `工作追踪` 创建限定范围分支，明确基准，构建或刷新初始 `工作追踪约定`，播种第一版 `计划/任务队列`，并为下一轮限定范围规划准备最小调度交接包。
 
-## When To Use
+它本身不执行实现、验证或关卡判定。它的职责是让工作追踪进入可被限定范围调度的状态，而不是自行决定执行归属，或生成新的权威分派包。
 
-Use this skill when the current question is not "how should this task be executed", but "is this worktrack initialized correctly":
+## 何时使用
 
-- create the bounded branch that this `Worktrack` will run on
-- pin the current baseline branch or commit reference
-- translate the approved work item into a bounded `Worktrack Contract`
-- expand that contract into an initial `Plan / Task Queue`
-- package the minimum context the next scheduling round will need
-- surface whether the next route is continuation-ready or blocked by a formal stop condition
+当当前问题不是"这个任务应该如何执行"，而是"这个工作追踪是否被正确初始化"时，使用这个技能：
 
-## Workflow
+- 创建这个 `工作追踪` 将要运行的限定范围分支
+- 固定当前基准分支或提交引用
+- 把已批准的工作项转译成一份限定范围 `工作追踪约定`
+- 把该约定展开成一份初始 `计划/任务队列`
+- 打包下一轮调度所需的最小上下文
+- 明确暴露下一条路由是否可继续，还是被正式停止条件阻断
 
-1. Load the current `Harness Control State` and the minimum repo/worktrack artifacts needed for initialization.
-2. Determine whether this is:
-   - a new `Worktrack`
-   - a resumed `Worktrack` whose branch, baseline, contract, or plan needs repair
-3. Create the bounded branch for this `Worktrack`.
-4. If that branch cannot be created safely, return a blocked initialization result instead of silently reusing another branch.
-5. Record the baseline reference that this `Worktrack` will compare against.
-6. Build or refresh one `Worktrack Contract`; when useful, keep the draft aligned with `templates/contract.template.md`.
-7. Seed one initial `Plan / Task Queue` using explicit queue items instead of only free-form task prose.
-8. Produce one `Schedule Handoff Packet` that tells `schedule-worktrack-skill` what was seeded, what still needs scheduling judgment, and whether a compatible downstream packet already exists from a prior round.
-9. Produce one fixed-format `Worktrack Initialization Result`.
-10. If no formal stop condition is hit, hand off to `schedule-worktrack-skill` so the seeded queue is refreshed and one current next action is selected for this round.
-11. Only allow direct continuation toward `dispatch-skills` when an already-valid schedule-authored dispatch packet is explicitly present in the active queue state and no additional scheduling judgment is required.
-12. If the next route is not continuation-ready, return a blocked or approval-gated initialization result instead of pretending execution started.
+## 工作流
 
-## Hard Constraints
+1. 载入当前 `Harness 控制状态` 与初始化所需的最小代码仓库/工作追踪产物。
+2. 判断当前属于：
+   - 一个新的 `工作追踪`
+   - 一个恢复中的 `工作追踪`，其分支、基准、约定或计划需要修复
+3. 为这个 `工作追踪` 创建限定范围分支。
+4. 如果该分支无法安全创建，返回一个被阻塞的初始化结果，而不是静默复用另一条分支。
+5. 记录这个 `工作追踪` 用来比较的基准引用。
+6. 构建或刷新一份 `工作追踪约定`；有需要时，让草稿与 `templates/约定模板.md` 对齐。
+7. 使用显式队列项播种一份初始 `计划/任务队列`，而不是只写自由文本任务说明。
+8. 产出一份 `调度交接包`，告诉 `调度工作追踪技能` 已播种了什么、还有哪些内容需要调度判断，以及此前轮次是否已存在兼容的下游包。
+9. 产出一份固定格式的 `工作追踪初始化结果`。
+10. 如果没有命中正式停止条件，交给 `调度工作追踪技能`，让播种后的队列在本轮被刷新，并选出一个当前下一步动作。
+11. 只有当活动队列状态中明确存在一份仍然有效、由调度阶段编写的分派包，且不再需要额外调度判断时，才允许直接继续到 `分派技能`。
+12. 如果下一条路由尚未可继续，返回被阻塞或受审批门控的初始化结果，而不是假装执行已经开始。
 
-- Do not start implementation, verification, or gate judgment from this skill.
-- Do not treat branch setup alone as sufficient initialization; baseline, contract, and initial plan must also be explicit.
-- Do not treat reuse of an already-existing implementation branch as successful worktrack initialization.
-- Do not treat seeding an initial task list as equivalent to selecting the current next action for execution.
-- Do not create a new authoritative dispatch packet from this skill; produce schedule-facing seed output instead.
-- Do not treat `executor_handoff_packet` as a replacement for the scheduling handoff packet.
-- Do not guess branch, baseline, or scope when repo state is ambiguous; return a blocked initialization result instead.
-- Do not widen scope beyond the approved worktrack goal, non-goals, and current repo baseline.
-- Do not silently mutate `Harness Control State` without surfacing the intended next state and required approval.
-- Do not rewrite upstream `Task Contract` truth; consume it only as an input boundary when it exists.
-- Do not hand the next execution carrier full-repo context when a bounded handoff packet is sufficient.
-- Do not claim a fallback `SubAgent` is ready unless the host runtime can actually dispatch one.
+## 硬约束
 
-## Expected Output
+- 本技能是控制回路的初始化层；负责建立工作追踪的初始状态，不要在初始化中混入状态估计、算子选择或动作执行。
+- 不要从这个技能启动实现、验证或关卡判定。
+- 不要把分支建好就视为初始化完成；基准、约定与初始计划也必须明确存在。
+- 不要把复用一条已存在的实现分支当成成功的工作追踪初始化。
+- 不要把播种一份初始任务列表等同于已经选出用于执行的当前下一步动作。
+- 不要从这个技能创建新的权威分派包；应改为产出面向调度阶段的种子输出。
+- 不要把 `执行者交接包` 当成调度交接包的替代品。
+- 当代码仓库状态含糊不清时，不要猜测分支、基准或范围；应返回一个被阻塞的初始化结果。
+- 不要让范围超出已批准的工作追踪目标、排除目标与当前代码仓库基准。
+- 在没有暴露预期下一状态与所需审批前，不要静默变更 `Harness 控制状态`。
+- 不要改写上游 `任务约定` 真相；如果它存在，只把它当成输入边界消费。
+- 当限定范围交接包已经足够时，不要把完整代码仓库上下文交给下一个执行载体。
+- 除非宿主运行时真的能发起分派，否则不要声称回退式 `子代理` 已经就绪。
 
-When you use this skill, produce a `Worktrack Initialization Result` with at least these sections:
+## 预期输出
 
-- `Initialization Decision`
-- `Branch and Baseline`
-- `Worktrack Contract`
-- `Initial Plan / Task Queue`
-- `Schedule Handoff Packet`
-- `Executor Handoff Packet`
-- `Stop And Return To Harness`
+使用这个技能时，产出一份至少包含以下章节的 `工作追踪初始化结果`：
 
-Inside the result, include at least these fields or equivalents:
+- `初始化决策`
+- `分支与基准`
+- `工作追踪约定`
+- `初始计划/任务队列`
+- `调度交接包`
+- `执行者交接包`
+- `停止并返回 Harness`
 
-- `worktrack_id`
-- `worktrack_identity`
-- `initialization_status`
-- `branch_action`
-- `branch_name_or_rule`
-- `baseline_ref`
-- `baseline_reason`
-- `goal`
-- `in_scope`
-- `out_of_scope`
-- `impact_modules`
-- `next_state`
-- `acceptance_criteria`
-- `constraints`
-- `rollback_conditions`
-- `initial_queue_items`
-- `queue_seed_status`
-- `initial_tasks`
-- `task_order`
-- `dependencies`
-- `current_blockers`
-- `schedule_handoff_mode`
-- `schedule_handoff_packet`
-- `next_action_provenance`
-- `next_action`
-- `verification_requirements`
-- `required_context`
-- `known_risks`
-- `recommended_next_route`
-- `approval_required`
-- `approval_scope`
-- `approval_reason`
-- `executor_handoff_packet`
-- `execution_not_started`
-- `continuation_ready`
-- `recommended_next_action`
-- `needs_approval`
-- `approval_to_apply`
+结果中至少应包含以下字段或等价表达：
 
-## Resources
+- `工作追踪编号`
+- `工作追踪身份`
+- `初始化状态`
+- `分支动作`
+- `分支名称或规则`
+- `基准引用`
+- `基准理由`
+- `目标`
+- `范围内`
+- `范围外`
+- `受影响模块`
+- `下一状态`
+- `验收标准`
+- `约束`
+- `回滚条件`
+- `初始队列项`
+- `队列播种状态`
+- `初始任务`
+- `任务顺序`
+- `依赖项`
+- `当前阻塞项`
+- `调度交接模式`
+- `调度交接包`
+- `下一动作来源`
+- `下一动作`
+- `验证要求`
+- `所需上下文`
+- `已知风险`
+- `建议下一路由`
+- `需要审批`
+- `审批范围`
+- `审批理由`
+- `执行者交接包`
+- `执行尚未开始`
+- `可继续`
+- `建议下一动作`
+- `需要审批`
+- `待审批`
 
-Use the current `Harness Control State`, the active repo/worktrack artifacts, the current queue state when it already exists, and `templates/contract.template.md` when you need a stable contract draft shape for initialization.
+## 资源
+
+当你需要稳定的初始化约定草稿格式时，使用当前 `Harness 控制状态`、活动中的代码仓库/工作追踪产物、已存在的当前队列状态，以及 `templates/约定模板.md`。

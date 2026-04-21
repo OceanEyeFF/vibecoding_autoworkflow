@@ -1,74 +1,89 @@
 ---
 name: goal-change-control-skill
-description: Use this skill when Harness is in RepoScope and needs one bounded goal-level change-control round that analyzes impact, preserves authority boundaries, and returns a decision packet for programmer approval.
+description: 当 Harness 处于 RepoScope，且需要一轮限定范围的目标级变更控制来分析影响、维持权限边界，并返回供程序员审批的决策包时，使用这个技能。
 ---
 
-# Goal Change Control Skill
+# 目标变更控制技能
 
-## Overview
+## 概览
 
-Use this skill when `Harness` is in `RepoScope` and receives a goal-level change request.
+本技能实现 `RepoScope.ChangeControl` 状态转移算子，对应 Harness 控制回路中的**参考信号变更**阶段。
 
-This skill packages the request, gives one bounded analysis round to a single `gpt-5.4-xhigh` `SubAgent`, and returns a structured change-control report instead of directly mutating repo truth.
+目标（Goal）是控制系统的**参考信号**，不能和常规控制混在一起。如果 Harness 在常规 `RepoScope.Decide` 里直接修改目标，就会出现"移动球门"问题：控制器为了让误差变小，不去修系统，而去改目标。因此，目标变更应单独进入 `ChangeControl` 流程，至少回答：为什么要改、改目标会影响哪些现有 worktrack、是否需要废弃现有计划、是否需要重新定义 baseline、是否通过单独 gate。它返回结构化的变更控制报告，在权限边界处停止，等待程序员审批，而不是直接改动代码仓库真相。
 
-## When To Use
+当 `Harness` 处于 `代码仓库范围` 并收到目标级变更请求时，使用这个技能。
 
-Use this skill when the current question is not "what should we implement next", but "should the repo goal change at all":
+这个技能会打包请求，交给单个 `gpt-5.4-xhigh` `SubAgent` 做一轮限定范围分析，并返回结构化的变更控制报告，而不是直接改动代码仓库真相。
 
-- a request would change `Repo Goal / Charter`, success criteria, or system invariants
-- a request may invalidate the current repo baseline
-- a request may force active `Worktrack` items to pause, split, re-scope, or rebuild
-- a request needs explicit impact analysis before approval
+它的主要分析依据是代码仓库级变更权限：
 
-Do not use this skill for ordinary task replanning, local implementation detail changes, or worktrack-level scope adjustments that do not alter repo goals.
+- 当前 `目标变更请求`
+- 当前 `代码仓库目标/章程`
+- 当前 `代码仓库快照/状态`
+- 当前 `Harness 控制状态`
 
-## Workflow
+活动中的工作追踪、约定与队列只作为影响面存在。它们本身并不定义目标差异，也不能被拿来替代代码仓库级变更意图。
 
-1. Load the current `Goal Change Request` and the minimum `RepoScope` artifacts needed to interpret it.
-2. Build one bounded `Goal Change Brief` and one `Goal Impact Packet` for a single `gpt-5.4-xhigh` `SubAgent`.
-3. Ask that `SubAgent` to analyze:
-   - what goal delta is being requested
-   - which invariants, baselines, and active worktracks are affected
-   - whether the request should be accepted, deferred, rejected, or redirected
-4. Normalize the result into one fixed-format `Goal Change Control Report`; when useful, keep the request summary aligned with `templates/goal-change-request.template.md`.
-5. Stop at the authority boundary and return the approval request to the programmer.
+## 何时使用
 
-## Hard Constraints
+当当前问题不是"下一步应该实现什么"，而是"代码仓库目标是否应该发生变化"时，使用这个技能：
 
-- Do not rewrite `Repo Goal / Charter` directly from this skill.
-- Do not approve or reject a goal-level change on behalf of the programmer.
-- Do not silently rebuild baseline, close worktracks, or switch into `WorktrackScope`.
-- Do not collapse goal impact, worktrack impact, and authority boundary into one vague narrative.
-- Do not pass full-repo context to the `SubAgent` when a bounded impact packet is sufficient.
-- Do not let the `SubAgent` redefine repo goals, acceptance criteria, or governance rules.
-- Do not treat ambiguity as approval; surface unresolved questions explicitly.
+- 请求会改变 `代码仓库目标/章程`、成功标准或系统不变条件
+- 请求可能使当前代码仓库基准失效
+- 请求可能迫使活动中的 `工作追踪` 项暂停、拆分、重新定界或重建
+- 请求在审批前需要显式影响分析
 
-## Expected Output
+普通任务重排、局部实现细节变更，或不会改变代码仓库目标的工作追踪级范围调整，不要使用这个技能。
 
-When you use this skill, produce a `Goal Change Control Report` with at least these sections:
+## 工作流
 
-- `Goal Change Request`
-- `Impact Analysis`
-- `Authority Boundary`
-- `Recommended Decision`
-- `Required Follow-up`
+1. 载入当前 `目标变更请求`、当前 `代码仓库目标/章程`、当前 `代码仓库快照/状态`、当前 `Harness 控制状态`，以及解释该请求所需的最小额外代码仓库产物。
+2. 为单个 `gpt-5.4-xhigh` `SubAgent` 构建一份限定范围的 `目标变更简报` 和一份 `目标影响包`。
+3. 让这个 `SubAgent` 分析：
+   - 请求的目标差异是什么
+   - 哪些不变条件、基准和活动中的工作追踪会受影响
+   - 该请求应被接受、暂缓、拒绝还是重定向
+4. 将结果规范化成一份固定格式的 `目标变更控制报告`；有需要时，让请求摘要与 `templates/目标变更请求模板.md` 保持一致。
+5. 在权限边界处停止，并把审批请求返回给程序员。
 
-Inside the result, include at least these fields or equivalents:
+## 硬约束
 
-- `requested_change`
-- `change_reason`
-- `goal_delta`
-- `baseline_impact`
-- `worktrack_impact`
-- `invariants_at_risk`
-- `evidence_or_gaps`
-- `selected_subagent`
-- `subagent_context`
-- `recommended_decision`
-- `approval_required`
-- `approval_scope`
-- `required_follow_up`
+- 本技能是控制回路的参考信号变更层；目标变更是改变控制系统的参考信号，不是常规状态转移，必须单独 gate 和审批。
+- 不要从这个技能直接改写 `代码仓库目标/章程`。
+- 不要代替程序员批准或拒绝目标级变更。
+- 不要静默重建基准、关闭工作追踪，或切换进 `工作追踪范围`。
+- 不要仅凭工作追踪队列的变动或本地任务重排，就推断代码仓库目标已经变化。
+- 不要把目标影响、工作追踪影响与权限边界混成一段模糊叙述。
+- 当限定范围影响包已经足够时，不要把完整代码仓库上下文传给 `SubAgent`。
+- 不要让 `SubAgent` 重新定义代码仓库目标、验收标准或治理规则。
+- 不要把歧义当成批准；应显式暴露未解决问题。
 
-## Resources
+## 预期输出
 
-Use the current `Goal Change Request`, the minimum `RepoScope` artifacts, and `templates/goal-change-request.template.md` when you need a stable request/decision draft shape for this round.
+使用这个技能时，产出一份至少包含以下章节的 `目标变更控制报告`：
+
+- `目标变更请求`
+- `影响分析`
+- `权限边界`
+- `建议决策`
+- `必要后续动作`
+
+结果中至少应包含以下字段或等价表达：
+
+- `请求变更`
+- `变更理由`
+- `目标差异`
+- `基准影响`
+- `工作追踪影响`
+- `受威胁的不变条件`
+- `证据或缺口`
+- `所选子代理`
+- `子代理上下文`
+- `建议决策`
+- `需要审批`
+- `审批范围`
+- `必要后续跟进`
+
+## 资源
+
+当你需要本轮稳定的请求/决策草稿格式时，使用当前 `目标变更请求`、当前 `代码仓库目标/章程`、当前 `代码仓库快照/状态`、当前 `Harness 控制状态` 与 `templates/目标变更请求模板.md`。只有在需要限定范围影响证据时才读取活动中的工作追踪产物，不要把它们当成代码仓库意图的主来源。

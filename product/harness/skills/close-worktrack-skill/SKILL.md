@@ -1,130 +1,133 @@
 ---
 name: close-worktrack-skill
-description: Use this skill when Harness is in WorktrackScope.integrating and needs one bounded closeout round for PR, merge, cleanup, and repo-refresh handoff without silently crossing approval boundaries.
+description: 当 Harness 处于 WorktrackScope.closing，且需要一轮限定范围的收尾处理来处理合并请求、合并、清理与代码仓库刷新交接，同时不能悄悄越过审批边界时，使用这个技能。
 ---
 
-# Close Worktrack Skill
+# 关闭工作追踪技能
 
-## Overview
+## 概览
 
-Use this skill when `Harness` already has a merge-eligible or merged `Worktrack` and needs one bounded closeout round inside `WorktrackScope.integrating`.
+本技能实现 `WorktrackScope.Close` 状态转移算子，对应 Harness 控制回路中的**关闭并交接**阶段。它负责处理工作追踪的收尾路径（PR → merge → cleanup → repo refresh 交接），完成验证过的状态到 repo 级真相层的回写，闭合控制回路。
 
-This skill packages the minimum closeout context for one `gpt-5.4-xhigh` `SubAgent`, determines the current closeout stage, and returns a structured closeout result plus an explicit `Repo Refresh Handoff` instead of silently pushing through merge, branch cleanup, or repo-level writeback.
+当 `Harness` 已经持有一个可合并或已合并的 `Worktrack`，并且需要在 `WorktrackScope.closing` 内完成一轮限定范围收尾时，使用这个技能。
 
-## When To Use
+这个技能会为一次 `gpt-5.4-xhigh` `SubAgent` 运行打包最小收尾上下文，判断当前收尾阶段，并返回结构化的收尾结果与明确的 `代码仓库刷新交接`，而不是静默推进合并、分支清理或代码仓库级回写。
 
-Use this skill when the current question is not "how do we fix or judge the worktrack", but "how do we finish its closeout path without crossing authority boundaries":
+## 何时使用
 
-- the current `Worktrack` already has a `Gate Evidence` result that allows closeout handling
-- the system needs to determine whether this round is at `pr`, `merge`, `cleanup-branch`, or `repo-refresh handoff`
-- closeout state may be partially complete, such as `PR open but not merged` or `merged but cleanup still pending`
-- `Harness` needs a bounded report of what closeout actions are complete, what still needs approval, and what should be handed back to `RepoScope`
-- the result must stay inside closeout handling instead of drifting back into implementation, gate adjudication, or repo refresh execution
+当当前问题不是"如何修复或裁决这个工作追踪"，而是"如何在不跨越权限边界的前提下完成它的收尾路径"时，使用这个技能：
 
-## Workflow
+- 当前 `Worktrack` 已经有允许进入收尾处理的 `关卡证据` 结果
+- 系统需要判断本轮处于 `合并请求`、`合并`、`清理分支` 还是 `代码仓库刷新交接`
+- 收尾状态可能只完成了一部分，例如 `合并请求已开但未合并` 或 `已合并但清理仍在等待`
+- `Harness` 需要一份限定范围报告，说明哪些收尾动作已完成、哪些仍需审批、哪些应回交给 `代码仓库范围`
+- 结果必须停留在收尾处理范围内，不能漂移回实现、关卡裁决或代码仓库刷新执行
 
-1. Load the minimum `WorktrackScope` artifacts plus current branch, PR, and merge-status evidence relevant to closeout.
-2. Build one `Close Worktrack Task Brief` and one `Close Worktrack Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
-3. Assess the current closeout stage:
-   - `ready-for-pr`
-   - `pr-open`
-   - `ready-to-merge`
-   - `merged`
-   - `cleanup-ready`
-   - `repo-refresh-ready`
-   - `blocked-closeout`
-4. Separate closeout results into:
-   - actions completed in this round
-   - actions still waiting on programmer approval or external merge state
-   - cleanup items that are safe only after merge is confirmed
-   - verified material that should be handed off to `repo-refresh-skill`
-5. Stop after one bounded closeout round and return one fixed-format `Close Worktrack Report` plus one `Repo Refresh Handoff`.
+## 工作流
 
-## Closeout Contract
+1. 载入最小 `WorktrackScope` 产物，以及与收尾有关的当前分支、合并请求和合并状态证据。
+2. 为一轮限定范围的 `gpt-5.4-xhigh` `SubAgent` 构建一份 `关闭工作追踪任务简报` 和一份 `关闭工作追踪信息包`。
+3. 判断当前收尾阶段：
+   - `准备合并请求`
+   - `合并请求已开`
+   - `准备合并`
+   - `已合并`
+   - `准备清理`
+   - `准备代码仓库刷新`
+   - `收尾被阻塞`
+4. 将收尾结果拆分为：
+   - 本轮已完成的动作
+   - 仍在等待程序员审批或外部合并状态的动作
+   - 只有在确认合并后才安全的清理项
+   - 应交给 `代码仓库刷新技能` 的已验证材料
+5. 在一轮限定范围收尾后停止，并返回一份固定格式的 `关闭工作追踪报告` 与一份 `代码仓库刷新交接`。
 
-Use the same bounded contract shape every time this skill runs.
+## 收尾约定
 
-### Close Worktrack Task Brief
+每次运行这个技能时，都使用同一套限定范围约定格式。
 
-- `trigger`
-- `goal`
-- `current_worktrack`
-- `current_closeout_stage`
-- `in_scope`
-- `out_of_scope`
-- `authority_boundaries`
-- `required_approvals`
-- `done_signal`
+### 关闭工作追踪任务简报
 
-### Close Worktrack Info Packet
+- `触发条件`
+- `目标`
+- `当前工作追踪`
+- `当前收尾阶段`
+- `范围内`
+- `范围外`
+- `权限边界`
+- `需要审批`
+- `完成信号`
 
-- `current_worktrack_state`
-- `worktrack_contract_summary`
-- `gate_verdict_summary`
-- `pr_state`
-- `merge_state`
-- `branch_cleanup_state`
-- `accepted_change_summary`
-- `residual_risks`
-- `required_context`
+### 关闭工作追踪信息包
 
-### Repo Refresh Handoff
+- `当前工作追踪状态`
+- `工作追踪约定摘要`
+- `关卡判定摘要`
+- `合并请求状态`
+- `合并状态`
+- `分支清理状态`
+- `已接受变更摘要`
+- `残留风险`
+- `所需上下文`
 
-- `closed_worktrack`
-- `baseline_branch`
-- `accepted_change_summary`
-- `verification_results`
-- `closeout_status`
-- `writeback_candidates`
-- `residual_risks`
-- `deferred_items`
-- `approval_request`
+### 代码仓库刷新交接
 
-## Hard Constraints
+- `已关闭工作追踪`
+- `基准分支`
+- `已接受变更摘要`
+- `验证结果`
+- `收尾状态`
+- `可回写候选`
+- `残留风险`
+- `推迟项`
+- `审批请求`
 
-- Do not reopen implementation, replan the worktrack, or re-adjudicate the gate from this skill.
-- Do not treat `gate pass` as implicit approval to merge, delete a branch, or update repo truth.
-- Do not silently perform `merge`, `cleanup-branch`, or repo writeback when approval or state confirmation is still missing.
-- Do not treat `PR opened` as equivalent to `merged`, or `merged` as equivalent to `repo refresh completed`.
-- Do not clean up a branch until merge status and return-path safety are explicit.
-- Do not mutate `Harness Control State`, `Repo Snapshot / Status`, or canonical docs from this skill; return a handoff instead.
-- Do not widen scope into adjacent systems unless the current closeout boundary clearly depends on them.
-- Do not collapse completed actions, pending approvals, and repo-refresh handoff into one vague closeout narrative.
+## 硬约束
 
-## Expected Output
+- 本技能是控制回路的关闭交接层；负责完成工作追踪的收尾并生成 repo refresh 交接，不要在本技能中重新打开实现、重排计划或变更 Harness 控制状态。
+- 不要从这个技能重新打开实现、重排工作追踪计划，或重新裁决关卡。
+- 不要把 `关卡通过` 视为合并、删除分支或更新代码仓库真相的隐式授权。
+- 在审批或状态确认仍缺失时，不要静默执行 `合并`、`清理分支` 或代码仓库回写。
+- 不要把 `合并请求已开` 等同于 `已合并`，也不要把 `已合并` 等同于 `代码仓库刷新已完成`。
+- 在合并状态与回退路径安全性未明确前，不要清理分支。
+- 不要从这个技能变更 `Harness 控制状态`、`代码仓库快照/状态` 或标准文档；应返回交接结果。
+- 除非当前收尾边界明确依赖相邻系统，否则不要扩大范围。
+- 不要把已完成动作、待审批项和代码仓库刷新交接压缩成一段模糊的收尾叙述。
 
-When you use this skill, produce a `Close Worktrack Report` with at least these sections:
+## 预期输出
 
-- `Closeout Trigger`
-- `Current Closeout Stage`
-- `Closeout Actions Taken`
-- `Authority Checks And Pending Approvals`
-- `Repo Refresh Handoff`
-- `Recommended Next Scope`
-- `Programmer Review Request`
+使用这个技能时，产出一份至少包含以下章节的 `关闭工作追踪报告`：
 
-Inside the result, include at least these fields or equivalents:
+- `收尾触发条件`
+- `当前收尾阶段`
+- `已执行的收尾动作`
+- `权限检查与待审批项`
+- `代码仓库刷新交接`
+- `建议下一范围`
+- `程序员审查请求`
 
-- `subagent_model`
-- `closeout_trigger`
-- `current_worktrack`
-- `closeout_stage_before`
-- `closeout_stage_after`
-- `gate_verdict`
-- `pr_status`
-- `merge_status`
-- `cleanup_status`
-- `actions_taken`
-- `actions_pending_approval`
-- `decisive_evidence`
-- `residual_risks`
-- `repo_refresh_ready`
-- `repo_refresh_handoff`
-- `recommended_next_scope`
-- `recommended_next_action`
-- `needs_programmer_approval`
-- `how_to_review`
+结果中至少应包含以下字段或等价表达：
 
-## Resources
+- `子代理模型`
+- `收尾触发条件`
+- `当前工作追踪`
+- `收尾前阶段`
+- `收尾后阶段`
+- `关卡判定`
+- `合并请求状态`
+- `合并状态`
+- `清理状态`
+- `已执行动作`
+- `待审批动作`
+- `决定性证据`
+- `残留风险`
+- `代码仓库刷新就绪`
+- `代码仓库刷新交接`
+- `建议下一范围`
+- `建议下一动作`
+- `需要程序员审批`
+- `如何审查`
 
-Use the minimum `WorktrackScope` artifacts plus current branch, PR, merge-status, and repo-refresh handoff context needed for this closeout round.
+## 资源
+
+使用本轮收尾所需的最小 `WorktrackScope` 产物，以及当前分支、合并请求、合并状态和代码仓库刷新交接上下文。

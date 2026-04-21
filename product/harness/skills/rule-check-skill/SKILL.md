@@ -1,119 +1,122 @@
 ---
 name: rule-check-skill
-description: Use this skill when Harness is in WorktrackScope.verifying and needs one bounded rule/governance evidence collection round for policy input without issuing the final gate verdict.
+description: 当 Harness 处于工作追踪范围.验证中，且需要一轮限定范围的规则/治理证据收集来提供策略输入、但不输出最终关卡判定结果时，使用这个技能。
 ---
 
-# Rule Check Skill
+# 规则检查技能
 
-## Overview
+## 概览
 
-Use this skill when `Harness` already has an active `Worktrack` and needs one bounded `rule-check` round inside `WorktrackScope.verifying`.
+本技能实现 `WorktrackScope.Verify` 算子的 `policy` lane（策略校验面），对应 Harness 控制回路中的**收集证据**阶段。它负责收集规则与治理维度的证据，为 `gate-skill` 的 policy-gate 提供输入。它与 `review-evidence-skill`（implementation lane）和 `test-evidence-skill`（validation lane）共同构成 Verify 的三个正交校验面。
 
-This skill packages the current rule/governance check into a bounded `gpt-5.4-xhigh` `SubAgent` task, collects policy-facing evidence, and returns a structured handoff for later gate use instead of adjudicating the final `policy-gate` by itself.
+当 `Harness` 已经有一个活动中的 `工作追踪`，并需要在 `工作追踪范围.验证中` 中完成一轮限定范围 `规则检查` 时，使用这个技能。
 
-## When To Use
+这个技能会把当前规则/治理检查封装成一个限定范围的 `gpt-5.4-xhigh` `子代理` 任务，收集面向策略的证据，并返回供后续关卡使用的结构化交接结果，而不是自己裁决最终 `策略关卡`。
 
-Use this skill when the current question is not "does the worktrack pass the gate", but "what rule/governance evidence do we have for this round":
+## 何时使用
 
-- check whether the current diff stays inside the declared scope and layering rules
-- verify whether required governance sync items were triggered by the touched surfaces
-- run or inspect the minimum applicable rule/governance checks for this round
-- collect path, structure, doc-sync, and boundary evidence for `Gate Evidence`
-- return policy findings, gaps, and deferred checks to `Harness`
+当当前问题不是"这个工作追踪能否通过关卡"，而是"本轮已经掌握了哪些规则/治理证据"时，使用这个技能：
 
-## Workflow
+- 检查当前差异是否仍停留在已声明的范围与分层规则内
+- 验证被触及的表面是否触发了必须同步的治理项
+- 运行或检查本轮最小必要的规则/治理检查
+- 为 `关卡证据` 收集路径、结构、文档同步与边界证据
+- 把策略发现、缺口与延期检查返回给 `Harness`
 
-1. Load the minimum `WorktrackScope` and governance artifacts needed for the current diff surface.
-2. Build one `Rule Check Task Brief` and one `Rule Check Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
-3. Determine which governance surfaces are actually in play for this round:
-   - root or path layering
-   - docs or required-sync obligations
-   - skill or template boundary rules
-   - branch or review-flow governance, if the work item depends on them
-4. Run or inspect only the minimum applicable checks and rule sources for this round.
-5. Separate the result into:
-   - policy evidence collected
-   - violations or scope leaks
-   - missing evidence
-   - deferred or not-applicable checks
-6. Return one fixed-format `Rule Check Report` plus one `Policy Evidence Handoff`.
-7. Stop before final gate adjudication.
+## 工作流
 
-## Rule Check Contract
+1. 载入当前差异表面所需的最低限度 `工作追踪范围` 与治理产物。
+2. 为一轮限定范围的 `gpt-5.4-xhigh` `子代理` 构建一份 `规则检查任务简报` 和一份 `规则检查信息包`。
+3. 判定本轮实际涉及的治理层面：
+   - 根目录或路径分层
+   - 文档或必需同步义务
+   - 技能或模板边界规则
+   - 分支或审查流程治理（如果工作项依赖它们）
+4. 只运行或检查本轮最小适用的检查与规则来源。
+5. 将结果分为：
+   - 已收集的策略证据
+   - 违规或范围泄漏
+   - 缺失证据
+   - 推迟或不适用检查
+6. 返回一份固定格式的 `规则检查报告` 加一份 `策略证据交接`。
+7. 在最终关卡判定之前停止。
 
-Use the same bounded contract shape every time this skill runs.
+## 规则检查约定
 
-### Rule Check Task Brief
+每次运行这个技能时，都使用同一套限定范围约定格式。
 
-- `trigger`
-- `goal`
-- `worktrack`
-- `changed_surface`
-- `in_scope`
-- `out_of_scope`
-- `constraints`
-- `required_checks`
-- `done_signal`
+### 规则检查任务简报
 
-### Rule Check Info Packet
+- `触发条件`
+- `目标`
+- `工作追踪`
+- `变更表面`
+- `范围内`
+- `范围外`
+- `约束`
+- `必需检查`
+- `完成信号`
 
-- `current_worktrack_state`
-- `relevant_diffs`
-- `artifacts_changed`
-- `governance_rules_in_play`
-- `verification_results_available`
-- `known_risks`
-- `required_context`
-- `open_questions`
+### 规则检查信息包
 
-### Policy Evidence Handoff
+- `当前工作追踪状态`
+- `相关差异`
+- `已变更产物`
+- `参与中的治理规则`
+- `可用验证结果`
+- `已知风险`
+- `所需上下文`
+- `开放问题`
 
-- `policy_evidence_items`
-- `violations_or_gaps`
-- `required_sync_items`
-- `deferred_checks`
-- `review_commands`
-- `recommended_follow_up`
+### 策略证据交接
 
-## Hard Constraints
+- `策略证据项`
+- `违规或缺口`
+- `必需同步项`
+- `推迟检查`
+- `审查指令`
+- `建议后续跟进`
 
-- Do not issue the final `pass / soft-fail / hard-fail / blocked` gate verdict from this skill.
-- Do not widen the task from bounded rule/governance evidence collection into a full repo audit.
-- Do not invent compliance; if evidence is missing, return `missing evidence` explicitly.
-- Do not rewrite the `Worktrack Contract`, acceptance criteria, or non-goals from this skill.
-- Do not treat review evidence or test evidence as rule-check evidence unless you are explicitly referencing them as inputs.
-- Do not mutate `Harness Control State`, merge state, or canonical truth docs from this skill.
-- Do not hide required sync obligations when touched paths clearly trigger them.
-- Do not collapse violations, missing evidence, and deferred checks into one vague summary.
+## 硬约束
 
-## Expected Output
+- 本技能是控制回路的证据收集层（policy lane）；负责收集规则、边界、不变量与治理要求的策略证据，不要在证据收集中混入最终裁决或状态更新。
+- 不要从这个技能输出最终 `通过/软失败/硬失败/阻塞` 关卡判定结果。
+- 不要把任务从限定范围的规则/治理证据收集扩张成完整代码仓库审计。
+- 不要凭空发明合规性；如果证据缺失，就明确返回 `缺失证据`。
+- 不要从这个技能改写 `工作追踪约定`、验收标准或排除目标。
+- 除非你明确把它们当作输入引用，否则不要把审查证据或测试证据视为规则检查证据。
+- 不要从这个技能变更 `Harness 控制状态`、合并状态或标准真相文档。
+- 当被触及路径明显触发了必要同步义务时，不要把它们隐藏起来。
+- 不要把违规、缺失证据与推迟检查混成一段模糊摘要。
 
-When you use this skill, produce a `Rule Check Report` with at least these sections:
+## 预期输出
 
-- `Rule Check Trigger`
-- `Rule Surface Assessment`
-- `Checks Run Or Inspected`
-- `Policy Evidence Collected`
-- `Violations And Gaps`
-- `Deferred Or Not-Applicable Checks`
-- `Return To Harness`
+使用这个技能时，产出一份至少包含以下章节的 `规则检查报告`：
 
-Inside the result, include at least these fields or equivalents:
+- `规则检查触发条件`
+- `规则层面评估`
+- `已运行或已检查项`
+- `已收集策略证据`
+- `违规与缺口`
+- `推迟或不适用检查`
+- `返回 Harness`
 
-- `subagent_model`
-- `worktrack`
-- `changed_surface`
-- `checks_run`
-- `checks_passed`
-- `policy_evidence_items`
-- `violations_found`
-- `missing_evidence`
-- `required_sync_items`
-- `deferred_checks`
-- `ready_for_gate_input`
-- `recommended_follow_up`
-- `how_to_review`
+结果中至少应包含以下字段或等价表达：
 
-## Resources
+- `子代理模型`
+- `工作追踪`
+- `变更表面`
+- `已运行检查`
+- `已通过检查`
+- `策略证据项`
+- `已发现违规`
+- `缺失证据`
+- `必需同步项`
+- `推迟检查`
+- `已准备好进入关卡输入`
+- `建议后续跟进`
+- `如何审查`
 
-Use the current diff surface, governance artifacts, and only the extra task or adjacent-system context required by the specific rule check.
+## 资源
+
+使用当前差异表面、治理产物，以及具体规则检查所需的最小额外任务或相邻系统上下文。

@@ -1,170 +1,173 @@
 ---
 name: review-evidence-skill
-description: Use this skill when Harness is in WorktrackScope.verifying and needs one bounded review-evidence round that collects and synthesizes review findings without issuing the final gate verdict.
+description: 当 Harness 处于工作追踪范围.验证中，且需要一轮限定范围的审查证据流程来收集并综合审查发现、但不输出最终关卡判定结果时，使用这个技能。
 ---
 
-# Review Evidence Skill
+# 审查证据技能
 
-## Overview
+## 概览
 
-Use this skill when `Harness` needs the review lane of `Gate Evidence` for the current `Worktrack`, but does not yet need the final gate adjudication.
+本技能实现 `WorktrackScope.Verify` 算子的 `implementation` lane（实现校验面），对应 Harness 控制回路中的**收集证据**阶段。它负责收集代码审查维度的证据，为 `gate-skill` 的 implementation-gate 提供输入。它与 `test-evidence-skill`（validation lane）和 `rule-check-skill`（policy lane）共同构成 Verify 的三个正交校验面。
 
-This skill runs one bounded review-evidence round with a dedicated `gpt-5.4-xhigh` `SubAgent`, packages the minimum review context for that round, collects code-review and structural-risk signals, and returns a normalized review lane envelope for later gate synthesis.
+当 `Harness` 需要当前 `工作追踪` 的 `关卡证据` 中的审查维度，但还不需要最终关卡判定时，使用这个技能。
 
-It stops before final `pass / soft-fail / hard-fail / blocked` gate judgment, and it applies a noise-control fence so low-severity review residue does not keep expanding into new pseudo-blockers.
+这个技能会使用专用 `gpt-5.4-xhigh` `子代理` 执行一轮限定范围审查证据，打包本轮最小审查上下文，收集代码审查与结构风险信号，并返回一个供后续关卡综合使用的标准化审查维度封套。
 
-## When To Use
+它会在最终 `通过/软失败/硬失败/阻塞` 关卡判定之前停止，并应用噪声控制边界，避免低严重度的审查残留持续膨胀为新的伪阻塞项。
 
-Use this skill when the current question is not "should the whole worktrack pass the gate", but "what review evidence do we have for this change right now":
+## 何时使用
 
-- collect the review lane for the current `WorktrackScope.verifying` round
-- summarize code-review findings against the bounded `Worktrack Contract`
-- synthesize diff, structure, and static-review signals into one review-evidence slice
-- separate actionable findings from low-severity residual risks before they sprawl
-- flag repeated or boundary-driven symptoms as possible upstream constraint issues
-- make explicit what review coverage exists, what is still missing, and what follow-up is needed
-- return review evidence for `gate-skill`, `recover-worktrack-skill`, or programmer review
+当当前问题不是"整个工作追踪是否应该通过关卡"，而是"这次变更当前掌握了哪些审查证据"时，使用这个技能：
 
-## Workflow
+- 收集当前 `工作追踪范围.验证中` 轮次的审查维度
+- 根据限定范围 `工作追踪约定` 总结代码审查发现
+- 把差异、结构和静态审查信号综合成一份审查证据切片
+- 在问题扩散前，把可执行发现与低严重度残留风险分开
+- 把重复出现或由边界驱动的症状标记为可能的上游约束问题
+- 明确说明已有的审查覆盖、仍然缺失的部分，以及所需后续动作
+- 为 `关卡技能`、`恢复工作追踪技能` 或程序员审查返回审查证据
 
-1. Confirm this is a bounded review-evidence round, not final gate adjudication, scheduling, or execution dispatch.
-2. Load the minimum `WorktrackScope` artifacts and current review inputs for the round.
-3. Build one `Review Evidence Task Brief` and one `Review Evidence Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
-4. Classify the freshness of the current review inputs before synthesis:
-   - `fresh`
-   - `reused-fresh`
-   - `mixed`
-   - `stale`
-   - `unknown`
-5. Collect and synthesize the review lane only:
-   - diff and change-summary review signals
-   - structural or architectural review signals
-   - existing code-review comments or inline findings
-   - static-review findings that matter to review quality
-6. Apply review triage before packaging the result:
-   - keep actionable findings focused on acceptance, verification credibility, contract integrity, recovery-path risk, or operator-facing semantic drift
-   - keep low-severity residue as representative items plus `residual_risks`, not as an unbounded action queue
-   - mark repeated or boundary-driven symptoms with `possible_upstream_constraint_issue`
-7. Normalize the result into one `Review Evidence Report` plus one review lane envelope for gate intake.
-8. Stop before issuing the final gate verdict.
+## 工作流
 
-## Review Triage Rules
+1. 确认这是一轮限定范围审查证据，而不是最终关卡判定、调度或执行分派。
+2. 载入本轮所需的最小 `工作追踪范围` 产物和当前审查输入。
+3. 为限定范围的 `gpt-5.4-xhigh` `子代理` 构建一份 `审查证据任务简报` 和一份 `审查证据信息包`。
+4. 在综合之前，先归类当前审查输入的时效性：
+   - `新鲜`
+   - `复用但新鲜`
+   - `混合`
+   - `过期`
+   - `未知`
+5. 只收集并综合审查维度：
+   - 差异与变更摘要审查信号
+   - 结构或架构审查信号
+   - 现有代码审查评论或内联发现
+   - 对审查质量重要的静态审查发现
+6. 在打包结果前应用审查分诊：
+   - 让可执行发现聚焦于验收、验证可信度、约定完整性、恢复路径风险，或面向操作员的语义漂移
+   - 让低严重度残留作为代表性项目加 `残留风险`，而不是一个无限制的动作队列
+   - 把重复或边界驱动的症状标记为 `可能存在上游约束问题`
+7. 将结果规范化成一份 `审查证据报告`，并附带一份供关卡接收使用的审查维度封套。
+8. 在输出最终关卡判定结果前停止。
 
-- Promote a review item into `findings` only when it threatens acceptance, verify confidence, contract integrity, recovery-path safety, or operator-facing semantics.
-- For low-severity items, including `P2 / P3`, that do not hit those triggers and do not show a credible amplification chain, keep at most three representative items in `findings` and fold the rest into `residual_risks`.
-- Do not create new `follow_up_actions` for low-severity residue unless the action is needed to restore acceptance coverage, recovery safety, operator-facing semantics, or a broken contract boundary.
-- If the same review pattern repeats across files, rounds, or comments, or clearly depends on an unresolved contract, scope, or boundary definition, mark the representative finding with `possible_upstream_constraint_issue: true` and summarize it under `upstream_constraint_signals`.
-- Use `follow_up_actions` for bounded next actions that unblock gate synthesis, not as a bucket for every review preference or cleanup thought.
+## 审查分诊规则
 
-## Review Evidence Contract
+- 只有当某个审查项威胁到验收、验证可信度、约定完整性、恢复路径安全，或面向操作员的语义时，才把它提升进 `发现`。
+- 对于不触发上述条件、也没有可信放大链路的低严重度项，包括 `P2/P3`，`发现` 中最多保留三个代表项，其余折叠进 `残留风险`。
+- 除非某个动作是恢复验收覆盖、恢复路径安全、面向操作员的语义，或修复破损约定边界所必需，否则不要为低严重度残留创建新的 `后续动作`。
+- 如果相同的审查模式在多个文件、轮次或评论中重复出现，或者明显依赖尚未解决的约定、范围或边界定义，就把代表性发现标记为 `可能存在上游约束问题：真`，并在 `上游约束信号` 下总结。
+- `后续动作` 只用于能解除关卡综合阻塞的限定范围下一步动作，而不是装下所有审查偏好或清理想法的桶。
 
-Use the same bounded contract shape every time this skill runs.
+## 审查证据约定
 
-### Review Evidence Task Brief
+每次运行这个技能时，都使用同一套限定范围约定格式。
 
-- `lane_id`
-- `evidence_round`
-- `review_target`
-- `goal`
-- `in_scope`
-- `out_of_scope`
-- `review_focus`
-- `constraints`
-- `acceptance_reference`
-- `done_signal`
+### 审查证据任务简报
 
-### Review Evidence Info Packet
+- `维度编号`
+- `证据轮次`
+- `审查目标`
+- `目标`
+- `范围内`
+- `范围外`
+- `审查重点`
+- `约束`
+- `验收参考`
+- `完成信号`
 
-- `input_artifacts`
-- `freshness`
-- `current_worktrack_state`
-- `worktrack_contract_summary`
-- `change_summary`
-- `diff_or_patch_reference`
-- `existing_review_inputs`
-- `static_or_structure_signals`
-- `known_risks`
-- `required_context`
-- `missing_evidence`
+### 审查证据信息包
 
-### Review Evidence Lane
+- `输入产物`
+- `时效性`
+- `当前工作追踪状态`
+- `工作追踪约定摘要`
+- `变更摘要`
+- `差异或补丁引用`
+- `现有审查输入`
+- `静态或结构信号`
+- `已知风险`
+- `所需上下文`
+- `缺失证据`
 
-- `lane_id`
-- `evidence_round`
-- `input_artifacts`
-- `freshness`
-- `lane_verdict`
-- `confidence`
-- `confidence_reason`
-- `findings`
-- `severity_map`
-- `coverage_assessment`
-- `residual_risks`
-- `low_severity_absorption_applied`
-- `low_severity_absorption_reason`
-- `upstream_constraint_signals`
-- `missing_evidence`
-- `follow_up_actions`
-- `ready_for_gate`
+### 审查证据维度
 
-## Hard Constraints
+- `维度编号`
+- `证据轮次`
+- `输入产物`
+- `时效性`
+- `维度判定结果`
+- `置信度`
+- `置信度理由`
+- `发现`
+- `严重度映射`
+- `覆盖评估`
+- `残留风险`
+- `已应用低严重度吸收`
+- `低严重度吸收理由`
+- `上游约束信号`
+- `缺失证据`
+- `后续动作`
+- `已准备好进入关卡`
 
-- Do not issue the final `Gate` verdict for the whole `Worktrack`.
-- Do not widen review scope beyond the current `Worktrack Contract`, bounded diff, and acceptance reference.
-- Do not treat "no review comments found" as positive evidence by itself.
-- Do not dispatch implementation, rewrite the task queue, or mutate `Harness Control State`.
-- Do not collapse raw findings, synthesized review judgment, and follow-up actions into one vague summary.
-- Do not pass full-repo context to the `gpt-5.4-xhigh` `SubAgent` when a bounded review packet is sufficient.
-- Do not overwrite canonical `Gate Evidence`; return a review-evidence slice for downstream synthesis instead.
-- Do not expand low-severity findings into new `follow_up_actions` unless they materially threaten acceptance, recovery, operator-facing semantics, or contract integrity.
-- Do not keep more than three representative low-severity items in `findings`; aggregate the remainder into `residual_risks`.
-- Do not leave repeated or boundary-driven symptoms unlabeled; mark them `possible_upstream_constraint_issue` and surface them in `upstream_constraint_signals`.
-- Do not report stale inputs as fresh evidence.
-- Do not emit `confidence` without a concrete `confidence_reason`.
-- Do not turn low-severity absorption into a hidden follow-up queue.
+## 硬约束
 
-## Expected Output
+- 本技能是控制回路的证据收集层（implementation lane）；负责收集代码正确性与结构合理性的审查证据，不要在证据收集中混入最终裁决或状态更新。
+- 不要为整个 `工作追踪` 输出最终 `关卡` 判定结果。
+- 不要把审查范围扩展到当前 `工作追踪约定`、限定范围差异与验收参考之外。
+- 不要把"没有发现审查评论"本身当成正向证据。
+- 不要分派实现、重写任务队列，或变更 `Harness 控制状态`。
+- 不要把原始发现、综合后的审查判定与后续动作混成一段模糊摘要。
+- 当限定范围审查包已经足够时，不要把完整代码仓库上下文传给 `gpt-5.4-xhigh` `子代理`。
+- 不要覆盖标准 `关卡证据`；应返回一份供下游综合的审查证据切片。
+- 除非低严重度发现已经实质威胁验收、恢复、面向操作员的语义或约定完整性，否则不要把它们扩展成新的 `后续动作`。
+- `发现` 中保留的低严重度代表项不要超过三个；其余聚合进 `残留风险`。
+- 不要让重复或边界驱动的症状处于未标记状态；应将它们标记为 `可能存在上游约束问题`，并在 `上游约束信号` 中显式暴露。
+- 不要把过期输入报告成新鲜证据。
+- 不要在缺少具体 `置信度理由` 时输出 `置信度`。
+- 不要把低严重度吸收机制变成隐藏的后续动作队列。
 
-When you use this skill, produce a `Review Evidence Report` with at least these sections:
+## 预期输出
 
-- `Review Target`
-- `Review Evidence Summary`
-- `Findings And Severity`
-- `Freshness And Confidence`
-- `Coverage And Confidence`
-- `Gate Evidence Review Slice`
-- `Return To Harness`
+使用这个技能时，产出一份至少包含以下章节的 `审查证据报告`：
 
-Inside the result, include at least these fields or equivalents:
+- `审查目标`
+- `审查证据摘要`
+- `发现与严重度`
+- `时效性与置信度`
+- `覆盖与置信度`
+- `关卡证据审查切片`
+- `返回 Harness`
 
-- `subagent_model`
-- `lane_id`
-- `evidence_round`
-- `review_target`
-- `review_focus`
-- `change_summary`
-- `review_inputs_used`
-- `input_artifacts`
-- `freshness`
-- `lane_verdict`
-- `review_verdict`
-- `findings`
-- `severity_map`
-- `coverage_assessment`
-- `confidence`
-- `confidence_reason`
-- `residual_risks`
-- `low_severity_absorption_applied`
-- `low_severity_absorption_reason`
-- `upstream_constraint_signals`
-- `missing_evidence`
-- `follow_up_actions`
-- `low_severity_cutoff_applied`
-- `ready_for_gate`
-- `ready_for_gate_synthesis`
-- `needs_additional_review`
-- `how_to_review`
+结果中至少应包含以下字段或等价表达：
 
-## Resources
+- `子代理模型`
+- `维度编号`
+- `证据轮次`
+- `审查目标`
+- `审查重点`
+- `变更摘要`
+- `使用的审查输入`
+- `输入产物`
+- `时效性`
+- `维度判定结果`
+- `审查判定结果`
+- `发现`
+- `严重度映射`
+- `覆盖评估`
+- `置信度`
+- `置信度理由`
+- `残留风险`
+- `已应用低严重度吸收`
+- `低严重度吸收理由`
+- `上游约束信号`
+- `缺失证据`
+- `后续动作`
+- `已应用低严重度截断`
+- `已准备好进入关卡`
+- `已准备好进入关卡综合`
+- `需要额外审查`
+- `如何审查`
 
-Use the bounded diff, current `Worktrack Contract`, the current review inputs together with their freshness basis, and only the extra adjacent-system context required for the review question.
+## 资源
+
+使用限定范围差异、当前 `工作追踪约定`、当前审查输入及其时效性依据，以及回答审查问题所需的最小额外相邻系统上下文。

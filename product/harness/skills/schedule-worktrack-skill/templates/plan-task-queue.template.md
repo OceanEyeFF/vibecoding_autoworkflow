@@ -1,80 +1,80 @@
-# Plan / Task Queue Template
+# 计划 / 任务队列模板
 
-> 使用方式：在 `schedule-worktrack-skill` 需要刷新或重建任务队列草稿时，使用本模板组织输出。
+> 使用方式：在 `调度工作追踪技能` 需要刷新或重建任务队列草稿时，使用本模板组织输出。
 
-## Metadata
+## 元数据
 
-- worktrack_id:
-- updated:
-- current_phase:
-- contract_ref:
-- queue_status:
+- 工作追踪编号：
+- 更新时间：
+- 当前阶段：
+- 约定引用：
+- 队列状态：
 
-## Task List
+## 任务列表
 
-- task_id:
-  - title:
-  - status:
-  - depends_on:
-  - acceptance_links:
-  - done_signal:
-- task_id:
-  - title:
-  - status:
-  - depends_on:
-  - acceptance_links:
-  - done_signal:
-- task_id:
-  - title:
-  - status:
-  - depends_on:
-  - acceptance_links:
-  - done_signal:
+- 任务编号：
+  - 标题：
+  - 状态：
+  - 依赖项：
+  - 验收关联：
+  - 完成信号：
+- 任务编号：
+  - 标题：
+  - 状态：
+  - 依赖项：
+  - 验收关联：
+  - 完成信号：
+- 任务编号：
+  - 标题：
+  - 状态：
+  - 依赖项：
+  - 验收关联：
+  - 完成信号：
 
-## Execution Order Notes
+## 执行顺序说明
 
-- 
+-
 
-## Dependencies
+## 依赖项
 
-- 
+-
 
-## Current Blockers
+## 当前阻塞项
 
-- 
+-
 
-## Current Next Action
+## 当前下一步动作
 
-- selected_next_action_id:
-- selected_next_action:
-- selection_reason:
+- 已选下一步动作编号：
+- 已选下一步动作：
+- 选择理由：
 
-## Dispatch Handoff Packet
+## 分派交接包
 
-- task:
-- goal_for_this_round:
-- constraints_for_this_round:
-- acceptance_criteria_for_this_round:
-- verification_requirements:
-- done_signal:
-- required_context:
-- return_to_schedule_if:
+- 任务：
+- 本轮目标：
+- 本轮约束：
+- 本轮验收标准：
+- 验证要求：
+- 完成信号：
+- 所需上下文：
+- 返回调度条件：
 
-## Readiness
+## 就绪状态
 
-- dispatch_packet_ready:
-- dispatch_ready:
-- continuation_ready:
-- recommended_next_route:
-- recommended_next_skill_or_route:
-- no_safe_next_action_reason:
+- 分派包就绪：
+- 分派就绪：
+- 可继续：
+- 建议下一路由：
+- 建议下一技能或路由：
+- 无安全下一步动作理由：
 
-## Acceptance Alignment
+## 验收对齐
 
-- acceptance criteria addressed now:
-- acceptance criteria remaining:
-- planning coverage gaps:
+- 当前已处理验收标准：
+- 剩余验收标准：
+- 规划覆盖缺口：
 
-## Notes
+## 备注
 
-- 
+-

@@ -1,110 +1,129 @@
 ---
 name: repo-refresh-skill
-description: Use this skill when Harness returns to RepoScope after a worktrack closeout and needs one bounded repo refresh round plus a verified writeback handoff.
+description: 当 Harness 在工作追踪收尾后回到代码仓库范围，并需要一轮限定范围的代码仓库刷新外加一份已验证的回写交接时，使用这个技能。
 ---
 
-# Repo Refresh Skill
+# 代码仓库刷新技能
 
-## Overview
+## 概览
 
-Use this skill when `Harness` has finished a `WorktrackScope` closeout round and needs to refresh repo-level slow variables from verified evidence.
+本技能实现 `RepoScope.Close`（`refresh-repo-state`）状态转移算子，对应 Harness 控制回路中的**状态更新**阶段。
 
-This skill packages one bounded post-closeout refresh round for a `gpt-5.4-xhigh` `SubAgent`, updates the repo-level assessment, and returns a structured writeback handoff for programmer approval instead of assuming repo truth was already updated.
+它是 Worktrack 闭环的**终点和 Repo 闭环的起点**：在 Worktrack 关闭（merge → cleanup）后，必须回到 RepoScope 刷新 repo snapshot，才能让 Repo 的慢变量被真实更新。这是完整控制回路的关键闭合环节。
 
-## When To Use
+它只从**已验证证据**刷新代码仓库级真相，而不是从工作追踪产物直接抄写。未经 `Gate` 验证的结论不得写进代码仓库真相产物。
 
-Use this skill when the current question is not "how do we finish the worktrack", but "what repo-level truth now needs to be refreshed from that verified closeout":
+它与 `close-worktrack-skill` 的关系：close-worktrack-skill 处理 WorktrackScope 的 Close（PR → merge → cleanup），而 repo-refresh-skill 处理回到 RepoScope 后的状态更新。
 
-- a worktrack has reached closeout or merge-complete status
-- `Gate Evidence` is available and has already established the verified outcome
-- `Repo Snapshot / Status` now needs a slow-variable refresh
-- verified findings may need writeback into repo-level formal artifacts
-- `Harness` needs a bounded repo refresh result before deciding the next repo action
+当 `Harness` 完成了一轮 `工作追踪范围` 收尾，并需要根据已验证证据刷新代码仓库级慢变量时，使用这个技能。
 
-## Workflow
+这个技能会为 `gpt-5.4-xhigh` `SubAgent` 打包一轮限定范围的收尾后刷新，更新代码仓库级评估，并返回一份供程序员审批的结构化回写交接结果，而不是假设代码仓库真相已经被更新。
 
-1. Load the minimum `RepoScope` artifacts plus the just-closed worktrack's verified `Gate Evidence`.
-2. Build one `Repo Refresh Task Brief` and one `Repo Refresh Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
-3. Refresh the repo-level assessment against `Repo Goal / Charter`, current `Repo Snapshot / Status`, and the verified closeout evidence.
-4. Separate items into:
-   - verified writeback candidates
-   - deferred or still-unverified items
-   - repo-level risks that remain open after closeout
-5. Stop after one bounded repo refresh round and return one fixed-format `Repo Refresh Report` plus one `Verified Writeback Handoff`.
+这个技能只负责代码仓库级回写。它不会维护、修补或重新打开工作追踪本地 `.aw/worktrack/*` 产物。
 
-## Hard Constraints
+它的主要刷新依据是：
 
-- Do not reopen, replan, or re-execute the closed worktrack from this skill.
-- Do not treat a merged diff or a claimed closeout as sufficient by itself; use verified `Gate Evidence`.
-- Do not write unverified conclusions into repo truth artifacts.
-- Do not silently mutate `Harness Control State` or repo-level docs from this skill; return a writeback handoff first.
-- Do not expand into full-repo rediscovery when the refresh only depends on bounded closeout evidence.
-- Do not turn repo refresh into goal change control unless the evidence clearly indicates a separate follow-up path.
+- 已验证的 `关卡证据`
+- 当前 `代码仓库目标/章程`
+- 当前 `代码仓库快照/状态`
+- 当前 `Harness 控制状态`
 
-## Repo Refresh Contract
+已关闭的工作追踪产物只是已完成切片的辅助证据。它们本身不是代码仓库级真相层，没有经过验证证据支撑时，不得直接向上抄写。
 
-Use the same bounded contract shape every time this skill runs.
+## 何时使用
 
-### Repo Refresh Task Brief
+当当前问题不是"如何完成这个工作追踪"，而是"哪些代码仓库级真相现在需要根据那次已验证收尾来刷新"时，使用这个技能：
 
-- `trigger`
-- `goal`
-- `closed_worktrack`
-- `in_scope`
-- `out_of_scope`
-- `constraints`
-- `writeback_targets`
-- `done_signal`
+- 某个工作追踪已经进入收尾或合并完成状态
+- `关卡证据` 可用且已经建立了已验证结果
+- `代码仓库快照/状态` 现在需要慢变量刷新
+- 已验证发现可能需要回写到代码仓库级正式产物
+- `Harness` 在决定下一个代码仓库动作前需要限定范围的代码仓库刷新结果
 
-### Repo Refresh Info Packet
+## 工作流
 
-- `current_repo_state`
-- `repo_artifacts_in_play`
-- `gate_evidence_summary`
-- `accepted_change_summary`
-- `verification_results`
-- `known_risks`
-- `required_context`
-- `missing_or_deferred_items`
+1. 载入当前 `代码仓库目标/章程`、当前 `代码仓库快照/状态`、当前 `Harness 控制状态`，以及刚刚关闭的工作追踪的已验证 `关卡证据`。
+2. 为一轮限定范围的 `gpt-5.4-xhigh` `SubAgent` 构建一份 `代码仓库刷新任务简报` 和一份 `代码仓库刷新信息包`。
+3. 根据 `代码仓库目标/章程`、当前 `代码仓库快照/状态` 和已验证收尾证据刷新代码仓库级评估。
+4. 将项目分开：
+   - 已验证回写候选
+   - 推迟或仍未验证的项目
+   - 收尾后仍开放的代码仓库级风险
+5. 在一轮限定范围代码仓库刷新后停止，并返回一份固定格式的 `代码仓库刷新报告` 加一份 `已验证回写交接`。
 
-### Verified Writeback Handoff
+## 硬约束
 
-- `writeback_targets`
-- `verified_findings`
-- `proposed_updates`
-- `evidence_basis`
-- `deferred_items`
-- `approval_request`
+- 本技能是控制回路的状态更新层；只从已验证证据刷新代码仓库级真相，不要把工作追踪产物直接当成回写依据。
+- 从已验证证据刷新代码仓库级真相；不要重新打开或重新执行已关闭的工作追踪。
+- 不要把 `工作追踪约定` 或 `计划/任务队列` 当成代码仓库回写目标。
+- 不要把未经验证的结论写进代码仓库真相产物。
+- 返回回写交接，而不是静默改动代码仓库真相或 `Harness 控制状态`。
+- 停留在收尾后刷新范围内；不要扩展成完整代码仓库重新发现。
 
-## Expected Output
+## 代码仓库刷新约定
 
-When you use this skill, produce a `Repo Refresh Report` with at least these sections:
+每次运行这个技能时，都使用同一套限定范围约定格式。
 
-- `Repo Refresh Trigger`
-- `Repo Refresh Assessment`
-- `Verified Writeback Handoff`
-- `Deferred Or Unverified Items`
-- `Recommended RepoScope Next Step`
-- `Programmer Review Request`
+### 代码仓库刷新任务简报
 
-Inside the result, include at least these fields or equivalents:
+- `触发条件`
+- `目标`
+- `已关闭工作追踪`
+- `范围内`
+- `范围外`
+- `约束`
+- `回写目标`
+- `完成信号`
 
-- `subagent_model`
-- `refresh_trigger`
-- `baseline_branch`
-- `closed_worktrack`
-- `repo_state_changes`
-- `verified_findings`
-- `snapshot_updates`
-- `writeback_targets`
-- `proposed_writeback`
-- `evidence_basis`
-- `deferred_items`
-- `open_risks`
-- `recommended_next_repo_action`
-- `needs_programmer_writeback_approval`
-- `how_to_review`
+### 代码仓库刷新信息包
 
-## Resources
+- `当前代码仓库状态`
+- `参与中的代码仓库产物`
+- `关卡证据摘要`
+- `已接受变更摘要`
+- `验证结果`
+- `已知风险`
+- `所需上下文`
+- `缺失或推迟项目`
 
-Use the just-closed worktrack's verified `Gate Evidence`, current repo-control artifacts, and only the extra repo context needed for post-closeout refresh.
+### 已验证回写交接
+
+- `回写目标`
+- `已验证发现`
+- `建议更新`
+- `证据依据`
+- `推迟项目`
+- `审批请求`
+
+## 预期输出
+
+使用这个技能时，产出一份至少包含以下章节的 `代码仓库刷新报告`：
+
+- `代码仓库刷新触发条件`
+- `代码仓库刷新评估`
+- `已验证回写交接`
+- `推迟或未验证项目`
+- `建议代码仓库范围下一步`
+- `程序员审查请求`
+
+结果中至少应包含以下字段或等价表达：
+
+- `子代理模型`
+- `刷新触发条件`
+- `基准分支`
+- `已关闭工作追踪`
+- `代码仓库状态变化`
+- `已验证发现`
+- `快照更新`
+- `回写目标`
+- `建议回写`
+- `证据依据`
+- `推迟项目`
+- `开放风险`
+- `建议下一代码仓库动作`
+- `需要程序员回写审批`
+- `如何审查`
+
+## 资源
+
+使用刚关闭的工作追踪对应的已验证 `关卡证据`、当前 `代码仓库目标/章程`、当前 `代码仓库快照/状态`、当前 `Harness 控制状态`，以及收尾后刷新所需的最小额外代码仓库上下文。读取已关闭的工作追踪产物时，只把它们当成已验证切片的辅助证据，不要把它们当成代码仓库真相的替代品，也不要把它们当作工作追踪维护目标。

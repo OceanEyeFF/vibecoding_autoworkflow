@@ -1,9 +1,9 @@
 ---
 title: "Codex Harness Manual Runbook"
 status: active
-updated: 2026-04-20
+updated: 2026-04-22
 owner: aw-kernel
-last_verified: 2026-04-20
+last_verified: 2026-04-22
 ---
 # Codex Harness Manual Runbook
 
@@ -121,15 +121,17 @@ python3 toolchain/scripts/deploy/aw_scaffold.py generate \
   --output-root "$TMP_AW_ROOT" \
   --repo harness-manual-spire-lite \
   --owner manual-baseline \
-  --baseline-branch main \
-  --worktrack-id wt-spire-lite \
-  --branch feat/spire-lite
+  --baseline-branch main
 ```
 
 这一步的作用是：
 
 - 在临时 repo 下准备最小 `.aw/` 运行样例
 - 让 `harness-skill` 有一套最小 control-state / repo / worktrack artifact 可读
+- 默认保持 `RepoScope` 起跑，不在 scaffold 阶段预先绑定 `worktrack_id` 或执行分支
+- 允许 `.aw/worktrack/*` 以占位模板形式存在，但它们在 round-000 前不应携带 active worktrack identity，也不应替代 repo judgment
+
+这里的默认测试切面是“完整 Harness 起跑”，不是“预置一条 worktrack 后只测执行链”。因此 round-000 应先经过 repo judgment，再决定是否进入 `WorktrackScope`。
 
 ## 四、第一轮无交互 Codex
 
@@ -175,9 +177,11 @@ Working rule:
 - Continue across legal state transitions if no formal stop condition is hit.
 - Do not stop just because one local skill round produced structured output.
 - If the runtime lacks a real delegated execution carrier, report the runtime gap explicitly.
+- Start from the current repo truth instead of assuming a preselected worktrack.
 
 Observation priority:
 - First show the real state transition and continuation logic.
+- Let round-000 decide whether the repo should open a worktrack; do not assume the worktrack already exists unless the repo artifacts explicitly justify it.
 - Try to keep the repo moving toward the smallest playable CLI combat build.
 - Only stop when a real decision boundary, scope boundary, runtime gap, or other formal stop condition is hit.
 ```
@@ -200,7 +204,25 @@ git -C "$TMP_REPO" diff --stat > "$TMP_RUN_ROOT/round-000/git-diff-stat.txt"
 
 ## 五、后续轮次
 
-后续轮次不恢复旧会话；每一轮都启动一个新的独立 `Codex` 对话，并让它从当前 repo 和运行产物中自行恢复上下文。
+后续轮次不恢复旧会话；每一轮都启动一个新的独立 `Codex` 对话，并让它从当前 repo、`.aw/` 状态和已保存的 round artifacts 中自行恢复上下文。
+
+### 1. 默认工作指令要尽量简单
+
+手动观察用的后续轮次，不应要求 human 每轮重复输入长恢复 prompt。默认只补最小工作指令：
+
+- `开始工作`
+- `继续工作`
+- `继续工作：<一条额外信息或新约束>`
+
+如果宿主支持显式 skill 唤起，可把它理解成：
+
+- `$harness-skill + 开始工作`
+- `$harness-skill + 继续工作`
+- `$harness-skill + 继续工作：<一条额外信息或新约束>`
+
+如果宿主只接受纯文本 prompt，就把上面的意图直接写成短文本，不额外重复恢复逻辑。恢复上下文、读取 `.aw/` 与历史 round artifacts，属于 `harness-skill` 的默认内部职责，不应每轮都由 human 重述。
+
+### 2. round-001 的默认写法
 
 先准备 round-001 的 prompt：
 
@@ -212,32 +234,18 @@ mkdir -p "$TMP_RUN_ROOT/round-001"
 
 - `"$TMP_RUN_ROOT/round-001/init.prompt.md"`
 
-保存时，把文中的 `$TMP_RUN_ROOT` 替换为本次运行实际打印出来的绝对路径值，避免新对话只能看到变量名而看不到上一轮 artifacts 的真实位置。
-
 ```text
-You are starting a new independent Codex conversation for the next Harness observation round.
-
-Do not assume any conversational memory from previous rounds.
-Recover context from the current repo state, the current `.aw/` state, and the saved artifacts under:
-- /tmp path recorded earlier as TMP_RUN_ROOT
-- round artifact directories such as `$TMP_RUN_ROOT/round-000/` and `$TMP_RUN_ROOT/round-001/`
-
-Before acting, first read the most relevant earlier-round artifacts that are available, especially:
-- prior `init.prompt.md`
-- prior `final.txt`
-- prior `events.jsonl`
-- prior `stderr.txt`
-- prior `git-status.txt`
-
 Use only `harness-skill` as the top-level control entry.
 
-Keep working on the same repo goal:
-- Build a CLI Slay the Spire-lite in this temporary repo.
+继续工作。
+```
 
-Do not restart planning from scratch.
-Do not widen scope.
-Only stop if a real formal stop condition is hit.
-If scope changed in the previous round, continue from the new active scope instead of resetting.
+如果这一轮只有一条需要显式补充的新信息，可以写成：
+
+```text
+Use only `harness-skill` as the top-level control entry.
+
+继续工作：上一轮已经完成最小可玩闭环；先根据当前 `.aw/` 状态和已保存 artifacts 判断是停止回交，还是切到新的合法 scope。
 ```
 
 然后启动下一轮：
@@ -256,11 +264,89 @@ git -C "$TMP_REPO" status --short > "$TMP_RUN_ROOT/round-001/git-status.txt"
 git -C "$TMP_REPO" diff --stat > "$TMP_RUN_ROOT/round-001/git-diff-stat.txt"
 ```
 
+### 3. round-0xx 的统一写法
+
+后续任意轮都复用同一套最小模板，只替换轮次编号和一句工作指令：
+
+```bash
+ROUND_ID="round-00x"
+ROUND_PROMPT='继续工作'
+
+mkdir -p "$TMP_RUN_ROOT/$ROUND_ID"
+printf 'Use only `harness-skill` as the top-level control entry.\n\n%s\n' \
+  "$ROUND_PROMPT" \
+  > "$TMP_RUN_ROOT/$ROUND_ID/init.prompt.md"
+
+codex exec \
+  --cd "$TMP_REPO" \
+  --sandbox danger-full-access \
+  --json \
+  --output-last-message "$TMP_RUN_ROOT/$ROUND_ID/final.txt" \
+  - < "$TMP_RUN_ROOT/$ROUND_ID/init.prompt.md" \
+  > "$TMP_RUN_ROOT/$ROUND_ID/events.jsonl" \
+  2> "$TMP_RUN_ROOT/$ROUND_ID/stderr.txt"
+
+git -C "$TMP_REPO" status --short > "$TMP_RUN_ROOT/$ROUND_ID/git-status.txt"
+git -C "$TMP_REPO" diff --stat > "$TMP_RUN_ROOT/$ROUND_ID/git-diff-stat.txt"
+```
+
+推荐把 `ROUND_PROMPT` 限制在下面三种口径内：
+
+- `开始工作`
+- `继续工作`
+- `继续工作：<一条额外信息或新约束>`
+
+如果你要观察“当前合同完成后，Harness 是否会继续自动开下一段最小 worktrack”，优先修改 `.aw/control-state.md` 中的 `Continuation Authority` 策略位，而不是把授权逻辑重新塞回 prompt prose。
+
+默认观察基线应是：
+
+- `post_contract_autonomy: delegated-minimal`
+  - 允许在当前 goal 内自动挑一段低风险、最小 bounded follow-up slice
+- `max_auto_new_worktracks: 1`
+- `stop_after_autonomous_slice: yes`
+
+只有在你刻意测试 strict handback / 不续跑行为时，才切换到：
+
+- `post_contract_autonomy: manual-only`
+  - strict handback；`继续工作` 只会复核并停在边界
+
+这类观察的重点是 control-state policy 是否生效，而不是 human 是否又在 prompt 里写了一段长恢复说明。
+
+但要让这个判断在“每轮新开独立对话”的 runtime 下仍然成立，`.aw/control-state.md` 不能只保存 policy，还要保存 handback guard 和 autonomy ledger。
+
+最小 fixture 语义应是：
+
+- 某轮如果因 `contract-boundary`、`approval-gated` 或等价 handback 原因停下，应写回：
+  - `handoff_state: awaiting-handoff`
+  - `last_stop_reason: <实际 stop 原因>`
+  - `last_handback_signature: <当前 handback 边界的稳定指纹>`
+  - `handback_reaffirmed_rounds: <连续确认次数>`
+- 在 `post_contract_autonomy: manual-only` 下，后续新对话即使已经回到 `RepoScope`，单独一句 `继续工作` 也只允许复核并返回同一个 handback；不得把 “已在 RepoScope” 误读成 “允许 fresh handoff / 新 worktrack”
+- 在 `post_contract_autonomy: delegated-minimal` 下，只有 `handoff_state: awaiting-handoff` 且 `autonomy_budget_remaining > 0` 时才允许自动开一段 follow-up worktrack；一旦决定开启，就应立刻消费预算，并把 `handoff_state` 切到 `autonomous-slice-active`
+- autonomous slice 关闭后，如果 `stop_after_autonomous_slice: yes`，必须再次写回 `handoff_state: awaiting-handoff`；不能因为又回到了 `RepoScope`，就默认继续链式扩张
+- `stable-handback` 应由重复的 `last_handback_signature` 推导出来；不要把它当成唯一长期字段写死在 control-state 里
+
+只有在你刻意做诊断、对比或研究某种恢复行为时，才需要退回到长 prompt，把“必须先读哪些 artifacts”之类的观察要求明写出来。
+
 当前建议：
 
 - 默认每一轮都新开独立对话，不依赖会话恢复
 - 连续性来自当前 repo、`.aw/` 状态和已保存的 round artifacts，而不是来自对话记忆
+- human 默认只提供最小工作意图；除非有新的事实、约束或程序员决策边界，不重复输入长说明
 - 只有在真的需要重新建立临时 repo 基线时，才整体重开一套新的 `TMP_ROOT`
+
+补充说明：
+
+- 默认 runbook 现在测试的是完整 `Harness` 主链：
+  - `RepoScope`
+  - `repo-status-skill`
+  - `repo-whats-next-skill`
+  - `enter-worktrack`
+  - `init-worktrack-skill`
+  - `schedule-worktrack-skill`
+  - `dispatch-skills`
+- 不再把“第一条 worktrack 是什么”提前塞进 scaffold 基线里
+- 如果将来确实要观察“只测 worktrack 执行链”的场景，应另开一个显式命名的 `worktrack-preseeded` 变体 runbook，而不是污染默认路径
 
 ## 六、当前环境下的 Codex 如何监督
 

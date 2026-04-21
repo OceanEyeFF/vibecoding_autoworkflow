@@ -1,38 +1,38 @@
-# Goal Change Control Report Template
+# 目标变更控制报告模板
 
-> 使用方式：在 `goal-change-control-skill` 需要整理一轮 goal-level change-control 报告时，使用本模板组织输出。它不进入 `.aw/` 路径。
+> 使用方式：在 `目标变更控制技能` 需要整理一轮目标级变更控制报告时，使用本模板组织输出。它不进入 `.aw/` 路径。
 
-## Metadata
+## 元数据
 
-- request_id:
-- updated:
-- owner:
+- 请求编号：
+- 更新时间：
+- 负责人：
 
-## Goal Change Request
+## 目标变更请求
 
-- requested_change:
-- change_reason:
+- 请求变更：
+- 变更理由：
 
-## Goal Delta
+## 目标差异
 
-- 
+-
 
-## Impact Analysis
+## 影响分析
 
-- baseline_impact:
-- worktrack_impact:
-- invariants_at_risk:
-- evidence_or_gaps:
+- 基准影响：
+- 工作追踪影响：
+- 受威胁的不变条件：
+- 证据或缺口：
 
-## Authority Boundary
+## 权限边界
 
-- approval_required:
-- approval_scope:
+- 需要审批：
+- 审批范围：
 
-## Recommended Decision
+## 建议决策
 
-- recommended_decision:
+- 建议决策：
 
-## Required Follow-up
+## 必要后续动作
 
-- required_follow_up:
+- 必要后续跟进：

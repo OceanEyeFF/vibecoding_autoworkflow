@@ -1,60 +1,60 @@
-# Repo Priority Reframe Mode Appendix
+# 代码仓库优先级重构模式附录
 
-Use this appendix only when `repo-whats-next-skill` enters `priority reframe / contradiction analysis` mode. It is a bounded `RepoScope` deciding aid, not a separate skill.
+只有当 `代码仓库下一步技能` 进入 `优先级重构/矛盾分析` 模式时才使用这个附录。它是一个限定范围的 `代码仓库范围` 判定辅助，不是独立技能。
 
-## Trigger Matrix
+## 触发矩阵
 
-Trigger this mode only when at least one of these conditions holds:
+只有在以下至少一个条件成立时才触发这个模式：
 
-- the repo has multiple plausible next directions and no clear first move
-- the current path feels busy but not decisive
-- time, scope, or resources are clearly tighter than the stated goal
-- a worktrack just closed or stalled and the repo-level priority may need to be reframed
-- the repo may need to choose between `enter-worktrack`, `refresh-repo-state`, `goal-change-control`, or `hold-and-observe`
+- 代码仓库存在多个看似合理的下一方向，但没有清晰的第一步
+- 当前路径显得忙碌，却不够决定性
+- 时间、范围或资源明显比既定目标更紧
+- 某个工作追踪刚关闭或停滞，代码仓库级优先级可能需要重构
+- 代码仓库可能需要在 `进入工作追踪`、`刷新代码仓库状态`、`目标变更控制` 或 `保持并观察` 之间做选择
 
-If none of those conditions holds, stay in the default `next-direction` mode instead of expanding into contradiction analysis.
+如果这些条件都不成立，就停留在默认 `下一步方向` 模式，不要扩展为矛盾分析。
 
-## Minimum Input Contract
+## 最小输入约定
 
-Collect only the minimum bounded repo packet:
+只收集最小限定范围代码仓库包：
 
-- current repo goal or charter
-- current repo snapshot or status
-- current control-state view
-- current time or delivery pressure if it materially changes the decision
-- recent gate or worktrack evidence only if it changes the repo-level judgment
+- 当前代码仓库目标或章程
+- 当前代码仓库快照或状态
+- 当前控制状态视图
+- 如果会实质影响决策，则加入当前时间或交付压力
+- 只有当最近的关卡或工作追踪证据会改变代码仓库级判断时，才纳入这些证据
 
-If a key input is missing, say so explicitly instead of filling it in by imagination.
+如果关键输入缺失，应明确指出，而不是靠想象补全。
 
-## Compression Rules
+## 压缩规则
 
-- facts first; do not promote assumptions into facts
-- only one current primary contradiction
-- only one top priority now
-- `Do Not Do` must remove distraction, not pad the answer
-- if evidence is too weak, recommend `hold-and-observe` plus the minimum missing info
-- if a real goal change is needed, route to `goal-change-control`
-- if execution should start, recommend entering `WorktrackScope`; do not start execution here
-- do not output a long strategic report
+- 先写事实；不要把假设升级成事实
+- 当前只允许一个主要矛盾
+- 当前只允许一个最高优先级
+- `不要做的事` 必须用于剔除干扰，而不是给答案注水
+- 如果证据太弱，建议 `保持并观察` 并附上最小缺失信息
+- 如果确实需要目标变更，就路由到 `目标变更控制`
+- 如果应当开始执行，就建议进入 `工作追踪范围`；不要在这里直接开干
+- 不要输出冗长的战略报告
 
-## Output Mapping Back To Main Decision Contract
+## 回映到主决策约定的输出映射
 
-When this mode is used, fold the result back into the normal `Repo Whats Next Decision` and make sure it sets:
+使用这个模式时，要把结果折回正常的 `代码仓库下一步判定`，并确保设置以下内容：
 
-- `mode: priority-reframe`
-- `mode_trigger_reason`
-- `facts`
-- `inferences`
-- `unknowns`
-- `current_primary_contradiction`
-- `primary_aspect`
-- `top_priority_now`
-- `do_not_do`
-- `recommended_repo_action`
-- `recommended_next_route`
-- `continuation_ready`
-- `continuation_blockers`
-- `approval_required`
-- `approval_scope`
-- `approval_reason`
-- `minimal_missing_info`
+- `模式：优先级重构`
+- `模式触发理由`
+- `事实`
+- `推断`
+- `未知项`
+- `当前主要矛盾`
+- `主要方面`
+- `当前最高优先级`
+- `不要做的事`
+- `建议代码仓库动作`
+- `建议下一路由`
+- `可继续`
+- `继续阻塞项`
+- `需要审批`
+- `审批范围`
+- `审批理由`
+- `最小缺失信息`

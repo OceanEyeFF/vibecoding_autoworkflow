@@ -1,71 +1,71 @@
-# Gate Report Template
+# 关卡报告模板
 
-> 使用方式：在 `gate-skill` 需要整理当前 round 的 gate 报告时，使用本模板组织输出。
+> 使用方式：在 `关卡技能` 需要整理当前轮次的关卡报告时，使用本模板组织输出。
 
-## Metadata
+## 元数据
 
-- worktrack_id:
-- updated:
-- gate_round:
+- 工作追踪编号：
+- 更新时间：
+- 关卡轮次：
 
-## Gate Trigger
+## 关卡触发条件
 
-- gate_trigger:
+- 关卡触发条件：
 
-## Lane Intake Summary
+## 维度接收摘要
 
-### Review Lane
+### 审查维度
 
-- input_ref:
-- freshness:
-- confidence:
-- missing_evidence:
-- low_severity_absorption_applied:
+- 输入引用：
+- 时效性：
+- 置信度：
+- 缺失证据：
+- 已应用低严重度吸收：
 
-### Test Lane
+### 测试维度
 
-- input_ref:
-- freshness:
-- confidence:
-- missing_evidence:
-- low_severity_absorption_applied:
+- 输入引用：
+- 时效性：
+- 置信度：
+- 缺失证据：
+- 已应用低严重度吸收：
 
-### Policy Lane
+### 策略维度
 
-- input_ref:
-- freshness:
-- confidence:
-- missing_evidence:
-- low_severity_absorption_applied:
+- 输入引用：
+- 时效性：
+- 置信度：
+- 缺失证据：
+- 已应用低严重度吸收：
 
-## Evidence Assessment
+## 证据评估
 
-- overall_confidence:
-- overall_confidence_reason:
-- freshness_blockers:
-- decisive_evidence:
-- missing_or_conflicting_evidence:
-- residual_risks:
+- 整体置信度：
+- 整体置信度理由：
+- 时效性阻塞项：
+- 决定性证据：
+- 缺失或冲突证据：
+- 残留风险：
 
-## Per-Surface Verdicts
+## 分层面判定结果
 
-- implementation_gate:
-- validation_gate:
-- policy_gate:
-- overall_verdict:
-- low_severity_absorption_applied:
-- low_severity_absorption_reason:
-- upstream_route_required:
-- route_reason:
+- 实现关卡：
+- 验证关卡：
+- 策略关卡：
+- 整体判定结果：
+- 已应用低严重度吸收：
+- 低严重度吸收理由：
+- 需要上游路由：
+- 路由理由：
 
-## Allowed Next Routes
+## 允许的下一路由
 
-- 
+-
 
-## Recommended Next Route
+## 建议的下一路由
 
-- recommended_next_route:
-- approval_required:
-- approval_scope:
-- approval_reason:
-- needs_programmer_approval:
+- 建议下一路由：
+- 需要审批：
+- 审批范围：
+- 审批理由：
+- 需要程序员审批：

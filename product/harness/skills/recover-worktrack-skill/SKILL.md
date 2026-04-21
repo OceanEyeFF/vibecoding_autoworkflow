@@ -1,150 +1,158 @@
 ---
 name: recover-worktrack-skill
-description: Use this skill when Harness is in WorktrackScope.recovering and needs one bounded recovery-choice round that selects retry, rollback, split-worktrack, or refresh-baseline with explicit authority boundaries.
+description: 当 Harness 处于 WorktrackScope.recovering，且需要一轮带有明确权限边界的限定范围恢复决策来在重试、回滚、拆分工作追踪或刷新基准之间做选择时，使用这个技能。
 ---
 
-# Recover Worktrack Skill
+# 恢复工作追踪技能
 
-## Overview
+## 概览
 
-Use this skill when `Harness` has already concluded that the current `Worktrack` cannot continue on its present path and needs one bounded recovery-choice round.
+本技能实现 `WorktrackScope.Recover` 状态转移算子，对应 Harness 控制回路中的**恢复控制**阶段。当 gate 判定为失败或阻塞时，它负责评估合法的恢复操作（重试、回滚、拆分、刷新基准、重新规划），选择恢复路径并停在权限边界处。
 
-This skill packages the minimum failure-path context for a `gpt-5.4-xhigh` `SubAgent`, evaluates the legal recovery operators, selects among `retry`, `rollback`, `split-worktrack`, or `refresh-baseline`, and returns a structured recovery handoff for `Harness`.
+当 `Harness` 已经判定当前 `工作追踪` 无法沿现有路径继续推进，并且需要一轮限定范围恢复决策时，使用这个技能。
 
-It stops at the recovery authority boundary instead of silently executing destructive rollback, redefining scope, or rewriting repo truth.
+这个技能会为 `gpt-5.4-xhigh` `SubAgent` 打包最小失败路径上下文，评估合法的恢复操作，在 `重试`、`回滚`、`拆分工作追踪` 或 `刷新基准` 之间做选择，并向 `Harness` 返回结构化的恢复交接结果。
 
-## When To Use
+它会停在恢复权限边界处，而不是静默执行破坏性回滚、重定义范围，或改写代码仓库真相。
 
-Use this skill when the current question is not "should the worktrack pass the gate", but "what is the correct recovery path now":
+## 何时使用
 
-- classify the current failure or blocked condition from bounded evidence
-- determine whether the current `Worktrack` can safely retry within the same goal and baseline
-- decide whether rollback is required before any new attempt
-- decide whether the work should be split into smaller bounded worktracks
-- decide whether baseline drift or repo truth change requires `refresh-baseline`
-- return a recovery decision with explicit approval boundaries and next-step handoff
+当当前问题不是"这个工作追踪是否应该通过关卡"，而是"现在正确的恢复路径是什么"时，使用这个技能：
 
-## Workflow
+- 根据限定范围证据归类当前失败或阻塞状态
+- 判断当前 `工作追踪` 是否能在相同目标与基准下安全重试
+- 判断在任何新尝试之前是否必须先执行回滚
+- 判断当前工作是否应拆成更小的限定范围工作追踪
+- 判断基准漂移或代码仓库真相变化是否要求 `刷新基准`
+- 返回带有明确审批边界和下一步交接结果的恢复决策
 
-1. Confirm this is a bounded `WorktrackScope.recovering` round, not initial planning, implementation dispatch, final gate judgment, or closeout.
-2. Load the minimum recovery artifacts for the current failure path.
-3. Build one `Recovery Choice Task Brief` and one `Recovery Choice Info Packet` for a bounded `gpt-5.4-xhigh` `SubAgent`.
-4. Classify the current recovery trigger:
-   - `soft-fail`
-   - `hard-fail`
-   - `blocked`
-   - `baseline-drift`
-5. Evaluate the legal recovery choices:
-   - `retry`
-   - `rollback`
-   - `split-worktrack`
-   - `refresh-baseline`
-6. Select one primary recovery path and, if needed, one fallback recovery path.
-7. Return one fixed-format `Recovery Choice Result` plus one `Recovery Authority Handoff`.
-8. Stop before executing destructive rollback, opening new worktracks, or mutating repo truth.
+## 工作流
 
-## Recovery Choice Contract
+1. 确认这是一轮限定范围的 `工作追踪范围.恢复中`，而不是初始规划、实现分派、最终关卡判定或收尾。
+2. 载入当前失败路径所需的最小恢复产物。
+3. 为限定范围的 `gpt-5.4-xhigh` `SubAgent` 构建一份 `恢复选择任务简报` 和一份 `恢复选择信息包`。
+4. 归类当前恢复触发器：
+   - `软失败`
+   - `硬失败`
+   - `阻塞`
+   - `基准漂移`
+5. 评估合法的恢复选择：
+   - `重试`
+   - `回滚`
+   - `拆分工作追踪`
+   - `刷新基准`
+   - `重新规划`（跨 Scope 回到 RepoScope）
+6. 选择一条主恢复路径，并在需要时给出一条后备恢复路径。
+7. 返回一份固定格式的 `恢复选择结果` 和一份 `恢复权限交接`。
+8. 在执行破坏性回滚、开启新工作追踪或变更代码仓库真相之前停止。
 
-Use the same bounded contract shape every time this skill runs.
+## 恢复决策约定
 
-### Recovery Choice Task Brief
+每次运行这个技能时，都使用同一套限定范围约定格式。
 
-- `recovery_trigger`
-- `goal`
-- `current_worktrack`
-- `in_scope`
-- `out_of_scope`
-- `recovery_options`
-- `constraints`
-- `authority_limits`
-- `done_signal`
+### 恢复选择任务简报
 
-### Recovery Choice Info Packet
+- `恢复触发器`
+- `目标`
+- `当前工作追踪`
+- `范围内`
+- `范围外`
+- `恢复选项`
+- `约束`
+- `权限限制`
+- `完成信号`
 
-- `current_worktrack_state`
-- `worktrack_contract_summary`
-- `plan_queue_status`
-- `gate_evidence_summary`
-- `failure_signals`
-- `baseline_status`
-- `known_risks`
-- `required_context`
-- `unresolved_questions`
+### 恢复选择信息包
 
-### Recovery Authority Handoff
+- `当前工作追踪状态`
+- `工作追踪约定摘要`
+- `计划队列状态`
+- `关卡证据摘要`
+- `失败信号`
+- `基准状态`
+- `已知风险`
+- `所需上下文`
+- `未解决问题`
 
-- `selected_recovery_mode`
-- `selection_reason`
-- `authority_boundary`
-- `immediate_safe_actions`
-- `approval_required`
-- `follow_up_artifacts`
-- `handoff_target`
+### 恢复权限交接
 
-## Recovery Authority Boundaries
+- `所选恢复模式`
+- `选择理由`
+- `权限边界`
+- `即时安全动作`
+- `需要审批`
+- `后续产物`
+- `交接目标`
 
-The recovery choice must stay inside these authority limits:
+## 恢复权限边界
 
-- `retry`
-  - Allowed only when the current goal, non-goals, and baseline remain valid.
-  - May revise the next bounded task or evidence requirement.
-  - Must not widen scope, redefine acceptance, or silently skip missing evidence.
-- `rollback`
-  - May identify rollback target, rollback reason, and safe sequence.
-  - Must stop before destructive git or workspace mutation unless the programmer explicitly approves it.
-  - Must not assume rollback alone resolves the underlying failure classification.
-- `split-worktrack`
-  - May propose a new bounded split shape and follow-up worktrack identities.
-  - Must not silently create, schedule, or switch to new worktracks from this skill.
-  - Must preserve which acceptance criteria stay in the current worktrack and which move out.
-- `refresh-baseline`
-  - May request a repo-level baseline refresh or re-initialization trigger when upstream truth changed or drift invalidated the current branch comparison.
-  - Must not rewrite `Repo Snapshot / Status`, `Goal / Charter`, or control truth from this skill.
-  - Must return a handoff that tells `Harness` which repo-facing round is needed next.
+恢复决策必须停留在以下权限限制内：
 
-## Hard Constraints
+- `重试`
+  - 只有在当前目标、排除目标与基准仍然有效时才允许。
+  - 可以修订下一项限定范围任务或证据要求。
+  - 不得扩大范围、重定义验收，或静默跳过缺失证据。
+- `回滚`
+  - 可以识别回滚目标、回滚原因与安全顺序。
+  - 除非程序员明确批准，否则在执行破坏性代码版本或工作区变更前必须停止。
+  - 不得假定仅靠回滚就能解决底层失败分类。
+- `拆分工作追踪`
+  - 可以提出新的限定范围拆分形态和后续工作追踪身份。
+  - 不得从这个技能静默创建、调度或切换到新的工作追踪。
+  - 必须保留哪些验收标准留在当前工作追踪，哪些会移出。
+- `刷新基准`
+  - 当上游真相变化或漂移使当前分支比较失效时，可以请求代码仓库级基准刷新或重新初始化触发器。
+  - 不得从这个技能改写 `代码仓库快照/状态`、`目标/章程` 或控制真相。
+  - 必须返回一份交接结果，明确告诉 `Harness` 接下来需要哪一轮面向代码仓库的流程。
+- `重新规划`
+  - 当当前工作追踪的目标、范围或约定本身需要重新审定时，可以触发跨 Scope 回到 RepoScope 的重新规划。
+  - 不得从这个技能静默创建新工作追踪或改写上游约定。
+  - 必须返回明确的重新规划交接，说明哪些内容需要回到 RepoScope 重新评估。
 
-- Do not issue the final `Gate` verdict from this skill; consume it only as recovery input.
-- Do not keep executing inside the failed path just because a retry seems plausible.
-- Do not treat `rollback`, `split-worktrack`, or `refresh-baseline` as implementation details hidden from the programmer.
-- Do not widen the current worktrack beyond its approved goal, non-goals, and authority boundary.
-- Do not pass full-repo context to the `gpt-5.4-xhigh` `SubAgent` when a bounded recovery packet is sufficient.
-- Do not mutate `Harness Control State`, create new worktracks, or rewrite repo truth from this skill.
-- Do not collapse recovery classification, recovery choice, and approval boundary into one vague narrative.
+## 硬约束
 
-## Expected Output
+- 本技能是控制回路的恢复控制层；负责选择恢复路径并明确权限边界，不要在本技能中静默执行破坏性回滚、创建新工作追踪或改写代码仓库真相。
+- 不要从这个技能输出最终 `关卡` 判定结果；它只能被当成恢复输入来消费。
+- 不要仅仅因为重试看起来可行，就继续沿失败路径执行。
+- 不要把 `回滚`、`拆分工作追踪` 或 `刷新基准` 当成对程序员隐藏的实现细节。
+- 不要让当前工作追踪超出它已批准的目标、排除目标与权限边界。
+- 当限定范围恢复包已经足够时，不要把完整代码仓库上下文传给 `gpt-5.4-xhigh` `SubAgent`。
+- 不要从这个技能变更 `Harness 控制状态`、创建新工作追踪或改写代码仓库真相。
+- 不要把恢复分类、恢复选择与审批边界压缩成一段模糊叙述。
 
-When you use this skill, produce a `Recovery Choice Result` with at least these sections:
+## 预期输出
 
-- `Recovery Trigger`
-- `Recovery Option Assessment`
-- `Selected Recovery Path`
-- `Recovery Authority Handoff`
-- `Open Risks And Follow-Up`
-- `Return To Harness`
+使用这个技能时，产出一份至少包含以下章节的 `恢复选择结果`：
 
-Inside the result, include at least these fields or equivalents:
+- `恢复触发器`
+- `恢复选项评估`
+- `所选恢复路径`
+- `恢复权限交接`
+- `开放风险与后续跟进`
+- `返回 Harness`
 
-- `subagent_model`
-- `recovery_trigger`
-- `failure_classification`
-- `current_worktrack_state`
-- `selected_recovery_mode`
-- `selection_reason`
-- `fallback_recovery_mode`
-- `retry_viability`
-- `rollback_target_or_rule`
-- `split_rationale`
-- `baseline_refresh_reason`
-- `authority_boundary`
-- `immediate_safe_actions`
-- `approval_required`
-- `follow_up_artifacts`
-- `open_risks`
-- `recommended_next_action`
-- `needs_programmer_approval`
-- `how_to_review`
+结果中至少应包含以下字段或等价表达：
 
-## Resources
+- `子代理模型`
+- `恢复触发器`
+- `失败分类`
+- `当前工作追踪状态`
+- `所选恢复模式`
+- `选择理由`
+- `后备恢复模式`
+- `重试可行性`
+- `回滚目标或规则`
+- `拆分理由`
+- `基准刷新理由`
+- `权限边界`
+- `即时安全动作`
+- `需要审批`
+- `后续产物`
+- `开放风险`
+- `建议下一动作`
+- `需要程序员审批`
+- `如何审查`
 
-Use the current failure-path evidence, `Worktrack Contract`, queue state, and only the extra repo or adjacent-system context required to choose a legal recovery operator.
+## 资源
+
+使用当前失败路径证据、`工作追踪约定`、队列状态，以及选择合法恢复操作所需的最小额外代码仓库或相邻系统上下文。

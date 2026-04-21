@@ -1,99 +1,112 @@
 ---
 name: dispatch-skills
-description: Use this skill when Harness is in WorktrackScope and needs one bounded dispatch round that selects a specialized skill or execution carrier without widening scope.
+description: 当 Harness 处于 WorktrackScope.dispatching，且需要一轮不扩大范围的限定范围分派来选择专用技能或执行载体时，使用这个技能。
 ---
 
-# Dispatch Skills
+# 分派技能
 
-## Overview
+## 概览
 
-Use this skill when `Harness` already has a current `Worktrack` action and needs to bind that action to the right execution carrier for one bounded round.
+本技能实现 `WorktrackScope.Dispatch` 状态转移算子，对应 Harness 控制回路中的**分派执行**阶段。它负责将已选工作项绑定到合适的执行载体（专用技能或通用回退载体），并分派一轮限定范围执行，而不是 Harness 自己执行编码。
 
-This skill consumes one already-selected current work item plus the bounded dispatch handoff packet that `schedule-worktrack-skill` prepared for it, selects the most appropriate specialized skill when one clearly fits, and falls back to a general task-completion execution carrier when no specialized skill is a clean match.
+当 `Harness` 已经有当前 `Worktrack` 动作，并且需要把这个动作绑定到合适的执行载体上完成一轮限定范围执行时，使用这个技能。
 
-If the host runtime provides a real subagent dispatch shell, that fallback carrier may be a delegated `SubAgent`. If the host runtime does not provide one, the same bounded task/info contract must still be executed in the current carrier and explicitly reported as runtime fallback rather than fake subagent dispatch.
+这个技能会消费一个已经选定的当前工作项，以及 `schedule-worktrack-skill` 为其准备的限定范围分派交接包；当存在明显匹配的专用技能时，选择最合适的那个，否则回退到通用任务完成执行载体。
 
-## When To Use
+这个技能也是执行前最后一道限定范围防线。如果调度包对单轮而言过大，这个技能应拒绝它并返回调度阶段，而不是把过大的初始切片强行规范成一次执行。
 
-Use this skill when the current question is not "what is the next worktrack action", but "how should this one action be dispatched right now":
+如果宿主运行时提供真实的子代理分派壳层，这个回退载体可以是委派出的 `SubAgent`。如果宿主运行时不提供，就必须在当前载体内执行同一份限定范围任务/信息约定，并明确报告为运行时回退，而不是伪装成子代理分派。
 
-- consume the current next action that was already selected from the active `Plan / Task Queue`
-- package the current work item into a bounded execution contract
-- carry forward the acceptance criteria slice and acceptance-alignment result that justify this bounded execution round
-- decide whether a specialized skill is available and semantically appropriate
-- fall back to a general task-completion execution carrier if not
-- run one bounded dispatch round
-- return structured evidence and handoff data to `Harness`
+## 何时使用
 
-## Workflow
+当当前问题不是"下一个工作追踪动作是什么"，而是"这个动作现在应该如何分派"时，使用这个技能：
 
-1. Load the minimum `WorktrackScope` artifacts needed to understand the current selected work item.
-2. Confirm that the current work item was already selected from the active `Plan / Task Queue`; if that selection does not exist, return to scheduling instead of inventing one here.
-3. Confirm that a bounded dispatch handoff packet already exists for the current work item; if the packet is missing, stale, or contradictory, return to scheduling instead of packaging blind execution.
-4. Validate the packet before execution and record any contract gaps explicitly.
-5. Reuse the packet's `Dispatch Task Brief` and `Dispatch Info Packet` instead of rebuilding them from scratch.
-6. Check whether a specialized skill is a clear semantic fit for the current work item.
-7. If yes, dispatch via that specialized skill.
-8. If no, dispatch via a general task-completion carrier using the same bounded task/info contract.
-9. Record whether the round used:
-   - delegated `SubAgent` dispatch
-   - current-carrier runtime fallback
-10. Return one fixed-format `Dispatch Result`.
+- 消费已经从活动 `计划/任务队列` 中选出的当前下一步动作
+- 把当前工作项打包成一份限定范围执行约定
+- 继承能够支撑这一轮限定范围执行的验收标准切片与验收对齐结果
+- 判断是否存在语义上合适的专用技能
+- 如果没有，就回退到通用任务完成执行载体
+- 执行一轮限定范围分派
+- 把结构化证据与交接数据返回给 `Harness`
 
-## Hard Constraints
+## 工作流
 
-- Do not widen the work item beyond the current `Worktrack Contract` and `Plan / Task Queue`.
-- Do not choose, reorder, or invent the current next action inside this skill; consume the selected work item that planning already produced.
-- Do not detach the dispatched task from the acceptance criteria slice and acceptance-alignment result that scheduling already established.
-- Do not create a new authoritative `Dispatch Task Brief` or `Dispatch Info Packet` when the scheduling packet is missing; return to scheduling instead.
-- Do not treat "no specialized skill exists" as a blocked state by itself.
-- Do not pass full-repo context when a bounded info packet is sufficient.
-- Do not let the fallback execution carrier redefine acceptance criteria, non-goals, or verification requirements.
-- Do not claim a delegated `SubAgent` was used unless the host runtime actually spawned one.
-- Do not mutate `Harness Control State` or issue a gate verdict directly from this skill.
-- Do not collapse selection reason, execution result, and evidence into one vague summary.
+1. 载入理解当前已选工作项所需的最小 `WorktrackScope` 产物。
+2. 确认当前工作项已经从活动 `计划/任务队列` 中选出；如果没有，返回调度阶段，而不是在这里臆造一个。
+3. 确认当前工作项已经存在限定范围分派交接包；如果交接包缺失、过期或自相矛盾，返回调度阶段，而不是盲目封装执行。
+4. 在执行前校验交接包，并明确记录任何约定缺口。
+   - 确认交接包仍表示一个可在单轮执行的限定范围工作项
+   - 确认验收标准切片仍足够窄，足以支撑一轮执行
+   - 如果交接包现在更像一个端到端打包批次，而不是一个限定范围切片，应返回调度阶段，而不是在这里扩张它
+5. 复用交接包中的 `分派任务简报` 和 `分派信息包`，不要从头重建。
+6. 检查是否存在与当前工作项语义上明确匹配的专用技能。
+7. 如果有，就通过该专用技能分派。
+8. 如果没有，就使用同一份限定范围任务/信息约定，通过通用任务完成载体分派。
+9. 记录本轮使用的是：
+   - 委派式 `子代理` 分派
+   - 当前载体运行时回退
+10. 返回一份固定格式的 `分派结果`。
 
-## Expected Output
+## 硬约束
 
-When you use this skill, produce a `Dispatch Result` with at least these sections:
+- 本技能是控制回路的分派执行层；负责绑定技能、打包任务并分派执行，不要在分派中混入算子选择或裁决判定。
+- 不要让工作项超出当前 `工作追踪约定` 与 `计划/任务队列` 的边界。
+- 不要在这个技能内部重新选择、重排或发明当前下一步动作；应消费规划阶段已经给出的已选工作项。
+- 不要让被分派的任务脱离调度阶段已经建立好的验收标准切片与验收对齐结果。
+- 当调度包缺失时，不要创建新的权威 `分派任务简报` 或 `分派信息包`；应返回调度阶段。
+- 不要把"没有专用技能可用"本身当成阻塞状态。
+- 当限定范围信息包已经足够时，不要传入完整代码仓库上下文。
+- 不要让回退执行载体重定义验收标准、排除目标或验证要求。
+- 当过大的调度包跨越多个队列项、多个验收切片，或一个开放式的"完成全部"批次时，不要静默把它规范成执行。
+- 一旦包已不再适合一轮限定范围执行，就不要继续分派初始或自动延续切片；应带着过大原因返回调度阶段。
+- 除非调度包已经携带显式的原子性理由，否则不要通过把实现、清理和验证工作合并，来放宽首个面向执行的切片。
+- 除非宿主运行时真的创建了委派载体，否则不要声称使用了委派式 `子代理`。
+- 不要从这个技能变更 `Harness 控制状态`，也不要直接输出关卡判定结果。
+- 不要把选择理由、执行结果与证据压成一段模糊摘要。
 
-- `Handoff Validation`
-- `Dispatch Decision`
-- `Dispatch Task Brief`
-- `Dispatch Info Packet`
-- `Actions Taken`
-- `Evidence Collected`
-- `Open Issues`
-- `Return To Harness`
+## 预期输出
 
-Inside the result, include at least these fields or equivalents:
+使用这个技能时，产出一份至少包含以下章节的 `分派结果`：
 
-- `selected_executor`
-- `selected_executor_type`
-- `runtime_dispatch_mode`
-- `selection_reason`
-- `fallback_used`
-- `fallback_reason`
-- `handoff_packet_source`
-- `dispatch_packet_status`
-- `dispatch_contract_gaps`
-- `task`
-- `goal`
-- `in_scope`
-- `out_of_scope`
-- `constraints`
-- `acceptance_criteria_for_this_round`
-- `acceptance_alignment_used`
-- `verification_requirements`
-- `done_signal`
-- `required_context`
-- `actions_taken`
-- `files_touched_or_expected`
-- `evidence_collected`
-- `open_issues`
-- `return_route_if_not_dispatched`
-- `recommended_next_action`
+- `交接验证`
+- `分派决策`
+- `分派任务简报`
+- `分派信息包`
+- `已执行动作`
+- `已收集证据`
+- `待解决问题`
+- `返回 Harness`
 
-## Resources
+结果中至少应包含以下字段或等价表达：
 
-Use the selected work item, the scheduling output, and the schedule-authored bounded execution packet as the authority for this dispatch round.
+- `所选执行器`
+- `所选执行器类型`
+- `运行时分派模式`
+- `选择理由`
+- `是否使用回退`
+- `回退理由`
+- `交接包来源`
+- `分派包状态`
+- `包限定范围判定`
+- `过大原因`
+- `分派约定缺口`
+- `任务`
+- `目标`
+- `范围内`
+- `范围外`
+- `约束`
+- `本轮验收标准`
+- `使用的验收对齐`
+- `验证要求`
+- `完成信号`
+- `所需上下文`
+- `已执行动作`
+- `触及或预期文件`
+- `已收集证据`
+- `待解决问题`
+- `未分派时返回路径`
+- `建议下一动作`
+
+## 资源
+
+使用当前选中的工作项、调度输出，以及由调度阶段编写的限定范围执行交接包，作为本轮分派的权威依据。

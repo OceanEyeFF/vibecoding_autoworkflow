@@ -1,92 +1,102 @@
 ---
 name: repo-status-skill
-description: Use this skill when Harness is in RepoScope and needs one bounded status-observation round, optionally carried by a dedicated gpt-5.4-xhigh SubAgent when the host runtime supports that carrier.
+description: 当 Harness 处于代码仓库范围，且需要一轮限定范围的状态观察时使用这个技能；如果宿主运行时支持，也可以交给专用的 gpt-5.4-xhigh 子代理承载。
 ---
 
-# Repo Status Skill
+# 代码仓库状态技能
 
-## Overview
+## 概览
 
-Use this skill as the specialized `RepoScope` status observer in `Codex`.
+把这个技能作为 `Codex` 中专门的 `代码仓库范围` 状态观察器使用。
 
-It realizes one bounded `RepoScope.observing` round, reads the minimum canonical artifacts for the current question, and returns a structured repo status summary plus one observation handoff to `Harness`.
+本技能实现 `RepoScope.Observe` 状态转移算子，对应 Harness 控制回路中的**状态估计**阶段。它是控制回路的**传感器**层：通过读取 `代码仓库目标/章程`、`代码仓库快照/状态` 和 `Harness 控制状态` 等传感器来源，形成当前 Repo 级的结构化状态估计，而不是自报状态。其输出（结构化状态摘要）是下游 `RepoScope.Decide` 算子（如 repo-whats-next-skill）的输入依据。
 
-## When To Use
+它实现一轮限定范围的 `代码仓库范围.观察中`，读取回答当前问题所需的最小标准产物，并向 `Harness` 返回结构化的代码仓库状态摘要和一份观察交接结果。
 
-Use this skill when the current question is not "what should we do next", but "what is the repo baseline state right now":
+这个技能首先是给 `Harness` 使用的稳定格式观察载体。当监督器希望在决策轮之前先拿到一份字段可重复的狭窄代码仓库状态包时，它很有价值；但它不是代码仓库的规划器，也不是每次运行 `代码仓库下一步技能` 都必须满足的前置条件。
 
-- summarize current mainline status for `RepoScope`
-- surface active branches, governance signals, and known risks
-- refresh the status basis before `repo-whats-next-skill` or `goal-change-control-skill`
-- provide a bounded repo-status context packet instead of broad repo exploration
+它的主要观察依据是代码仓库级真相：
 
-## Workflow
+- `代码仓库目标/章程`
+- `代码仓库快照/状态`
+- 当前 `Harness 控制状态`
 
-1. Confirm this is a `RepoScope` status-observation round, not worktrack dispatch, next-step decision, or direct execution.
-2. Load `Harness Control State`, `Repo Snapshot / Status`, and only the minimum additional artifacts required by the current question.
-3. If the canonical snapshot is missing, stale, or clearly insufficient, collect only the smallest sensor evidence needed to explain the gap.
-4. Summarize current repo baseline state, active branches, governance and freshness signals, and known risks.
-5. Decide whether the current observation basis is sufficient to enter the next bounded repo judgment round, and record that readiness explicitly.
-6. Return one fixed-format `Repo Status Summary` to `Harness`.
-7. If no formal stop condition is hit, allow the supervisor to continue directly into the next legal repo-level judgment.
+`工作追踪约定`、`计划/任务队列` 以及其他工作追踪本地产物都不是代码仓库基准。只有在当前代码仓库观察依赖于理解一个活动中或刚关闭的工作追踪边界时才读取它们，并且必须明确让这种使用从属于代码仓库级产物。这个技能不得更新或重写 `.aw/worktrack/*` 产物。
 
-## Formal Stop Conditions
+## 何时使用
 
-Stop and return control when at least one of these conditions is true:
+当当前问题不是"下一步该做什么"，而是"代码仓库基准现在处于什么状态"时，使用这个技能：
 
-- the observation basis is missing, stale, or contradictory enough that `RepoScope.deciding` would be guessing
-- collecting the next sensor signal would widen into full-repo rediscovery instead of one bounded observation round
-- the next required probe would cross a read-only or authority boundary that needs explicit approval
+- 总结 `代码仓库范围` 所需的当前主线状态
+- 暴露活动分支、治理信号与已知风险
+- 在 `代码仓库下一步技能` 或 `目标变更控制技能` 之前刷新状态依据
+- 提供一份限定范围代码仓库状态上下文包，而不是发散成宽泛的代码仓库探索
 
-## Hard Constraints
+## 工作流
 
-- Do not create, mutate, or schedule a `Worktrack`.
-- Do not choose the next repo action; return handoff signals for supervisor judgment instead.
-- Do not treat this observing round as a repo-deciding round; it may recommend the next route, but it must not choose the next repo action itself.
-- Do not widen into implementation planning, code editing, or execution dispatch.
-- Do not claim that a dedicated `SubAgent` was used unless the host runtime actually delegated the round.
-- Do not treat repo-local execution templates or deploy targets as truth artifacts.
-- Do not read the whole repository when canonical artifacts and bounded sensor checks are sufficient.
-- Do not collapse stale inputs, observed evidence, and inferred status into one vague paragraph.
+1. 确认这是一轮 `代码仓库范围` 状态观察轮次，不是工作追踪分派、下一步决策或直接执行。
+2. 载入 `Harness 控制状态`、`代码仓库目标/章程`、`代码仓库快照/状态`，以及当前问题所需的最小额外产物。
+3. 如果标准快照缺失、过期或明显不足，只收集解释缺口所需的最小探查证据。
+4. 以狭窄、可重复的字段集总结当前代码仓库基准状态、活动分支、治理与时效性信号、以及已知风险。
+5. 判断当前观察依据是否足以进入下一轮限定范围代码仓库判定，并显式记录该就绪状态。
+6. 向 `Harness` 返回一份固定格式的 `代码仓库状态摘要`。
+7. 如果没有命中正式停止条件，允许监督器直接进入下一个合法代码仓库级判定。
 
-## Expected Output
+## 正式停止条件
 
-When you use this skill, produce a `Repo Status Summary` with at least these sections:
+至少在以下任一条件成立时停止并返回控制权：
 
-- `RepoScope Status`
-- `Current Baseline`
-- `Active Branches And Surfaces`
-- `Governance And Freshness Signals`
-- `Observation Readiness`
-- `Route Handoff`
-- `Known Risks And Unknowns`
-- `Handoff To Harness`
+- 观察依据缺失、过期或相互矛盾到足以让 `代码仓库范围.决策` 只能靠猜
+- 为了拿到下一条探查信号而扩张成完整代码仓库重新发现，而不再是一轮限定范围观察
+- 下一次所需探针会跨越只读边界或需要显式审批的权限边界
 
-Inside the result, include at least these fields or equivalents:
+## 硬约束
 
-- `current_scope`
-- `current_phase`
-- `control_state`
-- `observation_status`
-- `snapshot_basis`
-- `snapshot_freshness`
-- `goal_reference_used`
-- `mainline_status`
-- `active_branches`
-- `governance_signals`
-- `known_risks`
-- `stale_or_missing_inputs`
-- `bounded_sensor_checks`
-- `repo_judgment_ready`
-- `allowed_next_routes`
-- `recommended_next_route`
-- `continuation_ready`
-- `continuation_blockers`
-- `approval_required`
-- `approval_reason`
-- `handoff_signals`
-- `needs_supervisor_decision`
+- 本技能是控制回路的传感器层，负责状态估计；不要在状态估计中混入算子选择或动作执行。
+- 观察代码仓库状态；不要选择代码仓库的下一步动作。
+- 为 `Harness` 产出稳定的字段包；不要扩展成规划、编码或执行分派。
+- 只把工作追踪产物当作次要边界证据；不要重写 `.aw/worktrack/*`。
+- 优先使用标准代码仓库产物，而不是代码仓库本地部署副本或模板。
+- 保持限定范围；当当前问题很狭窄时，不要扩展成完整代码仓库重新发现。
 
-## Resources
+## 预期输出
 
-Use the current `Harness Control State`, the repo snapshot artifacts, and the smallest bounded sensor evidence needed for this observing round. The result should stay narrow enough to hand off into repo judgment, not expand into repo planning.
+使用这个技能时，产出一份至少包含以下章节的 `代码仓库状态摘要`：
+
+- `代码仓库范围状态`
+- `当前基准`
+- `活动分支与层面`
+- `治理与时效性信号`
+- `观察就绪度`
+- `路由交接`
+- `已知风险与未知项`
+- `交接给 Harness`
+
+结果中至少应包含以下字段或等价表达：
+
+- `当前范围`
+- `当前阶段`
+- `控制状态`
+- `观察状态`
+- `快照依据`
+- `快照时效性`
+- `使用的目标引用`
+- `主线状态`
+- `活动分支`
+- `治理信号`
+- `已知风险`
+- `过期或缺失输入`
+- `限定范围探查检查`
+- `代码仓库判定就绪`
+- `允许的下一路由`
+- `建议下一路由`
+- `可继续`
+- `继续阻塞项`
+- `需要审批`
+- `审批理由`
+- `交接信号`
+- `需要监督器决策`
+
+## 资源
+
+使用当前 `Harness 控制状态`、当前 `代码仓库目标/章程`、当前 `代码仓库快照/状态`，以及本轮观察所需的最小限定范围探查证据。只有当工作追踪本地产物会实质影响代码仓库观察的时效性或边界解释时才读取它们，并且不要把它们当作代码仓库真相的替代品。结果应保持足够狭窄，以便交给代码仓库判定，而不是扩张成代码仓库规划或工作追踪文档维护。
