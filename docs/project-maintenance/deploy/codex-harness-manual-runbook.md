@@ -32,20 +32,24 @@ last_verified: 2026-04-22
 
 当前固定测试题目是：
 
-- 在临时 repo 中实现一个纯 CLI 的“杀戮尖塔-lite”最小可玩版本
+- 在临时 repo 中实现一个纯 CLI 的"杀戮尖塔-lite"，包含完整核心系统
 
 附加约束：
 
 - 只做终端交互，不做图形界面或 Web UI
-- 目标是尽快形成可运行的最小闭环：玩家可进入战斗、执行回合行动，并看到胜负或结束结果
-- 最小机制至少包含：玩家、敌人、生命值、攻击/防御、回合推进
+- 核心系统至少包含以下子系统，每个子系统作为独立 worktrack 推进：
+  - **战斗系统**：玩家/敌人回合、HP/block、攻击/防御、胜负判定
+  - **战斗记录**：结构化战斗日志，记录每回合动作与状态变化
+  - **卡牌系统**：Card 基类、数值（damage/block/cost/rarity）、特效
+  - **卡组系统**：Deck 构建、抽牌/弃牌/洗牌、手牌管理
+  - **地图系统**：节点图（战斗/休息/商店/事件）、玩家移动、路径选择
+  - **事件系统**：随机事件生成、选项、结果影响玩家状态
 - 必须提供明确运行入口，并在 `README.md` 中说明运行方式
 - 交互方式必须对 AI/agent 友好：通过标准输入/标准输出按轮交互，不依赖方向键、全屏 TUI、鼠标或实时操作
 - 每轮输出应清楚展示当前状态、可选动作和本轮结果，便于 agent 持续读取并决策下一步输入
 - repo 内必须提供一份面向 AI/agent 的游戏说明书，说明游戏目标、启动方式、命令格式、回合规则、胜负条件，并给出最小交互示例
-- 可以补最小测试或基本验证命令，但不追求完整复刻原作
-- 不要求实现卡牌池、地图、遗物、存档、平衡性调优等扩展系统
-- 达到最小可玩闭环后，应优先做收敛、整理和必要验证，而不是继续无界扩展
+- 每个子系统完成后应做收敛、验证和必要测试，再进入下一个子系统
+- 不追求完整复刻原作，但要求核心系统闭环可运行
 
 这里的测试对象不是单个 skill，而是：
 
@@ -152,26 +156,25 @@ Use only `harness-skill` as the top-level control entry.
 
 Current repo goal:
 - Build a CLI Slay the Spire-lite in this temporary repo.
-- Reach a minimal but playable command-line combat loop quickly.
+- Reach a full core system with combat, cards, deck, map, and events.
 
 In scope:
 - a runnable CLI entrypoint
-- one-player combat
-- a small turn-based combat loop
-- player and enemy state
-- hp, attack, and defend actions
-- turn-based terminal choices
-- a clear win/lose or end-of-run result
+- turn-based combat with player/enemy HP and block
+- structured combat logger for turn replay
+- card system with stats (damage, block, cost, rarity) and effects
+- deck builder with draw, discard, shuffle, and hand management
+- map system with nodes (combat, rest, shop, event) and path choices
+- event system with random events, choices, and outcome effects
 - AI-friendly stdin/stdout interaction
-- a short README with run instructions
-- a short AI-facing game manual
+- a README with run instructions
+- an AI-facing game manual
 
 Out of scope:
-- graphics
-- networking
-- card pools, deckbuilding, or progression systems
-- full Slay the Spire feature parity
-- polish-only work with no repo-goal progress
+- graphics or Web UI
+- networking or multiplayer
+- full Slay the Spire feature parity (relics, achievements, etc.)
+- polish-only work with no system progress
 
 Working rule:
 - Continue across legal state transitions if no formal stop condition is hit.
@@ -302,13 +305,17 @@ git -C "$TMP_REPO" diff --stat > "$TMP_RUN_ROOT/$ROUND_ID/git-diff-stat.txt"
 
 - `post_contract_autonomy: delegated-minimal`
   - 允许在当前 goal 内自动挑一段低风险、最小 bounded follow-up slice
-- `max_auto_new_worktracks: 1`
+- `max_auto_new_worktracks: 5`
+  - 覆盖战斗系统、战斗记录、卡牌系统、卡组系统、地图系统、事件系统等子系统
 - `stop_after_autonomous_slice: yes`
+  - 每个 worktrack 完成后仍然 handback，等待确认后再开下一个
 
 只有在你刻意测试 strict handback / 不续跑行为时，才切换到：
 
 - `post_contract_autonomy: manual-only`
   - strict handback；`继续工作` 只会复核并停在边界
+
+如果你要观察"Harness 能否在完整系统目标下自动拆分为多个 worktrack 并连续推进"，保持 `delegated-minimal` 并将 budget 设得足够覆盖所有子系统。Harness 应基于 goal charter 和当前 repo 状态，自主决定下一个 worktrack 的 scope 和验收标准。
 
 这类观察的重点是 control-state policy 是否生效，而不是 human 是否又在 prompt 里写了一段长恢复说明。
 
