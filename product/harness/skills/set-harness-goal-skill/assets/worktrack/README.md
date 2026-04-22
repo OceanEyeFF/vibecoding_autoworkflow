@@ -1,6 +1,6 @@
-# AW Template / Worktrack
+# Harness Init Assets / Worktrack
 
-`product/.aw_template/worktrack/` 承接 `.aw/worktrack/` 下的 worktrack 级管理文档模板。
+这里承接 `set-harness-goal-skill` 自带的 `.aw/worktrack/` worktrack 级初始化模板。
 
 当前入口：
 

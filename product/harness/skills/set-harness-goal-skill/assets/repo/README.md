@@ -1,6 +1,6 @@
-# AW Template / Repo
+# Harness Init Assets / Repo
 
-`product/.aw_template/repo/` 承接 `.aw/repo/` 下的 repo 级管理文档模板。
+这里承接 `set-harness-goal-skill` 自带的 `.aw/repo/` repo 级初始化模板。
 
 当前入口：
 

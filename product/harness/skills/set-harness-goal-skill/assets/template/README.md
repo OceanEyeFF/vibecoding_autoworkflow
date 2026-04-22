@@ -1,6 +1,6 @@
-# AW Template / Template
+# Harness Init Assets / Template
 
-`product/.aw_template/template/` 承接不直接进入 `.aw/` 路径、但仍需要保留的回答流模板。
+这里承接 `set-harness-goal-skill` 自带的补充模板资产，用于生成 `.aw/template/` 下的辅助文件。
 
 当前入口：
 
