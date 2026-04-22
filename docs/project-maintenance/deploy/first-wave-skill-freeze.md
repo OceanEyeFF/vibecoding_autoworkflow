@@ -41,7 +41,7 @@ last_verified: 2026-04-22
 首发 skill 子集必须满足下面四条：
 
 - 能覆盖 `canonical skill -> adapter payload（适配器载荷） -> deploy target -> verify / contract smoke（验证与合同冒烟）` 的完整主链路
-- 覆盖 supervisor、`RepoScope`（仓库作用域） 全算子集（Observe / Decide / Close / ChangeControl）、`WorktrackScope`（工作追踪作用域） 全算子集（Init / Observe / Decide / Dispatch / Verify / Judge / Recover / Close）
+- 覆盖 supervisor、`RepoScope`（仓库作用域） 全算子集（Observe / Decide / Close / ChangeGoal）、`WorktrackScope`（工作追踪作用域） 全算子集（Init / Observe / Decide / Dispatch / Verify / Judge / Recover / Close）
 - 验证、gate 判定、恢复与收尾链路已进入首发，作为完整控制回路的必要组成
 - 所有 canonical skills 均具备 adapter payload 与 deploy target 支持
 
@@ -49,14 +49,14 @@ last_verified: 2026-04-22
 
 ## 三、首发 skill 子集
 
-当前首发范围固定为以下十五个 canonical skills（规范 skill）：
+当前首发范围固定为以下十六个 canonical skills（规范 skill）：
 
 **RepoScope（仓库作用域）**
 - `set-harness-goal-skill`
 - `repo-status-skill`
 - `repo-whats-next-skill`
 - `repo-refresh-skill`
-- `goal-change-control-skill`
+- `repo-change-goal-skill`
 
 **WorktrackScope（工作追踪作用域）**
 - `init-worktrack-skill`
@@ -88,13 +88,16 @@ last_verified: 2026-04-22
   - 为 repo 级判断提供最小 repo baseline（仓库基线状态）
 - `repo-whats-next-skill`
   - `RepoScope.Decide`
-  - repo 级 next-direction（下一步方向） 判断入口，输出 `enter-worktrack` / `hold-and-observe` / `goal-change-control` / `refresh-repo-state`
+  - repo 级 next-direction（下一步方向） 判断入口，输出 `enter-worktrack` / `hold-and-observe`
+  - `refresh-repo-state` 保留为标准动作，但在首发中标记为 `范围外`
 - `repo-refresh-skill`
   - `RepoScope.Close`
   - worktrack 完成后刷新 repo 级状态快照与 control-state
-- `goal-change-control-skill`
-  - `RepoScope.ChangeControl`
-  - 处理目标级变更请求，单独 gate 和审批，不改变 `Goal Charter`
+- `repo-change-goal-skill`
+  - `RepoScope.ChangeGoal`（参考信号设定层，在常规循环外）
+  - 由外部目标变更请求触发，不是 `Decide` 的常规选项
+  - 处理目标级变更请求，分析影响、生成草案，用户确认后直接改写 `Goal Charter`
+  - 设定/重设完成后才启动（或重新启动）常规循环
 - `init-worktrack-skill`
   - `WorktrackScope.Init`
   - 建立 branch、baseline、`Worktrack Contract`（工作追踪契约） 与初始 `Plan / Task Queue`（计划与任务队列）
@@ -144,19 +147,21 @@ last_verified: 2026-04-22
   - 首发必须承接：
     - `enter-worktrack`
     - `hold-and-observe`
-    - `goal-change-control`
+  - 首发标记为 `范围外`（标准技能支持但不部署）：
     - `refresh-repo-state`
 - `repo-refresh-skill`
   - 首发必须承接：
     - worktrack 完成后刷新 repo 状态快照
     - 更新 control-state 中的 handoff 标记与 autonomy ledger
-- `goal-change-control-skill`
+- `repo-change-goal-skill`
   - 首发必须承接：
     - 接收并分析目标变更请求
-    - 输出目标变更控制报告（接受 / 暂缓 / 拒绝 / 重定向）
+    - 输出目标变更分析报告（变更幅度、影响面、建议决策）
+    - 生成可直接写入的 `goal-charter` 草案
+    - 用户确认后执行对 `goal-charter.md`、`repo/snapshot-status.md`、`control-state.md` 的改写
   - 首发明确不承接：
-    - 直接改写 `Goal Charter`
-    - 代替程序员批准或拒绝目标级变更
+    - 在用户确认前直接改写文件
+    - 代替程序员做目标级决策
 - `init-worktrack-skill`
   - 首发必须承接：
     - branch / baseline / contract / initial queue 的建立
@@ -209,7 +214,7 @@ last_verified: 2026-04-22
 
 当前 `agents` first-wave deploy / contract smoke 覆盖完整 Harness 控制回路：
 
-- `RepoScope` 全算子：Observe -> Decide -> Close / ChangeControl
+- `RepoScope` 全算子：Observe -> Decide -> Close / ChangeGoal
 - `WorktrackScope` 全算子：Init -> Observe -> Decide -> Dispatch -> Verify (implementation / validation / policy) -> Judge -> Recover / Close
 - repo handback 与 autonomy ledger 更新
 
@@ -230,9 +235,9 @@ last_verified: 2026-04-22
 
 本冻结对后续任务包施加以下约束：
 
-- payload contract 为全部十五个首发 skills 提供自描述读取面
+- payload contract 为全部十六个首发 skills 提供自描述读取面
 - 模板初始化支持所有首发链路需要的模板初始化（contract、plan-task-queue、gate-evidence、goal-change-request）
-- `agents` payload 为全部十五个 skills 准备可追踪 payload，覆盖 `dispatch-skills` 的 specialized downstream skills 路径与 fallback / general executor 路径
+- `agents` payload 为全部十六个 skills 准备可追踪 payload，覆盖 `dispatch-skills` 的 specialized downstream skills 路径与 fallback / general executor 路径
 - deploy / verify 让 `prune --all`、`check_paths_exist`、`install --backend agents` 与 `verify` 能处理完整 skill 树
 - 对 `repo-whats-next-skill`，首发 payload / copied skill surface / contract smoke 看到的有效 repo action 子集必须一致：metadata、skill prompt 与 runtime 行为对齐
 
@@ -240,8 +245,8 @@ last_verified: 2026-04-22
 
 本冻结完成后，至少应满足：
 
-- 首发 canonical skill（规范 skill） 子集有唯一、可引用的正式清单（共15个）
+- 首发 canonical skill（规范 skill） 子集有唯一、可引用的正式清单（共16个）
 - 全部 skills 具备 adapter payload 与 deploy target 支持
 - 首发支持的 repo / worktrack 全算子分支是明确的，不会与 canonical 全量动作空间混淆
 - 后续实现文档和脚本可直接引用本页确定首发 skill 范围与支持子路径，无需重复讨论
-- `agents` 首发 contract smoke 证明全部十五个 skills 的最小可读、完整控制回路 route 可读，以及 specialized + fallback dispatch 路径
+- `agents` 首发 contract smoke 证明全部十六个 skills 的最小可读、完整控制回路 route 可读，以及 specialized + fallback dispatch 路径

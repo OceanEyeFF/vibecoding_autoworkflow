@@ -18,7 +18,7 @@
     "product/harness/skills/set-harness-goal-skill/assets/worktrack/gate-evidence.md",
     "product/harness/skills/set-harness-goal-skill/assets/worktrack/plan-task-queue.md"
   ],
-  "target_dir": "set-harness-goal-skill",
+  "target_dir": "aw-set-harness-goal-skill",
   "target_entry_name": "SKILL.md",
   "payload_policy": "canonical-copy",
   "supported_target_scopes": [
@@ -43,5 +43,8 @@
     "aw.marker"
   ],
   "first_wave_profile": "a3-first-wave",
-  "first_wave_scope_kind": "full-skill"
+  "first_wave_scope_kind": "full-skill",
+  "legacy_target_dirs": [
+    "set-harness-goal-skill"
+  ]
 }

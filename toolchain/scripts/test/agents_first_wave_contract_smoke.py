@@ -60,73 +60,6 @@ MINIMUM_PROTOCOL_FIELDS = {
         "approval_required",
         "needs_approval",
     ),
-    "repo-status-skill": (
-        "current_scope",
-        "snapshot_basis",
-        "mainline_status",
-        "governance_signals",
-        "allowed_next_routes",
-        "recommended_next_route",
-        "continuation_ready",
-        "handoff_signals",
-        "needs_supervisor_decision",
-    ),
-    "repo-whats-next-skill": (
-        "mode",
-        "mode_trigger_reason",
-        "recommended_repo_action",
-        "recommended_next_route",
-        "recommended_next_scope",
-        "allowed_repo_actions",
-        "selection_reason",
-        "continuation_ready",
-        "approval_required",
-        "needs_programmer_approval",
-    ),
-    "init-worktrack-skill": (
-        "worktrack_id",
-        "worktrack_identity",
-        "branch_name_or_rule",
-        "baseline_ref",
-        "constraints",
-        "initialization_status",
-        "next_action",
-        "initial_queue_items",
-        "schedule_handoff_packet",
-        "recommended_next_route",
-        "executor_handoff_packet",
-        "execution_not_started",
-        "continuation_ready",
-    ),
-    "schedule-worktrack-skill": (
-        "current_worktrack_state",
-        "queue_changes",
-        "ready_tasks",
-        "blocked_or_deferred_tasks",
-        "selected_next_action_id",
-        "selected_next_action",
-        "selection_reason",
-        "dispatch_task_brief_draft",
-        "dispatch_packet_ready",
-        "dispatch_ready",
-        "recommended_next_route",
-        "recommended_next_skill_or_route",
-    ),
-    "dispatch-skills": (
-        "handoff_packet_source",
-        "dispatch_packet_status",
-        "dispatch_contract_gaps",
-        "selected_executor",
-        "runtime_dispatch_mode",
-        "selection_reason",
-        "fallback_used",
-        "task",
-        "verification_requirements",
-        "done_signal",
-        "evidence_collected",
-        "return_route_if_not_dispatched",
-        "recommended_next_action",
-    ),
 }
 
 KEYED_LINE_TEMPLATE = r"^- {key}:\s*.*$"
@@ -222,18 +155,21 @@ def canonical_skill_path_from_payload(payload: dict[str, Any], skill_id: str) ->
 
 
 def extract_output_fields(canonical_text: str, skill_id: str) -> tuple[str, ...]:
-    marker = "Inside the result, include at least these fields or equivalents:"
+    markers = (
+        "Inside the result, include at least these fields or equivalents:",
+        "结果中至少应包含以下字段或等价表达：",
+    )
     lines = canonical_text.splitlines()
     fields: list[str] = []
     collecting = False
     for line in lines:
         stripped = line.strip()
-        if stripped == marker:
+        if stripped in markers:
             collecting = True
             continue
         if not collecting:
             continue
-        match = re.match(r"^- `?([a-z0-9_]+)`?\s*$", stripped)
+        match = re.match(r"^- `?([a-zA-Z0-9_\u4e00-\u9fff]+)`?\s*$", stripped)
         if match:
             fields.append(match.group(1))
             continue
@@ -339,11 +275,7 @@ def discover_installed_skills(agents_root: Path) -> dict[str, InstalledSkill]:
         wrapper_text = wrapper_path.read_text(encoding="utf-8")
         canonical_skill_path = canonical_skill_path_from_payload(payload, skill_id)
         canonical_text = canonical_skill_path.read_text(encoding="utf-8")
-        output_fields = (
-            extract_output_fields(canonical_text, skill_id)
-            if skill_id in MINIMUM_PROTOCOL_FIELDS
-            else ()
-        )
+        output_fields = extract_output_fields(canonical_text, skill_id)
         installed_skill = InstalledSkill(
             skill_id=skill_id,
             target_dir=target_dir,
@@ -606,6 +538,8 @@ def validate_protocol_fields(
     skill: InstalledSkill,
     output: dict[str, Any],
 ) -> None:
+    if skill.skill_id not in MINIMUM_PROTOCOL_FIELDS:
+        return
     missing = [
         field_name
         for field_name in MINIMUM_PROTOCOL_FIELDS[skill.skill_id]

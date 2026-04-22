@@ -189,7 +189,6 @@ Harness 文档与控制逻辑应按 3 个正交维度组织：
 - `Recover` —— 恢复控制
 - `Close` —— 关闭并交接
 - `Update` —— 状态更新（由 Supervisor 执行，不属于 Skill 层）
-- `ChangeControl` —— 目标变更控制
 
 **约束**：`Function` 不是 skill 名字，而是状态转移算子。`Skill` 是这些算子在 `Codex` 里的相对稳定实现。`SubAgent` 是被 Harness 调度的执行载体。
 
@@ -591,9 +590,11 @@ RepoScope.Observe ──→ RepoScope.Decide ──→ WorktrackScope.Init
 - `verify-next`
 - `go-next`
 
-#### ChangeControl
+#### ChangeGoal（参考信号设定）
 
-- `change-goal`
+- `change-goal`（由外部目标变更请求触发）
+
+`ChangeGoal` 不是常规控制回路中的 `Function` 算子，而是循环外的参考信号重设操作。它和 `SetGoal` 同属参考信号设定层，设定/重设完成后才启动（或重新启动）常规循环。
 
 #### Close
 

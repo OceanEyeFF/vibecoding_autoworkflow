@@ -99,17 +99,20 @@ preferred decision fields：
 - `approval_scope`
 - `approval_reason`
 
-### 3. goal-change-control-skill
+### 3. repo-change-goal-skill
 
 说明：
 
-- 这是保留的 repo-level change-control 槽位，不是当前首要主路径 skill
-- 在很多实际使用场景里，programmer 可能直接改 `Repo Goal / Charter`，因此这一 skill 可视为可选能力，而不是每次都要经过的固定环节
+- 在 `RepoScope` 下执行目标变更，负责 repo 级参考信号（Goal）的分析与改写
+- 不是"只出报告"的分析型 skill，而是包含"分析 → 草案 → 确认 → 执行改写"完整闭环
+- 在当前 carrier 直接分析，不再打包给 SubAgent 做限定范围简报
 
 职责：
 
-- 处理目标层的独立变更请求
-- 评估对现有 worktracks 和 baseline 的影响
+- 接收并分析目标级变更请求
+- 评估对现有 worktracks、baseline 和不变条件的影响
+- 生成 `goal-charter` 草案，等待用户确认
+- 用户确认后直接执行对 `goal-charter.md`、`repo/snapshot-status.md`、`control-state.md` 的改写
 
 主要依赖：
 
@@ -120,7 +123,7 @@ preferred decision fields：
 
 canonical executable source：
 
-- [../../../../product/harness/skills/goal-change-control-skill/SKILL.md](../../../../product/harness/skills/goal-change-control-skill/SKILL.md)
+- [../../../../product/harness/skills/repo-change-goal-skill/SKILL.md](../../../../product/harness/skills/repo-change-goal-skill/SKILL.md)
 
 当前状态：
 

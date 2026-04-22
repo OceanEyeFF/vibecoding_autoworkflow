@@ -735,6 +735,30 @@ def collect_path_conflicts(plans: list[InstallPlan]) -> list[PathConflict]:
     return conflicts
 
 
+def collect_legacy_path_conflicts(plans: list[InstallPlan], target_root: Path) -> list[PathConflict]:
+    """Check for occupied legacy directories that install will not clean up."""
+    conflicts: list[PathConflict] = []
+    for plan in plans:
+        for legacy_dir_name in plan.target_metadata.legacy_target_dirs:
+            legacy_path = target_root / legacy_dir_name
+            if not legacy_path.exists():
+                continue
+            marker_path = managed_skill_marker_path(legacy_path)
+            if marker_path.is_file():
+                marker = load_runtime_marker(marker_path)
+                if marker is not None and marker.backend == plan.binding.backend:
+                    if marker.skill_id == plan.binding.skill_id or marker.skill_id in plan.target_metadata.legacy_skill_ids:
+                        continue
+            conflicts.append(
+                PathConflict(
+                    skill_id=plan.binding.skill_id,
+                    path=legacy_path,
+                    detail=f"legacy directory {legacy_dir_name} is occupied by unmanaged content",
+                )
+            )
+    return conflicts
+
+
 def format_path_conflicts(conflicts: list[PathConflict]) -> str:
     lines = ["target path conflicts:"]
     for conflict in conflicts:
@@ -935,6 +959,7 @@ def install_backend_payloads(backend: str, args: argparse.Namespace) -> None:
     current_target_dirs_by_skill_id(bindings)
     plans = [build_install_plan(binding, target_root) for binding in bindings]
     conflicts = collect_path_conflicts(plans)
+    conflicts.extend(collect_legacy_path_conflicts(plans, target_root))
     if conflicts:
         raise DeployError(
             f"[{backend}] install blocked by {len(conflicts)} existing target path(s)\n\n"
@@ -1013,6 +1038,8 @@ def check_backend_target_paths(backend: str, args: argparse.Namespace) -> None:
     current_target_dirs_by_skill_id(bindings)
     plans = [build_install_plan(binding, target_root) for binding in bindings]
     conflicts = collect_path_conflicts(plans)
+    conflicts.extend(collect_legacy_path_conflicts(plans, target_root))
+
     if conflicts:
         raise DeployError(
             f"[{backend}] found {len(conflicts)} conflicting target path(s)\n\n"

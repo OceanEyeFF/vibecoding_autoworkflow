@@ -119,7 +119,7 @@ canonical truth（权威源）仍在：
 - install 按 `payload.canonical_paths` 与 `payload.required_payload_files`，把 `product/harness/skills/` 中声明过的 canonical 文件复制到 target
 - 当前 target 至少包含 canonical `SKILL.md`、已声明的 `references/` 或 `templates/`、顶层 `payload.json` 与 runtime-generated `aw.marker`
 - `supported_target_scopes` 仍保留在 payload descriptor 中，但它不再对应 operator-facing 的 `local/global` 命令面；当前主流程只通过 `install --backend agents` 写入 resolved target root
-- `target_dir` 相对 backend skills root；当前 `agents` 首发实例使用 `<skill_id>`，而不是 `skills/<skill_id>`，并且不得使用绝对路径或带 `.` / `..` 的跳出式路径段
+- `target_dir` 相对 backend skills root；当前 `agents` 首发实例使用 `aw-<skill_id>`，并保留 `<skill_id>` 作为 `legacy_target_dirs` 用于升级清理，不得使用绝对路径或带 `.` / `..` 的跳出式路径段
 - 对当前 `agents` first-wave payload，`target_dir` 的业务语义固定为 backend skills root 下的直接子目录名，不承接 nested / multi-segment target layout
 - 当前 live bindings 内，`target_dir` 必须唯一；install 不会尝试用覆盖顺序解决冲突
 - `canonical_paths` 必须保持在各自 skill 的 `canonical_dir` 内，不能通过 `.` / `..` 路径段跳出 skill 包

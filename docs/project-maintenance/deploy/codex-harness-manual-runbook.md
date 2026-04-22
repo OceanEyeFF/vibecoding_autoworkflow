@@ -114,7 +114,7 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify \
 
 - 在临时 repo 下准备一套隔离的 `agents` skill install
 - 当前 first-wave install 已包含全部 16 个 skills，覆盖完整 Harness 控制回路
-  - `RepoScope`：SetGoal / Observe / Decide / Close / ChangeControl
+  - `RepoScope`：SetGoal / Observe / Decide / Close / ChangeGoal
   - `WorktrackScope`：Init / Observe / Decide / Dispatch / Verify / Judge / Recover / Close
 - `set-harness-goal-skill` 自带完整的 `.aw/` 模板资产（`assets/` 目录），可在运行时根据用户动态需求生成 goal charter、control state 和 repo snapshot，无需外部 scaffold 脚本预置 `.aw/`
 - 不污染当前仓库自己的 repo-local install
@@ -344,7 +344,7 @@ git -C "$TMP_REPO" diff --stat > "$TMP_RUN_ROOT/$ROUND_ID/git-diff-stat.txt"
     - `repo-status-skill` (Observe)
     - `repo-whats-next-skill` (Decide)
     - `repo-refresh-skill` (Close)
-    - `goal-change-control-skill` (ChangeControl)
+    - `repo-change-goal-skill` (ChangeGoal)
   - `enter-worktrack`
   - `WorktrackScope`
     - `init-worktrack-skill` (Init)

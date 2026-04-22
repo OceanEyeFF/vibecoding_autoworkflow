@@ -96,7 +96,7 @@ last_verified: 2026-04-19
 ### 5.1 当前 `agents` target contract
 
 - 当前 `agents` live install 仍按单个 skill 目录落在 backend target root 下
-- 当前 first-wave skills 继续约束 `payload.target_dir == skill_id`
+- 当前 first-wave skills 使用 `aw-{skill_id}` 作为 `payload.target_dir`，并通过 `legacy_target_dirs` 声明旧目录名用于升级清理
 - 若未来要支持 nested target layout，必须先升级 deploy contract，再同步更新 runbook、verify 口径与测试矩阵
 
 ### 6. 必需部署文件

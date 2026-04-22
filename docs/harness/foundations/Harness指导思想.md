@@ -98,7 +98,6 @@ Harness 只覆盖两个时间尺度不同的层次：
 - `Judge`
 - `Recover`
 - `Close`
-- `ChangeControl`
 
 ### 3. Artifact 轴
 
@@ -282,11 +281,11 @@ Harness 的核心交付物应至少覆盖下面几类正式对象。
 
 这里的重点不是“列出 skill 名称”，而是固定：什么证据足以支持下一次 repo 级状态切换。
 
-#### ChangeControl
+#### ChangeGoal（参考信号设定）
 
-- `change-goal`
+- `change-goal`（由外部目标变更请求触发）
 
-这里不再建议使用旧命名 `add / remove`。原因是它们实质上是在改参考信号，不是普通的 Repo 状态转移。
+`ChangeGoal` 不是常规控制回路中的状态转移算子，而是参考信号设定层。它和 `SetGoal` 同属循环外的参考信号设定操作：在常规控制回路中 `Goal` 不可变，只有在收到外部目标变更请求时，才由 `ChangeGoal` 触发分析→草案→确认→执行的完整闭环。设定/重设完成后，系统重新启动常规循环。常规 `Decide` 不得主动选择目标变更作为下一步动作，否则会出现"移动球门"问题。
 
 #### Close
 
@@ -405,19 +404,22 @@ Harness 的核心交付物应至少覆盖下面几类正式对象。
 
 代表性外部来源见 [Harness运行协议.md](./Harness运行协议.md) 的“代表性外部来源”。
 
-## 九、Goal Change Control
+## 九、目标变更（ChangeGoal）
 
 目标本身是参考信号，不能和常规控制混在一起。
 
-如果 Harness 在常规 `RepoScope` 操作里直接修改目标，就会出现典型的“移动球门”问题：控制器为了让误差变小，不去修系统，而去改目标。
+如果 Harness 在常规 `RepoScope` 操作里直接修改目标，就会出现典型的"移动球门"问题：控制器为了让误差变小，不去修系统，而去改目标。
 
-因此，目标变更应单独进入 `ChangeControl` 流程，至少回答：
+因此，目标变更不属于常规控制回路的 `Function` 算子，而是由外部请求触发的参考信号重设操作。它对应 `repo-change-goal-skill` 的实现，至少回答：
 
 - 为什么要改目标
 - 改目标会影响哪些现有 worktrack
 - 是否需要废弃现有计划
 - 是否需要重新定义 baseline
-- 是否通过单独 gate
+- 变更幅度（minor / moderate / major）
+- 是否获得用户确认
+
+其工作流为：读取当前状态 → 分析变更影响 → 生成 goal-charter 草案 → 用户确认 → 执行改写 → 返回 `RepoScope.Observe`。在用户确认前不写入任何文件。
 
 ## 十、Evidence 与 Gate
 

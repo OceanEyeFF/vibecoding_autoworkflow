@@ -103,7 +103,9 @@ class AdapterDeployTest(unittest.TestCase):
             )
         )
 
-    def _install_foreign_conflict(self, skill_dir_name: str = "harness-skill") -> Path:
+    def _install_foreign_conflict(self, skill_dir_name: str | None = None) -> Path:
+        if skill_dir_name is None:
+            skill_dir_name = self._target_dir_for_skill("harness-skill")
         skill_dir = self.local_root / skill_dir_name
         skill_dir.mkdir(parents=True, exist_ok=True)
         (skill_dir / "SKILL.md").write_text("# foreign conflicting skill\n", encoding="utf-8")
@@ -199,7 +201,7 @@ class AdapterDeployTest(unittest.TestCase):
 
         self.assertEqual(code, 0, stderr)
         self.assertTrue(self.override_root.is_dir())
-        self.assertTrue((self.override_root / "harness-skill").is_dir())
+        self.assertTrue((self.override_root / "aw-harness-skill").is_dir())
         self.assertIn(str(self.override_root), stdout)
         self.assertFalse(self.local_root.exists())
 
@@ -209,10 +211,23 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(code, 0, stderr)
         self.assertIn("[agents] ok: no conflicting target paths", stdout)
 
+    def test_check_paths_exist_reports_legacy_directory_occupied(self) -> None:
+        # Create an unmanaged directory that matches a legacy_target_dirs entry
+        self.local_root.mkdir(parents=True, exist_ok=True)
+        (self.local_root / "aw-harness-skill").mkdir()
+        legacy_dir = self.local_root / "harness-skill"
+        legacy_dir.mkdir()
+        (legacy_dir / "SKILL.md").write_text("# unmanaged old skill\n", encoding="utf-8")
+
+        code, stdout, stderr = self._check_paths_exist()
+
+        self.assertEqual(code, 1)
+        self.assertIn("legacy directory harness-skill is occupied by unmanaged content", stderr)
+
     def test_check_paths_exist_lists_all_conflicts(self) -> None:
         self.local_root.mkdir(parents=True, exist_ok=True)
-        (self.local_root / "harness-skill").mkdir()
-        (self.local_root / "dispatch-skills").mkdir()
+        (self.local_root / "aw-harness-skill").mkdir()
+        (self.local_root / "aw-dispatch-skills").mkdir()
 
         code, stdout, stderr = self._check_paths_exist()
 
@@ -223,8 +238,8 @@ class AdapterDeployTest(unittest.TestCase):
 
     def test_check_paths_exist_reports_file_and_broken_symlink_conflicts(self) -> None:
         self.local_root.mkdir(parents=True, exist_ok=True)
-        (self.local_root / "harness-skill").write_text("occupied by file\n", encoding="utf-8")
-        (self.local_root / "dispatch-skills").symlink_to(
+        (self.local_root / "aw-harness-skill").write_text("occupied by file\n", encoding="utf-8")
+        (self.local_root / "aw-dispatch-skills").symlink_to(
             self.temp_root / "missing-dispatch-skills",
             target_is_directory=True,
         )
@@ -247,12 +262,27 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("install blocked by 1 existing target path", stderr)
         self.assertIn("harness-skill", stderr)
         self.assertTrue(foreign_skill_dir.is_dir())
-        self.assertFalse((self.local_root / "dispatch-skills").exists())
+        self.assertFalse((self.local_root / "aw-dispatch-skills").exists())
+
+    def test_install_blocked_by_legacy_directory_occupied(self) -> None:
+        # Create an unmanaged directory that matches a legacy_target_dirs entry
+        self.local_root.mkdir(parents=True, exist_ok=True)
+        legacy_dir = self.local_root / "harness-skill"
+        legacy_dir.mkdir()
+        (legacy_dir / "SKILL.md").write_text("# unmanaged old skill\n", encoding="utf-8")
+
+        code, stdout, stderr = self._install()
+
+        self.assertEqual(code, 1)
+        self.assertIn("install blocked by 1 existing target path", stderr)
+        self.assertIn("legacy directory harness-skill is occupied by unmanaged content", stderr)
+        self.assertFalse((self.local_root / "aw-harness-skill").exists())
+        self.assertFalse((self.local_root / "aw-dispatch-skills").exists())
 
     def test_install_does_not_incrementally_rewrite_existing_managed_directories(self) -> None:
         code, stdout, stderr = self._install()
         self.assertEqual(code, 0, stderr)
-        target_wrapper_path = self.local_root / "harness-skill" / "SKILL.md"
+        target_wrapper_path = self.local_root / "aw-harness-skill" / "SKILL.md"
         original_target_wrapper = target_wrapper_path.read_text(encoding="utf-8")
         self._mutate_canonical_skill("harness-skill", "\n# new live source\n")
 
@@ -278,17 +308,17 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
     def test_install_fails_on_duplicate_target_dir_bindings_before_writing(self) -> None:
-        self._mutate_target_dir("dispatch-skills", "harness-skill")
+        self._mutate_target_dir("dispatch-skills", "aw-harness-skill")
 
         code, stdout, stderr = self._install()
 
         self.assertEqual(code, 1)
         self.assertIn(
-            "Multiple skills map to the same target_dir for backend agents: harness-skill",
+            "Multiple skills map to the same target_dir for backend agents: aw-harness-skill",
             stderr,
         )
-        self.assertFalse((self.local_root / "harness-skill").exists())
-        self.assertFalse((self.local_root / "dispatch-skills").exists())
+        self.assertFalse((self.local_root / "aw-harness-skill").exists())
+        self.assertFalse((self.local_root / "aw-dispatch-skills").exists())
 
     def test_install_rejects_payload_target_dir_that_escapes_target_root(self) -> None:
         payload_path = self.adapter_dir / "harness-skill" / "payload.json"
@@ -338,8 +368,8 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(code, 0, stderr)
         self.assertIn("removed managed skill dir", stdout)
         self.assertTrue(foreign_dir.is_dir())
-        self.assertFalse((self.local_root / "harness-skill").exists())
-        self.assertFalse((self.local_root / "dispatch-skills").exists())
+        self.assertFalse((self.local_root / "aw-harness-skill").exists())
+        self.assertFalse((self.local_root / "aw-dispatch-skills").exists())
 
     def test_prune_all_keeps_foreign_and_invalid_marker_dirs(self) -> None:
         code, stdout, stderr = self._install()
@@ -352,7 +382,7 @@ class AdapterDeployTest(unittest.TestCase):
         code, stdout, stderr = self._prune_all()
 
         self.assertEqual(code, 0, stderr)
-        self.assertFalse((self.local_root / "harness-skill").exists())
+        self.assertFalse((self.local_root / "aw-harness-skill").exists())
         self.assertTrue(foreign_dir.is_dir())
         self.assertTrue(invalid_dir.is_dir())
 
@@ -368,14 +398,14 @@ class AdapterDeployTest(unittest.TestCase):
 
         code, stdout, stderr = self._prune_all()
         self.assertEqual(code, 0, stderr)
-        self.assertFalse((self.local_root / "harness-skill").exists())
+        self.assertFalse((self.local_root / "aw-harness-skill").exists())
 
         code, stdout, stderr = self._check_paths_exist()
         self.assertEqual(code, 0, stderr)
 
         code, stdout, stderr = self._install()
         self.assertEqual(code, 0, stderr)
-        self.assertTrue((self.local_root / "harness-skill").is_dir())
+        self.assertTrue((self.local_root / "aw-harness-skill").is_dir())
 
     def test_verify_reports_missing_target_root(self) -> None:
         code, stdout, stderr = self._verify()
@@ -417,7 +447,7 @@ class AdapterDeployTest(unittest.TestCase):
     def test_verify_reports_missing_target_entry_when_skill_dir_is_missing(self) -> None:
         code, stdout, stderr = self._install()
         self.assertEqual(code, 0, stderr)
-        shutil.rmtree(self.local_root / "dispatch-skills")
+        shutil.rmtree(self.local_root / "aw-dispatch-skills")
 
         code, stdout, stderr = self._verify()
 
@@ -478,7 +508,7 @@ class AdapterDeployTest(unittest.TestCase):
     def test_payload_target_metadata_rejects_target_dir_in_legacy_target_dirs(self) -> None:
         binding = self._binding("harness-skill")
         payload = self._load_json(binding.payload_path)
-        payload["legacy_target_dirs"] = ["harness-skill"]
+        payload["legacy_target_dirs"] = ["aw-harness-skill"]
         with self.assertRaises(adapter_deploy.DeployError) as ctx:
             adapter_deploy.payload_target_metadata(payload, binding)
         self.assertIn("must not be listed in legacy_target_dirs", str(ctx.exception))
@@ -528,7 +558,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(code, 0, stderr)
         self.assertIn("removed legacy skill dir", stdout)
         self.assertFalse((self.local_root / "old-harness-skill").exists())
-        self.assertTrue((self.local_root / "harness-skill").is_dir())
+        self.assertTrue((self.local_root / "aw-harness-skill").is_dir())
 
         code, stdout, stderr = self._verify()
         self.assertEqual(code, 0, stderr)
@@ -549,7 +579,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("removed legacy skill dir", stdout)
         self.assertFalse((self.local_root / "old-harness-skill").exists())
 
-    def test_install_skips_legacy_cleanup_when_marker_mismatched(self) -> None:
+    def test_install_blocks_on_legacy_directory_with_mismatched_marker(self) -> None:
         self._install_managed_directory("old-harness-skill", marker_skill_id="other-skill")
         self.assertTrue((self.local_root / "old-harness-skill").is_dir())
 
@@ -560,9 +590,12 @@ class AdapterDeployTest(unittest.TestCase):
         payload_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
         code, stdout, stderr = self._install()
-        self.assertEqual(code, 0, stderr)
+        self.assertEqual(code, 1, stderr)
+        self.assertIn("install blocked by 1 existing target path", stderr)
+        self.assertIn("legacy directory old-harness-skill is occupied by unmanaged content", stderr)
         self.assertNotIn("removed legacy skill dir", stdout)
         self.assertTrue((self.local_root / "old-harness-skill").is_dir())
+        self.assertFalse((self.local_root / "aw-harness-skill").exists())
 
     def test_verify_reports_legacy_managed_directory_not_cleaned(self) -> None:
         self._install_managed_directory("old-harness-skill", marker_skill_id="old-harness-skill")

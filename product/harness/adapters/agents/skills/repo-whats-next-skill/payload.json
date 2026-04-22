@@ -7,7 +7,7 @@
     "product/harness/skills/repo-whats-next-skill/SKILL.md",
     "product/harness/skills/repo-whats-next-skill/references/priority-reframe-mode.md"
   ],
-  "target_dir": "repo-whats-next-skill",
+  "target_dir": "aw-repo-whats-next-skill",
   "target_entry_name": "SKILL.md",
   "payload_policy": "canonical-copy",
   "supported_target_scopes": [
@@ -25,5 +25,8 @@
   "supported_repo_actions": [
     "enter-worktrack",
     "hold-and-observe"
+  ],
+  "legacy_target_dirs": [
+    "repo-whats-next-skill"
   ]
 }

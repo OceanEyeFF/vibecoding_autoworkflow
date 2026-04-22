@@ -121,7 +121,7 @@ goal 修正文档单独处理：
 
 同时，已经迁到 skill 一侧的 owner 模板包括：
 
-- `product/harness/skills/goal-change-control-skill/templates/goal-change-request.template.md`
+- `product/harness/skills/repo-change-goal-skill/templates/goal-change-request.template.md`
 - `product/harness/skills/init-worktrack-skill/templates/contract.template.md`
 - `product/harness/skills/schedule-worktrack-skill/templates/plan-task-queue.template.md`
 - `product/harness/skills/gate-skill/templates/gate-evidence.template.md`

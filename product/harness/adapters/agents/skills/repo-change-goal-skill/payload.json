@@ -1,13 +1,20 @@
 {
   "payload_version": "agents-skill-payload.v1",
   "backend": "agents",
-  "skill_id": "goal-change-control-skill",
-  "canonical_dir": "product/harness/skills/goal-change-control-skill",
+  "skill_id": "repo-change-goal-skill",
+  "canonical_dir": "product/harness/skills/repo-change-goal-skill",
   "canonical_paths": [
-    "product/harness/skills/goal-change-control-skill/SKILL.md",
-    "product/harness/skills/goal-change-control-skill/templates/goal-change-request.template.md"
+    "product/harness/skills/repo-change-goal-skill/SKILL.md",
+    "product/harness/skills/repo-change-goal-skill/templates/goal-change-request.template.md"
   ],
-  "target_dir": "goal-change-control-skill",
+  "target_dir": "aw-repo-change-goal-skill",
+  "legacy_target_dirs": [
+    "goal-change-control-skill",
+    "repo-change-goal-skill"
+  ],
+  "legacy_skill_ids": [
+    "goal-change-control-skill"
+  ],
   "target_entry_name": "SKILL.md",
   "payload_policy": "canonical-copy",
   "supported_target_scopes": [

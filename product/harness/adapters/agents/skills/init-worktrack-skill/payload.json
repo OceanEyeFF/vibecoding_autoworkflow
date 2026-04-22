@@ -7,7 +7,7 @@
     "product/harness/skills/init-worktrack-skill/SKILL.md",
     "product/harness/skills/init-worktrack-skill/templates/contract.template.md"
   ],
-  "target_dir": "init-worktrack-skill",
+  "target_dir": "aw-init-worktrack-skill",
   "target_entry_name": "SKILL.md",
   "payload_policy": "canonical-copy",
   "supported_target_scopes": [
@@ -21,5 +21,8 @@
     "aw.marker"
   ],
   "first_wave_profile": "a3-first-wave",
-  "first_wave_scope_kind": "subset-by-a3-freeze"
+  "first_wave_scope_kind": "subset-by-a3-freeze",
+  "legacy_target_dirs": [
+    "init-worktrack-skill"
+  ]
 }

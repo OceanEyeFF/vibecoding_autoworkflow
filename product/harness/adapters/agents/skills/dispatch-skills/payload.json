@@ -6,7 +6,7 @@
   "canonical_paths": [
     "product/harness/skills/dispatch-skills/SKILL.md"
   ],
-  "target_dir": "dispatch-skills",
+  "target_dir": "aw-dispatch-skills",
   "target_entry_name": "SKILL.md",
   "payload_policy": "canonical-copy",
   "supported_target_scopes": [
@@ -19,5 +19,8 @@
     "aw.marker"
   ],
   "first_wave_profile": "a3-first-wave",
-  "first_wave_scope_kind": "subset-by-a3-freeze"
+  "first_wave_scope_kind": "subset-by-a3-freeze",
+  "legacy_target_dirs": [
+    "dispatch-skills"
+  ]
 }

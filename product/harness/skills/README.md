@@ -9,7 +9,7 @@
 - 已落地的 `RepoScope` 技能骨架：
   - [repo-status-skill/](./repo-status-skill/) — 代码仓库状态观察
   - [repo-whats-next-skill/](./repo-whats-next-skill/) — 代码仓库下一步判断
-  - [goal-change-control-skill/](./goal-change-control-skill/) — 目标变更控制
+  - [repo-change-goal-skill/](./repo-change-goal-skill/) — 修改 Repo 目标
   - [repo-refresh-skill/](./repo-refresh-skill/) — 代码仓库刷新
 - 已落地的 `WorktrackScope` 技能骨架：
   - [init-worktrack-skill/](./init-worktrack-skill/) — 初始化工作追踪

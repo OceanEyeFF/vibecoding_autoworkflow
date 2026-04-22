@@ -179,7 +179,7 @@ Harness 文档与控制逻辑应按 3 个正交维度组织：
 - `Judge` —— 裁决
 - `Recover` —— 恢复控制
 - `Close` —— 关闭并交接
-- `ChangeControl` —— 目标变更控制
+- `ChangeGoal` —— 目标变更
 - `SetGoal` —— 初始化参考信号
 
 **约束**：`Function` 不是 skill 名字，而是状态转移算子。`Skill` 是这些算子在 `Codex / Claude` 里的相对稳定实现。`SubAgent` 是被 Harness 调度的执行载体。
@@ -206,45 +206,48 @@ Harness 文档与控制逻辑应按 3 个正交维度组织：
 `RepoScope` 是对长期基线的控制模式。
 
 ```
-SetGoal (set-harness-goal-skill) ──→ 仅在 .aw/ 未初始化时运行 ──→ Observe
-    ↓
+参考信号设定（循环外，Goal 在循环中不可变）：
+SetGoal (set-harness-goal-skill) ──→ 仅在 .aw/ 未初始化时
+ChangeGoal (repo-change-goal-skill) ──→ 由外部目标变更请求触发
+                                    ↓
+                              设定/重设完成后启动常规循环
+
+RepoScope 控制回路（Goal 在此回路中不可变）：
 Observe (repo-status-skill)
     ↓
 Decide (repo-whats-next-skill)
     ↓
-    ├─→ ChangeControl (goal-change-control-skill) ─→ [等待审批] ─→ 回到 Observe
     ├─→ 保持并观察 ───────────────────────────────→ 回到 Observe
-    └─→ 进入 WorktrackScope ──────────────────────→ Init
+    └─→ 准备进入 WorktrackScope ──────────────────→ [Scope 切换]
+                                                       ↓
+WorktrackScope 控制回路（局部状态转移）：               Init (init-worktrack-skill)
+                                                       ↓
+                                            Observe (worktrack-status-skill)
+                                                       ↓
+                                            Decide (schedule-worktrack-skill)
+                                                       ↓
+                                            Dispatch (dispatch-skills)
+                                                       ↓
+                                            Verify (review-evidence-skill + test-evidence-skill + rule-check-skill)
+                                                       ↓
+                                            Judge (gate-skill)
+                                                       ↓
+                                ┌──────────┼──────────┐
+                                ↓          ↓          ↓
+                              通过      失败/阻塞    恢复
+                                ↓          ↓          ↓
+                            Close      Recover    Recover
+                                ↓          ↓          ↓
+                        [Scope 切换]   回到 Observe/  回到 RepoScope
+                                ↓          Decide       或等待审批
+                        RepoScope.Refresh
+                                ↓
+                            回到 Observe
 ```
 
 **控制目标**：维护 Repo 的长期基线稳定，判断是否需要进入局部执行。
 
-### 7.2 WorktrackScope 控制律
-
-`WorktrackScope` 是对局部状态转移的控制模式。
-
-```
-Init (init-worktrack-skill)
-    ↓
-Observe (worktrack-status-skill)
-    ↓
-Decide (schedule-worktrack-skill)
-    ↓
-Dispatch (dispatch-skills)
-    ↓
-Verify (review-evidence-skill + test-evidence-skill + rule-check-skill)
-    ↓
-Judge (gate-skill)
-    ↓
-    ├─→ 通过 ──→ Close (close-worktrack-skill) ──→ RepoScope Refresh (repo-refresh-skill)
-    ├─→ 软失败 ─→ Recover (recover-worktrack-skill) ─→ 回到 Observe/Decide
-    ├─→ 硬失败 ─→ Recover (recover-worktrack-skill) ─→ 回到 Observe/Decide 或回到 RepoScope
-    └─→ 阻塞 ───→ Recover (recover-worktrack-skill) ─→ 回到 Observe/Decide 或等待审批
-```
-
-**控制目标**：在已批准的局部范围内安全地执行状态转移，收集证据，通过 Gate 裁决，最终回归 RepoScope。
-
-### 7.3 完整状态闭环
+### 7.2 完整状态闭环
 
 ```
 RepoScope.SetGoal ──→ RepoScope.Observe ──→ RepoScope.Decide ──→ WorktrackScope.Init
@@ -326,8 +329,9 @@ Gate 应汇总**正交校验面**的裁决：
 1. 基于状态估计结果，评估合法的状态转移算子集合
 2. 在 `RepoScope` 下，评估是否需要：
    - `Observe`（继续观察）
-   - `ChangeControl`（目标变更）
    - `Init`（进入 WorktrackScope）
+
+   **关键约束**：`ChangeGoal` 不由常规 Decide 选择。目标变更由外部请求触发，完成后系统重新进入 Observe。
 3. 在 `WorktrackScope` 下，评估是否需要：
    - `Init`（初始化局部状态）
    - `Observe`（状态估计）
@@ -464,7 +468,7 @@ Gate 应汇总**正交校验面**的裁决：
 ## 十四、硬约束
 
 - **不要把 Harness 当成直接写代码的执行者。**
-- **不要把 Function 算子隐含在技能名称后面。** 必须在控制面上显性化 `Observe → Decide → Dispatch → Verify → Judge → Recover → Close → ChangeControl` 的控制语义。
+- **不要把 Function 算子隐含在技能名称后面。** 必须在控制面上显性化 `Observe → Decide → Dispatch → Verify → Judge → Recover → Close → ChangeGoal` 的控制语义。
 - **不要把 `Harness` 自己定义具体代码仓库动作、任务列表内容或执行任务。** 这些由下游技能的算子实现负责。
 - **除非 `Harness Control State` 明确授予 `约定后自动性：最小委派`，否则不要开启约定后自动工作追踪。**
 - **不要用自动继续推进去重定义代码仓库目标、扩大范围，或消耗超出许可额度的自动工作追踪预算。**
@@ -500,3 +504,22 @@ Gate 应汇总**正交校验面**的裁决：
 - `Scope` 回答"在什么层上控制"
 - `Function` 回答"控制器此刻在做什么"
 - `Artifact` 回答"控制器依赖什么正式对象"
+
+---
+
+## 十六、结构化输出字段约定
+
+Inside the result, include at least these fields or equivalents:
+
+- `current_scope`
+- `artifacts_read`
+- `status_or_verdict`
+- `allowed_next_routes`
+- `recommended_next_route`
+- `continuation_ready`
+- `recommended_next_scope`
+- `recommended_next_action`
+- `continuation_decision`
+- `stop_conditions_hit`
+- `approval_required`
+- `needs_approval`

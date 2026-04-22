@@ -19,7 +19,7 @@
 规则：
 
 - canonical source 继续留在 `product/harness/skills/`
-- `target_dir` 相对 backend skills root；当前首发实例统一使用 `<skill_id>`，并且在当前 live bindings 内必须唯一
+- `target_dir` 相对 backend skills root；当前首发实例统一使用 `aw-<skill_id>`，并保留 `<skill_id>` 作为 `legacy_target_dirs` 用于升级清理，在当前 live bindings 内必须唯一
 - payload 声明 canonical files、首发冻结约束和 deploy target 命名
 - `payload.json` 的 `required_payload_files` 仍声明顶层 `aw.marker`；但 marker 只在 `install --backend agents` 写入 target 时运行时生成，不作为 source 文件存放在 adapter 目录中
 - target 中的 `aw.marker` 只表达 deploy 指纹：`marker_version / backend / skill_id / payload_version / payload_fingerprint`
