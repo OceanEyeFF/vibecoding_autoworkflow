@@ -81,6 +81,8 @@ class PayloadTargetMetadata:
     target_dir: str
     target_entry_name: str
     required_payload_files: list[str]
+    legacy_target_dirs: list[str]
+    legacy_skill_ids: list[str]
 
 
 @dataclass(frozen=True)
@@ -369,10 +371,66 @@ def payload_target_metadata(payload: dict[str, Any], binding: SkillBinding) -> P
             f"payload required_payload_files must include {MANAGED_SKILL_MARKER} for skill {binding.skill_id}"
         )
 
+    normalized_legacy_target_dirs: list[str] = []
+    legacy_target_dirs_value = payload.get("legacy_target_dirs")
+    if legacy_target_dirs_value is not None:
+        legacy_target_dirs_raw = string_list(legacy_target_dirs_value)
+        if legacy_target_dirs_raw is None:
+            raise DeployError(
+                f"payload legacy_target_dirs must be a list of strings for skill {binding.skill_id}"
+            )
+        for legacy_dir in legacy_target_dirs_raw:
+            normalized_legacy_dir = normalize_relative_target_path(
+                legacy_dir,
+                field_name="payload legacy_target_dirs entry",
+                skill_id=binding.skill_id,
+            )
+            if "/" in normalized_legacy_dir:
+                raise DeployError(
+                    f"payload legacy_target_dirs entries must be single directory names "
+                    f"for skill {binding.skill_id}: {legacy_dir}"
+                )
+            normalized_legacy_target_dirs.append(normalized_legacy_dir)
+
+    if normalized_target_dir in normalized_legacy_target_dirs:
+        raise DeployError(
+            f"payload target_dir {normalized_target_dir} must not be listed in "
+            f"legacy_target_dirs for skill {binding.skill_id}"
+        )
+
+    normalized_legacy_skill_ids: list[str] = []
+    legacy_skill_ids_value = payload.get("legacy_skill_ids")
+    if legacy_skill_ids_value is not None:
+        legacy_skill_ids_raw = string_list(legacy_skill_ids_value)
+        if legacy_skill_ids_raw is None:
+            raise DeployError(
+                f"payload legacy_skill_ids must be a list of strings for skill {binding.skill_id}"
+            )
+        for legacy_skill_id in legacy_skill_ids_raw:
+            normalized_legacy_skill_id = normalize_relative_target_path(
+                legacy_skill_id,
+                field_name="payload legacy_skill_ids entry",
+                skill_id=binding.skill_id,
+            )
+            if "/" in normalized_legacy_skill_id:
+                raise DeployError(
+                    f"payload legacy_skill_ids entries must be single directory names "
+                    f"for skill {binding.skill_id}: {legacy_skill_id}"
+                )
+            normalized_legacy_skill_ids.append(normalized_legacy_skill_id)
+
+    if binding.skill_id in normalized_legacy_skill_ids:
+        raise DeployError(
+            f"binding skill_id {binding.skill_id} must not be listed in "
+            f"legacy_skill_ids for skill {binding.skill_id}"
+        )
+
     return PayloadTargetMetadata(
         target_dir=normalized_target_dir,
         target_entry_name=normalized_target_entry_name,
         required_payload_files=normalized_required_payload_files,
+        legacy_target_dirs=normalized_legacy_target_dirs,
+        legacy_skill_ids=normalized_legacy_skill_ids,
     )
 
 
@@ -396,6 +454,17 @@ def current_target_dirs_by_skill_id(bindings: list[SkillBinding]) -> dict[str, s
 
 def expected_target_dirs(bindings: list[SkillBinding]) -> set[str]:
     return set(current_target_dirs_by_skill_id(bindings).values())
+
+
+def all_known_target_dirs(bindings: list[SkillBinding]) -> set[str]:
+    """Return all target directory names known to belong to current bindings,
+    including both current target_dirs and legacy_target_dirs."""
+    known: set[str] = set()
+    for binding in bindings:
+        metadata = load_binding_target_metadata(binding)
+        known.add(metadata.target_dir)
+        known.update(metadata.legacy_target_dirs)
+    return known
 
 
 def managed_skill_marker_path(target_skill_dir: Path) -> Path:
@@ -873,6 +942,17 @@ def install_backend_payloads(backend: str, args: argparse.Namespace) -> None:
         )
 
     ensure_install_target_root(target_root)
+    for plan in plans:
+        binding = plan.binding
+        for legacy_dir_name in plan.target_metadata.legacy_target_dirs:
+            legacy_path = target_root / legacy_dir_name
+            if not legacy_path.exists():
+                continue
+            marker = load_runtime_marker(managed_skill_marker_path(legacy_path))
+            if marker is not None and marker.backend == binding.backend:
+                if marker.skill_id == binding.skill_id or marker.skill_id in plan.target_metadata.legacy_skill_ids:
+                    shutil.rmtree(legacy_path)
+                    print(f"removed legacy skill dir {binding.skill_id} -> {legacy_path}")
     for plan in plans:
         binding = plan.binding
         target_metadata = plan.target_metadata

@@ -11,14 +11,29 @@ FIRST_WAVE_FREEZE_DOC = (
     REPO_ROOT / "docs" / "project-maintenance" / "deploy" / "first-wave-skill-freeze.md"
 )
 EXPECTED_FIRST_WAVE_SKILLS = {
+    "close-worktrack-skill": {
+        "first_wave_scope_kind": "full-skill",
+    },
     "dispatch-skills": {
         "first_wave_scope_kind": "subset-by-a3-freeze",
+    },
+    "gate-skill": {
+        "first_wave_scope_kind": "full-skill",
     },
     "harness-skill": {
         "first_wave_scope_kind": "full-skill",
     },
     "init-worktrack-skill": {
         "first_wave_scope_kind": "subset-by-a3-freeze",
+    },
+    "recover-worktrack-skill": {
+        "first_wave_scope_kind": "full-skill",
+    },
+    "repo-change-goal-skill": {
+        "first_wave_scope_kind": "full-skill",
+    },
+    "repo-refresh-skill": {
+        "first_wave_scope_kind": "full-skill",
     },
     "repo-status-skill": {
         "first_wave_scope_kind": "full-skill",
@@ -27,17 +42,42 @@ EXPECTED_FIRST_WAVE_SKILLS = {
         "first_wave_scope_kind": "subset-by-a3-freeze",
         "supported_repo_actions": ["enter-worktrack", "hold-and-observe"],
     },
+    "review-evidence-skill": {
+        "first_wave_scope_kind": "full-skill",
+    },
+    "rule-check-skill": {
+        "first_wave_scope_kind": "full-skill",
+    },
     "schedule-worktrack-skill": {
+        "first_wave_scope_kind": "full-skill",
+    },
+    "set-harness-goal-skill": {
+        "first_wave_scope_kind": "full-skill",
+    },
+    "test-evidence-skill": {
+        "first_wave_scope_kind": "full-skill",
+    },
+    "worktrack-status-skill": {
         "first_wave_scope_kind": "full-skill",
     },
 }
 EXPECTED_FIRST_WAVE_SKILL_ORDER = [
-    "harness-skill",
+    "set-harness-goal-skill",
     "repo-status-skill",
     "repo-whats-next-skill",
+    "repo-refresh-skill",
+    "repo-change-goal-skill",
     "init-worktrack-skill",
+    "worktrack-status-skill",
     "schedule-worktrack-skill",
     "dispatch-skills",
+    "review-evidence-skill",
+    "test-evidence-skill",
+    "rule-check-skill",
+    "gate-skill",
+    "recover-worktrack-skill",
+    "close-worktrack-skill",
+    "harness-skill",
 ]
 
 
@@ -97,7 +137,7 @@ class AgentsAdapterContractTest(unittest.TestCase):
             self.assertEqual(payload["skill_id"], skill_id)
             self.assertEqual(payload["canonical_dir"], f"product/harness/skills/{skill_id}")
             self.assertEqual(payload["canonical_paths"], [f"{canonical_dir}/{path}" for path in included_paths])
-            self.assertEqual(payload["target_dir"], skill_id)
+            self.assertIn(payload["target_dir"], (skill_id, f"aw-{skill_id}"))
             self.assertEqual(payload["target_entry_name"], "SKILL.md")
             self.assertEqual(payload["payload_policy"], "canonical-copy")
             self.assertEqual(payload["supported_target_scopes"], ["local"])
@@ -154,17 +194,10 @@ class AgentsAdapterContractTest(unittest.TestCase):
 
         in_scope = extract_bullet_block(
             text,
-            "当前首发范围固定为以下六个 canonical skills",
+            "当前首发范围固定为以下十六个 canonical skills",
             "各自承担的最小角色如下：",
         )
         self.assertEqual(in_scope, EXPECTED_FIRST_WAVE_SKILL_ORDER)
-
-        out_of_scope = extract_bullet_block(
-            text,
-            "当前仓库里其余已存在的 canonical skills（规范 skill），全部不进入首发范围：",
-            "其中可按两类理解：",
-        )
-        self.assertNotIn("schedule-worktrack-skill", out_of_scope)
 
 
 if __name__ == "__main__":

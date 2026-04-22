@@ -28,11 +28,21 @@ import aw_scaffold  # noqa: E402
 
 FIRST_WAVE_SKILL_ORDER = (
     "harness-skill",
+    "set-harness-goal-skill",
     "repo-status-skill",
     "repo-whats-next-skill",
+    "repo-refresh-skill",
+    "repo-change-goal-skill",
     "init-worktrack-skill",
+    "worktrack-status-skill",
     "schedule-worktrack-skill",
     "dispatch-skills",
+    "review-evidence-skill",
+    "test-evidence-skill",
+    "rule-check-skill",
+    "gate-skill",
+    "recover-worktrack-skill",
+    "close-worktrack-skill",
 )
 
 MINIMUM_PROTOCOL_FIELDS = {
@@ -277,22 +287,45 @@ def assert_installed_payload_contract(skill: InstalledSkill) -> None:
         if canonical_path.read_text(encoding="utf-8") != target_path.read_text(encoding="utf-8"):
             raise SmokeError(f"{skill.skill_id} target copy drifted from canonical source: {target_path}")
 
-    missing_fields = [
-        field_name
-        for field_name in MINIMUM_PROTOCOL_FIELDS[skill.skill_id]
-        if field_name not in skill.output_fields
-    ]
-    if missing_fields:
-        raise SmokeError(
-            f"{skill.skill_id} canonical output contract is missing required fields: "
-            f"{', '.join(missing_fields)}"
-        )
+    if skill.skill_id in MINIMUM_PROTOCOL_FIELDS:
+        missing_fields = [
+            field_name
+            for field_name in MINIMUM_PROTOCOL_FIELDS[skill.skill_id]
+            if field_name not in skill.output_fields
+        ]
+        if missing_fields:
+            raise SmokeError(
+                f"{skill.skill_id} canonical output contract is missing required fields: "
+                f"{', '.join(missing_fields)}"
+            )
 
 
 def discover_installed_skills(agents_root: Path) -> dict[str, InstalledSkill]:
+    # First, scan all installed skill directories
+    discovered: dict[str, tuple[Path, dict[str, Any]]] = {}
+    for target_dir in agents_root.iterdir():
+        if not target_dir.is_dir():
+            continue
+        payload_path = target_dir / "payload.json"
+        if not payload_path.is_file():
+            continue
+        payload = load_json(payload_path)
+        discovered_skill_id = payload.get("skill_id")
+        if not discovered_skill_id or not isinstance(discovered_skill_id, str):
+            continue
+        if discovered_skill_id in discovered:
+            first_dir = discovered[discovered_skill_id][0]
+            raise SmokeError(
+                f"duplicate installed skill directory for {discovered_skill_id}: "
+                f"{first_dir} and {target_dir}"
+            )
+        discovered[discovered_skill_id] = (target_dir, payload)
+
     installed: dict[str, InstalledSkill] = {}
     for skill_id in FIRST_WAVE_SKILL_ORDER:
-        target_dir = agents_root / skill_id
+        if skill_id not in discovered:
+            raise SmokeError(f"missing installed skill for {skill_id}")
+        target_dir, payload = discovered[skill_id]
         wrapper_path = target_dir / "SKILL.md"
         payload_path = target_dir / "payload.json"
         marker_path = target_dir / "aw.marker"
@@ -304,9 +337,13 @@ def discover_installed_skills(agents_root: Path) -> dict[str, InstalledSkill]:
             raise SmokeError(f"missing runtime marker for {skill_id}: {marker_path}")
 
         wrapper_text = wrapper_path.read_text(encoding="utf-8")
-        payload = load_json(payload_path)
         canonical_skill_path = canonical_skill_path_from_payload(payload, skill_id)
         canonical_text = canonical_skill_path.read_text(encoding="utf-8")
+        output_fields = (
+            extract_output_fields(canonical_text, skill_id)
+            if skill_id in MINIMUM_PROTOCOL_FIELDS
+            else ()
+        )
         installed_skill = InstalledSkill(
             skill_id=skill_id,
             target_dir=target_dir,
@@ -317,7 +354,7 @@ def discover_installed_skills(agents_root: Path) -> dict[str, InstalledSkill]:
             payload=payload,
             canonical_skill_path=canonical_skill_path,
             canonical_text=canonical_text,
-            output_fields=extract_output_fields(canonical_text, skill_id),
+            output_fields=output_fields,
         )
         assert_installed_payload_contract(installed_skill)
         installed[skill_id] = installed_skill

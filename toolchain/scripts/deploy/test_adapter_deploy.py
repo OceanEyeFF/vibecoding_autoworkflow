@@ -144,8 +144,14 @@ class AdapterDeployTest(unittest.TestCase):
         payload["target_dir"] = target_dir
         payload_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
+    def _target_dir_for_skill(self, skill_id: str) -> str:
+        payload_path = self.adapter_dir / skill_id / "payload.json"
+        payload = self._load_json(payload_path)
+        return payload["target_dir"]
+
     def _remove_target_marker(self, skill_id: str) -> Path:
-        marker_path = self.local_root / skill_id / "aw.marker"
+        target_dir_name = self._target_dir_for_skill(skill_id)
+        marker_path = self.local_root / target_dir_name / "aw.marker"
         if marker_path.exists():
             marker_path.unlink()
         return marker_path.parent
@@ -159,8 +165,9 @@ class AdapterDeployTest(unittest.TestCase):
 
         for source_payload_dir in sorted(path for path in self.adapter_dir.iterdir() if path.is_dir()):
             skill_id = source_payload_dir.name
-            target_skill_dir = self.local_root / skill_id
             payload = self._load_json(source_payload_dir / "payload.json")
+            target_dir_name = payload["target_dir"]
+            target_skill_dir = self.local_root / target_dir_name
             canonical_source = adapter_deploy.payload_canonical_source_metadata(
                 payload,
                 self._binding(skill_id),
@@ -421,7 +428,8 @@ class AdapterDeployTest(unittest.TestCase):
     def test_verify_reports_target_payload_drift_for_modified_target_file(self) -> None:
         code, stdout, stderr = self._install()
         self.assertEqual(code, 0, stderr)
-        wrapper_path = self.local_root / "repo-status-skill" / "SKILL.md"
+        target_dir_name = self._target_dir_for_skill("repo-status-skill")
+        wrapper_path = self.local_root / target_dir_name / "SKILL.md"
         wrapper_path.write_text("# drifted target\n", encoding="utf-8")
 
         code, stdout, stderr = self._verify()
@@ -451,6 +459,126 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(code, 1, stderr)
         self.assertIn("unexpected-managed-directory", stdout)
         self.assertIn(str(unexpected_dir), stdout)
+
+    def test_payload_target_metadata_parses_legacy_target_dirs(self) -> None:
+        binding = self._binding("harness-skill")
+        payload = self._load_json(binding.payload_path)
+        payload["legacy_target_dirs"] = ["old-harness-skill", "very-old-harness-skill"]
+        metadata = adapter_deploy.payload_target_metadata(payload, binding)
+        self.assertEqual(metadata.legacy_target_dirs, ["old-harness-skill", "very-old-harness-skill"])
+
+    def test_payload_target_metadata_rejects_legacy_dir_with_path_separator(self) -> None:
+        binding = self._binding("harness-skill")
+        payload = self._load_json(binding.payload_path)
+        payload["legacy_target_dirs"] = ["old/harness-skill"]
+        with self.assertRaises(adapter_deploy.DeployError) as ctx:
+            adapter_deploy.payload_target_metadata(payload, binding)
+        self.assertIn("must be single directory names", str(ctx.exception))
+
+    def test_payload_target_metadata_rejects_target_dir_in_legacy_target_dirs(self) -> None:
+        binding = self._binding("harness-skill")
+        payload = self._load_json(binding.payload_path)
+        payload["legacy_target_dirs"] = ["harness-skill"]
+        with self.assertRaises(adapter_deploy.DeployError) as ctx:
+            adapter_deploy.payload_target_metadata(payload, binding)
+        self.assertIn("must not be listed in legacy_target_dirs", str(ctx.exception))
+
+    def test_payload_target_metadata_rejects_legacy_target_dirs_string(self) -> None:
+        binding = self._binding("harness-skill")
+        payload = self._load_json(binding.payload_path)
+        payload["legacy_target_dirs"] = "harness-skill"
+        with self.assertRaises(adapter_deploy.DeployError) as ctx:
+            adapter_deploy.payload_target_metadata(payload, binding)
+        self.assertIn("legacy_target_dirs must be a list of strings", str(ctx.exception))
+
+    def test_payload_target_metadata_rejects_legacy_skill_ids_string(self) -> None:
+        binding = self._binding("harness-skill")
+        payload = self._load_json(binding.payload_path)
+        payload["legacy_skill_ids"] = "old-harness-skill"
+        with self.assertRaises(adapter_deploy.DeployError) as ctx:
+            adapter_deploy.payload_target_metadata(payload, binding)
+        self.assertIn("legacy_skill_ids must be a list of strings", str(ctx.exception))
+
+    def test_payload_target_metadata_parses_legacy_skill_ids(self) -> None:
+        binding = self._binding("harness-skill")
+        payload = self._load_json(binding.payload_path)
+        payload["legacy_skill_ids"] = ["old-harness-skill", "very-old-harness-skill"]
+        metadata = adapter_deploy.payload_target_metadata(payload, binding)
+        self.assertEqual(metadata.legacy_skill_ids, ["old-harness-skill", "very-old-harness-skill"])
+
+    def test_payload_target_metadata_rejects_skill_id_in_legacy_skill_ids(self) -> None:
+        binding = self._binding("harness-skill")
+        payload = self._load_json(binding.payload_path)
+        payload["legacy_skill_ids"] = ["harness-skill"]
+        with self.assertRaises(adapter_deploy.DeployError) as ctx:
+            adapter_deploy.payload_target_metadata(payload, binding)
+        self.assertIn("must not be listed in legacy_skill_ids", str(ctx.exception))
+
+    def test_install_removes_legacy_managed_directory(self) -> None:
+        self._install_managed_directory("old-harness-skill", marker_skill_id="old-harness-skill")
+        self.assertTrue((self.local_root / "old-harness-skill").is_dir())
+
+        payload_path = self.adapter_dir / "harness-skill" / "payload.json"
+        payload = self._load_json(payload_path)
+        payload["legacy_target_dirs"] = ["old-harness-skill"]
+        payload["legacy_skill_ids"] = ["old-harness-skill"]
+        payload_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+        code, stdout, stderr = self._install()
+        self.assertEqual(code, 0, stderr)
+        self.assertIn("removed legacy skill dir", stdout)
+        self.assertFalse((self.local_root / "old-harness-skill").exists())
+        self.assertTrue((self.local_root / "harness-skill").is_dir())
+
+        code, stdout, stderr = self._verify()
+        self.assertEqual(code, 0, stderr)
+        self.assertIn("[agents] ok", stdout)
+
+    def test_install_removes_legacy_with_current_skill_id_marker(self) -> None:
+        self._install_managed_directory("old-harness-skill", marker_skill_id="harness-skill")
+        self.assertTrue((self.local_root / "old-harness-skill").is_dir())
+
+        payload_path = self.adapter_dir / "harness-skill" / "payload.json"
+        payload = self._load_json(payload_path)
+        payload["legacy_target_dirs"] = ["old-harness-skill"]
+        payload["legacy_skill_ids"] = ["old-harness-skill"]
+        payload_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+        code, stdout, stderr = self._install()
+        self.assertEqual(code, 0, stderr)
+        self.assertIn("removed legacy skill dir", stdout)
+        self.assertFalse((self.local_root / "old-harness-skill").exists())
+
+    def test_install_skips_legacy_cleanup_when_marker_mismatched(self) -> None:
+        self._install_managed_directory("old-harness-skill", marker_skill_id="other-skill")
+        self.assertTrue((self.local_root / "old-harness-skill").is_dir())
+
+        payload_path = self.adapter_dir / "harness-skill" / "payload.json"
+        payload = self._load_json(payload_path)
+        payload["legacy_target_dirs"] = ["old-harness-skill"]
+        payload["legacy_skill_ids"] = ["old-harness-skill"]
+        payload_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+        code, stdout, stderr = self._install()
+        self.assertEqual(code, 0, stderr)
+        self.assertNotIn("removed legacy skill dir", stdout)
+        self.assertTrue((self.local_root / "old-harness-skill").is_dir())
+
+    def test_verify_reports_legacy_managed_directory_not_cleaned(self) -> None:
+        self._install_managed_directory("old-harness-skill", marker_skill_id="old-harness-skill")
+        self.assertTrue((self.local_root / "old-harness-skill").is_dir())
+
+        payload_path = self.adapter_dir / "harness-skill" / "payload.json"
+        payload = self._load_json(payload_path)
+        payload["legacy_target_dirs"] = ["old-harness-skill"]
+        payload["legacy_skill_ids"] = ["old-harness-skill"]
+        payload_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+        code, stdout, stderr = self._verify()
+
+        self.assertEqual(code, 1, stderr)
+        self.assertIn("unexpected-managed-directory", stdout)
+        self.assertIn("old-harness-skill", stdout)
 
     def test_verify_reports_wrong_target_root_type(self) -> None:
         self.local_root.parent.mkdir(parents=True, exist_ok=True)
