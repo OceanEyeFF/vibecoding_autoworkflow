@@ -153,6 +153,8 @@ profile 与标准 control-state 字段的对应关系：
 
 如果选择 `strict-handback`，保留本 runbook 默认 prompt 即可。如果选择 `continuous-autonomy`，必须在 `round-000` prompt 的 `Working rule` 中明确补充连续策略，或者在 `round-000` close 后修改 `.aw/control-state.md` 的 `Continuation Authority / Autonomy Ledger` 后再进入 `round-001`。不要把二者混在同一轮观察里，否则无法判断 Harness 是“正确停下”还是“未能继续”。
 
+`continuous-autonomy` 不删除“每个子系统独立 worktrack”的约束。它只改变 handback 后是否允许 Harness 消费剩余预算进入下一个 bounded subsystem worktrack。换言之，handback 是 slice 边界记录；当 `autonomy_budget_remaining > 0` 时，它不应被写成需要 human unlock 的硬锁。
+
 ## 四、第一轮无交互 Codex
 
 先准备 round-000 的 prompt 文件：
@@ -213,6 +215,18 @@ Observation priority:
 - Let round-000 decide whether the repo should open a worktrack; do not assume the worktrack already exists unless the repo artifacts explicitly justify it.
 - Try to keep the repo moving toward the smallest playable CLI combat build.
 - Only stop when a real decision boundary, scope boundary, runtime gap, or other formal stop condition is hit.
+```
+
+如果本轮选择 `OBSERVATION_PROFILE=continuous-autonomy`，在同一个 prompt 的 `Working rule` 后追加下面的覆盖块：
+
+```text
+Continuous-autonomy observation override:
+- This run is explicitly testing continuous autonomous subsystem progression within the current goal.
+- Initialize or update `.aw/control-state.md` so `post_contract_autonomy: delegated-minimal`, `autonomy_scope: current-goal-only`, `max_auto_new_worktracks: 20`, `autonomy_budget_remaining: 20`, and `stop_after_autonomous_slice: yes`.
+- Keep every subsystem as its own independent worktrack. Do not merge combat logger, cards, deck, map, or events into the same worktrack.
+- After a worktrack closes, record the handback boundary, but do not set `handback_lock_active: yes` while `autonomy_budget_remaining > 0`.
+- If `handoff_state: awaiting-handoff` and `autonomy_budget_remaining > 0`, a later bare `继续工作` in a new independent Codex conversation is authorized to consume one autonomy budget unit and open the next bounded subsystem worktrack under the same goal.
+- Once the autonomy budget reaches 0, strict handback applies again and bare `继续工作` must not unlock the boundary.
 ```
 
 然后执行第一轮：
@@ -443,7 +457,11 @@ git -C "$TMP_REPO" diff --stat > "$TMP_RUN_ROOT/$ROUND_ID/git-diff-stat.txt"
 
 如果任务足够小、边界足够清楚，可以尽量减少“需要人工决策”的中断。
 
-## 八、相关文档
+## 八、已验证观察记录
+
+[Codex Harness Manual Run Evidence - Continuous Autonomy - 2026-04-23](./codex-harness-manual-run-continuous-2026-04-23.md) 记录了 `continuous-autonomy` 对照 run：`round-000` 到 `round-019` 连续打开并关闭 20 个 bounded worktracks，最终 `86 tests OK`，`round-020` 在预算耗尽后正确停在 strict handback。
+
+## 九、相关文档
 
 - [Deploy Runbook](./deploy-runbook.md)
 - [Template Tooling MVP](./template-tooling-mvp.md)
