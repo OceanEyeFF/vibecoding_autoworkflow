@@ -1,9 +1,9 @@
 ---
 title: "Template Tooling MVP"
 status: active
-updated: 2026-04-20
+updated: 2026-04-23
 owner: aw-kernel
-last_verified: 2026-04-20
+last_verified: 2026-04-23
 ---
 # Template Tooling MVP
 
@@ -14,7 +14,6 @@ last_verified: 2026-04-20
 阅读本页前，建议先看：
 
 - [Template Consumption Spec](./template-consumption-spec.md)
-- [First-Wave Skill Freeze](./first-wave-skill-freeze.md)
 
 ## 一、范围
 
@@ -54,13 +53,13 @@ last_verified: 2026-04-20
 - `generate`
   - 将所选模板渲染到指定输出根目录，例如 `/tmp/demo-aw` 或仓库内 `.aw/`
 
-## 三、首发 profile
+## 三、Legacy scaffold profile
 
-当前只固定 1 个首发 profile：
+当前只固定 1 个 legacy scaffold profile：
 
 - `first-wave-minimal`
 
-它只生成首发链路真正需要的最小 `.aw/` 样例：
+它只生成早期 scaffold 校验所需的最小 `.aw/` 样例：
 
 - `control-state.md`
 - `goal-charter.md`
@@ -68,7 +67,7 @@ last_verified: 2026-04-20
 - `worktrack/contract.md`
 - `worktrack/plan-task-queue.md`
 
-`worktrack/gate-evidence.md` 当前不属于首发 profile，但仍可通过单独的 `--template worktrack-gate-evidence` 渲染，用于受控补充或后续测试。
+`worktrack/gate-evidence.md` 当前不属于该 profile，但仍可通过单独的 `--template worktrack-gate-evidence` 渲染，用于受控补充或后续测试。
 
 ## 四、frontmatter 与 placeholder 规则
 
@@ -106,7 +105,7 @@ last_verified: 2026-04-20
 - 如果本次 profile / template 也会生成对应文件，则写相对路径
 - 如果本次没有生成对应文件，则保留 placeholder
 
-因此首发 profile 下：
+因此 `first-wave-minimal` profile 下：
 
 - `repo_snapshot`
 - `worktrack_contract`
@@ -145,7 +144,7 @@ python3 toolchain/scripts/deploy/aw_scaffold.py list
 python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal
 ```
 
-在临时目录生成首发 `.aw/` 样例：
+在临时目录生成 `.aw/` 样例：
 
 ```bash
 python3 toolchain/scripts/deploy/aw_scaffold.py generate \
@@ -158,7 +157,7 @@ python3 toolchain/scripts/deploy/aw_scaffold.py generate \
   --branch feat/wt-demo
 ```
 
-单独生成非首发的 `gate-evidence` 样例：
+单独生成 `gate-evidence` 样例：
 
 ```bash
 python3 toolchain/scripts/deploy/aw_scaffold.py generate \
@@ -170,7 +169,7 @@ python3 toolchain/scripts/deploy/aw_scaffold.py generate \
 
 当前 B2 可认为达标，当下面几项成立：
 
-- 能在自定义输出根目录生成首发 `.aw/` 最小样例
+- 能在自定义输出根目录生成 `.aw/` 最小样例
 - 生成结果具有非空 frontmatter 与 placeholder
 - 当源模板缺少必需 section 或必需 keyed field 时，`validate` 能失败并在 stderr 或输出报告中指出具体缺失项
 - 工具不消费 payload descriptor，不触碰 `adapter payload` 或 deploy target

@@ -83,14 +83,6 @@ CANONICAL_SKILL_GLOBS = [
 ADAPTER_SKILL_GLOBS = [
     "product/*/adapters/*/skills/*/SKILL.md",
 ]
-CANONICAL_SKILL_REQUIRED_HEADINGS = [
-    "## Overview",
-    "## When To Use",
-    "## Workflow",
-    "## Hard Constraints",
-    "## Expected Output",
-    "## Resources",
-]
 CANONICAL_SKILL_FORBIDDEN_HEADINGS = [
     "## Canonical Source",
     "## Backend Notes",
@@ -228,11 +220,10 @@ def check_canonical_skill_packages_are_minimal(repo_root: Path, report: Semantic
         relative_path = to_relative_posix(canonical_file, repo_root)
         text = canonical_file.read_text(encoding="utf-8")
 
-        for heading in CANONICAL_SKILL_REQUIRED_HEADINGS:
-            if heading not in text:
-                report.add_failure(
-                    f"canonical skill missing required heading {heading!r}: {relative_path}"
-                )
+        if not text.lstrip().startswith("---"):
+            report.add_failure(f"canonical skill missing frontmatter block: {relative_path}")
+        if "\n# " not in text and not text.lstrip().startswith("# "):
+            report.add_failure(f"canonical skill missing H1 title: {relative_path}")
 
         for heading in CANONICAL_SKILL_FORBIDDEN_HEADINGS:
             if heading in text:

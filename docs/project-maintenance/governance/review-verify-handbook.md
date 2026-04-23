@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 治理入口"
 status: active
-updated: 2026-04-20
+updated: 2026-04-23
 owner: aw-kernel
-last_verified: 2026-04-20
+last_verified: 2026-04-23
 ---
 # Review / Verify 治理入口
 
@@ -72,7 +72,7 @@ last_verified: 2026-04-20
 - skills / templates 分层规则变更
   - `python3 toolchain/scripts/test/path_governance_check.py`
   - `python3 toolchain/scripts/test/governance_semantic_check.py`
-- `.aw_template` 初始化工具或 `.aw/` scaffold 生成逻辑变更
+- `.aw_template` 初始化工具或 `.aw/` legacy scaffold profile 生成逻辑变更
   - `python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal`
   - `python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_aw_scaffold.py'`
 - closeout / gate / backfill 变更
@@ -88,9 +88,9 @@ last_verified: 2026-04-20
   - `python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents`
   - `python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents`
   - `python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents`
-- `agents` first-wave contract smoke / C2 bounded route 变更
-  - `python3 -m pytest toolchain/scripts/test/test_agents_first_wave_contract_smoke.py`
-  - `python3 toolchain/scripts/test/agents_first_wave_contract_smoke.py`
+- Harness runtime 观察或 operator-facing runbook 变更
+  - 先跑对应 deploy / adapter 最小验证
+  - 再按 [Codex Harness Manual Runbook](../deploy/codex-harness-manual-runbook.md) 做真实手动观察；该路径不是 cheap deterministic gate，不用 mock smoke 替代
 
 ### 3.1 修复完整性
 

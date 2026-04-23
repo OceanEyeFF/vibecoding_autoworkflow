@@ -35,14 +35,14 @@ class AwScaffoldTest(unittest.TestCase):
         drifted_spec = dataclasses.replace(original_spec, source_relpath=str(temp_template))
         return temp_template, drifted_spec
 
-    def test_validate_first_wave_templates_succeeds(self) -> None:
+    def test_validate_legacy_scaffold_profile_succeeds(self) -> None:
         code, stdout, stderr = self._run_cli("validate", "--profile", "first-wave-minimal")
 
         self.assertEqual(code, 0, stderr)
         self.assertIn("[control-state] ok", stdout)
         self.assertIn("[worktrack-plan-task-queue] ok", stdout)
 
-    def test_generate_first_wave_profile_to_custom_output_root(self) -> None:
+    def test_generate_legacy_scaffold_profile_to_custom_output_root(self) -> None:
         code, stdout, stderr = self._run_cli(
             "generate",
             "--profile",

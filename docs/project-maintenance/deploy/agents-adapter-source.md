@@ -1,9 +1,9 @@
 ---
 title: "Agents Adapter Source"
 status: active
-updated: 2026-04-20
+updated: 2026-04-23
 owner: aw-kernel
-last_verified: 2026-04-20
+last_verified: 2026-04-23
 ---
 # Agents Adapter Source
 
@@ -14,7 +14,6 @@ last_verified: 2026-04-20
 阅读本页前，建议先看：
 
 - [Deploy Mapping Spec](./deploy-mapping-spec.md)
-- [First-Wave Skill Freeze](./first-wave-skill-freeze.md)
 
 ## 一、范围
 
@@ -30,7 +29,7 @@ last_verified: 2026-04-20
 - deploy target 的实现细节
 - `adapter_deploy.py` 的内部状态机
 - `claude` / `opencode` backend 的 payload source
-- 非 first-wave skill 的 adapter 扩展
+- 非 `agents` backend 的 adapter 扩展
 
 ## 二、目录落点
 
@@ -38,14 +37,24 @@ last_verified: 2026-04-20
 
 - `product/harness/adapters/agents/skills/<skill>/`
 
-当前只建立 first-wave skill 子集：
+当前 `agents` payload source 覆盖当前 Harness skills deploy set：
 
 - `harness-skill`
+- `set-harness-goal-skill`
 - `repo-status-skill`
 - `repo-whats-next-skill`
+- `repo-refresh-skill`
+- `repo-change-goal-skill`
 - `init-worktrack-skill`
+- `worktrack-status-skill`
 - `schedule-worktrack-skill`
 - `dispatch-skills`
+- `review-evidence-skill`
+- `test-evidence-skill`
+- `rule-check-skill`
+- `gate-skill`
+- `recover-worktrack-skill`
+- `close-worktrack-skill`
 
 canonical truth（权威源）仍在：
 
@@ -72,12 +81,8 @@ canonical truth（权威源）仍在：
 - `supported_target_scopes`
 - `reference_distribution`
 - `required_payload_files`
-- `first_wave_profile`
-- `first_wave_scope_kind`
-
-只有当当前首发 contract 需要投影 canonical repo action 子集时，才允许将该字段写进 `payload.json` 中：
-
-- `supported_repo_actions`
+- `legacy_target_dirs`（存在旧 target 目录名时）
+- `legacy_skill_ids`（存在旧 skill id 时）
 
 ### runtime `aw.marker`
 
@@ -107,7 +112,7 @@ canonical truth（权威源）仍在：
 
 ## 四、当前 payload policy
 
-`agents` first-wave payload 当前统一采用：
+`agents` payload 当前统一采用：
 
 - `payload_policy: canonical-copy`
 - `supported_target_scopes: ["local"]`
@@ -119,38 +124,19 @@ canonical truth（权威源）仍在：
 - install 按 `payload.canonical_paths` 与 `payload.required_payload_files`，把 `product/harness/skills/` 中声明过的 canonical 文件复制到 target
 - 当前 target 至少包含 canonical `SKILL.md`、已声明的 `references/` 或 `templates/`、顶层 `payload.json` 与 runtime-generated `aw.marker`
 - `supported_target_scopes` 仍保留在 payload descriptor 中，但它不再对应 operator-facing 的 `local/global` 命令面；当前主流程只通过 `install --backend agents` 写入 resolved target root
-- `target_dir` 相对 backend skills root；当前 `agents` 首发实例使用 `aw-<skill_id>`，并保留 `<skill_id>` 作为 `legacy_target_dirs` 用于升级清理，不得使用绝对路径或带 `.` / `..` 的跳出式路径段
-- 对当前 `agents` first-wave payload，`target_dir` 的业务语义固定为 backend skills root 下的直接子目录名，不承接 nested / multi-segment target layout
+- `target_dir` 相对 backend skills root；当前 `agents` live bindings 使用 `aw-<skill_id>`，并保留 `<skill_id>` 作为 `legacy_target_dirs` 用于升级清理，不得使用绝对路径或带 `.` / `..` 的跳出式路径段
+- 对当前 `agents` payload，`target_dir` 的业务语义固定为 backend skills root 下的直接子目录名，不承接 nested / multi-segment target layout
 - 当前 live bindings 内，`target_dir` 必须唯一；install 不会尝试用覆盖顺序解决冲突
 - `canonical_paths` 必须保持在各自 skill 的 `canonical_dir` 内，不能通过 `.` / `..` 路径段跳出 skill 包
 - `required_payload_files` 当前必须等于 `canonical_paths` 在 `canonical_dir` 下的相对路径集合，再加上 `payload.json + aw.marker`；其中 `aw.marker` 是 sync 写入 target 的 runtime-generated marker，而不是 adapter source 文件
 - operator-facing deploy 主流程不再区分 `local/global` mode；install 只负责把当前 source 声明的 live payload 写入 resolved backend target root
 - 这套 payload source 不承接 archive/history、旧版本保活或增量修复语义
 
-## 五、首发 skill 的 backend-specific 收窄
+## 五、验收与验证
 
-当前 `agents` payload 只固定下列 first-wave 收窄：
+当前 payload source 至少应满足：
 
-- `harness-skill`
-  - `full-skill`
-- `repo-status-skill`
-  - `full-skill`
-- `repo-whats-next-skill`
-  - 只承接 `enter-worktrack` 与 `hold-and-observe` 两个动作
-- `init-worktrack-skill`
-  - 只承接 branch、baseline、contract、initial queue 与 first handoff 五个概念域
-- `schedule-worktrack-skill`
-  - `full-skill`
-- `dispatch-skills`
-  - 只承接 bounded dispatch contract 与 fallback / general-executor 路径
-
-如果 canonical source 允许更宽的动作空间，仍继续保留在 canonical 层；这里只收窄 `agents` first-wave 可分发面。
-
-## 六、验收与验证
-
-B3 完成后至少应满足：
-
-- `product/harness/adapters/agents/skills/<skill>/` 已对六个 first-wave skills 建立 payload source
+- `product/harness/adapters/agents/skills/<skill>/` 已对当前 `agents` live skill set 建立 payload source
 - 每个 payload 目录都能从 `payload.json` 直接追溯到 canonical source 与 target contract
 - `install --backend agents` 产出的 target skill 目录都包含完整 canonical skill copy，而不是 wrapper 快捷方式
 - 每个 `payload.json` 都能支持 destructive reinstall model 下的 install / verify 读取面

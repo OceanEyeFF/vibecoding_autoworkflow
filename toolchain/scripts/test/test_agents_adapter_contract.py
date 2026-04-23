@@ -7,78 +7,24 @@ from pathlib import Path, PurePosixPath
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ADAPTER_SKILLS_DIR = REPO_ROOT / "product" / "harness" / "adapters" / "agents" / "skills"
-FIRST_WAVE_FREEZE_DOC = (
-    REPO_ROOT / "docs" / "project-maintenance" / "deploy" / "first-wave-skill-freeze.md"
-)
-EXPECTED_FIRST_WAVE_SKILLS = {
-    "close-worktrack-skill": {
-        "first_wave_scope_kind": "full-skill",
-    },
-    "dispatch-skills": {
-        "first_wave_scope_kind": "subset-by-a3-freeze",
-    },
-    "gate-skill": {
-        "first_wave_scope_kind": "full-skill",
-    },
-    "harness-skill": {
-        "first_wave_scope_kind": "full-skill",
-    },
-    "init-worktrack-skill": {
-        "first_wave_scope_kind": "subset-by-a3-freeze",
-    },
-    "recover-worktrack-skill": {
-        "first_wave_scope_kind": "full-skill",
-    },
-    "repo-change-goal-skill": {
-        "first_wave_scope_kind": "full-skill",
-    },
-    "repo-refresh-skill": {
-        "first_wave_scope_kind": "full-skill",
-    },
-    "repo-status-skill": {
-        "first_wave_scope_kind": "full-skill",
-    },
-    "repo-whats-next-skill": {
-        "first_wave_scope_kind": "subset-by-a3-freeze",
-        "supported_repo_actions": ["enter-worktrack", "hold-and-observe"],
-    },
-    "review-evidence-skill": {
-        "first_wave_scope_kind": "full-skill",
-    },
-    "rule-check-skill": {
-        "first_wave_scope_kind": "full-skill",
-    },
-    "schedule-worktrack-skill": {
-        "first_wave_scope_kind": "full-skill",
-    },
-    "set-harness-goal-skill": {
-        "first_wave_scope_kind": "full-skill",
-    },
-    "test-evidence-skill": {
-        "first_wave_scope_kind": "full-skill",
-    },
-    "worktrack-status-skill": {
-        "first_wave_scope_kind": "full-skill",
-    },
-}
-EXPECTED_FIRST_WAVE_SKILL_ORDER = [
-    "set-harness-goal-skill",
+EXPECTED_AGENTS_SKILLS = {
+    "close-worktrack-skill",
+    "dispatch-skills",
+    "gate-skill",
+    "harness-skill",
+    "init-worktrack-skill",
+    "recover-worktrack-skill",
+    "repo-change-goal-skill",
+    "repo-refresh-skill",
     "repo-status-skill",
     "repo-whats-next-skill",
-    "repo-refresh-skill",
-    "repo-change-goal-skill",
-    "init-worktrack-skill",
-    "worktrack-status-skill",
-    "schedule-worktrack-skill",
-    "dispatch-skills",
     "review-evidence-skill",
-    "test-evidence-skill",
     "rule-check-skill",
-    "gate-skill",
-    "recover-worktrack-skill",
-    "close-worktrack-skill",
-    "harness-skill",
-]
+    "schedule-worktrack-skill",
+    "set-harness-goal-skill",
+    "test-evidence-skill",
+    "worktrack-status-skill",
+}
 
 
 def load_json(path: Path) -> dict[str, object]:
@@ -99,24 +45,12 @@ def included_paths_from_payload(payload: dict[str, object]) -> list[str]:
     return included_paths
 
 
-def extract_bullet_block(text: str, start_marker: str, end_marker: str) -> list[str]:
-    start = text.index(start_marker)
-    end = text.index(end_marker, start)
-    block = text[start:end]
-    lines = []
-    for raw_line in block.splitlines():
-        stripped = raw_line.strip()
-        if stripped.startswith("- `") and stripped.endswith("`"):
-            lines.append(stripped[len("- `") : -1])
-    return lines
-
-
 class AgentsAdapterContractTest(unittest.TestCase):
-    def test_first_wave_agents_adapter_payloads_follow_b3_contract(self) -> None:
+    def test_agents_adapter_payloads_follow_canonical_copy_contract(self) -> None:
         adapter_skill_dirs = sorted(
             path.name for path in ADAPTER_SKILLS_DIR.iterdir() if path.is_dir()
         )
-        self.assertEqual(adapter_skill_dirs, sorted(EXPECTED_FIRST_WAVE_SKILLS))
+        self.assertEqual(adapter_skill_dirs, sorted(EXPECTED_AGENTS_SKILLS))
 
         for skill_id in adapter_skill_dirs:
             payload_path = ADAPTER_SKILLS_DIR / skill_id / "payload.json"
@@ -146,24 +80,15 @@ class AgentsAdapterContractTest(unittest.TestCase):
                 payload["required_payload_files"],
                 [*included_paths, "payload.json", "aw.marker"],
             )
-            self.assertEqual(payload["first_wave_profile"], "a3-first-wave")
-            self.assertEqual(
-                payload["first_wave_scope_kind"],
-                EXPECTED_FIRST_WAVE_SKILLS[skill_id]["first_wave_scope_kind"],
-            )
+            self.assertNotIn("first_wave_profile", payload)
+            self.assertNotIn("first_wave_scope_kind", payload)
+            self.assertNotIn("supported_repo_actions", payload)
             self.assertEqual(Path(str(canonical_dir)).name, skill_id)
-
-            expected_repo_actions = EXPECTED_FIRST_WAVE_SKILLS[skill_id].get("supported_repo_actions")
-            actual_repo_actions = payload.get("supported_repo_actions")
-            if expected_repo_actions is None:
-                self.assertNotIn("supported_repo_actions", payload)
-            else:
-                self.assertEqual(actual_repo_actions, expected_repo_actions)
 
             for canonical_path in canonical_paths:
                 self.assertTrue((REPO_ROOT / canonical_path).is_file(), canonical_path)
 
-    def test_first_wave_agents_adapter_target_dirs_are_unique(self) -> None:
+    def test_agents_adapter_target_dirs_are_unique(self) -> None:
         target_dir_to_skills: dict[str, list[str]] = {}
 
         for skill_dir in sorted(path for path in ADAPTER_SKILLS_DIR.iterdir() if path.is_dir()):
@@ -188,17 +113,6 @@ class AgentsAdapterContractTest(unittest.TestCase):
             {},
             f"duplicate target_dir bindings are not allowed: {duplicates}",
         )
-
-    def test_first_wave_freeze_doc_matches_live_skill_set(self) -> None:
-        text = FIRST_WAVE_FREEZE_DOC.read_text(encoding="utf-8")
-
-        in_scope = extract_bullet_block(
-            text,
-            "当前首发范围固定为以下十六个 canonical skills",
-            "各自承担的最小角色如下：",
-        )
-        self.assertEqual(in_scope, EXPECTED_FIRST_WAVE_SKILL_ORDER)
-
 
 if __name__ == "__main__":
     unittest.main()

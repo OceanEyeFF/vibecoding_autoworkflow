@@ -1,13 +1,13 @@
 ---
 title: "Codex Usage Help"
 status: active
-updated: 2026-04-20
+updated: 2026-04-23
 owner: aw-kernel
-last_verified: 2026-04-20
+last_verified: 2026-04-23
 ---
 # Codex Usage Help
 
-> 目的：只保留 `agents` backend 的特有差异，回答 “Codex target root 怎么解析、root 参数怎么传、按新三步主流程时有什么 backend 特有注意事项、最小 deploy / contract smoke 怎么做”。
+> 目的：只保留 `agents` backend 的特有差异，回答 “Codex target root 怎么解析、root 参数怎么传、按新三步主流程时有什么 backend 特有注意事项、真实 Harness manual run 怎么进入”。
 
 先读通用 deploy 文档，再读本页：
 
@@ -27,9 +27,9 @@ last_verified: 2026-04-20
 - 如果你要把 target root 指到别处，再显式传 `--agents-root /your/custom/skills`
 - deploy 主流程统一写在 [Deploy Runbook](../deploy/deploy-runbook.md)；本页只补 backend-specific 差异
 
-## 二、最小 deploy / contract smoke 口径
+## 二、Deploy verify 与真实 Harness 观察
 
-`agents` 是当前有稳定 deploy / contract smoke 口径的 backend 之一。前提是先完成主流程，再跑一次只读 `verify`，然后执行仓库内的 repeatable contract smoke harness。
+`agents` 的最小 deploy 验证是 destructive reinstall 主流程加只读 `verify`。这只证明 payload source、target root 与 live install 对齐，不证明 Harness runtime 行为。
 
 推荐顺序：
 
@@ -40,35 +40,13 @@ python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
 ```
 
-建议做法：
+如需观察真实 Harness 行为，使用 [Codex Harness Manual Runbook](../deploy/codex-harness-manual-runbook.md)。该 runbook 在临时 repo 中准备隔离 `.agents/skills/`，用无交互 `codex exec` 真实调用 `harness-skill`，观察空 repo 冷启动、`.aw/` 初始化、scope 切换与真实任务推进。
 
-- 直接运行：
+判断边界：
 
-```bash
-python3 toolchain/scripts/test/agents_first_wave_contract_smoke.py
-```
-
-- 这条 contract smoke 会在隔离 install root 和生成的 `.aw` fixture 上完成：
-  - `prune --all -> check_paths_exist -> install -> verify`
-  - 已安装 first-wave skill copy 的真实读取
-  - `harness -> repo-status -> repo-whats-next -> init-worktrack -> schedule-worktrack -> dispatch` 最小路径
-  - `dispatch-skills` 的 fallback / general-executor 路径
-- 它证明的是 deploy target、payload / output field contract、`.aw` scaffold，以及一条最小 bounded route 到 `schedule` 选出 current next action，再到 `dispatch` 消费该选择。
-- 它不证明真实 Harness runtime、真实 Codex 无交互连续执行、真实任务连续推进，或真实 delegated subagent dispatch。
-- 如需保留现场，显式传 root：
-
-```bash
-python3 toolchain/scripts/test/agents_first_wave_contract_smoke.py \
-  --agents-root .autoworkflow/state/agents-first-wave-smoke/.agents/skills \
-  --aw-root .autoworkflow/state/agents-first-wave-smoke/.aw
-```
-
-判断标准：
-
-- contract smoke 命令返回 `PASS`
-- six-skill first-wave 路径全部经过
-- `dispatch-skills` 证明 fallback/general-executor 路径，而不是只验证 mount 存在
-- 这一步是 deploy / contract smoke，不替代 `adapter_deploy.py verify`
+- `adapter_deploy.py verify --backend agents` 是 deploy target 对齐证明。
+- `codex-harness-manual-runbook.md` 是当前 operator-facing 的 Harness runtime 观察入口。
+- skills mock / contract smoke 不再作为当前主线验证入口；后续 skill 行为调整由 `autoresearch` 或真实运行观察承接。
 
 ## 三、和其他 backend 的区别
 

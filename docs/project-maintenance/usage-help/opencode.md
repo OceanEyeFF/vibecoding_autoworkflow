@@ -1,9 +1,9 @@
 ---
 title: "OpenCode Repo-local Usage Help"
 status: active
-updated: 2026-04-17
+updated: 2026-04-23
 owner: aw-kernel
-last_verified: 2026-04-17
+last_verified: 2026-04-23
 ---
 # OpenCode Repo-local Usage Help
 
@@ -40,7 +40,7 @@ last_verified: 2026-04-17
 
 ## 三、和其他 backend 的区别
 
-- `opencode` 没有稳定 smoke verify 口径，这一点和 `agents`、`claude` 不同
+- `opencode` 没有稳定 smoke verify 口径；`claude` 保留 runtime skill entry smoke verify，`agents` 当前只承接 deploy verify 与 Codex Harness manual run
 - `opencode` 的常见 user config 路径按 XDG 规则解析，这一点和 `claude`、`agents` 都不同
 - 当前仓库不提供 `opencode` backend 的 deploy adapter CLI；如果未来恢复，必须以新的真实命令面更新文档
 

@@ -19,7 +19,7 @@
 
 | backend | 页面 | 主要差异 |
 |---|---|---|
-| `agents` | [codex.md](./codex.md) | 默认 `.agents/skills/` / 可选 `--agents-root`、稳定 deploy / contract smoke |
+| `agents` | [codex.md](./codex.md) | 默认 `.agents/skills/` / 可选 `--agents-root`、deploy verify 与 Codex Harness manual run |
 | `claude` | [claude.md](./claude.md) | Claude runtime 路径约定、稳定 smoke verify；当前仓库不提供 `claude` deploy adapter CLI |
 | `opencode` | [opencode.md](./opencode.md) | OpenCode runtime 路径约定、仅 `sync verify`；当前仓库不提供 `opencode` deploy adapter CLI |
 

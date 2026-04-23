@@ -1,9 +1,9 @@
 ---
 title: "Claude Repo-local Usage Help"
 status: active
-updated: 2026-04-17
+updated: 2026-04-23
 owner: aw-kernel
-last_verified: 2026-04-17
+last_verified: 2026-04-23
 ---
 # Claude Repo-local Usage Help
 
@@ -44,7 +44,7 @@ last_verified: 2026-04-17
 
 ## 三、和其他 backend 的区别
 
-- `claude` 和 `agents` 都有稳定 smoke verify 口径
+- `claude` 保留 runtime skill entry 可读性 smoke verify；`agents` 当前只承接 deploy verify 与 Codex Harness manual run，不再承接 skills mock / contract smoke
 - `claude` 的常见 user-home runtime 路径是 `~/.claude/skills`，不依赖 `CODEX_HOME` 或 XDG 推导
 - 当前仓库不提供 `claude` backend 的 deploy adapter CLI；如果未来恢复，必须以新的真实命令面更新文档
 

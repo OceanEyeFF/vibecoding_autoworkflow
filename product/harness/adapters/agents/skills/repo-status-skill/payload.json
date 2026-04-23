@@ -20,7 +20,5 @@
     "SKILL.md",
     "payload.json",
     "aw.marker"
-  ],
-  "first_wave_profile": "a3-first-wave",
-  "first_wave_scope_kind": "full-skill"
+  ]
 }

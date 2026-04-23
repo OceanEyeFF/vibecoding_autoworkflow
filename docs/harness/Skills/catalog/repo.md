@@ -1,9 +1,9 @@
 ---
 title: "Harness Skill Catalog / RepoScope"
 status: draft
-updated: 2026-04-20
+updated: 2026-04-23
 owner: aw-kernel
-last_verified: 2026-04-20
+last_verified: 2026-04-23
 ---
 # RepoScope Skill Catalog
 
@@ -85,7 +85,7 @@ canonical executable source：
 当前状态：
 
 - `initial canonical executable skeleton landed, with bounded priority reframe mode folded into the same skill`
-- `first-wave deploy subset is narrower than the canonical action space and must be restated on the copied skill surface`
+- `agents deploy copies the canonical skill surface directly; runtime route boundaries should come from current repo artifacts and control state, not legacy payload metadata`
 
 preferred decision fields：
 

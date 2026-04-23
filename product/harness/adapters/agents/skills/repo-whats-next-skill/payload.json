@@ -20,12 +20,6 @@
     "payload.json",
     "aw.marker"
   ],
-  "first_wave_profile": "a3-first-wave",
-  "first_wave_scope_kind": "subset-by-a3-freeze",
-  "supported_repo_actions": [
-    "enter-worktrack",
-    "hold-and-observe"
-  ],
   "legacy_target_dirs": [
     "repo-whats-next-skill"
   ]

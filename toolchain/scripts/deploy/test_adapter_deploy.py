@@ -158,7 +158,7 @@ class AdapterDeployTest(unittest.TestCase):
             marker_path.unlink()
         return marker_path.parent
 
-    def test_install_creates_target_root_and_installs_first_wave_payloads(self) -> None:
+    def test_install_creates_target_root_and_installs_agents_payloads(self) -> None:
         code, stdout, stderr = self._install()
 
         self.assertEqual(code, 0, stderr)

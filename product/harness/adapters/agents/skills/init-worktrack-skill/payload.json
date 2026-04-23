@@ -20,8 +20,6 @@
     "payload.json",
     "aw.marker"
   ],
-  "first_wave_profile": "a3-first-wave",
-  "first_wave_scope_kind": "subset-by-a3-freeze",
   "legacy_target_dirs": [
     "init-worktrack-skill"
   ]

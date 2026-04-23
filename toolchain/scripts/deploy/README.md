@@ -15,7 +15,7 @@
 3. `install --backend agents`
 4. 如需只读复验，再跑 `verify --backend agents`
 
-`.aw_template` 相关最小流：
+`.aw_template` legacy scaffold profile 相关最小流：
 
 1. 先跑 `python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal`
 2. 再跑 `python3 toolchain/scripts/deploy/aw_scaffold.py generate --profile first-wave-minimal --output-root /tmp/demo-aw`
@@ -45,5 +45,5 @@ python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
 - `install --backend agents` 在重复 `target_dir` 或既有冲突路径下写入前失败
 - `verify` 的 missing / broken symlink / wrong root type 结构错误
 - `verify` 的 source drift、missing payload files、target payload drift 与 conflict / unrecognized 目录
-- `.aw_template` 到 `.aw/` 的首发 profile 生成
+- `.aw_template` 到 `.aw/` 的 legacy scaffold profile 生成
 - `.aw_template` 的最小结构校验与 overwrite guard

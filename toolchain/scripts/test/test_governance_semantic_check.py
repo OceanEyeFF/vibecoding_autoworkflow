@@ -140,13 +140,11 @@ def test_check_canonical_skill_packages_are_minimal_accepts_valid_package(tmp_pa
         tmp_path / "product/harness/skills/demo-skill/SKILL.md",
         "\n".join(
             [
+                "---",
+                "name: demo-skill",
+                "description: Demo.",
+                "---",
                 "# Demo Skill",
-                "## Overview",
-                "## When To Use",
-                "## Workflow",
-                "## Hard Constraints",
-                "## Expected Output",
-                "## Resources",
             ]
         )
         + "\n",
@@ -164,14 +162,12 @@ def test_check_canonical_skill_packages_are_minimal_flags_deprecated_entrypoint_
         tmp_path / "product/harness/skills/demo-skill/SKILL.md",
         "\n".join(
             [
+                "---",
+                "name: demo-skill",
+                "description: Demo.",
+                "---",
                 "# Demo Skill",
-                "## Overview",
-                "## When To Use",
-                "## Workflow",
                 "1. Read `references/entrypoints.md`.",
-                "## Hard Constraints",
-                "## Expected Output",
-                "## Resources",
             ]
         )
         + "\n",
@@ -190,13 +186,11 @@ def test_check_canonical_skill_packages_are_minimal_flags_deprecated_entrypoint_
         tmp_path / "product/harness/skills/demo-skill/SKILL.md",
         "\n".join(
             [
+                "---",
+                "name: demo-skill",
+                "description: Demo.",
+                "---",
                 "# Demo Skill",
-                "## Overview",
-                "## When To Use",
-                "## Workflow",
-                "## Hard Constraints",
-                "## Expected Output",
-                "## Resources",
             ]
         )
         + "\n",
@@ -217,13 +211,11 @@ def test_check_canonical_skill_packages_are_minimal_flags_adapter_leakage(tmp_pa
         tmp_path / "product/harness/skills/demo-skill/SKILL.md",
         "\n".join(
             [
+                "---",
+                "name: demo-skill",
+                "description: Demo.",
+                "---",
                 "# Demo Skill",
-                "## Overview",
-                "## When To Use",
-                "## Workflow",
-                "## Hard Constraints",
-                "## Expected Output",
-                "## Resources",
                 "## Backend Notes",
             ]
         )
