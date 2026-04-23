@@ -121,6 +121,38 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify \
 
 这里的默认测试切面是"完整 Harness 冷启动"：repo 为空、`.aw/` 不存在， Harness 需要从头初始化参考信号、建立控制面，再进入 Observe → Decide → WorktrackScope 的完整链路。
 
+### 3. 正式运行前二次确认运行策略
+
+完成隔离 deploy 后、启动 `round-000` 前，operator 必须先确认本次要观察的 repo 运行策略。这里确认的是“deploy 后的临时 repo 应如何推进 worktrack”，不是确认 deploy 是否成功。
+
+当前已验证的默认初始化行为是：
+
+- `round-000` 可以从空 repo 自动初始化 `.aw/`，并在目标内打开一个最小 autonomous slice。
+- 该 slice close / gate pass / repo refresh 后会进入 handback boundary。
+- 若 control state 写成 `handback_lock_active: yes` 且 `autonomy_budget_remaining: 0`，后续独立新对话里的裸 `继续工作` 只允许复核并返回 handback，不会自动开启下一 worktrack。
+- 如果要观察“连续自动拆分多个 subsystem 并推进”，不能只依赖裸 `继续工作`；必须在正式开始前显式选择 continuous-autonomy 观察策略，或在第一轮 handback 后显式解除交接锁并授权下一 worktrack。
+
+正式开始前至少写下本轮观察 profile。这个 profile 只是 operator-facing 记录标签，不是 `.aw` 的权威字段；真正的推进权限仍以 `.aw/control-state.md` 的 `Continuation Authority`、`Handback Guard` 与 `Autonomy Ledger` 字段为准。
+
+```text
+OBSERVATION_PROFILE=strict-handback
+```
+
+或：
+
+```text
+OBSERVATION_PROFILE=continuous-autonomy
+```
+
+profile 与标准 control-state 字段的对应关系：
+
+| Observation profile | 权威字段含义 | 观察目标 |
+|---|---|---|
+| `strict-handback` | `handoff_state` 进入 handback，`handback_lock_active` 或等价 guard 生效，且 `autonomy_budget_remaining: 0` 或没有显式重新授权 | 验证每个 worktrack 完成后是否稳定停在交接边界；裸 `继续工作` 不应解锁 |
+| `continuous-autonomy` | `post_contract_autonomy: delegated-minimal`，`autonomy_scope: current-goal-only`，`autonomy_budget_remaining > 0`，并定义 `stop_after_autonomous_slice` | 验证 Harness 能否在当前 goal 内连续打开多个 bounded subsystem worktrack |
+
+如果选择 `strict-handback`，保留本 runbook 默认 prompt 即可。如果选择 `continuous-autonomy`，必须在 `round-000` prompt 的 `Working rule` 中明确补充连续策略，或者在 `round-000` close 后修改 `.aw/control-state.md` 的 `Continuation Authority / Autonomy Ledger` 后再进入 `round-001`。不要把二者混在同一轮观察里，否则无法判断 Harness 是“正确停下”还是“未能继续”。
+
 ## 四、第一轮无交互 Codex
 
 先准备 round-000 的 prompt 文件：
@@ -293,18 +325,26 @@ git -C "$TMP_REPO" diff --stat > "$TMP_RUN_ROOT/$ROUND_ID/git-diff-stat.txt"
 - `继续工作`
 - `继续工作：<一条额外信息或新约束>`
 
-如果你要观察“当前合同完成后，Harness 是否会继续自动开下一段最小 worktrack”，优先修改 `.aw/control-state.md` 中的 `Continuation Authority` 策略位，而不是把授权逻辑重新塞回 prompt prose。
+如果你要观察“当前合同完成后，Harness 是否会继续自动开下一段最小 worktrack”，必须先完成上文的运行策略二次确认。优先修改 `.aw/control-state.md` 中的 `Continuation Authority` 和 `Autonomy Ledger` 策略位，或者在 `round-000` prompt 中显式声明 continuous-autonomy；不要把授权逻辑临时塞回每一轮 prompt prose。
 
-默认观察基线应是：
+当前已验证的 `strict-handback` 基线是：
+
+- `round-000` 可自动完成一个最小 worktrack
+- worktrack close 后写回 handback guard
+- 后续裸 `继续工作` 只做状态复核
+- 若要继续，必须显式解除交接锁或指定下一 subsystem worktrack
+
+`continuous-autonomy` 对照基线才应设置为：
 
 - `post_contract_autonomy: delegated-minimal`
   - 允许在当前 goal 内自动挑一段低风险、最小 bounded follow-up slice
-- `max_auto_new_worktracks: 5`
-  - 覆盖战斗系统、战斗记录、卡牌系统、卡组系统、地图系统、事件系统等子系统
+- `max_auto_new_worktracks: <显式预算>`
+  - 该值不是初始化默认值；本固定题目如需覆盖战斗记录、卡牌、卡组、地图、事件等剩余子系统，可在 continuous-autonomy 对照 run 中显式设置为 `20`
+  - `20` 是观察预算，不是目标子系统数量；它需要覆盖 repo 观察、scope 切换、worktrack 初始化、执行、验证、closeout 和可能的恢复/重试轮次
 - `stop_after_autonomous_slice: yes`
   - 每个 worktrack 完成后仍然 handback，等待确认后再开下一个
 
-只有在你刻意测试 strict handback / 不续跑行为时，才切换到：
+如果要做比默认 handback guard 更强的 strict 对照，才切换到：
 
 - `post_contract_autonomy: manual-only`
   - strict handback；`继续工作` 只会复核并停在边界

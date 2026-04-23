@@ -1,9 +1,9 @@
 ---
 title: "Harness Control State"
 status: active
-updated: 2026-04-21
+updated: 2026-04-23
 owner: aw-kernel
-last_verified: 2026-04-21
+last_verified: 2026-04-23
 ---
 # Harness Control State
 
@@ -29,6 +29,7 @@ last_verified: 2026-04-21
   - 默认只允许 `current-goal-only`
 - `max_auto_new_worktracks`
   - 默认应为 `1`
+  - 大于 `1` 属于显式观察 profile / runtime override，不是初始化默认值
 - `stop_after_autonomous_slice`
   - 默认应为 `yes`
 
