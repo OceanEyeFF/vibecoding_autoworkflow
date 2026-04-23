@@ -26,7 +26,7 @@ last_verified: 2026-04-14
 | 理解项目目标、承接结构和根目录分层 | [`README.md`](./README.md) |
 | 看文档真相层与阅读顺序 | [`docs/README.md`](./docs/README.md) |
 | 看 Harness 主线与分层合同 | [`docs/harness/README.md`](./docs/harness/README.md) |
-| 看 `Autoresearch` 主线 | [`docs/autoresearch/README.md`](./docs/autoresearch/README.md) |
+| 看 `Autoresearch` 主线 | [`autoresearch/docs/README.md`](./autoresearch/docs/README.md) |
 | 改 `Memory Side` 主线文档 | [`docs/harness/adjacent-systems/memory-side/README.md`](./docs/harness/adjacent-systems/memory-side/README.md) |
 | 改 `Task Interface` 主线文档 | [`docs/harness/adjacent-systems/task-interface/README.md`](./docs/harness/adjacent-systems/task-interface/README.md) |
 | 改业务源码 | [`product/README.md`](./product/README.md) |

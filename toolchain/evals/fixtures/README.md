@@ -6,13 +6,12 @@
 
 - `schemas/eval-result.schema.json`
 - `schemas/run-summary.schema.json`
-- `schemas/autoresearch-contract.schema.json`
-- `schemas/autoresearch-scoreboard.schema.json`
 - `suites/memory-side-skills.v1.yaml`
 - `suites/memory-side-train.v1.yaml`
 - `suites/memory-side-validation.v1.yaml`
 - `suites/memory-side-acceptance.v1.yaml`
-- `templates/autoresearch-p2-claude-claude/`
+
+> **注意**：autoresearch 相关的 schema 与模板已迁移至 `autoresearch/schemas/` 与 `autoresearch/templates/`。
 
 ## Schemas
 
@@ -32,15 +31,6 @@
 - `results` 里的每一项对应一次 `skill` 或 `eval` phase，记录 repo、task、backend、prompt 文件、返回码、超时状态、耗时、起止时间，以及生成的 artifact 文件名映射。
 - 对 eval phase，条目还可带 `schema_file`、`structured_output` 和 `parse_error`。
 
-`schemas/autoresearch-contract.schema.json`
-
-- 固定 autoresearch P0.1 的 run contract 字段边界。
-- 用于校验 `run_id`、suite 分层、path boundary、指标字段和预算字段。
-
-`schemas/autoresearch-scoreboard.schema.json`
-
-- 固定 autoresearch P0.1 的 scoreboard 聚合外形。
-- 覆盖 run-level、lane-level、repo/task-level 的最小比较字段。
 
 ## Suite Manifests
 
@@ -67,7 +57,7 @@
 
 ## Templates
 
-`templates/autoresearch-p2-claude-claude/`
+`autoresearch/templates/autoresearch-p2-claude-claude/`
 
 - 这是一个 copy-ready 的最小 P2 manual-run 模板包。
 - bundle 内包含：
@@ -78,7 +68,7 @@
   - `manual-mutation.template.json`
 - 默认配置固定到：
   - `target_task = context-routing-skill`
-  - `target_prompt_path = toolchain/scripts/research/tasks/context-routing-skill-prompt.md`
+  - `target_prompt_path = autoresearch/src/tasks/context-routing-skill-prompt.md`
   - `worker_backend = claude`
   - `expected_backend = claude`
   - `expected_judge_backend = claude`

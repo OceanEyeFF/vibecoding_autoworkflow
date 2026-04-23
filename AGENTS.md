@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> 这是当前仓库的 agent-facing 最小工作规则入口。若与 `docs/project-maintenance/`、`docs/harness/` 或 `docs/autoresearch/` 冲突，以对应承接层文档为准。
+> 这是当前仓库的 agent-facing 最小工作规则入口。若与 `docs/project-maintenance/`、`docs/harness/` 或 `autoresearch/docs/` 冲突，以对应承接层文档为准。
 
 ## Core
 
@@ -54,14 +54,14 @@
 2. `implement`：只做当前任务，不顺手扩边界。
 3. `verify`：先跑与改动面匹配的检查和测试。
 4. `review`：把 diff、计划和验收标准对齐，确认没有遗漏同步项。
-5. `writeback`：把已验证事实写回 `docs/project-maintenance/`、`docs/harness/` 或 `docs/autoresearch/`，并清理失效上下文。
+5. `writeback`：把已验证事实写回 `docs/project-maintenance/`、`docs/harness/` 或 `autoresearch/docs/`，并清理失效上下文。
 
 ## Required Sync
 
 - 根目录分层、一级子目录、hidden/state/mount 层或 `.nav/` 规则变化时，必须同步更新 foundations 文档和对应治理检查。
 - `AGENTS.md`、review/verify 流程或退出标准变化时，必须同步更新 `docs/project-maintenance/governance/review-verify-handbook.md`。
 - deployment / adapter 行为变化时，必须同步更新相关 `docs/project-maintenance/deploy/` 文档和 verify 命令说明。
-- autoresearch 模块路径、入口或运行/参考文档变化时，必须同步更新 `docs/autoresearch/` 入口与对应治理检查。
+- autoresearch 模块路径、入口或运行/参考文档变化时，必须同步更新 `autoresearch/docs/` 入口与对应治理检查。
 - Harness doctrine、workflow family、adjacent-system 合同或 canonical skill 入口路径变化时，必须同步更新 `docs/harness/`、`product/*/skills/` 入口与对应治理检查。
 - 只有已验证结果才可以回写为长期真相；未验证的结论不要写进知识层。
 
@@ -76,15 +76,15 @@
 
 ## Docs Governance Baseline
 
-- `docs/README.md`、`docs/project-maintenance/README.md`、`docs/harness/README.md`、`docs/autoresearch/README.md` 和 `docs/*/README.md` 只做入口导航，不承载独占规则正文。
+- `docs/README.md`、`docs/project-maintenance/README.md`、`docs/harness/README.md`、`autoresearch/docs/README.md` 和 `docs/*/README.md` 只做入口导航，不承载独占规则正文。
 - `docs/` 下除 `README.md` 外的正文文档必须有 frontmatter：`title / status / updated / owner / last_verified`。
 - `status` 只允许：
-  - `docs/project-maintenance/`、`docs/harness/` 与 `docs/autoresearch/`：`active | draft | superseded`
+  - `docs/project-maintenance/`、`docs/harness/` 与 `autoresearch/docs/`：`active | draft | superseded`
 - 不在 `docs/` 长期使用 `status: suspended`。共享保留内容转 `superseded`，非共享草稿移出 `docs/`。
 - 研究结论准入后必须升格到承接层：
   - 项目维护规则、governance、deploy、usage-help 写 `docs/project-maintenance/`
   - Harness doctrine、workflow family、artifact 与 adjacent-system 合同写 `docs/harness/`
-  - autoresearch 模块专属知识、runbook 与 references 写 `docs/autoresearch/`
+  - autoresearch 模块专属知识、runbook 与 references 写 `autoresearch/docs/`
   - 实现合同落 `product/` 或 `toolchain/`
 - 新增或接管文档作用域时，必须同步更新最近入口页并清理旧入口，避免双份主线。
 
@@ -104,7 +104,7 @@
 
 - 项目维护与治理正文写到 `docs/project-maintenance/`。
 - Harness doctrine、workflow family 与 adjacent-system 合同写到 `docs/harness/`。
-- autoresearch 模块文档写到 `docs/autoresearch/`。
+- autoresearch 模块文档写到 `autoresearch/docs/`。
 - template / checklist 只在它们能稳定承接执行时才保留。
 - 不要把项目真相写进 `.agents/`、`.claude/`、`.opencode/`、`.nav/`。
 
@@ -119,7 +119,7 @@
 - `docs/README.md`
 - `docs/project-maintenance/README.md`
 - `docs/harness/README.md`
-- `docs/autoresearch/README.md`
+- `autoresearch/docs/README.md`
 - `docs/project-maintenance/foundations/README.md`
 - `docs/project-maintenance/foundations/root-directory-layering.md`
 - `docs/harness/foundations/Harness指导思想.md`

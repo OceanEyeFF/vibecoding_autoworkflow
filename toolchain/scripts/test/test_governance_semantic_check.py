@@ -51,7 +51,7 @@ def test_check_required_handoffs_flags_missing_link(tmp_path: Path) -> None:
     write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md", "")
     write_doc(tmp_path / "toolchain/scripts/README.md", "# scripts\n")
     write_doc(tmp_path / "toolchain/evals/README.md", "# evals\n")
-    write_doc(tmp_path / "docs/autoresearch/knowledge/README.md", "")
+    write_doc(tmp_path / "autoresearch/docs/knowledge/README.md", "")
 
     report = SemanticReport()
     check_required_handoffs(tmp_path, report)

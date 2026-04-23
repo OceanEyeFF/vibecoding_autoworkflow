@@ -76,10 +76,10 @@ REQUIRED_ENTRY_PATHS = [
     "docs/project-maintenance/deploy/README.md",
     "docs/project-maintenance/usage-help/README.md",
     "docs/project-maintenance/governance/path-governance-checks.md",
-    "docs/autoresearch/README.md",
-    "docs/autoresearch/knowledge/README.md",
-    "docs/autoresearch/references/README.md",
-    "docs/autoresearch/runbooks/README.md",
+    "autoresearch/docs/README.md",
+    "autoresearch/docs/knowledge/README.md",
+    "autoresearch/docs/references/README.md",
+    "autoresearch/docs/runbooks/README.md",
     "docs/project-maintenance/foundations/root-directory-layering.md",
     "toolchain/toolchain-layering.md",
     "product/README.md",
@@ -102,7 +102,7 @@ AGENTS_CONTRACT_BACKLINK_PATHS = [
     PROJECT_MAINTENANCE_README,
     HARNESS_README,
     "docs/project-maintenance/foundations/README.md",
-    "docs/autoresearch/README.md",
+    "autoresearch/docs/README.md",
     "docs/project-maintenance/governance/path-governance-checks.md",
     ".nav/README.md",
 ]
@@ -125,7 +125,7 @@ ENTRYPOINT_LINK_RULES = {
     "docs/README.md": [
         PROJECT_MAINTENANCE_README,
         HARNESS_README,
-        "docs/autoresearch/README.md",
+        "autoresearch/docs/README.md",
     ],
     HARNESS_README: [
         "docs/harness/foundations/README.md",
@@ -228,23 +228,23 @@ ENTRYPOINT_LINK_RULES = {
         "docs/project-maintenance/usage-help/claude.md",
         "docs/project-maintenance/usage-help/opencode.md",
     ],
-    "docs/autoresearch/README.md": [
-        "docs/autoresearch/knowledge/README.md",
-        "docs/autoresearch/references/README.md",
-        "docs/autoresearch/runbooks/README.md",
+    "autoresearch/docs/README.md": [
+        "autoresearch/docs/knowledge/README.md",
+        "autoresearch/docs/references/README.md",
+        "autoresearch/docs/runbooks/README.md",
         AGENTS_CONTRACT_DOC,
     ],
-    "docs/autoresearch/knowledge/README.md": [
-        "docs/autoresearch/knowledge/overview.md",
+    "autoresearch/docs/knowledge/README.md": [
+        "autoresearch/docs/knowledge/overview.md",
     ],
-    "docs/autoresearch/references/README.md": [
-        "docs/autoresearch/references/research-cli-help.md",
-        "docs/autoresearch/references/research-eval-contracts.md",
-        "docs/autoresearch/references/research-eval-observability.md",
+    "autoresearch/docs/references/README.md": [
+        "autoresearch/docs/references/research-cli-help.md",
+        "autoresearch/docs/references/research-eval-contracts.md",
+        "autoresearch/docs/references/research-eval-observability.md",
     ],
-    "docs/autoresearch/runbooks/README.md": [
-        "docs/autoresearch/runbooks/autoresearch-minimal-loop.md",
-        "docs/autoresearch/runbooks/tmp-exrepo-maintenance.md",
+    "autoresearch/docs/runbooks/README.md": [
+        "autoresearch/docs/runbooks/autoresearch-minimal-loop.md",
+        "autoresearch/docs/runbooks/tmp-exrepo-maintenance.md",
     ],
     "product/README.md": [
         "product/harness/README.md",
@@ -272,7 +272,7 @@ FRONTMATTER_REQUIRED_KEYS = [
 STATUS_RULES = [
     ("docs/project-maintenance/", {"active", "draft", "superseded"}),
     ("docs/harness/", {"active", "draft", "superseded"}),
-    ("docs/autoresearch/", {"active", "draft", "superseded"}),
+    ("autoresearch/docs/", {"active", "draft", "superseded"}),
 ]
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")

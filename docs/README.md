@@ -14,7 +14,7 @@
 
 - [project-maintenance/README.md](./project-maintenance/README.md)：项目维护、治理、deploy 与 backend usage
 - [harness/README.md](./harness/README.md)：Harness 主线 doctrine、scope、artifact、workflow families 与 adjacent systems
-- [autoresearch/README.md](./autoresearch/README.md)：`autoresearch` 模块的 knowledge、references 与 runbooks
+- [autoresearch/docs/README.md](../autoresearch/docs/README.md)：`autoresearch` 模块的 knowledge、references 与 runbooks
 
 ## 阅读顺序
 

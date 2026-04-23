@@ -10,20 +10,20 @@
 
 目录说明：
 
-- `prompts/` 当前承载 repo-local 的 eval prompt 模板，按 task 分文件保存，供 `toolchain/scripts/research/run_skill_suite.py` 在 eval 阶段读取。
+- `prompts/` 当前承载 repo-local 的 eval prompt 模板，按 task 分文件保存，供 `autoresearch/src/run_skill_suite.py` 在 eval 阶段读取。
 - `fixtures/` 当前承载稳定的 fixture 资产，主要是 schema 参考与 suite manifest。
 - `memory-side/` 当前承载已准入主题的 eval 入口；它依然不等于完整的 `program / scenarios / scoring database` 平台，但也不是“未来再说”的纯占位目录。
 
 这里还需要和 live acceptance 区分：
 
 - deterministic fixture / schema / suite 资产可以稳定入库
-- `backend acceptance matrix` 属于真实 backend 验收路径，运行入口在 `toolchain/scripts/research/run_backend_acceptance_matrix.py`
+- `backend acceptance matrix` 属于真实 backend 验收路径，运行入口在 `autoresearch/src/run_backend_acceptance_matrix.py`
 - 它仍然会复用这里的 prompt / schema 资产，但不应被理解成 cheap CI fixture
 
 稳定资产与运行时产物要分开理解：
 
 - `fixtures/schemas/eval-result.schema.json` 是通用 eval 结果 contract 模板，不是 runner 直接原样交给所有 judge 的最终 schema。
-- `run_skill_suite.py` 会结合 `toolchain/scripts/research/common.py` 中的 `EVAL_SCORE_DIMENSIONS`，按 task 物化出固定 score keys 的结构化 judge schema。
+- `run_skill_suite.py` 会结合 `autoresearch/src/common.py` 中的 `EVAL_SCORE_DIMENSIONS`，按 task 物化出固定 score keys 的结构化 judge schema。
 - 除了 `scores` 之外，task-scoped schema 还会固定 `dimension_feedback` 的维度 key，用来记录每个评分维度“做得好的点”和“需要改进的点”。
 - 这些 task-scoped schema 属于运行时产物：未开启 `--save-dir` 时通常写到临时文件；开启 `--save-dir` 时会作为某次 run 的 artifact 保存到该次输出目录。
 - `fixtures/schemas/run-summary.schema.json` 用来约束保存出的 `run-summary.json` 结构，描述一次 suite/direct run 的汇总元数据与 artifact 索引。

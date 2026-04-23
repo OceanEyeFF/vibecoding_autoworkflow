@@ -96,7 +96,7 @@ last_verified: 2026-04-14
 
 对应入口：
 
-- [`docs/autoresearch/`](./docs/autoresearch/README.md)
+- [`autoresearch/docs/`](./autoresearch/docs/README.md)
 - [`toolchain/`](./toolchain/README.md)
 
 ## 典型工作链路
@@ -132,7 +132,7 @@ Autoresearch 评测与改进
 `README.md` 负责讲清楚项目目标、当前承接结构和主线入口。
 `INDEX.md` 负责按任务目标把人或 agent 导向正确入口。
 `GUIDE.md` / `ROADMAP.md` 只是兼容入口，不单独定义主线。
-`AGENTS.md` 是 agent-facing 的最小工作规则入口；若冲突，以 `docs/project-maintenance/`、`docs/harness/` 与 `docs/autoresearch/` 为准。
+`AGENTS.md` 是 agent-facing 的最小工作规则入口；若冲突，以 `docs/project-maintenance/`、`docs/harness/` 与 `autoresearch/docs/` 为准。
 
 ## 从哪里进入
 
@@ -144,7 +144,7 @@ Autoresearch 评测与改进
    - Harness 主线与 adjacent-system 合同：[`docs/harness/README.md`](./docs/harness/README.md)
    - 业务源码：[`product/README.md`](./product/README.md)
    - 工具层：[`toolchain/README.md`](./toolchain/README.md)
-   - `autoresearch` 文档：[`docs/autoresearch/README.md`](./docs/autoresearch/README.md)
+   - `autoresearch` 文档：[`autoresearch/docs/README.md`](./autoresearch/docs/README.md)
 
 首次进入仓库时，通常这样选：
 
@@ -153,7 +153,7 @@ Autoresearch 评测与改进
 - 想理解 `Harness 平台` 的承接结构：看 [`product/README.md`](./product/README.md)
 - 想理解 `Task Contract`：看 [`docs/harness/adjacent-systems/task-interface/task-contract.md`](./docs/harness/adjacent-systems/task-interface/task-contract.md)
 - 想理解 `Memory Side`：看 [`docs/harness/adjacent-systems/memory-side/README.md`](./docs/harness/adjacent-systems/memory-side/README.md)
-- 想看 `Autoresearch`：看 [`docs/autoresearch/README.md`](./docs/autoresearch/README.md)
+- 想看 `Autoresearch`：看 [`autoresearch/docs/README.md`](./autoresearch/docs/README.md)
 - 想部署或跑治理检查：看 [`toolchain/README.md`](./toolchain/README.md)
 - 想看 repo-local 使用帮助：看 [`docs/project-maintenance/usage-help/README.md`](./docs/project-maintenance/usage-help/README.md)
 

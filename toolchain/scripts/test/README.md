@@ -5,7 +5,7 @@
 当前主线：
 
 - `folder_logic_check.py`：检查根目录分层、一级目录白名单、hidden/state/mount layer 例外白名单，以及 `docs/` / `toolchain/` 下的错位内容
-- `path_governance_check.py`：检查 markdown 相对链接、关键主入口、路径/文档治理回链、`docs/project-maintenance/`、`docs/harness/` 与 `docs/autoresearch/` 主线入口完整性、正文文档 frontmatter、目录状态约束和 `.gitignore` 中的关键 hidden-layer 忽略项
+- `path_governance_check.py`：检查 markdown 相对链接、关键主入口、路径/文档治理回链、`docs/project-maintenance/`、`docs/harness/` 与 `autoresearch/docs/` 主线入口完整性、正文文档 frontmatter、目录状态约束和 `.gitignore` 中的关键 hidden-layer 忽略项
 - `governance_semantic_check.py`：检查关键模板是否存在、关键知识页是否回链承接模板、canonical skill 包体是否保持最小 executable shape、adapter 层是否没有重新长出错误的 wrapper 真相、foundations 权威文档是否出现影子文件，以及已退役的占位口径是否回流
 - `scope_gate_check.py`：按 contract 中的 `in_scope` / `out_of_scope` 规则校验本轮改动是否越界
 - `gate_status_backfill.py`：把 gate 结果回填到 `.autoworkflow/state/` 和 closeout 摘要

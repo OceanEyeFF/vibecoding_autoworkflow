@@ -105,7 +105,7 @@ last_verified: 2026-04-23
 
 ### 4. 回写要求
 
-- 已验证结果优先写进 `docs/harness/`、`docs/project-maintenance/` 或 `docs/autoresearch/`
+- 已验证结果优先写进 `docs/harness/`、`docs/project-maintenance/` 或 `autoresearch/docs/`
 - repo-local 维护动作写进 `docs/project-maintenance/`
 - 不把临时推理、未验证猜测或执行噪音写成长期真相
 - 如果需要固定输出结构，优先复用现有模板而不是新发明格式
