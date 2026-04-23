@@ -18,8 +18,9 @@ last_verified: 2026-04-23
 | `TMP_ROOT` | `/tmp/harness-spire-lite.pq1SvT` |
 | 临时 repo | `/tmp/harness-spire-lite.pq1SvT/repo` |
 | 运行产物 | `/tmp/harness-spire-lite.pq1SvT/run-artifacts` |
-| runner log | `/tmp/harness-spire-lite.20260423165517.208206.runner.log` |
-| 最后一轮输出 | `/tmp/harness-spire-lite.pq1SvT/run-artifacts/round-020/final.txt` |
+| 初始 runner log | `/tmp/harness-spire-lite.20260423165517.208206.runner.log` |
+| continuation runner log | `/tmp/harness-spire-lite-cont.20260423203447.279830.runner.log` |
+| 最后一轮输出 | `/tmp/harness-spire-lite.pq1SvT/run-artifacts/round-040/final.txt` |
 | 控制状态 | `/tmp/harness-spire-lite.pq1SvT/repo/.aw/control-state.md` |
 | 执行日期 | 2026-04-23 |
 | 固定题目 | CLI Slay the Spire-lite |
@@ -33,8 +34,10 @@ last_verified: 2026-04-23
 1. `round-000` 从空 repo 初始化 `.aw/`，设置 `max_auto_new_worktracks: 20` 和 `autonomy_budget_remaining: 20`。
 2. `round-000` 到 `round-005` 完成固定题目的六个 subsystem：combat、combat logger、cards、deck、map、events。
 3. `round-006` 到 `round-019` 推进 run-level integration、glue 和验证切片。
-4. `round-019` 关闭 `WT-020-run-loss-outcome-validation` 后预算降为 `0`。
-5. `round-020` 的裸 `继续工作` 未解锁、未开新 worktrack，正确停在 strict handback。
+4. `round-020` 在上一阶段被显式解锁，作为 continuation 起点进入下一组 bounded worktracks。
+5. `round-021` 到 `round-036` 继续推进 cache hygiene、active-event summary、CLI probes、node guards、rest/shop behavior、gold reward、path/help inventory 对齐等 20 个额外 bounded worktracks。
+6. `round-036` 关闭 `WT-040-help-path-alias-inventory` 后预算降为 `0`。
+7. `round-037` 到 `round-040` 的裸 `继续工作` 未解锁、未开新 worktrack，正确停在 strict handback。
 
 最终控制状态：
 
@@ -47,11 +50,13 @@ last_verified: 2026-04-23
 - `handoff_state: awaiting-handoff`
 - `handback_lock_active: yes`
 - `autonomy_budget_remaining: 0`
-- `autonomous_worktracks_opened: 20`
+- `autonomous_worktracks_opened: 40`
+- `continuation_round_start: 21`
+- `continuation_round_end: 40`
 
 ## Round Audit
 
-所有轮次顶层入口均为 `harness-skill`。**本次未观察到真实 SubAgent 创建**；`round-000` 到 `round-019` 的执行均记录为 current-carrier fallback，`round-020` 未进入下游 worktrack。
+所有轮次顶层入口均为 `harness-skill`。**本次未观察到真实 SubAgent 创建**；`round-000` 到 `round-036` 的执行均记录为 current-carrier fallback，`round-037` 到 `round-040` 未进入下游 worktrack。
 
 技能缩写：
 
@@ -99,8 +104,28 @@ H -> RS/RN -> IW/WS/SW/D -> RE/TE/RC/G -> CW/RR
 | `round-016` | `WT-017-terminal-stdin-validation` | 标准链 | 验证终局后忽略后续 stdin | 80 tests OK | 4→3 |
 | `round-017` | `WT-018-event-run-context-sync` | `-WS` | 同步 event/combat 的 HP、deck、run context | 82 tests + compileall OK | 3→2 |
 | `round-018` | `WT-019-post-combat-replay-validation` | 标准链 | 验证 combat 结束后 `log` 仍可看最近 replay | 84 tests OK | 2→1 |
-| `round-019` | `WT-020-run-loss-outcome-validation` | 标准链 | 验证 loss outcome 和非 0 exit code；预算耗尽 | 86 tests OK | 1→0 |
-| `round-020` | 未创建 | `H` 只读 | 验证预算耗尽后 strict handback：裸 `继续工作` 被阻止，未开新 worktrack，未改文件 | 未跑测试 | 验证 handback |
+| `round-019` | `WT-020-run-loss-outcome-validation` | 标准链 | 验证 loss outcome 和非 0 exit code；上一阶段收束 | 86 tests OK | 1→0 |
+| `round-020` | 未创建 | `H` 只读 | 上一阶段 handback 收束；后续由 continuation runner 显式解锁并继续 | 未跑测试 | 进入 continuation |
+| `round-021` | `WT-021..WT-025` | 标准链，多 worktrack 连续闭环 | 完成 generated-cache hygiene、contextual active-event summary、run unknown-command inventory、AI manual/README wording 对齐 | 复验留到最终阶段 | 20→15 |
+| `round-022` | `WT-026-terminal-win-message-cleanup` | 标准链 | 清理 terminal win message，不再输出矛盾的 path prompt | 复验留到最终阶段 | 15→14 |
+| `round-023` | `WT-027-starter-map-banner-alignment` | 标准链 | 对齐 CLI 启动 banner 到 starter-map wording | 复验留到最终阶段 | 14→13 |
+| `round-024` | `WT-028-run-eventchoice-node-guard` | 标准链 | eventchoice/chooseevent 仅在未解决 event 节点生效 | 复验留到最终阶段 | 13→12 |
+| `round-025` | `WT-029-run-eventroll-node-guard` | 标准链 | eventroll 仅在未解决 event 节点生效 | 复验留到最终阶段 | 12→11 |
+| `round-026` | `WT-030-run-terminal-command-guard` | 标准链 | terminal outcome 后 mutating run commands fast-fail | 复验留到最终阶段 | 11→10 |
+| `round-027` | `WT-031-post-terminal-readonly-validation` | 标准链 | terminal outcome 后 read-only inspection 保持可用 | 复验留到最终阶段 | 10→9 |
+| `round-028` | `WT-032-rest-node-healing` | 标准链 | rest 节点确定性治疗并同步 run HP | 复验留到最终阶段 | 9→8 |
+| `round-029` | `WT-033-shop-node-pass-through-resolution` | 标准链 | shop 节点 metadata-only pass-through resolution | 复验留到最终阶段 | 8→7 |
+| `round-030` | `WT-034-cli-version-metadata` | 标准链 | 新增 `--version` / `-V` 非交互 probe | 复验留到最终阶段 | 7→6 |
+| `round-031` | `WT-035-version-short-alias-docs` | 标准链 | README/AI manual 对齐 `-V` 文档 | 复验留到最终阶段 | 6→5 |
+| `round-032` | `WT-036-cli-help-probe` | 标准链 | 新增 `--help` / `-h` 非交互 probe | 复验留到最终阶段 | 5→4 |
+| `round-033` | `WT-037-cli-unknown-arg-guard` | 标准链 | unsupported CLI arg fast-fail，不启动 run prompt | 复验留到最终阶段 | 4→3 |
+| `round-034` | `WT-038-combat-win-gold-reward` | 标准链 | deterministic combat-win gold reward 写回 run context | 复验留到最终阶段 | 3→2 |
+| `round-035` | `WT-039-run-path-alias-validation` | 标准链 | 验证并文档化已存在的 `path <node_id>` alias | 复验留到最终阶段 | 2→1 |
+| `round-036` | `WT-040-help-path-alias-inventory` | 标准链 | help/unknown-command inventory 暴露 `choosepath/path <node_id>`，修复 help test false-positive | 108 tests OK | 1→0 |
+| `round-037` | 未创建 | `H` 只读 | 预算耗尽后首次确认 strict handback；未开 `WT-041` | 未跑测试 | handback lock |
+| `round-038` | 未创建 | `H` 只读 | 重复确认 handback lock；未进入下游技能 | 未跑测试 | handback lock |
+| `round-039` | 未创建 | `H` 只读 | 重复确认需要显式审批或 budget 变更 | 未跑测试 | handback lock |
+| `round-040` | 未创建 | `H` 只读 | 最终确认 `autonomy_budget_remaining: 0`、`needs_programmer_approval: true` | 未跑测试 | stable handback |
 
 ## Verified Product State
 
@@ -122,7 +147,7 @@ H -> RS/RN -> IW/WS/SW/D -> RE/TE/RC/G -> CW/RR
 
 ## Verification
 
-复跑命令：
+最终复跑命令：
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests
@@ -131,20 +156,23 @@ PYTHONDONTWRITEBYTECODE=1 python -m compileall -q spirelite tests
 
 结果：
 
-- `unittest discover`：`Ran 86 tests ... OK`
-- `compileall`：passed
-- `round-000` 到 `round-020`：每轮 `exit-code.txt` 均为 `0`
-- `round-020`：未进入下游 worktrack、未改文件、未跑测试；只验证 budget=0 后的 handback guard
+- `unittest discover`：`Ran 108 tests ... OK`
+- `py_compile` scoped to `spirelite/` + `tests/`：`compiled 20 files`
+- repo-wide `py_compile` 现在会得到 `21 files`，多出的 1 个文件是 `.agents/skills/aw-set-harness-goal-skill/scripts/deploy_aw.py`
+- post-validation cache scan：未发现 `__pycache__`、`*.pyc` 或 `*.pyo`
+- `round-021` 到 `round-040`：每轮 `exit-code.txt` 均为 `0`
+- `round-037` 到 `round-040`：未进入下游 worktrack、未改文件、未跑新测试；只验证 budget=0 后的 strict handback guard
 
 部分中间轮次的 `stderr.txt` 记录了 patch/test/修复噪声，非空属于正常。最终判断以每轮 `exit-code.txt`、`final.txt`、`.aw` gate evidence、repo snapshot 和复验命令为准。
 
 ## Important Observations
 
 - `continuous-autonomy` override 生效：`round-000` 初始化预算为 `20`，每个 autonomous worktrack 后递减，直到 `round-019` 归零。
+- continuation phase 再次显式设置并消费了 `20` 个 autonomous slices，直到 `round-036` 归零；`round-037` 到 `round-040` 证明预算耗尽后 strict handback 恢复。
 - "每个 subsystem 独立 worktrack"和"自动连续推进"可以同时成立：每轮仍在 `stop_after_autonomous_slice` 边界 handback，但预算未耗尽时不激活硬锁。
 - 固定题目六个 subsystem 在 `round-000` 到 `round-005` 完成，后续 14 个 worktrack 为 integration seam、route validation、entrypoint/help/error/alias/EOF/loss outcome 等收敛切片。
+- continuation phase 新增了 cache hygiene、active-event summary、terminal/rest/shop/run guards、version/help probes、gold reward、path/help inventory 对齐等 20 个 bounded worktracks，最终 repo snapshot 收敛到 `WT-040-help-path-alias-inventory` 已关闭状态。
 - 本次运行未创建真实 SubAgent；执行面是 current-carrier fallback。这与上一轮 strict-handback 中出现真实 worker carrier 的结果不同，属于 runtime 观察差异。
-- `round-020` 证明预算耗尽后 strict handback 恢复：裸 `继续工作` 不再解锁，不再开新 worktrack。
 - 临时 repo 仍为 no-commit / unborn baseline；`git status` 显示 `.agents/`、`.aw/`、product files、tests 和 docs 为 untracked，是 runbook 规定的观察状态。
 
 ## Known Residual Scope
