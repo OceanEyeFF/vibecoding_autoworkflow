@@ -85,8 +85,6 @@ REQUIRED_ENTRY_PATHS = [
     "toolchain/README.md",
     "toolchain/scripts/README.md",
     "toolchain/scripts/test/README.md",
-    "toolchain/evals/README.md",
-    "toolchain/evals/memory-side/README.md",
 ]
 AGENTS_CONTRACT_BACKLINK_PATHS = [
     "AGENTS.md",

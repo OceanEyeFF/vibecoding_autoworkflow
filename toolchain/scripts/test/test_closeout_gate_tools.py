@@ -165,7 +165,6 @@ def test_run_spec_gate_includes_folder_logic(monkeypatch, tmp_path) -> None:
     assert any(command[-2:] == ["--repo-root", str(tmp_path)] for command in commands)
     assert any("folder_logic_check.py" in command[1] for command in commands)
     assert any("docs/harness" in command for command in commands)
-    assert not any("autoresearch/docs" in command for command in commands)
 
 
 def test_run_test_gate_includes_agents_adapter_contract_tests(monkeypatch, tmp_path) -> None:
@@ -306,16 +305,16 @@ def test_run_smoke_gate_skips_missing_runtime_root(monkeypatch, tmp_path) -> Non
     runtime_dir = (
         primary_root
         / ".autoworkflow"
-        / "autoresearch"
-        / "manual-cr-codex-loop-3round-r000001-m000642"
+        / "closeout"
+        / "manual-governance-loop-3round-r000001-m000642"
     )
     runtime_dir.mkdir(parents=True)
     (runtime_dir / "runtime.json").write_text('{"active_round": null}', encoding="utf-8")
     other_runtime_dir = (
         primary_root
         / ".autoworkflow"
-        / "autoresearch"
-        / "manual-cr-codex-loop-6-3-3-r000001-m046830"
+        / "closeout"
+        / "manual-governance-loop-6-3-3-r000001-m046830"
     )
     other_runtime_dir.mkdir(parents=True)
     (other_runtime_dir / "runtime.json").write_text('{"active_round": null}', encoding="utf-8")
@@ -345,8 +344,8 @@ def test_run_smoke_gate_fails_when_runtime_root_exists_but_retained_files_are_mi
     (
         tmp_path
         / ".autoworkflow"
-        / "autoresearch"
-        / "manual-cr-codex-loop-3round-r000001-m000642"
+        / "closeout"
+        / "manual-governance-loop-3round-r000001-m000642"
     ).mkdir(parents=True)
     monkeypatch.setattr(
         closeout_acceptance_gate,
@@ -370,7 +369,7 @@ def test_run_smoke_gate_fails_when_runtime_root_exists_but_retained_files_are_mi
 
 def test_run_smoke_gate_fails_when_only_unrelated_runtime_artifacts_exist(monkeypatch, tmp_path) -> None:
     primary_root = tmp_path / "primary"
-    (primary_root / ".autoworkflow" / "autoresearch" / "some-other-run").mkdir(parents=True)
+    (primary_root / ".autoworkflow" / "closeout" / "some-other-run").mkdir(parents=True)
     monkeypatch.setattr(closeout_acceptance_gate, "find_primary_worktree_root", lambda repo_root: primary_root)
     monkeypatch.setattr(
         closeout_acceptance_gate,

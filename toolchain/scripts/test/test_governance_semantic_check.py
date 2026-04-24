@@ -33,7 +33,7 @@ def test_check_required_handoffs_flags_missing_link(tmp_path: Path) -> None:
     write_doc(tmp_path / "product/harness/adapters/README.md", "# adapters\n")
     write_doc(
         tmp_path / "toolchain/toolchain-layering.md",
-        "[scripts](../../../toolchain/scripts/README.md)\n",
+        "missing script handoff\n",
     )
     write_doc(tmp_path / "docs/harness/README.md", "")
     write_doc(tmp_path / "docs/harness/foundations/README.md", "")
@@ -50,12 +50,11 @@ def test_check_required_handoffs_flags_missing_link(tmp_path: Path) -> None:
     write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md", "")
     write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md", "")
     write_doc(tmp_path / "toolchain/scripts/README.md", "# scripts\n")
-    write_doc(tmp_path / "toolchain/evals/README.md", "# evals\n")
 
     report = SemanticReport()
     check_required_handoffs(tmp_path, report)
 
-    assert any("toolchain-layering.md -> toolchain/evals/README.md" in item for item in report.failures)
+    assert any("toolchain-layering.md -> toolchain/scripts/README.md" in item for item in report.failures)
 
 
 def test_check_foundations_authority_shadows_flags_prefixed_duplicate(tmp_path: Path) -> None:
@@ -74,10 +73,6 @@ def test_check_outdated_placeholder_phrases_flags_stale_text(tmp_path: Path) -> 
     write_doc(
         tmp_path / "toolchain/scripts/README.md",
         "`research/`：预留给后续准入的最小研究脚本\n",
-    )
-    write_doc(
-        tmp_path / "toolchain/evals/README.md",
-        "`memory-side/` 当前承接已准入主题的 eval 入口。\n",
     )
     write_doc(tmp_path / "toolchain/toolchain-layering.md", "current wording\n")
 

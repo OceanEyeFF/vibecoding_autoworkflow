@@ -15,7 +15,6 @@ last_verified: 2026-04-24
 
 - 部署与同步脚本
 - 治理检查与 gate 入口
-- 已准入的 eval / fixture / prompt 资产
 - 打包与分发工具
 
 `toolchain/` 不承载：
@@ -30,17 +29,14 @@ last_verified: 2026-04-24
 ```text
 toolchain/
 ├── README.md
-├── scripts/
-└── evals/
+└── scripts/
 ```
 
 - `scripts/`：动作入口（deploy / test / research / hooks）
-- `evals/`：评测资产（prompts / fixtures / topic evals）
 
 硬规则：
 
 - `scripts/` 放动作，不放长期规则正文
-- `evals/` 只放测量资产，不放业务源码
 - 运行结果写入 repo-local state，不写回 `toolchain/`
 
 ## 三、输出落点
@@ -56,7 +52,7 @@ toolchain/
 
 ## 四、扩展规则
 
-- 保持 `scripts/` 与 `evals/` 两层主结构不变
+- 保持 `scripts/` 为当前唯一动作入口层
 - 子目录按动作类型扩展，不按历史来源堆放
 - 新增脚本若说不清属于部署、评测、测试或打包，不应入库
 
@@ -65,4 +61,3 @@ toolchain/
 - [根目录分层](../docs/project-maintenance/foundations/root-directory-layering.md)
 - [Toolchain 入口](./README.md)
 - [Scripts 入口总览](./scripts/README.md)
-- [Evals 入口总览](./evals/README.md)

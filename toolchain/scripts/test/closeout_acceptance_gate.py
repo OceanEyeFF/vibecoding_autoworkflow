@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the repeatable closeout acceptance gate for autoresearch closeout."""
+"""Run the repeatable closeout acceptance gate."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-WORKFLOW_ID = "autoresearch-closeout-governance-task-list-20260402"
+WORKFLOW_ID = "closeout-governance-task-list-20260402"
 LOCAL_DEPLOY_TARGET_ROOTS = {
     "agents": REPO_ROOT / ".agents" / "skills",
     "claude": REPO_ROOT / ".claude" / "skills",
@@ -229,10 +229,10 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
 
 def run_smoke_gate(repo_root: Path, python: str, workflow_id: str) -> dict:
     def retained_runtime_paths_for(root: Path) -> list[Path]:
-        runtime_root = root / ".autoworkflow" / "autoresearch"
+        runtime_root = root / ".autoworkflow" / "closeout"
         return [
-            runtime_root / "manual-cr-codex-loop-3round-r000001-m000642" / "runtime.json",
-            runtime_root / "manual-cr-codex-loop-6-3-3-r000001-m046830" / "runtime.json",
+            runtime_root / "manual-governance-loop-3round-r000001-m000642" / "runtime.json",
+            runtime_root / "manual-governance-loop-6-3-3-r000001-m046830" / "runtime.json",
         ]
 
     def retained_roots_present(paths: list[Path]) -> bool:

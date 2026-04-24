@@ -99,11 +99,10 @@ last_verified: 2026-04-18
 包括：
 
 - `toolchain/scripts/`
-- `toolchain/evals/`
 
 说明：
 
-- 工具层负责部署、治理检查和按需准入的辅助入口
+- 工具层负责部署、治理检查和按需准入的辅助脚本入口
 - 工具层不再保存 canonical skill 源码
 
 边界说明见：
@@ -187,7 +186,6 @@ last_verified: 2026-04-18
 ```text
 toolchain/
   scripts/
-  evals/
 ```
 
 说明：

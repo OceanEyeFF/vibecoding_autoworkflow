@@ -57,7 +57,6 @@ def create_valid_repo(tmp_path: Path) -> Path:
         "docs/project-maintenance",
         "docs/harness",
         "toolchain/scripts",
-        "toolchain/evals",
         "tools",
     ):
         (repo_root / directory).mkdir(parents=True, exist_ok=True)

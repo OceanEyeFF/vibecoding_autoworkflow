@@ -82,7 +82,6 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 18. `governance_semantic_check.py`
 19. 关键承接关系是否仍存在：
    - `toolchain/toolchain-layering.md -> toolchain/scripts/README.md`
-   - `toolchain/toolchain-layering.md -> toolchain/evals/README.md`
    - `context-routing.md -> context-routing-output-format.md`
    - `writeback-cleanup.md -> writeback-cleanup-output-format.md`
 20. foundations 权威文档是否出现同名前缀 shadow 文件
