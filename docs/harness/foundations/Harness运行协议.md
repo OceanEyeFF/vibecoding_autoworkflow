@@ -197,9 +197,9 @@ Harness 文档与控制逻辑应按 3 个正交维度组织：
 ### 6.3 Artifact 轴
 
 回答"控制器依赖什么正式对象"：
-- `Goal / Charter` —— 长期目标
+- `Goal / Charter` —— 长期目标，并承载 `Engineering Node Map`
 - `Snapshot / Status` —— 当前状态
-- `Contract` —— 局部状态转移合同
+- `Contract` —— 局部状态转移合同，并绑定 `Node Type`
 - `Plan / Task Queue` —— 可执行子任务序列
 - `Evidence` —— 状态转移证据
 - `Cursor / Control State` —— 控制面当前模式
@@ -233,6 +233,13 @@ Harness 文档与控制逻辑应按 3 个正交维度组织：
 它关心：
 
 - 任务目标
+- `Node Type`
+  - `type`
+  - `source_from_goal_charter`
+  - `baseline_form`
+  - `merge_required`
+  - `gate_criteria`
+  - `if_interrupted_strategy`
 - 工作范围
 - 验收条件
 - 当前 branch 与 baseline 的差异
@@ -256,6 +263,11 @@ Harness 文档与控制逻辑应按 3 个正交维度组织：
 - 项目愿景
 - 核心功能目标
 - 技术栈与演进方向
+- `Engineering Node Map`
+  - `Node Type Registry`
+  - `This Goal's Node Types`
+  - `Node Dependency Graph`
+  - `Default Baseline Policy`
 - 成功标准
 - 系统不变量
 

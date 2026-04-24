@@ -187,15 +187,16 @@ Harness 文档与控制逻辑应按 3 个正交维度组织：
 ### 6.3 Artifact 轴
 
 回答"控制器依赖什么正式对象"：
-- `Goal / Charter` —— 长期目标
+- `Goal / Charter` —— 长期目标，并承载 `Engineering Node Map`
 - `Snapshot / Status` —— 当前状态
-- `Contract` —— 局部状态转移合同
+- `Contract` —— 局部状态转移合同，并绑定从 Goal 派生的 `Node Type`
 - `Plan / Task Queue` —— 可执行子任务序列
 - `Evidence` —— 状态转移证据
 - `Cursor / Control State` —— 控制面当前模式
 - `ChangeRequest` —— 目标变更请求
 
 **关键约束**：`Control State` 只保存控制面状态，不承载业务真相。业务真相应分别保存在 `Repo` 与 `Worktrack` 的正式文档里。
+`Engineering Node Map` 属于 Repo 级目标真相；`Node Type` 与 `baseline_form`、`merge_required`、`gate_criteria`、`if_interrupted_strategy` 属于 Worktrack Contract 的执行约束。下游状态、调度、证据、关卡、恢复和收尾交接只能引用或携带这些字段，不应重新发明策略。
 
 ---
 
@@ -465,7 +466,18 @@ Gate 应汇总**正交校验面**的裁决：
 
 ---
 
-## 十四、硬约束
+## 十四、Artifact Output Protocol
+
+所有 skill 产出的 artifact 必须遵守以下全局协议：
+
+1. **先完整生成，再做压缩**：每个 skill 先生成尽可能长且完整的原始内容，确保信息不丢失；然后通过压缩步骤提取 `Control Signal` 层。
+2. **控制结论优先**：影响下一动作决策的信息放在 `Control Signal` 层；完整证据、日志、原始输出放在 `Supporting Detail` 层。
+3. **禁止平铺重复**：已在其他 artifact 中记录的信息，使用引用（文件路径 + section）而不是内联全文复制。
+4. **空值压缩**：无实质内容的字段使用 `N/A`，删除占位符行（如 `- ` 或 `待填写`）。
+5. **引用格式**：引用其他 artifact 时使用 `[artifact-path#section]` 格式，例如 `[.aw/worktrack/contract.md#Task Goal]`。
+6. **压缩不是省略**：`Supporting Detail` 层必须保留完整内容，只是不纳入传递/决策上下文；后续如需查阅细节，可直接读取。
+
+## 十五、硬约束
 
 - **不要把 Harness 当成直接写代码的执行者。**
 - **不要把 Function 算子隐含在技能名称后面。** 必须在控制面上显性化 `Observe → Decide → Dispatch → Verify → Judge → Recover → Close → ChangeGoal` 的控制语义。

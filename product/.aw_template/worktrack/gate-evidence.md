@@ -44,6 +44,10 @@
 
 ## Evidence Assessment
 
+- node_type:
+- node_type_source:
+- applied_gate_criteria:
+- fallback_used:
 - overall_confidence:
 - overall_confidence_reason:
 - freshness_blockers:

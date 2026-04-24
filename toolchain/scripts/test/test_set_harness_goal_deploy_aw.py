@@ -85,6 +85,74 @@ class SetHarnessGoalDeployAwValidationTest(unittest.TestCase):
             issues,
         )
 
+    def test_validate_requires_interruption_strategy_in_goal_node_fields(self) -> None:
+        original_text = deploy_aw.TEMPLATE_SPECS["goal-charter"].source_path.read_text(
+            encoding="utf-8"
+        )
+        drifted_text = original_text.replace("  - if_interrupted_strategy:\n", "", 1)
+        drifted_spec = self._drifted_spec("goal-charter", drifted_text)
+
+        issues = deploy_aw.validate_template_source(drifted_spec)
+
+        self.assertIn(
+            "missing nested keyed field in section Engineering Node Map: if_interrupted_strategy",
+            issues,
+        )
+
+    def test_validate_static_goal_charter_answer_template_requires_node_fields(self) -> None:
+        original_spec = deploy_aw.STATIC_ASSET_SPECS["goal-charter-template"]
+        original_text = original_spec.source_path.read_text(encoding="utf-8")
+        drifted_text = original_text.replace("  - if_interrupted_strategy:\n", "", 1)
+        temp_template = Path(self.temp_dir.name) / "goal-charter-answer-drifted.md"
+        temp_template.write_text(drifted_text, encoding="utf-8")
+        drifted_spec = dataclasses.replace(
+            original_spec, source_relpath=str(temp_template)
+        )
+
+        issues = deploy_aw.validate_static_asset_source(drifted_spec)
+
+        self.assertIn(
+            "missing nested keyed field in section Engineering Node Map: if_interrupted_strategy",
+            issues,
+        )
+
+    def test_generate_rejects_invalid_static_goal_charter_answer_template(self) -> None:
+        output_root = Path(self.temp_dir.name) / "repo"
+        output_root.mkdir()
+        original_spec = deploy_aw.STATIC_ASSET_SPECS["goal-charter-template"]
+        original_text = original_spec.source_path.read_text(encoding="utf-8")
+        drifted_text = original_text.replace("  - if_interrupted_strategy:\n", "", 1)
+        temp_template = Path(self.temp_dir.name) / "goal-charter-answer-drifted.md"
+        temp_template.write_text(drifted_text, encoding="utf-8")
+        drifted_spec = dataclasses.replace(
+            original_spec, source_relpath=str(temp_template)
+        )
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--template",
+                "goal-charter",
+                "--deploy-path",
+                str(output_root),
+            ]
+        )
+
+        with self.assertRaises(deploy_aw.DeployAwError) as raised:
+            deploy_aw.run_generate(
+                [deploy_aw.TEMPLATE_SPECS["goal-charter"]],
+                [drifted_spec],
+                args,
+            )
+
+        self.assertIn(
+            "missing nested keyed field in section Engineering Node Map: if_interrupted_strategy",
+            str(raised.exception),
+        )
+        self.assertFalse((output_root / ".aw" / "goal-charter.md").exists())
+        self.assertFalse(
+            (output_root / ".aw" / "template" / "goal-charter.template.md").exists()
+        )
+
     def test_repo_snapshot_mainline_branch_uses_baseline_branch(self) -> None:
         output_root = Path(self.temp_dir.name) / ".aw"
         args = deploy_aw.parse_args(

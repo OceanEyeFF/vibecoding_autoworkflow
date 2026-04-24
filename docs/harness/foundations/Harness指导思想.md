@@ -164,6 +164,11 @@ Harness 的核心交付物应至少覆盖下面几类正式对象。
 - 项目愿景
 - 核心功能目标
 - 技术栈与演进方向
+- `Engineering Node Map`
+  - `Node Type Registry`
+  - `This Goal's Node Types`
+  - `Node Dependency Graph`
+  - `Default Baseline Policy`
 - 成功标准
 - 系统不变量
 
@@ -186,6 +191,7 @@ Harness 的核心交付物应至少覆盖下面几类正式对象。
 **应包含内容**：
 
 - 任务目标
+- `Node Type`（从 Goal Charter 的 Engineering Node Map 绑定）
 - 工作范围
 - 非目标
 - 影响模块

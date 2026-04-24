@@ -30,15 +30,15 @@
 
 可复用的节点类型定义（全局参考）：
 
-| type | merge_required | baseline_form | gate_criteria | 说明 |
-|------|---------------|---------------|---------------|------|
-| `feature` | yes | commit-on-feature-branch | implementation + validation + policy | 新功能开发 |
-| `refactor` | yes | commit-on-refactor-branch | validation + policy | 重构，不改变外部行为 |
-| `research` | no | annotated-tag-or-report | review-only | 调研/探针，产出可能不可合并 |
-| `bugfix` | yes | commit-on-bugfix-branch | implementation + validation + policy | 缺陷修复 |
-| `docs` | yes | commit-on-docs-branch | review + policy | 文档更新 |
-| `config` | yes | commit-on-config-branch | validation + policy | 配置/部署变更 |
-| `test` | yes | commit-on-test-branch | validation + policy | 专项测试 |
+| type | merge_required | baseline_form | gate_criteria | if_interrupted_strategy | 说明 |
+|------|---------------|---------------|---------------|-------------------------|------|
+| `feature` | yes | commit-on-feature-branch | implementation + validation + policy | checkpoint-or-recover | 新功能开发 |
+| `refactor` | yes | commit-on-refactor-branch | validation + policy | checkpoint-or-rollback | 重构，不改变外部行为 |
+| `research` | no | annotated-tag-or-report | review-only | preserve-report-and-stop | 调研/探针，产出可能不可合并 |
+| `bugfix` | yes | commit-on-bugfix-branch | implementation + validation + policy | checkpoint-or-rollback | 缺陷修复 |
+| `docs` | yes | commit-on-docs-branch | review + policy | checkpoint-or-recover | 文档更新 |
+| `config` | yes | commit-on-config-branch | validation + policy | checkpoint-or-rollback | 配置/部署变更 |
+| `test` | yes | commit-on-test-branch | validation + policy | checkpoint-or-recover | 专项测试 |
 
 ### This Goal's Node Types
 
@@ -49,6 +49,7 @@
   - merge_required:
   - baseline_form:
   - gate_criteria:
+  - if_interrupted_strategy:
 
 ### Node Dependency Graph
 

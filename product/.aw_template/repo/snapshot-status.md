@@ -11,7 +11,10 @@
 
 ## Mainline Status
 
-- 
+- baseline_branch:
+- last_verified_checkpoint:
+- checkpoint_ref:
+- checkpoint_type:
 
 ## Architecture And Module Map
 

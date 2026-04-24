@@ -12,6 +12,17 @@
 - updated:
 - contract_status:
 
+## Node Type
+
+> 从 Goal Charter 的 Engineering Node Map 绑定，决定本 worktrack 的基线策略与判定标准。
+
+- type:
+- source_from_goal_charter:
+- baseline_form:
+- merge_required:
+- gate_criteria:
+- if_interrupted_strategy:
+
 ## Task Goal
 
 - 

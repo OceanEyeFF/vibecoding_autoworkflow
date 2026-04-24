@@ -38,6 +38,9 @@
 
 - task:
 - goal_for_this_round:
+- node_type:
+- gate_criteria_for_this_round:
+- baseline_policy:
 - constraints_for_this_round:
 - acceptance_criteria_for_this_round:
 - verification_requirements:

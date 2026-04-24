@@ -28,7 +28,7 @@ description: 当 Harness 处于 WorktrackScope.initializing，且需要一轮限
 
 ## 工作流
 
-1. 载入当前 `Harness 控制状态` 与初始化所需的最小代码仓库/工作追踪产物。
+1. 载入当前 `Harness 控制状态`、`Goal Charter` 中的 `Engineering Node Map`、与初始化所需的最小代码仓库/工作追踪产物。
 2. 判断当前属于：
    - 一个新的 `工作追踪`
    - 一个恢复中的 `工作追踪`，其分支、基准、约定或计划需要修复
@@ -36,6 +36,9 @@ description: 当 Harness 处于 WorktrackScope.initializing，且需要一轮限
 4. 如果该分支无法安全创建，返回一个被阻塞的初始化结果，而不是静默复用另一条分支。
 5. 记录这个 `工作追踪` 用来比较的基准引用。
 6. 构建或刷新一份 `工作追踪约定`；有需要时，让草稿与 `templates/contract.template.md` 对齐。
+   - **从 Goal Charter 的 Engineering Node Map 中确定本 worktrack 的节点类型**
+   - **根据节点类型填充 contract 中的类型化字段**：baseline_form、merge_required、gate_criteria、if_interrupted_strategy
+   - 如果 Goal Charter 未定义 Engineering Node Map，标记为缺失风险并在初始化结果中暴露
 7. 使用显式队列项播种一份初始 `计划/任务队列`，而不是只写自由文本任务说明。
 8. 产出一份 `调度交接包`，告诉 `调度工作追踪技能` 已播种了什么、还有哪些内容需要调度判断，以及此前轮次是否已存在兼容的下游包。
 9. 产出一份固定格式的 `工作追踪初始化结果`。
@@ -84,6 +87,12 @@ description: 当 Harness 处于 WorktrackScope.initializing，且需要一轮限
 - `范围内`
 - `范围外`
 - `受影响模块`
+- `节点类型`
+- `节点类型来源`
+- `基线形式`
+- `合并要求`
+- `判定标准`
+- `中断处理策略`
 - `下一状态`
 - `验收标准`
 - `约束`
@@ -112,6 +121,15 @@ description: 当 Harness 处于 WorktrackScope.initializing，且需要一轮限
 - `需要审批`
 - `待审批`
 
+## 输出协议
+
+- 先生成尽可能长且完整的 `工作追踪初始化结果`，确保所有初始化信息被记录
+- 然后从完整结果中提取 `Control Signal` 层（影响下一动作决策的关键结论）
+- `节点类型` 字段必须显式填充；如果 Goal Charter 未定义 Engineering Node Map，在 `Control Signal` 层暴露缺失风险
+- 重复性上下文引用文件路径，不要内联全文
+- 如果某个字段无实质内容，使用 `N/A` 或省略，不要用占位符填充
+- `Supporting Detail` 保留完整内容，只用于后续查阅，不纳入传递上下文
+
 ## 资源
 
-当你需要稳定的初始化约定草稿格式时，使用当前 `Harness 控制状态`、活动中的代码仓库/工作追踪产物、已存在的当前队列状态，以及 `templates/contract.template.md`。
+当你需要稳定的初始化约定草稿格式时，使用当前 `Harness 控制状态`、`Goal Charter` 中的 `Engineering Node Map`、活动中的代码仓库/工作追踪产物、已存在的当前队列状态，以及 `templates/contract.template.md`。

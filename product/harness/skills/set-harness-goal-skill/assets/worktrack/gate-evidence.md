@@ -55,11 +55,15 @@
 ## Evidence Assessment
 
 ### Control Signal
+- node_type:
+- applied_gate_criteria:
+- fallback_used:
 - overall_confidence:
 - overall_confidence_reason:
 - freshness_blockers:
 
 ### Supporting Detail
+- node_type_source:
 - 完整证据维度摘要（首次生成时填充，后续更新只追加变更）
 
 ## Per-Surface Verdicts

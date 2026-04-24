@@ -50,6 +50,15 @@
 - last_handback_signature:
 - handback_reaffirmed_rounds: 0
 
+## Baseline Traceability
+
+- last_verified_checkpoint:
+- checkpoint_type:
+- checkpoint_ref:
+- verified_at:
+- if_no_commit_reason:
+- alternative_traceability:
+
 ## Autonomy Ledger
 
 - autonomy_budget_remaining: 1

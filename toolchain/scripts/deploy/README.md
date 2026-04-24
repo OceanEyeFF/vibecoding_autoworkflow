@@ -5,7 +5,7 @@
 当前主线：
 
 - `adapter_deploy.py`：为 `agents` 提供 destructive reinstall workflow 和只读 `verify`
-- `aw_scaffold.py`：从 `product/.aw_template/` 生成 `.aw/` 运行样例，并校验模板最小结构
+- `aw_scaffold.py`：从 `product/.aw_template/` 生成 `.aw/` 运行样例，并校验模板最小结构，包括 `Engineering Node Map` 与 `Node Type` 协议字段
 - `product/harness/adapters/agents/skills/`：`agents` canonical-copy payload descriptor source，由 `install --backend agents` 消费
 
 最小维护流：
@@ -47,3 +47,4 @@ python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
 - `verify` 的 source drift、missing payload files、target payload drift 与 conflict / unrecognized 目录
 - `.aw_template` 到 `.aw/` 的 legacy scaffold profile 生成
 - `.aw_template` 的最小结构校验与 overwrite guard
+- `.aw_template` 的 `Engineering Node Map` / `Node Type` 字段漂移校验

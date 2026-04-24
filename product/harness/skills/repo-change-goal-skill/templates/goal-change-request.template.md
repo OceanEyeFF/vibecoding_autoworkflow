@@ -24,8 +24,29 @@
 
 - 基准影响：
 - 活跃工作追踪影响：
+- Engineering Node Map 影响：
+- 节点类型兼容性：
 - 受威胁的不变条件：
 - 证据或缺口：
+
+## Engineering Node Map 差异
+
+- 新增节点类型：
+- 删除节点类型：
+- 变更节点类型：
+- Node Type Registry 差异：
+- This Goal's Node Types 差异：
+- Node Dependency Graph 差异：
+- Default Baseline Policy 差异：
+
+## 节点策略差异
+
+- merge_required 变化：
+- baseline_form 变化：
+- gate_criteria 变化：
+- if_interrupted_strategy 变化：
+- 活跃 worktrack 需重新绑定节点类型：
+- 需重新初始化 worktrack：
 
 ## 权限边界
 

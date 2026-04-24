@@ -39,7 +39,7 @@ last_verified: 2026-04-24
 | 项 | 内容 |
 |---|---|
 | **问题** | `set-harness-goal-skill` 生成 Goal 时只有业务/技术方向描述，没有工程层面的节点类型（feature/refactor/research/bugfix 等）规划。 |
-| **现象** | `goal-charter.md` 模板只有 `Project Vision / Core Product Goals / Technical Direction / Success Criteria / System Invariants`，完全没有工程节点类型；`init-worktrack-skill` 无法根据类型推导 contract 中的验收标准、基线形式、gate 标准；`set-harness-goal-skill` 硬约束第 99 行过度隔离了 Goal 层与 Worktrack 层。 |
+| **原始现象** | `goal-charter.md` 模板只有 `Project Vision / Core Product Goals / Technical Direction / Success Criteria / System Invariants`，完全没有工程节点类型；`init-worktrack-skill` 无法根据类型推导 contract 中的验收标准、基线形式、gate 标准；`set-harness-goal-skill` 硬约束第 99 行过度隔离了 Goal 层与 Worktrack 层。当前实现已引入 `Engineering Node Map`，仍需确保模板、目标变更路径、校验与下游交接字段完整同步。 |
 | **风险** | worktrack contract 的验收标准、基线策略、gate 判定标准都是凭空推导的；不同类型 worktrack 的 closeout 和基线固化策略不一致（P1 的根因之一）；gate 无法用类型化标准精准评估。 |
 | **建议修复方向** | 1. `goal-charter.md` 模板增加 `Engineering Node Map` section；2. `set-harness-goal-skill` 工作流增加工程节点分析步骤；3. `worktrack/contract.md` 模板增加 `Node Type` section；4. `init-worktrack-skill` 从 Goal Charter 绑定节点类型；5. `gate-skill` 按节点类型调整判定标准；6. `close-worktrack-skill` 按节点类型选择基线固化策略。 |
 | **验收标准** | 任意 Goal 的 `goal-charter.md` 包含 `Engineering Node Map`；任意 worktrack contract 的 `Node Type` 字段非空且与 Goal 一致；`gate-skill` 对不同类型节点应用不同判定标准；`close-worktrack-skill` 的基线固化策略与节点类型联动。 |
@@ -254,15 +254,15 @@ last_verified: 2026-04-24
 
 可复用的节点类型定义（全局参考，非必填）：
 
-| type | merge_required | baseline_form | gate_criteria | 说明 |
-|------|---------------|---------------|---------------|------|
-| `feature` | yes | commit-on-feature-branch | implementation + validation + policy | 新功能开发 |
-| `refactor` | yes | commit-on-refactor-branch | validation + policy | 重构，不改变外部行为 |
-| `research` | no | annotated-tag-or-report | review-only | 调研/探针，产出可能不可合并 |
-| `bugfix` | yes | commit-on-bugfix-branch | implementation + validation + policy | 缺陷修复 |
-| `docs` | yes | commit-on-docs-branch | review + policy | 文档更新 |
-| `config` | yes | commit-on-config-branch | validation + policy | 配置/部署变更 |
-| `test` | yes | commit-on-test-branch | validation + policy | 专项测试 |
+| type | merge_required | baseline_form | gate_criteria | if_interrupted_strategy | 说明 |
+|------|---------------|---------------|---------------|-------------------------|------|
+| `feature` | yes | commit-on-feature-branch | implementation + validation + policy | checkpoint-or-recover | 新功能开发 |
+| `refactor` | yes | commit-on-refactor-branch | validation + policy | checkpoint-or-rollback | 重构，不改变外部行为 |
+| `research` | no | annotated-tag-or-report | review-only | preserve-report-and-stop | 调研/探针，产出可能不可合并 |
+| `bugfix` | yes | commit-on-bugfix-branch | implementation + validation + policy | checkpoint-or-rollback | 缺陷修复 |
+| `docs` | yes | commit-on-docs-branch | review + policy | checkpoint-or-recover | 文档更新 |
+| `config` | yes | commit-on-config-branch | validation + policy | checkpoint-or-rollback | 配置/部署变更 |
+| `test` | yes | commit-on-test-branch | validation + policy | checkpoint-or-recover | 专项测试 |
 
 ### This Goal's Node Types
 
@@ -273,6 +273,7 @@ last_verified: 2026-04-24
   - merge_required:
   - baseline_form:
   - gate_criteria:
+  - if_interrupted_strategy:
 
 ### Node Dependency Graph
 

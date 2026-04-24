@@ -82,15 +82,24 @@ class AwScaffoldTest(unittest.TestCase):
         self.assertIn("- branch: feat/wt-demo", contract_text)
         self.assertIn("- baseline_branch: main", contract_text)
         self.assertIn("- baseline_ref: main", contract_text)
+        self.assertIn("## Node Type", contract_text)
+        self.assertIn("- source_from_goal_charter: TODO(source_from_goal_charter)", contract_text)
+        self.assertIn("- if_interrupted_strategy: TODO(if_interrupted_strategy)", contract_text)
         self.assertIn("## Constraints", contract_text)
         self.assertIn("## Verification Requirements", contract_text)
         self.assertIn("这是 `.aw/worktrack/contract.md` 的运行样例", contract_text)
         self.assertNotIn("这是 `.aw/worktrack/contract.md` 的模板来源", contract_text)
 
+        goal_text = (self.output_root / "goal-charter.md").read_text(encoding="utf-8")
+        self.assertIn("## Engineering Node Map", goal_text)
+        self.assertIn("  - if_interrupted_strategy: TODO(if_interrupted_strategy)", goal_text)
+
         plan_text = (self.output_root / "worktrack" / "plan-task-queue.md").read_text(encoding="utf-8")
         self.assertIn("- contract_ref: TODO(contract_ref)", plan_text)
         self.assertIn("- queue_status: TODO(queue_status)", plan_text)
         self.assertIn("- selected_next_action_id: TODO(selected_next_action_id)", plan_text)
+        self.assertIn("- node_type: TODO(node_type)", plan_text)
+        self.assertIn("- gate_criteria_for_this_round: TODO(gate_criteria_for_this_round)", plan_text)
         self.assertIn("## Dispatch Handoff Packet", plan_text)
         self.assertIn("- dispatch_packet_ready: TODO(dispatch_packet_ready)", plan_text)
         self.assertIn("- recommended_next_route: TODO(recommended_next_route)", plan_text)
@@ -100,6 +109,8 @@ class AwScaffoldTest(unittest.TestCase):
         self.assertIn("- worktrack_contract: worktrack/contract.md", control_state_text)
         self.assertIn("- plan_task_queue: worktrack/plan-task-queue.md", control_state_text)
         self.assertIn("- gate_evidence: TODO(gate_evidence)", control_state_text)
+        self.assertIn("## Baseline Traceability", control_state_text)
+        self.assertIn("- checkpoint_ref: TODO(checkpoint_ref)", control_state_text)
 
     def test_generate_refuses_to_overwrite_without_force(self) -> None:
         first_code, _, first_stderr = self._run_cli(
@@ -225,6 +236,47 @@ class AwScaffoldTest(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertIn("[control-state] invalid", stdout)
         self.assertIn("missing keyed field in section Metadata: owner", stdout)
+
+    def test_validate_rejects_missing_goal_node_interruption_strategy(self) -> None:
+        original_text = aw_scaffold.TEMPLATE_SPECS["goal-charter"].source_path.read_text(
+            encoding="utf-8"
+        )
+        drifted_text = original_text.replace("  - if_interrupted_strategy:\n", "", 1)
+        _, drifted_spec = self._write_drifted_template("goal-charter", drifted_text)
+
+        with mock.patch.dict(
+            aw_scaffold.TEMPLATE_SPECS,
+            {"goal-charter": drifted_spec},
+            clear=False,
+        ):
+            code, stdout, stderr = self._run_cli("validate", "--template", "goal-charter")
+
+        self.assertEqual(code, 1)
+        self.assertEqual(stderr, "")
+        self.assertIn("[goal-charter] invalid", stdout)
+        self.assertIn(
+            "missing nested keyed field in section Engineering Node Map: if_interrupted_strategy",
+            stdout,
+        )
+
+    def test_validate_rejects_missing_worktrack_node_type_section(self) -> None:
+        original_text = aw_scaffold.TEMPLATE_SPECS["worktrack-contract"].source_path.read_text(
+            encoding="utf-8"
+        )
+        drifted_text = original_text.replace("## Node Type", "### Node Type", 1)
+        _, drifted_spec = self._write_drifted_template("worktrack-contract", drifted_text)
+
+        with mock.patch.dict(
+            aw_scaffold.TEMPLATE_SPECS,
+            {"worktrack-contract": drifted_spec},
+            clear=False,
+        ):
+            code, stdout, stderr = self._run_cli("validate", "--template", "worktrack-contract")
+
+        self.assertEqual(code, 1)
+        self.assertEqual(stderr, "")
+        self.assertIn("[worktrack-contract] invalid", stdout)
+        self.assertIn("missing required section: Node Type", stdout)
 
 
 if __name__ == "__main__":

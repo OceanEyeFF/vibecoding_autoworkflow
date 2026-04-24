@@ -42,6 +42,8 @@ description: 当 Harness 处于 WorktrackScope.observing，且需要一轮限定
 1. 确认这是一轮 `工作追踪范围` 状态观察轮次，不是工作追踪调度、分派或直接执行。
 2. 载入本轮所需的最小 `工作追踪范围` 产物：`Worktrack Contract`、`Plan/Task Queue`、当前 evidence、branch 状态，以及当前问题所需的最小额外产物。
 3. 读取 `Worktrack Contract` 的当前状态，确认其完整性与时效性。
+   - 读取 `Node Type` 与节点策略字段：`type`、`source_from_goal_charter`、`baseline_form`、`merge_required`、`gate_criteria`、`if_interrupted_strategy`
+   - 如果节点策略缺失或无法追溯到 Goal Charter，在状态估计中标记 `node_type_status` 风险，而不是静默使用默认值
 4. 读取 `Plan/Task Queue` 的快照，评估队列与约定的对齐状态。
 5. 评估证据变化：对比当前 evidence 与上次调度时的证据状态，识别自上次调度以来的新增、变更或衰减。
 6. 评估阻塞项状态：检查当前阻塞项是否仍然有效、是否已解除、是否有新增阻塞。
@@ -58,6 +60,9 @@ description: 当 Harness 处于 WorktrackScope.observing，且需要一轮限定
 | 字段 | 说明 |
 |------|------|
 | `queue_freshness` | 队列与约定的对齐状态：队列是否仍干净映射到当前验收标准，是否存在过期、缺失或矛盾的队列条目 |
+| `contract_node_type` | 从 Worktrack Contract 读取的节点类型及其来源 |
+| `node_policy` | 当前工作追踪适用的 `baseline_form`、`merge_required`、`gate_criteria`、`if_interrupted_strategy` |
+| `node_type_status` | 节点策略是否完整、是否能追溯到 Goal Charter、是否需要初始化或恢复路径修补 |
 | `evidence_delta` | 自上次调度以来的证据变化：新增 evidence、evidence 衰减、evidence 冲突，以及变化对工作追踪状态的影响 |
 | `blocker_status` | 阻塞项的当前状态：活动阻塞项列表、阻塞原因、阻塞持续时间、是否可解除、是否有新增阻塞 |
 | `acceptance_coverage_gap` | 验收覆盖缺口：已处理标准、剩余标准、规划层覆盖缺口、验收标准与任务队列的对齐偏差 |
@@ -117,6 +122,9 @@ description: 当 Harness 处于 WorktrackScope.observing，且需要一轮限定
 - `约定依据`
 - `约定时效性`
 - `使用的约定引用`
+- `节点类型`
+- `节点策略`
+- `节点类型完整性`
 - `队列快照`
 - `队列与约定对齐状态`
 - `证据变化`

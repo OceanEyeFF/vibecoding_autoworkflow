@@ -13,9 +13,11 @@ last_verified: 2026-04-20
 
 - `Node Type`（从 Goal Charter 的 Engineering Node Map 绑定）
   - `type`
+  - `source_from_goal_charter`
   - `baseline_form`
   - `merge_required`
   - `gate_criteria`
+  - `if_interrupted_strategy`
 - 任务目标
 - 工作范围
 - 非目标

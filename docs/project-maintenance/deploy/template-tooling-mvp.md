@@ -25,6 +25,8 @@ last_verified: 2026-04-23
 
 当前 `.aw/` 样板与 canonical artifact contract 的最低对齐面至少包括：
 
+- `goal-charter.md` 要带上 `Engineering Node Map`，并暴露 `merge_required`、`baseline_form`、`gate_criteria`、`if_interrupted_strategy`
+- `worktrack/contract.md` 要带上 `Node Type`，并显式绑定 `source_from_goal_charter`
 - `worktrack/contract.md` 要带上 `Constraints` 与 `Verification Requirements`
 - `worktrack/plan-task-queue.md` 要显式暴露 `selected_next_action_id` 与 dispatch handoff packet
 - `worktrack/gate-evidence.md` 要按 review / validation / policy lane 提供 freshness、confidence 与 route decision
@@ -68,6 +70,8 @@ last_verified: 2026-04-23
 - `worktrack/plan-task-queue.md`
 
 `worktrack/gate-evidence.md` 当前不属于该 profile，但仍可通过单独的 `--template worktrack-gate-evidence` 渲染，用于受控补充或后续测试。
+
+即使保持 legacy profile 名称，该 profile 仍必须满足当前 Harness artifact contract；不得生成缺少 `Engineering Node Map` 或 `Node Type` 的旧协议样例。
 
 ## 四、frontmatter 与 placeholder 规则
 

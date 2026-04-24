@@ -162,6 +162,7 @@ TEMPLATE_SPECS = {
                     "merge_required",
                     "baseline_form",
                     "gate_criteria",
+                    "if_interrupted_strategy",
                 ),
             ),
         ),
@@ -283,6 +284,9 @@ TEMPLATE_SPECS = {
                 (
                     "task",
                     "goal_for_this_round",
+                    "node_type",
+                    "gate_criteria_for_this_round",
+                    "baseline_policy",
                     "constraints_for_this_round",
                     "acceptance_criteria_for_this_round",
                     "verification_requirements",
@@ -357,7 +361,15 @@ TEMPLATE_SPECS = {
             ),
             (
                 "Evidence Assessment",
-                ("overall_confidence", "overall_confidence_reason", "freshness_blockers"),
+                (
+                    "node_type",
+                    "node_type_source",
+                    "applied_gate_criteria",
+                    "fallback_used",
+                    "overall_confidence",
+                    "overall_confidence_reason",
+                    "freshness_blockers",
+                ),
             ),
             (
                 "Per-Surface Verdicts",
@@ -668,9 +680,55 @@ def validate_template_source(spec: TemplateSpec) -> list[str]:
 
 
 def validate_static_asset_source(spec: CopyAssetSpec) -> list[str]:
-    if spec.source_path.is_file():
+    if not spec.source_path.is_file():
+        return [f"missing static asset source: {spec.source_path}"]
+    if spec.asset_id != "goal-charter-template":
         return []
-    return [f"missing static asset source: {spec.source_path}"]
+
+    text = spec.source_path.read_text(encoding="utf-8")
+    heading, sections, keyed_fields_by_section, nested_keyed_fields_by_section = (
+        parse_template_structure(text)
+    )
+    issues: list[str] = []
+    if heading != "Repo Goal / Charter Answer Template":
+        issues.append(
+            f"expected title 'Repo Goal / Charter Answer Template', got {heading!r}"
+        )
+    for section in (
+        "Metadata",
+        "Project Vision",
+        "Core Product Goals",
+        "Technical Direction",
+        "Engineering Node Map",
+        "Success Criteria",
+        "System Invariants",
+        "Notes",
+    ):
+        if section not in sections:
+            issues.append(f"missing required section: {section}")
+
+    engineering_fields = keyed_fields_by_section.get("Engineering Node Map", set())
+    for field_name in ("type", "if_worktrack_interrupted", "if_no_merge"):
+        if field_name not in engineering_fields:
+            issues.append(
+                f"missing keyed field in section Engineering Node Map: {field_name}"
+            )
+
+    nested_engineering_fields = nested_keyed_fields_by_section.get(
+        "Engineering Node Map", set()
+    )
+    for field_name in (
+        "expected_count",
+        "merge_required",
+        "baseline_form",
+        "gate_criteria",
+        "if_interrupted_strategy",
+    ):
+        if field_name not in nested_engineering_fields:
+            issues.append(
+                f"missing nested keyed field in section Engineering Node Map: {field_name}"
+            )
+    return issues
 
 
 def parse_template_structure(
@@ -988,6 +1046,11 @@ def run_generate(
             args=args,
         )
         rendered_templates.append((spec, rendered))
+    for spec in static_assets:
+        issues = validate_static_asset_source(spec)
+        if issues:
+            joined = "; ".join(issues)
+            raise DeployAwError(f"{spec.source_display_path} failed validation: {joined}")
 
     preflight_output_paths(
         selected_specs,
