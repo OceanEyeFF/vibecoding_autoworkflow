@@ -25,7 +25,6 @@ REQUIRED_HANDOFF_LINKS = {
     ],
     "toolchain/toolchain-layering.md": [
         "toolchain/scripts/README.md",
-        "toolchain/evals/README.md",
     ],
     "docs/harness/README.md": [
         "docs/harness/foundations/README.md",
@@ -52,9 +51,6 @@ REQUIRED_HANDOFF_LINKS = {
     "docs/harness/adjacent-systems/memory-side/writeback-cleanup.md": [
         "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md",
     ],
-    "autoresearch/docs/knowledge/README.md": [
-        "autoresearch/docs/knowledge/overview.md",
-    ],
 }
 FOUNDATIONS_AUTHORITY_STEMS = [
     "root-directory-layering",
@@ -72,9 +68,6 @@ OUTDATED_PLACEHOLDER_PHRASES = {
     ],
     "toolchain/scripts/README.md": [
         "`research/`：预留给后续准入的最小研究脚本",
-    ],
-    "toolchain/evals/README.md": [
-        "`memory-side/` 当前只保留占位入口，不承载 active 的 `program / scenarios / scoring database` 一类资产。",
     ],
 }
 CANONICAL_SKILL_GLOBS = [

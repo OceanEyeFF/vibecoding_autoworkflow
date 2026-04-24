@@ -1,8 +1,0 @@
-version: 1
-defaults:
-  backend: claude
-  judge_backend: claude
-  with_eval: true
-runs:
-  - repo: /abs/path/to/target-repo
-    task: context-routing

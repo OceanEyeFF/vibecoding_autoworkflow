@@ -43,8 +43,8 @@ NAV_SLOT_TARGETS = {
 }
 FIRST_LEVEL_ALLOWLIST = {
     "product": {"README.md", ".aw_template", "harness"},
-    "docs": {"README.md", "project-maintenance", "harness", "autoresearch"},
-    "toolchain": {"README.md", "toolchain-layering.md", "evals", "scripts"},
+    "docs": {"README.md", "project-maintenance", "harness"},
+    "toolchain": {"README.md", "toolchain-layering.md", "scripts"},
 }
 TOOLS_TRACKED_ALLOWLIST = {
     "tools/closeout_acceptance_gate.py",

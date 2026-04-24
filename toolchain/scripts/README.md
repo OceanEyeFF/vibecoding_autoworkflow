@@ -6,7 +6,6 @@
 
 - `deploy/`：部署与同步
 - `git-hooks/`：本地 git hooks 入口（阻断违规 push）
-- `research/`：已准入的研究 runner、实验 orchestration 与 live acceptance 入口
 - `test/`：治理检查、gate 与轻量测试入口
 
 不要把下面这些东西放进这里：

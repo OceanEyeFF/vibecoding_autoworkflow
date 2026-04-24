@@ -22,7 +22,6 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "docs/README.md",
             "docs/harness/README.md",
             "docs/project-maintenance/README.md",
-            "autoresearch/docs/README.md",
             "product/README.md",
             "docs/project-maintenance/governance/review-verify-handbook.md",
             "docs/project-maintenance/governance/path-governance-checks.md",
@@ -39,7 +38,6 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             ".autoworkflow/closeout/",
             "docs/project-maintenance/",
             "docs/harness/",
-            "autoresearch/docs/",
             "product/README.md",
             "toolchain/scripts/test/",
             "tools/scope_gate_check.py",
@@ -135,10 +133,7 @@ def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path
     assert ".github/" in command
     assert "docs/project-maintenance/README.md" in command
     assert "docs/harness/" in command
-    assert "autoresearch/docs/README.md" in command
     assert "product/README.md" in command
-    assert "autoresearch/docs/knowledge/README.md" in command
-    assert "autoresearch/docs/knowledge/overview.md" in command
     assert "docs/project-maintenance/foundations/root-directory-layering.md" in command
     assert "toolchain/toolchain-layering.md" in command
     assert "docs/project-maintenance/governance/review-verify-handbook.md" in command
@@ -170,7 +165,6 @@ def test_run_spec_gate_includes_folder_logic(monkeypatch, tmp_path) -> None:
     assert any(command[-2:] == ["--repo-root", str(tmp_path)] for command in commands)
     assert any("folder_logic_check.py" in command[1] for command in commands)
     assert any("docs/harness" in command for command in commands)
-    assert any("autoresearch/docs" in command for command in commands)
 
 
 def test_run_test_gate_includes_agents_adapter_contract_tests(monkeypatch, tmp_path) -> None:
@@ -311,16 +305,16 @@ def test_run_smoke_gate_skips_missing_runtime_root(monkeypatch, tmp_path) -> Non
     runtime_dir = (
         primary_root
         / ".autoworkflow"
-        / "autoresearch"
-        / "manual-cr-codex-loop-3round-r000001-m000642"
+        / "closeout"
+        / "manual-governance-loop-3round-r000001-m000642"
     )
     runtime_dir.mkdir(parents=True)
     (runtime_dir / "runtime.json").write_text('{"active_round": null}', encoding="utf-8")
     other_runtime_dir = (
         primary_root
         / ".autoworkflow"
-        / "autoresearch"
-        / "manual-cr-codex-loop-6-3-3-r000001-m046830"
+        / "closeout"
+        / "manual-governance-loop-6-3-3-r000001-m046830"
     )
     other_runtime_dir.mkdir(parents=True)
     (other_runtime_dir / "runtime.json").write_text('{"active_round": null}', encoding="utf-8")
@@ -350,8 +344,8 @@ def test_run_smoke_gate_fails_when_runtime_root_exists_but_retained_files_are_mi
     (
         tmp_path
         / ".autoworkflow"
-        / "autoresearch"
-        / "manual-cr-codex-loop-3round-r000001-m000642"
+        / "closeout"
+        / "manual-governance-loop-3round-r000001-m000642"
     ).mkdir(parents=True)
     monkeypatch.setattr(
         closeout_acceptance_gate,
@@ -373,9 +367,9 @@ def test_run_smoke_gate_fails_when_runtime_root_exists_but_retained_files_are_mi
     assert all(check["missing"] is True for check in result["runtime_checks"])
 
 
-def test_run_smoke_gate_fails_when_only_unrelated_runtime_artifacts_exist(monkeypatch, tmp_path) -> None:
+def test_run_smoke_gate_skips_when_only_unrelated_runtime_artifacts_exist(monkeypatch, tmp_path) -> None:
     primary_root = tmp_path / "primary"
-    (primary_root / ".autoworkflow" / "autoresearch" / "some-other-run").mkdir(parents=True)
+    (primary_root / ".autoworkflow" / "closeout" / "some-other-run").mkdir(parents=True)
     monkeypatch.setattr(closeout_acceptance_gate, "find_primary_worktree_root", lambda repo_root: primary_root)
     monkeypatch.setattr(
         closeout_acceptance_gate,
@@ -390,10 +384,10 @@ def test_run_smoke_gate_fails_when_only_unrelated_runtime_artifacts_exist(monkey
     )
 
     result = closeout_acceptance_gate.run_smoke_gate(tmp_path, sys.executable, "workflow-1")
-    assert result["passed"] is False
-    assert result["status"] == "failed"
-    assert len(result["runtime_checks"]) == 2
-    assert all(check["missing"] is True for check in result["runtime_checks"])
+    assert result["passed"] is True
+    assert result["status"] == "skipped"
+    assert len(result["runtime_checks"]) == 1
+    assert result["runtime_checks"][0]["skipped"] is True
 
 
 def test_closeout_gate_backfills_skipped_status(monkeypatch, tmp_path, capsys) -> None:

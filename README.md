@@ -1,25 +1,22 @@
 ---
 title: "AutoWorkflow"
 status: active
-updated: 2026-04-14
+updated: 2026-04-24
 owner: aw-kernel
-last_verified: 2026-04-14
+last_verified: 2026-04-24
 ---
 # AutoWorkflow
 
-> 本项目的核心目标，是构建一个 `Codex-first` 的 AI coding harness 平台，并将其分发到多个项目中使用；同时建设一个面向 skills 的 `autoresearch` 系统，用于持续评测、改进和回灌这些能力。
+> 本项目的核心目标，是构建一个 `Codex-first` 的 AI coding harness 平台，并将其作为 repo-side contract layer 分发到多个项目中使用。
 
 ## 项目目标
 
-这个项目主要做三件事：
+这个项目主要做两件事：
 
 1. `Harness 平台搭建`
    构建一个 `Codex-first` 的 AI coding harness，统一任务收束、上下文路由、执行、验证和回写。
 2. `Harness 分发`
    把这套 harness 作为可复用能力分发到包括本项目在内的多个仓库。
-3. `Autoresearch`
-   对 skills 做持续评测、改进和回灌。
-
 ## 我们在构建什么
 
 从产品视角看，这不是一个只服务单仓库的脚手架，而是一套可以持续复用和迭代的能力系统：
@@ -27,7 +24,6 @@ last_verified: 2026-04-14
 - 一套统一的任务进入和收束方式
 - 一套统一的上下文路由与执行边界
 - 一套可分发到多个仓库的 harness 形态
-- 一套围绕 skills 的评测、改进和回灌闭环
 
 `repo-side contract layer` 可以保留为当前实现形态的描述，但它不是项目第一句，也不是目标本身。
 
@@ -90,15 +86,6 @@ last_verified: 2026-04-14
 
 当前这部分以文档真相层为主，不再对应仓库内单独的 harness skill/source 分区。
 
-### 4. Autoresearch
-
-负责对 skills 做持续评测、比较、改进和回灌，把已验证结果重新带回 canonical skills、adapters 和文档。
-
-对应入口：
-
-- [`autoresearch/docs/`](./autoresearch/docs/README.md)
-- [`toolchain/`](./toolchain/README.md)
-
 ## 典型工作链路
 
 这个仓库当前最值得把握的不是某个单独 skill，而是整条链路：
@@ -115,8 +102,6 @@ AI 执行
 Writeback & Cleanup
   ↓
 验证与回灌
-  ↓
-Autoresearch 评测与改进
 ```
 
 含义是：
@@ -124,7 +109,6 @@ Autoresearch 评测与改进
 - 先把讨论收束成正式边界
 - 再限制 AI 的阅读入口
 - 执行完成后只把已验证结果写回真相层
-- 最后把可验证的改进回流到 skills 的评测和分发链路里
 - backend-specific prompt 和 deploy wrapper 不能反过来定义主线真相
 
 ## 根级入口怎么分工
@@ -132,7 +116,7 @@ Autoresearch 评测与改进
 `README.md` 负责讲清楚项目目标、当前承接结构和主线入口。
 `INDEX.md` 负责按任务目标把人或 agent 导向正确入口。
 `GUIDE.md` / `ROADMAP.md` 只是兼容入口，不单独定义主线。
-`AGENTS.md` 是 agent-facing 的最小工作规则入口；若冲突，以 `docs/project-maintenance/`、`docs/harness/` 与 `autoresearch/docs/` 为准。
+`AGENTS.md` 是 agent-facing 的最小工作规则入口；若冲突，以 `docs/project-maintenance/` 与 `docs/harness/` 为准。
 
 ## 从哪里进入
 
@@ -144,7 +128,6 @@ Autoresearch 评测与改进
    - Harness 主线与 adjacent-system 合同：[`docs/harness/README.md`](./docs/harness/README.md)
    - 业务源码：[`product/README.md`](./product/README.md)
    - 工具层：[`toolchain/README.md`](./toolchain/README.md)
-   - `autoresearch` 文档：[`autoresearch/docs/README.md`](./autoresearch/docs/README.md)
 
 首次进入仓库时，通常这样选：
 
@@ -153,7 +136,6 @@ Autoresearch 评测与改进
 - 想理解 `Harness 平台` 的承接结构：看 [`product/README.md`](./product/README.md)
 - 想理解 `Task Contract`：看 [`docs/harness/adjacent-systems/task-interface/task-contract.md`](./docs/harness/adjacent-systems/task-interface/task-contract.md)
 - 想理解 `Memory Side`：看 [`docs/harness/adjacent-systems/memory-side/README.md`](./docs/harness/adjacent-systems/memory-side/README.md)
-- 想看 `Autoresearch`：看 [`autoresearch/docs/README.md`](./autoresearch/docs/README.md)
 - 想部署或跑治理检查：看 [`toolchain/README.md`](./toolchain/README.md)
 - 想看 repo-local 使用帮助：看 [`docs/project-maintenance/usage-help/README.md`](./docs/project-maintenance/usage-help/README.md)
 

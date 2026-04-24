@@ -1,9 +1,9 @@
 ---
 title: "路径与文档治理检查运行说明"
 status: active
-updated: 2026-04-19
+updated: 2026-04-24
 owner: aw-kernel
-last_verified: 2026-04-19
+last_verified: 2026-04-24
 ---
 # 路径与文档治理检查运行说明
 
@@ -18,7 +18,7 @@ last_verified: 2026-04-19
 - markdown 相对链接是否仍然可达
 - 关键主入口文件是否存在
 - `AGENTS.md` 是否仍被关键入口页回链
-- `docs/project-maintenance/`、`docs/harness/` 与 `autoresearch/docs/` 主线入口是否仍然完整
+- `docs/project-maintenance/` 与 `docs/harness/` 主线入口是否仍然完整
 - `.gitignore` 是否仍继续忽略关键 hidden layers
 - `docs/` 下正文文档的 frontmatter 是否齐全
 - `status` 是否仍和目录语义、生命周期语义一致
@@ -70,9 +70,9 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 11. `AGENTS.md` 是否仍被关键入口页显式引用
 12. `docs/harness/README.md` 与关键子入口是否仍存在，并继续链接 foundations / scope / artifact / Skills / adjacent-systems / workflow-families
 13. `docs/` 下除 `README.md` 以外的正文文档是否仍保留最小 frontmatter
-14. `docs/project-maintenance/`、`docs/harness/`、`autoresearch/docs/` 的 `status` 是否仍匹配目录与生命周期语义
+14. `docs/project-maintenance/` 与 `docs/harness/` 的 `status` 是否仍匹配目录与生命周期语义
 15. `docs/` 正文文档是否仍避免使用 `status: suspended`；暂停中的共享文档应改成 `superseded`，非共享 scratch 应移出 `docs/`
-16. `docs/project-maintenance/README.md`、`docs/harness/README.md` 与 `autoresearch/docs/README.md` 是否仍维持当前入口分流
+16. `docs/project-maintenance/README.md` 与 `docs/harness/README.md` 是否仍维持当前入口分流
 17. `.gitignore` 是否仍忽略：
    - `.agents/`
    - `.claude/`
@@ -82,7 +82,6 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 18. `governance_semantic_check.py`
 19. 关键承接关系是否仍存在：
    - `toolchain/toolchain-layering.md -> toolchain/scripts/README.md`
-   - `toolchain/toolchain-layering.md -> toolchain/evals/README.md`
    - `context-routing.md -> context-routing-output-format.md`
    - `writeback-cleanup.md -> writeback-cleanup-output-format.md`
 20. foundations 权威文档是否出现同名前缀 shadow 文件

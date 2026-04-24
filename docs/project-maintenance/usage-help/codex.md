@@ -1,9 +1,9 @@
 ---
 title: "Codex Usage Help"
 status: active
-updated: 2026-04-23
+updated: 2026-04-24
 owner: aw-kernel
-last_verified: 2026-04-23
+last_verified: 2026-04-24
 ---
 # Codex Usage Help
 
@@ -46,7 +46,7 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
 
 - `adapter_deploy.py verify --backend agents` 是 deploy target 对齐证明。
 - `codex-harness-manual-runbook.md` 是当前 operator-facing 的 Harness runtime 观察入口。
-- skills mock / contract smoke 不再作为当前主线验证入口；后续 skill 行为调整由 `autoresearch` 或真实运行观察承接。
+- skills mock / contract smoke 不再作为当前主线验证入口；后续 skill 行为调整由已准入测量资产或真实运行观察承接。
 
 ## 三、和其他 backend 的区别
 
