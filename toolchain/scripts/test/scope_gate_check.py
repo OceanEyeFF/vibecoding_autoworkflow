@@ -18,7 +18,6 @@ DEFAULT_ALLOWED_PREFIXES = (
     ".autoworkflow/state/",
     "docs/project-maintenance/",
     "docs/harness/",
-    "autoresearch/docs/",
     "product/README.md",
     "toolchain/scripts/test/",
     "tools/closeout_acceptance_gate.py",

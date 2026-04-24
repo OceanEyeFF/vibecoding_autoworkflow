@@ -76,10 +76,6 @@ REQUIRED_ENTRY_PATHS = [
     "docs/project-maintenance/deploy/README.md",
     "docs/project-maintenance/usage-help/README.md",
     "docs/project-maintenance/governance/path-governance-checks.md",
-    "autoresearch/docs/README.md",
-    "autoresearch/docs/knowledge/README.md",
-    "autoresearch/docs/references/README.md",
-    "autoresearch/docs/runbooks/README.md",
     "docs/project-maintenance/foundations/root-directory-layering.md",
     "toolchain/toolchain-layering.md",
     "product/README.md",
@@ -102,7 +98,6 @@ AGENTS_CONTRACT_BACKLINK_PATHS = [
     PROJECT_MAINTENANCE_README,
     HARNESS_README,
     "docs/project-maintenance/foundations/README.md",
-    "autoresearch/docs/README.md",
     "docs/project-maintenance/governance/path-governance-checks.md",
     ".nav/README.md",
 ]
@@ -125,7 +120,6 @@ ENTRYPOINT_LINK_RULES = {
     "docs/README.md": [
         PROJECT_MAINTENANCE_README,
         HARNESS_README,
-        "autoresearch/docs/README.md",
     ],
     HARNESS_README: [
         "docs/harness/foundations/README.md",
@@ -228,24 +222,6 @@ ENTRYPOINT_LINK_RULES = {
         "docs/project-maintenance/usage-help/claude.md",
         "docs/project-maintenance/usage-help/opencode.md",
     ],
-    "autoresearch/docs/README.md": [
-        "autoresearch/docs/knowledge/README.md",
-        "autoresearch/docs/references/README.md",
-        "autoresearch/docs/runbooks/README.md",
-        AGENTS_CONTRACT_DOC,
-    ],
-    "autoresearch/docs/knowledge/README.md": [
-        "autoresearch/docs/knowledge/overview.md",
-    ],
-    "autoresearch/docs/references/README.md": [
-        "autoresearch/docs/references/research-cli-help.md",
-        "autoresearch/docs/references/research-eval-contracts.md",
-        "autoresearch/docs/references/research-eval-observability.md",
-    ],
-    "autoresearch/docs/runbooks/README.md": [
-        "autoresearch/docs/runbooks/autoresearch-minimal-loop.md",
-        "autoresearch/docs/runbooks/tmp-exrepo-maintenance.md",
-    ],
     "product/README.md": [
         "product/harness/README.md",
     ],
@@ -272,7 +248,6 @@ FRONTMATTER_REQUIRED_KEYS = [
 STATUS_RULES = [
     ("docs/project-maintenance/", {"active", "draft", "superseded"}),
     ("docs/harness/", {"active", "draft", "superseded"}),
-    ("autoresearch/docs/", {"active", "draft", "superseded"}),
 ]
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")

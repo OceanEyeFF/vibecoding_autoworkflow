@@ -43,7 +43,7 @@ NAV_SLOT_TARGETS = {
 }
 FIRST_LEVEL_ALLOWLIST = {
     "product": {"README.md", ".aw_template", "harness"},
-    "docs": {"README.md", "project-maintenance", "harness", "autoresearch"},
+    "docs": {"README.md", "project-maintenance", "harness"},
     "toolchain": {"README.md", "toolchain-layering.md", "evals", "scripts"},
 }
 TOOLS_TRACKED_ALLOWLIST = {

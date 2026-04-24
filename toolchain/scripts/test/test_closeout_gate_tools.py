@@ -22,7 +22,6 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "docs/README.md",
             "docs/harness/README.md",
             "docs/project-maintenance/README.md",
-            "autoresearch/docs/README.md",
             "product/README.md",
             "docs/project-maintenance/governance/review-verify-handbook.md",
             "docs/project-maintenance/governance/path-governance-checks.md",
@@ -39,7 +38,6 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             ".autoworkflow/closeout/",
             "docs/project-maintenance/",
             "docs/harness/",
-            "autoresearch/docs/",
             "product/README.md",
             "toolchain/scripts/test/",
             "tools/scope_gate_check.py",
@@ -135,10 +133,7 @@ def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path
     assert ".github/" in command
     assert "docs/project-maintenance/README.md" in command
     assert "docs/harness/" in command
-    assert "autoresearch/docs/README.md" in command
     assert "product/README.md" in command
-    assert "autoresearch/docs/knowledge/README.md" in command
-    assert "autoresearch/docs/knowledge/overview.md" in command
     assert "docs/project-maintenance/foundations/root-directory-layering.md" in command
     assert "toolchain/toolchain-layering.md" in command
     assert "docs/project-maintenance/governance/review-verify-handbook.md" in command
@@ -170,7 +165,7 @@ def test_run_spec_gate_includes_folder_logic(monkeypatch, tmp_path) -> None:
     assert any(command[-2:] == ["--repo-root", str(tmp_path)] for command in commands)
     assert any("folder_logic_check.py" in command[1] for command in commands)
     assert any("docs/harness" in command for command in commands)
-    assert any("autoresearch/docs" in command for command in commands)
+    assert not any("autoresearch/docs" in command for command in commands)
 
 
 def test_run_test_gate_includes_agents_adapter_contract_tests(monkeypatch, tmp_path) -> None:

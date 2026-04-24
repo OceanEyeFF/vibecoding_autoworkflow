@@ -56,7 +56,6 @@ def create_valid_repo(tmp_path: Path) -> Path:
         "product/harness/skills",
         "docs/project-maintenance",
         "docs/harness",
-        "autoresearch/docs",
         "toolchain/scripts",
         "toolchain/evals",
         "tools",

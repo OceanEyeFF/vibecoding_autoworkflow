@@ -52,9 +52,6 @@ REQUIRED_HANDOFF_LINKS = {
     "docs/harness/adjacent-systems/memory-side/writeback-cleanup.md": [
         "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md",
     ],
-    "autoresearch/docs/knowledge/README.md": [
-        "autoresearch/docs/knowledge/overview.md",
-    ],
 }
 FOUNDATIONS_AUTHORITY_STEMS = [
     "root-directory-layering",
