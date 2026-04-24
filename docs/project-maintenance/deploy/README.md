@@ -15,7 +15,7 @@
 - canonical skill 真相正文
 - archive / history / old-version keepalive 方案
 - 旧 `local/global` deploy mode 的主流程说明
-- research runner 或评测主流程
+- 非 deploy / verify 主流程
 
 ## 按问题进入
 

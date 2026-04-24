@@ -36,7 +36,6 @@ AI 先读什么：
 
 - `scripts/README.md`
 - `scripts/deploy/README.md`
-- `scripts/research/README.md`
 - `scripts/test/README.md`
 
 治理说明见 `toolchain/toolchain-layering.md`。
