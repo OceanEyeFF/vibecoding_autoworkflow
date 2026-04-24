@@ -1,9 +1,9 @@
 ---
 title: "Toolchain 分层"
 status: active
-updated: 2026-04-10
+updated: 2026-04-24
 owner: aw-kernel
-last_verified: 2026-04-10
+last_verified: 2026-04-24
 ---
 # Toolchain 分层
 
@@ -15,7 +15,6 @@ last_verified: 2026-04-10
 
 - 部署与同步脚本
 - 治理检查与 gate 入口
-- 已准入的 research runner 与实验 orchestration
 - 已准入的 eval / fixture / prompt 资产
 - 打包与分发工具
 

@@ -1,9 +1,9 @@
 ---
 title: "根目录分层"
 status: active
-updated: 2026-04-19
+updated: 2026-04-24
 owner: aw-kernel
-last_verified: 2026-04-19
+last_verified: 2026-04-24
 ---
 # 根目录分层
 
@@ -88,7 +88,6 @@ last_verified: 2026-04-19
 
 - `project-maintenance/`
 - `harness/`
-- `autoresearch/`
 
 其中：
 

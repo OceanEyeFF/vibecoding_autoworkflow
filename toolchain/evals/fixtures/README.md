@@ -11,8 +11,6 @@
 - `suites/memory-side-validation.v1.yaml`
 - `suites/memory-side-acceptance.v1.yaml`
 
-> **注意**：autoresearch 相关的 schema 与模板已迁移至 `autoresearch/schemas/` 与 `autoresearch/templates/`。
-
 ## Schemas
 
 `schemas/eval-result.schema.json`
@@ -44,35 +42,23 @@
 
 `suites/memory-side-train.v1.yaml`
 
-- autoresearch P0.1 的 train lane fixture。
+- memory-side skill train lane fixture。
 
 `suites/memory-side-validation.v1.yaml`
 
-- autoresearch P0.1 的 validation lane fixture。
+- memory-side skill validation lane fixture。
 
 `suites/memory-side-acceptance.v1.yaml`
 
-- autoresearch P0.1 的 acceptance lane fixture。
-- 该 lane 在 P0.1 baseline 默认流程中不自动执行，只用于 contract/suite 分层固定。
+- memory-side skill acceptance lane fixture。
+- 该 lane 默认流程中不自动执行，只用于 contract/suite 分层固定。
 
 ## Templates
 
-`autoresearch/templates/autoresearch-p2-claude-claude/`
+`fixtures/templates/`
 
-- 这是一个 copy-ready 的最小 P2 manual-run 模板包。
-- bundle 内包含：
-  - `contract.template.json`
-  - `train.template.yaml`
-  - `validation.template.yaml`
-  - `acceptance.template.yaml`
-  - `manual-mutation.template.json`
-- 默认配置固定到：
-  - `target_task = context-routing-skill`
-  - `target_prompt_path = autoresearch/src/tasks/context-routing-skill-prompt.md`
-  - `worker_backend = claude`
-  - `expected_backend = claude`
-  - `expected_judge_backend = claude`
-- 这组文件不是直接运行产物目录；推荐先复制到 `.autoworkflow/manual-runs/...` 再按实际 repo 路径改值。
+- 这里仅承接已准入、可复用的 copy-ready fixture 模板。
+- 这组文件不是直接运行产物目录；推荐先复制到 repo-local state 后再按实际 repo 路径改值。
 
 适合放在这里的内容：
 

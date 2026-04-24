@@ -27,7 +27,7 @@ AI 先读什么：
 2. `toolchain/scripts/README.md` 或 `toolchain/evals/README.md`
 3. 需要部署时进入 `scripts/deploy/`
 4. 需要做轻量治理回归时进入 `scripts/test/`
-5. 只有任务明确涉及已准入测量资产时，才进入 `autoresearch/src/` 或 `evals/`
+5. 只有任务明确涉及已准入测量资产时，才进入 `evals/`
 
 暂时不要先读什么：
 
