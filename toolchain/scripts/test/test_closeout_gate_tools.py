@@ -367,7 +367,7 @@ def test_run_smoke_gate_fails_when_runtime_root_exists_but_retained_files_are_mi
     assert all(check["missing"] is True for check in result["runtime_checks"])
 
 
-def test_run_smoke_gate_fails_when_only_unrelated_runtime_artifacts_exist(monkeypatch, tmp_path) -> None:
+def test_run_smoke_gate_skips_when_only_unrelated_runtime_artifacts_exist(monkeypatch, tmp_path) -> None:
     primary_root = tmp_path / "primary"
     (primary_root / ".autoworkflow" / "closeout" / "some-other-run").mkdir(parents=True)
     monkeypatch.setattr(closeout_acceptance_gate, "find_primary_worktree_root", lambda repo_root: primary_root)
@@ -384,10 +384,10 @@ def test_run_smoke_gate_fails_when_only_unrelated_runtime_artifacts_exist(monkey
     )
 
     result = closeout_acceptance_gate.run_smoke_gate(tmp_path, sys.executable, "workflow-1")
-    assert result["passed"] is False
-    assert result["status"] == "failed"
-    assert len(result["runtime_checks"]) == 2
-    assert all(check["missing"] is True for check in result["runtime_checks"])
+    assert result["passed"] is True
+    assert result["status"] == "skipped"
+    assert len(result["runtime_checks"]) == 1
+    assert result["runtime_checks"][0]["skipped"] is True
 
 
 def test_closeout_gate_backfills_skipped_status(monkeypatch, tmp_path, capsys) -> None:

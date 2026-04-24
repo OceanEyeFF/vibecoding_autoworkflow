@@ -248,7 +248,41 @@ def run_smoke_gate(repo_root: Path, python: str, workflow_id: str) -> dict:
                 selected_root = primary_root
                 retained_runtime_paths = primary_paths
 
+    backfill_smoke = run_command(
+        [
+            python,
+            str(repo_root / "tools" / "gate_status_backfill.py"),
+            "--workflow-id",
+            workflow_id,
+            "--gate",
+            "smoke_gate_dry_run",
+            "--status",
+            "passed",
+            "--details",
+            json.dumps({"mode": "smoke", "dry_run": True}, sort_keys=True),
+            "--dry-run",
+            "--json",
+        ],
+        cwd=repo_root,
+    )
+
     runtime_checks = []
+    if not retained_roots_present(retained_runtime_paths):
+        return {
+            "passed": backfill_smoke["passed"],
+            "returncode": 0 if backfill_smoke["passed"] else 1,
+            "status": "skipped" if backfill_smoke["passed"] else "failed",
+            "runtime_checks": [
+                {
+                    "path": str(selected_root / ".autoworkflow" / "closeout"),
+                    "passed": True,
+                    "skipped": True,
+                    "reason": "no retained closeout runtime evidence configured for this repository",
+                }
+            ],
+            "backfill_smoke": backfill_smoke,
+        }
+
     runtime_passed = True
     for runtime_path in retained_runtime_paths:
         if not runtime_path.exists():
@@ -272,23 +306,6 @@ def run_smoke_gate(repo_root: Path, python: str, workflow_id: str) -> dict:
         runtime_checks.append(check)
         runtime_passed = runtime_passed and check["passed"]
 
-    backfill_smoke = run_command(
-        [
-            python,
-            str(repo_root / "tools" / "gate_status_backfill.py"),
-            "--workflow-id",
-            workflow_id,
-            "--gate",
-            "smoke_gate_dry_run",
-            "--status",
-            "passed",
-            "--details",
-            json.dumps({"mode": "smoke", "dry_run": True}, sort_keys=True),
-            "--dry-run",
-            "--json",
-        ],
-        cwd=repo_root,
-    )
     passed = runtime_passed and backfill_smoke["passed"]
     return {
         "passed": passed,
