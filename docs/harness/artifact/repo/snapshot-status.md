@@ -12,6 +12,10 @@ last_verified: 2026-04-15
 最少应包含：
 
 - 主线现状
+  - `baseline_branch`
+  - `last_verified_checkpoint`
+  - `checkpoint_ref`
+  - `checkpoint_type`
 - 架构与模块地图
 - 活跃分支及用途
 - 治理状况

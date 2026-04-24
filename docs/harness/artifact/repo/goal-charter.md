@@ -14,5 +14,10 @@ last_verified: 2026-04-15
 - 项目愿景
 - 核心功能目标
 - 技术栈与演进方向
+- `Engineering Node Map`
+  - `Node Type Registry`（可复用的节点类型定义）
+  - `This Goal's Node Types`（本 Goal 预期涉及的节点类型及约束）
+  - `Node Dependency Graph`（节点间依赖关系）
+  - `Default Baseline Policy`（默认基线策略）
 - 成功标准
 - 系统不变量

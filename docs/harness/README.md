@@ -7,6 +7,7 @@
 - [foundations/README.md](./foundations/README.md)：指导思想与运行协议主文档
 - [scope/README.md](./scope/README.md)：`RepoScope`、`WorktrackScope` 与状态闭环
 - [artifact/README.md](./artifact/README.md)：Harness 依赖的正式对象
+- [design/README.md](./design/README.md)：Harness 设计方案与变更分析入口
 - [Skills/README.md](./Skills/README.md)：`Codex` 语境下直接可消费的 Harness skill catalog
 - [adjacent-systems/README.md](./adjacent-systems/README.md)：`Task Interface` 与 `Memory Side` 的相邻系统入口
 - [workflow-families/README.md](./workflow-families/README.md)：可复用 workflow family 与 policy profile

@@ -17,7 +17,7 @@ from pathlib import Path
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_AW_DIRNAME = ".aw"
 DEFAULT_PROFILE = "full-deploy-bootstrap"
-KEYED_LINE_PATTERN = re.compile(r"^- ([a-z0-9_]+):\s*(.*)$")
+KEYED_LINE_PATTERN = re.compile(r"^(?P<indent>\s*)- (?P<key>[a-z0-9_]+):\s*(?P<value>.*)$")
 CHECKBOX_LINE_PATTERN = re.compile(r"^(\d+)\. \[ \]\s*$")
 HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
 
@@ -38,6 +38,7 @@ class TemplateSpec:
     instance_note: str
     required_sections: tuple[str, ...]
     required_keyed_fields_by_section: tuple[tuple[str, tuple[str, ...]], ...]
+    required_nested_keyed_fields_by_section: tuple[tuple[str, tuple[str, ...]], ...] = ()
     inject_instance_note: bool = True
 
     @property
@@ -101,6 +102,7 @@ TEMPLATE_SPECS = {
             "Approval Boundary",
             "Continuation Authority",
             "Handback Guard",
+            "Baseline Traceability",
             "Autonomy Ledger",
             "Notes",
         ),
@@ -112,6 +114,17 @@ TEMPLATE_SPECS = {
                 ("repo_snapshot", "worktrack_contract", "plan_task_queue", "gate_evidence"),
             ),
             ("Approval Boundary", ("needs_programmer_approval", "reason")),
+            (
+                "Baseline Traceability",
+                (
+                    "last_verified_checkpoint",
+                    "checkpoint_type",
+                    "checkpoint_ref",
+                    "verified_at",
+                    "if_no_commit_reason",
+                    "alternative_traceability",
+                ),
+            ),
         ),
     ),
     "goal-charter": TemplateSpec(
@@ -129,12 +142,28 @@ TEMPLATE_SPECS = {
             "Project Vision",
             "Core Product Goals",
             "Technical Direction",
+            "Engineering Node Map",
             "Success Criteria",
             "System Invariants",
             "Notes",
         ),
         required_keyed_fields_by_section=(
             ("Metadata", ("repo", "owner", "updated", "status")),
+            (
+                "Engineering Node Map",
+                ("type", "if_worktrack_interrupted", "if_no_merge"),
+            ),
+        ),
+        required_nested_keyed_fields_by_section=(
+            (
+                "Engineering Node Map",
+                (
+                    "expected_count",
+                    "merge_required",
+                    "baseline_form",
+                    "gate_criteria",
+                ),
+            ),
         ),
     ),
     "repo-snapshot-status": TemplateSpec(
@@ -158,6 +187,15 @@ TEMPLATE_SPECS = {
         ),
         required_keyed_fields_by_section=(
             ("Metadata", ("repo", "baseline_branch", "updated", "status")),
+            (
+                "Mainline Status",
+                (
+                    "baseline_branch",
+                    "last_verified_checkpoint",
+                    "checkpoint_ref",
+                    "checkpoint_type",
+                ),
+            ),
         ),
     ),
     "worktrack-contract": TemplateSpec(
@@ -172,6 +210,7 @@ TEMPLATE_SPECS = {
         ),
         required_sections=(
             "Metadata",
+            "Node Type",
             "Task Goal",
             "Scope",
             "Non-Goals",
@@ -194,6 +233,17 @@ TEMPLATE_SPECS = {
                     "owner",
                     "updated",
                     "contract_status",
+                ),
+            ),
+            (
+                "Node Type",
+                (
+                    "type",
+                    "source_from_goal_charter",
+                    "baseline_form",
+                    "merge_required",
+                    "gate_criteria",
+                    "if_interrupted_strategy",
                 ),
             ),
         ),
@@ -583,7 +633,9 @@ def validate_template_source(spec: TemplateSpec) -> list[str]:
         return [f"missing template source: {source_path}"]
 
     text = source_path.read_text(encoding="utf-8")
-    heading, sections, keyed_fields_by_section = parse_template_structure(text)
+    heading, sections, keyed_fields_by_section, nested_keyed_fields_by_section = (
+        parse_template_structure(text)
+    )
     issues: list[str] = []
     if heading != spec.title:
         issues.append(f"expected title {spec.title!r}, got {heading!r}")
@@ -602,6 +654,16 @@ def validate_template_source(spec: TemplateSpec) -> list[str]:
                     f"missing keyed field in section {section_name}: {field_name}"
                 )
 
+    for section_name, required_fields in spec.required_nested_keyed_fields_by_section:
+        if section_name not in sections:
+            continue
+        actual_fields = nested_keyed_fields_by_section.get(section_name, set())
+        for field_name in required_fields:
+            if field_name not in actual_fields:
+                issues.append(
+                    f"missing nested keyed field in section {section_name}: {field_name}"
+                )
+
     return issues
 
 
@@ -611,10 +673,13 @@ def validate_static_asset_source(spec: CopyAssetSpec) -> list[str]:
     return [f"missing static asset source: {spec.source_path}"]
 
 
-def parse_template_structure(text: str) -> tuple[str | None, set[str], dict[str, set[str]]]:
+def parse_template_structure(
+    text: str,
+) -> tuple[str | None, set[str], dict[str, set[str]], dict[str, set[str]]]:
     heading: str | None = None
     sections: set[str] = set()
     keyed_fields_by_section: dict[str, set[str]] = {}
+    nested_keyed_fields_by_section: dict[str, set[str]] = {}
     current_section: str | None = None
 
     for line in text.splitlines():
@@ -631,7 +696,9 @@ def parse_template_structure(text: str) -> tuple[str | None, set[str], dict[str,
                 sections.add(title)
                 keyed_fields_by_section.setdefault(title, set())
             else:
-                current_section = None
+                # Nested subsections are still part of the nearest required
+                # top-level template section for validation purposes.
+                pass
             continue
 
         if current_section is None:
@@ -639,11 +706,16 @@ def parse_template_structure(text: str) -> tuple[str | None, set[str], dict[str,
 
         keyed_match = KEYED_LINE_PATTERN.match(line)
         if keyed_match:
-            keyed_fields_by_section.setdefault(current_section, set()).add(
-                keyed_match.group(1)
+            fields_by_section = (
+                nested_keyed_fields_by_section
+                if keyed_match.group("indent")
+                else keyed_fields_by_section
+            )
+            fields_by_section.setdefault(current_section, set()).add(
+                keyed_match.group("key")
             )
 
-    return heading, sections, keyed_fields_by_section
+    return heading, sections, keyed_fields_by_section, nested_keyed_fields_by_section
 
 
 def render_template(
@@ -679,13 +751,14 @@ def render_template(
 
         keyed_match = KEYED_LINE_PATTERN.match(line)
         if keyed_match:
-            key = keyed_match.group(1)
+            indent = keyed_match.group("indent")
+            key = keyed_match.group("key")
             value = resolve_keyed_value(
                 key=key,
                 selected_template_ids=selected_template_ids,
                 args=args,
             )
-            rendered_lines.append(f"- {key}: {value}")
+            rendered_lines.append(f"{indent}- {key}: {value}")
             continue
 
         checkbox_match = CHECKBOX_LINE_PATTERN.match(line)
@@ -694,7 +767,7 @@ def render_template(
             rendered_lines.append(f"{index}. [ ] {placeholder(f'task_{index}')}")
             continue
 
-        if line == "- ":
+        if line in ("-", "- "):
             rendered_lines.append(f"- {resolve_blank_value(current_section, args)}")
             continue
 

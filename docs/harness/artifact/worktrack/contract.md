@@ -11,6 +11,11 @@ last_verified: 2026-04-20
 
 最少应包含：
 
+- `Node Type`（从 Goal Charter 的 Engineering Node Map 绑定）
+  - `type`
+  - `baseline_form`
+  - `merge_required`
+  - `gate_criteria`
 - 任务目标
 - 工作范围
 - 非目标

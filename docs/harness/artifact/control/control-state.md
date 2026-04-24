@@ -62,6 +62,21 @@ last_verified: 2026-04-23
 - 它们回答的是“允许的一次性自主续跑预算是否已经被消费”
 - 它们不替代 `Repo Snapshot / Status`、`Worktrack Contract` 或 `Gate Evidence`
 
+此外，`Harness Control State` 还应保存 `Baseline Traceability`，用于在 WorktrackScope 关闭后快速定位已验证基线：
+
+- `last_verified_checkpoint`
+- `checkpoint_type`
+- `checkpoint_ref`
+- `verified_at`
+- `if_no_commit_reason`
+- `alternative_traceability`
+
+这些字段属于 traceability metadata，不属于业务真相：
+
+- 它们回答的是"最近一次 worktrack 关闭后，repo 的已验证基线在哪里"
+- 它们回答的是"如果不形成 commit，替代追溯物是什么"
+- 它们不替代 `Repo Snapshot / Status` 中的详细状态描述
+
 补充约束：
 
 - 如果 `post_contract_autonomy: manual-only`，则 `继续工作` 在当前合同关闭后只能 handback，不得自动开新 worktrack

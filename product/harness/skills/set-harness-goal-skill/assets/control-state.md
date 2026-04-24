@@ -50,6 +50,17 @@
 - last_handback_signature:
 - handback_reaffirmed_rounds: 0
 
+## Baseline Traceability
+
+> 记录最近一次 worktrack 关闭后的已验证基线，供后续续跑时快速定位。
+
+- last_verified_checkpoint:
+- checkpoint_type:
+- checkpoint_ref:
+- verified_at:
+- if_no_commit_reason:
+- alternative_traceability:
+
 ## Autonomy Ledger
 
 - autonomy_budget_remaining: 1
