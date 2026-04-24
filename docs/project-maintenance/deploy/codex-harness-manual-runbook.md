@@ -365,6 +365,8 @@ git -C "$TMP_REPO" diff --stat > "$TMP_RUN_ROOT/$ROUND_ID/git-diff-stat.txt"
 
 如果你要观察"Harness 能否在完整系统目标下自动拆分为多个 worktrack 并连续推进"，保持 `delegated-minimal` 并将 budget 设得足够覆盖所有子系统。Harness 应基于 goal charter 和当前 repo 状态，自主决定下一个 worktrack 的 scope 和验收标准。
 
+这里的 `budget` 是上限，不是必须耗尽的目标值。如果当前 goal 下的 chartered subsystem 已全部完成，或者继续自动开新 worktrack 只能开始发明未 charter 的新范围，Harness 应提前回到 `stable handback`，即使 `autonomy_budget_remaining > 0` 也不应继续消耗。
+
 这类观察的重点是 control-state policy 是否生效，而不是 human 是否又在 prompt 里写了一段长恢复说明。
 
 但要让这个判断在“每轮新开独立对话”的 runtime 下仍然成立，`.aw/control-state.md` 不能只保存 policy，还要保存 handback guard 和 autonomy ledger。

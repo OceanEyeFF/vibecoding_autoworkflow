@@ -1,35 +1,39 @@
 ---
-title: "Codex Harness Manual Run Evidence - Continuous Autonomy - 2026-04-23"
+title: "Codex Harness Manual Run Evidence - Continuous Autonomy - 2026-04-23 to 2026-04-24"
 status: active
-updated: 2026-04-23
+updated: 2026-04-24
 owner: aw-kernel
-last_verified: 2026-04-23
+last_verified: 2026-04-24
 ---
 
-# Codex Harness Manual Run Evidence - Continuous Autonomy - 2026-04-23
+# Codex Harness Manual Run Evidence - Continuous Autonomy - 2026-04-23 to 2026-04-24
 
-本页记录一次按 [Codex Harness Manual Runbook](./codex-harness-manual-runbook.md) 执行的 `continuous-autonomy` 真实观察结果。它是运行证据摘要，不是新的 runbook。
+本页记录同一条按 [Codex Harness Manual Runbook](./codex-harness-manual-runbook.md) 执行的 `continuous-autonomy` 真实观察主线。它是运行证据摘要，不是新的 runbook。
 
 ## Run Identity
 
 | Field | Value |
 |---|---|
 | `OBSERVATION_PROFILE` | `continuous-autonomy` |
-| `TMP_ROOT` | `/tmp/harness-spire-lite.pq1SvT` |
-| 临时 repo | `/tmp/harness-spire-lite.pq1SvT/repo` |
-| 运行产物 | `/tmp/harness-spire-lite.pq1SvT/run-artifacts` |
+| phase-1/2 `TMP_ROOT` | `/tmp/harness-spire-lite.pq1SvT` |
+| phase-3 `TMP_ROOT` | `/tmp/harness-spire-lite.KGV6rk` |
+| phase-1/2 临时 repo | `/tmp/harness-spire-lite.pq1SvT/repo` |
+| phase-3 临时 repo | `/tmp/harness-spire-lite.KGV6rk/repo` |
+| phase-1/2 运行产物 | `/tmp/harness-spire-lite.pq1SvT/run-artifacts` |
+| phase-3 运行产物 | `/tmp/harness-spire-lite.KGV6rk/run-artifacts` |
 | 初始 runner log | `/tmp/harness-spire-lite.20260423165517.208206.runner.log` |
-| continuation runner log | `/tmp/harness-spire-lite-cont.20260423203447.279830.runner.log` |
-| 最后一轮输出 | `/tmp/harness-spire-lite.pq1SvT/run-artifacts/round-040/final.txt` |
-| 控制状态 | `/tmp/harness-spire-lite.pq1SvT/repo/.aw/control-state.md` |
-| 执行日期 | 2026-04-23 |
+| phase-2 continuation runner log | `/tmp/harness-spire-lite-cont.20260423203447.279830.runner.log` |
+| phase-3 continuation runner log | `/tmp/harness-spire-lite-cont2.20260424095905.63899.runner.log` |
+| 最后一轮输出 | `/tmp/harness-spire-lite.KGV6rk/run-artifacts/round-060/final.txt` |
+| 最终控制状态 | `/tmp/harness-spire-lite.KGV6rk/repo/.aw/control-state.md` |
+| 执行日期 | 2026-04-23 到 2026-04-24 |
 | 固定题目 | CLI Slay the Spire-lite |
 
 `/tmp` 路径不是长期归档位置。本页只写回已核对的运行事实；原始逐轮 `events.jsonl`、`stderr.txt`、`final.txt`、`exit-code.txt` 和临时 repo 文件仍以该临时路径为源证据。
 
 ## Executive Result
 
-本次 `continuous-autonomy` 生效。流程如下：
+本次 `continuous-autonomy` 生效，主线分成三个阶段：
 
 1. `round-000` 从空 repo 初始化 `.aw/`，设置 `max_auto_new_worktracks: 20` 和 `autonomy_budget_remaining: 20`。
 2. `round-000` 到 `round-005` 完成固定题目的六个 subsystem：combat、combat logger、cards、deck、map、events。
@@ -38,25 +42,29 @@ last_verified: 2026-04-23
 5. `round-021` 到 `round-036` 继续推进 cache hygiene、active-event summary、CLI probes、node guards、rest/shop behavior、gold reward、path/help inventory 对齐等 20 个额外 bounded worktracks。
 6. `round-036` 关闭 `WT-040-help-path-alias-inventory` 后预算降为 `0`。
 7. `round-037` 到 `round-040` 的裸 `继续工作` 未解锁、未开新 worktrack，正确停在 strict handback。
+8. `round-041` 到 `round-046` 在同一观察主线下继续补齐 bounded core subsystem：combat、combat logger、cards、deck、map、events。
+9. `round-047` 到 `round-060` 因当前 goal 下已无剩余 chartered subsystem，提前进入 `stable handback`，而不是继续耗尽剩余 budget。
 
-最终控制状态：
+`phase-3` 虽然使用了新的 `/tmp` 路径，但仍被视为同一条 observation 主线的继续，而不是独立文档线。
+
+phase-3 最终控制状态：
 
 - `repo_scope: active`
 - `worktrack_scope: closed`
 - `Active Worktrack: none`
-- `needs_programmer_approval: true`
+- `needs_programmer_approval: no`
 - `post_contract_autonomy: delegated-minimal`
 - `max_auto_new_worktracks: 20`
 - `handoff_state: awaiting-handoff`
 - `handback_lock_active: yes`
-- `autonomy_budget_remaining: 0`
-- `autonomous_worktracks_opened: 40`
-- `continuation_round_start: 21`
-- `continuation_round_end: 40`
+- `autonomy_budget_remaining: 14`
+- `autonomous_worktracks_opened: 6`
+- `last_handback_signature: handback:wt-006-events:2026-04-24`
+- `handback_reaffirmed_rounds: 3`
 
 ## Round Audit
 
-所有轮次顶层入口均为 `harness-skill`。**本次未观察到真实 SubAgent 创建**；`round-000` 到 `round-036` 的执行均记录为 current-carrier fallback，`round-037` 到 `round-040` 未进入下游 worktrack。
+所有轮次顶层入口均为 `harness-skill`。**整条主线都未观察到真实 SubAgent 创建**；执行面始终是 current-carrier fallback。
 
 技能缩写：
 
@@ -126,6 +134,26 @@ H -> RS/RN -> IW/WS/SW/D -> RE/TE/RC/G -> CW/RR
 | `round-038` | 未创建 | `H` 只读 | 重复确认 handback lock；未进入下游技能 | 未跑测试 | handback lock |
 | `round-039` | 未创建 | `H` 只读 | 重复确认需要显式审批或 budget 变更 | 未跑测试 | handback lock |
 | `round-040` | 未创建 | `H` 只读 | 最终确认 `autonomy_budget_remaining: 0`、`needs_programmer_approval: true` | 未跑测试 | stable handback |
+| `round-041` | `wt-001-combat` | `+SG` | 冷启动建 `.aw/`；实现纯 CLI 战斗核心 | 4 tests + CLI smoke OK | 20→19 |
+| `round-042` | `wt-002-combat-logger` | 标准链 | 新增结构化 replay logger、`log` 命令 | 渐进验证 | 19→18 |
+| `round-043` | `wt-003-cards` | 标准链 | 显式卡牌模型、`cards`、`play <card>` | 渐进验证 | 18→17 |
+| `round-044` | `wt-004-deck` | 标准链 | fixed starter deck、hand/draw/discard、回收 | 渐进验证 | 17→16 |
+| `round-045` | `wt-005-map` | 标准链 | 确定性地图、`travel <node_id>`、boss completion | 渐进验证 | 16→15 |
+| `round-046` | `wt-006-events` | 标准链 | 事件节点、`event` / `choose <option_id>` | 最终 20 tests 复验的一部分 | 15→14 |
+| `round-047` | 未创建 | `H` 只读 | 首次确认当前 goal 下无剩余 chartered subsystem，要求显式 unlock | 未开新 worktrack | stable handback |
+| `round-048` | 未创建 | `H` 只读 | 再次确认 handback | 未跑测试 | stable handback |
+| `round-049` | 未创建 | `H` 只读 | 再次确认 handback，不改文件 | 未跑测试 | stable handback |
+| `round-050` | 未创建 | `H` 只读 | 再次确认 handback | 未跑测试 | stable handback |
+| `round-051` | 未创建 | `H` 只读 | 再次确认 handback | 未跑测试 | stable handback |
+| `round-052` | 未创建 | `H` 只读 | 再次确认 handback | 未跑测试 | stable handback |
+| `round-053` | 未创建 | `H` 只读 | 再次确认 handback | 未跑测试 | stable handback |
+| `round-054` | 未创建 | `H` 只读 | 再次确认 handback | 未跑测试 | stable handback |
+| `round-055` | 未创建 | `H` 只读 | 再次确认 handback | 未跑测试 | stable handback |
+| `round-056` | 未创建 | `H` 只读 | 再次确认 handback | 未跑测试 | stable handback |
+| `round-057` | 未创建 | `H` 只读 | 再次确认 handback | 未跑测试 | stable handback |
+| `round-058` | 未创建 | `H` 只读 | 再次确认 handback | 未跑测试 | stable handback |
+| `round-059` | 未创建 | `H` 只读 | 再次确认 handback | 未跑测试 | stable handback |
+| `round-060` | 未创建 | `H` 只读 | 最终确认裸 `继续工作` 不再解锁 | 未跑测试 | stable handback |
 
 ## Verified Product State
 
@@ -165,15 +193,42 @@ PYTHONDONTWRITEBYTECODE=1 python -m compileall -q spirelite tests
 
 部分中间轮次的 `stderr.txt` 记录了 patch/test/修复噪声，非空属于正常。最终判断以每轮 `exit-code.txt`、`final.txt`、`.aw` gate evidence、repo snapshot 和复验命令为准。
 
+phase-3 额外复跑命令：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
+python3 - <<'PY'
+import pathlib, py_compile
+count = 0
+for base in ["spirelite_cli", "tests"]:
+    for path in sorted(pathlib.Path(base).rglob("*.py")):
+        py_compile.compile(str(path), doraise=True)
+        count += 1
+print(f"compiled {count} files")
+PY
+find /tmp/harness-spire-lite.KGV6rk/repo -type d -name '__pycache__' -o -type f -name '*.pyc'
+```
+
+结果：
+
+- `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v`：`Ran 20 tests ... OK`
+- compile 检查：`compiled 11 files`
+- `round-041` 到 `round-060`：每轮 `exit-code.txt` 均为 `0`
+- cache scan：temp repo 内仍有 `spirelite_cli/__pycache__`、`tests/__pycache__` 和 `.pyc` 残留
+- 这些缓存残留不是独立复跑生成的；它们是 observation rounds 自己运行测试时留下的工作树真相，因此本页不清理它们
+
 ## Important Observations
 
 - `continuous-autonomy` override 生效：`round-000` 初始化预算为 `20`，每个 autonomous worktrack 后递减，直到 `round-019` 归零。
 - continuation phase 再次显式设置并消费了 `20` 个 autonomous slices，直到 `round-036` 归零；`round-037` 到 `round-040` 证明预算耗尽后 strict handback 恢复。
+- 后续 continuation 暴露了另一种合法结果：`budget` 是上限，不是必须耗尽的目标值；如果当前 goal 下的 chartered subsystem 已全部完成，Harness 应提前进入 `stable handback`。
+- `round-041` 到 `round-046` 在 working tree 中补齐了一套 bounded core subsystem；`round-047` 到 `round-060` 没有继续发明新 worktrack，而是保持在 unlock-missing handback。
 - "每个 subsystem 独立 worktrack"和"自动连续推进"可以同时成立：每轮仍在 `stop_after_autonomous_slice` 边界 handback，但预算未耗尽时不激活硬锁。
 - 固定题目六个 subsystem 在 `round-000` 到 `round-005` 完成，后续 14 个 worktrack 为 integration seam、route validation、entrypoint/help/error/alias/EOF/loss outcome 等收敛切片。
 - continuation phase 新增了 cache hygiene、active-event summary、terminal/rest/shop/run guards、version/help probes、gold reward、path/help inventory 对齐等 20 个 bounded worktracks，最终 repo snapshot 收敛到 `WT-040-help-path-alias-inventory` 已关闭状态。
 - 本次运行未创建真实 SubAgent；执行面是 current-carrier fallback。这与上一轮 strict-handback 中出现真实 worker carrier 的结果不同，属于 runtime 观察差异。
 - 临时 repo 仍为 no-commit / unborn baseline；`git status` 显示 `.agents/`、`.aw/`、product files、tests 和 docs 为 untracked，是 runbook 规定的观察状态。
+- phase-3 的 `control-state` 最终 `needs_programmer_approval: no`，但 explicit unlock 仍然必需。这里是 `stable handback / unlock missing`，不是 approval gate fail。
 
 ## Known Residual Scope
 
@@ -190,12 +245,16 @@ PYTHONDONTWRITEBYTECODE=1 python -m compileall -q spirelite tests
 
 ## Current Next Route
 
-当前 `autonomy_budget_remaining: 0`，`handback_lock_active: yes`，`needs_programmer_approval: true`。后续不能再用裸 `继续工作` 解锁。
+当前不能再用裸 `继续工作` 解锁。最新 `control-state` 显示 `autonomy_budget_remaining: 14`、`handback_lock_active: yes`、`needs_programmer_approval: no`；阻塞原因是没有显式 unlock route，而不是预算归零或审批失败。
 
 如需继续，必须显式授权，例如：
 
 ```text
-批准解锁 handback，进入 RepoScope.Observe，并允许 Harness 选择下一个受限 worktrack。
+解锁 repo-level baseline formalization
 ```
 
-或直接指定新的工作范围。
+或：
+
+```text
+解锁新的 continuation：<具体目标 / 范围 / 验收边界>
+```
