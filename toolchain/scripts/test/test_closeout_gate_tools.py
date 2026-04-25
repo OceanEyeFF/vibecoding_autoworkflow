@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import closeout_acceptance_gate
-from scope_gate_check import check_scope
+from scope_gate_check import check_scope, normalize_status_path
 from gate_status_backfill import update_state
 
 
@@ -60,6 +63,95 @@ def test_check_scope_flags_disallowed_changes() -> None:
     result = check_scope(["GUIDE.md"], ("docs/project-maintenance/",))
     assert result.passed is False
     assert result.violations == ["GUIDE.md"]
+
+
+def test_normalize_status_path_decodes_git_quoted_utf8_path() -> None:
+    quoted = '"docs/harness/foundations/Harness\\350\\277\\220\\350\\241\\214\\345\\215\\217\\350\\256\\256.md"'
+
+    assert normalize_status_path(quoted) == "docs/harness/foundations/Harness运行协议.md"
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
+def test_pre_push_blocks_origin_head_baseline(tmp_path) -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    hook_path = repo_root / "toolchain" / "scripts" / "git-hooks" / "pre-push"
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(
+        [
+            "git",
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            "refs/remotes/origin/master",
+        ],
+        cwd=tmp_path,
+        check=True,
+    )
+
+    completed = subprocess.run(
+        ["bash", str(hook_path)],
+        cwd=tmp_path,
+        input=(
+            "refs/heads/master 0000000000000000000000000000000000000000 "
+            "refs/heads/master 0000000000000000000000000000000000000000\n"
+        ),
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 1
+    assert "direct push to protected baseline 'master' is blocked" in completed.stderr
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
+def test_pre_push_allows_non_baseline_branch(tmp_path) -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    hook_path = repo_root / "toolchain" / "scripts" / "git-hooks" / "pre-push"
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(
+        [
+            "git",
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            "refs/remotes/origin/master",
+        ],
+        cwd=tmp_path,
+        check=True,
+    )
+
+    completed = subprocess.run(
+        ["bash", str(hook_path)],
+        cwd=tmp_path,
+        input=(
+            "refs/heads/work/test 0000000000000000000000000000000000000000 "
+            "refs/heads/work/test 0000000000000000000000000000000000000000\n"
+        ),
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0
+    assert completed.stderr == ""
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
+def test_pre_push_fallback_blocks_main_when_origin_head_unresolved(tmp_path) -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    hook_path = repo_root / "toolchain" / "scripts" / "git-hooks" / "pre-push"
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+
+    completed = subprocess.run(
+        ["bash", str(hook_path)],
+        cwd=tmp_path,
+        input=(
+            "refs/heads/main 0000000000000000000000000000000000000000 "
+            "refs/heads/main 0000000000000000000000000000000000000000\n"
+        ),
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 1
+    assert "fallback protects main/master" in completed.stderr
 
 
 def test_update_state_backfills_gate_status() -> None:

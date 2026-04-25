@@ -1,9 +1,9 @@
 ---
 title: Harness 运行协议
 status: draft
-updated: 2026-04-21
+updated: 2026-04-25
 owner: OceanEye
-last_verified: 2026-04-21
+last_verified: 2026-04-25
 ---
 
 # Harness 运行协议
@@ -204,6 +204,7 @@ Harness 文档与控制逻辑应按 3 个正交维度组织：
 - `Evidence` —— 状态转移证据
 - `Cursor / Control State` —— 控制面当前模式
 - `ChangeRequest` —— 目标变更请求
+- `AppendRequest` —— 追加请求分类与路由
 
 **关键约束**：`Control State` 只保存控制面状态，不承载业务真相。业务真相应分别保存在 `Repo` 与 `Worktrack` 的正式文档里。
 
@@ -351,6 +352,29 @@ Harness 文档与控制逻辑应按 3 个正交维度组织：
 - 对现有 worktrack 的影响
 - 是否需要重建 baseline
 - 单独 gate 结论
+
+### 8.8 Append Request
+
+负责管理外部追加请求的分类与路由，而不是直接执行追加内容。
+
+支持两个 mode：
+
+- `append-feature`
+- `append-design`
+
+最小分类结果：
+
+- `goal change` —— 追加请求会改变 repo 长期参考信号，必须进入目标变更控制
+- `new worktrack` —— 追加请求在当前目标内，但应独立初始化新的 worktrack
+- `scope expansion` —— 追加请求试图扩大当前活跃 worktrack，必须显式审批
+- `design-only` —— 追加请求只要求设计判断或设计产物
+- `design-then-implementation` —— 追加请求要求先设计、设计 gate 通过后再实现
+
+关键约束：
+
+- `Append Request` 只表达分类与路由，不授权执行。
+- `Append Request` 不替代 `Goal Change Request` 或 `Worktrack Contract`。
+- `goal change` 与 `scope expansion` 分类必须暴露 programmer authority boundary。
 
 ---
 
@@ -601,6 +625,12 @@ RepoScope.Observe ──→ RepoScope.Decide ──→ WorktrackScope.Init
 - `whats-next`
 - `verify-next`
 - `go-next`
+
+#### RouteAppend（追加请求路由）
+
+- `append-request`（由外部 append-feature / append-design 请求触发）
+
+`RouteAppend` 是执行前的 intake / route 操作。它不属于实现执行，不创建 worktrack，不改写目标，也不扩展当前 worktrack；它只把追加请求分类为 `goal change`、`new worktrack`、`scope expansion`、`design-only` 或 `design-then-implementation`，再返回显式下一路由与审批边界。
 
 #### ChangeGoal（参考信号设定）
 

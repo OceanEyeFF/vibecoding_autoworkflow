@@ -27,6 +27,7 @@
 | 我想看 canonical source 到 target entry 的正式映射 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | 最小 deploy 合同，定义 canonical source / backend payload source / target / verify |
 | 我想看 `agents` canonical-copy payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | 定义 `product/harness/adapters/agents/skills/` 的 payload descriptor 结构，以及 target 如何复制 canonical skill 内容 |
 | 我想初始化 `.aw/` 样例并校验 `.aw_template` 最小结构 | [template-tooling-mvp.md](./template-tooling-mvp.md) | B2 的最小工作面，只做 `.aw_template -> .aw` 样例生成与前置校验 |
+| 我想把已有代码库接入 Harness 初始化流程 | [existing-code-adoption.md](./existing-code-adoption.md) | 定义 `.aw/repo/discovery-input.md` 作为只读事实输入，不作为 goal truth |
 | 我已有安装，想诊断 drift / conflict / unrecognized 目录 | [skill-deployment-maintenance.md](./skill-deployment-maintenance.md) | 解释只读 `verify`、冲突扫描和 destructive reinstall 恢复口径 |
 | 我在改 skills 或 `.aw_template/` | [skill-lifecycle.md](./skill-lifecycle.md) | 说明 lifecycle 边界，以及为什么 deploy 不承接业务生命周期决策 |
 | 我想看 backend 当前实现状态 | [deploy-runbook.md](./deploy-runbook.md) | 当前只保留 `agents` 已实现；其他 backend 不写成稳定 operator 流程 |
@@ -53,6 +54,7 @@
 - `aw.marker` 是 runtime-generated artifact，只用于标识“这是当前 backend 受管的 live install 目录”；它不是 source truth，也不是历史接管记录
 - deploy target 不是 source of truth。skills / payload source 的正式 owner 仍在 `product/`
 - 当前 B2 初始化工具只处理 `.aw_template -> .aw` 样例，不消费 payload descriptor、不生成 deploy payload，也不写入 deploy target
+- Existing Code Project Adoption 的 `.aw/repo/discovery-input.md` 是只读事实输入，不是 `goal-charter.md` 的替代物；当前可通过 `set-harness-goal-skill/scripts/deploy_aw.py generate --adoption-mode existing-code-adoption` 在默认/profile 生成中渲染，具体 artifact/template 与确认边界见 [existing-code-adoption.md](./existing-code-adoption.md)
 - `docs/harness/` 继续承接 Harness doctrine；deploy 文档只定义 operator-facing deploy 合同
 - `.aw_template/` 的 `.aw/` 目录结构、管理文档模板和待迁移模板边界见 [template-consumption-spec.md](./template-consumption-spec.md)
 
@@ -76,3 +78,5 @@
   template contract。回答 `.aw_template/` 中哪些内容属于 `.aw/` 运行管理面，哪些只是待迁移模板。
 - [template-tooling-mvp.md](./template-tooling-mvp.md)
   template tooling。回答 B2 当前提供的最小生成 / 校验面。
+- [existing-code-adoption.md](./existing-code-adoption.md)
+  existing code adoption。回答既有代码库接入 Harness 初始化时，`discovery-input.md` 的生成目标、非 goal truth 边界，以及它和 snapshot / goal / control 的关系。

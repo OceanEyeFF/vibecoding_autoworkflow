@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from governance_semantic_check import (
     SemanticReport,
+    check_append_request_contract_terms,
     check_adapter_wrappers_are_thin,
     check_canonical_skill_packages_are_minimal,
     check_foundations_authority_shadows,
@@ -82,6 +83,30 @@ def test_check_outdated_placeholder_phrases_flags_stale_text(tmp_path: Path) -> 
     assert any("toolchain/scripts/README.md" in item for item in report.failures)
 
 
+def test_check_append_request_contract_terms_flags_drift(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/harness/artifact/control/append-request.md",
+        "append-feature\nappend-design\ngoal change\nnew worktrack\nscope expansion\ndesign-only\ndesign-then-implementation\napproval_required\ncontinuation_ready\n",
+    )
+    write_doc(
+        tmp_path / "docs/harness/workflow-families/repo-evolution/append-request-routing.md",
+        "append-feature\nappend-design\ngoal change\nnew worktrack\nscope expansion\ndesign-only\ndesign-then-implementation\napproval_required\ncontinuation_ready\ncontinuation_blockers\n",
+    )
+    write_doc(
+        tmp_path / "product/harness/skills/repo-append-request-skill/SKILL.md",
+        "append-feature\nappend-design\ngoal change\nnew worktrack\nscope expansion\ndesign-only\ndesign-then-implementation\napproval_required\ncontinuation_ready\ncontinuation_blockers\n",
+    )
+    write_doc(
+        tmp_path / "product/harness/skills/repo-append-request-skill/templates/append-request.template.md",
+        "approval_required\ncontinuation_ready\ncontinuation_blockers\n",
+    )
+
+    report = SemanticReport()
+    check_append_request_contract_terms(tmp_path, report)
+
+    assert any("continuation_blockers" in item for item in report.failures)
+
+
 def test_check_adapter_wrappers_are_thin_ignores_absent_adapter_layer(tmp_path: Path) -> None:
     report = SemanticReport()
     check_adapter_wrappers_are_thin(tmp_path, report)
@@ -127,6 +152,29 @@ def test_check_adapter_wrappers_are_thin_flags_missing_heading_and_duplication(t
 
     assert any("Deploy Target" in item for item in report.failures)
     assert any("Execution Rules" in item for item in report.failures)
+
+
+def test_check_adapter_wrappers_are_thin_ignores_code_fence_headings(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/harness/adapters/agents/skills/demo-skill/SKILL.md",
+        "\n".join(
+            [
+                "# Demo Adapter Wrapper",
+                "## Canonical Source",
+                "## Backend Notes",
+                "## Deploy Target",
+                "```md",
+                "## Execution Rules",
+                "```",
+            ]
+        )
+        + "\n",
+    )
+
+    report = SemanticReport()
+    check_adapter_wrappers_are_thin(tmp_path, report)
+
+    assert report.failures == []
 
 
 def test_check_canonical_skill_packages_are_minimal_accepts_valid_package(tmp_path: Path) -> None:
@@ -219,3 +267,28 @@ def test_check_canonical_skill_packages_are_minimal_flags_adapter_leakage(tmp_pa
     check_canonical_skill_packages_are_minimal(tmp_path, report)
 
     assert any("Backend Notes" in item for item in report.failures)
+
+
+def test_check_canonical_skill_packages_are_minimal_ignores_code_fence_headings(
+    tmp_path: Path,
+) -> None:
+    write_doc(
+        tmp_path / "product/harness/skills/demo-skill/SKILL.md",
+        "\n".join(
+            [
+                "---",
+                "name: demo-skill",
+                "description: Demo.",
+                "---",
+                "# Demo Skill",
+                "```md",
+                "## Backend Notes",
+                "```",
+            ]
+        )
+        + "\n",
+    )
+    report = SemanticReport()
+    check_canonical_skill_packages_are_minimal(tmp_path, report)
+
+    assert report.failures == []

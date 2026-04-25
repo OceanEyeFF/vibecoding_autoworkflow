@@ -156,6 +156,8 @@ class SetHarnessGoalDeployAwValidationTest(unittest.TestCase):
                 "goal-charter",
                 "--deploy-path",
                 str(output_root),
+                "--baseline-branch",
+                "main",
             ]
         )
 
@@ -206,6 +208,244 @@ class SetHarnessGoalDeployAwValidationTest(unittest.TestCase):
         self.assertIn("## Mainline Status\n\n- baseline_branch: main\n", rendered)
         self.assertNotIn("- branch: feature/foo", rendered)
 
+    def test_existing_code_adoption_profile_writes_discovery_input(self) -> None:
+        output_root = Path(self.temp_dir.name)
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--deploy-path",
+                str(output_root),
+                "--adoption-mode",
+                "existing-code-adoption",
+                "--baseline-branch",
+                "master",
+                "--force",
+            ]
+        )
+        selected_specs = deploy_aw.resolve_selected_specs(args)
+        static_assets = deploy_aw.resolve_static_asset_specs(args)
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            exit_code = deploy_aw.run_generate(selected_specs, static_assets, args)
+
+        self.assertEqual(exit_code, 0)
+        discovery_path = output_root / ".aw" / "repo" / "discovery-input.md"
+        self.assertTrue(discovery_path.is_file())
+        discovery_text = discovery_path.read_text(encoding="utf-8")
+        self.assertIn('artifact_type: "repo-discovery-input"', discovery_text)
+        self.assertIn("- adoption_mode: existing-code-adoption", discovery_text)
+        self.assertIn(f"- repository_path: {output_root.resolve()}", discovery_text)
+        self.assertNotIn("TODO(repository_path)", discovery_text)
+        self.assertIn("- baseline_branch: master", discovery_text)
+
+    def test_existing_code_adoption_env_deploy_path_writes_repository_path(self) -> None:
+        output_root = Path(self.temp_dir.name)
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--adoption-mode",
+                "existing-code-adoption",
+                "--baseline-branch",
+                "master",
+                "--force",
+            ]
+        )
+        selected_specs = deploy_aw.resolve_selected_specs(args)
+        static_assets = deploy_aw.resolve_static_asset_specs(args)
+
+        with mock.patch.dict(deploy_aw.os.environ, {"DEPLOY_PATH": str(output_root)}):
+            with contextlib.redirect_stdout(io.StringIO()):
+                exit_code = deploy_aw.run_generate(selected_specs, static_assets, args)
+
+        self.assertEqual(exit_code, 0)
+        discovery_path = output_root / ".aw" / "repo" / "discovery-input.md"
+        self.assertTrue(discovery_path.is_file())
+        discovery_text = discovery_path.read_text(encoding="utf-8")
+        self.assertIn(f"- repository_path: {output_root.resolve()}", discovery_text)
+        self.assertNotIn("TODO(repository_path)", discovery_text)
+        self.assertIn("- baseline_branch: master", discovery_text)
+
+    def test_resolve_baseline_branch_prefers_origin_head(self) -> None:
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--deploy-path",
+                self.temp_dir.name,
+            ]
+        )
+
+        with mock.patch.dict(deploy_aw.os.environ, {"AW_BASELINE_BRANCH": ""}):
+            with mock.patch.object(deploy_aw, "run_git_output", return_value="origin/master"):
+                baseline = deploy_aw.resolve_baseline_branch(args, Path(self.temp_dir.name))
+
+        self.assertEqual(baseline, "master")
+
+    def test_resolve_baseline_branch_accepts_short_origin_head_branch(self) -> None:
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--deploy-path",
+                self.temp_dir.name,
+            ]
+        )
+
+        with mock.patch.dict(deploy_aw.os.environ, {"AW_BASELINE_BRANCH": ""}):
+            with mock.patch.object(deploy_aw, "run_git_output", return_value="master"):
+                baseline = deploy_aw.resolve_baseline_branch(args, Path(self.temp_dir.name))
+
+        self.assertEqual(baseline, "master")
+
+    def test_resolve_baseline_branch_ignores_empty_origin_head(self) -> None:
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--deploy-path",
+                self.temp_dir.name,
+            ]
+        )
+
+        def ref_exists(_repo_root: Path, ref: str) -> bool:
+            return ref == "refs/remotes/origin/master"
+
+        with mock.patch.dict(deploy_aw.os.environ, {"AW_BASELINE_BRANCH": ""}):
+            with mock.patch.object(deploy_aw, "run_git_output", return_value="origin/"):
+                with mock.patch.object(deploy_aw, "git_ref_exists", side_effect=ref_exists):
+                    baseline = deploy_aw.resolve_baseline_branch(
+                        args, Path(self.temp_dir.name)
+                    )
+
+        self.assertEqual(baseline, "master")
+
+    def test_resolve_baseline_branch_prefers_environment_value(self) -> None:
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--deploy-path",
+                self.temp_dir.name,
+            ]
+        )
+
+        with mock.patch.dict(
+            deploy_aw.os.environ,
+            {"AW_BASELINE_BRANCH": " release/main "},
+        ):
+            baseline = deploy_aw.resolve_baseline_branch(args, Path(self.temp_dir.name))
+
+        self.assertEqual(baseline, "release/main")
+
+    def test_resolve_baseline_branch_uses_unique_remote_candidate(self) -> None:
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--deploy-path",
+                self.temp_dir.name,
+            ]
+        )
+
+        def ref_exists(_repo_root: Path, ref: str) -> bool:
+            return ref == "refs/remotes/origin/main"
+
+        with mock.patch.dict(deploy_aw.os.environ, {"AW_BASELINE_BRANCH": ""}):
+            with mock.patch.object(deploy_aw, "run_git_output", return_value=None):
+                with mock.patch.object(deploy_aw, "git_ref_exists", side_effect=ref_exists):
+                    baseline = deploy_aw.resolve_baseline_branch(
+                        args, Path(self.temp_dir.name)
+                    )
+
+        self.assertEqual(baseline, "main")
+
+    def test_resolve_baseline_branch_rejects_ambiguous_remote_candidates(self) -> None:
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--deploy-path",
+                self.temp_dir.name,
+            ]
+        )
+
+        def ref_exists(_repo_root: Path, ref: str) -> bool:
+            return ref in {
+                "refs/remotes/origin/main",
+                "refs/remotes/origin/master",
+            }
+
+        with mock.patch.dict(deploy_aw.os.environ, {"AW_BASELINE_BRANCH": ""}):
+            with mock.patch.object(deploy_aw, "run_git_output", return_value=None):
+                with mock.patch.object(deploy_aw, "git_ref_exists", side_effect=ref_exists):
+                    with self.assertRaises(deploy_aw.DeployAwError) as raised:
+                        deploy_aw.resolve_baseline_branch(args, Path(self.temp_dir.name))
+
+        self.assertIn("ambiguous remote baseline branches", str(raised.exception))
+
+    def test_resolve_baseline_branch_uses_unique_local_candidate(self) -> None:
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--deploy-path",
+                self.temp_dir.name,
+            ]
+        )
+
+        def ref_exists(_repo_root: Path, ref: str) -> bool:
+            return ref == "refs/heads/master"
+
+        with mock.patch.dict(deploy_aw.os.environ, {"AW_BASELINE_BRANCH": ""}):
+            with mock.patch.object(deploy_aw, "run_git_output", return_value=None):
+                with mock.patch.object(deploy_aw, "git_ref_exists", side_effect=ref_exists):
+                    baseline = deploy_aw.resolve_baseline_branch(
+                        args, Path(self.temp_dir.name)
+                    )
+
+        self.assertEqual(baseline, "master")
+
+    def test_resolve_baseline_branch_rejects_unverified_baseline(self) -> None:
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--deploy-path",
+                self.temp_dir.name,
+            ]
+        )
+
+        def git_output(_repo_root: Path, *git_args: str) -> str | None:
+            if git_args == ("config", "--get", "init.defaultBranch"):
+                return "main"
+            return None
+
+        with mock.patch.dict(deploy_aw.os.environ, {"AW_BASELINE_BRANCH": ""}):
+            with mock.patch.object(deploy_aw, "run_git_output", side_effect=git_output):
+                with mock.patch.object(deploy_aw, "git_ref_exists", return_value=False):
+                    with self.assertRaises(deploy_aw.DeployAwError) as raised:
+                        deploy_aw.resolve_baseline_branch(args, Path(self.temp_dir.name))
+
+        self.assertIn("unable to resolve baseline branch", str(raised.exception))
+
+    def test_generate_rejects_unverified_baseline_before_writes(self) -> None:
+        output_root = Path(self.temp_dir.name) / "repo"
+        output_root.mkdir()
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--template",
+                "goal-charter",
+                "--deploy-path",
+                str(output_root),
+            ]
+        )
+
+        with mock.patch.dict(deploy_aw.os.environ, {"AW_BASELINE_BRANCH": ""}):
+            with mock.patch.object(deploy_aw, "run_git_output", return_value=None):
+                with mock.patch.object(deploy_aw, "git_ref_exists", return_value=False):
+                    with self.assertRaises(deploy_aw.DeployAwError) as raised:
+                        deploy_aw.run_generate(
+                            [deploy_aw.TEMPLATE_SPECS["goal-charter"]],
+                            [],
+                            args,
+                        )
+
+        self.assertIn("unable to resolve baseline branch", str(raised.exception))
+        self.assertFalse((output_root / ".aw").exists())
+
     def test_generate_can_install_set_goal_skill_for_claude(self) -> None:
         output_root = Path(self.temp_dir.name)
         args = deploy_aw.parse_args(
@@ -215,6 +455,8 @@ class SetHarnessGoalDeployAwValidationTest(unittest.TestCase):
                 "goal-charter",
                 "--deploy-path",
                 str(output_root),
+                "--baseline-branch",
+                "main",
                 "--install-claude-skill",
             ]
         )
@@ -256,6 +498,8 @@ class SetHarnessGoalDeployAwValidationTest(unittest.TestCase):
                 "goal-charter",
                 "--deploy-path",
                 str(output_root),
+                "--baseline-branch",
+                "main",
                 "--install-claude-skill",
             ]
         )
@@ -281,6 +525,8 @@ class SetHarnessGoalDeployAwValidationTest(unittest.TestCase):
                 "goal-charter",
                 "--deploy-path",
                 str(output_root),
+                "--baseline-branch",
+                "main",
                 "--install-claude-skill",
             ]
         )
@@ -307,6 +553,8 @@ class SetHarnessGoalDeployAwValidationTest(unittest.TestCase):
                 "goal-charter",
                 "--deploy-path",
                 str(output_root),
+                "--baseline-branch",
+                "main",
                 "--install-claude-skill",
             ]
         )
@@ -332,6 +580,8 @@ class SetHarnessGoalDeployAwValidationTest(unittest.TestCase):
                 "goal-charter",
                 "--deploy-path",
                 str(output_root),
+                "--baseline-branch",
+                "main",
                 "--install-claude-skill",
                 "--claude-root",
                 str(claude_root_file / "skills"),

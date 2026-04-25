@@ -4,6 +4,7 @@
 
 当前入口：
 
+- [append-request-routing.md](./append-request-routing.md)
 - [standard-worktrack.md](./standard-worktrack.md)
 - [policy-profiles.md](./policy-profiles.md)
 

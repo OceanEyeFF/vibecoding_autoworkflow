@@ -8,6 +8,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import date
@@ -205,6 +206,80 @@ TEMPLATE_SPECS = {
                     "checkpoint_ref",
                     "checkpoint_type",
                 ),
+            ),
+        ),
+    ),
+    "repo-discovery-input": TemplateSpec(
+        template_id="repo-discovery-input",
+        source_relpath="assets/repo/discovery-input.md",
+        output_relpath="repo/discovery-input.md",
+        artifact_type="repo-discovery-input",
+        title="Repo Discovery Input",
+        instance_note=(
+            "这是 `.aw/repo/discovery-input.md` 的运行样例，用于 Existing Code Project "
+            "Adoption 模式下记录既有代码库的只读事实输入。它不是 goal truth。"
+        ),
+        required_sections=(
+            "Metadata",
+            "Source Materials",
+            "Repository Facts",
+            "Architecture And Module Inventory",
+            "Build, Test, And Runtime Signals",
+            "Governance And Documentation Signals",
+            "Risks And Unknowns",
+            "Candidate Goal Signals",
+            "Confirmation Questions",
+            "Downstream Mapping Notes",
+            "Notes",
+        ),
+        required_keyed_fields_by_section=(
+            ("Metadata", ("repo", "owner", "updated", "adoption_mode", "source_scope", "generated_by")),
+            (
+                "Source Materials",
+                (
+                    "repository_path",
+                    "baseline_branch",
+                    "current_branch",
+                    "current_commit",
+                    "working_tree_state",
+                    "user_provided_context",
+                    "inspected_paths",
+                    "skipped_paths",
+                ),
+            ),
+            (
+                "Repository Facts",
+                (
+                    "primary_language_or_stack",
+                    "package_or_build_system",
+                    "runtime_entrypoints",
+                    "test_entrypoints",
+                    "deploy_or_release_entrypoints",
+                    "configuration_files",
+                ),
+            ),
+            (
+                "Build, Test, And Runtime Signals",
+                (
+                    "build_commands_seen",
+                    "test_commands_seen",
+                    "runtime_commands_seen",
+                    "commands_not_run",
+                ),
+            ),
+            (
+                "Governance And Documentation Signals",
+                (
+                    "existing_docs",
+                    "agent_or_harness_instructions",
+                    "ownership_or_layering_rules",
+                    "review_or_verify_rules",
+                    "known_policy_constraints",
+                ),
+            ),
+            (
+                "Downstream Mapping Notes",
+                ("goal_charter_inputs", "snapshot_status_inputs", "control_state_links"),
             ),
         ),
     ),
@@ -527,6 +602,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Do not copy static helper assets such as `.aw/template/*` and `worktrack/README.md`.",
     )
     generate_parser.add_argument(
+        "--adoption-mode",
+        choices=("new-goal-initialization", "existing-code-adoption"),
+        default="new-goal-initialization",
+        help=(
+            "Initialization mode. existing-code-adoption also renders "
+            ".aw/repo/discovery-input.md when using a profile/default generation."
+        ),
+    )
+    generate_parser.add_argument(
         "--repo",
         help="Repo name placeholder. Defaults to the basename of --deploy-path.",
     )
@@ -541,7 +625,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     generate_parser.add_argument(
         "--baseline-branch",
-        help="Baseline branch placeholder for repo/worktrack artifacts.",
+        help=(
+            "Baseline branch for repo/worktrack artifacts. Required unless the script "
+            "can verify one from AW_BASELINE_BRANCH, origin/HEAD, or a unique "
+            "main/master ref."
+        ),
     )
     generate_parser.add_argument(
         "--worktrack-id",
@@ -649,6 +737,14 @@ def resolve_selected_specs(args: argparse.Namespace) -> list[TemplateSpec]:
     else:
         template_ids = list(TEMPLATE_SPECS)
 
+    if (
+        args.mode == "generate"
+        and args.adoption_mode == "existing-code-adoption"
+        and not args.template
+        and "repo-discovery-input" not in template_ids
+    ):
+        template_ids.insert(template_ids.index("repo-snapshot-status"), "repo-discovery-input")
+
     selected_specs: list[TemplateSpec] = []
     seen: set[str] = set()
     for template_id in template_ids:
@@ -685,6 +781,84 @@ def aw_output_root_for(deploy_path: Path) -> Path:
 
 def repo_name_for(args: argparse.Namespace, deploy_path: Path) -> str:
     return args.repo or deploy_path.name
+
+
+def run_git_output(repo_root: Path, *args: str) -> str | None:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(repo_root), *args],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except OSError:
+        return None
+    if completed.returncode != 0:
+        return None
+    value = completed.stdout.strip()
+    return value or None
+
+
+def git_ref_exists(repo_root: Path, ref: str) -> bool:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(repo_root), "show-ref", "--verify", "--quiet", ref],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError:
+        return False
+    return completed.returncode == 0
+
+
+def resolve_baseline_branch(args: argparse.Namespace, deploy_path: Path) -> str:
+    if args.baseline_branch and args.baseline_branch.strip():
+        return args.baseline_branch.strip()
+
+    env_value = (os.environ.get("AW_BASELINE_BRANCH") or "").strip()
+    if env_value:
+        return env_value
+
+    origin_head = run_git_output(
+        deploy_path, "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"
+    )
+    if origin_head:
+        baseline = origin_head.removeprefix("origin/").strip()
+        if baseline:
+            return baseline
+
+    remote_candidates = [
+        branch
+        for branch in ("main", "master")
+        if git_ref_exists(deploy_path, f"refs/remotes/origin/{branch}")
+    ]
+    if len(remote_candidates) == 1:
+        return remote_candidates[0]
+    if len(remote_candidates) > 1:
+        raise DeployAwError(
+            "ambiguous remote baseline branches: both origin/main and origin/master exist; "
+            "pass --baseline-branch"
+        )
+
+    local_candidates = [
+        branch
+        for branch in ("main", "master")
+        if git_ref_exists(deploy_path, f"refs/heads/{branch}")
+    ]
+    if len(local_candidates) == 1:
+        return local_candidates[0]
+    if len(local_candidates) > 1:
+        raise DeployAwError(
+            "ambiguous local baseline branches: both main and master exist; pass --baseline-branch"
+        )
+
+    raise DeployAwError(
+        "unable to resolve baseline branch: pass --baseline-branch or set "
+        "AW_BASELINE_BRANCH; origin/HEAD is unavailable and no unique main/master "
+        "branch ref could verify a baseline"
+    )
 
 
 def resolve_static_asset_specs(args: argparse.Namespace) -> list[CopyAssetSpec]:
@@ -903,6 +1077,8 @@ def resolve_keyed_value(
         "repo": args.repo,
         "owner": args.owner or placeholder("owner"),
         "updated": args.updated,
+        "adoption_mode": getattr(args, "adoption_mode", "new-goal-initialization"),
+        "repository_path": str(getattr(args, "deploy_path", "") or placeholder("repository_path")),
         "baseline_branch": args.baseline_branch or placeholder("baseline_branch"),
         "baseline_ref": args.baseline_branch or placeholder("baseline_ref"),
         "worktrack_id": args.worktrack_id or placeholder("worktrack_id"),
@@ -1272,6 +1448,7 @@ def run_generate(
     args: argparse.Namespace,
 ) -> int:
     deploy_path = resolve_deploy_path(args)
+    args.deploy_path = deploy_path
     output_root = aw_output_root_for(deploy_path)
     install_claude_skill = getattr(args, "install_claude_skill", False)
     claude_package_files = collect_skill_package_files() if install_claude_skill else []
@@ -1279,6 +1456,7 @@ def run_generate(
         claude_skill_target_dir_for(args, deploy_path) if install_claude_skill else None
     )
     args.repo = repo_name_for(args, deploy_path)
+    args.baseline_branch = resolve_baseline_branch(args, deploy_path)
     selected_template_ids = {spec.template_id for spec in selected_specs}
     rendered_templates: list[tuple[TemplateSpec, str]] = []
     for spec in selected_specs:

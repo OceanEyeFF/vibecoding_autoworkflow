@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 治理入口"
 status: active
-updated: 2026-04-24
+updated: 2026-04-25
 owner: aw-kernel
-last_verified: 2026-04-24
+last_verified: 2026-04-25
 ---
 # Review / Verify 治理入口
 
@@ -56,6 +56,7 @@ last_verified: 2026-04-24
 - 如果改了 `AGENTS.md` 或执行流程，是否同步本文
 - 如果改了 deploy / adapter 行为，是否同步对应 `docs/project-maintenance/deploy/` runbook、maintenance 与 usage-help，并确保文档口径仍是 destructive reinstall model
 - 如果改了 `docs/harness/`、`product/harness/skills/*/` 或 `product/harness/adapters/*/skills/*/`，是否仍保持合同层与 executable layer 分工
+- 如果改了 branch / PR / baseline 规则，是否仍从 `origin/HEAD` 或 Worktrack Contract 的 `baseline_branch` 取值，而不是在技能、hook 或 runbook 中写死默认分支名；当前仓库已验证 baseline 为 `origin/HEAD -> master`
 - 如果改了 adjacent-system 文档，是否同步清理已经删除的 `product/memory-side/`、`product/task-interface/` 和 `docs/deployable-skills/` 旧路径引用
 - 如果改了 `product/*/skills/*/SKILL.md`，是否仍保持最小 executable body；若出现对已退役 `references/entrypoints.md` 的引用或文件回流，是否同步清理并更新对应治理检查与引用口径
 - 如果改了 `product/.aw_template/`，是否仍只承接 `.aw/` scaffold 模板或受控待迁移模板，而没有长出 canonical truth、backend wrapper 或运行状态
@@ -72,6 +73,10 @@ last_verified: 2026-04-24
 - skills / templates 分层规则变更
   - `python3 toolchain/scripts/test/path_governance_check.py`
   - `python3 toolchain/scripts/test/governance_semantic_check.py`
+- branch / PR / baseline 规则或 hook 变更
+  - `git symbolic-ref --quiet --short refs/remotes/origin/HEAD`
+  - `bash -n toolchain/scripts/git-hooks/pre-push`
+  - 用 `refs/heads/<baseline_branch>` 输入 dry-run 覆盖 hook 阻断路径
 - `.aw_template` 初始化工具或 `.aw/` legacy scaffold profile 生成逻辑变更
   - `python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal`
   - `python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_aw_scaffold.py'`

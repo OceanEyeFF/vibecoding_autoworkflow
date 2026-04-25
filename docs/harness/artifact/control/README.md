@@ -4,5 +4,6 @@
 
 当前入口：
 
+- [append-request.md](./append-request.md)
 - [control-state.md](./control-state.md)
 - [goal-change-request.md](./goal-change-request.md)

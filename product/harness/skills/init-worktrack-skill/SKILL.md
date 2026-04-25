@@ -34,10 +34,14 @@ description: 当 Harness 处于 WorktrackScope.initializing，且需要一轮限
    - 一个恢复中的 `工作追踪`，其分支、基准、约定或计划需要修复
 3. 为这个 `工作追踪` 创建限定范围分支。
 4. 如果该分支无法安全创建，返回一个被阻塞的初始化结果，而不是静默复用另一条分支。
-5. 记录这个 `工作追踪` 用来比较的基准引用。
+5. 记录这个 `工作追踪` 用来比较的基准引用，并把 `baseline_branch` 写入 `Worktrack Contract`：
+   - 优先从当前已批准输入读取明确的 `baseline_branch`
+   - 否则从 `origin/HEAD` 动态解析 baseline branch
+   - 当前仓库已验证解析值为 `origin/HEAD -> master`，但技能不得写死默认分支名
+   - 若 baseline branch 无法确认，初始化必须阻断，而不是猜测 PR target 或 merge target
 6. 构建或刷新一份 `工作追踪约定`；有需要时，让草稿与 `templates/contract.template.md` 对齐。
    - **从 Goal Charter 的 Engineering Node Map 中确定本 worktrack 的节点类型**
-   - **根据节点类型填充 contract 中的类型化字段**：baseline_form、merge_required、gate_criteria、if_interrupted_strategy
+   - **根据节点类型填充 contract 中的类型化字段**：baseline_branch、baseline_form、merge_required、gate_criteria、if_interrupted_strategy
    - 如果 Goal Charter 未定义 Engineering Node Map，标记为缺失风险并在初始化结果中暴露
 7. 使用显式队列项播种一份初始 `计划/任务队列`，而不是只写自由文本任务说明。
 8. 产出一份 `调度交接包`，告诉 `调度工作追踪技能` 已播种了什么、还有哪些内容需要调度判断，以及此前轮次是否已存在兼容的下游包。
@@ -57,6 +61,7 @@ description: 当 Harness 处于 WorktrackScope.initializing，且需要一轮限
 - 不要把 `执行者交接包` 当成调度交接包的替代品。
 - 当代码仓库状态含糊不清时，不要猜测分支、基准或范围；应返回一个被阻塞的初始化结果。
 - 不要让范围超出已批准的工作追踪目标、排除目标与当前代码仓库基准。
+- 不要把当前分支名当作 baseline branch；PR target、merge target 与后续 checkpoint 判定必须来自 `Worktrack Contract.baseline_branch`。
 - 在没有暴露预期下一状态与所需审批前，不要静默变更 `Harness 控制状态`。
 - 不要改写上游 `任务约定` 真相；如果它存在，只把它当成输入边界消费。
 - 当限定范围交接包已经足够时，不要把完整代码仓库上下文交给下一个执行载体。
@@ -81,8 +86,11 @@ description: 当 Harness 处于 WorktrackScope.initializing，且需要一轮限
 - `初始化状态`
 - `分支动作`
 - `分支名称或规则`
+- `基准分支`
+- `baseline_branch`
 - `基准引用`
 - `基准理由`
+- `PR target 来源`
 - `目标`
 - `范围内`
 - `范围外`

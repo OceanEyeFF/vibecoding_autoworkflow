@@ -42,6 +42,7 @@ last_verified: 2026-04-23
 - `harness-skill`
 - `set-harness-goal-skill`
 - `repo-status-skill`
+- `repo-append-request-skill`
 - `repo-whats-next-skill`
 - `repo-refresh-skill`
 - `repo-change-goal-skill`

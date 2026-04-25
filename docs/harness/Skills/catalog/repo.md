@@ -1,9 +1,9 @@
 ---
 title: "Harness Skill Catalog / RepoScope"
 status: draft
-updated: 2026-04-23
+updated: 2026-04-25
 owner: aw-kernel
-last_verified: 2026-04-23
+last_verified: 2026-04-25
 ---
 # RepoScope Skill Catalog
 
@@ -21,6 +21,7 @@ last_verified: 2026-04-23
 - `repo-status-skill`、`repo-whats-next-skill`、`repo-refresh-skill` 都不负责 worktrack 级 `.aw/worktrack/*` 文档维护
 - `RepoScope` 下的 structured handoff 优先使用 `recommended_next_route` 与 canonical approval 字段，而不是继续扩散旧的 next-action prose
 - `RepoScope` 内可以挂载有界分析模式，但不应为了分析框架本身继续新增 skill 数量或层级
+- `append-feature` 与 `append-design` 追加请求由同一个 `repo-append-request-skill` 分类和路由，不拆分为两个 skill
 - 如果一轮需要实际改动系统状态，应由 supervisor 决定是否切入 `WorktrackScope` 或派发下游执行体
 
 ## Catalog
@@ -99,7 +100,53 @@ preferred decision fields：
 - `approval_scope`
 - `approval_reason`
 
-### 3. repo-change-goal-skill
+### 3. repo-append-request-skill
+
+说明：
+
+- 在 `RepoScope` 下处理外部追加请求 intake
+- 支持 `append-feature` 与 `append-design` 两个 mode
+- 只做分类与路由，不执行目标变更、scope expansion、设计或实现
+
+职责：
+
+- 接收追加请求并判断它应归入哪条控制路由
+- 在 `goal change`、`new worktrack`、`scope expansion`、`design-only`、`design-then-implementation` 中选择一个分类结果
+- 输出 `Append Request` 路由结果、建议下一 route / scope、suggested node type、审批边界与最小缺失信息
+- 当追加请求命中目标变更或范围扩展时，显式返回 authority boundary，而不是静默执行
+- 保持 `approval_required`、`continuation_ready` 与 `continuation_blockers` 一致，避免在待审批或缺失信息阻塞时继续推进
+
+主要依赖：
+
+- `Append Request`
+- `Repo Goal / Charter`
+- `Repo Snapshot / Status`
+- `Harness Control State`
+- 必要的活跃 `Worktrack Contract` 摘要
+
+canonical executable source：
+
+- [../../../../product/harness/skills/repo-append-request-skill/SKILL.md](../../../../product/harness/skills/repo-append-request-skill/SKILL.md)
+
+当前状态：
+
+- `initial canonical executable skeleton landed`
+
+preferred decision fields：
+
+- `append_mode`
+- `append_classification`
+- `classification_confidence`
+- `recommended_next_route`
+- `recommended_next_scope`
+- `suggested_node_type`
+- `approval_required`
+- `approval_scope`
+- `approval_reason`
+- `continuation_ready`
+- `continuation_blockers`
+
+### 4. repo-change-goal-skill
 
 说明：
 
@@ -129,7 +176,7 @@ canonical executable source：
 
 - `initial canonical executable skeleton landed`
 
-### 4. repo-refresh-skill
+### 5. repo-refresh-skill
 
 职责：
 

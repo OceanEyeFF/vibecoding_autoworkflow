@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -90,6 +89,28 @@ THIN_WRAPPER_FORBIDDEN_HEADINGS = [
     "## Execution Rules",
     "## Output Contract",
 ]
+APPEND_REQUEST_CONTRACT_PATHS = [
+    "docs/harness/artifact/control/append-request.md",
+    "docs/harness/workflow-families/repo-evolution/append-request-routing.md",
+    "product/harness/skills/repo-append-request-skill/SKILL.md",
+    "product/harness/skills/repo-append-request-skill/templates/append-request.template.md",
+]
+APPEND_REQUEST_REQUIRED_TERMS = [
+    "approval_required",
+    "continuation_ready",
+    "continuation_blockers",
+]
+APPEND_REQUEST_MODES = [
+    "append-feature",
+    "append-design",
+]
+APPEND_REQUEST_CLASSIFICATIONS = [
+    "goal change",
+    "new worktrack",
+    "scope expansion",
+    "design-only",
+    "design-then-implementation",
+]
 @dataclass
 class SemanticReport:
     failures: list[str] = field(default_factory=list)
@@ -124,6 +145,23 @@ def collect_repo_relative_markdown_links(repo_root: Path, relative_path: str) ->
         except ValueError:
             continue
     return resolved_targets
+
+
+def markdown_headings_outside_code_fences(text: str) -> set[str]:
+    headings: set[str] = set()
+    in_code_fence = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_code_fence = not in_code_fence
+            continue
+        if in_code_fence:
+            continue
+        if stripped.startswith("#"):
+            marker, _, title = stripped.partition(" ")
+            if marker and set(marker) == {"#"} and title:
+                headings.add(stripped)
+    return headings
 
 
 def check_required_templates(repo_root: Path, report: SemanticReport) -> None:
@@ -218,8 +256,9 @@ def check_canonical_skill_packages_are_minimal(repo_root: Path, report: Semantic
         if "\n# " not in text and not text.lstrip().startswith("# "):
             report.add_failure(f"canonical skill missing H1 title: {relative_path}")
 
+        headings = markdown_headings_outside_code_fences(text)
         for heading in CANONICAL_SKILL_FORBIDDEN_HEADINGS:
-            if heading in text:
+            if heading in headings:
                 report.add_failure(
                     f"canonical skill leaked adapter-style section {heading!r}: {relative_path}"
                 )
@@ -249,17 +288,52 @@ def check_adapter_wrappers_are_thin(repo_root: Path, report: SemanticReport) -> 
         checked += 1
         relative_path = to_relative_posix(adapter_file, repo_root)
         text = adapter_file.read_text(encoding="utf-8")
+        headings = markdown_headings_outside_code_fences(text)
         for heading in THIN_WRAPPER_REQUIRED_HEADINGS:
-            if heading not in text:
+            if heading not in headings:
                 report.add_failure(
                     f"adapter wrapper missing required thin-shell heading {heading!r}: {relative_path}"
                 )
         for heading in THIN_WRAPPER_FORBIDDEN_HEADINGS:
-            if heading in text:
+            if heading in headings:
                 report.add_failure(
                     f"adapter wrapper still contains forbidden duplicated section {heading!r}: {relative_path}"
                 )
     report.add_info(f"checked {checked} adapter wrappers for thin-shell structure")
+
+
+def check_append_request_contract_terms(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    for relative_path in APPEND_REQUEST_CONTRACT_PATHS:
+        path = repo_root / relative_path
+        if not path.exists():
+            report.add_failure(f"missing append request contract source: {relative_path}")
+            continue
+        checked += 1
+        text = path.read_text(encoding="utf-8")
+        for term in APPEND_REQUEST_REQUIRED_TERMS:
+            if term not in text:
+                report.add_failure(
+                    f"append request contract missing required term {term!r}: {relative_path}"
+                )
+
+    for relative_path in APPEND_REQUEST_CONTRACT_PATHS[:3]:
+        path = repo_root / relative_path
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for mode in APPEND_REQUEST_MODES:
+            if mode not in text:
+                report.add_failure(
+                    f"append request contract missing mode {mode!r}: {relative_path}"
+                )
+        for classification in APPEND_REQUEST_CLASSIFICATIONS:
+            if classification not in text:
+                report.add_failure(
+                    f"append request contract missing classification {classification!r}: {relative_path}"
+                )
+
+    report.add_info(f"checked {checked} append request contract sources")
 
 
 def main() -> int:
@@ -272,6 +346,7 @@ def main() -> int:
     check_outdated_placeholder_phrases(repo_root, report)
     check_canonical_skill_packages_are_minimal(repo_root, report)
     check_adapter_wrappers_are_thin(repo_root, report)
+    check_append_request_contract_terms(repo_root, report)
 
     payload = {
         "passed": not report.failures,

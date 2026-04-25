@@ -4,5 +4,6 @@
 
 当前入口：
 
+- [discovery-input.md](./discovery-input.md)
 - [goal-charter.md](./goal-charter.md)
 - [snapshot-status.md](./snapshot-status.md)

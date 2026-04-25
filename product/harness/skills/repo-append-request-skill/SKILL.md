@@ -1,0 +1,202 @@
+---
+name: repo-append-request-skill
+description: 当 RepoScope 收到 append-feature 或 append-design 追加请求时，使用这个技能做限定范围分类与路由；它只生成 Append Request 路由结果，不执行目标变更、范围扩展、设计或实现。
+---
+
+# Repo 追加请求路由技能
+
+## 概览
+
+本技能在 `RepoScope` 下处理外部追加请求，对应 Harness 控制面中的**追加请求 intake / route** 阶段。
+
+它只支持一个 skill、两个 mode：
+
+- `append-feature`
+- `append-design`
+
+本技能的职责是把追加请求分类为一个明确路由，并输出 `Append Request` 路由结果。它不修改 repo 目标，不创建或扩展 worktrack，不写设计文档，不执行实现，也不改写 `Harness Control State`。如果分类结果需要审批或后续执行，应把边界显式返回给 Harness 或 programmer。
+
+## 何时使用
+
+当用户提出的请求语义是"在现有 repo 目标或当前 worktrack 之外追加一项 feature 或 design"时，使用本技能：
+
+- `append-feature`：追加一个功能、行为、交互、接口、能力或实现工作
+- `append-design`：追加一个设计分析、方案、架构判断、UX / protocol design 或实现前设计步骤
+
+不使用的情况：
+
+- 已经明确是修改 `Goal Charter`，且用户要求直接进入目标变更流程（用 `repo-change-goal-skill`）
+- 已经有批准过的 worktrack contract，且当前任务只是在其中调度下一步（用 `schedule-worktrack-skill`）
+- 已经确定要初始化新的 worktrack，且无需先分类路由（用 `init-worktrack-skill`）
+- 只是 repo 下一步优先级判断，没有具体追加请求（用 `repo-whats-next-skill`）
+
+## 输入
+
+本技能至少读取：
+
+- 用户原始追加请求
+- 请求 mode：`append-feature` / `append-design`
+- 当前 `Repo Goal / Charter`
+- 当前 `Repo Snapshot / Status`
+- 当前 `Harness Control State`
+- 如当前存在活跃 worktrack，读取判断边界所需的最小 `Worktrack Contract` 摘要
+
+只在判断"scope expansion"是否成立时读取活跃 worktrack 产物。不要把 worktrack 队列当成 repo 级待办列表。
+
+## 分类规则
+
+分类结果必须是以下五类之一：
+
+### 1. goal change
+
+当追加请求会改变 repo 长期参考信号时，分类为 `goal change`：
+
+- 改变项目愿景、核心功能目标、成功标准或系统不变量
+- 需要新增、删除或重定义 `Engineering Node Map` 中的节点类型或默认 baseline policy
+- 与现有 `Goal Charter` 明显冲突，必须先重设目标才可执行
+- 请求本身是"把这个 repo 的目标改成..."
+
+路由结果：
+
+- `recommended_next_route: repo-change-goal-skill`
+- `recommended_next_scope: RepoScope`
+- `approval_required: true`
+- 不生成 goal-charter 草案；只说明为什么应进入目标变更控制
+
+### 2. new worktrack
+
+当追加请求位于当前 repo 目标内，但不是现有活跃 worktrack 的已批准范围时，分类为 `new worktrack`：
+
+- 它是一个独立 feature / implementation slice
+- 它能从 `Goal Charter` 的 `Engineering Node Map` 找到候选节点类型
+- 它需要自己的 branch、baseline、contract、plan 和 gate
+- 它不是对当前活跃 worktrack 的必要修正或验收缺口
+
+路由结果：
+
+- `recommended_next_route: init-worktrack-skill`
+- `recommended_next_scope: WorktrackScope`
+- `approval_required` 取决于该追加请求是否已经获得 programmer 授权
+- 输出 `suggested_node_type` 与理由，最终绑定由 `init-worktrack-skill` 完成
+
+### 3. scope expansion
+
+当追加请求试图把一个新目标塞进当前活跃 worktrack 时，分类为 `scope expansion`：
+
+- 当前存在活跃 worktrack
+- 追加内容不在该 worktrack contract 的 `范围内`
+- 追加内容会改变验收、影响模块、风险、验证要求或完成定义
+- 用户希望"顺手一起做"或"把它加到当前这轮"
+
+路由结果：
+
+- `recommended_next_route: scope-expansion-approval`
+- `recommended_next_scope: WorktrackScope`
+- `approval_required: true`
+- 不直接改写 worktrack contract；只输出扩范围理由、风险和建议审批边界
+
+如果追加内容只是修复当前 worktrack 的已批准验收缺口，不应归为 scope expansion；应路由回当前 worktrack scheduling / dispatch。
+
+### 4. design-only
+
+当请求只需要形成设计判断或方案，不要求立刻进入实现时，分类为 `design-only`：
+
+- 用户要求比较方案、定义接口、整理架构判断或写设计草案
+- 设计结果可独立验收，不需要同轮执行实现
+- 当前证据不足以安全进入实现，必须先收敛设计边界
+- `append-design` 默认优先考虑本类，除非请求明确要求设计后继续实现
+
+路由结果：
+
+- `recommended_next_route: design-only-worktrack`
+- `recommended_next_scope: WorktrackScope`
+- `approval_required` 取决于是否已经批准建立该设计 worktrack
+- 输出设计验收条件、非目标和后续是否可进入实现的判定口径
+
+### 5. design-then-implementation
+
+当请求要求先设计、再在设计结论被接受后实现时，分类为 `design-then-implementation`：
+
+- 用户明确要求"先设计再实现"或等价语义
+- feature 风险、架构耦合或 UX / protocol 不确定性要求先形成设计 gate
+- `append-feature` 的实现前置条件是新增设计结论
+- 设计产物通过 gate 后，才能初始化或继续实现 worktrack
+
+路由结果：
+
+- `recommended_next_route: design-then-implementation-worktrack`
+- `recommended_next_scope: WorktrackScope`
+- `approval_required` 取决于两阶段授权是否已明确
+- 输出两个阶段的边界：`design_phase` 与 `implementation_phase`
+
+## 冲突处理
+
+- 如果同时命中 `goal change` 与其他类别，优先分类为 `goal change`。
+- 如果同时命中 `scope expansion` 与 `new worktrack`，且用户要求纳入当前活跃 worktrack，优先分类为 `scope expansion` 并要求审批；否则分类为 `new worktrack`。
+- 如果 `append-design` 同时可独立设计也可设计后实现，只有在用户明确授权实现或实现是请求不可分割的一部分时，才分类为 `design-then-implementation`。
+- 如果证据不足以区分 `new worktrack` 与 `scope expansion`，返回 `classification_confidence: low`，建议 `保持并观察` 或请求最小缺失信息，不要擅自扩范围。
+
+## 工作流
+
+1. 确认 mode 是 `append-feature` 或 `append-design`。
+2. 读取最小 repo truth 与当前控制状态。
+3. 判断追加请求是否改变长期目标；若是，分类为 `goal change`。
+4. 判断是否存在活跃 worktrack，以及追加请求是否越过当前 worktrack contract。
+5. 判断请求是 implementation、design-only，还是 design-then-implementation。
+6. 从 `Engineering Node Map` 提取候选节点类型；无法提取时暴露缺口。
+7. 生成 `Append Request 路由结果`，可使用 `templates/append-request.template.md`。
+8. 返回 Harness；不执行推荐路由。
+
+## 硬约束
+
+- 只做分类与路由，不执行。
+- 不创建 branch、contract、plan 或 design artifact。
+- 不改写 `Goal Charter`、`Repo Snapshot / Status`、`Worktrack Contract`、`Plan / Task Queue` 或 `Harness Control State`。
+- 不把 `append-feature` 自动解释为已批准的新 worktrack。
+- 不把 `append-design` 自动解释为已批准的实现工作。
+- 不把 scope expansion 包装成普通 scheduling；扩范围必须显式暴露审批边界。
+- 不用两个 skill 分别处理 feature 和 design；两个 mode 必须由本技能统一处理。
+- 如果路由需要 programmer authority，必须设置 `approval_required: true` 并说明审批范围。
+- `approval_required`、`continuation_ready` 与 `continuation_blockers` 必须一致：需要新审批时不得同时设置 `continuation_ready: true`。
+- `classification_confidence: low` 或存在阻塞性最小缺失信息时，必须设置 `continuation_ready: false` 并列出 blocker。
+- `goal change` 与 `scope expansion` 默认停在审批边界；除非输入事实已经明确批准该边界，否则 `continuation_ready: false`。
+
+## 预期输出
+
+使用这个技能时，产出一份 `Append Request 路由结果`，至少包含：
+
+- `mode`
+- `原始追加请求`
+- `分类结果`
+- `分类置信度`
+- `分类理由`
+- `目标影响`
+- `活跃 worktrack 影响`
+- `建议下一路由`
+- `建议下一范围`
+- `suggested_node_type`
+- `设计阶段边界`
+- `实现阶段边界`
+- `权限边界`
+- `最小缺失信息`
+- `可继续`
+
+结构化字段至少包含：
+
+- `append_mode`
+- `append_classification`
+- `classification_confidence`
+- `recommended_next_route`
+- `recommended_next_scope`
+- `suggested_node_type`
+- `approval_required`
+- `approval_scope`
+- `approval_reason`
+- `continuation_ready`
+- `continuation_blockers`
+
+## 资源
+
+使用当前 `.aw/goal-charter.md`、`.aw/repo/snapshot-status.md`、`.aw/control-state.md`、用户追加请求与必要的活跃 worktrack 摘要作为依据。
+
+当需要整理 `Append Request 路由结果` 时，使用 `templates/append-request.template.md` 作为格式参考。

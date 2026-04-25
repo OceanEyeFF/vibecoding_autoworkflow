@@ -15,6 +15,8 @@
 规则：
 
 - 这些资产只服务 `set-harness-goal-skill` 的 `.aw` 初始化流程
+- Existing Code Project Adoption 模式可以额外生成 [repo/discovery-input.md](./repo/discovery-input.md)，把既有代码库观察结果写入 `.aw/repo/discovery-input.md`
+- `repo/discovery-input.md` 是只读事实输入，不是 goal truth；它只能作为 `goal-charter.md` 和 `snapshot-status.md` 的候选来源
 - 建议通过 [../scripts/deploy_aw.py](../scripts/deploy_aw.py) 生成 `.aw/` 样例，而不是手工复制这些文件
 - 用法固定为把目标 repo / worktree 根作为 `--deploy-path` 传入；脚本会在 `<deploy-path>/.aw/` 下生成文件
 - 如果目标 repo 也要给 Claude Code 暴露本技能，可在 `generate` 时追加 `--install-claude-skill`，或单独运行 `install-claude-skill` 子命令；目标路径是 `<deploy-path>/.claude/skills/aw-set-harness-goal-skill/`
@@ -30,8 +32,9 @@
 示例：
 
 ```bash
-python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --owner aw-kernel
-python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --install-claude-skill
+python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --baseline-branch "$BASELINE_BRANCH" --owner aw-kernel
+python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --baseline-branch "$BASELINE_BRANCH" --adoption-mode existing-code-adoption
+python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --baseline-branch "$BASELINE_BRANCH" --install-claude-skill
 python3 scripts/deploy_aw.py install-claude-skill --deploy-path "$DEPLOY_PATH"
-python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --force --dry-run
+python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --baseline-branch "$BASELINE_BRANCH" --force --dry-run
 ```
