@@ -17,6 +17,15 @@ from pathlib import Path
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_AW_DIRNAME = ".aw"
 DEFAULT_PROFILE = "full-deploy-bootstrap"
+DEFAULT_CLAUDE_SKILL_ROOT = Path(".claude") / "skills"
+DEFAULT_CLAUDE_SKILL_NAME = "aw-set-harness-goal-skill"
+SKILL_PACKAGE_EXCLUDED_NAMES = {
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    "aw.marker",
+    "payload.json",
+}
 KEYED_LINE_PATTERN = re.compile(r"^(?P<indent>\s*)- (?P<key>[a-z0-9_]+):\s*(?P<value>.*)$")
 CHECKBOX_LINE_PATTERN = re.compile(r"^(\d+)\. \[ \]\s*$")
 HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
@@ -463,11 +472,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Examples:\n"
             f"  python3 {Path(__file__).name} validate\n"
             f"  python3 {Path(__file__).name} generate --deploy-path \"$DEPLOY_PATH\" --owner aw-kernel\n"
+            f"  python3 {Path(__file__).name} generate --deploy-path \"$DEPLOY_PATH\" --install-claude-skill\n"
+            f"  python3 {Path(__file__).name} install-claude-skill --deploy-path \"$DEPLOY_PATH\"\n"
             f"  DEPLOY_PATH=/path/to/worktree python3 {Path(__file__).name} generate --force --dry-run\n"
             "\n"
             "Path semantics:\n"
             "  --deploy-path points at the target repo/worktree root.\n"
             f"  Generated files are written under <deploy-path>/{DEFAULT_AW_DIRNAME}/.\n"
+            f"  Claude skill installs are written under <deploy-path>/{DEFAULT_CLAUDE_SKILL_ROOT.as_posix()}/.\n"
         ),
     )
     subparsers = parser.add_subparsers(dest="mode", required=True)
@@ -508,6 +520,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Print planned writes without changing files.",
     )
+    add_claude_skill_args(generate_parser, include_install_flag=True)
     generate_parser.add_argument(
         "--no-static-assets",
         action="store_true",
@@ -539,7 +552,52 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Branch placeholder for worktrack contract artifacts.",
     )
 
+    claude_parser = subparsers.add_parser(
+        "install-claude-skill",
+        help="Install this skill package into <deploy-path>/.claude/skills.",
+    )
+    claude_parser.add_argument(
+        "--deploy-path",
+        type=Path,
+        help=(
+            "Target repo/worktree root. If omitted, the script falls back to the "
+            "DEPLOY_PATH environment variable."
+        ),
+    )
+    claude_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Allow overwriting existing files for this skill package.",
+    )
+    claude_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print planned writes without changing files.",
+    )
+    add_claude_skill_args(claude_parser, include_install_flag=False)
+
     return parser.parse_args(argv)
+
+
+def add_claude_skill_args(
+    parser: argparse.ArgumentParser,
+    *,
+    include_install_flag: bool,
+) -> None:
+    if include_install_flag:
+        parser.add_argument(
+            "--install-claude-skill",
+            action="store_true",
+            help="Also install this skill package under <deploy-path>/.claude/skills.",
+        )
+    parser.add_argument(
+        "--claude-root",
+        type=Path,
+        help=(
+            "Override the Claude skills target root. Defaults to "
+            "<deploy-path>/.claude/skills."
+        ),
+    )
 
 
 def add_selection_args(parser: argparse.ArgumentParser) -> None:
@@ -961,6 +1019,185 @@ def preflight_output_paths(
             )
 
 
+def claude_skill_root_for(args: argparse.Namespace, deploy_path: Path) -> Path:
+    raw_root = getattr(args, "claude_root", None)
+    if raw_root is not None:
+        return raw_root.expanduser()
+    return deploy_path / DEFAULT_CLAUDE_SKILL_ROOT
+
+
+def claude_skill_target_dir_for(args: argparse.Namespace, deploy_path: Path) -> Path:
+    return claude_skill_root_for(args, deploy_path) / DEFAULT_CLAUDE_SKILL_NAME
+
+
+def should_copy_skill_package_path(path: Path) -> bool:
+    if any(part in SKILL_PACKAGE_EXCLUDED_NAMES for part in path.parts):
+        return False
+    return path.is_file() and path.suffix not in {".pyc", ".pyo"}
+
+
+def collect_skill_package_files() -> list[tuple[Path, Path]]:
+    package_files: list[tuple[Path, Path]] = []
+    for source_path in sorted(SKILL_ROOT.rglob("*")):
+        if not should_copy_skill_package_path(source_path):
+            continue
+        package_files.append((source_path, source_path.relative_to(SKILL_ROOT)))
+    if not package_files:
+        raise DeployAwError(f"no skill package files found under {SKILL_ROOT}")
+    return package_files
+
+
+def absolute_path_without_resolve(path: Path) -> Path:
+    return Path(os.path.abspath(path))
+
+
+def is_current_skill_dir(path: Path) -> bool:
+    if path.is_symlink():
+        return False
+    if absolute_path_without_resolve(path) == absolute_path_without_resolve(SKILL_ROOT):
+        return True
+    return path.exists() and path.resolve() == SKILL_ROOT.resolve()
+
+
+def preflight_claude_skill_target_path(target_skill_dir: Path) -> None:
+    target_path = absolute_path_without_resolve(target_skill_dir)
+    for candidate in [*reversed(target_path.parents), target_path]:
+        if candidate.is_symlink() and not candidate.is_dir():
+            raise DeployAwError(
+                f"Claude skill target ancestor is not a directory: {candidate}"
+            )
+        if candidate.exists() and not candidate.is_dir():
+            raise DeployAwError(
+                f"Claude skill target ancestor is not a directory: {candidate}"
+            )
+
+
+def preflight_existing_claude_skill_tree(target_skill_dir: Path) -> None:
+    for root, dirs, files in os.walk(target_skill_dir, followlinks=False):
+        for name in [*dirs, *files]:
+            child = Path(root) / name
+            if child.is_symlink():
+                raise DeployAwError(
+                    f"refusing to install through symlinked Claude skill directory: {child}"
+                )
+
+
+def preflight_claude_skill_parent(path: Path, *, target_skill_dir: Path) -> None:
+    relative_parent = path.relative_to(target_skill_dir)
+    candidate = target_skill_dir
+    candidates = [candidate]
+    for part in relative_parent.parts:
+        candidate = candidate / part
+        candidates.append(candidate)
+
+    for candidate in candidates:
+        if candidate.is_symlink():
+            raise DeployAwError(
+                f"refusing to install through symlinked Claude skill directory: {candidate}"
+            )
+        if candidate.exists() and not candidate.is_dir():
+            raise DeployAwError(
+                f"Claude skill target ancestor is not a directory: {candidate}"
+            )
+
+
+def preflight_claude_skill_copy_target(
+    target_path: Path,
+    *,
+    target_skill_dir: Path,
+    force: bool,
+) -> None:
+    if target_path.is_symlink():
+        raise DeployAwError(
+            f"refusing to overwrite symlinked Claude skill file: {target_path}"
+        )
+
+    preflight_claude_skill_parent(
+        target_path.parent,
+        target_skill_dir=target_skill_dir,
+    )
+
+    if target_path.exists():
+        if target_path.is_dir():
+            raise DeployAwError(
+                f"Claude skill target file path is a directory: {target_path}"
+            )
+        if not force:
+            raise DeployAwError(
+                f"refusing to overwrite existing Claude skill file without --force: {target_path}"
+            )
+
+
+def preflight_claude_skill_install(
+    package_files: list[tuple[Path, Path]],
+    *,
+    target_skill_dir: Path,
+    force: bool,
+) -> None:
+    if target_skill_dir.is_symlink():
+        raise DeployAwError(
+            f"refusing to install into symlinked Claude skill dir: {target_skill_dir}"
+        )
+    preflight_claude_skill_target_path(target_skill_dir)
+    if is_current_skill_dir(target_skill_dir):
+        return
+    if target_skill_dir.exists() and not target_skill_dir.is_dir():
+        raise DeployAwError(
+            f"Claude skill target exists but is not a directory: {target_skill_dir}"
+        )
+    if target_skill_dir.exists():
+        preflight_existing_claude_skill_tree(target_skill_dir)
+
+    for _, relative_path in package_files:
+        target_path = target_skill_dir / relative_path
+        preflight_claude_skill_copy_target(
+            target_path,
+            target_skill_dir=target_skill_dir,
+            force=force,
+        )
+
+
+def install_claude_skill_package(
+    package_files: list[tuple[Path, Path]],
+    *,
+    target_skill_dir: Path,
+    force: bool,
+    dry_run: bool,
+) -> None:
+    preflight_claude_skill_install(
+        package_files,
+        target_skill_dir=target_skill_dir,
+        force=force,
+    )
+    if is_current_skill_dir(target_skill_dir):
+        print(f"Claude skill already installed at {target_skill_dir}")
+        return
+
+    if dry_run:
+        print(
+            f"would install Claude skill {DEFAULT_CLAUDE_SKILL_NAME} -> {target_skill_dir}"
+        )
+        for _, relative_path in package_files:
+            print(f"would copy {target_skill_dir / relative_path}")
+        return
+
+    for source_path, relative_path in package_files:
+        target_path = target_skill_dir / relative_path
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        preflight_claude_skill_copy_target(
+            target_path,
+            target_skill_dir=target_skill_dir,
+            force=force,
+        )
+        shutil.copy2(source_path, target_path)
+        if target_path.is_symlink():
+            raise DeployAwError(
+                f"refusing to chmod symlinked Claude skill file: {target_path}"
+            )
+        target_path.chmod(0o644)
+    print(f"installed Claude skill {DEFAULT_CLAUDE_SKILL_NAME} -> {target_skill_dir}")
+
+
 def run_list(json_mode: bool) -> int:
     if json_mode:
         payload = {
@@ -1036,6 +1273,11 @@ def run_generate(
 ) -> int:
     deploy_path = resolve_deploy_path(args)
     output_root = aw_output_root_for(deploy_path)
+    install_claude_skill = getattr(args, "install_claude_skill", False)
+    claude_package_files = collect_skill_package_files() if install_claude_skill else []
+    claude_target_dir = (
+        claude_skill_target_dir_for(args, deploy_path) if install_claude_skill else None
+    )
     args.repo = repo_name_for(args, deploy_path)
     selected_template_ids = {spec.template_id for spec in selected_specs}
     rendered_templates: list[tuple[TemplateSpec, str]] = []
@@ -1058,6 +1300,12 @@ def run_generate(
         output_root=output_root,
         force=args.force,
     )
+    if install_claude_skill and claude_target_dir is not None:
+        preflight_claude_skill_install(
+            claude_package_files,
+            target_skill_dir=claude_target_dir,
+            force=args.force,
+        )
 
     for spec, rendered in rendered_templates:
         write_rendered_template(
@@ -1074,6 +1322,26 @@ def run_generate(
             force=args.force,
             dry_run=args.dry_run,
         )
+    if install_claude_skill and claude_target_dir is not None:
+        install_claude_skill_package(
+            claude_package_files,
+            target_skill_dir=claude_target_dir,
+            force=args.force,
+            dry_run=args.dry_run,
+        )
+    return 0
+
+
+def run_install_claude_skill(args: argparse.Namespace) -> int:
+    deploy_path = resolve_deploy_path(args)
+    package_files = collect_skill_package_files()
+    target_skill_dir = claude_skill_target_dir_for(args, deploy_path)
+    install_claude_skill_package(
+        package_files,
+        target_skill_dir=target_skill_dir,
+        force=args.force,
+        dry_run=args.dry_run,
+    )
     return 0
 
 
@@ -1082,6 +1350,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.mode == "list":
             return run_list(args.json)
+        if args.mode == "install-claude-skill":
+            return run_install_claude_skill(args)
 
         selected_specs = resolve_selected_specs(args)
         static_assets = resolve_static_asset_specs(args)

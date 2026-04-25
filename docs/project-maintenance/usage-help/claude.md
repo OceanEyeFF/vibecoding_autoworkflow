@@ -1,9 +1,9 @@
 ---
 title: "Claude Repo-local Usage Help"
 status: active
-updated: 2026-04-23
+updated: 2026-04-25
 owner: aw-kernel
-last_verified: 2026-04-23
+last_verified: 2026-04-25
 ---
 # Claude Repo-local Usage Help
 
@@ -24,7 +24,8 @@ last_verified: 2026-04-23
 说明：
 
 - 这里描述的是 Claude 侧常见 runtime 路径，不是当前仓库 `adapter_deploy.py` 的 CLI 合同
-- 当前仓库的 deploy adapter 只实现 `--backend agents`；不要把旧的 `--claude-root`、`verify --target global` 命令当成现行入口
+- 当前仓库的 deploy adapter 只实现 `--backend agents`；不要把旧 adapter 的 `--claude-root`、`verify --target global` 命令当成现行入口
+- `set-harness-goal-skill/scripts/deploy_aw.py` 的 `--claude-root` 只属于本文第五节的冷启动 helper 例外
 
 ## 二、最小 smoke verify 口径
 
@@ -52,3 +53,22 @@ last_verified: 2026-04-23
 
 - 不要在当前仓库使用 `adapter_deploy.py --backend claude`
 - 这页只承接 Claude 的 runtime 路径与 smoke verify 差异，不承接 deploy 命令合同
+
+## 五、当前受控例外
+
+`set-harness-goal-skill` 自带的 `scripts/deploy_aw.py` 可以把该技能自身安装到目标 repo 的 Claude 项目级 skill 目录：
+
+```bash
+python3 scripts/deploy_aw.py install-claude-skill --deploy-path "$DEPLOY_PATH"
+python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --install-claude-skill
+```
+
+边界：
+
+- 目标路径是 `<deploy-path>/.claude/skills/aw-set-harness-goal-skill/`
+- 默认不覆盖已有文件；需要覆盖时显式传 `--force`
+- `--claude-root` 可以指向 operator 管理的 symlink 或 mount 层，例如共享的 `.claude/skills`
+- 目标 skill 目录 `aw-set-harness-goal-skill/` 本身不能是 symlink
+- 目标 skill 目录内部已有的 symlink 文件或子目录会被拒绝，避免 copy install 写出该 skill 目录
+- 如果目标 skill 目录本身不是 symlink，但经允许的 root symlink / mount 解析后就是当前运行的 skill 包，安装视为 already installed 并 no-op
+- 这只覆盖 `set-harness-goal-skill` 的冷启动 helper 场景，不代表 `adapter_deploy.py` 已恢复 `claude` backend

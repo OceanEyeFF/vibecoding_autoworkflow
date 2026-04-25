@@ -4,9 +4,11 @@ import dataclasses
 import contextlib
 import importlib.util
 import io
+import shutil
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -22,9 +24,12 @@ DEPLOY_AW_PATH = (
 )
 
 
-def load_deploy_aw_module():
+def load_deploy_aw_module(
+    path: Path = DEPLOY_AW_PATH,
+    module_name: str = "set_harness_goal_deploy_aw",
+):
     spec = importlib.util.spec_from_file_location(
-        "set_harness_goal_deploy_aw", DEPLOY_AW_PATH
+        module_name, path
     )
     assert spec is not None
     assert spec.loader is not None
@@ -52,6 +57,23 @@ class SetHarnessGoalDeployAwValidationTest(unittest.TestCase):
         temp_template.write_text(transformed_text, encoding="utf-8")
         original_spec = deploy_aw.TEMPLATE_SPECS[template_id]
         return dataclasses.replace(original_spec, source_relpath=str(temp_template))
+
+    def _load_deployed_skill_module(self):
+        deployed_skill_root = (
+            Path(self.temp_dir.name)
+            / "deployed"
+            / deploy_aw.DEFAULT_CLAUDE_SKILL_NAME
+        )
+        shutil.copytree(
+            deploy_aw.SKILL_ROOT,
+            deployed_skill_root,
+            ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"),
+        )
+        module = load_deploy_aw_module(
+            deployed_skill_root / "scripts" / "deploy_aw.py",
+            f"set_harness_goal_deploy_aw_deployed_{len(sys.modules)}",
+        )
+        return module, deployed_skill_root
 
     def test_validate_accepts_goal_charter_nested_engineering_node_fields(self) -> None:
         issues = deploy_aw.validate_template_source(deploy_aw.TEMPLATE_SPECS["goal-charter"])
@@ -183,6 +205,447 @@ class SetHarnessGoalDeployAwValidationTest(unittest.TestCase):
         )
         self.assertIn("## Mainline Status\n\n- baseline_branch: main\n", rendered)
         self.assertNotIn("- branch: feature/foo", rendered)
+
+    def test_generate_can_install_set_goal_skill_for_claude(self) -> None:
+        output_root = Path(self.temp_dir.name)
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--template",
+                "goal-charter",
+                "--deploy-path",
+                str(output_root),
+                "--install-claude-skill",
+            ]
+        )
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            exit_code = deploy_aw.run_generate(
+                [deploy_aw.TEMPLATE_SPECS["goal-charter"]],
+                [],
+                args,
+            )
+
+        self.assertEqual(exit_code, 0)
+        claude_skill_root = (
+            output_root
+            / ".claude"
+            / "skills"
+            / "aw-set-harness-goal-skill"
+        )
+        self.assertTrue((claude_skill_root / "SKILL.md").is_file())
+        self.assertTrue((claude_skill_root / "scripts" / "deploy_aw.py").is_file())
+        self.assertTrue((claude_skill_root / "assets" / "control-state.md").is_file())
+        self.assertFalse((claude_skill_root / "payload.json").exists())
+        self.assertFalse((claude_skill_root / "aw.marker").exists())
+
+    def test_generate_install_claude_skill_allows_symlink_root_self_install(self) -> None:
+        deployed_module, deployed_skill_root = self._load_deployed_skill_module()
+        output_root = Path(self.temp_dir.name) / "repo"
+        output_root.mkdir()
+        claude_dir = output_root / ".claude"
+        claude_dir.mkdir()
+        (claude_dir / "skills").symlink_to(
+            deployed_skill_root.parent,
+            target_is_directory=True,
+        )
+        args = deployed_module.parse_args(
+            [
+                "generate",
+                "--template",
+                "goal-charter",
+                "--deploy-path",
+                str(output_root),
+                "--install-claude-skill",
+            ]
+        )
+
+        with contextlib.redirect_stdout(io.StringIO()) as stdout:
+            exit_code = deployed_module.run_generate(
+                [deployed_module.TEMPLATE_SPECS["goal-charter"]],
+                [],
+                args,
+            )
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Claude skill already installed", stdout.getvalue())
+        self.assertTrue((output_root / ".aw" / "goal-charter.md").is_file())
+
+    def test_generate_install_claude_skill_rejects_file_claude_dir_before_aw_write(self) -> None:
+        output_root = Path(self.temp_dir.name)
+        (output_root / ".claude").write_text("not a directory\n", encoding="utf-8")
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--template",
+                "goal-charter",
+                "--deploy-path",
+                str(output_root),
+                "--install-claude-skill",
+            ]
+        )
+
+        with self.assertRaises(deploy_aw.DeployAwError) as raised:
+            deploy_aw.run_generate(
+                [deploy_aw.TEMPLATE_SPECS["goal-charter"]],
+                [],
+                args,
+            )
+
+        self.assertIn("Claude skill target ancestor is not a directory", str(raised.exception))
+        self.assertFalse((output_root / ".aw" / "goal-charter.md").exists())
+
+    def test_generate_install_claude_skill_rejects_file_skills_dir_before_aw_write(self) -> None:
+        output_root = Path(self.temp_dir.name)
+        claude_dir = output_root / ".claude"
+        claude_dir.mkdir()
+        (claude_dir / "skills").write_text("not a directory\n", encoding="utf-8")
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--template",
+                "goal-charter",
+                "--deploy-path",
+                str(output_root),
+                "--install-claude-skill",
+            ]
+        )
+
+        with self.assertRaises(deploy_aw.DeployAwError) as raised:
+            deploy_aw.run_generate(
+                [deploy_aw.TEMPLATE_SPECS["goal-charter"]],
+                [],
+                args,
+            )
+
+        self.assertIn("Claude skill target ancestor is not a directory", str(raised.exception))
+        self.assertFalse((output_root / ".aw" / "goal-charter.md").exists())
+
+    def test_generate_install_claude_skill_rejects_file_custom_root_ancestor_before_aw_write(self) -> None:
+        output_root = Path(self.temp_dir.name)
+        claude_root_file = output_root / "custom-claude-root"
+        claude_root_file.write_text("not a directory\n", encoding="utf-8")
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--template",
+                "goal-charter",
+                "--deploy-path",
+                str(output_root),
+                "--install-claude-skill",
+                "--claude-root",
+                str(claude_root_file / "skills"),
+            ]
+        )
+
+        with self.assertRaises(deploy_aw.DeployAwError) as raised:
+            deploy_aw.run_generate(
+                [deploy_aw.TEMPLATE_SPECS["goal-charter"]],
+                [],
+                args,
+            )
+
+        self.assertIn("Claude skill target ancestor is not a directory", str(raised.exception))
+        self.assertFalse((output_root / ".aw" / "goal-charter.md").exists())
+
+    def test_collect_skill_package_files_excludes_git_metadata(self) -> None:
+        fake_skill_root = Path(self.temp_dir.name) / "fake-skill"
+        git_dir = fake_skill_root / ".git"
+        git_dir.mkdir(parents=True)
+        (git_dir / "config").write_text("[core]\n", encoding="utf-8")
+        (fake_skill_root / "SKILL.md").write_text("# Fake\n", encoding="utf-8")
+        previous_skill_root = deploy_aw.SKILL_ROOT
+        deploy_aw.SKILL_ROOT = fake_skill_root
+        try:
+            package_files = deploy_aw.collect_skill_package_files()
+        finally:
+            deploy_aw.SKILL_ROOT = previous_skill_root
+
+        relative_paths = [relative_path for _, relative_path in package_files]
+        self.assertIn(Path("SKILL.md"), relative_paths)
+        self.assertFalse(
+            any(".git" in relative_path.parts for relative_path in relative_paths)
+        )
+
+    def test_install_claude_skill_refuses_existing_file_without_force(self) -> None:
+        output_root = Path(self.temp_dir.name)
+        existing_skill = (
+            output_root
+            / ".claude"
+            / "skills"
+            / "aw-set-harness-goal-skill"
+            / "SKILL.md"
+        )
+        existing_skill.parent.mkdir(parents=True)
+        existing_skill.write_text("existing\n", encoding="utf-8")
+        args = deploy_aw.parse_args(
+            [
+                "install-claude-skill",
+                "--deploy-path",
+                str(output_root),
+            ]
+        )
+
+        with self.assertRaises(deploy_aw.DeployAwError) as raised:
+            deploy_aw.run_install_claude_skill(args)
+
+        self.assertIn(
+            "refusing to overwrite existing Claude skill file",
+            str(raised.exception),
+        )
+        self.assertEqual(existing_skill.read_text(encoding="utf-8"), "existing\n")
+
+    def test_install_claude_skill_refuses_symlinked_package_subdir(self) -> None:
+        output_root = Path(self.temp_dir.name)
+        outside_assets = output_root / "outside-assets"
+        outside_assets.mkdir()
+        skill_root = (
+            output_root
+            / ".claude"
+            / "skills"
+            / "aw-set-harness-goal-skill"
+        )
+        skill_root.mkdir(parents=True)
+        (skill_root / "assets").symlink_to(outside_assets, target_is_directory=True)
+        args = deploy_aw.parse_args(
+            [
+                "install-claude-skill",
+                "--deploy-path",
+                str(output_root),
+            ]
+        )
+
+        with self.assertRaises(deploy_aw.DeployAwError) as raised:
+            deploy_aw.run_install_claude_skill(args)
+
+        self.assertIn(
+            "refusing to install through symlinked Claude skill directory",
+            str(raised.exception),
+        )
+        self.assertFalse((outside_assets / "control-state.md").exists())
+
+    def test_install_claude_skill_rechecks_symlinked_parent_immediately_before_copy(self) -> None:
+        output_root = Path(self.temp_dir.name)
+        source_root = output_root / "source"
+        source_root.mkdir()
+        first_source = source_root / "SKILL.md"
+        second_source = source_root / "control-state.md"
+        first_source.write_text("skill\n", encoding="utf-8")
+        second_source.write_text("control\n", encoding="utf-8")
+        outside_assets = output_root / "outside-assets"
+        outside_assets.mkdir()
+        target_skill_dir = (
+            output_root
+            / ".claude"
+            / "skills"
+            / "aw-set-harness-goal-skill"
+        )
+        package_files = [
+            (first_source, Path("SKILL.md")),
+            (second_source, Path("assets") / "control-state.md"),
+        ]
+        original_copy2 = shutil.copy2
+
+        def copy_with_race(source_path: Path, target_path: Path) -> None:
+            original_copy2(source_path, target_path)
+            if Path(target_path).name == "SKILL.md":
+                (target_skill_dir / "assets").symlink_to(
+                    outside_assets,
+                    target_is_directory=True,
+                )
+
+        with mock.patch.object(deploy_aw.shutil, "copy2", side_effect=copy_with_race):
+            with self.assertRaises(deploy_aw.DeployAwError) as raised:
+                deploy_aw.install_claude_skill_package(
+                    package_files,
+                    target_skill_dir=target_skill_dir,
+                    force=False,
+                    dry_run=False,
+                )
+
+        self.assertIn(
+            "refusing to install through symlinked Claude skill directory",
+            str(raised.exception),
+        )
+        self.assertFalse((outside_assets / "control-state.md").exists())
+
+    def test_install_claude_skill_sets_copied_file_permissions_to_0644(self) -> None:
+        output_root = Path(self.temp_dir.name)
+        source_root = output_root / "source"
+        source_root.mkdir()
+        source_file = source_root / "SKILL.md"
+        source_file.write_text("skill\n", encoding="utf-8")
+        source_file.chmod(0o755)
+        target_skill_dir = (
+            output_root
+            / ".claude"
+            / "skills"
+            / "aw-set-harness-goal-skill"
+        )
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            deploy_aw.install_claude_skill_package(
+                [(source_file, Path("SKILL.md"))],
+                target_skill_dir=target_skill_dir,
+                force=False,
+                dry_run=False,
+            )
+
+        target_file = target_skill_dir / "SKILL.md"
+        self.assertEqual(target_file.stat().st_mode & 0o777, 0o644)
+
+    def test_install_claude_skill_allows_symlinked_claude_root_override(self) -> None:
+        output_root = Path(self.temp_dir.name)
+        outside_root = output_root / "outside-claude-skills"
+        outside_root.mkdir()
+        symlinked_claude_root = output_root / "claude-skills-link"
+        symlinked_claude_root.symlink_to(outside_root, target_is_directory=True)
+        args = deploy_aw.parse_args(
+            [
+                "install-claude-skill",
+                "--deploy-path",
+                str(output_root),
+                "--claude-root",
+                str(symlinked_claude_root),
+            ]
+        )
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            exit_code = deploy_aw.run_install_claude_skill(args)
+
+        self.assertEqual(exit_code, 0)
+        installed_skill = outside_root / "aw-set-harness-goal-skill"
+        self.assertTrue((installed_skill / "SKILL.md").is_file())
+        self.assertTrue((installed_skill / "scripts" / "deploy_aw.py").is_file())
+
+    def test_install_claude_skill_allows_symlinked_default_claude_skills_root(self) -> None:
+        output_root = Path(self.temp_dir.name)
+        outside_root = output_root / "outside-claude-skills"
+        outside_root.mkdir()
+        claude_dir = output_root / ".claude"
+        claude_dir.mkdir()
+        (claude_dir / "skills").symlink_to(outside_root, target_is_directory=True)
+        args = deploy_aw.parse_args(
+            [
+                "install-claude-skill",
+                "--deploy-path",
+                str(output_root),
+            ]
+        )
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            exit_code = deploy_aw.run_install_claude_skill(args)
+
+        self.assertEqual(exit_code, 0)
+        installed_skill = outside_root / "aw-set-harness-goal-skill"
+        self.assertTrue((installed_skill / "SKILL.md").is_file())
+        self.assertTrue((installed_skill / "scripts" / "deploy_aw.py").is_file())
+
+    def test_install_claude_skill_allows_symlink_root_self_install(self) -> None:
+        deployed_module, deployed_skill_root = self._load_deployed_skill_module()
+        output_root = Path(self.temp_dir.name) / "repo"
+        output_root.mkdir()
+        claude_dir = output_root / ".claude"
+        claude_dir.mkdir()
+        (claude_dir / "skills").symlink_to(
+            deployed_skill_root.parent,
+            target_is_directory=True,
+        )
+        args = deployed_module.parse_args(
+            [
+                "install-claude-skill",
+                "--deploy-path",
+                str(output_root),
+            ]
+        )
+
+        with contextlib.redirect_stdout(io.StringIO()) as stdout:
+            exit_code = deployed_module.run_install_claude_skill(args)
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Claude skill already installed", stdout.getvalue())
+
+    def test_install_claude_skill_rejects_symlink_alias_to_source_skill(self) -> None:
+        output_root = Path(self.temp_dir.name)
+        target_skill_dir = (
+            output_root
+            / ".claude"
+            / "skills"
+            / "aw-set-harness-goal-skill"
+        )
+        target_skill_dir.parent.mkdir(parents=True)
+        target_skill_dir.symlink_to(deploy_aw.SKILL_ROOT, target_is_directory=True)
+        args = deploy_aw.parse_args(
+            [
+                "install-claude-skill",
+                "--deploy-path",
+                str(output_root),
+            ]
+        )
+
+        with self.assertRaises(deploy_aw.DeployAwError) as raised:
+            deploy_aw.run_install_claude_skill(args)
+
+        self.assertIn(
+            "refusing to install into symlinked Claude skill dir",
+            str(raised.exception),
+        )
+
+    def test_install_claude_skill_refuses_existing_internal_symlink_subdir(self) -> None:
+        output_root = Path(self.temp_dir.name)
+        outside_legacy = output_root / "outside-legacy"
+        outside_legacy.mkdir()
+        skill_root = (
+            output_root
+            / ".claude"
+            / "skills"
+            / "aw-set-harness-goal-skill"
+        )
+        skill_root.mkdir(parents=True)
+        (skill_root / "legacy").symlink_to(outside_legacy, target_is_directory=True)
+        args = deploy_aw.parse_args(
+            [
+                "install-claude-skill",
+                "--deploy-path",
+                str(output_root),
+            ]
+        )
+
+        with self.assertRaises(deploy_aw.DeployAwError) as raised:
+            deploy_aw.run_install_claude_skill(args)
+
+        self.assertIn(
+            "refusing to install through symlinked Claude skill directory",
+            str(raised.exception),
+        )
+
+    def test_claude_skill_target_uses_wrapped_name_from_deployed_wrapper(self) -> None:
+        output_root = Path(self.temp_dir.name) / "repo"
+        output_root.mkdir()
+        deployed_script = (
+            Path(self.temp_dir.name)
+            / "aw-set-harness-goal-skill"
+            / "scripts"
+            / "deploy_aw.py"
+        )
+        deployed_script.parent.mkdir(parents=True)
+        shutil.copy2(DEPLOY_AW_PATH, deployed_script)
+        deployed_module = load_deploy_aw_module(
+            deployed_script,
+            "set_harness_goal_deploy_aw_deployed_wrapper",
+        )
+        args = deployed_module.parse_args(
+            [
+                "install-claude-skill",
+                "--deploy-path",
+                str(output_root),
+            ]
+        )
+
+        self.assertEqual(
+            deployed_module.claude_skill_target_dir_for(args, output_root),
+            output_root / ".claude" / "skills" / "aw-set-harness-goal-skill",
+        )
 
 
 if __name__ == "__main__":
