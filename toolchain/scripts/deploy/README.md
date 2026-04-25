@@ -4,28 +4,32 @@
 
 当前主线：
 
-- `adapter_deploy.py`：构建并部署 `product/` 下的 adapter 源码到 repo-local mount 或全局技能目录，并提供 deploy target 校验与清理能力
-- `init_harness_project.py`：从 canonical harness 模板初始化 runtime 目录和 `harness.yaml`
-- `test_harness_template_contract.py`：锁定 canonical harness 模板里的 gate 命令契约，避免回退到非 harness-aware scope gate 或丢失 build 步骤
+- `adapter_deploy.py`：为 `agents` 提供 destructive reinstall workflow 和只读 `verify`
+- `aw_scaffold.py`：从 `product/.aw_template/` 生成 `.aw/` 运行样例，并校验模板最小结构，包括 `Engineering Node Map` 与 `Node Type` 协议字段
+- `product/harness/adapters/agents/skills/`：`agents` canonical-copy payload descriptor source，由 `install --backend agents` 消费
 
 最小维护流：
 
-1. 如需预先检查或刷新 harness 组装产物，先跑 `build`
-2. 再跑 `sync verify`
-3. 再跑 `local` 或 `global` 部署
-4. 最后再跑一次 `sync verify`
-5. 如 backend 支持，再补 `smoke verify`
+1. `prune --all --backend agents`
+2. `check_paths_exist --backend agents`
+3. `install --backend agents`
+4. 如需只读复验，再跑 `verify --backend agents`
+
+`.aw_template` legacy scaffold profile 相关最小流：
+
+1. 先跑 `python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal`
+2. 再跑 `python3 toolchain/scripts/deploy/aw_scaffold.py generate --profile first-wave-minimal --output-root /tmp/demo-aw`
+3. 如需覆盖已有样例，再显式加 `--force`
 
 额外说明：
 
-- `sync verify` 由 `adapter_deploy.py verify` 提供，用于检查缺失 mount、陈旧 target、坏链路、错误路径类型，以及 harness build/global copy 的内容漂移
-- `build` 由 `adapter_deploy.py build` 提供，用于把 `header.yaml + harness-standard.md + prompt.md` 组装为最终 `SKILL.md`
-- `local` / `global` 在部署 `harness-operations` 时会自动刷新当前 backend 的组装产物；`verify` 保持只读，不会自动触发 build
-- `init_harness_project.py` 只负责 harness runtime/init，不改 canonical skill source
-- `smoke verify` 是 backend-specific 的最小可用性确认，不属于 deploy 脚本本身
-- 当前 `smoke verify` 只对 `agents` 与 `claude` 建立口径，`opencode` 仍停在 `sync verify`
-- `--prune` 用于在部署时清理已经没有 source 对应关系的 target
-- 该目录只负责部署维护，不负责 research runner
+- `prune --all` 只删除带可识别、且属于当前 backend 的受管 `aw.marker` 目录
+- `check_paths_exist` 基于当前 source 声明的 live bindings 全量列出冲突路径；命令失败时不允许有业务写入
+- `install --backend agents` 只写当前 source 声明的 live payload；若存在重复 `target_dir`、路径冲突或其他 source 非法情形，必须在写入前失败
+- `verify` 由 `adapter_deploy.py verify` 提供，用于检查 source 合法性、target root 状态、live install 对齐，以及 conflict / unrecognized 情形
+- 当前接口只实现 `agents`
+- 不再承接 `local/global` deploy modes、`prune --outdated`、archive/history、增量修复或旧版本保活
+- `claude` 与 `opencode` 后续如需恢复，应先重定义 contract 再实现
 
 回归测试入口：
 
@@ -33,10 +37,14 @@
 python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
 ```
 
-当前测试覆盖：
+相关回归应覆盖：
 
-- local / global 首次部署到空 target
-- source 更新后的重新部署
-- source 删除后的 drift 检测、`--prune` 清理与复验
-- `verify` 的 missing / unexpected / broken symlink / wrong type 结构错误
-- harness assembled source 的 build、stale snapshot 和 target content 校验
+- `prune --all` 只删除带 marker 的受管目录，不删除 foreign / unrecognized 目录
+- `check_paths_exist` 在多个冲突路径同时存在时全量列出并非零退出
+- `install --backend agents` 在干净 target root 上成功写入 live payload
+- `install --backend agents` 在重复 `target_dir` 或既有冲突路径下写入前失败
+- `verify` 的 missing / broken symlink / wrong root type 结构错误
+- `verify` 的 source drift、missing payload files、target payload drift 与 conflict / unrecognized 目录
+- `.aw_template` 到 `.aw/` 的 legacy scaffold profile 生成
+- `.aw_template` 的最小结构校验与 overwrite guard
+- `.aw_template` 的 `Engineering Node Map` / `Node Type` 字段漂移校验

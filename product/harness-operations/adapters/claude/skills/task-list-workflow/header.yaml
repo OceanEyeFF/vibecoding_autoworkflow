@@ -1,3 +1,0 @@
-name: task-list-workflow
-description: Repo-local Claude adapter for the Harness Operations Task List Workflow skill.
-allowed-tools: Read, Grep, Glob, Bash

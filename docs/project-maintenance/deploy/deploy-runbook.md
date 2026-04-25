@@ -1,193 +1,128 @@
 ---
 title: "Deploy Runbook"
 status: active
-updated: 2026-04-13
+updated: 2026-04-19
 owner: aw-kernel
-last_verified: 2026-04-13
+last_verified: 2026-04-19
 ---
 # Deploy Runbook
 
-> 目的：提供当前仓库的 deploy Quick Start，回答“支持哪些 backend、target 在哪里、首次安装怎么做、为什么 harness 要先 build、已有安装的最小更新路径是什么”。
+> 目的：提供当前仓库的 deploy 快速上手指南，固定 destructive reinstall model：`prune --all -> check_paths_exist -> install --backend agents`。`verify` 只保留为辅助、只读的诊断与复验命令。
 
-本页属于 [Deploy Runbooks](./README.md) 路径簇。
+本页属于 [Deploy Runbooks](./README.md) 系列文档。
 
-先建立通用边界，再读本页：
+阅读本页前，建议先了解以下背景：
 
 - [根目录分层](../foundations/root-directory-layering.md)
 - [Toolchain 分层](../../../toolchain/toolchain-layering.md)
+- [Deploy Mapping Spec](./deploy-mapping-spec.md) —— 部署映射规范
 
-本页只保留 Quick Start 和 target 总览；生命周期细节与维护诊断分别去：
-
-- [skill-lifecycle.md](./skill-lifecycle.md)
-- [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)
+本页只保留快速入门和主流程。维护诊断请查看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)，业务生命周期边界请查看 [skill-lifecycle.md](./skill-lifecycle.md)。
 
 ## 一、什么时候看这页
 
-适合在下面场景先读：
+以下场景建议先读本文：
 
-- 你第一次给某个 backend 做 repo-local 挂载
-- 你第一次做全局安装
-- 你要先弄清 `agents / claude / opencode` 的 target 对照
-- 你需要先知道 harness 为什么和 `memory-side / task-interface` 不一样
-- 你只想走一遍最小更新路径，再决定是否需要进入 maintenance
+- 首次给 `agents` backend 做安装
+- 已有安装，但想按当前 live source 完整重装
+- 想确认 deploy 主流程现在到底只剩哪三步
+- 想确认 `verify` 还做什么、但不再属于哪条主线
 
-## 二、支持哪些 backend
+## 二、当前实现状态
 
-当前统一入口：
+统一入口脚本：
 
 ```bash
 python3 toolchain/scripts/deploy/adapter_deploy.py
 ```
 
-当前 deploy backend：
+当前已实现的后端：
 
-- `agents`
-  对应 `Codex / OpenAI`
+- `agents` —— 对应 `Codex / OpenAI`
+
+暂不实现：
+
 - `claude`
-  对应 `Claude`
 - `opencode`
-  对应 `OpenCode`
 
-当前边界：
+当前边界说明：
 
-- 三个 backend 都支持 `local` / `global` deploy 与 `sync verify`
-- `agents` 与 `claude` 还有 backend-specific smoke verify 口径
-- `opencode` 当前只确认 deploy sync，不在这里写成稳定 runtime smoke backend
+- 当前只实现 `agents`
+- 主流程固定为：
+  - `prune --all`
+  - `check_paths_exist`
+  - `install --backend agents`
+- `verify --backend agents` 是只读辅助命令，不属于安装主线
+- 原始来源（canonical source）、后端部署包（backend payload source）、目标入口（target entry）之间的正式映射规则，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
+- `prune --all` 只删除带可识别、且属于当前 backend 的受管 `aw.marker` 目录；无 marker、不可识别 marker 或 foreign 目录一律不碰
+- `check_paths_exist` 会基于当前 source 声明的 live bindings 解析目标路径；只要任一路径已存在，就全量列出冲突并失败退出，不做任何业务写入
+- `install --backend agents` 只写当前 source 声明的 live payload；若 source 存在重复 `target_dir` 或目标路径冲突，必须在写入前失败
+- `aw.marker` 是 runtime-generated artifact，只表达“这是当前 backend 的受管 live install 目录”
+- 不再承接 `retired-target-dir`、`prune --outdated`、archive/history、增量修复、旧版本保活或 “确认新目录可用再删旧目录”
+- backend-specific target root 解析与 override 参数见 [Codex Usage Help](../usage-help/codex.md)
 
-## 三、Repo-local / Global Target 对照
+## 三、三步主流程
 
-| backend | repo-local target | global target | backend page |
-|---|---|---|---|
-| `agents` | `.agents/skills/` | `$CODEX_HOME/skills` 或 `--agents-root` | [codex.md](../usage-help/codex.md) |
-| `claude` | `.claude/skills/` | `~/.claude/skills` 或 `--claude-root` | [claude.md](../usage-help/claude.md) |
-| `opencode` | `.opencode/skills/` | `$XDG_CONFIG_HOME/opencode/skills`、`~/.config/opencode/skills` 或 `--opencode-root` | [opencode.md](../usage-help/opencode.md) |
-
-通用 source root 都在：
-
-- `product/*/adapters/<backend>/skills/`
-
-其中 `memory-side` 与 `task-interface` 直接把 adapter source 作为 deploy source；`harness-operations` 先经过组装。
-
-## 四、为什么 harness 要先 build
-
-`harness-operations` 不是普通 thin-wrapper source。当前 source 由三部分组成：
-
-- canonical prompt：`product/harness-operations/skills/<skill>/prompt.md`
-- shared harness body：`product/harness-operations/skills/harness-standard.md`
-- backend header：`product/harness-operations/adapters/<backend>/skills/<skill>/header.yaml`
-
-`adapter_deploy.py build --backend <backend>` 会把这三部分组装成 `.autoworkflow/build/adapter-sources/<backend>/<skill>/SKILL.md`。
-
-关键边界：
-
-- `local` / `global` deploy 在处理 harness skills 时会自动刷新当前 backend 的 assembled source
-- `verify` 保持只读，不自动触发 build
-- 如果你修改了 harness prompt、shared standard 或 backend header，并且想先看组装结果或处理 `missing-build-source`，就先跑 `build`
-- `memory-side` 与 `task-interface` 不需要这个组装步骤
-
-## 五、首次安装最小步骤
-
-### 0. 首次初始化 harness runtime
-
-如果你要跑 `Harness Operations` 相关 workflow，先把 repo-local harness runtime 初始化出来：
+默认主流程固定为：
 
 ```bash
-python3 toolchain/scripts/deploy/init_harness_project.py
+python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents
+python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents
+python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents
 ```
 
-需要把 harness 配置写到自定义路径时，可显式传：
+如果当前 backend 需要显式 root override，例如 `agents` 通过 `--agents-root` 指到非默认 target root，就在这三条命令上附加对应参数。参数来源见 [Codex Usage Help](../usage-help/codex.md)。
 
-```bash
-python3 toolchain/scripts/deploy/init_harness_project.py --harness-file custom-runtime/harness/config.yaml
-```
+### 1. `prune --all`
 
-### 0.5 需要时预构建 harness adapter source
+- 清理当前 backend 受管的旧安装目录
+- 删除条件只有一个：目录里存在可识别、属于当前 backend 的 `aw.marker`
+- 没有 marker、marker 不可识别、或明显不是我方受管目录时，脚本不会碰它们
+- 这一步是 destructive reinstall 的显式清理阶段，不负责保留历史副本
 
-如果你要先检查组装产物、在不部署的情况下刷新 build cache，或准备运行只读 `verify`，可以先显式执行：
+### 2. `check_paths_exist`
 
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend claude
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend opencode
-```
+- 基于当前 source 声明的 live bindings，解析即将写入的全部目标路径
+- 如果任何目标路径已经存在，命令必须一次性列出全部冲突并非零退出
+- 这一步不写任何业务文件，也不替 operator 做“可不可以覆盖”的判断
 
-说明：
+### 3. `install --backend agents`
 
-- `local` / `global` 在部署 `harness-operations` 时也会自动组装当前 backend 的产物
-- `verify` 保持只读，不会自动触发 build
-- 如果 `verify` 报 `missing-build-source`，先跑一次 `build` 或重新执行对应 deploy
+- 只写当前 source 声明的 live payload
+- 这一步不承接 archive/history、增量修复或旧版本保活
+- 如果 source 中出现重复 `target_dir` 或其他 source contract 非法情形，必须在写入前失败
+- 如果冲突路径未清理完，也必须在写入前失败
 
-### 1. 首次本地挂载
+## 四、可选复验
 
-执行对应 backend 的 repo-local deploy：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py local --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py local --backend claude
-python3 toolchain/scripts/deploy/adapter_deploy.py local --backend opencode
-```
-
-然后做最小结构复验：
+主流程跑完后，如需只读复验，再执行：
 
 ```bash
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend claude
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend opencode
 ```
 
-### 2. 首次全局安装
+`verify` 当前只负责：
 
-先选定 global target，再执行安装：
+- source 合法性
+- target root 是否存在、是否是目录、是否是坏链路
+- live install 与当前 source 的对齐状态
+- target root 下的 conflict / unrecognized 情形
 
-如果 `agents` backend 想走脚本默认解析，先确保当前 shell 已经设置：
+## 五、常见恢复路径
 
-```bash
-export CODEX_HOME=/your/codex/home
-```
+- `check_paths_exist` 报出冲突路径：
+  - 先由 operator 手工清理这些目录或修正 source
+  - 然后从 `prune --all` 重新开始
+- `install` 在写入前失败：
+  - 先修 source contract，例如重复 `target_dir`
+  - 再从 `prune --all` 重新开始
+- `verify` 报 drift：
+  - 先确认是 source 问题、target root 问题还是 unrecognized / foreign 目录
+  - 修正后重新跑三步主流程
 
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root /your/codex/home/skills --create-roots
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend claude --claude-root ~/.claude/skills --create-roots
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --opencode-root ~/.config/opencode/skills --create-roots
-```
+## 六、下一步去哪页
 
-安装后显式传 root 做复验：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root /your/codex/home/skills
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend claude --claude-root ~/.claude/skills
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend opencode --opencode-root ~/.config/opencode/skills
-```
-
-## 六、已有安装更新最小步骤
-
-如果你只是更新已有 mounts，而不是处理 rename / remove：
-
-1. 先跑一次 `verify`
-2. 如需只读复验 harness build output，先跑一次 `build`
-3. 执行对应的 `local` 或 `global` deploy
-4. 再跑一次 `verify`
-
-repo-local 示例：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py local --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
-```
-
-global 示例：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend claude --claude-root ~/.claude/skills
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend claude --claude-root ~/.claude/skills --create-roots
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend claude --claude-root ~/.claude/skills
-```
-
-如果你改的是 skill 名、删除了 skill，或怀疑 target 里有旧目录，不要停在本页；直接转去 [skill-lifecycle.md](./skill-lifecycle.md) 或 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)。
-
-## 七、下一步去哪页
-
-- 你要做 `add / update / rename / remove`：看 [skill-lifecycle.md](./skill-lifecycle.md)
-- 你要处理 drift、坏链路、`--prune`、`missing-build-source`、stale target：看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)
-- 你只想看 backend 特有 global path、smoke verify 或限制：看 [Codex](../usage-help/codex.md)、[Claude](../usage-help/claude.md)、[OpenCode](../usage-help/opencode.md)
+- 根目录不一致（drift）、损坏链路、root 类型错误：查看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)
+- skills / `.aw_template` 的增删改查：查看 [skill-lifecycle.md](./skill-lifecycle.md)
+- 原始来源、后端部署包、目标入口的正式规则：查看 [Deploy Mapping Spec](./deploy-mapping-spec.md)
+- `claude` / `opencode` 当前暂不在部署接口中实现；恢复前不要将它们写成稳定的 operator 流程

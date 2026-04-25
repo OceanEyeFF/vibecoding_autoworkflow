@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import closeout_acceptance_gate
-from scope_gate_check import check_scope
+from scope_gate_check import check_scope, normalize_status_path
 from gate_status_backfill import update_state
 
 
@@ -19,9 +22,10 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "CONTRIBUTING.md",
             ".codex/config.toml",
             ".github/workflows/ci.yml",
+            "docs/README.md",
+            "docs/harness/README.md",
             "docs/project-maintenance/README.md",
-            "docs/deployable-skills/README.md",
-            "docs/autoresearch/README.md",
+            "product/README.md",
             "docs/project-maintenance/governance/review-verify-handbook.md",
             "docs/project-maintenance/governance/path-governance-checks.md",
             ".autoworkflow/closeout/demo/summary.json",
@@ -33,10 +37,11 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "CONTRIBUTING.md",
             ".codex/",
             ".github/",
+            "docs/README.md",
             ".autoworkflow/closeout/",
             "docs/project-maintenance/",
-            "docs/deployable-skills/",
-            "docs/autoresearch/",
+            "docs/harness/",
+            "product/README.md",
             "toolchain/scripts/test/",
             "tools/scope_gate_check.py",
         ),
@@ -55,9 +60,98 @@ def test_check_scope_accepts_closeout_prefix() -> None:
 
 
 def test_check_scope_flags_disallowed_changes() -> None:
-    result = check_scope(["docs/deployable-skills/README.md"], ("docs/project-maintenance/",))
+    result = check_scope(["GUIDE.md"], ("docs/project-maintenance/",))
     assert result.passed is False
-    assert result.violations == ["docs/deployable-skills/README.md"]
+    assert result.violations == ["GUIDE.md"]
+
+
+def test_normalize_status_path_decodes_git_quoted_utf8_path() -> None:
+    quoted = '"docs/harness/foundations/Harness\\350\\277\\220\\350\\241\\214\\345\\215\\217\\350\\256\\256.md"'
+
+    assert normalize_status_path(quoted) == "docs/harness/foundations/Harness运行协议.md"
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
+def test_pre_push_blocks_origin_head_baseline(tmp_path) -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    hook_path = repo_root / "toolchain" / "scripts" / "git-hooks" / "pre-push"
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(
+        [
+            "git",
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            "refs/remotes/origin/master",
+        ],
+        cwd=tmp_path,
+        check=True,
+    )
+
+    completed = subprocess.run(
+        ["bash", str(hook_path)],
+        cwd=tmp_path,
+        input=(
+            "refs/heads/master 0000000000000000000000000000000000000000 "
+            "refs/heads/master 0000000000000000000000000000000000000000\n"
+        ),
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 1
+    assert "direct push to protected baseline 'master' is blocked" in completed.stderr
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
+def test_pre_push_allows_non_baseline_branch(tmp_path) -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    hook_path = repo_root / "toolchain" / "scripts" / "git-hooks" / "pre-push"
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(
+        [
+            "git",
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            "refs/remotes/origin/master",
+        ],
+        cwd=tmp_path,
+        check=True,
+    )
+
+    completed = subprocess.run(
+        ["bash", str(hook_path)],
+        cwd=tmp_path,
+        input=(
+            "refs/heads/work/test 0000000000000000000000000000000000000000 "
+            "refs/heads/work/test 0000000000000000000000000000000000000000\n"
+        ),
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0
+    assert completed.stderr == ""
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
+def test_pre_push_fallback_blocks_main_when_origin_head_unresolved(tmp_path) -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    hook_path = repo_root / "toolchain" / "scripts" / "git-hooks" / "pre-push"
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+
+    completed = subprocess.run(
+        ["bash", str(hook_path)],
+        cwd=tmp_path,
+        input=(
+            "refs/heads/main 0000000000000000000000000000000000000000 "
+            "refs/heads/main 0000000000000000000000000000000000000000\n"
+        ),
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 1
+    assert "fallback protects main/master" in completed.stderr
 
 
 def test_update_state_backfills_gate_status() -> None:
@@ -126,13 +220,12 @@ def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path
     command = captured["command"]
     assert "AGENTS.md" in command
     assert "CONTRIBUTING.md" in command
+    assert "docs/README.md" in command
     assert ".codex/" in command
     assert ".github/" in command
     assert "docs/project-maintenance/README.md" in command
-    assert "docs/deployable-skills/README.md" in command
-    assert "docs/autoresearch/README.md" in command
-    assert "docs/autoresearch/knowledge/README.md" in command
-    assert "docs/autoresearch/knowledge/overview.md" in command
+    assert "docs/harness/" in command
+    assert "product/README.md" in command
     assert "docs/project-maintenance/foundations/root-directory-layering.md" in command
     assert "toolchain/toolchain-layering.md" in command
     assert "docs/project-maintenance/governance/review-verify-handbook.md" in command
@@ -163,10 +256,10 @@ def test_run_spec_gate_includes_folder_logic(monkeypatch, tmp_path) -> None:
     ]
     assert any(command[-2:] == ["--repo-root", str(tmp_path)] for command in commands)
     assert any("folder_logic_check.py" in command[1] for command in commands)
-    assert any("docs/autoresearch" in command for command in commands)
+    assert any("docs/harness" in command for command in commands)
 
 
-def test_run_test_gate_includes_folder_logic_tests(monkeypatch, tmp_path) -> None:
+def test_run_test_gate_includes_agents_adapter_contract_tests(monkeypatch, tmp_path) -> None:
     commands: list[list[str]] = []
 
     def fake_run_command(command: list[str], *, cwd: Path) -> dict:
@@ -184,11 +277,17 @@ def test_run_test_gate_includes_folder_logic_tests(monkeypatch, tmp_path) -> Non
     result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
 
     assert result["passed"] is True
-    assert [item["name"] for item in result["subchecks"][:2]] == [
+    assert [item["name"] for item in result["subchecks"][:3]] == [
         "gate_tool_tests",
         "folder_logic_tests",
+        "agents_adapter_contract_tests",
     ]
     assert any(command[-1] == "toolchain/scripts/test/test_folder_logic_check.py" for command in commands)
+    assert any(command[-1] == "toolchain/scripts/test/test_agents_adapter_contract.py" for command in commands)
+    deploy_verify_commands = [command for command in commands if "adapter_deploy.py" in command[1]]
+    assert len(deploy_verify_commands) == 1
+    assert deploy_verify_commands[0][-2:] == ["--backend", "agents"]
+    assert "--target" not in deploy_verify_commands[0]
 
 
 def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path) -> None:
@@ -224,6 +323,7 @@ def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path)
     deploy_results = {
         item["name"]: item for item in result["subchecks"] if item["name"].startswith("deploy_verify_")
     }
+    assert set(deploy_results) == {"deploy_verify_agents"}
     assert all(item["passed"] is True for item in deploy_results.values())
     assert all(item["skipped"] is True for item in deploy_results.values())
     assert any("adapter_deploy.py" in command[1] for command in commands)
@@ -297,16 +397,16 @@ def test_run_smoke_gate_skips_missing_runtime_root(monkeypatch, tmp_path) -> Non
     runtime_dir = (
         primary_root
         / ".autoworkflow"
-        / "autoresearch"
-        / "manual-cr-codex-loop-3round-r000001-m000642"
+        / "closeout"
+        / "manual-governance-loop-3round-r000001-m000642"
     )
     runtime_dir.mkdir(parents=True)
     (runtime_dir / "runtime.json").write_text('{"active_round": null}', encoding="utf-8")
     other_runtime_dir = (
         primary_root
         / ".autoworkflow"
-        / "autoresearch"
-        / "manual-cr-codex-loop-6-3-3-r000001-m046830"
+        / "closeout"
+        / "manual-governance-loop-6-3-3-r000001-m046830"
     )
     other_runtime_dir.mkdir(parents=True)
     (other_runtime_dir / "runtime.json").write_text('{"active_round": null}', encoding="utf-8")
@@ -336,8 +436,8 @@ def test_run_smoke_gate_fails_when_runtime_root_exists_but_retained_files_are_mi
     (
         tmp_path
         / ".autoworkflow"
-        / "autoresearch"
-        / "manual-cr-codex-loop-3round-r000001-m000642"
+        / "closeout"
+        / "manual-governance-loop-3round-r000001-m000642"
     ).mkdir(parents=True)
     monkeypatch.setattr(
         closeout_acceptance_gate,
@@ -359,9 +459,9 @@ def test_run_smoke_gate_fails_when_runtime_root_exists_but_retained_files_are_mi
     assert all(check["missing"] is True for check in result["runtime_checks"])
 
 
-def test_run_smoke_gate_fails_when_only_unrelated_runtime_artifacts_exist(monkeypatch, tmp_path) -> None:
+def test_run_smoke_gate_skips_when_only_unrelated_runtime_artifacts_exist(monkeypatch, tmp_path) -> None:
     primary_root = tmp_path / "primary"
-    (primary_root / ".autoworkflow" / "autoresearch" / "some-other-run").mkdir(parents=True)
+    (primary_root / ".autoworkflow" / "closeout" / "some-other-run").mkdir(parents=True)
     monkeypatch.setattr(closeout_acceptance_gate, "find_primary_worktree_root", lambda repo_root: primary_root)
     monkeypatch.setattr(
         closeout_acceptance_gate,
@@ -376,10 +476,10 @@ def test_run_smoke_gate_fails_when_only_unrelated_runtime_artifacts_exist(monkey
     )
 
     result = closeout_acceptance_gate.run_smoke_gate(tmp_path, sys.executable, "workflow-1")
-    assert result["passed"] is False
-    assert result["status"] == "failed"
-    assert len(result["runtime_checks"]) == 2
-    assert all(check["missing"] is True for check in result["runtime_checks"])
+    assert result["passed"] is True
+    assert result["status"] == "skipped"
+    assert len(result["runtime_checks"]) == 1
+    assert result["runtime_checks"][0]["skipped"] is True
 
 
 def test_closeout_gate_backfills_skipped_status(monkeypatch, tmp_path, capsys) -> None:

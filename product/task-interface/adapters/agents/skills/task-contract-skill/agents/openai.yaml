@@ -1,4 +1,0 @@
-interface:
-  display_name: "Task Contract (Repo)"
-  short_description: "Apply the repo-local Task Interface task contract adapter"
-  default_prompt: "Use the repo-local $task-contract-skill wrapper in .agents/skills to produce a fixed-format Task Contract for this repository before routing or execution starts."

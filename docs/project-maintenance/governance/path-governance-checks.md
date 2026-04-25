@@ -1,9 +1,9 @@
 ---
 title: "路径与文档治理检查运行说明"
 status: active
-updated: 2026-04-13
+updated: 2026-04-24
 owner: aw-kernel
-last_verified: 2026-04-13
+last_verified: 2026-04-24
 ---
 # 路径与文档治理检查运行说明
 
@@ -18,7 +18,7 @@ last_verified: 2026-04-13
 - markdown 相对链接是否仍然可达
 - 关键主入口文件是否存在
 - `AGENTS.md` 是否仍被关键入口页回链
-- `docs/project-maintenance/`、`docs/deployable-skills/` 与 `docs/autoresearch/` 主线入口是否仍然完整
+- `docs/project-maintenance/` 与 `docs/harness/` 主线入口是否仍然完整
 - `.gitignore` 是否仍继续忽略关键 hidden layers
 - `docs/` 下正文文档的 frontmatter 是否齐全
 - `status` 是否仍和目录语义、生命周期语义一致
@@ -26,8 +26,8 @@ last_verified: 2026-04-13
 - foundations / memory-side / module entry 的关键承接关系是否仍存在
 - foundations 中关键 authority/template 文档是否被影子文件分叉
 - 已退役的 placeholder 口径是否回流到关键入口文档
-- `product/memory-side|task-interface/adapters/*/skills/*/SKILL.md` 是否仍保持 thin wrapper，而不是重新长出重复语义正文
-- `product/harness-operations/adapters/*/skills/*/` 是否保持 `header.yaml` source，并把 `SKILL.md` 限定为指向 canonical 的 symlink shim
+- `product/harness/` 是否仍保持最小 executable root 骨架，而没有回退成 doctrine 正文区
+- `docs/harness/workflow-families/` 是否仍明确承接文档真相；若链接 `product/harness/`，也只把它当作下游 executable root
 
 它不替代人工审阅，也不检查所有 anchor 片段。
 
@@ -47,7 +47,7 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 2. 根目录对象是否仍落在声明的 allowlist 内：
    - 正式内容区：`product/`、`docs/`、`toolchain/`
    - repo-local execution config：`.codex/`
-   - mount / state / navigation：`.agents/`、`.claude/`、`.opencode/`、`.autoworkflow/`、`.spec-workflow/`、`.serena/`、`.nav/`
+   - mount / state / navigation：`.agents/`、`.claude/`、`.opencode/`、`.autoworkflow/`、`.spec-workflow/`、`.nav/`
    - compatibility shim：`tools/`
    - local ephemeral cache：`.pytest_cache/`
    - entry / infra：`README.md`、`INDEX.md`、`GUIDE.md`、`ROADMAP.md`、`AGENTS.md`、`CONTRIBUTING.md`、`.github/`、`.git*`、`.claudeignore`、`LICENSE`
@@ -57,8 +57,8 @@ python3 toolchain/scripts/test/governance_semantic_check.py
    - `docs/` 中的脚本、可执行文件、运行产物、缓存
    - `toolchain/` 中的 canonical 业务源码目录、repo-local mount/state 内容、运行日志
 5. hidden/state/mount 层的 tracked 真实状态是否仍受控：
-   - `.agents/`、`.claude/`、`.opencode/` 默认不允许 tracked 内容
-   - `.serena/` 只允许显式白名单 tracked 文件
+   - `.agents/skills/`、`.claude/skills/`、`.opencode/skills/` 允许 tracked 的 repo-local install payload
+   - 这些目录之外的 mount-layer tracked 内容仍应失败
    - `.codex/` 只允许 `config.toml` 与 `rules/repo.rules`
    - `tools/` 只允许显式 compat shim tracked 文件
    - `.pytest_cache/` 允许本地存在，但 tracked 时失败
@@ -68,11 +68,11 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 9. 根入口与文档主线入口是否存在
 10. `docs/`、`product/`、`toolchain/`、根入口页和 `.nav/README.md` 内的 markdown 相对链接是否指向存在路径
 11. `AGENTS.md` 是否仍被关键入口页显式引用
-12. `docs/deployable-skills/README.md` 与关键子入口是否仍存在，并继续链接 Memory Side 与 Task Interface 主线；`docs/project-maintenance/README.md` 是否仍链接 foundations / governance / deploy / usage-help
+12. `docs/harness/README.md` 与关键子入口是否仍存在，并继续链接 foundations / scope / artifact / Skills / adjacent-systems / workflow-families
 13. `docs/` 下除 `README.md` 以外的正文文档是否仍保留最小 frontmatter
-14. `docs/project-maintenance/`、`docs/deployable-skills/`、`docs/autoresearch/` 的 `status` 是否仍匹配目录与生命周期语义
+14. `docs/project-maintenance/` 与 `docs/harness/` 的 `status` 是否仍匹配目录与生命周期语义
 15. `docs/` 正文文档是否仍避免使用 `status: suspended`；暂停中的共享文档应改成 `superseded`，非共享 scratch 应移出 `docs/`
-16. `docs/project-maintenance/README.md`、`docs/deployable-skills/README.md` 与 `docs/autoresearch/README.md` 是否仍维持当前三分入口分流
+16. `docs/project-maintenance/README.md` 与 `docs/harness/README.md` 是否仍维持当前入口分流
 17. `.gitignore` 是否仍忽略：
    - `.agents/`
    - `.claude/`
@@ -82,18 +82,17 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 18. `governance_semantic_check.py`
 19. 关键承接关系是否仍存在：
    - `toolchain/toolchain-layering.md -> toolchain/scripts/README.md`
-   - `toolchain/toolchain-layering.md -> toolchain/evals/README.md`
    - `context-routing.md -> context-routing-output-format.md`
    - `writeback-cleanup.md -> writeback-cleanup-output-format.md`
 20. foundations 权威文档是否出现同名前缀 shadow 文件
 21. 关键入口文档是否重新出现已退役的“预留位 / 占位”口径
-22. `product/memory-side|task-interface/adapters/*/skills/*/SKILL.md` 是否同时保留 `Canonical Source / Backend Notes / Deploy Target` 薄壳结构，并移除 `Execution Rules / Output Contract` 这类重复章节
-23. `product/harness-operations/adapters/*/skills/*/` 是否至少包含 `header.yaml`，并且 source 层 `SKILL.md` 只作为指向 canonical `SKILL.md` 的 symlink shim
+22. 相邻系统文档是否已清理对已删除 product roots 的坏链，且没有把 adjacent systems 重新写回新的源码根
+23. `product/harness/README.md`、`product/harness/skills/README.md` 与 `product/harness/adapters/README.md` 是否仍作为最小 executable root 骨架存在
+24. `docs/harness/workflow-families/README.md` 与 `docs/harness/workflow-families/repo-evolution/README.md` 是否仍把 `docs/` 作为 ontology 上游，而不是反向从 `product/harness/` 生长定义
 
 说明：
 
-- `.serena/` 当前不在这组忽略项里，因为本仓库允许受控保留项目级 Serena 配置与记忆
-- `.opencode/` 与 `.agents/`、`.claude/` 一样，属于 repo-local mount/deploy target，运行说明只负责确认它仍然被忽略，不承担它的生成逻辑
+- `.agents/`、`.claude/`、`.opencode/` 仍应默认被 `.gitignore` 忽略；允许 tracked 的 install payload 属于受控例外，不改变默认忽略策略
 - `folder_logic_check.py` 使用 `git ls-files` 的真实 tracked 状态，而不只看 `.gitignore`
 
 ## 四、什么时候运行

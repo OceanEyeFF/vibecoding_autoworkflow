@@ -52,15 +52,12 @@ def create_valid_repo(tmp_path: Path) -> Path:
 
     for directory in (
         ".codex/rules",
-        "product/memory-side/skills",
-        "product/task-interface",
+        "product/harness",
+        "product/harness/skills",
         "docs/project-maintenance",
-        "docs/deployable-skills",
-        "docs/autoresearch",
+        "docs/harness",
         "toolchain/scripts",
-        "toolchain/evals",
         "tools",
-        ".serena/memories",
     ):
         (repo_root / directory).mkdir(parents=True, exist_ok=True)
 
@@ -70,10 +67,6 @@ def create_valid_repo(tmp_path: Path) -> Path:
         "tools/scope_gate_check.py",
     ):
         write_file(repo_root / tool_path, "# shim\n")
-
-    write_file(repo_root / ".serena/.gitignore", ".serena/\n")
-    write_file(repo_root / ".serena/project.yml", "project: demo\n")
-    write_file(repo_root / ".serena/memories/Claude-Workspace-Architecture.md", "# memory\n")
 
     write_file(
         repo_root / ".codex/config.toml",
@@ -87,7 +80,7 @@ def create_valid_repo(tmp_path: Path) -> Path:
     (repo_root / ".nav").mkdir(parents=True, exist_ok=True)
     write_file(repo_root / ".nav/README.md", "# nav\n")
     create_nav_symlink(repo_root / ".nav/@docs", repo_root / "docs")
-    create_nav_symlink(repo_root / ".nav/@skills", repo_root / "product/memory-side/skills")
+    create_nav_symlink(repo_root / ".nav/@skills", repo_root / "product/harness/skills")
 
     git(
         repo_root,
@@ -102,7 +95,7 @@ def create_valid_repo(tmp_path: Path) -> Path:
         ".claudeignore",
         force=True,
     )
-    git(repo_root, "add", "product", "docs", "toolchain", "tools", ".serena", ".nav", ".codex", force=True)
+    git(repo_root, "add", "product", "docs", "toolchain", "tools", ".nav", ".codex", force=True)
     return repo_root
 
 
@@ -183,17 +176,31 @@ def test_codex_tracked_non_whitelist_fails(tmp_path: Path) -> None:
     assert ".codex/notes.md" in issue_paths(report)
 
 
-def test_serena_whitelist_passes_and_non_whitelist_tracked_fails(tmp_path: Path) -> None:
+def test_retired_serena_root_directory_fails(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
-    baseline_report = run_checks(repo_root)
-    assert "FL008" not in issue_codes(baseline_report)
-
-    write_file(repo_root / ".serena/cache/runtime.json", "{}\n")
-    git(repo_root, "add", ".serena/cache/runtime.json", force=True)
+    (repo_root / ".serena").mkdir()
     report = run_checks(repo_root)
 
-    assert "FL008" in issue_codes(report)
-    assert ".serena/cache/runtime.json" in issue_paths(report)
+    assert "FL001" in issue_codes(report)
+    assert ".serena" in issue_paths(report)
+
+
+def test_repo_local_skill_payloads_may_be_tracked_but_other_mount_content_still_fails(tmp_path: Path) -> None:
+    repo_root = create_valid_repo(tmp_path)
+    write_file(repo_root / ".agents/skills/demo-skill/SKILL.md", "---\nname: demo-skill\ndescription: demo\n---\n")
+    git(repo_root, "add", ".agents/skills/demo-skill/SKILL.md", force=True)
+
+    allowed_report = run_checks(repo_root)
+
+    assert "FL007" not in issue_codes(allowed_report)
+
+    write_file(repo_root / ".agents/runtime.json", "{}\n")
+    git(repo_root, "add", ".agents/runtime.json", force=True)
+
+    blocked_report = run_checks(repo_root)
+
+    assert "FL007" in issue_codes(blocked_report)
+    assert ".agents/runtime.json" in issue_paths(blocked_report)
 
 
 def test_first_level_allowlist_drift_fails(tmp_path: Path) -> None:
@@ -206,13 +213,15 @@ def test_first_level_allowlist_drift_fails(tmp_path: Path) -> None:
     assert "toolchain/misc" in issue_paths(report)
 
 
-def test_harness_operations_partition_is_allowed_under_product(tmp_path: Path) -> None:
+def test_harness_partition_is_allowed_under_product_and_docs(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
-    (repo_root / "product/harness-operations").mkdir(parents=True, exist_ok=True)
+    (repo_root / "product/harness").mkdir(parents=True, exist_ok=True)
+    (repo_root / "docs/harness").mkdir(parents=True, exist_ok=True)
 
     report = run_checks(repo_root)
 
-    assert "product/harness-operations" not in issue_paths(report)
+    assert "product/harness" not in issue_paths(report)
+    assert "docs/harness" not in issue_paths(report)
 
 
 def test_misplaced_content_patterns_fail(tmp_path: Path) -> None:
@@ -251,7 +260,7 @@ def test_nav_required_slots_must_be_symlinks(tmp_path: Path) -> None:
 def test_nav_symlink_target_must_be_allowed(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
     (repo_root / ".nav/@skills").unlink()
-    create_nav_symlink(repo_root / ".nav/@skills", repo_root / "product/task-interface")
+    create_nav_symlink(repo_root / ".nav/@skills", repo_root / "product/harness")
 
     report = run_checks(repo_root)
 

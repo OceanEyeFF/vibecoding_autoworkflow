@@ -1,1 +1,0 @@
-../../../../skills/harness-contract-shape/SKILL.md

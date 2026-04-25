@@ -1,29 +1,35 @@
 ---
 title: "AutoWorkflow"
 status: active
-updated: 2026-04-13
+updated: 2026-04-24
 owner: aw-kernel
-last_verified: 2026-04-13
+last_verified: 2026-04-24
 ---
 # AutoWorkflow
 
-> 本项目是一个 AI coding 的 repo-side contract layer。它不负责把某个 agent 做成完整 runtime，而是把 AI 在仓库里如何读取真相、收束任务、执行、回写和部署这套规则固定下来。
+> 本项目的核心目标，是构建一个 `Codex-first` 的 AI coding harness 平台，并将其作为 repo-side contract layer 分发到多个项目中使用。
 
-## 它在解决什么问题
+## 项目目标
 
-当多个 AI 后端共同进入同一个仓库时，最容易失控的不是“能不能生成代码”，而是：
+这个项目主要做两件事：
 
-- 谁维护项目真相
-- 任务开始前应该读哪些内容
-- 讨论怎样收束成可执行基线
-- 任务结束后哪些结果必须回写
-- backend-specific prompt / wrapper / deploy target 会不会反过来污染源码和文档主线
+1. `Harness 平台搭建`
+   构建一个 `Codex-first` 的 AI coding harness，统一任务收束、上下文路由、执行、验证和回写。
+2. `Harness 分发`
+   把这套 harness 作为可复用能力分发到包括本项目在内的多个仓库。
+## 我们在构建什么
 
-这个仓库的职责，就是把这些问题做成一套可维护、可部署、可验证的 repo-side contract。
+从产品视角看，这不是一个只服务单仓库的脚手架，而是一套可以持续复用和迭代的能力系统：
+
+- 一套统一的任务进入和收束方式
+- 一套统一的上下文路由与执行边界
+- 一套可分发到多个仓库的 harness 形态
+
+`repo-side contract layer` 可以保留为当前实现形态的描述，但它不是项目第一句，也不是目标本身。
 
 ## 仓库定位
 
-仓库主线只认三块正式内容区：
+当前仓库主线仍然只认三块正式内容区：
 
 - [`product/`](./product/README.md)：业务代码唯一源码根
 - [`docs/`](./docs/README.md)：文档真相、能力合同与治理规则
@@ -32,16 +38,16 @@ last_verified: 2026-04-13
 这三块之外：
 
 - `.agents/`、`.claude/`、`.opencode/` 是 repo-local deploy target
-- `.autoworkflow/`、`.spec-workflow/`、`.serena/` 是 repo-local state / config
+- `.autoworkflow/`、`.spec-workflow/` 是 repo-local state / config
 - `.nav/` 只是 compatibility navigation，不是结构定义层
 
 更完整的分层定义见 [`根目录分层`](./docs/project-maintenance/foundations/root-directory-layering.md)。
 
-## 三条产品主线
+## 当前仓库如何承接这些目标
 
 ### 1. Memory Side
 
-负责项目长期记忆和任务上下文治理，当前固定为三个组件：
+负责项目长期记忆和任务上下文治理，支撑任务收束前后的信息边界管理。当前固定为三个组件：
 
 - `Knowledge Base`
 - `Context Routing`
@@ -49,12 +55,13 @@ last_verified: 2026-04-13
 
 对应合同入口：
 
-- [`docs/deployable-skills/memory-side/overview.md`](./docs/deployable-skills/memory-side/overview.md)
-- [`docs/deployable-skills/memory-side/skill-agent-model.md`](./docs/deployable-skills/memory-side/skill-agent-model.md)
+- [`docs/harness/adjacent-systems/memory-side/overview.md`](./docs/harness/adjacent-systems/memory-side/overview.md)
+- [`docs/harness/adjacent-systems/memory-side/skill-agent-model.md`](./docs/harness/adjacent-systems/memory-side/skill-agent-model.md)
 
-对应源码入口：
+当前仓库状态：
 
-- [`product/memory-side/`](./product/memory-side/README.md)
+- `Memory Side` 目前只保留在 `docs/harness/adjacent-systems/memory-side/` 的合同层
+- repo 内不再保留独立的 `product/memory-side/` 源码树
 
 ### 2. Task Interface
 
@@ -62,26 +69,29 @@ last_verified: 2026-04-13
 
 对应合同入口：
 
-- [`docs/deployable-skills/task-interface/task-contract.md`](./docs/deployable-skills/task-interface/task-contract.md)
+- [`docs/harness/adjacent-systems/task-interface/task-contract.md`](./docs/harness/adjacent-systems/task-interface/task-contract.md)
 
-对应源码入口：
+当前仓库状态：
 
-- [`product/task-interface/`](./product/task-interface/README.md)
+- `Task Interface` 目前只保留在 `docs/harness/adjacent-systems/task-interface/` 的合同层
+- repo 内不再保留独立的 `product/task-interface/` 源码树
 
-### 3. Harness Operations
+### 3. Harness Doctrine
 
-负责执行壳层和 workflow 级能力，例如 task planning、review loop、strict/simple workflow、execution contract 等。
+负责承接 Harness 的 doctrine、scope、artifact、workflow family 与 adjacent-system 定义。
 
-对应源码入口：
+对应文档入口：
 
-- [`product/harness-operations/`](./product/harness-operations/README.md)
+- [`docs/harness/`](./docs/harness/README.md)
+
+当前这部分以文档真相层为主，不再对应仓库内单独的 harness skill/source 分区。
 
 ## 典型工作链路
 
 这个仓库当前最值得把握的不是某个单独 skill，而是整条链路：
 
 ```text
-用户讨论
+目标 / 需求
   ↓
 Task Contract
   ↓
@@ -91,7 +101,7 @@ AI 执行
   ↓
 Writeback & Cleanup
   ↓
-仓库知识真相更新
+验证与回灌
 ```
 
 含义是：
@@ -103,41 +113,46 @@ Writeback & Cleanup
 
 ## 根级入口怎么分工
 
-| 文件 | 职责 |
-|------|------|
-| [`README.md`](./README.md) | 根级 landing page，先回答“这是什么仓库、主线在哪、核心链路是什么” |
-| [`INDEX.md`](./INDEX.md) | quick index，按任务目标把人或 agent 导向正确入口 |
-| [`GUIDE.md`](./GUIDE.md) / [`ROADMAP.md`](./ROADMAP.md) | 兼容入口，不单独定义主线 |
-| [`AGENTS.md`](./AGENTS.md) | agent-facing 最小工作规则入口；若冲突，以 `docs/project-maintenance/`、`docs/deployable-skills/` 与 `docs/autoresearch/` 为准 |
+`README.md` 负责讲清楚项目目标、当前承接结构和主线入口。
+`INDEX.md` 负责按任务目标把人或 agent 导向正确入口。
+`GUIDE.md` / `ROADMAP.md` 只是兼容入口，不单独定义主线。
+`AGENTS.md` 是 agent-facing 的最小工作规则入口；若冲突，以 `docs/project-maintenance/` 与 `docs/harness/` 为准。
 
-## 默认阅读路径
+## 从哪里进入
 
 1. [`docs/README.md`](./docs/README.md)
 2. [`docs/project-maintenance/README.md`](./docs/project-maintenance/README.md)
 3. [`docs/project-maintenance/foundations/root-directory-layering.md`](./docs/project-maintenance/foundations/root-directory-layering.md)
 4. [`AGENTS.md`](./AGENTS.md)
 5. 按任务进入：
-   - 能力合同：[`docs/deployable-skills/README.md`](./docs/deployable-skills/README.md)
+   - Harness 主线与 adjacent-system 合同：[`docs/harness/README.md`](./docs/harness/README.md)
    - 业务源码：[`product/README.md`](./product/README.md)
    - 工具层：[`toolchain/README.md`](./toolchain/README.md)
-   - `autoresearch` 文档：[`docs/autoresearch/README.md`](./docs/autoresearch/README.md)
 
-## 首次进入仓库时怎么选入口
+首次进入仓库时，通常这样选：
 
 - 想快速按任务定位入口：看 [`INDEX.md`](./INDEX.md)
 - 想理解文档真相层：看 [`docs/README.md`](./docs/README.md)
-- 想理解 `Memory Side`：看 [`docs/deployable-skills/memory-side/overview.md`](./docs/deployable-skills/memory-side/overview.md)
-- 想理解 `Task Contract`：看 [`docs/deployable-skills/task-interface/task-contract.md`](./docs/deployable-skills/task-interface/task-contract.md)
-- 想改 canonical skills / adapters：看 [`product/README.md`](./product/README.md)
+- 想理解 `Harness 平台` 的承接结构：看 [`product/README.md`](./product/README.md)
+- 想理解 `Task Contract`：看 [`docs/harness/adjacent-systems/task-interface/task-contract.md`](./docs/harness/adjacent-systems/task-interface/task-contract.md)
+- 想理解 `Memory Side`：看 [`docs/harness/adjacent-systems/memory-side/README.md`](./docs/harness/adjacent-systems/memory-side/README.md)
 - 想部署或跑治理检查：看 [`toolchain/README.md`](./toolchain/README.md)
 - 想看 repo-local 使用帮助：看 [`docs/project-maintenance/usage-help/README.md`](./docs/project-maintenance/usage-help/README.md)
 
+## 非目标
+
+- 不是某个单独 agent 的完整 runtime
+- 不是某家模型私有的 prompt 仓库
+- 不是只服务当前仓库的一次性脚手架
+- 不是把 deploy target 当成 source of truth
+- 不是让首页充当完整操作手册
+
 ## 当前提醒
 
-- 不要把 `.agents/`、`.claude/`、`.opencode/` 当成源码层或真相层
-- 不要把 `.autoworkflow/`、`.spec-workflow/`、`.serena/` 当成默认阅读主线
-- 不要把 `.nav/` 当成结构定义层
-- 不要把某个后端的 prompt / wrapper 当成跨后端共享 truth
+- `.agents/`、`.claude/`、`.opencode/` 只是 deploy target，不是源码层或真相层
+- `.autoworkflow/`、`.spec-workflow/` 只是 repo-local state / config，不是默认阅读主线
+- `.nav/` 只是 compatibility navigation，不是结构定义层
+- 某个后端的 prompt / wrapper 不能替代跨后端共享 truth
 
 ## 许可证
 

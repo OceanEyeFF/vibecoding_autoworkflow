@@ -1,13 +1,13 @@
 # Local automation artifacts
+.aw/
 .autoworkflow/
 .spec-workflow/
 .exrepos/
 
-# Repo-local adapter mounts are generated from product/, never tracked.
+# Repo-local install/mount targets remain ignored by default.
 .agents/
 .claude/
 .opencode/
-.serena/
 
 # Official documentation mirror (auto-fetched, do not commit)
 Claude_Official_Docs/

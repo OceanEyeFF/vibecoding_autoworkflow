@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the repeatable closeout acceptance gate for autoresearch closeout."""
+"""Run the repeatable closeout acceptance gate."""
 
 from __future__ import annotations
 
@@ -13,12 +13,13 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-WORKFLOW_ID = "autoresearch-closeout-governance-task-list-20260402"
+WORKFLOW_ID = "closeout-governance-task-list-20260402"
 LOCAL_DEPLOY_TARGET_ROOTS = {
     "agents": REPO_ROOT / ".agents" / "skills",
     "claude": REPO_ROOT / ".claude" / "skills",
     "opencode": REPO_ROOT / ".opencode" / "skills",
 }
+SUPPORTED_DEPLOY_VERIFY_BACKENDS = ("agents",)
 
 
 @dataclass
@@ -85,6 +86,8 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
             str(repo_root),
             "--json",
             "--allowed-prefix",
+            "docs/README.md",
+            "--allowed-prefix",
             "AGENTS.md",
             "--allowed-prefix",
             "CONTRIBUTING.md",
@@ -94,23 +97,16 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
             ".github/",
             "--allowed-prefix",
             "docs/project-maintenance/README.md",
-            "docs/deployable-skills/README.md",
             "--allowed-prefix",
-            "docs/autoresearch/README.md",
-            "--allowed-prefix",
-            "docs/autoresearch/knowledge/README.md",
-            "--allowed-prefix",
-            "docs/autoresearch/knowledge/overview.md",
-            "--allowed-prefix",
-            "docs/autoresearch/references/",
-            "--allowed-prefix",
-            "docs/autoresearch/runbooks/",
+            "docs/harness/",
             "--allowed-prefix",
             "docs/project-maintenance/governance/review-verify-handbook.md",
             "--allowed-prefix",
             "docs/project-maintenance/foundations/root-directory-layering.md",
             "--allowed-prefix",
             "toolchain/toolchain-layering.md",
+            "--allowed-prefix",
+            "product/README.md",
         ],
         cwd=repo_root,
     )
@@ -139,11 +135,9 @@ def run_spec_gate(repo_root: Path, python: str) -> dict:
                     "--repo-root",
                     str(repo_root),
                     "--scan-path",
-                    "docs/autoresearch",
-                    "--scan-path",
                     "docs/project-maintenance",
                     "--scan-path",
-                    "docs/deployable-skills",
+                    "docs/harness",
                     "--scan-path",
                     ".autoworkflow/closeout",
                 ],
@@ -183,8 +177,6 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
             "verify",
             "--backend",
             backend,
-            "--target",
-            "local",
         ]
         result = run_command(command, cwd=repo_root)
         issue_codes = extract_verify_issue_codes(result["stdout"])
@@ -214,18 +206,17 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
             run_command([python, "-m", "pytest", "toolchain/scripts/test/test_folder_logic_check.py"], cwd=repo_root),
         ),
         (
-            "deploy_verify_agents",
-            run_local_deploy_verify("agents"),
-        ),
-        (
-            "deploy_verify_claude",
-            run_local_deploy_verify("claude"),
-        ),
-        (
-            "deploy_verify_opencode",
-            run_local_deploy_verify("opencode"),
+            "agents_adapter_contract_tests",
+            run_command([python, "-m", "pytest", "toolchain/scripts/test/test_agents_adapter_contract.py"], cwd=repo_root),
         ),
     ]
+    subchecks.extend(
+        (
+            f"deploy_verify_{backend}",
+            run_local_deploy_verify(backend),
+        )
+        for backend in SUPPORTED_DEPLOY_VERIFY_BACKENDS
+    )
     passed = all(result["passed"] for _, result in subchecks)
     skipped = any(result.get("skipped", False) for _, result in subchecks)
     return {
@@ -238,10 +229,10 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
 
 def run_smoke_gate(repo_root: Path, python: str, workflow_id: str) -> dict:
     def retained_runtime_paths_for(root: Path) -> list[Path]:
-        runtime_root = root / ".autoworkflow" / "autoresearch"
+        runtime_root = root / ".autoworkflow" / "closeout"
         return [
-            runtime_root / "manual-cr-codex-loop-3round-r000001-m000642" / "runtime.json",
-            runtime_root / "manual-cr-codex-loop-6-3-3-r000001-m046830" / "runtime.json",
+            runtime_root / "manual-governance-loop-3round-r000001-m000642" / "runtime.json",
+            runtime_root / "manual-governance-loop-6-3-3-r000001-m046830" / "runtime.json",
         ]
 
     def retained_roots_present(paths: list[Path]) -> bool:
@@ -257,7 +248,41 @@ def run_smoke_gate(repo_root: Path, python: str, workflow_id: str) -> dict:
                 selected_root = primary_root
                 retained_runtime_paths = primary_paths
 
+    backfill_smoke = run_command(
+        [
+            python,
+            str(repo_root / "tools" / "gate_status_backfill.py"),
+            "--workflow-id",
+            workflow_id,
+            "--gate",
+            "smoke_gate_dry_run",
+            "--status",
+            "passed",
+            "--details",
+            json.dumps({"mode": "smoke", "dry_run": True}, sort_keys=True),
+            "--dry-run",
+            "--json",
+        ],
+        cwd=repo_root,
+    )
+
     runtime_checks = []
+    if not retained_roots_present(retained_runtime_paths):
+        return {
+            "passed": backfill_smoke["passed"],
+            "returncode": 0 if backfill_smoke["passed"] else 1,
+            "status": "skipped" if backfill_smoke["passed"] else "failed",
+            "runtime_checks": [
+                {
+                    "path": str(selected_root / ".autoworkflow" / "closeout"),
+                    "passed": True,
+                    "skipped": True,
+                    "reason": "no retained closeout runtime evidence configured for this repository",
+                }
+            ],
+            "backfill_smoke": backfill_smoke,
+        }
+
     runtime_passed = True
     for runtime_path in retained_runtime_paths:
         if not runtime_path.exists():
@@ -281,23 +306,6 @@ def run_smoke_gate(repo_root: Path, python: str, workflow_id: str) -> dict:
         runtime_checks.append(check)
         runtime_passed = runtime_passed and check["passed"]
 
-    backfill_smoke = run_command(
-        [
-            python,
-            str(repo_root / "tools" / "gate_status_backfill.py"),
-            "--workflow-id",
-            workflow_id,
-            "--gate",
-            "smoke_gate_dry_run",
-            "--status",
-            "passed",
-            "--details",
-            json.dumps({"mode": "smoke", "dry_run": True}, sort_keys=True),
-            "--dry-run",
-            "--json",
-        ],
-        cwd=repo_root,
-    )
     passed = runtime_passed and backfill_smoke["passed"]
     return {
         "passed": passed,

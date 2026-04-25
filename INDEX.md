@@ -1,9 +1,9 @@
 ---
 title: "根目录索引"
 status: active
-updated: 2026-03-26
+updated: 2026-04-24
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-04-24
 ---
 # 根目录索引
 
@@ -15,7 +15,7 @@ last_verified: 2026-03-26
 |------|------|
 | 建立 docs 模块边界 | [`docs/README.md`](./docs/README.md) |
 | 进入项目维护主线 | [`docs/project-maintenance/README.md`](./docs/project-maintenance/README.md) |
-| 进入 deployable skills 主线 | [`docs/deployable-skills/README.md`](./docs/deployable-skills/README.md) |
+| 进入 Harness 主线 | [`docs/harness/README.md`](./docs/harness/README.md) |
 | 建立根目录边界 | [`docs/project-maintenance/foundations/root-directory-layering.md`](./docs/project-maintenance/foundations/root-directory-layering.md) |
 | 建立路径与文档治理边界 | [`AGENTS.md`](./AGENTS.md) |
 
@@ -23,11 +23,11 @@ last_verified: 2026-03-26
 
 | 任务目标 | 入口 |
 |------|------|
-| 理解项目是什么、根目录怎么分层 | [`README.md`](./README.md) |
+| 理解项目目标、承接结构和根目录分层 | [`README.md`](./README.md) |
 | 看文档真相层与阅读顺序 | [`docs/README.md`](./docs/README.md) |
-| 看稳定规则与分层合同 | [`docs/deployable-skills/README.md`](./docs/deployable-skills/README.md) |
-| 改 `Memory Side` 主线文档 | [`docs/deployable-skills/memory-side/README.md`](./docs/deployable-skills/memory-side/README.md) |
-| 改 `Task Interface` 主线文档 | [`docs/deployable-skills/task-interface/README.md`](./docs/deployable-skills/task-interface/README.md) |
+| 看 Harness 主线与分层合同 | [`docs/harness/README.md`](./docs/harness/README.md) |
+| 改 `Memory Side` 主线文档 | [`docs/harness/adjacent-systems/memory-side/README.md`](./docs/harness/adjacent-systems/memory-side/README.md) |
+| 改 `Task Interface` 主线文档 | [`docs/harness/adjacent-systems/task-interface/README.md`](./docs/harness/adjacent-systems/task-interface/README.md) |
 | 改业务源码 | [`product/README.md`](./product/README.md) |
 | 改工具脚本、部署或评测 | [`toolchain/README.md`](./toolchain/README.md) |
 | 看 repo-local runbook | [`docs/project-maintenance/README.md`](./docs/project-maintenance/README.md) |
@@ -40,7 +40,7 @@ last_verified: 2026-03-26
 - `docs/`：文档真相与知识主线
 - `toolchain/`：脚本、部署、测试、评测工具
 - `.agents/`、`.claude/`、`.opencode/`：repo-local mount / deploy target
-- `.autoworkflow/`、`.spec-workflow/`、`.serena/`：repo-local state / config
+- `.autoworkflow/`、`.spec-workflow/`：repo-local state / config
 - `.nav/`：compatibility navigation
 
 ## 默认先不要读
@@ -50,7 +50,6 @@ last_verified: 2026-03-26
 - `.opencode/`
 - `.autoworkflow/`
 - `.spec-workflow/`
-- `.serena/`
 - `.nav/`
 
 ## 停止继续扩读的条件

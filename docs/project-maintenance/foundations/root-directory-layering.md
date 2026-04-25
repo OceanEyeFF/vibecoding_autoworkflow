@@ -1,9 +1,9 @@
 ---
 title: "根目录分层"
 status: active
-updated: 2026-04-10
+updated: 2026-04-24
 owner: aw-kernel
-last_verified: 2026-04-10
+last_verified: 2026-04-24
 ---
 # 根目录分层
 
@@ -25,8 +25,8 @@ last_verified: 2026-04-10
 | Product Layer | `product/` | 业务源码 | 真相正文、运行状态 |
 | Truth Layer | `docs/` | 知识与治理文档 | deploy 结果、mount/state |
 | Toolchain Layer | `toolchain/` | 脚本与评测工具 | 业务源码真相 |
-| Repo-local Mount Layer | `.claude/` `.agents/` `.opencode/` | 本地挂载与 deploy target | 主线真相、业务源码 |
-| Repo-local State Layer | `.autoworkflow/` `.spec-workflow/` `.serena/` | 运行状态与项目级配置记忆 | 主线入口、业务源码 |
+| Repo-local Install / Mount Layer | `.claude/` `.agents/` `.opencode/` | repo-local 安装载荷、挂载与 deploy target | 主线真相、业务源码 |
+| Repo-local State Layer | `.autoworkflow/` `.spec-workflow/` | 运行状态与项目级配置记忆 | 主线入口、业务源码 |
 | Repo-local Execution Config Layer | `.codex/` | repo-local 执行配置 | 长期真相正文、运行产物 |
 | Compatibility Navigation Layer | `.nav/` | 兼容导航 | 结构定义与规则正文 |
 | Compatibility Shim Layer | `tools/` | 兼容入口 shim | canonical 逻辑实现 |
@@ -34,6 +34,14 @@ last_verified: 2026-04-10
 | Repo Infra Layer | `.github/` `.git/` `.gitignore` `.gitattributes` `.claudeignore` `LICENSE` `CONTRIBUTING.md` | 仓库基础设施 | 业务规则正文 |
 
 ## 三、受控例外与白名单
+
+### 0. Repo-local install payloads
+
+- `.agents/skills/`、`.claude/skills/`、`.opencode/skills/` 允许承接 tracked 的 repo-local install payload。
+- 这些 payload 可以用于 repo 内试用、安装兼容与文件分发，不再一律视为“不得入库”的纯 mount 垃圾层。
+- 但它们仍不是 canonical truth，也不是业务源码根。
+- `product/` 仍然是业务代码唯一源码根；repo-local install payload 不应反向替代 `product/` 或 `docs/` 的定义权。
+- 如果某个 payload 只是 deploy 结果镜像、临时 smoke 产物或 repo-local 噪音，仍不应入库。
 
 ### 1. `tools/`
 
@@ -44,29 +52,21 @@ last_verified: 2026-04-10
   - `tools/scope_gate_check.py`
 - 真逻辑必须在 `toolchain/scripts/test/`。
 
-### 2. `.serena/`
-
-- `.serena/` 属于 repo-local state/config。
-- 允许 tracked 白名单：
-  - `.serena/.gitignore`
-  - `.serena/project.yml`
-  - `.serena/memories/Claude-Workspace-Architecture.md`
-
-### 3. `.codex/`
+### 2. `.codex/`
 
 - `.codex/` 属于 repo-local execution config。
 - 允许 tracked 白名单：
   - `.codex/config.toml`
   - `.codex/rules/repo.rules`
 
-### 4. `.nav/`
+### 3. `.nav/`
 
 - 只允许 `README.md`、`@docs`、`@skills`。
 - `@docs` 与 `@skills` 必须是 symlink。
 - `@docs` 必须解析到 `docs/`。
-- `@skills` 必须解析到 `product/memory-side/skills/`。
+- `@skills` 必须解析到 `product/harness/skills/`。
 
-### 5. `.pytest_cache/`
+### 4. `.pytest_cache/`
 
 - 可存在于根目录，但不得有 tracked 内容。
 
@@ -82,8 +82,27 @@ last_verified: 2026-04-10
 
 只有能稳定落在上述某一层，才应放到根目录。
 
-## 五、相关文档
+## 五、文档域补充
+
+`docs/` 当前一级文档域包括：
+
+- `project-maintenance/`
+- `harness/`
+
+其中：
+
+- `docs/harness/` 是 Harness-first 主线
+
+`product/` 当前一级源码根包括：
+
+- `harness/`
+
+`product/` 下还允许一个受控辅助层：
+
+- `.aw_template/`：repo-local execution template layer，用于承接 `.aw/` 运行目录的 scaffold 模板；artifact 模板的长期 owner 不应默认落在这里
+
+## 六、相关文档
 
 - [AGENTS.md](../../../AGENTS.md)
 - [Toolchain 分层](../../../toolchain/toolchain-layering.md)
-- [Memory Side 层级边界](../../deployable-skills/memory-side/layer-boundary.md)
+- [Memory Side 层级边界](../../harness/adjacent-systems/memory-side/layer-boundary.md)

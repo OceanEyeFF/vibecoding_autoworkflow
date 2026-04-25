@@ -11,7 +11,7 @@ last_verified: 2026-03-26
 
 - 当前 docs 模块入口：`docs/README.md`
 - 当前项目维护入口：`docs/project-maintenance/README.md`
-- 当前 deployable skills 入口：`docs/deployable-skills/README.md`
+- 当前 Harness 入口：`docs/harness/README.md`
 - 当前根目录边界入口：`docs/project-maintenance/foundations/root-directory-layering.md`
 - 当前路径与文档治理入口：`AGENTS.md`
 - 当前业务源码入口：`product/README.md`

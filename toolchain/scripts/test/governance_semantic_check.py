@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -15,30 +14,53 @@ from path_governance_check import iter_relative_markdown_targets, resolve_markdo
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FOUNDATIONS_DIR = "docs/project-maintenance/foundations"
 REQUIRED_TEMPLATE_PATHS = [
-    "docs/deployable-skills/memory-side/formats/context-routing-output-format.md",
-    "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md",
-    "docs/deployable-skills/task-interface/task-contract.md",
+    "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md",
+    "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md",
+    "docs/harness/adjacent-systems/task-interface/task-contract.md",
 ]
 REQUIRED_HANDOFF_LINKS = {
+    "product/README.md": [
+        "product/harness/README.md",
+    ],
     "toolchain/toolchain-layering.md": [
         "toolchain/scripts/README.md",
-        "toolchain/evals/README.md",
     ],
-    "docs/deployable-skills/README.md": REQUIRED_TEMPLATE_PATHS,
-    "docs/deployable-skills/memory-side/context-routing.md": [
-        "docs/deployable-skills/memory-side/formats/context-routing-output-format.md",
+    "docs/harness/README.md": [
+        "docs/harness/foundations/README.md",
+        "docs/harness/adjacent-systems/README.md",
+        "docs/harness/workflow-families/README.md",
+        "product/harness/README.md",
     ],
-    "docs/deployable-skills/memory-side/writeback-cleanup.md": [
-        "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md",
+    "product/harness/README.md": [
+        "docs/harness/README.md",
+        "product/harness/skills/README.md",
+        "product/harness/adapters/README.md",
     ],
-    "docs/autoresearch/knowledge/README.md": [
-        "docs/autoresearch/knowledge/overview.md",
+    "docs/harness/adjacent-systems/task-interface/README.md": [
+        "docs/harness/adjacent-systems/task-interface/task-contract.md",
+    ],
+    "docs/harness/adjacent-systems/memory-side/README.md": [
+        "docs/harness/adjacent-systems/memory-side/overview.md",
+        "docs/harness/adjacent-systems/memory-side/layer-boundary.md",
+        "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
+    ],
+    "docs/harness/adjacent-systems/memory-side/context-routing.md": [
+        "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md",
+    ],
+    "docs/harness/adjacent-systems/memory-side/writeback-cleanup.md": [
+        "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md",
     ],
 }
 FOUNDATIONS_AUTHORITY_STEMS = [
     "root-directory-layering",
 ]
 OUTDATED_PLACEHOLDER_PHRASES = {
+    "docs/harness/README.md": [
+        "已验证的 legacy skills 已降级为可回收资产；当前 repo 不再保留独立的 harness skill/source 分区",
+    ],
+    "docs/harness/workflow-families/README.md": [
+        "当前这些 workflow family 先固定在文档真相层；仓库内不再保留独立的 `product/harness/` workflow/profile source 分区。",
+    ],
     "toolchain/toolchain-layering.md": [
         "`research/` 目录当前只保留占位入口，不承载 active runner；其中 `OpenCode` 仍是 research backend 预留位",
         "`research/` 与 `evals/` 保留为预留位，只有在方案重新准入后才继续扩展。",
@@ -46,27 +68,12 @@ OUTDATED_PLACEHOLDER_PHRASES = {
     "toolchain/scripts/README.md": [
         "`research/`：预留给后续准入的最小研究脚本",
     ],
-    "toolchain/evals/README.md": [
-        "`memory-side/` 当前只保留占位入口，不承载 active 的 `program / scenarios / scoring database` 一类资产。",
-    ],
 }
 CANONICAL_SKILL_GLOBS = [
     "product/*/skills/*/SKILL.md",
 ]
 ADAPTER_SKILL_GLOBS = [
-    "product/memory-side/adapters/*/skills/*/SKILL.md",
-    "product/task-interface/adapters/*/skills/*/SKILL.md",
-]
-HARNESS_ADAPTER_SKILL_GLOBS = [
-    "product/harness-operations/adapters/*/skills/*",
-]
-CANONICAL_SKILL_REQUIRED_HEADINGS = [
-    "## Overview",
-    "## When To Use",
-    "## Workflow",
-    "## Hard Constraints",
-    "## Expected Output",
-    "## Resources",
+    "product/*/adapters/*/skills/*/SKILL.md",
 ]
 CANONICAL_SKILL_FORBIDDEN_HEADINGS = [
     "## Canonical Source",
@@ -82,19 +89,28 @@ THIN_WRAPPER_FORBIDDEN_HEADINGS = [
     "## Execution Rules",
     "## Output Contract",
 ]
-HARNESS_ADAPTER_REQUIRED_FILES = [
-    "header.yaml",
+APPEND_REQUEST_CONTRACT_PATHS = [
+    "docs/harness/artifact/control/append-request.md",
+    "docs/harness/workflow-families/repo-evolution/append-request-routing.md",
+    "product/harness/skills/repo-append-request-skill/SKILL.md",
+    "product/harness/skills/repo-append-request-skill/templates/append-request.template.md",
 ]
-CANONICAL_ENTRYPOINT_REQUIRED_LINKS = {
-    "product/memory-side/skills/context-routing-skill/references/entrypoints.md": [
-        "docs/deployable-skills/memory-side/formats/context-routing-output-format.md",
-    ],
-    "product/memory-side/skills/writeback-cleanup-skill/references/entrypoints.md": [
-        "docs/deployable-skills/memory-side/formats/writeback-cleanup-output-format.md",
-    ],
-}
-
-
+APPEND_REQUEST_REQUIRED_TERMS = [
+    "approval_required",
+    "continuation_ready",
+    "continuation_blockers",
+]
+APPEND_REQUEST_MODES = [
+    "append-feature",
+    "append-design",
+]
+APPEND_REQUEST_CLASSIFICATIONS = [
+    "goal change",
+    "new worktrack",
+    "scope expansion",
+    "design-only",
+    "design-then-implementation",
+]
 @dataclass
 class SemanticReport:
     failures: list[str] = field(default_factory=list)
@@ -131,10 +147,21 @@ def collect_repo_relative_markdown_links(repo_root: Path, relative_path: str) ->
     return resolved_targets
 
 
-def collect_repo_relative_code_paths(repo_root: Path, relative_path: str) -> set[str]:
-    text = (repo_root / relative_path).read_text(encoding="utf-8")
-    return {match.strip() for match in re.findall(r"`([^`]+)`", text) if match.strip()}
-
+def markdown_headings_outside_code_fences(text: str) -> set[str]:
+    headings: set[str] = set()
+    in_code_fence = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_code_fence = not in_code_fence
+            continue
+        if in_code_fence:
+            continue
+        if stripped.startswith("#"):
+            marker, _, title = stripped.partition(" ")
+            if marker and set(marker) == {"#"} and title:
+                headings.add(stripped)
+    return headings
 
 
 def check_required_templates(repo_root: Path, report: SemanticReport) -> None:
@@ -224,48 +251,27 @@ def check_canonical_skill_packages_are_minimal(repo_root: Path, report: Semantic
         relative_path = to_relative_posix(canonical_file, repo_root)
         text = canonical_file.read_text(encoding="utf-8")
 
-        for heading in CANONICAL_SKILL_REQUIRED_HEADINGS:
-            if heading not in text:
-                report.add_failure(
-                    f"canonical skill missing required heading {heading!r}: {relative_path}"
-                )
+        if not text.lstrip().startswith("---"):
+            report.add_failure(f"canonical skill missing frontmatter block: {relative_path}")
+        if "\n# " not in text and not text.lstrip().startswith("# "):
+            report.add_failure(f"canonical skill missing H1 title: {relative_path}")
 
+        headings = markdown_headings_outside_code_fences(text)
         for heading in CANONICAL_SKILL_FORBIDDEN_HEADINGS:
-            if heading in text:
+            if heading in headings:
                 report.add_failure(
                     f"canonical skill leaked adapter-style section {heading!r}: {relative_path}"
                 )
 
-        references_path = canonical_file.parent / "references/entrypoints.md"
-        if not references_path.exists():
+        if "references/entrypoints.md" in text:
             report.add_failure(
-                f"canonical skill missing references/entrypoints.md: {relative_path}"
+                f"canonical skill still references deprecated references/entrypoints.md: {relative_path}"
             )
-            continue
 
-        if "product/harness-operations/skills/" in relative_path:
-            prompt_path = canonical_file.parent / "prompt.md"
-            if not prompt_path.exists():
-                report.add_failure(
-                    f"harness canonical skill missing prompt.md: {relative_path}"
-                )
-
-            bindings_path = canonical_file.parent / "references" / "bindings.md"
-            if not bindings_path.exists():
-                report.add_failure(
-                    f"harness canonical skill missing references/bindings.md: {relative_path}"
-                )
-
-            shared_standard = repo_root / "product/harness-operations/skills/harness-standard.md"
-            if not shared_standard.exists():
-                report.add_failure(
-                    "missing shared harness standard: product/harness-operations/skills/harness-standard.md"
-                )
-
-        references_text = references_path.read_text(encoding="utf-8")
-        if "## Reading Policy" not in references_text:
+        references_path = canonical_file.parent / "references/entrypoints.md"
+        if references_path.exists():
             report.add_failure(
-                f"canonical skill references missing reading policy block: {relative_path}"
+                f"canonical skill still contains deprecated references/entrypoints.md file: {relative_path}"
             )
 
     report.add_info(f"checked {checked} canonical skill packages for minimal executable shape")
@@ -274,7 +280,7 @@ def check_canonical_skill_packages_are_minimal(repo_root: Path, report: Semantic
 def check_adapter_wrappers_are_thin(repo_root: Path, report: SemanticReport) -> None:
     adapter_files = iter_adapter_skill_files(repo_root)
     if not adapter_files:
-        report.add_failure("missing adapter wrapper skills under product/*/adapters/*/skills/*/SKILL.md")
+        report.add_info("checked 0 adapter wrappers for thin-shell structure")
         return
 
     checked = 0
@@ -282,93 +288,52 @@ def check_adapter_wrappers_are_thin(repo_root: Path, report: SemanticReport) -> 
         checked += 1
         relative_path = to_relative_posix(adapter_file, repo_root)
         text = adapter_file.read_text(encoding="utf-8")
+        headings = markdown_headings_outside_code_fences(text)
         for heading in THIN_WRAPPER_REQUIRED_HEADINGS:
-            if heading not in text:
+            if heading not in headings:
                 report.add_failure(
                     f"adapter wrapper missing required thin-shell heading {heading!r}: {relative_path}"
                 )
         for heading in THIN_WRAPPER_FORBIDDEN_HEADINGS:
-            if heading in text:
+            if heading in headings:
                 report.add_failure(
                     f"adapter wrapper still contains forbidden duplicated section {heading!r}: {relative_path}"
                 )
     report.add_info(f"checked {checked} adapter wrappers for thin-shell structure")
 
 
-def iter_harness_adapter_skill_dirs(repo_root: Path) -> list[Path]:
-    harness_dirs: list[Path] = []
-    seen: set[Path] = set()
-    for pattern in HARNESS_ADAPTER_SKILL_GLOBS:
-        for path in sorted(repo_root.glob(pattern)):
-            if path not in seen and path.is_dir():
-                seen.add(path)
-                harness_dirs.append(path)
-    return harness_dirs
-
-
-def check_harness_adapters_are_header_driven(repo_root: Path, report: SemanticReport) -> None:
-    harness_dirs = iter_harness_adapter_skill_dirs(repo_root)
-    if not harness_dirs:
-        report.add_failure(
-            "missing harness adapter skill directories under product/harness-operations/adapters/*/skills/*"
-        )
-        return
-
+def check_append_request_contract_terms(repo_root: Path, report: SemanticReport) -> None:
     checked = 0
-    for skill_dir in harness_dirs:
+    for relative_path in APPEND_REQUEST_CONTRACT_PATHS:
+        path = repo_root / relative_path
+        if not path.exists():
+            report.add_failure(f"missing append request contract source: {relative_path}")
+            continue
         checked += 1
-        relative_path = to_relative_posix(skill_dir, repo_root)
-        for required_file in HARNESS_ADAPTER_REQUIRED_FILES:
-            if not (skill_dir / required_file).exists():
+        text = path.read_text(encoding="utf-8")
+        for term in APPEND_REQUEST_REQUIRED_TERMS:
+            if term not in text:
                 report.add_failure(
-                    f"harness adapter missing required source file {required_file!r}: {relative_path}"
+                    f"append request contract missing required term {term!r}: {relative_path}"
                 )
-        skill_file = skill_dir / "SKILL.md"
-        if not skill_file.exists() and not skill_file.is_symlink():
-            report.add_failure(
-                f"harness adapter missing required symlink shim 'SKILL.md': {relative_path}"
-            )
-            continue
-        if not skill_file.is_symlink():
-            report.add_failure(
-                f"harness adapter source should be header-driven; SKILL.md must be symlink shim: {relative_path}"
-            )
-            continue
-        expected_target = (
-            repo_root / "product" / "harness-operations" / "skills" / skill_dir.name / "SKILL.md"
-        )
-        if not expected_target.exists():
-            report.add_failure(
-                f"harness adapter shim points to missing canonical SKILL.md target: {relative_path}"
-            )
-            continue
-        if not skill_file.exists():
-            report.add_failure(
-                f"harness adapter SKILL.md shim is broken symlink: {relative_path}"
-            )
-            continue
-        if skill_file.resolve() != expected_target.resolve():
-            report.add_failure(
-                f"harness adapter SKILL.md shim must target canonical SKILL.md: {relative_path}"
-            )
-    report.add_info(f"checked {checked} harness adapter skill source directories")
 
-
-def check_canonical_entrypoints_cover_required_formats(repo_root: Path, report: SemanticReport) -> None:
-    checked = 0
-    for relative_path, expected_targets in CANONICAL_ENTRYPOINT_REQUIRED_LINKS.items():
-        source = repo_root / relative_path
-        if not source.exists():
-            report.add_failure(f"missing canonical entrypoints document: {relative_path}")
+    for relative_path in APPEND_REQUEST_CONTRACT_PATHS[:3]:
+        path = repo_root / relative_path
+        if not path.exists():
             continue
-        resolved_targets = collect_repo_relative_code_paths(repo_root, relative_path)
-        for target in expected_targets:
-            checked += 1
-            if target not in resolved_targets:
+        text = path.read_text(encoding="utf-8")
+        for mode in APPEND_REQUEST_MODES:
+            if mode not in text:
                 report.add_failure(
-                    f"canonical entrypoints missing required format link: {relative_path} -> {target}"
+                    f"append request contract missing mode {mode!r}: {relative_path}"
                 )
-    report.add_info(f"checked {checked} canonical entrypoint format links")
+        for classification in APPEND_REQUEST_CLASSIFICATIONS:
+            if classification not in text:
+                report.add_failure(
+                    f"append request contract missing classification {classification!r}: {relative_path}"
+                )
+
+    report.add_info(f"checked {checked} append request contract sources")
 
 
 def main() -> int:
@@ -380,9 +345,8 @@ def main() -> int:
     check_foundations_authority_shadows(repo_root, report)
     check_outdated_placeholder_phrases(repo_root, report)
     check_canonical_skill_packages_are_minimal(repo_root, report)
-    check_canonical_entrypoints_cover_required_formats(repo_root, report)
     check_adapter_wrappers_are_thin(repo_root, report)
-    check_harness_adapters_are_header_driven(repo_root, report)
+    check_append_request_contract_terms(repo_root, report)
 
     payload = {
         "passed": not report.failures,

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Simple Workflow (Repo)"
-  short_description: "Apply the repo-local Harness Operations simple workflow adapter"
-  default_prompt: "Use the repo-local $simple-workflow wrapper in .agents/skills to execute one constrained task with a frozen execution contract, fixed gates, and explicit residual-risk reporting."

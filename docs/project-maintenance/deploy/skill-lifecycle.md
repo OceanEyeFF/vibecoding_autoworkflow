@@ -1,13 +1,13 @@
 ---
 title: "Skill 生命周期维护"
 status: active
-updated: 2026-04-13
+updated: 2026-04-19
 owner: aw-kernel
-last_verified: 2026-04-13
+last_verified: 2026-04-19
 ---
 # Skill 生命周期维护
 
-> 目的：把 `add / update / rename / remove` 收成统一入口，明确 source of truth、deploy 跟进、verify 与 writeback 的最小闭环。
+> 目的：说明当前 deploy 接口不承接 skills / `.aw_template/` 的业务生命周期决策。它只消费已经冻结的 source layer，并通过 destructive reinstall 把当前 live payload 写入 target root。
 
 本页属于 [Deploy Runbooks](./README.md) 路径簇。
 
@@ -15,146 +15,79 @@ last_verified: 2026-04-13
 
 - [根目录分层](../foundations/root-directory-layering.md)
 - [Deploy Runbook](./deploy-runbook.md)
+- [Deploy Mapping Spec](./deploy-mapping-spec.md)
+- [Template Consumption Spec](./template-consumption-spec.md)
 
 ## 一、适用范围
 
 本页适合在下面场景先读：
 
-- 你新增了 canonical skill 或 backend adapter source
-- 你更新了已有 skill，准备同步到 target
-- 你要重命名或删除 skill
-- 你新增了新的 partition / adapter 来源，想知道 deploy 层要补什么同步
+- 你在改 skill source
+- 你在改 `.aw_template/`
+- 你在判断某个业务变化是否需要 deploy 跟进
 
 本页不负责：
 
-- backend-specific smoke verify 细节
-- drift 故障诊断展开
+- drift（偏离）故障诊断展开
 - canonical skill 合同正文
+
 ## 二、Source of Truth 与 Deploy Target 边界
 
 固定边界：
 
-- source of truth 在 `product/`
-- deploy target 在 `.agents/`、`.claude/`、`.opencode/` 或对应 global roots
-- `docs/deployable-skills/` 负责合同与入口，不替代源码
-- `usage-help/` 只补 backend 特有差异，不重复通用 deploy 流程
+- source of truth（唯一真相来源）在 `product/`
+- 当前 deploy target 是 backend 解析出的 skills root
+- `docs/harness/` 负责 Harness-first doctrine、workflow family 与 adjacent-system 主入口
+- canonical source 到 target entry 的正式映射规则见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
 
 因此：
 
 - 改 skill 内容时先改 `product/`
-- 只有 deploy 后，repo-local / global target 才会反映 source 变化
-- 只有已经验证过的变化，才写回 `docs/`
-## 三、Harness source 变更和其他 backend source 的区别
+- 当前 deploy 不会把 `.aw_template/` 当 deploy payload source（部署负载来源），也不会把它直接发往 target
+- `.aw_template/` 的 `.aw/` 目录结构、管理文档模板和待迁移模板边界见 [Template Consumption Spec](./template-consumption-spec.md)
+- 只有已经验证过的 root 状态，才写回 `docs/`
+- 当前 backend skills root 可以承接 tracked install payload（已跟踪的安装负载）；但它仍不是 truth owner，只是 deploy target
 
-`memory-side` 与 `task-interface` 的 adapter source 直接位于：
+## 三、当前执行边界
 
-- `product/<partition>/adapters/<backend>/skills/<skill>/`
+- 当前 deploy 接口只对 `agents` 生效
+- 主流程固定为 `prune --all -> check_paths_exist -> install --backend agents`
+- `install --backend agents` 只消费当前 live payload descriptor，并把 canonical skill copy、payload descriptor 与 runtime-generated `aw.marker` 写入当前 backend 的 resolved target root
+- `verify --backend agents` 只读检查 source layer、live install drift，以及 conflict / unrecognized 目录
+- `prune --all` 只删除带可识别、且属于当前 backend 的受管 marker 目录
+- `check_paths_exist` 只做冲突扫描；任何冲突都必须在写入前失败
+- skills 的 canonical source、backend payload source、部署负载规则与 verify 口径，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
+- `.aw_template/` 当前只在 deploy 文档里作为 `.aw/` 目录结构与运行管理文档模板的来源出现，不作为 deploy source，也不自动证明其中模板的最终 owner
 
-`harness-operations` 不一样。它的 source 由三段正文加一个 adapter shim 组成：
+因此当你修改 skills / `.aw_template/` 时：
 
-- canonical prompt：`product/harness-operations/skills/<skill>/prompt.md`
-- shared standard：`product/harness-operations/skills/harness-standard.md`
-- backend header：`product/harness-operations/adapters/<backend>/skills/<skill>/header.yaml`
-- adapter `SKILL.md`：保留为指向 canonical `product/harness-operations/skills/<skill>/SKILL.md` 的 symlink shim
-
-因此当你修改 harness skill 时：
-
+- 不要把 deploy 文档当成业务同步方案
 - 不要把 deploy target 当 source 去改
-- 不要把 backend 差异重新写回 canonical `prompt.md`
-- 不要删掉 adapter source 里的 `SKILL.md` symlink shim；`governance_semantic_check.py` 仍会把它当必需项
-- 需要通过 `build` 或后续 `local/global` deploy 刷新 assembled `SKILL.md`
+- 如果只是要让 live install 重新对齐 source，就走三步主流程
+- 如果 source 中出现重复 `target_dir`，这是 source contract 违规，必须先修 source；不能让 install 猜测覆盖
+- 如果 skill 被移除、改名或换 `target_dir`，operator-facing 语义都是同一件事：清掉我方受管旧安装，再按当前 live bindings 重装，不保留旧版本
+- 不存在“先确认新目录可用，再删旧目录”的主流程承诺；删除与重装是显式分开的 destructive reinstall
+- 如果 shared mount 上已经有同名目录但没有可识别 marker，脚本不会接管它；需要先由 operator 做显式迁移决策
+- 不要把“如果未来允许 nested target_dir 会怎样”提前当成当前 lifecycle bug；那属于 contract expansion，不属于当前单层 target 模型
 
-## 四、动作矩阵
+## 四、重新扩展接口前先做什么
 
-| 动作 | 先改哪里 | deploy 跟进 | 文档跟进 |
-|---|---|---|---|
-| `Add` | 新 skill 的 canonical source；必要时补 backend adapter source | 对实际使用的 target scope 执行 `local` / `global` deploy，再按同一 scope `verify` | 若新增正式入口、调用边界或 operator 行为，同步入口页 |
-| `Update` | 现有 canonical source 或 adapter source | 按实际 target scope 做 `verify -> deploy -> verify` | 只有 operator-facing 语义改变时才同步 docs |
-| `Rename` | `product/` 中 source rename，并同步引用名 | 按实际 target scope 做 `verify -> deploy -> 按需 --prune -> verify` | 要同步入口、链接和引用名 |
-| `Remove` | 删除 `product/` 中对应 source | 先按实际 target scope `verify` 看 stale，再 `deploy --prune`，最后复验 | 要同步清理入口和说明 |
+如果后续要重新引入：
 
-如果同一 skill 同时被 repo-local 和 global target 使用，两边都要复验。
+- 新 backend
+- `.aw_template/` 到 skills 的稳定映射
+- 新的 source provider / overlay 结构
 
-## 五、各动作的最小闭环
+先做这些事，再扩 deploy：
 
-### 1. `Add`
+- 固定新的 target contract
+- 固定 canonical source 与 install payload 的边界
+- 同步更新 `docs/project-maintenance/deploy/` 和对应测试
 
-- 新增 canonical skill 时，改 `product/<partition>/skills/`
-- 新增 backend adapter source 时，改 `product/<partition>/adapters/<backend>/skills/`
-- 新增 harness skill 时，同时检查 `prompt.md`、`references/`、`header.yaml`，以及 adapter source 里的 `SKILL.md` symlink shim 是否齐全且指向 canonical `SKILL.md`
-- 对使用中的 target scope 执行 deploy，再跑对应 scope 的 verify：
+## 五、常见误区
 
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend <backend>
-```
-
-- 如果你维护的是 global target，把这一步改成 `verify --target global`，并显式传 `--agents-root`、`--claude-root` 或 `--opencode-root`
-- `agents` 与 `claude` 如需确认运行侧可读，再去对应 `usage-help` 做 smoke verify
-
-### 2. `Update`
-
-- 只改 `product/` 下 source，不手工改 `.agents/`、`.claude/`、`.opencode/`
-- harness source 变更后，如果你要先看组装结果，可先跑：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend <backend>
-```
-
-- 最小节奏仍然是：
-
-1. `verify`
-2. `local` 或 `global` deploy
-3. 再 `verify`
-
-这里的 `verify` 也按实际 target scope 选择；global target 不要漏掉对应 root 参数。
-
-### 3. `Rename`
-
-- 在 `product/` 完成 source rename
-- 同步更新引用该 skill 的入口、交叉链接和必要文档
-- 最小节奏：
-
-1. `verify`
-2. `local` 或 `global` deploy
-3. 如 target 残留旧目录，再带 `--prune`
-4. 再 `verify`
-
-如果 rename 影响 repo-local 和 global 两边安装，两边都要各自跑完整闭环。
-
-### 4. `Remove`
-
-- 删除 `product/` 下对应 source
-- 最小节奏：
-
-1. `verify`
-2. `local/global deploy --prune`
-3. 再 `verify`
-
-## 六、新增 Partition / Adapter 来源时的同步要求
-
-当你新增 `product/<partition>/adapters/<backend>/skills/` 下的新来源时：
-
-- 已存在的 repo-local / global target 不会自动补齐新条目
-- `verify` 通常会出现 `missing-target-entry`
-- 处理顺序是：先 `verify` 确认，再执行对应 backend 的 deploy，再复验 `verify`
-
-如果这个新增来源改变了：
-
-- deployable skill 正式入口
-- backend 支持边界
-- operator 该去哪里看文档
-
-还需要同步更新：
-
-- `docs/deployable-skills/` 对应入口
-- `docs/project-maintenance/deploy/` 对应入口
-- 必要时对应 backend 的 `usage-help`
-
-## 七、常见误区
-
-- 直接改 `.agents/`、`.claude/`、`.opencode/`，把 deploy target 当 source of truth
-- 把 harness backend 差异写进 canonical prompt，而不是写进 `header.yaml`
-- 新增或删除 skill 后只跑 deploy，不先看 `verify` 暴露出来的 drift
-- rename 后只确认新名存在，没有检查旧 target 是否残留
-- remove 后忘记 `--prune`，导致 target 看起来“还能用”但其实已经偏离 source
-- 把 backend `usage-help` 当成通用 deploy 文档，结果重复解释 lifecycle
+- 把 `.agents/` 下的 install payload 当 source of truth，反向压过 `product/`
+- 把当前 deploy 脚本误当成 skills / `.aw_template` 的业务同步器
+- 把 destructive reinstall 误写成 archive/history、增量修复或旧版本保活
+- 试图让脚本自动接管无 marker 或 foreign 目录
+- 在业务映射还没定的时候，把 source 组织方案提前写死在 deploy 工具里

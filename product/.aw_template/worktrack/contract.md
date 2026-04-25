@@ -1,0 +1,64 @@
+# Worktrack Contract
+
+> 这是 `.aw/worktrack/contract.md` 的模板来源，用来填写单个 worktrack 的局部状态转移合同。最终内容应与 `docs/harness/artifact/worktrack/contract.md` 的定义一致。
+
+## Metadata
+
+- worktrack_id:
+- branch:
+- baseline_branch:
+- baseline_ref:
+- owner:
+- updated:
+- contract_status:
+
+## Node Type
+
+> 从 Goal Charter 的 Engineering Node Map 绑定，决定本 worktrack 的基线策略与判定标准。
+
+- type:
+- source_from_goal_charter:
+- baseline_form:
+- merge_required:
+- gate_criteria:
+- if_interrupted_strategy:
+
+## Task Goal
+
+- 
+
+## Scope
+
+- 
+
+## Non-Goals
+
+- 
+
+## Impacted Modules
+
+- 
+
+## Planned Next State
+
+- 
+
+## Acceptance Criteria
+
+- 
+
+## Constraints
+
+- 
+
+## Verification Requirements
+
+- 
+
+## Rollback Conditions
+
+- 
+
+## Notes
+
+- 

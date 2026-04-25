@@ -1,13 +1,50 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-blocked_branch="main"
+resolve_baseline_branch() {
+  local baseline
+  local ref
+
+  if ref="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)"; then
+    baseline="${ref#origin/}"
+    case "${ref}" in
+      origin/*)
+        if [[ -n "${baseline}" ]]; then
+          printf '%s\n' "${baseline}"
+          return 0
+        fi
+        ;;
+      *)
+        if [[ -n "${ref}" ]]; then
+          printf '%s\n' "${ref}"
+          return 0
+        fi
+        ;;
+    esac
+  fi
+
+  return 1
+}
+
+protected_branches=()
+if baseline_branch="$(resolve_baseline_branch)" && [[ -n "${baseline_branch}" ]]; then
+  protected_branches=("${baseline_branch}")
+  protected_reason="origin/HEAD -> ${baseline_branch}"
+else
+  protected_branches=("main" "master")
+  protected_reason="origin/HEAD could not be resolved; fallback protects main/master"
+fi
 
 while read -r local_ref local_sha remote_ref remote_sha; do
-  if [[ "${remote_ref}" == "refs/heads/${blocked_branch}" ]]; then
-    echo "pre-push: direct push to ${blocked_branch} is blocked. Open a PR instead." >&2
-    exit 1
-  fi
+  [[ "${remote_ref}" == refs/heads/* ]] || continue
+  remote_branch="${remote_ref#refs/heads/}"
+
+  for protected_branch in "${protected_branches[@]}"; do
+    if [[ "${remote_branch}" == "${protected_branch}" ]]; then
+      echo "pre-push: direct push to protected baseline '${remote_branch}' is blocked (${protected_reason}). Open a PR instead." >&2
+      exit 1
+    fi
+  done
 done
 
 exit 0

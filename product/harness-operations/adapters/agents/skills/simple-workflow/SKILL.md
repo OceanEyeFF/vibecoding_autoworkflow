@@ -1,1 +1,0 @@
-../../../../skills/simple-workflow/SKILL.md

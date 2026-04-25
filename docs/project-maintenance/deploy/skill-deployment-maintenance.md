@@ -1,13 +1,13 @@
 ---
 title: "Skill Deployment 维护流"
 status: active
-updated: 2026-04-13
+updated: 2026-04-19
 owner: aw-kernel
-last_verified: 2026-04-13
+last_verified: 2026-04-19
 ---
 # Skill Deployment 维护流
 
-> 目的：为当前仓库的 repo-local / global skill mounts 提供统一的维护与诊断入口，回答“怎么复验、怎么处理 drift、什么时候该 `--prune`、local/global verify 到底各看什么、故障信号分别表示什么”。
+> 目的：为当前仓库的 deploy target 提供统一的维护与诊断入口，回答“只读 `verify` 还看什么、什么时候该直接走 destructive reinstall、冲突和 drift 各怎么处理”。
 
 本页属于 [Deploy Runbooks](./README.md) 路径簇。
 
@@ -16,210 +16,104 @@ last_verified: 2026-04-13
 - [根目录分层](../foundations/root-directory-layering.md)
 - [Toolchain 分层](../../../toolchain/toolchain-layering.md)
 
-本页只负责维护与诊断；首次安装看 [deploy-runbook.md](./deploy-runbook.md)，生命周期动作看 [skill-lifecycle.md](./skill-lifecycle.md)。
+本页只负责 deploy target 维护与诊断；首次安装看 [deploy-runbook.md](./deploy-runbook.md)，业务生命周期边界看 [skill-lifecycle.md](./skill-lifecycle.md)。
 
 ## 一、什么时候看这页
 
 适合在下面场景先读：
 
-- 你已经有 target，想做日常同步与复验
-- 你怀疑 mounts 和 source 漂移了
-- 你需要判断是否该用 `--prune`
-- 你在处理 stale target、坏链路或 rename / remove 后残留
-- 你看到 `missing-build-source`、`wrong-target-type`、`unexpected-target-entry` 之类的错误码
+- 你已经有 target root，想做日常复验
+- 你怀疑 live install、target entry 或 source contract 漂移了
+- 你在处理坏链路、root 类型错误、冲突目录或 unrecognized 目录
+- 你想确认某个问题应该手工清理，还是直接重跑三步主流程
 
 ## 二、推荐维护循环
 
 默认顺序固定为：
 
-1. 如需刷新或检查 harness 组装产物，先跑 `build`
-2. `verify`
-3. `local` 或 `global` deploy
-4. 再跑一次 `verify`
+1. 需要诊断时先跑一次 `verify`
+2. 需要恢复时直接跑 `prune --all -> check_paths_exist -> install`
+3. 需要确认结果时再跑一次 `verify`
 
 这个顺序的目的：
 
-- 先把需要的 harness 组装产物准备好，同时保持 `verify` 本身只读
-- 再看清 drift 是什么
-- 再决定只是重同步，还是要顺手清理 stale target
-- 最后确认 deploy 后问题是否真的消失
-
-如果本仓库还没有 harness runtime，而你接下来要跑 harness-driven workflow，先执行：
-
-```bash
-python3 toolchain/scripts/deploy/init_harness_project.py
-```
+- 先区分 source 合法性问题、target root 问题和 live install drift
+- 再决定是手工清冲突，还是直接按 destructive reinstall 重建
+- 最后确认恢复后问题是否真的消失
+- `check_paths_exist` 与 `install` 都必须做到“冲突前零业务写入”
 
 ## 三、`verify` 在看什么
 
-### 1. 通用 `sync verify`
+### 1. 通用 `verify`
 
 用途：
 
-- 检查 deploy target 是否和 `product/.../adapters/<backend>/skills/` 同步
-- 发现缺失 mount、坏链路、错误类型和陈旧 target
-- 对 `harness-operations` 的 local mounts 额外检查 symlink 是否指向当前 build root，以及 build output 是否和 canonical snapshot 一致
-- 对 global copied targets 额外检查 copy 内容是否和当前 canonical snapshot 一致
+- 检查 deploy target root 是否存在、是否是目录、是否是坏链路
+- 检查 payload source 是否齐全、target path metadata 是否留在 backend target root 内，且没有 source drift
+- 检查 live install 的 target entry、required payload files 与当前 source 是否仍对齐
+- 检查 target root 下是否存在 conflict / unrecognized 目录
+- 检查 runtime `aw.marker` 是否仍能把目录识别为当前 backend 的受管安装物
 
 执行入口：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend <backend>
+python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
 ```
 
-如果命中 `missing-build-source`，说明当前 backend 的 harness assembled source 不存在；先执行：
+如果 backend 需要显式 root override，例如 `agents` 的 `--agents-root`，就在命令上附加对应参数。参数来源见 [Codex Usage Help](../usage-help/codex.md)。
 
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend <backend>
-```
+如果手工改过 target root，导致它不是目录，`verify` 会把它报成结构错误。
+如果手工改过已安装 skill 目录中的同步文件，`verify` 会把它报成 live install drift 或 required payload 缺失。
 
-global target 复验时，优先显式传该 backend 对应的 root 参数：
+## 四、恢复主流程
 
-- `agents`：`--agents-root`
-- `claude`：`--claude-root`
-- `opencode`：`--opencode-root`
-
-### 2. local 与 global 的差异
-
-`verify` 在两个 target scope 下关注的 drift 不同：
-
-- `local`
-  检查 `.agents/skills/`、`.claude/skills/`、`.opencode/skills/` 里的 entry 是否是正确 symlink。
-- `global`
-  检查全局 target 是否是目录 copy，以及 copy 出来的文件内容是否和当前 source snapshot 一致。
-
-对 harness skills，差异更明显：
-
-- `local verify`
-  关注 repo-local symlink 是否指向 `.autoworkflow/build/adapter-sources/<backend>/<skill>/`，并检查 build root 里的 `SKILL.md + references/` 是否与 `header.yaml + harness-standard.md + prompt.md + references/` 的当前快照一致。
-- `global verify`
-  不关心 symlink，而是直接检查全局目录 copy 的文件内容是否与当前 harness assembled snapshot 一致。
-
-这里的 operator-facing 目标形态是固定的：
-
-- `local` 预期是 symlink
-- `global` 预期是目录 copy
-
-如果手工改过 target，或使用了和默认形态相反的 `--method`，`verify` 会把它报成 `wrong-target-type`。
-
-因此：
-
-- 你想确认 harness build 产物有没有过期，看 `local verify`
-- 你想确认全局安装是不是拷贝了旧内容，看 `global verify`
-
-### 3. `smoke verify`
-
-用途：
-
-- 在 backend 自己的真实运行环境里做最小可用性确认
-- 确认 backend 不只是“挂载结构存在”，而是真的能读取对应 skill entry
-
-当前边界：
-
-- `agents`：支持
-- `claude`：支持
-- `opencode`：当前不写成稳定 smoke verify backend，只保留 `sync verify`
-
-backend-specific smoke verify 口径看：
-
-- [Codex Repo-local Usage Help](../usage-help/codex.md)
-- [Claude Repo-local Usage Help](../usage-help/claude.md)
-- [OpenCode Repo-local Usage Help](../usage-help/opencode.md)
-
-## 四、Repo-local 维护
-
-检查 repo-local mounts：
+只读检查：
 
 ```bash
 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend claude
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend opencode
 ```
 
-需要显式检查组装产物时，可先跑：
+需要恢复时，直接走三步主流程：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend claude
-python3 toolchain/scripts/deploy/adapter_deploy.py build --backend opencode
+python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents
+python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents
+python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents
 ```
 
-重新同步 repo-local mounts：
+当前三步的维护语义：
 
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py local --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py local --backend claude
-python3 toolchain/scripts/deploy/adapter_deploy.py local --backend opencode
-```
+- `prune --all` 只删除当前 backend 受管、且带可识别 marker 的目录
+- `check_paths_exist` 只做全量冲突扫描；任何冲突都必须由 operator 先处理
+- `install --backend agents` 只写当前 source 声明的 live payload；不会做 archive / history、增量修复或旧版本保活
+- `.agents/` 或其他 target root 不是 canonical truth；恢复动作不能反向把 target 当 source 改
 
-需要清理陈旧 target 时再带 `--prune`：
+## 五、故障信号怎么路由
 
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py local --backend agents --prune
-python3 toolchain/scripts/deploy/adapter_deploy.py local --backend claude --prune
-python3 toolchain/scripts/deploy/adapter_deploy.py local --backend opencode --prune
-```
-
-## 五、全局安装维护
-
-检查全局 target：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend agents --agents-root /your/codex/home/skills
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend claude --claude-root ~/.claude/skills
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --target global --backend opencode --opencode-root ~/.config/opencode/skills
-```
-
-如果你不想显式传 `--agents-root`，先在 shell 里 `export CODEX_HOME=/your/codex/home`；脚本只会在未传 `--agents-root` 时读取 `CODEX_HOME`，不会替你把空变量补成合法路径。
-
-重新同步全局 target：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root /your/codex/home/skills --create-roots
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend claude --claude-root ~/.claude/skills --create-roots
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --opencode-root ~/.config/opencode/skills --create-roots
-```
-
-需要清理陈旧全局 target 时再带 `--prune`：
-
-```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend agents --agents-root /your/codex/home/skills --create-roots --prune
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend claude --claude-root ~/.claude/skills --create-roots --prune
-python3 toolchain/scripts/deploy/adapter_deploy.py global --backend opencode --opencode-root ~/.config/opencode/skills --create-roots --prune
-```
-
-## 六、故障信号怎么路由
-
-| 信号 | 常见含义 | 优先处理方式 |
+| 信号或症状 | 常见含义 | 优先处理方式 |
 |---|---|---|
-| `missing-target-root` | target 还没安装，或已安装 root 被删了 | 首次安装回 [deploy-runbook.md](./deploy-runbook.md)；非首次场景按本页维护循环重建 |
-| `missing-target-entry` | source 已存在，但 target 少了预期 mount | `verify -> deploy -> verify` |
-| `unexpected-target-entry` | target 残留 source 已不承认的旧目录 | 先确认不是手工实验目录，再按需 `deploy --prune` |
-| `wrong-target-root-type` | target root 存在，但不是目录 | 修正 root 后重跑 deploy |
-| `wrong-target-type` | local 本应是 symlink，或 global 本应是目录 copy | 重跑对应 deploy；必要时先清理坏 target |
-| `broken-symlink` / `wrong-symlink-target` | repo-local mount 指向错了，或指向对象已不存在 | 重跑 local deploy；如是 harness，再检查 build root |
-| `missing-build-source` | harness assembled source 不存在；`verify` 不会自动 build | 先 `build --backend <backend>`，再复验或重新 deploy |
-| `missing-build-source-file` / `stale-build-source-file` / `unexpected-build-source-file` | harness build root 的组装内容已经和当前 canonical snapshot 不一致 | 先 `build` 刷新组装产物，再看是否还需 deploy |
-| `missing-target-file` / `stale-target-file` / `unexpected-target-file` | global copy 内容已经和当前 source snapshot 不一致 | 重新执行对应 backend 的 global deploy，再复验 |
+| `missing-target-root` | target root 还没建立，或已有 root 被删了 | 直接走三步主流程重建 |
+| `wrong-target-root-type` | target root 存在，但不是目录 | 修正 root 后重跑三步主流程 |
+| `broken-target-root-symlink` | target root 是坏链路 | 删除坏链路后重跑三步主流程 |
+| `missing-backend-payload-source` / `missing-required-payload` | source layer 缺件，deploy 读取面不完整 | 回到 `product/harness/adapters/agents/skills/` 修正 payload source |
+| `missing-canonical-source` | payload 指向的 canonical source 丢失或 canonical file 缺失 | 修正 `product/harness/skills/` 后再重装 |
+| `payload-contract-invalid` | payload descriptor 自身字段、路径或 target contract 不一致 | 先修 source contract，再走三步主流程 |
+| `payload-policy-mismatch` / `reference-policy-mismatch` | payload descriptor 的策略字段偏离当前 contract | 先修 payload source，再走三步主流程 |
+| `duplicate target_dir` | 当前 source 把多个 live skill 指到同一目标目录 | 这是 source 非法；修 source，不能靠 install 猜测覆盖 |
+| `check_paths_exist` 冲突清单 | 当前 source 解析出的目标路径已存在 | 先由 operator 清理冲突目录，再从 `prune --all` 重跑 |
+| `unrecognized-target-directory` | 目录存在，但没有可识别 marker，或 marker 不能证明它属于当前 backend 受管 install | 不让脚本猜测处理；先手工改名、删除或确认保留 |
+| `unexpected-managed-directory` | target root 下残留了带可识别 marker、但已不在当前 source live bindings 里的受管目录 | 先执行 `prune --all` 清掉旧受管目录，再按三步主流程重装 |
+| `missing-target-entry` / `missing-required-payload` | live install 缺 entry 或缺必需文件 | 先看是否 drift，再重跑三步主流程 |
+| `target-payload-drift` | 已安装 payload 与当前 source 不一致 | 直接走三步主流程恢复 |
 
-## 七、`--prune` 的边界
+## 六、额外判断
 
-适合在这些场景使用：
+如果 `verify` 失败，但 `check_paths_exist` 通过：
 
-- skill 被删除
-- skill 名发生 rename
-- target 里残留历史目录
-- 你明确希望 target 和 source 完全一致
+- 更可能是 target root 结构问题或 live payload drift
+- 先修对应问题，再重跑三步主流程
 
-不适合默认使用的场景：
+如果 `check_paths_exist` 失败，但 `verify` 没有明显 drift：
 
-- 还没先跑过一次 `verify`
-- 还没确认 target 里的额外目录是不是手工实验目录
-
-## 八、额外判断
-
-如果看到：
-
-- `missing-target-root`
-
-先判断这是“还没安装”还是“已安装 target 丢失”。首次安装场景应回到 [deploy-runbook.md](./deploy-runbook.md)；已有安装意外缺失时，再按本页维护循环处理。
+- 更可能是 foreign / unrecognized 目录占住了当前 live target path
+- 先手工清理冲突，再重跑三步主流程

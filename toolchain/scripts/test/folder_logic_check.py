@@ -34,18 +34,17 @@ ROOT_ALLOWED_NAMES = {
     ".nav",
     ".opencode",
     ".pytest_cache",
-    ".serena",
     ".spec-workflow",
 }
 ROOT_ALLOWED_PREFIXES = (".git",)
 NAV_SLOT_TARGETS = {
     "@docs": "docs",
-    "@skills": "product/memory-side/skills",
+    "@skills": "product/harness/skills",
 }
 FIRST_LEVEL_ALLOWLIST = {
-    "product": {"README.md", "memory-side", "task-interface", "harness-operations"},
-    "docs": {"README.md", "project-maintenance", "deployable-skills", "autoresearch"},
-    "toolchain": {"README.md", "toolchain-layering.md", "evals", "scripts"},
+    "product": {"README.md", ".aw_template", "harness"},
+    "docs": {"README.md", "project-maintenance", "harness"},
+    "toolchain": {"README.md", "toolchain-layering.md", "scripts"},
 }
 TOOLS_TRACKED_ALLOWLIST = {
     "tools/closeout_acceptance_gate.py",
@@ -56,11 +55,11 @@ CODEX_TRACKED_ALLOWLIST = {
     ".codex/config.toml",
     ".codex/rules/repo.rules",
 }
-SERENA_TRACKED_ALLOWLIST = {
-    ".serena/.gitignore",
-    ".serena/memories/Claude-Workspace-Architecture.md",
-    ".serena/project.yml",
-}
+MOUNT_TRACKED_ALLOWED_PREFIXES = (
+    ".agents/skills/",
+    ".claude/skills/",
+    ".opencode/skills/",
+)
 CODEX_ALLOWED_ENTRIES = {"config.toml", "rules"}
 CODEX_RULES_ALLOWED_ENTRIES = {"repo.rules"}
 NAV_ALLOWED_ENTRIES = {"README.md", "@docs", "@skills"}
@@ -72,12 +71,14 @@ PRODUCT_BANNED_SEGMENTS = {
     ".pytest_cache",
     ".autoworkflow",
     ".spec-workflow",
-    ".serena",
     "cache",
     "logs",
     "operations",
     "runbook",
     "runbooks",
+}
+PRODUCT_ALLOWED_HIDDEN_DIRS = {
+    "product/.aw_template",
 }
 DOCS_BANNED_SEGMENTS = {
     "__pycache__",
@@ -95,7 +96,6 @@ TOOLCHAIN_BANNED_SEGMENTS = {
     ".claude",
     ".nav",
     ".opencode",
-    ".serena",
     ".spec-workflow",
     "adapters",
     "logs",
@@ -120,7 +120,6 @@ class FolderRules:
     )
     tools_tracked_allowlist: set[str] = field(default_factory=lambda: set(TOOLS_TRACKED_ALLOWLIST))
     codex_tracked_allowlist: set[str] = field(default_factory=lambda: set(CODEX_TRACKED_ALLOWLIST))
-    serena_tracked_allowlist: set[str] = field(default_factory=lambda: set(SERENA_TRACKED_ALLOWLIST))
 
 
 @dataclass
@@ -291,6 +290,8 @@ def check_product_patterns(repo_root: Path, report: FolderLogicReport) -> None:
     for relative_path in iter_relative_paths(repo_root / "product", repo_root):
         checked += 1
         name = Path(relative_path).name
+        if relative_path == "product/.aw_template" or relative_path.startswith("product/.aw_template/"):
+            continue
         if path_has_segment(relative_path, PRODUCT_BANNED_SEGMENTS):
             report.add_issue("FL004", relative_path, "product/ must not contain runbook, cache, log, or state directories")
             continue
@@ -352,10 +353,13 @@ def check_tracked_exceptions(tracked_paths: set[str], report: FolderLogicReport,
                 report.add_issue("FL016", tracked_path, ".codex/ only allows the explicit tracked whitelist")
             continue
         if tracked_path.startswith((".agents/", ".claude/", ".opencode/")):
-            report.add_issue("FL007", tracked_path, "repo-local mount layers must not contain tracked content")
+            if not tracked_path.startswith(MOUNT_TRACKED_ALLOWED_PREFIXES):
+                report.add_issue(
+                    "FL007",
+                    tracked_path,
+                    "repo-local install/mount layers only allow tracked content under */skills/",
+                )
             continue
-        if tracked_path.startswith(".serena/") and tracked_path not in rules.serena_tracked_allowlist:
-            report.add_issue("FL008", tracked_path, ".serena/ only allows the explicit tracked whitelist")
     report.add_info(f"checked {checked} tracked paths for hidden-layer exceptions")
 
 

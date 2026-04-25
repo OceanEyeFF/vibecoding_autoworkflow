@@ -1,1 +1,0 @@
-../../../../skills/task-list-workflow/SKILL.md
