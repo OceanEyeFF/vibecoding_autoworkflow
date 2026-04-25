@@ -1,4 +1,5 @@
 # Local automation artifacts
+.aw/
 .autoworkflow/
 .spec-workflow/
 .exrepos/
