@@ -21,6 +21,10 @@ LOCAL_DEPLOY_TARGET_ROOTS = {
     "opencode": REPO_ROOT / ".opencode" / "skills",
 }
 SUPPORTED_DEPLOY_VERIFY_BACKENDS = ("agents",)
+DEPLOY_VERIFY_ENTRYPOINTS = (
+    ("adapter", "adapter_deploy.py"),
+    ("wrapper", "harness_deploy.py"),
+)
 CACHE_SCAN_ROOTS = ("docs", "product", "toolchain", "tools")
 CACHE_DIR_NAMES = {"__pycache__", ".pytest_cache"}
 CACHE_FILE_SUFFIXES = (".pyc", ".pyo")
@@ -221,10 +225,10 @@ def run_cache_gate(repo_root: Path, python: str) -> dict:
 
 
 def run_test_gate(repo_root: Path, python: str) -> dict:
-    def run_local_deploy_verify(backend: str) -> dict:
+    def run_local_deploy_verify(backend: str, script_name: str) -> dict:
         command = [
             python,
-            str(repo_root / "toolchain" / "scripts" / "deploy" / "adapter_deploy.py"),
+            str(repo_root / "toolchain" / "scripts" / "deploy" / script_name),
             "verify",
             "--backend",
             backend,
@@ -275,10 +279,11 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
     ]
     subchecks.extend(
         (
-            f"deploy_verify_{backend}",
-            run_local_deploy_verify(backend),
+            f"deploy_verify_{entrypoint}_{backend}",
+            run_local_deploy_verify(backend, script_name),
         )
         for backend in SUPPORTED_DEPLOY_VERIFY_BACKENDS
+        for entrypoint, script_name in DEPLOY_VERIFY_ENTRYPOINTS
     )
     passed = all(result["passed"] for _, result in subchecks)
     skipped = any(result.get("skipped", False) for _, result in subchecks)

@@ -378,10 +378,18 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
     assert any(command[-1] == "toolchain/scripts/test/test_governance_semantic_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_agents_adapter_contract.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/repo_analysis_contract_check.py" for command in commands)
-    deploy_verify_commands = [command for command in commands if "adapter_deploy.py" in command[1]]
-    assert len(deploy_verify_commands) == 1
-    assert deploy_verify_commands[0][-2:] == ["--backend", "agents"]
-    assert "--target" not in deploy_verify_commands[0]
+    deploy_verify_commands = [
+        command
+        for command in commands
+        if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]
+    ]
+    assert len(deploy_verify_commands) == 2
+    assert {Path(command[1]).name for command in deploy_verify_commands} == {
+        "adapter_deploy.py",
+        "harness_deploy.py",
+    }
+    assert all(command[-2:] == ["--backend", "agents"] for command in deploy_verify_commands)
+    assert all("--target" not in command for command in deploy_verify_commands)
 
 
 def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path) -> None:
@@ -389,7 +397,7 @@ def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path)
 
     def fake_run_command(command: list[str], *, cwd: Path) -> dict:
         commands.append(command)
-        if "adapter_deploy.py" in command[1]:
+        if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]:
             return {
                 "command": command,
                 "returncode": 1,
@@ -417,10 +425,11 @@ def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path)
     deploy_results = {
         item["name"]: item for item in result["subchecks"] if item["name"].startswith("deploy_verify_")
     }
-    assert set(deploy_results) == {"deploy_verify_agents"}
+    assert set(deploy_results) == {"deploy_verify_adapter_agents", "deploy_verify_wrapper_agents"}
     assert all(item["passed"] is True for item in deploy_results.values())
     assert all(item["skipped"] is True for item in deploy_results.values())
     assert any("adapter_deploy.py" in command[1] for command in commands)
+    assert any("harness_deploy.py" in command[1] for command in commands)
 
 
 def test_run_test_gate_checks_broken_local_deploy_target_symlink(monkeypatch, tmp_path) -> None:
@@ -431,7 +440,7 @@ def test_run_test_gate_checks_broken_local_deploy_target_symlink(monkeypatch, tm
 
     def fake_run_command(command: list[str], *, cwd: Path) -> dict:
         commands.append(command)
-        if "adapter_deploy.py" in command[1]:
+        if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]:
             return {
                 "command": command,
                 "returncode": 1,
@@ -454,6 +463,7 @@ def test_run_test_gate_checks_broken_local_deploy_target_symlink(monkeypatch, tm
     assert result["passed"] is False
     assert result["status"] == "failed"
     assert any("adapter_deploy.py" in command[1] for command in commands)
+    assert any("harness_deploy.py" in command[1] for command in commands)
 
 
 def test_closeout_gate_fails_closed_on_test_gate_failure(monkeypatch, tmp_path, capsys) -> None:
