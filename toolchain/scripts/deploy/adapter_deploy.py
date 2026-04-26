@@ -37,6 +37,7 @@ UNRECOGNIZED_ISSUE_CODES = {
 CONFLICT_ISSUE_CODES = {
     "unexpected-managed-directory",
     "unrecognized-target-directory",
+    "wrong-target-entry-type",
 }
 
 

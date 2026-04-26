@@ -166,5 +166,38 @@ class AgentsAdapterContractTest(unittest.TestCase):
         self.assertEqual(summary["issue_codes"], ["missing-target-root"])
         self.assertEqual(summary["issues"][0]["code"], "missing-target-root")
 
+    def test_agents_adapter_diagnose_json_reports_wrong_type_target_as_conflict(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            target_root = Path(temp_dir) / "agents-skills"
+            target_root.mkdir()
+            (target_root / "aw-harness-skill").write_text("not a directory\n", encoding="utf-8")
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(ADAPTER_DEPLOY_SCRIPT),
+                    "diagnose",
+                    "--backend",
+                    "agents",
+                    "--agents-root",
+                    str(target_root),
+                    "--json",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stderr, "")
+
+        summary = json.loads(completed.stdout)
+        self.assertIn("wrong-target-entry-type", summary["issue_codes"])
+        self.assertGreater(summary["conflict_count"], 0)
+        self.assertTrue(
+            any(issue["code"] == "wrong-target-entry-type" for issue in summary["conflicts"]),
+            summary["conflicts"],
+        )
+
 if __name__ == "__main__":
     unittest.main()

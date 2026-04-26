@@ -25,6 +25,7 @@ DEFAULT_ALLOWED_PREFIXES = (
     ".agents/",
     ".claude/",
     ".opencode/",
+    "toolchain/scripts/deploy/adapter_deploy.py",
     "toolchain/scripts/deploy/README.md",
     "toolchain/scripts/test/",
     "tools/closeout_acceptance_gate.py",
