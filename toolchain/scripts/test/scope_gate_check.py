@@ -21,6 +21,7 @@ DEFAULT_ALLOWED_PREFIXES = (
     "docs/harness/",
     "product/README.md",
     "product/harness/skills/",
+    "product/harness/adapters/",
     ".agents/",
     ".claude/",
     ".opencode/",

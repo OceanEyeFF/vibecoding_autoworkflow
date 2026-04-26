@@ -158,7 +158,7 @@ BYTECODE_FREE_COMMAND_EXCLUDED_PATHS = {
     "docs/project-maintenance/deploy/codex-harness-manual-run-continuous-2026-04-23.md",
 }
 REPO_PYTHON_COMMAND_RE = re.compile(
-    r"\bpython3\s+(?:"
+    r"\bpython(?:3)?\s+(?:"
     r"-m\s+(?:pytest|unittest)\b|"
     r"(?:toolchain/scripts|tools|scripts/deploy_aw\.py|product/harness/skills)/"
     r")"
