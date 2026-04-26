@@ -87,7 +87,7 @@ last_verified: 2026-04-26
   - 对应的最小 pytest
   - closeout acceptance gate 当前按 `scope_gate -> spec_gate -> static_gate -> cache_gate -> test_gate -> smoke_gate` 顺序收口；其中 `cache_gate` 会扫描 `docs/`、`product/`、`toolchain/` 和 `tools/` 下的 `.pytest_cache`、`__pycache__`、`.pyc` 与 `.pyo` 运行缓存。
   - closeout `scope_gate` 允许 root `README.md`，因为它是根 `aw-installer` package envelope 的 npm README surface。
-  - closeout `test_gate` 会运行 closeout gate、folder logic、path governance、semantic governance、agents adapter contract 回归测试、deploy regression unittest suite、Repo Analysis contract check、本地 npm deploy package 与根 `aw-installer` package envelope 的 `npm pack --dry-run --json` packlist 检查、根 package publish dry-run及其 `prepublishOnly` guard、临时 `.tgz` help/version/diagnose/update dry-run/install/verify tarball smoke，以及 `adapter_deploy.py` / `harness_deploy.py` 的 `agents` deploy verify。
+  - closeout `test_gate` 会运行 closeout gate、folder logic、path governance、semantic governance、agents adapter contract 回归测试、deploy regression unittest suite、Repo Analysis contract check、本地 npm deploy package 与根 `aw-installer` package envelope 的 `npm pack --dry-run --json` packlist 检查、根 package publish dry-run及其 `prepublishOnly` guard、临时 `.tgz` help/version/diagnose/update dry-run/install/verify/update apply tarball smoke，以及 `adapter_deploy.py` / `harness_deploy.py` 的 `agents` deploy verify。
 - deploy mapping / payload contract 变更
   - `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_agents_adapter_contract.py`
   - 如同时改了 gate 链路，再补 `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`

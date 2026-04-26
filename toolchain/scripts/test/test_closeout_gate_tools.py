@@ -107,6 +107,22 @@ def successful_npm_command_result(
             "stderr": "",
             "passed": True,
         }
+    if command[:2] == ["npm", "exec"] and "update" in command and command[-1] == "--yes":
+        target = (cwd or Path("/tmp/repo")) / ".agents" / "skills" / "aw-harness-skill"
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "SKILL.md").write_text("# harness\n", encoding="utf-8")
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": (
+                "[agents] applying update\n"
+                "installed skill harness-skill\n"
+                "[agents] ok: target root is ready\n"
+                "[agents] update complete\n"
+            ),
+            "stderr": "",
+            "passed": True,
+        }
     if command[:2] == ["npm", "exec"] and "update" in command:
         if extra_env is None or "AW_HARNESS_REPO_ROOT" not in extra_env:
             return {

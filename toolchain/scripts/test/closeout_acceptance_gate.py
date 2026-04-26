@@ -730,6 +730,31 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                 )
                 subchecks.append({**verify_result, "name": "root_npm_exec_tarball_verify"})
 
+                update_apply_result = run_command(
+                    [
+                        "npm",
+                        "exec",
+                        "--yes",
+                        "--package",
+                        str(package_file),
+                        "--",
+                        "aw-installer",
+                        "update",
+                        "--backend",
+                        "agents",
+                        "--yes",
+                    ],
+                    cwd=target_repo,
+                    extra_env=clean_env,
+                )
+                if update_apply_result["passed"]:
+                    updated_skill = target_repo / ".agents" / "skills" / "aw-harness-skill" / "SKILL.md"
+                    if not updated_skill.is_file():
+                        failures.append("root packaged update apply did not write aw-harness-skill")
+                    if "[agents] ok" not in update_apply_result["stdout"]:
+                        failures.append("root packaged update apply did not run verify")
+                subchecks.append({**update_apply_result, "name": "root_npm_exec_tarball_update_apply"})
+
         passed = all(result["passed"] for result in subchecks) and not failures
         return {
             "command": ["root-npm-package-tarball-smoke"],

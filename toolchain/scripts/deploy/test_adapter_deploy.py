@@ -835,6 +835,29 @@ class AdapterDeployTest(unittest.TestCase):
                 text=True,
                 check=False,
             )
+            update_apply_completed = subprocess.run(
+                [
+                    "npm",
+                    "exec",
+                    "--yes",
+                    "--package",
+                    str(package_file),
+                    "--",
+                    "aw-installer",
+                    "update",
+                    "--backend",
+                    "agents",
+                    "--yes",
+                ],
+                cwd=target_repo,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            update_applied_harness_skill = (
+                target_repo / ".agents" / "skills" / "aw-harness-skill" / "SKILL.md"
+            ).is_file()
 
         self.assertEqual(diagnose_completed.returncode, 0, diagnose_completed.stderr)
         diagnose_payload = json.loads(diagnose_completed.stdout)
@@ -869,6 +892,12 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertTrue(installed_harness_skill)
         self.assertEqual(verify_completed.returncode, 0, verify_completed.stderr)
         self.assertIn("[agents] ok", verify_completed.stdout)
+        self.assertEqual(update_apply_completed.returncode, 0, update_apply_completed.stderr)
+        self.assertIn("[agents] applying update", update_apply_completed.stdout)
+        self.assertIn("installed skill harness-skill", update_apply_completed.stdout)
+        self.assertIn("[agents] ok", update_apply_completed.stdout)
+        self.assertIn("[agents] update complete", update_apply_completed.stdout)
+        self.assertTrue(update_applied_harness_skill)
 
     def test_install_uses_override_root(self) -> None:
         code, stdout, stderr = self._install("--agents-root", self.override_root)
