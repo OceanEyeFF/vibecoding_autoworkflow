@@ -3,7 +3,7 @@ title: "Harness Control State"
 status: active
 updated: 2026-04-23
 owner: aw-kernel
-last_verified: 2026-04-23
+last_verified: 2026-04-26
 ---
 # Harness Control State
 
@@ -18,6 +18,26 @@ last_verified: 2026-04-23
 - 关联正式文档路径
 
 它不应替代 `Repo Snapshot / Status` 或 `Worktrack Contract`。
+
+## Linked Formal Documents
+
+`Harness Control State` 可以保存标准 artifact 路径指针，用来让 supervisor 在下一轮快速定位正式对象。当前标准字段包括：
+
+- `repo_snapshot`
+- `repo_analysis`
+- `worktrack_contract`
+- `plan_task_queue`
+- `gate_evidence`
+
+这些字段只是路径指针，不是业务真相本身：
+
+- `repo_snapshot` 指向 repo 慢变量状态
+- `repo_analysis` 指向 RepoScope 阶段性分析与优先级判断
+- `worktrack_contract` 指向当前或最近 worktrack 的局部状态转移合同
+- `plan_task_queue` 指向局部执行队列
+- `gate_evidence` 指向验证证据与裁决材料
+
+如果某个路径指向的 artifact 缺失或过期，Control State 不应自行补写业务内容；下一轮应通过对应 Scope 的 Observe / Decide / Init / Verify 路由刷新正式对象。
 
 如果系统支持 `contract-boundary` 之后的一次性自主续跑，还应显式保存最小 `Continuation Authority` 策略位：
 
