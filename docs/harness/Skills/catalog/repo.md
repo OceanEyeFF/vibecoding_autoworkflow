@@ -1,9 +1,9 @@
 ---
 title: "Harness Skill Catalog / RepoScope"
 status: draft
-updated: 2026-04-25
+updated: 2026-04-26
 owner: aw-kernel
-last_verified: 2026-04-25
+last_verified: 2026-04-26
 ---
 # RepoScope Skill Catalog
 
@@ -21,6 +21,7 @@ last_verified: 2026-04-25
 - `repo-status-skill`、`repo-whats-next-skill`、`repo-refresh-skill` 都不负责 worktrack 级 `.aw/worktrack/*` 文档维护
 - `RepoScope` 下的 structured handoff 优先使用 `recommended_next_route` 与 canonical approval 字段，而不是继续扩散旧的 next-action prose
 - `RepoScope` 内可以挂载有界分析模式，但不应为了分析框架本身继续新增 skill 数量或层级
+- `Repo Analysis` 是 RepoScope 的决策支撑 artifact；它可以喂给 `repo-whats-next-skill`，但不能替代 `Goal / Charter` 或 `Snapshot / Status`
 - `append-feature` 与 `append-design` 追加请求由同一个 `repo-append-request-skill` 分类和路由，不拆分为两个 skill
 - 如果一轮需要实际改动系统状态，应由 supervisor 决定是否切入 `WorktrackScope` 或派发下游执行体
 
@@ -70,6 +71,8 @@ preferred handoff fields：
 - 主要依据 `Repo Goal / Charter`、`Repo Snapshot / Status` 与当前 `Harness Control State` 做 repo 级判断；`Worktrack Contract` / `Plan / Task Queue` 只能作为活跃或刚关闭 worktrack 的边界证据，不能当成 repo 级任务队列
 - 在默认 next-step 判断仍偏松时，启用轻量 `priority reframe / contradiction analysis` 模式
 - 用 `Facts / Inferences / Unknowns`、单一 `Current Primary Contradiction`、`Primary Aspect`、`Top Priority Now`、`Do Not Do`、`Recommended Repo Action` 与 `Minimal Missing Info` 压缩 repo 级优先级判断
+- 当存在新鲜 `Repo Analysis` artifact 时，可以把它作为该模式的结构化输入；没有该 artifact 时仍必须直接基于 Goal、Snapshot 与 Control State 完成判定
+- `Repo Analysis` 的 `recommended_repo_action` 必须再投影成 `recommended_next_route`、approval 字段与 continuation 字段，不能把分析结论当成已执行状态更新
 - 该模式属于 `RepoScope` 分析模式，不是新的 skill，也不是 `WorktrackScope` skill
 
 主要依赖：

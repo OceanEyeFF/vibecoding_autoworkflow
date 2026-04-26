@@ -6,4 +6,5 @@
 
 - [discovery-input.md](./discovery-input.md)
 - [goal-charter.md](./goal-charter.md)
+- [repo-analysis.md](./repo-analysis.md)
 - [snapshot-status.md](./snapshot-status.md)
