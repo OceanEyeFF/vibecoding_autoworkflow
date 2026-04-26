@@ -12,7 +12,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 
-from path_governance_check import iter_relative_markdown_targets, resolve_markdown_target
+from path_governance_check import REQUIRED_GITIGNORE_ENTRIES, iter_relative_markdown_targets, resolve_markdown_target
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -99,6 +99,7 @@ APPEND_REQUEST_CONTRACT_PATHS = [
     "product/harness/skills/repo-append-request-skill/SKILL.md",
     "product/harness/skills/repo-append-request-skill/templates/append-request.template.md",
 ]
+PATH_GOVERNANCE_CHECKS_DOC = "docs/project-maintenance/governance/path-governance-checks.md"
 APPEND_REQUEST_REQUIRED_TERMS = [
     "approval_required",
     "continuation_ready",
@@ -408,6 +409,24 @@ def check_root_tool_shims_disable_bytecode(repo_root: Path, report: SemanticRepo
     report.add_info(f"checked {checked} root tool shims for bytecode guard ordering")
 
 
+def check_path_governance_docs_list_gitignore_entries(repo_root: Path, report: SemanticReport) -> None:
+    doc_path = repo_root / PATH_GOVERNANCE_CHECKS_DOC
+    if not doc_path.exists():
+        report.add_failure(f"missing path governance checks document: {PATH_GOVERNANCE_CHECKS_DOC}")
+        return
+
+    text = doc_path.read_text(encoding="utf-8")
+    checked = 0
+    for entry in REQUIRED_GITIGNORE_ENTRIES:
+        checked += 1
+        if f"`{entry}`" not in text:
+            report.add_failure(
+                f"path governance docs missing required .gitignore entry {entry!r}: "
+                f"{PATH_GOVERNANCE_CHECKS_DOC}"
+            )
+    report.add_info(f"checked {checked} documented .gitignore governance entries")
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -421,6 +440,7 @@ def main() -> int:
     check_append_request_contract_terms(repo_root, report)
     check_repo_python_commands_are_bytecode_free(repo_root, report)
     check_root_tool_shims_disable_bytecode(repo_root, report)
+    check_path_governance_docs_list_gitignore_entries(repo_root, report)
 
     payload = {
         "passed": not report.failures,
