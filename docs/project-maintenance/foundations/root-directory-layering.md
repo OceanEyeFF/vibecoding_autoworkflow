@@ -1,9 +1,9 @@
 ---
 title: "根目录分层"
 status: active
-updated: 2026-04-24
+updated: 2026-04-26
 owner: aw-kernel
-last_verified: 2026-04-24
+last_verified: 2026-04-26
 ---
 # 根目录分层
 
@@ -26,7 +26,7 @@ last_verified: 2026-04-24
 | Truth Layer | `docs/` | 知识与治理文档 | deploy 结果、mount/state |
 | Toolchain Layer | `toolchain/` | 脚本与评测工具 | 业务源码真相 |
 | Repo-local Install / Mount Layer | `.claude/` `.agents/` `.opencode/` | repo-local 安装载荷、挂载与 deploy target | 主线真相、业务源码 |
-| Repo-local State Layer | `.autoworkflow/` `.spec-workflow/` | 运行状态与项目级配置记忆 | 主线入口、业务源码 |
+| Repo-local State Layer | `.aw/` `.autoworkflow/` `.spec-workflow/` | 运行状态、Harness 控制面运行产物与项目级配置记忆 | 主线入口、业务源码、长期真相 |
 | Repo-local Execution Config Layer | `.codex/` | repo-local 执行配置 | 长期真相正文、运行产物 |
 | Compatibility Navigation Layer | `.nav/` | 兼容导航 | 结构定义与规则正文 |
 | Compatibility Shim Layer | `tools/` | 兼容入口 shim | canonical 逻辑实现 |
@@ -69,6 +69,12 @@ last_verified: 2026-04-24
 ### 4. `.pytest_cache/`
 
 - 可存在于根目录，但不得有 tracked 内容。
+
+### 5. `.aw/`
+
+- `.aw/` 属于 repo-local Harness runtime control-plane state。
+- 它可以在本地存在并被治理检查识别为合法根目录对象，但仍必须保持 ignored，不是长期 truth layer。
+- `.aw/` 中的运行合同、队列和 evidence 只用于当前控制回路，不替代 `docs/`、`product/` 或 `toolchain/` 中的正式真相与源码。
 
 ## 四、新增根目录对象规则
 

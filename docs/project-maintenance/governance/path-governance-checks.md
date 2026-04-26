@@ -1,9 +1,9 @@
 ---
 title: "路径与文档治理检查运行说明"
 status: active
-updated: 2026-04-24
+updated: 2026-04-26
 owner: aw-kernel
-last_verified: 2026-04-24
+last_verified: 2026-04-26
 ---
 # 路径与文档治理检查运行说明
 
@@ -47,7 +47,7 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 2. 根目录对象是否仍落在声明的 allowlist 内：
    - 正式内容区：`product/`、`docs/`、`toolchain/`
    - repo-local execution config：`.codex/`
-   - mount / state / navigation：`.agents/`、`.claude/`、`.opencode/`、`.autoworkflow/`、`.spec-workflow/`、`.nav/`
+   - mount / state / navigation：`.agents/`、`.claude/`、`.opencode/`、`.aw/`、`.autoworkflow/`、`.spec-workflow/`、`.nav/`
    - compatibility shim：`tools/`
    - local ephemeral cache：`.pytest_cache/`
    - entry / infra：`README.md`、`INDEX.md`、`GUIDE.md`、`ROADMAP.md`、`AGENTS.md`、`CONTRIBUTING.md`、`.github/`、`.git*`、`.claudeignore`、`LICENSE`
@@ -74,6 +74,7 @@ python3 toolchain/scripts/test/governance_semantic_check.py
 15. `docs/` 正文文档是否仍避免使用 `status: suspended`；暂停中的共享文档应改成 `superseded`，非共享 scratch 应移出 `docs/`
 16. `docs/project-maintenance/README.md` 与 `docs/harness/README.md` 是否仍维持当前入口分流
 17. `.gitignore` 是否仍忽略：
+   - `.aw/`
    - `.agents/`
    - `.claude/`
    - `.opencode/`

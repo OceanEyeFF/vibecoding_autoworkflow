@@ -22,6 +22,7 @@ ROOT_ALLOWED_NAMES = {
     "README.md",
     "ROADMAP.md",
     ".github",
+    ".aw",
     ".codex",
     "docs",
     "product",
