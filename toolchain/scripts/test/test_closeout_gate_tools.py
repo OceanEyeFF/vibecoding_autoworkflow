@@ -345,12 +345,16 @@ def test_run_test_gate_includes_agents_adapter_contract_tests(monkeypatch, tmp_p
     result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
 
     assert result["passed"] is True
-    assert [item["name"] for item in result["subchecks"][:3]] == [
+    assert [item["name"] for item in result["subchecks"][:5]] == [
         "gate_tool_tests",
         "folder_logic_tests",
+        "path_governance_tests",
+        "governance_semantic_tests",
         "agents_adapter_contract_tests",
     ]
     assert any(command[-1] == "toolchain/scripts/test/test_folder_logic_check.py" for command in commands)
+    assert any(command[-1] == "toolchain/scripts/test/test_path_governance_check.py" for command in commands)
+    assert any(command[-1] == "toolchain/scripts/test/test_governance_semantic_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_agents_adapter_contract.py" for command in commands)
     deploy_verify_commands = [command for command in commands if "adapter_deploy.py" in command[1]]
     assert len(deploy_verify_commands) == 1
