@@ -217,6 +217,17 @@ def test_repo_local_mount_content_must_not_be_tracked(tmp_path: Path) -> None:
     assert ".agents/runtime.json" in issue_paths(runtime_report)
 
 
+def test_aw_runtime_control_plane_state_must_not_be_tracked(tmp_path: Path) -> None:
+    repo_root = create_valid_repo(tmp_path)
+    write_file(repo_root / ".aw/control-state.md", "# Harness Control State\n")
+    git(repo_root, "add", ".aw/control-state.md", force=True)
+
+    report = run_checks(repo_root)
+
+    assert "FL007" in issue_codes(report)
+    assert ".aw/control-state.md" in issue_paths(report)
+
+
 def test_first_level_allowlist_drift_fails(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
     (repo_root / "toolchain/misc").mkdir()

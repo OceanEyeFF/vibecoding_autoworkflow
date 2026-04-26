@@ -57,6 +57,7 @@ CODEX_TRACKED_ALLOWLIST = {
     ".codex/rules/repo.rules",
 }
 MOUNT_LAYER_PREFIXES = (".agents/", ".claude/", ".opencode/")
+RUNTIME_STATE_LAYER_PREFIXES = (".aw/",)
 CODEX_ALLOWED_ENTRIES = {"config.toml", "rules"}
 CODEX_RULES_ALLOWED_ENTRIES = {"repo.rules"}
 NAV_ALLOWED_ENTRIES = {"README.md", "@docs", "@skills"}
@@ -362,11 +363,11 @@ def check_tracked_exceptions(tracked_paths: set[str], report: FolderLogicReport,
             if tracked_path not in rules.codex_tracked_allowlist:
                 report.add_issue("FL016", tracked_path, ".codex/ only allows the explicit tracked whitelist")
             continue
-        if tracked_path.startswith(MOUNT_LAYER_PREFIXES):
+        if tracked_path.startswith(MOUNT_LAYER_PREFIXES + RUNTIME_STATE_LAYER_PREFIXES):
             report.add_issue(
                 "FL007",
                 tracked_path,
-                "repo-local install/mount layers are deploy targets and must not contain tracked content",
+                "repo-local runtime/install/mount layers must not contain tracked content",
             )
             continue
     report.add_info(f"checked {checked} tracked paths for hidden-layer exceptions")

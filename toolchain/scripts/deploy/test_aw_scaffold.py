@@ -82,7 +82,7 @@ class AwScaffoldTest(unittest.TestCase):
         self.assertIn("- worktrack_id: wt-demo", contract_text)
         self.assertIn("- branch: feat/wt-demo", contract_text)
         self.assertIn("- baseline_branch: main", contract_text)
-        self.assertIn("- baseline_ref: main", contract_text)
+        self.assertIn("- baseline_ref: TODO(baseline_ref)", contract_text)
         self.assertIn("## Node Type", contract_text)
         self.assertIn("- source_from_goal_charter: TODO(source_from_goal_charter)", contract_text)
         self.assertIn("- if_interrupted_strategy: TODO(if_interrupted_strategy)", contract_text)
@@ -97,6 +97,9 @@ class AwScaffoldTest(unittest.TestCase):
 
         analysis_text = (self.output_root / "repo" / "analysis.md").read_text(encoding="utf-8")
         self.assertIn('artifact_type: "repo-analysis"', analysis_text)
+        self.assertIn("- baseline_branch: main", analysis_text)
+        self.assertIn("- baseline_ref: TODO(baseline_ref)", analysis_text)
+        self.assertNotIn("- baseline_ref: main", analysis_text)
         self.assertIn("- analysis_status: TODO(analysis_status)", analysis_text)
         self.assertIn("- current_main_contradiction: TODO(current_main_contradiction)", analysis_text)
         self.assertIn("- recommended_next_route: TODO(recommended_next_route)", analysis_text)
