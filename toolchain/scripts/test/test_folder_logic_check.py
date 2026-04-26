@@ -238,12 +238,18 @@ def test_misplaced_content_patterns_fail(tmp_path: Path) -> None:
 def test_toolchain_cache_content_fails(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
     write_file(repo_root / "toolchain/scripts/__pycache__/helper.cpython-313.pyc", "cache\n")
+    write_file(repo_root / "toolchain/scripts/.pytest_cache/README.md", "cache\n")
+    write_file(repo_root / "toolchain/scripts/cache/state.json", "{}\n")
+    write_file(repo_root / "toolchain/scripts/demo.pyo", "cache\n")
 
     report = run_checks(repo_root)
 
     assert "FL006" in issue_codes(report)
     assert "toolchain/scripts/__pycache__" in issue_paths(report)
     assert "toolchain/scripts/__pycache__/helper.cpython-313.pyc" in issue_paths(report)
+    assert "toolchain/scripts/.pytest_cache" in issue_paths(report)
+    assert "toolchain/scripts/cache" in issue_paths(report)
+    assert "toolchain/scripts/demo.pyo" in issue_paths(report)
 
 
 def test_product_and_docs_bytecode_files_fail(tmp_path: Path) -> None:
