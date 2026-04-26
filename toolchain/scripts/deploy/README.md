@@ -34,6 +34,7 @@
 - `harness_deploy.py` 当前只作为本地薄包装入口存在，不表示 package / npx 发布渠道已经实现
 - `npm --prefix toolchain/scripts/deploy run smoke --silent` 只验证本地 package scaffold 的 bin 能打开当前 help，不发布或安装 package
 - 如需检查 package packlist，在 `toolchain/scripts/deploy/` 目录内运行 `npm pack --dry-run --json`；不要从仓库根用 `--prefix` 跑 `pack`
+- 从打包后的 `.tgz` 执行非 help 命令时，使用 `AW_HARNESS_REPO_ROOT=<repo-root>` 指向真实 source checkout；否则脚本会从 package 解压路径解析 source root
 - 当前接口只实现 `agents`
 - 不再承接 `local/global` deploy modes、`prune --outdated`、archive/history、增量修复或旧版本保活
 - `claude` 与 `opencode` 后续如需恢复，应先重定义 contract 再实现

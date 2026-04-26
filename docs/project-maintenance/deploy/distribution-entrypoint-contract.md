@@ -25,7 +25,9 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 
 package packlist 检查应在 `toolchain/scripts/deploy/` package root 内执行 `npm pack --dry-run --json`。不要从仓库根用 `--prefix` 运行 `pack`，因为该命令会寻找当前工作目录的 `package.json`。
 
-CI 必须显式设置 Node 后运行本地 package smoke、package-root pack dry-run，以及从临时 `.tgz` 执行 `aw-harness-deploy --help` 的 tarball smoke；这些只验证 `aw-harness-deploy` scaffold 的分发面，不表示 npm/npx 发布渠道已经开启。
+CI 必须显式设置 Node 后运行本地 package smoke、package-root pack dry-run，以及从临时 `.tgz` 执行 `aw-harness-deploy --help` 和带 `AW_HARNESS_REPO_ROOT=<repo-root>` 的只读 `diagnose` tarball smoke；这些只验证 `aw-harness-deploy` scaffold 的分发面，不表示 npm/npx 发布渠道已经开启。
+
+`AW_HARNESS_REPO_ROOT` 是当前 packaged wrapper 的 source checkout bridge。包装层可以改变启动位置，但所有 deploy source / target / payload 合同仍必须以该 source checkout 为准，不能从 package 解压目录或 deploy target 反推业务真相。
 
 ## 一、范围
 
