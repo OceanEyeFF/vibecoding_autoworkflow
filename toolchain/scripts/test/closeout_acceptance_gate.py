@@ -21,7 +21,7 @@ LOCAL_DEPLOY_TARGET_ROOTS = {
     "opencode": REPO_ROOT / ".opencode" / "skills",
 }
 SUPPORTED_DEPLOY_VERIFY_BACKENDS = ("agents",)
-CACHE_SCAN_ROOTS = ("docs", "product", "toolchain")
+CACHE_SCAN_ROOTS = ("docs", "product", "toolchain", "tools")
 CACHE_DIR_NAMES = {"__pycache__", ".pytest_cache"}
 CACHE_FILE_SUFFIXES = (".pyc", ".pyo")
 
