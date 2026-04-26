@@ -66,7 +66,7 @@ last_verified: 2026-04-26
 
 按改动面选择最小验证集：
 
-运行本仓库内的 Python 验证、部署或辅助命令时，默认使用 `PYTHONDONTWRITEBYTECODE=1 python3 ...`。这样可以避免验证过程在 `product/`、`docs/`、`toolchain/` 或 `tools/` 下生成 `__pycache__` / `.pyc` 运行缓存；如果必须用其他 Python launcher，也应保留等价的 `PYTHONDONTWRITEBYTECODE=1` 环境变量。
+运行本仓库内的 Python 验证、部署或辅助命令时，默认使用 `PYTHONDONTWRITEBYTECODE=1 python3 ...`。这样可以避免验证过程在 `product/`、`docs/`、`toolchain/` 或 `tools/` 下生成 `.pytest_cache`、`__pycache__`、`.pyc` 或 `.pyo` 运行缓存；如果必须用其他 Python launcher，也应保留等价的 `PYTHONDONTWRITEBYTECODE=1` 环境变量。
 
 - 根目录、路径、分层、hidden/state 规则变更
   - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/folder_logic_check.py`

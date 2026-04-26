@@ -33,7 +33,7 @@ last_verified: 2026-04-26
 
 ## 二、脚本入口
 
-运行治理脚本时默认保留 `PYTHONDONTWRITEBYTECODE=1`，避免检查过程自己在源码树中生成 `__pycache__` / `.pyc`。
+运行治理脚本时默认保留 `PYTHONDONTWRITEBYTECODE=1`，避免检查过程自己在源码树中生成 `.pytest_cache`、`__pycache__`、`.pyc` 或 `.pyo`。
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/folder_logic_check.py
