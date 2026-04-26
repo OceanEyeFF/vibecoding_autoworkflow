@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import contextlib
+import errno
 import io
 import json
 import os
+import select
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -172,6 +175,112 @@ class AdapterDeployTest(unittest.TestCase):
         if marker_path.exists():
             marker_path.unlink()
         return marker_path.parent
+
+    def _run_installer_tui_script(
+        self,
+        steps: list[tuple[str, str]],
+        *,
+        target_repo: Path | None = None,
+        timeout_seconds: float = 30.0,
+    ) -> tuple[int, str]:
+        if not hasattr(os, "openpty"):
+            self.skipTest("PTY support is not available")
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+
+        bin_path = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+        if target_repo is None:
+            target_repo = self.temp_root / "tui-target"
+        target_repo.mkdir(parents=True, exist_ok=True)
+        env = {
+            **os.environ,
+            "AW_HARNESS_REPO_ROOT": str(self.source_repo_root),
+            "AW_HARNESS_TARGET_REPO_ROOT": str(target_repo),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+
+        master_fd, slave_fd = os.openpty()
+        process: subprocess.Popen[bytes] | None = None
+        output_parts: list[str] = []
+        try:
+            process = subprocess.Popen(
+                ["node", str(bin_path), "tui"],
+                cwd=self.source_repo_root,
+                env=env,
+                stdin=slave_fd,
+                stdout=slave_fd,
+                stderr=slave_fd,
+                close_fds=True,
+            )
+            os.close(slave_fd)
+            slave_fd = -1
+
+            step_index = 0
+            search_pos = 0
+            deadline = time.monotonic() + timeout_seconds
+            while time.monotonic() < deadline:
+                ready, _, _ = select.select([master_fd], [], [], 0.05)
+                if ready:
+                    try:
+                        chunk = os.read(master_fd, 4096)
+                    except OSError as exc:
+                        if exc.errno == errno.EIO:
+                            break
+                        raise
+                    if not chunk:
+                        break
+                    output_parts.append(chunk.decode("utf-8", errors="replace"))
+
+                output = "".join(output_parts)
+                while step_index < len(steps):
+                    pattern, response = steps[step_index]
+                    if output.find(pattern, search_pos) == -1:
+                        break
+                    search_pos = len(output)
+                    if response:
+                        os.write(master_fd, response.encode("utf-8"))
+                    step_index += 1
+
+                if process.poll() is not None:
+                    break
+
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=5)
+                self.fail(
+                    "timed out waiting for aw-installer tui; output so far:\n"
+                    + "".join(output_parts)
+                )
+
+            while True:
+                ready, _, _ = select.select([master_fd], [], [], 0)
+                if not ready:
+                    break
+                try:
+                    chunk = os.read(master_fd, 4096)
+                except OSError as exc:
+                    if exc.errno == errno.EIO:
+                        break
+                    raise
+                if not chunk:
+                    break
+                output_parts.append(chunk.decode("utf-8", errors="replace"))
+
+            return process.returncode or 0, "".join(output_parts)
+        finally:
+            if process is not None and process.poll() is None:
+                process.kill()
+                process.wait(timeout=5)
+            if slave_fd != -1:
+                os.close(slave_fd)
+            os.close(master_fd)
 
     def test_install_creates_target_root_and_installs_agents_payloads(self) -> None:
         code, stdout, stderr = self._install()
@@ -469,6 +578,30 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 1)
         self.assertEqual(completed.stdout, "")
         self.assertIn("requires an interactive terminal", completed.stderr)
+
+    def test_local_npm_installer_tui_shows_update_plan_before_apply_confirmation(self) -> None:
+        target_repo = self.temp_root / "tui-plan-target"
+
+        code, output = self._run_installer_tui_script(
+            [
+                ("Select an action:", "4\n"),
+                ("Review the plan above. Type yes", "no\n"),
+                ("Update cancelled.", "\n"),
+                ("Select an action:", "6\n"),
+            ],
+            target_repo=target_repo,
+        )
+
+        self.assertEqual(code, 0, output)
+        plan_index = output.find("[agents] update plan")
+        confirmation_index = output.find("Review the plan above. Type yes")
+        self.assertNotEqual(plan_index, -1, output)
+        self.assertNotEqual(confirmation_index, -1, output)
+        self.assertLess(plan_index, confirmation_index)
+        self.assertIn("dry-run only; pass --yes to apply update", output)
+        self.assertIn("Update cancelled.", output)
+        self.assertNotIn("[agents] applying update", output)
+        self.assertFalse((target_repo / ".agents" / "skills").exists())
 
     def test_local_npm_pack_dry_run_contains_only_package_surface(self) -> None:
         if shutil.which("npm") is None:
@@ -990,6 +1123,47 @@ class AdapterDeployTest(unittest.TestCase):
                 / "harness-skill"
                 / "SKILL.md"
             ).read_text(encoding="utf-8"),
+        )
+        code, stdout, stderr = self._verify()
+        self.assertEqual(code, 0, stderr)
+
+    def test_update_yes_prunes_same_backend_managed_install_with_stale_marker(self) -> None:
+        code, stdout, stderr = self._install()
+        self.assertEqual(code, 0, stderr)
+        target_dir = self.local_root / "aw-harness-skill"
+        stale_marker = adapter_deploy.build_runtime_marker(
+            "agents",
+            "legacy-harness-skill",
+            "agents-skill-payload.v0",
+            "old-managed-fingerprint",
+        )
+        (target_dir / "aw.marker").write_text(
+            adapter_deploy.runtime_marker_text(stale_marker),
+            encoding="utf-8",
+        )
+
+        code, stdout, stderr = self._update("--json")
+
+        self.assertEqual(code, 0, stderr)
+        payload = json.loads(stdout)
+        self.assertEqual(payload["blocking_issue_count"], 0)
+        self.assertIn(str(target_dir), payload["managed_installs_to_delete"])
+        self.assertTrue(
+            any(
+                issue["code"] == "unrecognized-target-directory"
+                and issue["path"] == str(target_dir)
+                for issue in payload["issues"]
+            )
+        )
+
+        code, stdout, stderr = self._update("--yes")
+
+        self.assertEqual(code, 0, stderr)
+        self.assertIn("blocking preflight issues: 0", stdout)
+        self.assertIn(f"removed managed skill dir {target_dir}", stdout)
+        self.assertEqual(
+            (target_dir / "aw.marker").read_text(encoding="utf-8"),
+            self._runtime_marker_text("harness-skill"),
         )
         code, stdout, stderr = self._verify()
         self.assertEqual(code, 0, stderr)

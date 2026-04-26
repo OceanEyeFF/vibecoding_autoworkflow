@@ -1419,6 +1419,14 @@ def managed_install_dirs(backend: str, target_root: Path) -> list[Path]:
     return managed_dirs
 
 
+def is_update_blocking_issue(issue: VerifyIssue, managed_delete_paths: set[Path]) -> bool:
+    if issue.code in UPDATE_RECOVERABLE_ISSUE_CODES:
+        return False
+    if issue.code == "unrecognized-target-directory" and issue.path in managed_delete_paths:
+        return False
+    return True
+
+
 def collect_update_target_entry_issues(
     backend: str,
     target_root: Path,
@@ -1561,9 +1569,11 @@ def update_plan_summary(backend: str, args: argparse.Namespace) -> dict[str, Any
         target_root,
         known_target_dir_names,
     )
+    managed_installs_to_delete = managed_install_dirs(backend, target_root)
+    managed_delete_paths = set(managed_installs_to_delete)
     all_issues = dedupe_issues([*result.issues, *plan_issues, *target_entry_issues])
     blocking_issues = [
-        issue for issue in all_issues if issue.code not in UPDATE_RECOVERABLE_ISSUE_CODES
+        issue for issue in all_issues if is_update_blocking_issue(issue, managed_delete_paths)
     ]
 
     return {
@@ -1576,9 +1586,7 @@ def update_plan_summary(backend: str, args: argparse.Namespace) -> dict[str, Any
             "install",
             "verify",
         ],
-        "managed_installs_to_delete": [
-            str(path) for path in managed_install_dirs(backend, target_root)
-        ],
+        "managed_installs_to_delete": [str(path) for path in managed_installs_to_delete],
         "planned_target_paths": [str(plan.target_skill_dir) for plan in plans],
         "issue_count": len(all_issues),
         "issues": [issue_to_dict(issue) for issue in all_issues],

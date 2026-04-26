@@ -131,9 +131,15 @@ Backend: agents
         runWrapper(["update", "--backend", "agents"]);
         await pause(rl);
       } else if (choice === "4") {
+        const dryRunStatus = runWrapper(["update", "--backend", "agents"]);
+        if (dryRunStatus !== 0) {
+          console.log("Update plan failed; not applying.");
+          await pause(rl);
+          continue;
+        }
         const confirmation = (await question(
           rl,
-          "Type yes to apply update via prune --all -> check_paths_exist -> install -> verify: ",
+          "Review the plan above. Type yes to apply update via prune --all -> check_paths_exist -> install -> verify: ",
         )).trim();
         if (confirmation === "yes") {
           runWrapper(["update", "--backend", "agents", "--yes"]);
