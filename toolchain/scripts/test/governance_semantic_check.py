@@ -12,6 +12,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 
+from closeout_acceptance_gate import CACHE_SCAN_ROOTS
 from path_governance_check import REQUIRED_GITIGNORE_ENTRIES, iter_relative_markdown_targets, resolve_markdown_target
 
 
@@ -101,6 +102,7 @@ APPEND_REQUEST_CONTRACT_PATHS = [
 ]
 PATH_GOVERNANCE_CHECKS_DOC = "docs/project-maintenance/governance/path-governance-checks.md"
 REVIEW_VERIFY_HANDBOOK_DOC = "docs/project-maintenance/governance/review-verify-handbook.md"
+TOOLCHAIN_TEST_README_DOC = "toolchain/scripts/test/README.md"
 CLOSEOUT_ACCEPTANCE_GATE_STEPS = [
     "scope_gate",
     "spec_gate",
@@ -454,6 +456,21 @@ def check_review_verify_docs_list_closeout_steps(repo_root: Path, report: Semant
     report.add_info(f"checked {checked} documented closeout gate steps")
 
 
+def check_docs_list_closeout_cache_roots(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    for relative_path in (REVIEW_VERIFY_HANDBOOK_DOC, TOOLCHAIN_TEST_README_DOC):
+        doc_path = repo_root / relative_path
+        if not doc_path.exists():
+            report.add_failure(f"missing closeout cache root document: {relative_path}")
+            continue
+        text = doc_path.read_text(encoding="utf-8")
+        for root in CACHE_SCAN_ROOTS:
+            checked += 1
+            if f"`{root}/`" not in text:
+                report.add_failure(f"document missing closeout cache root {root!r}: {relative_path}")
+    report.add_info(f"checked {checked} documented closeout cache roots")
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -469,6 +486,7 @@ def main() -> int:
     check_root_tool_shims_disable_bytecode(repo_root, report)
     check_path_governance_docs_list_gitignore_entries(repo_root, report)
     check_review_verify_docs_list_closeout_steps(repo_root, report)
+    check_docs_list_closeout_cache_roots(repo_root, report)
 
     payload = {
         "passed": not report.failures,
