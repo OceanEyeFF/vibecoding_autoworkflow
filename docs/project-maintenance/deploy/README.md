@@ -8,7 +8,7 @@
 - `prune --all -> check_paths_exist -> install --backend agents` 的操作口径
 - 只读 `diagnose / verify` 的状态观察与诊断闭环
 - canonical source 到 backend payload / target entry 的映射合同
-- 未来 reusable distribution entrypoint 的语义边界
+- 目标 `npx aw-installer` reusable distribution entrypoint 的语义边界
 - `.aw_template/` 的 `.aw/` 使用合同与边界
 
 这里不适合放：
@@ -27,7 +27,7 @@
 | 我想用 Claude Code 做项目级 skill entry smoke / 冷启动测试 | [claude-harness-test-runbook.md](./claude-harness-test-runbook.md) | 临时 repo、`.claude/skills/` 项目级安装、Claude 非交互读取与最小 `.aw/` 冷启动 |
 | 我想看已完成的 `continuous-autonomy` 手动观察证据 | [codex-harness-manual-run-continuous-2026-04-23.md](./codex-harness-manual-run-continuous-2026-04-23.md) | 记录 2026-04-23 到 2026-04-24 round-000 到 round-060 的连续 worktrack 推进、108 tests / 20 tests 复验结果，以及 budget 用尽与未用尽两种 stable handback 结论 |
 | 我想看 canonical source 到 target entry 的正式映射 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | 最小 deploy 合同，定义 canonical source / backend payload source / target / diagnose / verify |
-| 我想看未来 package/npx 风格分发入口必须保持什么语义 | [distribution-entrypoint-contract.md](./distribution-entrypoint-contract.md) | 定义 reusable install/update/verify/diagnose 包装层合同；不表示 packaging 已实现 |
+| 我想看 `npx aw-installer` 分发入口必须保持什么语义 | [distribution-entrypoint-contract.md](./distribution-entrypoint-contract.md) | 定义 `aw-installer` CLI + TUI 双模式包装层合同；不表示 package、TUI runtime 或 release channel 已实现 |
 | 我想看 `agents` canonical-copy payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | 定义 `product/harness/adapters/agents/skills/` 的 payload descriptor 结构，以及 target 如何复制 canonical skill 内容 |
 | 我想初始化 `.aw/` 样例并校验 `.aw_template` 最小结构 | [template-tooling-mvp.md](./template-tooling-mvp.md) | B2 的最小工作面，只做 `.aw_template -> .aw` 样例生成与前置校验 |
 | 我想把已有代码库接入 Harness 初始化流程 | [existing-code-adoption.md](./existing-code-adoption.md) | 定义 `.aw/repo/discovery-input.md` 作为只读事实输入，不作为 goal truth |
@@ -48,7 +48,7 @@
 - `diagnose --backend agents --json` 保留为只读状态摘要命令，用于输出 source / target / issue code / conflict / unrecognized 摘要，发现 issue 时仍以 0 退出
 - `verify --backend agents` 保留为只读严格复验命令，用于检查 source 合法性、target root 状态、live install 对齐，以及 conflict / unrecognized 情形，发现 issue 时非零退出
 - `update --backend agents` 默认只输出 dry-run plan；`update --backend agents --yes` 是同一三步 destructive reinstall 加严格复验的 one-shot 包装
-- 本地 `harness_deploy.py` thin wrapper、`toolchain/scripts/deploy/package.json` scaffold 与未来 reusable package / npx-style wrapper 必须保持 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 中定义的只读、严格复验和三步 destructive reinstall 语义；当前尚未实现 package / npx 发布渠道
+- 本地 `harness_deploy.py` thin wrapper、`toolchain/scripts/deploy/package.json` scaffold 与目标 `npx aw-installer` wrapper 必须保持 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 中定义的只读、严格复验、三步 destructive reinstall，以及 CLI + TUI 双模式语义；当前尚未实现 `aw-installer` package、TUI runtime 或 npx 发布渠道
 - 不再承接这些主线语义：
   - `retired-target-dir`
   - `prune --outdated`
@@ -59,6 +59,7 @@
   - `local/global` deploy modes
 - `aw.marker` 是 runtime-generated artifact，只用于标识“这是当前 backend 受管的 live install 目录”；它不是 source truth，也不是历史接管记录
 - deploy target 不是 source of truth。skills / payload source 的正式 owner 仍在 `product/`
+- Claude skills 分发当前只作为慢车道兼容项保留；Claude smoke/runbook 不能替代 `agents` deploy backend 合同，也不能把 `claude` 写成已实现 deploy backend
 - 当前 B2 初始化工具只处理 `.aw_template -> .aw` 样例，不消费 payload descriptor、不生成 deploy payload，也不写入 deploy target
 - Existing Code Project Adoption 的 `.aw/repo/discovery-input.md` 是只读事实输入，不是 `goal-charter.md` 的替代物；当前可通过 `set-harness-goal-skill/scripts/deploy_aw.py generate --adoption-mode existing-code-adoption` 在默认/profile 生成中渲染，具体 artifact/template 与确认边界见 [existing-code-adoption.md](./existing-code-adoption.md)
 - `docs/harness/` 继续承接 Harness doctrine；deploy 文档只定义 operator-facing deploy 合同
@@ -81,7 +82,7 @@
 - [deploy-mapping-spec.md](./deploy-mapping-spec.md)
   mapping contract。回答 canonical source / backend payload source / target / diagnose / verify 的最小正式规则。
 - [distribution-entrypoint-contract.md](./distribution-entrypoint-contract.md)
-  distribution entrypoint contract。回答未来 reusable install/update/verify/diagnose 包装层必须保持哪些 deploy 语义，以及哪些 packaging 行为尚未实现。
+  distribution entrypoint contract。回答目标 `npx aw-installer` CLI + TUI 包装层必须保持哪些 deploy 语义，以及哪些 packaging / TUI / release 行为尚未实现。
 - [agents-adapter-source.md](./agents-adapter-source.md)
   adapter source。回答 `agents` canonical-copy payload descriptor、copied skill files 与 runtime marker 边界。
 - [template-consumption-spec.md](./template-consumption-spec.md)

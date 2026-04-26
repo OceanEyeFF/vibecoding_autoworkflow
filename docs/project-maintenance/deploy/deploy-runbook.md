@@ -46,7 +46,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-`harness_deploy.py` 不表示 package / npx 发布渠道已经实现；它只包装当前 `adapter_deploy.py` 命令面。
+`harness_deploy.py` 不表示 package / npx 发布渠道已经实现；它只包装当前 `adapter_deploy.py` 命令面。目标用户入口是 Node/npm/npx 分发的 `npx aw-installer`，但当前还没有发布 `aw-installer` package。
 
 本地 npm-style scaffold 可用下面的 smoke 命令验证 bin 入口能打开同一 help surface：
 
@@ -78,7 +78,7 @@ AW_HARNESS_REPO_ROOT="$(pwd)/../../.." npm exec --yes --package "$tmpdir/$packag
 
 `AW_HARNESS_REPO_ROOT` 是 packaged wrapper 的 source checkout override。没有该 override 时，打包后的脚本会从 npm package 解压路径解析 source root，因此只能可靠验证 help surface。这里的 packaged `update` 只运行 dry-run JSON plan，不写 deploy target。
 
-CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 package smoke、pack dry-run 和带 `AW_HARNESS_REPO_ROOT` 的 diagnose / update dry-run tarball smoke。该 CI 覆盖仍只验证 repo-local scaffold，不代表 package 已发布。
+CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 package smoke、pack dry-run 和带 `AW_HARNESS_REPO_ROOT` 的 diagnose / update dry-run tarball smoke。该 CI 覆盖仍只验证 repo-local scaffold，不代表 `aw-installer`、TUI runtime 或 package 发布渠道已经实现。
 
 暂不实现：
 
@@ -94,7 +94,8 @@ CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 package
   - `install --backend agents`
 - `diagnose --backend agents --json` 是只读结构化诊断命令，发现问题时仍以 0 退出，用于给 operator 或外层自动化读取当前 deploy 状态
 - `verify --backend agents` 是只读辅助命令，不属于安装主线
-- 本地 `harness_deploy.py` wrapper 和未来 reusable package / npx-style wrapper 必须保持这些语义；包装层合同见 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)
+- 本地 `harness_deploy.py` wrapper、当前 `aw-harness-deploy` scaffold 和目标 `npx aw-installer` wrapper 必须保持这些语义；包装层合同见 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)
+- `aw-installer` 的目标形态是 CLI + TUI 双模式：CLI 是脚本化合同，TUI 只能作为同一 deploy 合同上的交互式引导层，不能绕过只读 `diagnose / verify`、显式三步 reinstall 或 `update --yes` 确认边界
 - `update` 是三步 destructive reinstall 的 one-shot 包装；默认只输出 dry-run plan，只有显式传入 `--yes` 才会执行 `prune --all -> check_paths_exist -> install -> verify`
 - 原始来源（canonical source）、后端部署包（backend payload source）、目标入口（target entry）之间的正式映射规则，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
 - `prune --all` 只删除带可识别、且属于当前 backend 的受管 `aw.marker` 目录；无 marker、不可识别 marker 或 foreign 目录一律不碰
@@ -185,4 +186,4 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ver
 - 根目录不一致（drift）、损坏链路、root 类型错误：查看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)
 - skills / `.aw_template` 的增删改查：查看 [skill-lifecycle.md](./skill-lifecycle.md)
 - 原始来源、后端部署包、目标入口的正式规则：查看 [Deploy Mapping Spec](./deploy-mapping-spec.md)
-- `claude` / `opencode` 当前暂不在部署接口中实现；恢复前不要将它们写成稳定的 operator 流程
+- `claude` / `opencode` 当前暂不在部署接口中实现；Claude skills 分发是慢车道兼容项，恢复前不要将它们写成稳定的 operator 流程
