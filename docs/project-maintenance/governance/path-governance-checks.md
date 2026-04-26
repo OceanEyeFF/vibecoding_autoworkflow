@@ -53,6 +53,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
    - compatibility shim：`tools/`
    - local ephemeral cache：`.pytest_cache/`
    - entry / infra：`README.md`、`INDEX.md`、`GUIDE.md`、`ROADMAP.md`、`AGENTS.md`、`CONTRIBUTING.md`、`.github/`、`.git*`、`.claudeignore`、`LICENSE`
+   - 根目录下裸 `.pyc` / `.pyo` 不是 allowlist 对象，必须失败
 3. `product/`、`docs/`、`toolchain/` 的一级子目录是否仍符合 allowlist
 4. 典型错放内容是否仍被拦截：
    - `product/` 中的 runbook、缓存、logs、state/runtimes 和 Python bytecode
