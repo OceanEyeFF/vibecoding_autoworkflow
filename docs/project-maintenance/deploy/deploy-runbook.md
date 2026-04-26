@@ -63,6 +63,8 @@ npm pack --dry-run --json
 
 该 dry-run 不应在仓库中留下 `.tgz` package artifact。
 
+CI 的 Governance Checks workflow 会显式设置 Node，并运行同一组本地 package smoke 与 pack dry-run。该 CI 覆盖仍只验证 repo-local scaffold，不代表 package 已发布。
+
 暂不实现：
 
 - `claude`
