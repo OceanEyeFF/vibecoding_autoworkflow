@@ -600,6 +600,32 @@ def test_closeout_gate_backfills_skipped_status(monkeypatch, tmp_path, capsys) -
     assert "skip_reasons" in details
 
 
+def test_closeout_gate_backfill_subprocess_uses_bytecode_free_env(monkeypatch, tmp_path, capsys) -> None:
+    class Args:
+        repo_root = tmp_path
+        workflow_id = "workflow-1"
+        json = True
+
+    captured_envs: list[dict[str, str]] = []
+
+    def fake_run_gate(gate: str, *, repo_root: Path, python: str, workflow_id: str) -> dict:
+        return {"passed": True, "returncode": 0}
+
+    def fake_subprocess_run(*args, **kwargs) -> subprocess.CompletedProcess[str]:
+        if "gate_status_backfill.py" in args[0][1]:
+            captured_envs.append(kwargs["env"])
+        return subprocess.CompletedProcess(args[0], 0, stdout="{}", stderr="")
+
+    monkeypatch.setattr(closeout_acceptance_gate, "parse_args", lambda: Args())
+    monkeypatch.setattr(closeout_acceptance_gate, "run_gate", fake_run_gate)
+    monkeypatch.setattr(closeout_acceptance_gate.subprocess, "run", fake_subprocess_run)
+
+    assert closeout_acceptance_gate.main() == 0
+    json.loads(capsys.readouterr().out)
+    assert captured_envs
+    assert all(env["PYTHONDONTWRITEBYTECODE"] == "1" for env in captured_envs)
+
+
 def test_find_primary_worktree_root_prefers_non_nested_worktree(monkeypatch, tmp_path) -> None:
     current_root = tmp_path / ".worktrees" / "topic"
     current_root.mkdir(parents=True)
