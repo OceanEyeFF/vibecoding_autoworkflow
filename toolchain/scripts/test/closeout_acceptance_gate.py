@@ -126,6 +126,8 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
             str(repo_root),
             "--json",
             "--allowed-prefix",
+            "README.md",
+            "--allowed-prefix",
             "docs/README.md",
             "--allowed-prefix",
             "AGENTS.md",
@@ -368,6 +370,22 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                         if required_text not in exec_result["stdout"]:
                             failures.append(f"tarball help omitted {required_text!r}")
                 subchecks.append({**exec_result, "name": "npm_exec_tarball"})
+                version_result = run_command(
+                    [
+                        "npm",
+                        "exec",
+                        "--yes",
+                        "--package",
+                        str(package_file),
+                        "--",
+                        "aw-installer",
+                        "--version",
+                    ],
+                    cwd=package_root,
+                )
+                if version_result["passed"] and "0.0.0-local" not in version_result["stdout"]:
+                    failures.append("tarball version probe omitted package version")
+                subchecks.append({**version_result, "name": "npm_exec_tarball_version"})
                 diagnose_result = run_command(
                     [
                         "npm",
@@ -582,6 +600,24 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                         if required_text not in exec_result["stdout"]:
                             failures.append(f"root tarball help omitted {required_text!r}")
                 subchecks.append({**exec_result, "name": "root_npm_exec_tarball"})
+
+                version_result = run_command(
+                    [
+                        "npm",
+                        "exec",
+                        "--yes",
+                        "--package",
+                        str(package_file),
+                        "--",
+                        "aw-installer",
+                        "--version",
+                    ],
+                    cwd=target_repo,
+                    extra_env=clean_env,
+                )
+                if version_result["passed"] and "0.0.0-local" not in version_result["stdout"]:
+                    failures.append("root tarball version probe omitted package version")
+                subchecks.append({**version_result, "name": "root_npm_exec_tarball_version"})
 
                 diagnose_result = run_command(
                     [

@@ -349,6 +349,29 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("tui", completed.stdout)
         self.assertEqual(completed.stderr, "")
 
+    def test_local_npm_installer_bin_version_reports_package_version(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        bin_path = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+
+        completed = subprocess.run(
+            ["node", str(bin_path), "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stdout, "aw-installer 0.0.0-local\n")
+        self.assertEqual(completed.stderr, "")
+
     def test_local_npm_installer_no_args_noninteractive_prints_help(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
@@ -681,6 +704,23 @@ class AdapterDeployTest(unittest.TestCase):
                 text=True,
                 check=False,
             )
+            version_completed = subprocess.run(
+                [
+                    "npm",
+                    "exec",
+                    "--yes",
+                    "--package",
+                    str(package_file),
+                    "--",
+                    "aw-installer",
+                    "--version",
+                ],
+                cwd=target_repo,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
             update_completed = subprocess.run(
                 [
                     "npm",
@@ -711,6 +751,10 @@ class AdapterDeployTest(unittest.TestCase):
             str(target_repo / ".agents" / "skills"),
         )
         self.assertNotEqual(diagnose_payload["source_root"], str(target_repo))
+
+        self.assertEqual(version_completed.returncode, 0, version_completed.stderr)
+        self.assertEqual(version_completed.stdout, "aw-installer 0.0.0-local\n")
+        self.assertEqual(version_completed.stderr, "")
 
         self.assertEqual(update_completed.returncode, 0, update_completed.stderr)
         update_payload = json.loads(update_completed.stdout)

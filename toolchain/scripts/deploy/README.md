@@ -34,7 +34,7 @@
 - `harness_deploy.py` 当前只作为薄包装入口存在；根目录 `package.json` 是 self-contained `aw-installer` package envelope，本地 package scaffold 仍暴露 `aw-installer` bin，但不表示 npm release channel 已发布
 - 目标分发入口是 `npx aw-installer`，并应支持 CLI + TUI 双模式；当前提供 root package envelope、CLI surface 和最小 `tui` shell，TUI 只能作为同一 deploy 合同上的交互式引导层
 - `update --backend agents` 默认只输出 dry-run plan；`update --backend agents --yes` 包装同一三步 destructive reinstall，并在写入后运行严格 `verify`
-- `npm --prefix toolchain/scripts/deploy run smoke --silent` 只验证本地 package scaffold 的 bin 能打开当前 help，不发布或安装 package
+- `npm --prefix toolchain/scripts/deploy run smoke --silent` 只验证本地 package scaffold 的 bin 能打开当前 help，不发布或安装 package；`aw-installer --version` 是同一 Node wrapper 上的非交互 package metadata probe
 - 如需检查目标 package envelope，在仓库根目录运行 `npm pack --dry-run --json`；本地 scaffold packlist 仍在 `toolchain/scripts/deploy/` 目录内运行
 - 如需检查发布前包面，在仓库根目录运行 `npm run publish:dry-run --silent`；这只验证 npmjs publish dry-run，不上传 package
 - 从根 package `.tgz` 执行非 help 命令时，不设置 `AW_HARNESS_REPO_ROOT` 即可从 package 内读取 source payload，并把当前工作目录作为 target repo root；`AW_HARNESS_REPO_ROOT` 仍保留为 source checkout override，`AW_HARNESS_TARGET_REPO_ROOT` 可显式覆盖 target repo root

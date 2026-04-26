@@ -2,7 +2,8 @@
 "use strict";
 
 const { spawnSync } = require("node:child_process");
-const { join } = require("node:path");
+const { existsSync, readFileSync } = require("node:fs");
+const { dirname, join } = require("node:path");
 const readline = require("node:readline");
 
 const python = process.env.PYTHON || process.env.PYTHON3 || "python3";
@@ -34,7 +35,35 @@ commands:
 
 options:
   -h, --help                  show this help message
+  -V, --version               show package version
 `);
+}
+
+function readPackageVersion() {
+  let current = __dirname;
+  while (true) {
+    const candidate = join(current, "package.json");
+    if (existsSync(candidate)) {
+      try {
+        const packageMetadata = JSON.parse(readFileSync(candidate, "utf8"));
+        if (packageMetadata.name === "aw-installer" && packageMetadata.version) {
+          return packageMetadata.version;
+        }
+      } catch (error) {
+        throw new Error(`failed to read package metadata at ${candidate}: ${error.message}`);
+      }
+    }
+
+    const parent = dirname(current);
+    if (parent === current) {
+      throw new Error("could not find aw-installer package metadata");
+    }
+    current = parent;
+  }
+}
+
+function printVersion() {
+  console.log(`aw-installer ${readPackageVersion()}`);
 }
 
 function runWrapper(args) {
@@ -139,6 +168,11 @@ async function main() {
 
   if (args[0] === "--help" || args[0] === "-h") {
     printHelp();
+    return 0;
+  }
+
+  if (args[0] === "--version" || args[0] === "-V") {
+    printVersion();
     return 0;
   }
 
