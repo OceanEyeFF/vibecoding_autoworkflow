@@ -12,15 +12,15 @@
 
 ## Facts
 
-- TODO(facts)
+- facts: TODO(facts)
 
 ## Inferences
 
-- TODO(inferences)
+- inferences: TODO(inferences)
 
 ## Unknowns
 
-- TODO(unknowns)
+- unknowns: TODO(unknowns)
 
 ## Main Contradiction
 
