@@ -6,6 +6,7 @@
 
 - `adapter_deploy.py`：为 `agents` 提供 destructive reinstall workflow、只读 `diagnose` 和只读 `verify`
 - `harness_deploy.py`：稳定的薄包装入口，保留 `adapter_deploy.py` 语义，供后续 package / npx-style wrapper 复用
+- `package.json` + `bin/aw-harness-deploy.js`：本地 npm-style package scaffold，只调用 `harness_deploy.py`，不表示 package 已发布
 - `aw_scaffold.py`：从 `product/.aw_template/` 生成 `.aw/` 运行样例，并校验模板最小结构，包括 `Engineering Node Map`、`Repo Analysis` 与 `Node Type` 协议字段
 - `product/harness/adapters/agents/skills/`：`agents` canonical-copy payload descriptor source，由 `install --backend agents` 消费
 
@@ -31,6 +32,7 @@
 - `diagnose` 由 `adapter_deploy.py diagnose --json` 提供，用于输出 backend、target root、受管安装数量、issue code 与 unrecognized / conflict 摘要；发现 issue 时仍返回 0
 - `verify` 由 `adapter_deploy.py verify` 提供，用于检查 source 合法性、target root 状态、live install 对齐，以及 conflict / unrecognized 情形
 - `harness_deploy.py` 当前只作为本地薄包装入口存在，不表示 package / npx 发布渠道已经实现
+- `npm --prefix toolchain/scripts/deploy run smoke --silent` 只验证本地 package scaffold 的 bin 能打开当前 help，不发布或安装 package
 - 当前接口只实现 `agents`
 - 不再承接 `local/global` deploy modes、`prune --outdated`、archive/history、增量修复或旧版本保活
 - `claude` 与 `opencode` 后续如需恢复，应先重定义 contract 再实现

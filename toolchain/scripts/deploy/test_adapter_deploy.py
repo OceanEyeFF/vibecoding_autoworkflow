@@ -4,6 +4,7 @@ import contextlib
 import io
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -251,6 +252,45 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertNotIn("claude", help_text.lower())
         self.assertNotIn("opencode", help_text.lower())
         self.assertEqual(stderr.getvalue(), "")
+
+    def test_local_npm_package_metadata_exposes_only_deploy_bin(self) -> None:
+        package_path = self.source_repo_root / "toolchain" / "scripts" / "deploy" / "package.json"
+
+        package = json.loads(package_path.read_text(encoding="utf-8"))
+
+        self.assertTrue(package["private"])
+        self.assertEqual(package["name"], "aw-harness-deploy")
+        self.assertEqual(package["bin"], {"aw-harness-deploy": "bin/aw-harness-deploy.js"})
+        self.assertIn("harness_deploy.py", package["files"])
+        self.assertIn("adapter_deploy.py", package["files"])
+        self.assertIn("bin/aw-harness-deploy.js", package["files"])
+
+    def test_local_npm_bin_help_preserves_current_command_surface(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        bin_path = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-harness-deploy.js"
+        )
+
+        completed = subprocess.run(
+            ["node", str(bin_path), "--help"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("harness_deploy.py", completed.stdout)
+        self.assertIn("diagnose", completed.stdout)
+        self.assertIn("verify", completed.stdout)
+        self.assertIn("install", completed.stdout)
+        self.assertNotIn("update", completed.stdout)
+        self.assertEqual(completed.stderr, "")
 
     def test_install_uses_override_root(self) -> None:
         code, stdout, stderr = self._install("--agents-root", self.override_root)

@@ -1,0 +1,17 @@
+{
+  "name": "aw-harness-deploy",
+  "version": "0.0.0-local",
+  "private": true,
+  "description": "Local package scaffold for the Harness deploy wrapper.",
+  "bin": {
+    "aw-harness-deploy": "bin/aw-harness-deploy.js"
+  },
+  "files": [
+    "adapter_deploy.py",
+    "harness_deploy.py",
+    "bin/aw-harness-deploy.js"
+  ],
+  "scripts": {
+    "smoke": "node bin/aw-harness-deploy.js --help"
+  }
+}
