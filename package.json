@@ -16,11 +16,13 @@
     "toolchain/scripts/deploy/adapter_deploy.py",
     "toolchain/scripts/deploy/harness_deploy.py",
     "toolchain/scripts/deploy/bin/aw-installer.js",
+    "toolchain/scripts/deploy/bin/check-root-publish.js",
     "toolchain/scripts/deploy/bin/aw-harness-deploy.js"
   ],
   "scripts": {
     "smoke": "node toolchain/scripts/deploy/bin/aw-installer.js --help",
     "pack:dry-run": "npm pack --dry-run --json",
+    "prepublishOnly": "node toolchain/scripts/deploy/bin/check-root-publish.js",
     "publish:dry-run": "npm publish --dry-run --json"
   },
   "publishConfig": {
