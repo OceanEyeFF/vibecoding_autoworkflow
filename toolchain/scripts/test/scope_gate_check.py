@@ -20,6 +20,7 @@ DEFAULT_ALLOWED_PREFIXES = (
     "docs/project-maintenance/",
     "docs/harness/",
     "product/README.md",
+    "package.json",
     "product/harness/skills/",
     "product/harness/adapters/",
     ".agents/",

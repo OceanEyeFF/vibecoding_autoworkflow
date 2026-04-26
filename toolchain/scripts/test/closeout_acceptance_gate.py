@@ -34,6 +34,16 @@ EXPECTED_NPM_PACKAGE_FILES = {
     "harness_deploy.py",
     "package.json",
 }
+ROOT_NPM_REQUIRED_PACKAGE_FILES = {
+    "package.json",
+    "README.md",
+    "LICENSE",
+    "toolchain/scripts/deploy/adapter_deploy.py",
+    "toolchain/scripts/deploy/harness_deploy.py",
+    "toolchain/scripts/deploy/bin/aw-installer.js",
+    "product/harness/skills/harness-skill/SKILL.md",
+    "product/harness/adapters/agents/skills/harness-skill/payload.json",
+}
 CACHE_SCAN_ROOTS = ("docs", "product", "toolchain", "tools")
 CACHE_DIR_NAMES = {"__pycache__", ".pytest_cache"}
 CACHE_FILE_SUFFIXES = (".pyc", ".pyo")
@@ -137,6 +147,8 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
             "toolchain/toolchain-layering.md",
             "--allowed-prefix",
             "product/README.md",
+            "--allowed-prefix",
+            "package.json",
         ],
         cwd=repo_root,
     )
@@ -425,6 +437,193 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
             "subchecks": subchecks,
         }
 
+    def run_root_npm_package_packlist() -> dict:
+        result = run_command(["npm", "pack", "--dry-run", "--json"], cwd=repo_root)
+        result = {**result, "cwd": "."}
+        if not result["passed"]:
+            return result
+        try:
+            payload = json.loads(result["stdout"])
+        except json.JSONDecodeError as error:
+            return {
+                **result,
+                "returncode": 1,
+                "passed": False,
+                "stderr": f"{result['stderr']}\ninvalid root npm pack JSON: {error}".strip(),
+            }
+        if len(payload) != 1:
+            return {
+                **result,
+                "returncode": 1,
+                "passed": False,
+                "stderr": f"expected one root npm pack result, got {len(payload)}",
+            }
+
+        packed_files = {entry["path"] for entry in payload[0].get("files", [])}
+        package_filename = payload[0].get("filename")
+        failures: list[str] = []
+        missing_files = sorted(ROOT_NPM_REQUIRED_PACKAGE_FILES - packed_files)
+        if missing_files:
+            failures.append(f"root npm package missing required files: {missing_files}")
+        for disallowed_prefix in (".aw/", ".agents/", ".autoworkflow/", ".claude/", ".opencode/"):
+            if any(path.startswith(disallowed_prefix) for path in packed_files):
+                failures.append(f"root npm package included {disallowed_prefix} content")
+        if not package_filename:
+            failures.append("missing root npm package filename")
+        else:
+            artifact_path = repo_root / package_filename
+            if artifact_path.exists():
+                failures.append(f"dry-run left root package artifact: {artifact_path.name}")
+        if failures:
+            return {
+                **result,
+                "returncode": 1,
+                "passed": False,
+                "stderr": "\n".join(failures),
+                "packed_files": sorted(packed_files),
+            }
+        return {**result, "packed_files": sorted(packed_files)}
+
+    def run_root_npm_package_tarball_smoke() -> dict:
+        failures: list[str] = []
+        subchecks: list[dict] = []
+        package_filename = ""
+        with tempfile.TemporaryDirectory() as package_dir:
+            package_dir_path = Path(package_dir)
+            target_repo = package_dir_path / "target-repo"
+            target_repo.mkdir()
+            pack_result = {
+                **run_command(
+                    ["npm", "pack", "--json", "--pack-destination", str(package_dir_path)],
+                    cwd=repo_root,
+                ),
+                "cwd": ".",
+            }
+            subchecks.append({**pack_result, "name": "root_npm_pack_tarball"})
+            if pack_result["passed"]:
+                try:
+                    payload = json.loads(pack_result["stdout"])
+                except json.JSONDecodeError as error:
+                    failures.append(f"invalid root npm pack JSON: {error}")
+                else:
+                    if len(payload) != 1:
+                        failures.append(f"expected one root npm pack result, got {len(payload)}")
+                    else:
+                        package_filename = payload[0].get("filename", "")
+                        package_file = package_dir_path / package_filename
+                        if not package_filename:
+                            failures.append("missing root npm package filename")
+                        elif not package_file.is_file():
+                            failures.append(f"root packed tarball was not created: {package_file}")
+                        elif (repo_root / package_filename).exists():
+                            failures.append(f"root packed tarball was written into repo: {package_filename}")
+
+            if pack_result["passed"] and not failures:
+                package_file = package_dir_path / package_filename
+                clean_env = {
+                    "AW_HARNESS_REPO_ROOT": "",
+                    "AW_HARNESS_TARGET_REPO_ROOT": "",
+                }
+                exec_result = run_command(
+                    [
+                        "npm",
+                        "exec",
+                        "--yes",
+                        "--package",
+                        str(package_file),
+                        "--",
+                        "aw-installer",
+                        "--help",
+                    ],
+                    cwd=target_repo,
+                    extra_env=clean_env,
+                )
+                if exec_result["passed"]:
+                    for required_text in ("aw-installer", "harness_deploy.py", "tui", "diagnose", "update"):
+                        if required_text not in exec_result["stdout"]:
+                            failures.append(f"root tarball help omitted {required_text!r}")
+                subchecks.append({**exec_result, "name": "root_npm_exec_tarball"})
+
+                diagnose_result = run_command(
+                    [
+                        "npm",
+                        "exec",
+                        "--yes",
+                        "--package",
+                        str(package_file),
+                        "--",
+                        "aw-installer",
+                        "diagnose",
+                        "--backend",
+                        "agents",
+                        "--json",
+                    ],
+                    cwd=target_repo,
+                    extra_env=clean_env,
+                )
+                if diagnose_result["passed"]:
+                    try:
+                        diagnose_payload = json.loads(diagnose_result["stdout"])
+                    except json.JSONDecodeError as error:
+                        failures.append(f"invalid root packaged diagnose JSON: {error}")
+                    else:
+                        if diagnose_payload.get("backend") != "agents":
+                            failures.append("root packaged diagnose did not report agents backend")
+                        if diagnose_payload.get("binding_count", 0) <= 0:
+                            failures.append("root packaged diagnose did not load source bindings")
+                        expected_target = str(target_repo / ".agents" / "skills")
+                        if diagnose_payload.get("target_root") != expected_target:
+                            failures.append("root packaged diagnose did not use cwd target root")
+                        if diagnose_payload.get("source_root") == str(target_repo):
+                            failures.append("root packaged diagnose used target repo as source root")
+                subchecks.append({**diagnose_result, "name": "root_npm_exec_tarball_diagnose"})
+
+                update_result = run_command(
+                    [
+                        "npm",
+                        "exec",
+                        "--yes",
+                        "--package",
+                        str(package_file),
+                        "--",
+                        "aw-installer",
+                        "update",
+                        "--backend",
+                        "agents",
+                        "--json",
+                    ],
+                    cwd=target_repo,
+                    extra_env=clean_env,
+                )
+                if update_result["passed"]:
+                    try:
+                        update_payload = json.loads(update_result["stdout"])
+                    except json.JSONDecodeError as error:
+                        failures.append(f"invalid root packaged update JSON: {error}")
+                    else:
+                        if update_payload.get("backend") != "agents":
+                            failures.append("root packaged update did not report agents backend")
+                        if update_payload.get("blocking_issue_count", 0) != 0:
+                            failures.append("root packaged update dry-run reported blocking issues")
+                        if not update_payload.get("planned_target_paths"):
+                            failures.append("root packaged update did not report target paths")
+                        expected_target = str(target_repo / ".agents" / "skills")
+                        if update_payload.get("target_root") != expected_target:
+                            failures.append("root packaged update did not use cwd target root")
+                        if update_payload.get("source_root") == str(target_repo):
+                            failures.append("root packaged update used target repo as source root")
+                subchecks.append({**update_result, "name": "root_npm_exec_tarball_update_dry_run"})
+
+        passed = all(result["passed"] for result in subchecks) and not failures
+        return {
+            "command": ["root-npm-package-tarball-smoke"],
+            "returncode": 0 if passed else 1,
+            "stdout": "",
+            "stderr": "\n".join(failures),
+            "passed": passed,
+            "subchecks": subchecks,
+        }
+
     def run_local_deploy_verify(backend: str, script_name: str) -> dict:
         command = [
             python,
@@ -499,6 +698,14 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
         (
             "npm_tarball_smoke_aw_installer",
             run_npm_package_tarball_smoke(),
+        ),
+        (
+            "root_npm_pack_dry_run_aw_installer",
+            run_root_npm_package_packlist(),
+        ),
+        (
+            "root_npm_tarball_smoke_aw_installer",
+            run_root_npm_package_tarball_smoke(),
         ),
     ]
     subchecks.extend(

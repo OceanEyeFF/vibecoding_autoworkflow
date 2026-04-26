@@ -19,6 +19,7 @@ ROOT_ALLOWED_NAMES = {
     "GUIDE.md",
     "INDEX.md",
     "LICENSE",
+    "package.json",
     "README.md",
     "ROADMAP.md",
     ".github",

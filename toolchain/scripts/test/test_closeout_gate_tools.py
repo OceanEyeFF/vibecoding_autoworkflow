@@ -31,12 +31,21 @@ def npm_pack_stdout(paths: set[str] | None = None, filename: str = "aw-installer
     )
 
 
-def successful_npm_command_result(command: list[str], extra_env: dict[str, str] | None = None) -> dict | None:
+def successful_npm_command_result(
+    command: list[str],
+    extra_env: dict[str, str] | None = None,
+    cwd: Path | None = None,
+) -> dict | None:
     if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
+        packed_paths = (
+            closeout_acceptance_gate.EXPECTED_NPM_PACKAGE_FILES
+            if cwd is not None and cwd.as_posix().endswith("toolchain/scripts/deploy")
+            else closeout_acceptance_gate.ROOT_NPM_REQUIRED_PACKAGE_FILES
+        )
         return {
             "command": command,
             "returncode": 0,
-            "stdout": npm_pack_stdout(),
+            "stdout": npm_pack_stdout(packed_paths),
             "stderr": "",
             "passed": True,
         }
@@ -44,10 +53,15 @@ def successful_npm_command_result(command: list[str], extra_env: dict[str, str] 
         package_dir = Path(command[command.index("--pack-destination") + 1])
         package_dir.mkdir(parents=True, exist_ok=True)
         (package_dir / "aw-installer-0.0.0-local.tgz").write_text("fake package", encoding="utf-8")
+        packed_paths = (
+            closeout_acceptance_gate.EXPECTED_NPM_PACKAGE_FILES
+            if cwd is not None and cwd.as_posix().endswith("toolchain/scripts/deploy")
+            else closeout_acceptance_gate.ROOT_NPM_REQUIRED_PACKAGE_FILES
+        )
         return {
             "command": command,
             "returncode": 0,
-            "stdout": npm_pack_stdout(),
+            "stdout": npm_pack_stdout(packed_paths),
             "stderr": "",
             "passed": True,
         }
@@ -63,7 +77,14 @@ def successful_npm_command_result(command: list[str], extra_env: dict[str, str] 
         return {
             "command": command,
             "returncode": 0,
-            "stdout": json.dumps({"backend": "agents", "binding_count": 1}),
+            "stdout": json.dumps(
+                {
+                    "backend": "agents",
+                    "binding_count": 1,
+                    "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
+                    "target_root": str((cwd or Path("/tmp/repo")) / ".agents" / "skills"),
+                }
+            ),
             "stderr": "",
             "passed": True,
         }
@@ -82,8 +103,12 @@ def successful_npm_command_result(command: list[str], extra_env: dict[str, str] 
             "stdout": json.dumps(
                 {
                     "backend": "agents",
+                    "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
+                    "target_root": str((cwd or Path("/tmp/repo")) / ".agents" / "skills"),
                     "blocking_issue_count": 0,
-                    "planned_target_paths": ["/tmp/repo/.agents/skills/aw-harness-skill"],
+                    "planned_target_paths": [
+                        str((cwd or Path("/tmp/repo")) / ".agents" / "skills" / "aw-harness-skill")
+                    ],
                 }
             ),
             "stderr": "",
@@ -114,6 +139,7 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "docs/project-maintenance/governance/review-verify-handbook.md",
             "docs/project-maintenance/governance/path-governance-checks.md",
             ".autoworkflow/closeout/demo/summary.json",
+            "package.json",
             "product/harness/skills/harness-skill/SKILL.md",
             "product/harness/adapters/agents/skills/harness-skill/payload.json",
             ".agents/skills/legacy-skill/SKILL.md",
@@ -136,6 +162,7 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             ".github/",
             "docs/README.md",
             ".autoworkflow/closeout/",
+            "package.json",
             "docs/project-maintenance/",
             "docs/harness/",
             "product/README.md",
@@ -442,7 +469,7 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
 
     def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
         calls.append((command, cwd, extra_env))
-        npm_result = successful_npm_command_result(command, extra_env)
+        npm_result = successful_npm_command_result(command, extra_env, cwd)
         if npm_result is not None:
             return npm_result
         return {
@@ -518,7 +545,7 @@ def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path)
 
     def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
         commands.append(command)
-        npm_result = successful_npm_command_result(command, extra_env)
+        npm_result = successful_npm_command_result(command, extra_env, cwd)
         if npm_result is not None:
             return npm_result
         if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]:
@@ -564,7 +591,7 @@ def test_run_test_gate_checks_broken_local_deploy_target_symlink(monkeypatch, tm
 
     def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
         commands.append(command)
-        npm_result = successful_npm_command_result(command, extra_env)
+        npm_result = successful_npm_command_result(command, extra_env, cwd)
         if npm_result is not None:
             return npm_result
         if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]:
@@ -603,7 +630,7 @@ def test_run_test_gate_fails_on_unexpected_npm_packlist(monkeypatch, tmp_path) -
                 "stderr": "",
                 "passed": True,
             }
-        npm_result = successful_npm_command_result(command, extra_env)
+        npm_result = successful_npm_command_result(command, extra_env, cwd)
         if npm_result is not None:
             return npm_result
         return {
@@ -637,7 +664,7 @@ def test_run_test_gate_fails_on_npm_tarball_exec_failure(monkeypatch, tmp_path) 
                 "stderr": "bin failed",
                 "passed": False,
             }
-        npm_result = successful_npm_command_result(command, extra_env)
+        npm_result = successful_npm_command_result(command, extra_env, cwd)
         if npm_result is not None:
             return npm_result
         return {

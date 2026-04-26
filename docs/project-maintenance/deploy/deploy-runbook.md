@@ -46,7 +46,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-`harness_deploy.py` 不表示 package / npx 发布渠道已经实现；它只包装当前 `adapter_deploy.py` 命令面。当前本地 package scaffold 已暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell 和 `aw-harness-deploy` 兼容别名，但还没有发布 npm package，也没有引入 full-screen TUI framework。
+`harness_deploy.py` 不表示 npm release channel 已发布；它只包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 仍暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell和 `aw-harness-deploy` 兼容别名；还没有执行 npm publish，也没有引入 full-screen TUI framework。
 
 本地 npm-style scaffold 可用下面的 smoke 命令验证 bin 入口能打开同一 help surface：
 
@@ -54,7 +54,15 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 npm --prefix toolchain/scripts/deploy run smoke --silent
 ```
 
-如果要检查 package packlist，进入 package root 后运行 dry-run：
+如果要检查目标 `npx aw-installer` package envelope，在仓库根目录运行 dry-run：
+
+```bash
+npm pack --dry-run --json
+```
+
+该 packlist 必须包含 `product/harness/skills`、`product/harness/adapters/agents/skills` 与 `toolchain/scripts/deploy/` wrapper 文件，并且不得包含 `.aw/`、`.agents/` 或 `.autoworkflow/`。
+
+本地 scaffold packlist 仍在 scaffold package root 内检查：
 
 ```bash
 cd toolchain/scripts/deploy
@@ -63,22 +71,26 @@ npm pack --dry-run --json
 
 该 dry-run 不应在仓库中留下 `.tgz` package artifact。
 
-更接近真实分发路径的 smoke 应把 package 打到临时目录，再从 `.tgz` 执行 bin：
+更接近真实分发路径的 smoke 应从根目录把 package 打到临时目录，再从 `.tgz` 在隔离 target repo 中执行 bin：
 
 ```bash
-cd toolchain/scripts/deploy
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 npm pack --json --pack-destination "$tmpdir" > "$tmpdir/pack.json"
 package_file="$(node -e "const fs = require('node:fs'); const payload = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); console.log(payload[0].filename);" "$tmpdir/pack.json")"
-npm exec --yes --package "$tmpdir/$package_file" -- aw-installer --help
-AW_HARNESS_REPO_ROOT="$(pwd)/../../.." npm exec --yes --package "$tmpdir/$package_file" -- aw-installer diagnose --backend agents --json
-AW_HARNESS_REPO_ROOT="$(pwd)/../../.." npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents --json
+target_repo="$tmpdir/target-repo"
+mkdir -p "$target_repo"
+(
+  cd "$target_repo"
+  AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer --help
+  AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer diagnose --backend agents --json
+  AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents --json
+)
 ```
 
-`AW_HARNESS_REPO_ROOT` 是 packaged wrapper 的 source checkout override。没有该 override 时，打包后的脚本会从 npm package 解压路径解析 source root，因此只能可靠验证 help surface。这里的 packaged `update` 只运行 dry-run JSON plan，不写 deploy target。
+这里显式清空 `AW_HARNESS_REPO_ROOT` 与 `AW_HARNESS_TARGET_REPO_ROOT`，用于验证 packaged wrapper 会从 package 内读取 source payload，并把当前工作目录作为 target repo root。packaged `update` 只运行 dry-run JSON plan，不写 deploy target。
 
-CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 package smoke、pack dry-run 和带 `AW_HARNESS_REPO_ROOT` 的 diagnose / update dry-run tarball smoke。该 CI 覆盖仍只验证 repo-local scaffold，不代表 `aw-installer`、TUI runtime 或 package 发布渠道已经实现。
+CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 scaffold smoke、本地 scaffold pack/tarball smoke、根 package pack dry-run，以及无 `AW_HARNESS_REPO_ROOT` 的根 `.tgz` help / diagnose / update dry-run smoke。该 CI 覆盖验证 package envelope，不代表 npm release channel 已发布。
 
 暂不实现：
 

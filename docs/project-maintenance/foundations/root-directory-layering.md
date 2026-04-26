@@ -25,6 +25,7 @@ last_verified: 2026-04-26
 | Product Layer | `product/` | 业务源码 | 真相正文、运行状态 |
 | Truth Layer | `docs/` | 知识与治理文档 | deploy 结果、mount/state |
 | Toolchain Layer | `toolchain/` | 脚本与评测工具 | 业务源码真相 |
+| Distribution Manifest Layer | `package.json` | npm/npx 分发包络元数据 | 业务源码真相、运行状态 |
 | Repo-local Install / Mount Layer | `.claude/` `.agents/` `.opencode/` | repo-local 安装载荷、挂载与 deploy target | 主线真相、业务源码 |
 | Repo-local State Layer | `.aw/` `.autoworkflow/` `.spec-workflow/` | 运行状态、Harness 控制面运行产物与项目级配置记忆 | 主线入口、业务源码、长期真相 |
 | Repo-local Execution Config Layer | `.codex/` | repo-local 执行配置 | 长期真相正文、运行产物 |
@@ -75,6 +76,12 @@ last_verified: 2026-04-26
 - `.aw/` 属于 repo-local Harness runtime control-plane state。
 - 它可以在本地存在并被治理检查识别为合法根目录对象，但仍必须保持 ignored，不是长期 truth layer。
 - `.aw/` 中的运行合同、队列和 evidence 只用于当前控制回路，不替代 `docs/`、`product/` 或 `toolchain/` 中的正式真相与源码。
+
+### 6. `package.json`
+
+- 根目录 `package.json` 只承接 `aw-installer` 的 npm/npx 分发包络元数据。
+- 该 manifest 可以从根目录打包 `product/` 中的 canonical Harness payload 和 `toolchain/scripts/deploy/` 中的 wrapper 工具，但不得把业务源码真相迁出 `product/`。
+- 发布动作不属于根目录分层规则本身；是否发布 npm package 必须由 deploy/release 合同另行控制。
 
 ## 四、新增根目录对象规则
 

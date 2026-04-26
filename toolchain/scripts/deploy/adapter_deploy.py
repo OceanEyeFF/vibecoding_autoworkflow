@@ -15,15 +15,29 @@ from typing import Any
 
 
 def resolve_repo_root() -> Path:
+    """Resolve the source root that owns canonical Harness payload files."""
+
     override = os.environ.get("AW_HARNESS_REPO_ROOT")
     if override:
         return Path(override).expanduser().resolve()
     return Path(__file__).resolve().parents[3]
 
 
+def resolve_target_repo_root(source_root: Path) -> Path:
+    """Resolve the user project root that receives backend install targets."""
+
+    target_override = os.environ.get("AW_HARNESS_TARGET_REPO_ROOT")
+    if target_override:
+        return Path(target_override).expanduser().resolve()
+    if os.environ.get("AW_HARNESS_REPO_ROOT"):
+        return source_root
+    return Path.cwd().resolve()
+
+
 REPO_ROOT = resolve_repo_root()
+TARGET_REPO_ROOT = resolve_target_repo_root(REPO_ROOT)
 LOCAL_TARGET_ROOTS = {
-    "agents": REPO_ROOT / ".agents" / "skills",
+    "agents": TARGET_REPO_ROOT / ".agents" / "skills",
 }
 ADAPTER_SKILL_DIRS = {
     "agents": REPO_ROOT / "product" / "harness" / "adapters" / "agents" / "skills",
@@ -1483,6 +1497,7 @@ def diagnostic_summary(result: VerifyResult) -> dict[str, Any]:
 
     return {
         "backend": result.backend,
+        "source_root": str(REPO_ROOT),
         "target_root": str(result.target_root),
         "target_root_status": target_root_status(result.target_root),
         "target_root_exists": result.target_root.exists(),
@@ -1553,6 +1568,7 @@ def update_plan_summary(backend: str, args: argparse.Namespace) -> dict[str, Any
 
     return {
         "backend": backend,
+        "source_root": str(REPO_ROOT),
         "target_root": str(target_root),
         "operation_sequence": [
             "prune --all",

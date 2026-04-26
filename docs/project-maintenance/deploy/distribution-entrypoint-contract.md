@@ -7,7 +7,7 @@ last_verified: 2026-04-26
 ---
 # Distribution Entrypoint Contract
 
-> 目的：为 reusable install/update/verify/diagnose 分发入口固定最小合同。目标分发形态是 Node/npm/npx 上的 `aw-installer`，用户入口收敛到 `npx aw-installer`；本文定义该包装层必须保持的语义，不表示 npm package、TUI runtime 或 release channel 已经发布。
+> 目的：为 reusable install/update/verify/diagnose 分发入口固定最小合同。目标分发形态是 Node/npm/npx 上的 `aw-installer`，用户入口收敛到 `npx aw-installer`；本文定义该包装层必须保持的语义，不表示 npm release channel 已经发布。
 
 本页属于 [Deploy Runbooks](./README.md) 系列。当前可执行入口仍是仓库内脚本：
 
@@ -21,13 +21,15 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-当前 `toolchain/scripts/deploy/package.json`、`bin/aw-installer.js` 和 `bin/aw-harness-deploy.js` 只提供本地 npm-style scaffold；它们调用同一个 Python wrapper，不代表 package 已发布。`aw-installer` 是当前本地 scaffold 的主 bin，`aw-harness-deploy` 是兼容别名。
+当前根目录 `package.json` 是 `aw-installer` 的 npm/npx 分发包络。它从根目录打包 `product/harness/skills`、`product/harness/adapters/agents/skills` 与 `toolchain/scripts/deploy/` wrapper，使 `.tgz` 中的 source payload 可以脱离源码 checkout 被读取。它不表示 package 已发布。
 
-package packlist 检查应在 `toolchain/scripts/deploy/` package root 内执行 `npm pack --dry-run --json`。不要从仓库根用 `--prefix` 运行 `pack`，因为该命令会寻找当前工作目录的 `package.json`。
+`toolchain/scripts/deploy/package.json`、`bin/aw-installer.js` 和 `bin/aw-harness-deploy.js` 仍保留为本地 npm-style scaffold；它们调用同一个 Python wrapper，不代表 package 已发布。`aw-installer` 是主 bin，`aw-harness-deploy` 是兼容别名。
 
-CI 必须显式设置 Node 后运行本地 package smoke、package-root pack dry-run，以及从临时 `.tgz` 执行 `aw-installer --help`、带 `AW_HARNESS_REPO_ROOT=<repo-root>` 的只读 `diagnose` 和 `update --json` dry-run tarball smoke；这些只验证当前 scaffold 的分发面，不表示 npm/npx 发布渠道已经开启。
+根 package packlist 检查在仓库根目录执行 `npm pack --dry-run --json`。本地 scaffold packlist 检查仍在 `toolchain/scripts/deploy/` package root 内执行 `npm pack --dry-run --json`。
 
-`AW_HARNESS_REPO_ROOT` 是当前 packaged wrapper 的 source checkout bridge。包装层可以改变启动位置，但所有 deploy source / target / payload 合同仍必须以该 source checkout 为准，不能从 package 解压目录或 deploy target 反推业务真相。
+CI 必须显式设置 Node 后运行本地 package smoke、本地 scaffold pack dry-run、根 package pack dry-run、本地 scaffold tarball smoke，以及根 `.tgz` 的 `aw-installer --help`、只读 `diagnose` 和 `update --json` dry-run smoke。根 `.tgz` smoke 不设置 `AW_HARNESS_REPO_ROOT`，用于证明 package 内 source payload 与当前工作目录 target root 已分离。
+
+`AW_HARNESS_REPO_ROOT` 是 source checkout override。设置它时，source root 与默认 target repo root 保持旧的 repo-local 行为；未设置它时，packaged wrapper 从 package 解压根读取 source payload，并默认把当前工作目录作为用户项目 target repo root。`AW_HARNESS_TARGET_REPO_ROOT` 可显式覆盖 target repo root。
 
 ## 一、范围
 
@@ -35,7 +37,7 @@ CI 必须显式设置 Node 后运行本地 package smoke、package-root pack dry
 
 - 分发包装层可以改变 operator 如何启动命令，但不能改变 deploy 语义。
 - CLI 是稳定的脚本化合同；TUI 是同一合同上的交互式操作层。
-- `npx aw-installer` 是目标用户入口；当前 `aw-installer` package 仍是本地 scaffold，`aw-harness-deploy` 只是兼容别名。
+- `npx aw-installer` 是目标用户入口；当前已有 root package envelope 和本地 scaffold，但 npm release channel 尚未发布，`aw-harness-deploy` 只是兼容别名。
 - 当前 `agents` backend 的 source / target / payload / marker 合同仍以 [Deploy Mapping Spec](./deploy-mapping-spec.md) 为准。
 - 当前 destructive reinstall 主流程仍以 [Deploy Runbook](./deploy-runbook.md) 为准。
 
