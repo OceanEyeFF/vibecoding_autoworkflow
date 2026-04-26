@@ -344,7 +344,15 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                     cwd=package_root,
                 )
                 if exec_result["passed"]:
-                    for required_text in ("harness_deploy.py", "diagnose", "verify", "install", "update"):
+                    for required_text in (
+                        "aw-installer",
+                        "harness_deploy.py",
+                        "tui",
+                        "diagnose",
+                        "verify",
+                        "install",
+                        "update",
+                    ):
                         if required_text not in exec_result["stdout"]:
                             failures.append(f"tarball help omitted {required_text!r}")
                 subchecks.append({**exec_result, "name": "npm_exec_tarball"})

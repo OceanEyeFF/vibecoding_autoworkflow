@@ -15,7 +15,7 @@ from scope_gate_check import check_scope, normalize_status_path
 from gate_status_backfill import update_state
 
 
-NPM_HELP_STDOUT = "usage: harness_deploy.py\ninstall\nverify\ndiagnose\nupdate\n"
+NPM_HELP_STDOUT = "usage: aw-installer\nharness_deploy.py\ntui\ninstall\nverify\ndiagnose\nupdate\n"
 
 
 def npm_pack_stdout(paths: set[str] | None = None, filename: str = "aw-installer-0.0.0-local.tgz") -> str:
