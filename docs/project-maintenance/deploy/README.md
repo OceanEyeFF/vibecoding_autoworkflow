@@ -23,6 +23,7 @@
 |---|---|---|
 | 我要给当前 backend 做一次完整重装 | [deploy-runbook.md](./deploy-runbook.md) | Quick Start，只保留 `prune --all` / `check_paths_exist` / `install` 三步主流程，`diagnose` 与 `verify` 作为只读辅助 |
 | 我想在临时 repo 里手动跑多轮 `Codex` harness 观察真实执行 | [codex-harness-manual-runbook.md](./codex-harness-manual-runbook.md) | 固定题目、临时 repo 初始化、隔离 deploy、逐轮监督与观察产物收集 |
+| 我想用 Claude Code 做项目级 skill entry smoke / 冷启动测试 | [claude-harness-test-runbook.md](./claude-harness-test-runbook.md) | 临时 repo、`.claude/skills/` 项目级安装、Claude 非交互读取与最小 `.aw/` 冷启动 |
 | 我想看已完成的 `continuous-autonomy` 手动观察证据 | [codex-harness-manual-run-continuous-2026-04-23.md](./codex-harness-manual-run-continuous-2026-04-23.md) | 记录 2026-04-23 到 2026-04-24 round-000 到 round-060 的连续 worktrack 推进、108 tests / 20 tests 复验结果，以及 budget 用尽与未用尽两种 stable handback 结论 |
 | 我想看 canonical source 到 target entry 的正式映射 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | 最小 deploy 合同，定义 canonical source / backend payload source / target / diagnose / verify |
 | 我想看 `agents` canonical-copy payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | 定义 `product/harness/adapters/agents/skills/` 的 payload descriptor 结构，以及 target 如何复制 canonical skill 内容 |
@@ -63,6 +64,8 @@
 
 - [codex-harness-manual-runbook.md](./codex-harness-manual-runbook.md)
   manual harness runbook。回答如何在临时 repo 中准备隔离运行面、连续调用无交互 `Codex`，并监督每轮真实执行内容。
+- [claude-harness-test-runbook.md](./claude-harness-test-runbook.md)
+  Claude Harness test runbook。回答如何在临时 repo 中安装项目级 Claude skill entry，并做非交互读取 smoke 与最小 `.aw/` 冷启动验证。
 - [codex-harness-manual-run-continuous-2026-04-23.md](./codex-harness-manual-run-continuous-2026-04-23.md)
   manual harness run evidence。记录同一条 `continuous-autonomy` 观察主线，包括 round-000 到 round-060、40 个 closed worktracks、后续 6 个 chartered worktracks、108 tests / 20 tests 复验，以及预算归零和未归零两种 stable handback。
 - [deploy-runbook.md](./deploy-runbook.md)
