@@ -246,6 +246,17 @@ def test_toolchain_cache_content_fails(tmp_path: Path) -> None:
     assert "toolchain/scripts/__pycache__/helper.cpython-313.pyc" in issue_paths(report)
 
 
+def test_tools_cache_content_fails(tmp_path: Path) -> None:
+    repo_root = create_valid_repo(tmp_path)
+    write_file(repo_root / "tools/__pycache__/scope_gate_check.cpython-313.pyc", "cache\n")
+
+    report = run_checks(repo_root)
+
+    assert "FL014" in issue_codes(report)
+    assert "tools/__pycache__" in issue_paths(report)
+    assert "tools/__pycache__/scope_gate_check.cpython-313.pyc" in issue_paths(report)
+
+
 def test_nav_extra_entry_fails(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
     write_file(repo_root / ".nav/@tmp", "bad\n")

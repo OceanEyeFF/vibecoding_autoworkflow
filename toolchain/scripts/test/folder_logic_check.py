@@ -344,6 +344,16 @@ def check_toolchain_patterns(repo_root: Path, report: FolderLogicReport) -> None
     report.add_info(f"checked {checked} toolchain/ paths for misplaced canonical or runtime content")
 
 
+def check_tools_patterns(repo_root: Path, report: FolderLogicReport) -> None:
+    checked = 0
+    for relative_path in iter_relative_paths(repo_root / "tools", repo_root):
+        checked += 1
+        name = Path(relative_path).name
+        if name in {"__pycache__", ".pytest_cache"} or name.endswith((".pyc", ".pyo")):
+            report.add_issue("FL014", relative_path, "tools/ must not contain runtime cache content")
+    report.add_info(f"checked {checked} tools/ paths for runtime cache content")
+
+
 def check_tracked_exceptions(tracked_paths: set[str], report: FolderLogicReport, rules: FolderRules) -> None:
     checked = 0
     for tracked_path in sorted(tracked_paths):
@@ -413,6 +423,7 @@ def run_checks(repo_root: Path, rules: FolderRules | None = None) -> FolderLogic
     check_product_patterns(repo_root, report)
     check_docs_patterns(repo_root, report)
     check_toolchain_patterns(repo_root, report)
+    check_tools_patterns(repo_root, report)
     check_tracked_exceptions(tracked_paths, report, effective_rules)
     check_nav_layer(repo_root, report)
     return report

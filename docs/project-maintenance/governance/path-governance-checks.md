@@ -58,6 +58,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
    - `product/` 中的 runbook、缓存、logs、state/runtimes
    - `docs/` 中的脚本、可执行文件、运行产物、缓存
    - `toolchain/` 中的 canonical 业务源码目录、repo-local mount/state 内容、运行日志、运行缓存和 Python bytecode
+   - `tools/` 中的 Python / pytest 运行缓存
 5. hidden/state/mount 层的 tracked 真实状态是否仍受控：
    - `.agents/skills/`、`.claude/skills/`、`.opencode/skills/` 允许 tracked 的 repo-local install payload
    - 这些目录之外的 mount-layer tracked 内容仍应失败
