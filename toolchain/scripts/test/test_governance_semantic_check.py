@@ -16,6 +16,7 @@ from governance_semantic_check import (
     check_outdated_placeholder_phrases,
     check_path_governance_docs_list_gitignore_entries,
     check_repo_python_commands_are_bytecode_free,
+    check_review_verify_docs_list_closeout_steps,
     check_root_tool_shims_disable_bytecode,
     check_required_handoffs,
 )
@@ -464,5 +465,29 @@ def test_check_path_governance_docs_list_gitignore_entries_accepts_complete_list
 
     report = SemanticReport()
     check_path_governance_docs_list_gitignore_entries(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_review_verify_docs_list_closeout_steps_flags_missing_step(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/review-verify-handbook.md",
+        "scope_gate -> spec_gate -> static_gate -> test_gate -> smoke_gate\n",
+    )
+
+    report = SemanticReport()
+    check_review_verify_docs_list_closeout_steps(tmp_path, report)
+
+    assert any("cache_gate" in item for item in report.failures)
+
+
+def test_check_review_verify_docs_list_closeout_steps_accepts_complete_sequence(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/review-verify-handbook.md",
+        "scope_gate -> spec_gate -> static_gate -> cache_gate -> test_gate -> smoke_gate\n",
+    )
+
+    report = SemanticReport()
+    check_review_verify_docs_list_closeout_steps(tmp_path, report)
 
     assert report.failures == []
