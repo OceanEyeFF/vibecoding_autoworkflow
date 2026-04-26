@@ -15,6 +15,9 @@ from scope_gate_check import check_scope, normalize_status_path
 from gate_status_backfill import update_state
 
 
+NPM_HELP_STDOUT = "usage: harness_deploy.py\ninstall\nverify\ndiagnose\n"
+
+
 def npm_pack_stdout(paths: set[str] | None = None, filename: str = "aw-harness-deploy-0.0.0-local.tgz") -> str:
     if paths is None:
         paths = closeout_acceptance_gate.EXPECTED_NPM_PACKAGE_FILES
@@ -26,6 +29,37 @@ def npm_pack_stdout(paths: set[str] | None = None, filename: str = "aw-harness-d
             }
         ]
     )
+
+
+def successful_npm_command_result(command: list[str]) -> dict | None:
+    if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": npm_pack_stdout(),
+            "stderr": "",
+            "passed": True,
+        }
+    if command[:3] == ["npm", "pack", "--json"] and "--pack-destination" in command:
+        package_dir = Path(command[command.index("--pack-destination") + 1])
+        package_dir.mkdir(parents=True, exist_ok=True)
+        (package_dir / "aw-harness-deploy-0.0.0-local.tgz").write_text("fake package", encoding="utf-8")
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": npm_pack_stdout(),
+            "stderr": "",
+            "passed": True,
+        }
+    if command[:2] == ["npm", "exec"]:
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": NPM_HELP_STDOUT,
+            "stderr": "",
+            "passed": True,
+        }
+    return None
 
 
 def test_check_scope_accepts_allowed_prefixes() -> None:
@@ -369,11 +403,13 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
 
     def fake_run_command(command: list[str], *, cwd: Path) -> dict:
         calls.append((command, cwd))
-        stdout = npm_pack_stdout() if command[:4] == ["npm", "pack", "--dry-run", "--json"] else ""
+        npm_result = successful_npm_command_result(command)
+        if npm_result is not None:
+            return npm_result
         return {
             "command": command,
             "returncode": 0,
-            "stdout": stdout,
+            "stdout": "",
             "stderr": "",
             "passed": True,
         }
@@ -384,7 +420,7 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
     commands = [command for command, _ in calls]
 
     assert result["passed"] is True
-    assert [item["name"] for item in result["subchecks"][:7]] == [
+    assert [item["name"] for item in result["subchecks"][:8]] == [
         "gate_tool_tests",
         "folder_logic_tests",
         "path_governance_tests",
@@ -392,6 +428,7 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
         "agents_adapter_contract_tests",
         "repo_analysis_contract_check",
         "npm_pack_dry_run_aw_harness_deploy",
+        "npm_tarball_smoke_aw_harness_deploy",
     ]
     assert any(command[-1] == "toolchain/scripts/test/test_folder_logic_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_path_governance_check.py" for command in commands)
@@ -403,6 +440,12 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
         and cwd == tmp_path / "toolchain" / "scripts" / "deploy"
         for command, cwd in calls
     )
+    assert any(
+        command[:3] == ["npm", "pack", "--json"]
+        and cwd == tmp_path / "toolchain" / "scripts" / "deploy"
+        for command, cwd in calls
+    )
+    assert any(command[:2] == ["npm", "exec"] for command in commands)
     deploy_verify_commands = [
         command
         for command in commands
@@ -422,14 +465,9 @@ def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path)
 
     def fake_run_command(command: list[str], *, cwd: Path) -> dict:
         commands.append(command)
-        if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
-            return {
-                "command": command,
-                "returncode": 0,
-                "stdout": npm_pack_stdout(),
-                "stderr": "",
-                "passed": True,
-            }
+        npm_result = successful_npm_command_result(command)
+        if npm_result is not None:
+            return npm_result
         if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]:
             return {
                 "command": command,
@@ -473,14 +511,9 @@ def test_run_test_gate_checks_broken_local_deploy_target_symlink(monkeypatch, tm
 
     def fake_run_command(command: list[str], *, cwd: Path) -> dict:
         commands.append(command)
-        if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
-            return {
-                "command": command,
-                "returncode": 0,
-                "stdout": npm_pack_stdout(),
-                "stderr": "",
-                "passed": True,
-            }
+        npm_result = successful_npm_command_result(command)
+        if npm_result is not None:
+            return npm_result
         if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]:
             return {
                 "command": command,
@@ -517,6 +550,9 @@ def test_run_test_gate_fails_on_unexpected_npm_packlist(monkeypatch, tmp_path) -
                 "stderr": "",
                 "passed": True,
             }
+        npm_result = successful_npm_command_result(command)
+        if npm_result is not None:
+            return npm_result
         return {
             "command": command,
             "returncode": 0,
@@ -536,6 +572,41 @@ def test_run_test_gate_fails_on_unexpected_npm_packlist(monkeypatch, tmp_path) -
     )
     assert pack_result["passed"] is False
     assert "unexpected npm package files" in pack_result["stderr"]
+
+
+def test_run_test_gate_fails_on_npm_tarball_exec_failure(monkeypatch, tmp_path) -> None:
+    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+        if command[:2] == ["npm", "exec"]:
+            return {
+                "command": command,
+                "returncode": 1,
+                "stdout": "",
+                "stderr": "bin failed",
+                "passed": False,
+            }
+        npm_result = successful_npm_command_result(command)
+        if npm_result is not None:
+            return npm_result
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is False
+    assert result["status"] == "failed"
+    tarball_result = next(
+        item for item in result["subchecks"] if item["name"] == "npm_tarball_smoke_aw_harness_deploy"
+    )
+    assert tarball_result["passed"] is False
+    exec_result = next(item for item in tarball_result["subchecks"] if item["name"] == "npm_exec_tarball")
+    assert exec_result["stderr"] == "bin failed"
 
 
 def test_closeout_gate_fails_closed_on_test_gate_failure(monkeypatch, tmp_path, capsys) -> None:
