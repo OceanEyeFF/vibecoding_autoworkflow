@@ -97,8 +97,11 @@ TOOLCHAIN_BANNED_SEGMENTS = {
     ".claude",
     ".nav",
     ".opencode",
+    ".pytest_cache",
     ".spec-workflow",
+    "__pycache__",
     "adapters",
+    "cache",
     "logs",
     "manifests",
     "skills",
@@ -333,11 +336,11 @@ def check_toolchain_patterns(repo_root: Path, report: FolderLogicReport) -> None
             report.add_issue(
                 "FL006",
                 relative_path,
-                "toolchain/ must not contain canonical source roots, repo-local mount content, or state layers",
+                "toolchain/ must not contain canonical source roots, repo-local mount content, caches, or state layers",
             )
             continue
-        if name in GENERIC_RUNTIME_FILENAMES or name.endswith(".log"):
-            report.add_issue("FL006", relative_path, "toolchain/ must not contain runtime logs or state files")
+        if name in GENERIC_RUNTIME_FILENAMES or name.endswith((".log", ".pyc", ".pyo")):
+            report.add_issue("FL006", relative_path, "toolchain/ must not contain runtime logs, state files, or bytecode caches")
     report.add_info(f"checked {checked} toolchain/ paths for misplaced canonical or runtime content")
 
 
