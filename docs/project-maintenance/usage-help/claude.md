@@ -59,8 +59,8 @@ last_verified: 2026-04-25
 `set-harness-goal-skill` 自带的 `scripts/deploy_aw.py` 可以把该技能自身安装到目标 repo 的 Claude 项目级 skill 目录：
 
 ```bash
-python3 scripts/deploy_aw.py install-claude-skill --deploy-path "$DEPLOY_PATH"
-python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --install-claude-skill
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/deploy_aw.py install-claude-skill --deploy-path "$DEPLOY_PATH"
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --install-claude-skill
 ```
 
 边界：

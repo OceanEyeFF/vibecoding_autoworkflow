@@ -34,10 +34,10 @@ last_verified: 2026-04-24
 推荐顺序：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
 ```
 
 如需观察真实 Harness 行为，使用 [Codex Harness Manual Runbook](../deploy/codex-harness-manual-runbook.md)。该 runbook 在临时 repo 中准备隔离 `.agents/skills/`，用无交互 `codex exec` 真实调用 `harness-skill`，观察空 repo 冷启动、`.aw/` 初始化、scope 切换与真实任务推进。
@@ -60,10 +60,10 @@ python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
 `agents` backend 的主要差异只有 target root 参数：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents --agents-root /your/custom/skills
-python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents --agents-root /your/custom/skills
-python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents --agents-root /your/custom/skills
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents --agents-root /your/custom/skills
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents --agents-root /your/custom/skills
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents --agents-root /your/custom/skills
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents --agents-root /your/custom/skills
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents --agents-root /your/custom/skills
 ```
 
 当前语义：
