@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -111,6 +112,23 @@ APPEND_REQUEST_CLASSIFICATIONS = [
     "design-only",
     "design-then-implementation",
 ]
+BYTECODE_FREE_COMMAND_GLOBS = [
+    "AGENTS.md",
+    "docs/project-maintenance/**/*.md",
+    "product/harness/skills/**/*.md",
+    "toolchain/scripts/deploy/README.md",
+]
+BYTECODE_FREE_COMMAND_EXCLUDED_PATHS = {
+    "docs/project-maintenance/deploy/codex-harness-manual-run-continuous-2026-04-23.md",
+}
+REPO_PYTHON_COMMAND_RE = re.compile(
+    r"\bpython3\s+(?:"
+    r"-m\s+(?:pytest|unittest)\b|"
+    r"(?:toolchain/scripts|scripts/deploy_aw\.py|product/harness/skills)/"
+    r")"
+)
+
+
 @dataclass
 class SemanticReport:
     failures: list[str] = field(default_factory=list)
@@ -336,6 +354,36 @@ def check_append_request_contract_terms(repo_root: Path, report: SemanticReport)
     report.add_info(f"checked {checked} append request contract sources")
 
 
+def iter_bytecode_free_command_files(repo_root: Path) -> list[Path]:
+    command_files: list[Path] = []
+    seen: set[Path] = set()
+    for pattern in BYTECODE_FREE_COMMAND_GLOBS:
+        for path in sorted(repo_root.glob(pattern)):
+            if path.is_file() and path not in seen:
+                seen.add(path)
+                command_files.append(path)
+    return command_files
+
+
+def check_repo_python_commands_are_bytecode_free(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    for command_file in iter_bytecode_free_command_files(repo_root):
+        relative_path = to_relative_posix(command_file, repo_root)
+        if relative_path in BYTECODE_FREE_COMMAND_EXCLUDED_PATHS:
+            continue
+
+        for line_number, line in enumerate(command_file.read_text(encoding="utf-8").splitlines(), 1):
+            for match in REPO_PYTHON_COMMAND_RE.finditer(line):
+                checked += 1
+                prefix_window = line[max(0, match.start() - 48) : match.start()]
+                if "PYTHONDONTWRITEBYTECODE=1" not in prefix_window:
+                    report.add_failure(
+                        "repo Python command must set PYTHONDONTWRITEBYTECODE=1: "
+                        f"{relative_path}:{line_number}"
+                    )
+    report.add_info(f"checked {checked} repo Python command examples for bytecode-free invocation")
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -347,6 +395,7 @@ def main() -> int:
     check_canonical_skill_packages_are_minimal(repo_root, report)
     check_adapter_wrappers_are_thin(repo_root, report)
     check_append_request_contract_terms(repo_root, report)
+    check_repo_python_commands_are_bytecode_free(repo_root, report)
 
     payload = {
         "passed": not report.failures,

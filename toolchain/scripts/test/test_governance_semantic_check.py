@@ -12,6 +12,7 @@ from governance_semantic_check import (
     check_canonical_skill_packages_are_minimal,
     check_foundations_authority_shadows,
     check_outdated_placeholder_phrases,
+    check_repo_python_commands_are_bytecode_free,
     check_required_handoffs,
 )
 
@@ -290,5 +291,54 @@ def test_check_canonical_skill_packages_are_minimal_ignores_code_fence_headings(
     )
     report = SemanticReport()
     check_canonical_skill_packages_are_minimal(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_repo_python_commands_are_bytecode_free_flags_bare_repo_command(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/review-verify-handbook.md",
+        "Run `python3 toolchain/scripts/test/folder_logic_check.py`.\n",
+    )
+
+    report = SemanticReport()
+    check_repo_python_commands_are_bytecode_free(tmp_path, report)
+
+    assert any("review-verify-handbook.md:1" in item for item in report.failures)
+
+
+def test_check_repo_python_commands_are_bytecode_free_accepts_prefixed_repo_command(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/review-verify-handbook.md",
+        "Run `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/folder_logic_check.py`.\n",
+    )
+
+    report = SemanticReport()
+    check_repo_python_commands_are_bytecode_free(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_repo_python_commands_are_bytecode_free_checks_each_occurrence(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "toolchain/scripts/deploy/README.md",
+        "`PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/aw_scaffold.py list` and "
+        "`python3 -m pytest toolchain/scripts/test/test_folder_logic_check.py`\n",
+    )
+
+    report = SemanticReport()
+    check_repo_python_commands_are_bytecode_free(tmp_path, report)
+
+    assert len(report.failures) == 1
+
+
+def test_check_repo_python_commands_are_bytecode_free_skips_historical_log(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/deploy/codex-harness-manual-run-continuous-2026-04-23.md",
+        "`python3 -m unittest discover -s tests -v`\n",
+    )
+
+    report = SemanticReport()
+    check_repo_python_commands_are_bytecode_free(tmp_path, report)
 
     assert report.failures == []
