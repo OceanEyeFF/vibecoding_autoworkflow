@@ -25,6 +25,13 @@ DEPLOY_VERIFY_ENTRYPOINTS = (
     ("adapter", "adapter_deploy.py"),
     ("wrapper", "harness_deploy.py"),
 )
+EXPECTED_NPM_PACKAGE_FILES = {
+    "README.md",
+    "adapter_deploy.py",
+    "bin/aw-harness-deploy.js",
+    "harness_deploy.py",
+    "package.json",
+}
 CACHE_SCAN_ROOTS = ("docs", "product", "toolchain", "tools")
 CACHE_DIR_NAMES = {"__pycache__", ".pytest_cache"}
 CACHE_FILE_SUFFIXES = (".pyc", ".pyo")
@@ -77,7 +84,16 @@ def parse_args() -> argparse.Namespace:
 def run_command(command: list[str], *, cwd: Path) -> dict:
     env = os.environ.copy()
     env["PYTHONDONTWRITEBYTECODE"] = "1"
-    completed = subprocess.run(command, capture_output=True, text=True, cwd=cwd, env=env)
+    try:
+        completed = subprocess.run(command, capture_output=True, text=True, cwd=cwd, env=env)
+    except FileNotFoundError as error:
+        return {
+            "command": command,
+            "returncode": 127,
+            "stdout": "",
+            "stderr": str(error),
+            "passed": False,
+        }
     return {
         "command": command,
         "returncode": completed.returncode,
@@ -225,6 +241,53 @@ def run_cache_gate(repo_root: Path, python: str) -> dict:
 
 
 def run_test_gate(repo_root: Path, python: str) -> dict:
+    def run_npm_package_packlist() -> dict:
+        package_root = repo_root / "toolchain" / "scripts" / "deploy"
+        result = run_command(["npm", "pack", "--dry-run", "--json"], cwd=package_root)
+        result = {**result, "cwd": package_root.relative_to(repo_root).as_posix()}
+        if not result["passed"]:
+            return result
+        try:
+            payload = json.loads(result["stdout"])
+        except json.JSONDecodeError as error:
+            return {
+                **result,
+                "returncode": 1,
+                "passed": False,
+                "stderr": f"{result['stderr']}\ninvalid npm pack JSON: {error}".strip(),
+            }
+        if len(payload) != 1:
+            return {
+                **result,
+                "returncode": 1,
+                "passed": False,
+                "stderr": f"expected one npm pack result, got {len(payload)}",
+            }
+
+        packed_files = {entry["path"] for entry in payload[0].get("files", [])}
+        package_filename = payload[0].get("filename")
+        failures: list[str] = []
+        if packed_files != EXPECTED_NPM_PACKAGE_FILES:
+            failures.append(
+                "unexpected npm package files: "
+                f"expected {sorted(EXPECTED_NPM_PACKAGE_FILES)}, got {sorted(packed_files)}"
+            )
+        if not package_filename:
+            failures.append("missing npm package filename")
+        else:
+            artifact_path = package_root / package_filename
+            if artifact_path.exists():
+                failures.append(f"dry-run left package artifact: {artifact_path.relative_to(repo_root).as_posix()}")
+        if failures:
+            return {
+                **result,
+                "returncode": 1,
+                "passed": False,
+                "stderr": "\n".join(failures),
+                "packed_files": sorted(packed_files),
+            }
+        return {**result, "packed_files": sorted(packed_files)}
+
     def run_local_deploy_verify(backend: str, script_name: str) -> dict:
         command = [
             python,
@@ -275,6 +338,10 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
         (
             "repo_analysis_contract_check",
             run_command([python, "toolchain/scripts/test/repo_analysis_contract_check.py"], cwd=repo_root),
+        ),
+        (
+            "npm_pack_dry_run_aw_harness_deploy",
+            run_npm_package_packlist(),
         ),
     ]
     subchecks.extend(

@@ -15,6 +15,19 @@ from scope_gate_check import check_scope, normalize_status_path
 from gate_status_backfill import update_state
 
 
+def npm_pack_stdout(paths: set[str] | None = None, filename: str = "aw-harness-deploy-0.0.0-local.tgz") -> str:
+    if paths is None:
+        paths = closeout_acceptance_gate.EXPECTED_NPM_PACKAGE_FILES
+    return json.dumps(
+        [
+            {
+                "filename": filename,
+                "files": [{"path": path} for path in sorted(paths)],
+            }
+        ]
+    )
+
+
 def test_check_scope_accepts_allowed_prefixes() -> None:
     result = check_scope(
         [
@@ -352,14 +365,15 @@ def test_run_cache_gate_allows_root_pytest_cache(tmp_path) -> None:
 
 
 def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
-    commands: list[list[str]] = []
+    calls: list[tuple[list[str], Path]] = []
 
     def fake_run_command(command: list[str], *, cwd: Path) -> dict:
-        commands.append(command)
+        calls.append((command, cwd))
+        stdout = npm_pack_stdout() if command[:4] == ["npm", "pack", "--dry-run", "--json"] else ""
         return {
             "command": command,
             "returncode": 0,
-            "stdout": "",
+            "stdout": stdout,
             "stderr": "",
             "passed": True,
         }
@@ -367,21 +381,28 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
 
     result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
+    commands = [command for command, _ in calls]
 
     assert result["passed"] is True
-    assert [item["name"] for item in result["subchecks"][:6]] == [
+    assert [item["name"] for item in result["subchecks"][:7]] == [
         "gate_tool_tests",
         "folder_logic_tests",
         "path_governance_tests",
         "governance_semantic_tests",
         "agents_adapter_contract_tests",
         "repo_analysis_contract_check",
+        "npm_pack_dry_run_aw_harness_deploy",
     ]
     assert any(command[-1] == "toolchain/scripts/test/test_folder_logic_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_path_governance_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_governance_semantic_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_agents_adapter_contract.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/repo_analysis_contract_check.py" for command in commands)
+    assert any(
+        command == ["npm", "pack", "--dry-run", "--json"]
+        and cwd == tmp_path / "toolchain" / "scripts" / "deploy"
+        for command, cwd in calls
+    )
     deploy_verify_commands = [
         command
         for command in commands
@@ -401,6 +422,14 @@ def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path)
 
     def fake_run_command(command: list[str], *, cwd: Path) -> dict:
         commands.append(command)
+        if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
+            return {
+                "command": command,
+                "returncode": 0,
+                "stdout": npm_pack_stdout(),
+                "stderr": "",
+                "passed": True,
+            }
         if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]:
             return {
                 "command": command,
@@ -444,6 +473,14 @@ def test_run_test_gate_checks_broken_local_deploy_target_symlink(monkeypatch, tm
 
     def fake_run_command(command: list[str], *, cwd: Path) -> dict:
         commands.append(command)
+        if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
+            return {
+                "command": command,
+                "returncode": 0,
+                "stdout": npm_pack_stdout(),
+                "stderr": "",
+                "passed": True,
+            }
         if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]:
             return {
                 "command": command,
@@ -468,6 +505,37 @@ def test_run_test_gate_checks_broken_local_deploy_target_symlink(monkeypatch, tm
     assert result["status"] == "failed"
     assert any("adapter_deploy.py" in command[1] for command in commands)
     assert any("harness_deploy.py" in command[1] for command in commands)
+
+
+def test_run_test_gate_fails_on_unexpected_npm_packlist(monkeypatch, tmp_path) -> None:
+    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+        if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
+            return {
+                "command": command,
+                "returncode": 0,
+                "stdout": npm_pack_stdout({"README.md", "test_adapter_deploy.py"}),
+                "stderr": "",
+                "passed": True,
+            }
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is False
+    assert result["status"] == "failed"
+    pack_result = next(
+        item for item in result["subchecks"] if item["name"] == "npm_pack_dry_run_aw_harness_deploy"
+    )
+    assert pack_result["passed"] is False
+    assert "unexpected npm package files" in pack_result["stderr"]
 
 
 def test_closeout_gate_fails_closed_on_test_gate_failure(monkeypatch, tmp_path, capsys) -> None:
