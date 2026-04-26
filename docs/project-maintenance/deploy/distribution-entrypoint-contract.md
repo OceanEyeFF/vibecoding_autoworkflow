@@ -21,6 +21,8 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
+当前 `toolchain/scripts/deploy/package.json` 和 `bin/aw-harness-deploy.js` 只提供本地 npm-style scaffold；它们调用同一个 Python wrapper，不代表 package 已发布。
+
 ## 一、范围
 
 本文定义未来分发入口的外层合同：
@@ -90,4 +92,4 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py <mo
 
 ## 六、当前停止线
 
-当前仓库只承诺 repo-local deploy scripts 和 `agents` backend。`harness_deploy.py` 是本地薄包装入口，不是已发布 package。下一轮如果要进入 packaging，应以本文为合同输入，先建立包装层最小验证，再讨论发布渠道。
+当前仓库只承诺 repo-local deploy scripts、本地 npm-style scaffold 和 `agents` backend。`harness_deploy.py` 与 `bin/aw-harness-deploy.js` 都是本地薄包装入口，不是已发布 package。下一轮如果要进入 packaging，应以本文为合同输入，先建立包装层最小验证，再讨论发布渠道。

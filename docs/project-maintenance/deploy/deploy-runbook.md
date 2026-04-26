@@ -48,6 +48,12 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 
 `harness_deploy.py` 不表示 package / npx 发布渠道已经实现；它只包装当前 `adapter_deploy.py` 命令面。
 
+本地 npm-style scaffold 可用下面的 smoke 命令验证 bin 入口能打开同一 help surface：
+
+```bash
+npm --prefix toolchain/scripts/deploy run smoke --silent
+```
+
 暂不实现：
 
 - `claude`
