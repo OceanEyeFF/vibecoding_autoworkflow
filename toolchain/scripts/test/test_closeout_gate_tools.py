@@ -15,7 +15,7 @@ from scope_gate_check import check_scope, normalize_status_path
 from gate_status_backfill import update_state
 
 
-NPM_HELP_STDOUT = "usage: harness_deploy.py\ninstall\nverify\ndiagnose\n"
+NPM_HELP_STDOUT = "usage: harness_deploy.py\ninstall\nverify\ndiagnose\nupdate\n"
 
 
 def npm_pack_stdout(paths: set[str] | None = None, filename: str = "aw-harness-deploy-0.0.0-local.tgz") -> str:
@@ -64,6 +64,28 @@ def successful_npm_command_result(command: list[str], extra_env: dict[str, str] 
             "command": command,
             "returncode": 0,
             "stdout": json.dumps({"backend": "agents", "binding_count": 1}),
+            "stderr": "",
+            "passed": True,
+        }
+    if command[:2] == ["npm", "exec"] and "update" in command:
+        if extra_env is None or "AW_HARNESS_REPO_ROOT" not in extra_env:
+            return {
+                "command": command,
+                "returncode": 1,
+                "stdout": "",
+                "stderr": "missing AW_HARNESS_REPO_ROOT",
+                "passed": False,
+            }
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": json.dumps(
+                {
+                    "backend": "agents",
+                    "blocking_issue_count": 0,
+                    "planned_target_paths": ["/tmp/repo/.agents/skills/aw-harness-skill"],
+                }
+            ),
             "stderr": "",
             "passed": True,
         }
@@ -465,6 +487,12 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
     assert any(
         command[:2] == ["npm", "exec"]
         and "diagnose" in command
+        and extra_env == {"AW_HARNESS_REPO_ROOT": str(tmp_path)}
+        for command, _, extra_env in calls
+    )
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and "update" in command
         and extra_env == {"AW_HARNESS_REPO_ROOT": str(tmp_path)}
         for command, _, extra_env in calls
     )
