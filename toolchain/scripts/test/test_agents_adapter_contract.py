@@ -119,6 +119,21 @@ class AgentsAdapterContractTest(unittest.TestCase):
             f"duplicate target_dir bindings are not allowed: {duplicates}",
         )
 
+    def test_set_harness_goal_agents_payload_includes_default_repo_analysis_template(self) -> None:
+        payload = load_json(
+            ADAPTER_SKILLS_DIR / "set-harness-goal-skill" / "payload.json"
+        )
+        canonical_paths = payload["canonical_paths"]
+        required_payload_files = payload["required_payload_files"]
+
+        self.assertIsInstance(canonical_paths, list)
+        self.assertIsInstance(required_payload_files, list)
+        self.assertIn(
+            "product/harness/skills/set-harness-goal-skill/assets/repo/analysis.md",
+            canonical_paths,
+        )
+        self.assertIn("assets/repo/analysis.md", required_payload_files)
+
     def test_agents_adapter_diagnose_json_reports_missing_root_without_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             target_root = Path(temp_dir) / "missing-agents-skills"

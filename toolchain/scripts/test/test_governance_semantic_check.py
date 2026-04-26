@@ -333,6 +333,30 @@ def test_check_repo_python_commands_are_bytecode_free_flags_bare_repo_command(tm
     assert any("review-verify-handbook.md:1" in item for item in report.failures)
 
 
+def test_check_repo_python_commands_are_bytecode_free_flags_bare_python_repo_command(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/branch-pr-governance.md",
+        "Run `python toolchain/scripts/test/folder_logic_check.py`.\n",
+    )
+
+    report = SemanticReport()
+    check_repo_python_commands_are_bytecode_free(tmp_path, report)
+
+    assert any("branch-pr-governance.md:1" in item for item in report.failures)
+
+
+def test_check_repo_python_commands_are_bytecode_free_flags_bare_python_module_command(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/branch-pr-governance.md",
+        "Run `python -m pytest toolchain/scripts/test/test_folder_logic_check.py`.\n",
+    )
+
+    report = SemanticReport()
+    check_repo_python_commands_are_bytecode_free(tmp_path, report)
+
+    assert any("branch-pr-governance.md:1" in item for item in report.failures)
+
+
 def test_check_repo_python_commands_are_bytecode_free_accepts_prefixed_repo_command(tmp_path: Path) -> None:
     write_doc(
         tmp_path / "docs/project-maintenance/governance/review-verify-handbook.md",
