@@ -789,6 +789,49 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertGreater(diagnose_payload["binding_count"], 0)
         self.assertFalse((package_root / payload[0]["filename"]).exists())
 
+    def test_adapter_cli_rejects_source_root_override_without_payload_bindings(self) -> None:
+        source_root = self.temp_root / "not-a-harness-checkout"
+        target_repo = self.temp_root / "target-repo"
+        source_root.mkdir()
+        (target_repo / ".agents" / "skills").mkdir(parents=True)
+        script_path = self.source_repo_root / "toolchain" / "scripts" / "deploy" / "adapter_deploy.py"
+        env = {
+            **os.environ,
+            "AW_HARNESS_REPO_ROOT": str(source_root),
+            "AW_HARNESS_TARGET_REPO_ROOT": str(target_repo),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+
+        verify_completed = subprocess.run(
+            [sys.executable, str(script_path), "verify", "--backend", "agents"],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        diagnose_completed = subprocess.run(
+            [sys.executable, str(script_path), "diagnose", "--backend", "agents", "--json"],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(verify_completed.returncode, 1)
+        self.assertIn("missing-backend-payload-source", verify_completed.stdout)
+        self.assertNotIn("[agents] ok", verify_completed.stdout)
+        self.assertEqual(verify_completed.stderr, "")
+
+        self.assertEqual(diagnose_completed.returncode, 0, diagnose_completed.stderr)
+        diagnose_payload = json.loads(diagnose_completed.stdout)
+        self.assertEqual(diagnose_payload["binding_count"], 0)
+        self.assertEqual(diagnose_payload["issue_count"], 1)
+        self.assertIn("missing-backend-payload-source", diagnose_payload["issue_codes"])
+        self.assertEqual(
+            diagnose_payload["issues"][0]["path"],
+            str(source_root / "product" / "harness" / "adapters" / "agents" / "skills"),
+        )
+
     def test_local_npm_packed_tarball_update_dry_run_uses_repo_root_override(self) -> None:
         if shutil.which("npm") is None:
             self.skipTest("npm is not available")
