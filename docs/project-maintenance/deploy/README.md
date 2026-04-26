@@ -8,6 +8,7 @@
 - `prune --all -> check_paths_exist -> install --backend agents` 的操作口径
 - 只读 `diagnose / verify` 的状态观察与诊断闭环
 - canonical source 到 backend payload / target entry 的映射合同
+- 未来 reusable distribution entrypoint 的语义边界
 - `.aw_template/` 的 `.aw/` 使用合同与边界
 
 这里不适合放：
@@ -26,6 +27,7 @@
 | 我想用 Claude Code 做项目级 skill entry smoke / 冷启动测试 | [claude-harness-test-runbook.md](./claude-harness-test-runbook.md) | 临时 repo、`.claude/skills/` 项目级安装、Claude 非交互读取与最小 `.aw/` 冷启动 |
 | 我想看已完成的 `continuous-autonomy` 手动观察证据 | [codex-harness-manual-run-continuous-2026-04-23.md](./codex-harness-manual-run-continuous-2026-04-23.md) | 记录 2026-04-23 到 2026-04-24 round-000 到 round-060 的连续 worktrack 推进、108 tests / 20 tests 复验结果，以及 budget 用尽与未用尽两种 stable handback 结论 |
 | 我想看 canonical source 到 target entry 的正式映射 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | 最小 deploy 合同，定义 canonical source / backend payload source / target / diagnose / verify |
+| 我想看未来 package/npx 风格分发入口必须保持什么语义 | [distribution-entrypoint-contract.md](./distribution-entrypoint-contract.md) | 定义 reusable install/update/verify/diagnose 包装层合同；不表示 packaging 已实现 |
 | 我想看 `agents` canonical-copy payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | 定义 `product/harness/adapters/agents/skills/` 的 payload descriptor 结构，以及 target 如何复制 canonical skill 内容 |
 | 我想初始化 `.aw/` 样例并校验 `.aw_template` 最小结构 | [template-tooling-mvp.md](./template-tooling-mvp.md) | B2 的最小工作面，只做 `.aw_template -> .aw` 样例生成与前置校验 |
 | 我想把已有代码库接入 Harness 初始化流程 | [existing-code-adoption.md](./existing-code-adoption.md) | 定义 `.aw/repo/discovery-input.md` 作为只读事实输入，不作为 goal truth |
@@ -45,6 +47,7 @@
 - `install --backend agents` 只写当前 source 声明的 live payload；若存在重复 `target_dir`、路径冲突或其他 source 非法情形，必须在写入前失败
 - `diagnose --backend agents --json` 保留为只读状态摘要命令，用于输出 source / target / issue code / conflict / unrecognized 摘要，发现 issue 时仍以 0 退出
 - `verify --backend agents` 保留为只读严格复验命令，用于检查 source 合法性、target root 状态、live install 对齐，以及 conflict / unrecognized 情形，发现 issue 时非零退出
+- 未来 reusable package / npx-style wrapper 必须保持 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 中定义的只读、严格复验和三步 destructive reinstall 语义；当前尚未实现包装层或 `update` 命令
 - 不再承接这些主线语义：
   - `retired-target-dir`
   - `prune --outdated`
@@ -76,6 +79,8 @@
   maintenance / diagnosis。回答只读 `diagnose / verify`、冲突扫描、drift 与恢复路径。
 - [deploy-mapping-spec.md](./deploy-mapping-spec.md)
   mapping contract。回答 canonical source / backend payload source / target / diagnose / verify 的最小正式规则。
+- [distribution-entrypoint-contract.md](./distribution-entrypoint-contract.md)
+  distribution entrypoint contract。回答未来 reusable install/update/verify/diagnose 包装层必须保持哪些 deploy 语义，以及哪些 packaging 行为尚未实现。
 - [agents-adapter-source.md](./agents-adapter-source.md)
   adapter source。回答 `agents` canonical-copy payload descriptor、copied skill files 与 runtime marker 边界。
 - [template-consumption-spec.md](./template-consumption-spec.md)
