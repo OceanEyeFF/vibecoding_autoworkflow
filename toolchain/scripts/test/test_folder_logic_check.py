@@ -146,6 +146,18 @@ def test_pytest_cache_untracked_passes_but_tracked_fails(tmp_path: Path) -> None
     assert "FL013" in issue_codes(tracked_report)
 
 
+def test_root_bytecode_files_fail_root_allowlist(tmp_path: Path) -> None:
+    repo_root = create_valid_repo(tmp_path)
+    write_file(repo_root / "demo.pyc", "cache\n")
+    write_file(repo_root / "demo.pyo", "cache\n")
+
+    report = run_checks(repo_root)
+
+    assert "FL001" in issue_codes(report)
+    assert "demo.pyc" in issue_paths(report)
+    assert "demo.pyo" in issue_paths(report)
+
+
 def test_codex_layer_passes_when_config_and_rules_are_present(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
 
