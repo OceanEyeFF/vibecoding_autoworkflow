@@ -276,19 +276,26 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertNotIn("opencode", help_text.lower())
         self.assertEqual(stderr.getvalue(), "")
 
-    def test_local_npm_package_metadata_exposes_only_deploy_bin(self) -> None:
+    def test_local_npm_package_metadata_exposes_installer_bin_and_legacy_alias(self) -> None:
         package_path = self.source_repo_root / "toolchain" / "scripts" / "deploy" / "package.json"
 
         package = json.loads(package_path.read_text(encoding="utf-8"))
 
         self.assertTrue(package["private"])
-        self.assertEqual(package["name"], "aw-harness-deploy")
-        self.assertEqual(package["bin"], {"aw-harness-deploy": "bin/aw-harness-deploy.js"})
+        self.assertEqual(package["name"], "aw-installer")
+        self.assertEqual(
+            package["bin"],
+            {
+                "aw-installer": "bin/aw-installer.js",
+                "aw-harness-deploy": "bin/aw-harness-deploy.js",
+            },
+        )
         self.assertIn("harness_deploy.py", package["files"])
         self.assertIn("adapter_deploy.py", package["files"])
+        self.assertIn("bin/aw-installer.js", package["files"])
         self.assertIn("bin/aw-harness-deploy.js", package["files"])
 
-    def test_local_npm_bin_help_preserves_current_command_surface(self) -> None:
+    def test_local_npm_installer_bin_help_preserves_current_command_surface(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
         bin_path = (
@@ -297,7 +304,7 @@ class AdapterDeployTest(unittest.TestCase):
             / "scripts"
             / "deploy"
             / "bin"
-            / "aw-harness-deploy.js"
+            / "aw-installer.js"
         )
 
         completed = subprocess.run(
@@ -338,6 +345,7 @@ class AdapterDeployTest(unittest.TestCase):
                 "README.md",
                 "adapter_deploy.py",
                 "harness_deploy.py",
+                "bin/aw-installer.js",
                 "bin/aw-harness-deploy.js",
                 "package.json",
             },
@@ -375,7 +383,7 @@ class AdapterDeployTest(unittest.TestCase):
                     "--package",
                     str(package_file),
                     "--",
-                    "aw-harness-deploy",
+                    "aw-installer",
                     "--help",
                 ],
                 cwd=package_root,
@@ -424,7 +432,7 @@ class AdapterDeployTest(unittest.TestCase):
                     "--package",
                     str(package_file),
                     "--",
-                    "aw-harness-deploy",
+                    "aw-installer",
                     "diagnose",
                     "--backend",
                     "agents",
@@ -475,7 +483,7 @@ class AdapterDeployTest(unittest.TestCase):
                     "--package",
                     str(package_file),
                     "--",
-                    "aw-harness-deploy",
+                    "aw-installer",
                     "update",
                     "--backend",
                     "agents",

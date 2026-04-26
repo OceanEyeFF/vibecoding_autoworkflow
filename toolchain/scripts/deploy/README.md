@@ -6,7 +6,7 @@
 
 - `adapter_deploy.py`：为 `agents` 提供 destructive reinstall workflow、只读 `diagnose` 和只读 `verify`
 - `harness_deploy.py`：稳定的薄包装入口，保留 `adapter_deploy.py` 语义，供目标 `aw-installer` package / npx wrapper 复用
-- `package.json` + `bin/aw-harness-deploy.js`：本地 npm-style package scaffold，只调用 `harness_deploy.py`，不表示 package 已发布，也不是最终用户入口名
+- `package.json` + `bin/aw-installer.js` + `bin/aw-harness-deploy.js`：本地 npm-style package scaffold，只调用 `harness_deploy.py`；`aw-installer` 是主 bin，`aw-harness-deploy` 是兼容别名，不表示 package 已发布
 - `aw_scaffold.py`：从 `product/.aw_template/` 生成 `.aw/` 运行样例，并校验模板最小结构，包括 `Engineering Node Map`、`Repo Analysis` 与 `Node Type` 协议字段
 - `product/harness/adapters/agents/skills/`：`agents` canonical-copy payload descriptor source，由 `install --backend agents` 消费
 
@@ -31,8 +31,8 @@
 - `install --backend agents` 只写当前 source 声明的 live payload；若存在重复 `target_dir`、路径冲突或其他 source 非法情形，必须在写入前失败
 - `diagnose` 由 `adapter_deploy.py diagnose --json` 提供，用于输出 backend、target root、受管安装数量、issue code 与 unrecognized / conflict 摘要；发现 issue 时仍返回 0
 - `verify` 由 `adapter_deploy.py verify` 提供，用于检查 source 合法性、target root 状态、live install 对齐，以及 conflict / unrecognized 情形
-- `harness_deploy.py` 当前只作为本地薄包装入口存在，不表示 `aw-installer` package / npx 发布渠道已经实现
-- 目标分发入口是 `npx aw-installer`，并应支持 CLI + TUI 双模式：CLI 保持可脚本化，TUI 只作为同一 deploy 合同上的交互式引导层
+- `harness_deploy.py` 当前只作为本地薄包装入口存在；本地 package scaffold 暴露 `aw-installer` bin，但不表示 npm/npx 发布渠道已经实现
+- 目标分发入口是 `npx aw-installer`，并应支持 CLI + TUI 双模式；当前只提供 CLI surface，TUI 后续只能作为同一 deploy 合同上的交互式引导层
 - `update --backend agents` 默认只输出 dry-run plan；`update --backend agents --yes` 包装同一三步 destructive reinstall，并在写入后运行严格 `verify`
 - `npm --prefix toolchain/scripts/deploy run smoke --silent` 只验证本地 package scaffold 的 bin 能打开当前 help，不发布或安装 package
 - 如需检查 package packlist，在 `toolchain/scripts/deploy/` 目录内运行 `npm pack --dry-run --json`；不要从仓库根用 `--prefix` 跑 `pack`

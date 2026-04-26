@@ -46,7 +46,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-`harness_deploy.py` 不表示 package / npx 发布渠道已经实现；它只包装当前 `adapter_deploy.py` 命令面。目标用户入口是 Node/npm/npx 分发的 `npx aw-installer`，但当前还没有发布 `aw-installer` package。
+`harness_deploy.py` 不表示 package / npx 发布渠道已经实现；它只包装当前 `adapter_deploy.py` 命令面。当前本地 package scaffold 已暴露 `aw-installer` bin 和 `aw-harness-deploy` 兼容别名，但还没有发布 npm package，也没有实现 TUI runtime。
 
 本地 npm-style scaffold 可用下面的 smoke 命令验证 bin 入口能打开同一 help surface：
 
@@ -71,9 +71,9 @@ tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 npm pack --json --pack-destination "$tmpdir" > "$tmpdir/pack.json"
 package_file="$(node -e "const fs = require('node:fs'); const payload = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); console.log(payload[0].filename);" "$tmpdir/pack.json")"
-npm exec --yes --package "$tmpdir/$package_file" -- aw-harness-deploy --help
-AW_HARNESS_REPO_ROOT="$(pwd)/../../.." npm exec --yes --package "$tmpdir/$package_file" -- aw-harness-deploy diagnose --backend agents --json
-AW_HARNESS_REPO_ROOT="$(pwd)/../../.." npm exec --yes --package "$tmpdir/$package_file" -- aw-harness-deploy update --backend agents --json
+npm exec --yes --package "$tmpdir/$package_file" -- aw-installer --help
+AW_HARNESS_REPO_ROOT="$(pwd)/../../.." npm exec --yes --package "$tmpdir/$package_file" -- aw-installer diagnose --backend agents --json
+AW_HARNESS_REPO_ROOT="$(pwd)/../../.." npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents --json
 ```
 
 `AW_HARNESS_REPO_ROOT` 是 packaged wrapper 的 source checkout override。没有该 override 时，打包后的脚本会从 npm package 解压路径解析 source root，因此只能可靠验证 help surface。这里的 packaged `update` 只运行 dry-run JSON plan，不写 deploy target。
@@ -94,7 +94,7 @@ CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 package
   - `install --backend agents`
 - `diagnose --backend agents --json` 是只读结构化诊断命令，发现问题时仍以 0 退出，用于给 operator 或外层自动化读取当前 deploy 状态
 - `verify --backend agents` 是只读辅助命令，不属于安装主线
-- 本地 `harness_deploy.py` wrapper、当前 `aw-harness-deploy` scaffold 和目标 `npx aw-installer` wrapper 必须保持这些语义；包装层合同见 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)
+- 本地 `harness_deploy.py` wrapper、当前 `aw-installer` scaffold、`aw-harness-deploy` 兼容别名和目标 `npx aw-installer` wrapper 必须保持这些语义；包装层合同见 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)
 - `aw-installer` 的目标形态是 CLI + TUI 双模式：CLI 是脚本化合同，TUI 只能作为同一 deploy 合同上的交互式引导层，不能绕过只读 `diagnose / verify`、显式三步 reinstall 或 `update --yes` 确认边界
 - `update` 是三步 destructive reinstall 的 one-shot 包装；默认只输出 dry-run plan，只有显式传入 `--yes` 才会执行 `prune --all -> check_paths_exist -> install -> verify`
 - 原始来源（canonical source）、后端部署包（backend payload source）、目标入口（target entry）之间的正式映射规则，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
