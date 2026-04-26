@@ -14,7 +14,9 @@ Claude_Official_Docs/
 
 # Python
 **/__pycache__/
+.pytest_cache/
 *.pyc
+*.pyo
 .pycache-tmp/
 *.pyc.*
 .venv*/
