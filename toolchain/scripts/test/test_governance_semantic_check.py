@@ -12,6 +12,7 @@ from governance_semantic_check import (
     check_append_request_contract_terms,
     check_adapter_wrappers_are_thin,
     check_canonical_skill_packages_are_minimal,
+    check_docs_list_closeout_cache_roots,
     check_foundations_authority_shadows,
     check_outdated_placeholder_phrases,
     check_path_governance_docs_list_gitignore_entries,
@@ -489,5 +490,32 @@ def test_check_review_verify_docs_list_closeout_steps_accepts_complete_sequence(
 
     report = SemanticReport()
     check_review_verify_docs_list_closeout_steps(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_docs_list_closeout_cache_roots_flags_missing_root(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/review-verify-handbook.md",
+        "`docs/` `product/` `toolchain/`\n",
+    )
+    write_doc(
+        tmp_path / "toolchain/scripts/test/README.md",
+        "`docs/` `product/` `toolchain/` `tools/`\n",
+    )
+
+    report = SemanticReport()
+    check_docs_list_closeout_cache_roots(tmp_path, report)
+
+    assert any("tools" in item for item in report.failures)
+
+
+def test_check_docs_list_closeout_cache_roots_accepts_complete_roots(tmp_path: Path) -> None:
+    roots = "`docs/` `product/` `toolchain/` `tools/`\n"
+    write_doc(tmp_path / "docs/project-maintenance/governance/review-verify-handbook.md", roots)
+    write_doc(tmp_path / "toolchain/scripts/test/README.md", roots)
+
+    report = SemanticReport()
+    check_docs_list_closeout_cache_roots(tmp_path, report)
 
     assert report.failures == []
