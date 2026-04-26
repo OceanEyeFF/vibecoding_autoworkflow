@@ -307,6 +307,7 @@ def test_run_cache_gate_rejects_runtime_cache_under_controlled_roots(tmp_path) -
     (tmp_path / "tools" / "__pycache__").mkdir(parents=True)
     (tmp_path / "docs" / "demo.pyc").parent.mkdir(parents=True)
     (tmp_path / "docs" / "demo.pyc").write_text("cache\n", encoding="utf-8")
+    (tmp_path / "product" / "demo.pyo").write_text("cache\n", encoding="utf-8")
 
     result = closeout_acceptance_gate.run_cache_gate(tmp_path, sys.executable)
 
@@ -315,6 +316,7 @@ def test_run_cache_gate_rejects_runtime_cache_under_controlled_roots(tmp_path) -
     assert "product/demo/__pycache__" in result["stderr"]
     assert "tools/__pycache__" in result["stderr"]
     assert "docs/demo.pyc" in result["stderr"]
+    assert "product/demo.pyo" in result["stderr"]
 
 
 def test_run_cache_gate_allows_root_pytest_cache(tmp_path) -> None:
