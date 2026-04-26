@@ -39,6 +39,8 @@
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
 ```
 
+GitHub CI 的 `Governance Checks` workflow 也会运行同一组 deploy regression tests，避免 deploy 工具回归只停留在本地验证。
+
 相关回归应覆盖：
 
 - `prune --all` 只删除带 marker 的受管目录，不删除 foreign / unrecognized 目录

@@ -3,10 +3,11 @@
 ## Changes
 
 ## Verification
-- [ ] `python toolchain/scripts/test/folder_logic_check.py`
-- [ ] `python toolchain/scripts/test/path_governance_check.py`
-- [ ] `python toolchain/scripts/test/governance_semantic_check.py`
-- [ ] `python -m pytest toolchain/scripts/test`
+- [ ] `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/folder_logic_check.py`
+- [ ] `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/path_governance_check.py`
+- [ ] `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_check.py`
+- [ ] `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test`
+- [ ] `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'`
 
 ## Risks
 
