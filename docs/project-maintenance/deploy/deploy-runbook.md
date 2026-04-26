@@ -62,6 +62,14 @@ npm pack --dry-run --json
 
 该 packlist 必须包含 `product/harness/skills`、`product/harness/adapters/agents/skills` 与 `toolchain/scripts/deploy/` wrapper 文件，并且不得包含 `.aw/`、`.agents/` 或 `.autoworkflow/`。
 
+发布前 dry-run 只验证 npm publish 包面和 registry 配置，不上传 package：
+
+```bash
+npm run publish:dry-run --silent
+```
+
+根 package 的 `publishConfig.registry` 固定为 `https://registry.npmjs.org/`，避免本机 npm mirror 配置影响目标 release channel。真实发布仍需要单独确认版本、tag、npm 凭证和 release 审批。
+
 本地 scaffold packlist 仍在 scaffold package root 内检查：
 
 ```bash
@@ -90,7 +98,7 @@ mkdir -p "$target_repo"
 
 这里显式清空 `AW_HARNESS_REPO_ROOT` 与 `AW_HARNESS_TARGET_REPO_ROOT`，用于验证 packaged wrapper 会从 package 内读取 source payload，并把当前工作目录作为 target repo root。packaged `update` 只运行 dry-run JSON plan，不写 deploy target。
 
-CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 scaffold smoke、本地 scaffold pack/tarball smoke、根 package pack dry-run，以及无 `AW_HARNESS_REPO_ROOT` 的根 `.tgz` help / diagnose / update dry-run smoke。该 CI 覆盖验证 package envelope，不代表 npm release channel 已发布。
+CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 scaffold smoke、本地 scaffold pack/tarball smoke、根 package pack dry-run、根 package publish dry-run，以及无 `AW_HARNESS_REPO_ROOT` 的根 `.tgz` help / diagnose / update dry-run smoke。该 CI 覆盖验证 package envelope 和 publish preflight，不代表 npm release channel 已发布。
 
 暂不实现：
 
