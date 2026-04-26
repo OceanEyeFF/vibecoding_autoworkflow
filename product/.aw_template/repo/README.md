@@ -4,4 +4,5 @@
 
 当前入口：
 
+- [analysis.md](./analysis.md)
 - [snapshot-status.md](./snapshot-status.md)

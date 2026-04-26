@@ -27,6 +27,7 @@
 ## Linked Formal Documents
 
 - repo_snapshot:
+- repo_analysis:
 - worktrack_contract:
 - plan_task_queue:
 - gate_evidence:

@@ -238,6 +238,16 @@ class SetHarnessGoalDeployAwValidationTest(unittest.TestCase):
         self.assertNotIn("TODO(repository_path)", discovery_text)
         self.assertIn("- baseline_branch: master", discovery_text)
 
+        analysis_path = output_root / ".aw" / "repo" / "analysis.md"
+        self.assertTrue(analysis_path.is_file())
+        analysis_text = analysis_path.read_text(encoding="utf-8")
+        self.assertIn('artifact_type: "repo-analysis"', analysis_text)
+        self.assertIn("- analysis_status: TODO(analysis_status)", analysis_text)
+        self.assertIn("- recommended_next_route: TODO(recommended_next_route)", analysis_text)
+
+        control_state_text = (output_root / ".aw" / "control-state.md").read_text(encoding="utf-8")
+        self.assertIn("- repo_analysis: repo/analysis.md", control_state_text)
+
     def test_existing_code_adoption_env_deploy_path_writes_repository_path(self) -> None:
         output_root = Path(self.temp_dir.name)
         args = deploy_aw.parse_args(
