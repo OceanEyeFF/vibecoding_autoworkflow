@@ -300,6 +300,31 @@ def test_run_static_gate_reports_syntax_errors(tmp_path) -> None:
     assert "toolchain/scripts/test/bad.py" in result["stderr"]
 
 
+def test_run_cache_gate_rejects_runtime_cache_under_controlled_roots(tmp_path) -> None:
+    cache_dir = tmp_path / "toolchain" / "scripts" / ".pytest_cache"
+    cache_dir.mkdir(parents=True)
+    (tmp_path / "product" / "demo" / "__pycache__").mkdir(parents=True)
+    (tmp_path / "docs" / "demo.pyc").parent.mkdir(parents=True)
+    (tmp_path / "docs" / "demo.pyc").write_text("cache\n", encoding="utf-8")
+
+    result = closeout_acceptance_gate.run_cache_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is False
+    assert "toolchain/scripts/.pytest_cache" in result["stderr"]
+    assert "product/demo/__pycache__" in result["stderr"]
+    assert "docs/demo.pyc" in result["stderr"]
+
+
+def test_run_cache_gate_allows_root_pytest_cache(tmp_path) -> None:
+    (tmp_path / ".pytest_cache").mkdir()
+    (tmp_path / "toolchain").mkdir()
+
+    result = closeout_acceptance_gate.run_cache_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is True
+    assert result["stderr"] == ""
+
+
 def test_run_test_gate_includes_agents_adapter_contract_tests(monkeypatch, tmp_path) -> None:
     commands: list[list[str]] = []
 
@@ -429,6 +454,7 @@ def test_closeout_gate_fails_closed_on_test_gate_failure(monkeypatch, tmp_path, 
         "scope_gate",
         "spec_gate",
         "static_gate",
+        "cache_gate",
         "test_gate",
     ]
 
