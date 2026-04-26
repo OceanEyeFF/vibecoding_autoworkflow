@@ -33,10 +33,8 @@ git -C "$TMP_REPO" init
 git -C "$TMP_REPO" checkout -b main
 
 PYTHONDONTWRITEBYTECODE=1 python3 product/harness/skills/set-harness-goal-skill/scripts/deploy_aw.py \
-  generate \
-  --deploy-path "$TMP_REPO" \
-  --baseline-branch main \
-  --install-claude-skill
+  install-claude-skill \
+  --deploy-path "$TMP_REPO"
 ```
 
 确认项目级 Claude skill 已安装：
@@ -80,6 +78,7 @@ claude --bare -p '/aw-set-harness-goal-skill
 
 ```bash
 cd "$TMP_REPO"
+test ! -e .aw
 
 claude --bare --permission-mode acceptEdits -p '/aw-set-harness-goal-skill
 在这个临时 repo 中初始化 Harness control plane。
@@ -100,6 +99,7 @@ git status --short --untracked-files=all
 通过标准：
 
 - 三个 `.aw/` control-plane 文件存在。
+- `.aw/` 在冷启动写入 smoke 前不存在。
 - `git status` 只显示临时 repo 中预期的 untracked runtime artifacts。
 - 没有在当前源仓库写入 `.claude/`、`.aw/` 或业务源码。
 
