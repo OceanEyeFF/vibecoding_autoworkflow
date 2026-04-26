@@ -230,11 +230,16 @@ ENTRYPOINT_LINK_RULES = {
     ],
 }
 REQUIRED_GITIGNORE_ENTRIES = [
+    ".aw/",
     ".agents/",
     ".claude/",
     ".opencode/",
     ".autoworkflow/",
     ".spec-workflow/",
+    "**/__pycache__/",
+    ".pytest_cache/",
+    "*.pyc",
+    "*.pyo",
 ]
 FRONTMATTER_REQUIRED_KEYS = [
     "title",
