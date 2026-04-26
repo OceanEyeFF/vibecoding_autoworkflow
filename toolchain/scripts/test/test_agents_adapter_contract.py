@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path, PurePosixPath
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ADAPTER_SKILLS_DIR = REPO_ROOT / "product" / "harness" / "adapters" / "agents" / "skills"
+ADAPTER_DEPLOY_SCRIPT = REPO_ROOT / "toolchain" / "scripts" / "deploy" / "adapter_deploy.py"
 EXPECTED_AGENTS_SKILLS = {
     "close-worktrack-skill",
     "dispatch-skills",
@@ -114,6 +118,38 @@ class AgentsAdapterContractTest(unittest.TestCase):
             {},
             f"duplicate target_dir bindings are not allowed: {duplicates}",
         )
+
+    def test_agents_adapter_diagnose_json_reports_missing_root_without_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            target_root = Path(temp_dir) / "missing-agents-skills"
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(ADAPTER_DEPLOY_SCRIPT),
+                    "diagnose",
+                    "--backend",
+                    "agents",
+                    "--agents-root",
+                    str(target_root),
+                    "--json",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stderr, "")
+
+        summary = json.loads(completed.stdout)
+        self.assertEqual(summary["backend"], "agents")
+        self.assertEqual(summary["target_root"], str(target_root))
+        self.assertEqual(summary["target_root_status"], "missing")
+        self.assertFalse(summary["target_root_exists"])
+        self.assertEqual(summary["managed_install_count"], 0)
+        self.assertEqual(summary["issue_count"], 1)
+        self.assertEqual(summary["issue_codes"], ["missing-target-root"])
+        self.assertEqual(summary["issues"][0]["code"], "missing-target-root")
 
 if __name__ == "__main__":
     unittest.main()
