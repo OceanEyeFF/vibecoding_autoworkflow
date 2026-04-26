@@ -31,12 +31,12 @@
 - `install --backend agents` 只写当前 source 声明的 live payload；若存在重复 `target_dir`、路径冲突或其他 source 非法情形，必须在写入前失败
 - `diagnose` 由 `adapter_deploy.py diagnose --json` 提供，用于输出 backend、target root、受管安装数量、issue code 与 unrecognized / conflict 摘要；发现 issue 时仍返回 0
 - `verify` 由 `adapter_deploy.py verify` 提供，用于检查 source 合法性、target root 状态、live install 对齐，以及 conflict / unrecognized 情形
-- `harness_deploy.py` 当前只作为本地薄包装入口存在；本地 package scaffold 暴露 `aw-installer` bin，但不表示 npm/npx 发布渠道已经实现
-- 目标分发入口是 `npx aw-installer`，并应支持 CLI + TUI 双模式；当前提供 CLI surface 和最小 `tui` shell，TUI 只能作为同一 deploy 合同上的交互式引导层
+- `harness_deploy.py` 当前只作为薄包装入口存在；根目录 `package.json` 是 self-contained `aw-installer` package envelope，本地 package scaffold 仍暴露 `aw-installer` bin，但不表示 npm release channel 已发布
+- 目标分发入口是 `npx aw-installer`，并应支持 CLI + TUI 双模式；当前提供 root package envelope、CLI surface 和最小 `tui` shell，TUI 只能作为同一 deploy 合同上的交互式引导层
 - `update --backend agents` 默认只输出 dry-run plan；`update --backend agents --yes` 包装同一三步 destructive reinstall，并在写入后运行严格 `verify`
 - `npm --prefix toolchain/scripts/deploy run smoke --silent` 只验证本地 package scaffold 的 bin 能打开当前 help，不发布或安装 package
-- 如需检查 package packlist，在 `toolchain/scripts/deploy/` 目录内运行 `npm pack --dry-run --json`；不要从仓库根用 `--prefix` 跑 `pack`
-- 从打包后的 `.tgz` 执行非 help 命令时，使用 `AW_HARNESS_REPO_ROOT=<repo-root>` 指向真实 source checkout；否则脚本会从 package 解压路径解析 source root；packaged `update --json` 只作为 dry-run smoke，不写 deploy target
+- 如需检查目标 package envelope，在仓库根目录运行 `npm pack --dry-run --json`；本地 scaffold packlist 仍在 `toolchain/scripts/deploy/` 目录内运行
+- 从根 package `.tgz` 执行非 help 命令时，不设置 `AW_HARNESS_REPO_ROOT` 即可从 package 内读取 source payload，并把当前工作目录作为 target repo root；`AW_HARNESS_REPO_ROOT` 仍保留为 source checkout override，`AW_HARNESS_TARGET_REPO_ROOT` 可显式覆盖 target repo root
 - 当前接口只实现 `agents`
 - 不再承接 `local/global` deploy modes、`prune --outdated`、archive/history、增量修复或旧版本保活
 - `claude` 与 `opencode` 后续如需恢复，应先重定义 contract 再实现；Claude skills 分发当前是慢车道兼容项，不阻塞 `aw-installer` 主线

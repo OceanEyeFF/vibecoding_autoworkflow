@@ -1,0 +1,28 @@
+{
+  "name": "aw-installer",
+  "version": "0.0.0-local",
+  "description": "Self-contained npm package envelope for the AW Harness installer.",
+  "license": "MIT",
+  "bin": {
+    "aw-installer": "toolchain/scripts/deploy/bin/aw-installer.js",
+    "aw-harness-deploy": "toolchain/scripts/deploy/bin/aw-harness-deploy.js"
+  },
+  "files": [
+    "README.md",
+    "LICENSE",
+    "product/harness/skills",
+    "product/harness/adapters/agents/skills",
+    "toolchain/scripts/deploy/README.md",
+    "toolchain/scripts/deploy/adapter_deploy.py",
+    "toolchain/scripts/deploy/harness_deploy.py",
+    "toolchain/scripts/deploy/bin/aw-installer.js",
+    "toolchain/scripts/deploy/bin/aw-harness-deploy.js"
+  ],
+  "scripts": {
+    "smoke": "node toolchain/scripts/deploy/bin/aw-installer.js --help",
+    "pack:dry-run": "npm pack --dry-run --json"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

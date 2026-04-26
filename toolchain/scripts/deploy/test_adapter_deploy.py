@@ -295,6 +295,24 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("bin/aw-installer.js", package["files"])
         self.assertIn("bin/aw-harness-deploy.js", package["files"])
 
+    def test_root_npm_package_metadata_exposes_self_contained_envelope(self) -> None:
+        package_path = self.source_repo_root / "package.json"
+        package = json.loads(package_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(package["name"], "aw-installer")
+        self.assertNotIn("private", package)
+        self.assertEqual(
+            package["bin"],
+            {
+                "aw-installer": "toolchain/scripts/deploy/bin/aw-installer.js",
+                "aw-harness-deploy": "toolchain/scripts/deploy/bin/aw-harness-deploy.js",
+            },
+        )
+        self.assertIn("product/harness/skills", package["files"])
+        self.assertIn("product/harness/adapters/agents/skills", package["files"])
+        self.assertIn("toolchain/scripts/deploy/harness_deploy.py", package["files"])
+        self.assertIn("toolchain/scripts/deploy/adapter_deploy.py", package["files"])
+
     def test_local_npm_installer_bin_help_preserves_current_command_surface(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
@@ -398,6 +416,38 @@ class AdapterDeployTest(unittest.TestCase):
                 "package.json",
             },
         )
+        self.assertFalse((package_root / payload[0]["filename"]).exists())
+
+    def test_root_npm_pack_dry_run_contains_self_contained_payload_surface(self) -> None:
+        if shutil.which("npm") is None:
+            self.skipTest("npm is not available")
+        package_root = self.source_repo_root
+
+        completed = subprocess.run(
+            ["npm", "pack", "--dry-run", "--json"],
+            cwd=package_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertEqual(len(payload), 1)
+        packed_files = {entry["path"] for entry in payload[0]["files"]}
+        for required_path in {
+            "package.json",
+            "README.md",
+            "LICENSE",
+            "toolchain/scripts/deploy/adapter_deploy.py",
+            "toolchain/scripts/deploy/harness_deploy.py",
+            "toolchain/scripts/deploy/bin/aw-installer.js",
+            "product/harness/skills/harness-skill/SKILL.md",
+            "product/harness/adapters/agents/skills/harness-skill/payload.json",
+        }:
+            self.assertIn(required_path, packed_files)
+        self.assertFalse(any(path.startswith(".aw/") for path in packed_files))
+        self.assertFalse(any(path.startswith(".agents/") for path in packed_files))
         self.assertFalse((package_root / payload[0]["filename"]).exists())
 
     def test_local_npm_packed_tarball_bin_help_preserves_current_command_surface(self) -> None:
@@ -551,6 +601,99 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(update_payload["blocking_issue_count"], 0)
         self.assertGreater(len(update_payload["planned_target_paths"]), 0)
         self.assertFalse((package_root / payload[0]["filename"]).exists())
+
+    def test_root_npm_packed_tarball_uses_package_source_and_cwd_target_without_override(self) -> None:
+        if shutil.which("npm") is None:
+            self.skipTest("npm is not available")
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.source_repo_root
+
+        with tempfile.TemporaryDirectory() as package_dir:
+            package_dir_path = Path(package_dir)
+            target_repo = package_dir_path / "target-repo"
+            target_repo.mkdir()
+            pack_completed = subprocess.run(
+                ["npm", "pack", "--json", "--pack-destination", package_dir],
+                cwd=package_root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(pack_completed.returncode, 0, pack_completed.stderr)
+            payload = json.loads(pack_completed.stdout)
+            package_file = package_dir_path / payload[0]["filename"]
+            env = {
+                **os.environ,
+                "PYTHONDONTWRITEBYTECODE": "1",
+            }
+            env.pop("AW_HARNESS_REPO_ROOT", None)
+            env.pop("AW_HARNESS_TARGET_REPO_ROOT", None)
+            diagnose_completed = subprocess.run(
+                [
+                    "npm",
+                    "exec",
+                    "--yes",
+                    "--package",
+                    str(package_file),
+                    "--",
+                    "aw-installer",
+                    "diagnose",
+                    "--backend",
+                    "agents",
+                    "--json",
+                ],
+                cwd=target_repo,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            update_completed = subprocess.run(
+                [
+                    "npm",
+                    "exec",
+                    "--yes",
+                    "--package",
+                    str(package_file),
+                    "--",
+                    "aw-installer",
+                    "update",
+                    "--backend",
+                    "agents",
+                    "--json",
+                ],
+                cwd=target_repo,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+        self.assertEqual(diagnose_completed.returncode, 0, diagnose_completed.stderr)
+        diagnose_payload = json.loads(diagnose_completed.stdout)
+        self.assertEqual(diagnose_payload["backend"], "agents")
+        self.assertGreater(diagnose_payload["binding_count"], 0)
+        self.assertEqual(
+            diagnose_payload["target_root"],
+            str(target_repo / ".agents" / "skills"),
+        )
+        self.assertNotEqual(diagnose_payload["source_root"], str(target_repo))
+
+        self.assertEqual(update_completed.returncode, 0, update_completed.stderr)
+        update_payload = json.loads(update_completed.stdout)
+        self.assertEqual(update_payload["backend"], "agents")
+        self.assertEqual(update_payload["blocking_issue_count"], 0)
+        self.assertEqual(update_payload["target_root"], str(target_repo / ".agents" / "skills"))
+        self.assertNotEqual(update_payload["source_root"], str(target_repo))
+        self.assertGreater(len(update_payload["planned_target_paths"]), 0)
+        self.assertTrue(
+            all(
+                path.startswith(str(target_repo / ".agents" / "skills"))
+                for path in update_payload["planned_target_paths"]
+            )
+        )
 
     def test_install_uses_override_root(self) -> None:
         code, stdout, stderr = self._install("--agents-root", self.override_root)
