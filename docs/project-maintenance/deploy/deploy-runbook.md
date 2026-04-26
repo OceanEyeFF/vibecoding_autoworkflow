@@ -72,9 +72,12 @@ trap 'rm -rf "$tmpdir"' EXIT
 npm pack --json --pack-destination "$tmpdir" > "$tmpdir/pack.json"
 package_file="$(node -e "const fs = require('node:fs'); const payload = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); console.log(payload[0].filename);" "$tmpdir/pack.json")"
 npm exec --yes --package "$tmpdir/$package_file" -- aw-harness-deploy --help
+AW_HARNESS_REPO_ROOT="$(pwd)/../../.." npm exec --yes --package "$tmpdir/$package_file" -- aw-harness-deploy diagnose --backend agents --json
 ```
 
-CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 package smoke、pack dry-run 和 tarball smoke。该 CI 覆盖仍只验证 repo-local scaffold，不代表 package 已发布。
+`AW_HARNESS_REPO_ROOT` 是 packaged wrapper 的 source checkout override。没有该 override 时，打包后的脚本会从 npm package 解压路径解析 source root，因此只能可靠验证 help surface。
+
+CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 package smoke、pack dry-run 和带 `AW_HARNESS_REPO_ROOT` 的 tarball smoke。该 CI 覆盖仍只验证 repo-local scaffold，不代表 package 已发布。
 
 暂不实现：
 

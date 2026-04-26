@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -368,6 +369,57 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("install", exec_completed.stdout)
         self.assertNotIn("update", exec_completed.stdout)
         self.assertEqual(exec_completed.stderr, "")
+
+    def test_local_npm_packed_tarball_diagnose_uses_repo_root_override(self) -> None:
+        if shutil.which("npm") is None:
+            self.skipTest("npm is not available")
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.source_repo_root / "toolchain" / "scripts" / "deploy"
+
+        with tempfile.TemporaryDirectory() as package_dir:
+            pack_completed = subprocess.run(
+                ["npm", "pack", "--json", "--pack-destination", package_dir],
+                cwd=package_root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(pack_completed.returncode, 0, pack_completed.stderr)
+            payload = json.loads(pack_completed.stdout)
+            package_file = Path(package_dir) / payload[0]["filename"]
+            env = {
+                **os.environ,
+                "AW_HARNESS_REPO_ROOT": str(self.source_repo_root),
+                "PYTHONDONTWRITEBYTECODE": "1",
+            }
+            diagnose_completed = subprocess.run(
+                [
+                    "npm",
+                    "exec",
+                    "--yes",
+                    "--package",
+                    str(package_file),
+                    "--",
+                    "aw-harness-deploy",
+                    "diagnose",
+                    "--backend",
+                    "agents",
+                    "--json",
+                ],
+                cwd=package_root,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+        self.assertEqual(diagnose_completed.returncode, 0, diagnose_completed.stderr)
+        diagnose_payload = json.loads(diagnose_completed.stdout)
+        self.assertEqual(diagnose_payload["backend"], "agents")
+        self.assertGreater(diagnose_payload["binding_count"], 0)
+        self.assertFalse((package_root / payload[0]["filename"]).exists())
 
     def test_install_uses_override_root(self) -> None:
         code, stdout, stderr = self._install("--agents-root", self.override_root)

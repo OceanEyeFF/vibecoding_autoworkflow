@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import sys
 from dataclasses import dataclass
@@ -13,7 +14,14 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+def resolve_repo_root() -> Path:
+    override = os.environ.get("AW_HARNESS_REPO_ROOT")
+    if override:
+        return Path(override).expanduser().resolve()
+    return Path(__file__).resolve().parents[3]
+
+
+REPO_ROOT = resolve_repo_root()
 LOCAL_TARGET_ROOTS = {
     "agents": REPO_ROOT / ".agents" / "skills",
 }
