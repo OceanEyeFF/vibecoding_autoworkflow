@@ -21,6 +21,9 @@ LOCAL_DEPLOY_TARGET_ROOTS = {
     "opencode": REPO_ROOT / ".opencode" / "skills",
 }
 SUPPORTED_DEPLOY_VERIFY_BACKENDS = ("agents",)
+CACHE_SCAN_ROOTS = ("docs", "product", "toolchain")
+CACHE_DIR_NAMES = {"__pycache__", ".pytest_cache"}
+CACHE_FILE_SUFFIXES = (".pyc", ".pyo")
 
 
 @dataclass
@@ -194,6 +197,29 @@ def run_static_gate(repo_root: Path, python: str) -> dict:
     }
 
 
+def run_cache_gate(repo_root: Path, python: str) -> dict:
+    del python
+    checked_roots: list[str] = []
+    failures: list[str] = []
+    for relative_root in CACHE_SCAN_ROOTS:
+        scan_root = repo_root / relative_root
+        if not scan_root.exists():
+            continue
+        checked_roots.append(relative_root)
+        for path in sorted(scan_root.rglob("*")):
+            if path.name in CACHE_DIR_NAMES or path.name.endswith(CACHE_FILE_SUFFIXES):
+                failures.append(path.relative_to(repo_root).as_posix())
+
+    passed = not failures
+    return {
+        "command": ["cache-scan", *CACHE_SCAN_ROOTS],
+        "returncode": 0 if passed else 1,
+        "stdout": "\n".join(f"checked {root}" for root in checked_roots),
+        "stderr": "\n".join(failures),
+        "passed": passed,
+    }
+
+
 def run_test_gate(repo_root: Path, python: str) -> dict:
     def run_local_deploy_verify(backend: str) -> dict:
         command = [
@@ -348,6 +374,8 @@ def run_gate(gate: str, *, repo_root: Path, python: str, workflow_id: str) -> di
         return run_spec_gate(repo_root, python)
     if gate == "static_gate":
         return run_static_gate(repo_root, python)
+    if gate == "cache_gate":
+        return run_cache_gate(repo_root, python)
     if gate == "test_gate":
         return run_test_gate(repo_root, python)
     if gate == "smoke_gate":
@@ -363,6 +391,7 @@ def main() -> int:
         GateStep(gate="scope_gate"),
         GateStep(gate="spec_gate"),
         GateStep(gate="static_gate"),
+        GateStep(gate="cache_gate"),
         GateStep(gate="test_gate"),
         GateStep(gate="smoke_gate"),
     ]
