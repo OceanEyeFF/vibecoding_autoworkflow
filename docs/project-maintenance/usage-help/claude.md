@@ -1,9 +1,9 @@
 ---
 title: "Claude Repo-local Usage Help"
 status: active
-updated: 2026-04-25
+updated: 2026-04-26
 owner: aw-kernel
-last_verified: 2026-04-25
+last_verified: 2026-04-26
 ---
 # Claude Repo-local Usage Help
 
@@ -14,6 +14,7 @@ last_verified: 2026-04-25
 - [Deploy Runbook](../deploy/deploy-runbook.md)
 - [Skill Deployment 维护流](../deploy/skill-deployment-maintenance.md)
 - [Skill 生命周期维护](../deploy/skill-lifecycle.md)
+- [Claude Harness Test Runbook](../deploy/claude-harness-test-runbook.md)
 
 ## 一、Backend 标识与常见路径
 
@@ -26,6 +27,7 @@ last_verified: 2026-04-25
 - 这里描述的是 Claude 侧常见 runtime 路径，不是当前仓库 `adapter_deploy.py` 的 CLI 合同
 - 当前仓库的 deploy adapter 只实现 `--backend agents`；不要把旧 adapter 的 `--claude-root`、`verify --target global` 命令当成现行入口
 - `set-harness-goal-skill/scripts/deploy_aw.py` 的 `--claude-root` 只属于本文第五节的冷启动 helper 例外
+- 完整 smoke / 冷启动步骤见 [Claude Harness Test Runbook](../deploy/claude-harness-test-runbook.md)
 
 ## 二、最小 smoke verify 口径
 
@@ -72,3 +74,4 @@ PYTHONDONTWRITEBYTECODE=1 python3 scripts/deploy_aw.py generate --deploy-path "$
 - 目标 skill 目录内部已有的 symlink 文件或子目录会被拒绝，避免 copy install 写出该 skill 目录
 - 如果目标 skill 目录本身不是 symlink，但经允许的 root symlink / mount 解析后就是当前运行的 skill 包，安装视为 already installed 并 no-op
 - 这只覆盖 `set-harness-goal-skill` 的冷启动 helper 场景，不代表 `adapter_deploy.py` 已恢复 `claude` backend
+- 临时 repo 中的 operator-facing 测试步骤见 [Claude Harness Test Runbook](../deploy/claude-harness-test-runbook.md)
