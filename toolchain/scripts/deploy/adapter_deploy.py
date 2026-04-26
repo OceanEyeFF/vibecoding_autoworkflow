@@ -1313,8 +1313,17 @@ def verify_backend(backend: str, args: argparse.Namespace) -> VerifyResult:
     issues = verify_target_root(backend, target_root)
 
     bindings = collect_skill_bindings(backend)
-    for binding in bindings:
-        issues.extend(verify_source_binding(binding))
+    if not bindings:
+        issues.append(
+            VerifyIssue(
+                code="missing-backend-payload-source",
+                path=adapter_skills_dir_for(backend),
+                detail=f"No payload bindings found for backend {backend}.",
+            )
+        )
+    else:
+        for binding in bindings:
+            issues.extend(verify_source_binding(binding))
 
     expected_target_dir_names: set[str] = set()
     if not issues:
