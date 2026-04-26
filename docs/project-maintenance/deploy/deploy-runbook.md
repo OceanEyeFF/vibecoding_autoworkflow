@@ -33,7 +33,7 @@ last_verified: 2026-04-19
 统一入口脚本：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 ```
 
 当前已实现的后端：
@@ -66,9 +66,9 @@ python3 toolchain/scripts/deploy/adapter_deploy.py
 默认主流程固定为：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents
-python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents
 ```
 
 如果当前 backend 需要显式 root override，例如 `agents` 通过 `--agents-root` 指到非默认 target root，就在这三条命令上附加对应参数。参数来源见 [Codex Usage Help](../usage-help/codex.md)。
@@ -98,7 +98,7 @@ python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents
 主流程跑完后，如需只读复验，再执行：
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
 ```
 
 `verify` 当前只负责：

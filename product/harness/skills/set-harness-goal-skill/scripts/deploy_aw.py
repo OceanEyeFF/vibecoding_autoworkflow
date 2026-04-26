@@ -545,11 +545,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
         epilog=(
             "Examples:\n"
-            f"  python3 {Path(__file__).name} validate\n"
-            f"  python3 {Path(__file__).name} generate --deploy-path \"$DEPLOY_PATH\" --owner aw-kernel\n"
-            f"  python3 {Path(__file__).name} generate --deploy-path \"$DEPLOY_PATH\" --install-claude-skill\n"
-            f"  python3 {Path(__file__).name} install-claude-skill --deploy-path \"$DEPLOY_PATH\"\n"
-            f"  DEPLOY_PATH=/path/to/worktree python3 {Path(__file__).name} generate --force --dry-run\n"
+            f"  PYTHONDONTWRITEBYTECODE=1 python3 {Path(__file__).name} validate\n"
+            f"  PYTHONDONTWRITEBYTECODE=1 python3 {Path(__file__).name} generate --deploy-path \"$DEPLOY_PATH\" --owner aw-kernel\n"
+            f"  PYTHONDONTWRITEBYTECODE=1 python3 {Path(__file__).name} generate --deploy-path \"$DEPLOY_PATH\" --install-claude-skill\n"
+            f"  PYTHONDONTWRITEBYTECODE=1 python3 {Path(__file__).name} install-claude-skill --deploy-path \"$DEPLOY_PATH\"\n"
+            f"  DEPLOY_PATH=/path/to/worktree PYTHONDONTWRITEBYTECODE=1 python3 {Path(__file__).name} generate --force --dry-run\n"
             "\n"
             "Path semantics:\n"
             "  --deploy-path points at the target repo/worktree root.\n"

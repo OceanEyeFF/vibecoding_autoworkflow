@@ -22,7 +22,7 @@
 - 如果目标 repo 也要给 Claude Code 暴露本技能，可在 `generate` 时追加 `--install-claude-skill`，或单独运行 `install-claude-skill` 子命令；目标路径是 `<deploy-path>/.claude/skills/aw-set-harness-goal-skill/`
 - Claude install 允许 root 层 symlink / mount，但拒绝目标 skill 目录本身或其内部已有 symlink；完整边界见 `SKILL.md` 与 Claude usage help
 - 如果目标 skill 目录本身不是 symlink，但经允许的 root symlink / mount 解析后就是当前运行的技能包，安装视为 already installed 并 no-op
-- 需要完整参数说明时，直接运行 `python3 scripts/deploy_aw.py generate --help`
+- 需要完整参数说明时，直接运行 `PYTHONDONTWRITEBYTECODE=1 python3 scripts/deploy_aw.py generate --help`
 - 资产 owner 已固定在本技能；不要再为它们建立独立的 `.aw` 模板源码根
 - goal 修正文档不进入 `.aw/` 路径，只作为 Codex 对话回答流模板存在
 - 不要把 doctrine、运行协议或 backend wrapper 写到这里
@@ -32,9 +32,9 @@
 示例：
 
 ```bash
-python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --baseline-branch "$BASELINE_BRANCH" --owner aw-kernel
-python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --baseline-branch "$BASELINE_BRANCH" --adoption-mode existing-code-adoption
-python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --baseline-branch "$BASELINE_BRANCH" --install-claude-skill
-python3 scripts/deploy_aw.py install-claude-skill --deploy-path "$DEPLOY_PATH"
-python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --baseline-branch "$BASELINE_BRANCH" --force --dry-run
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --baseline-branch "$BASELINE_BRANCH" --owner aw-kernel
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --baseline-branch "$BASELINE_BRANCH" --adoption-mode existing-code-adoption
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --baseline-branch "$BASELINE_BRANCH" --install-claude-skill
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/deploy_aw.py install-claude-skill --deploy-path "$DEPLOY_PATH"
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --baseline-branch "$BASELINE_BRANCH" --force --dry-run
 ```

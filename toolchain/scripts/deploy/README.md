@@ -17,8 +17,8 @@
 
 `.aw_template` legacy scaffold profile 相关最小流：
 
-1. 先跑 `python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal`
-2. 再跑 `python3 toolchain/scripts/deploy/aw_scaffold.py generate --profile first-wave-minimal --output-root /tmp/demo-aw`
+1. 先跑 `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal`
+2. 再跑 `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/aw_scaffold.py generate --profile first-wave-minimal --output-root /tmp/demo-aw`
 3. 如需覆盖已有样例，再显式加 `--force`
 
 额外说明：
@@ -34,7 +34,7 @@
 回归测试入口：
 
 ```bash
-python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
 ```
 
 相关回归应覆盖：
