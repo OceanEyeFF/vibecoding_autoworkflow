@@ -55,8 +55,8 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
    - entry / infra：`README.md`、`INDEX.md`、`GUIDE.md`、`ROADMAP.md`、`AGENTS.md`、`CONTRIBUTING.md`、`.github/`、`.git*`、`.claudeignore`、`LICENSE`
 3. `product/`、`docs/`、`toolchain/` 的一级子目录是否仍符合 allowlist
 4. 典型错放内容是否仍被拦截：
-   - `product/` 中的 runbook、缓存、logs、state/runtimes
-   - `docs/` 中的脚本、可执行文件、运行产物、缓存
+   - `product/` 中的 runbook、缓存、logs、state/runtimes 和 Python bytecode
+   - `docs/` 中的脚本、可执行文件、运行产物、缓存和 Python bytecode
    - `toolchain/` 中的 canonical 业务源码目录、repo-local mount/state 内容、运行日志、运行缓存和 Python bytecode
    - `tools/` 中的 Python / pytest 运行缓存
 5. hidden/state/mount 层的 tracked 真实状态是否仍受控：

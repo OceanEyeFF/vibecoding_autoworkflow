@@ -246,6 +246,18 @@ def test_toolchain_cache_content_fails(tmp_path: Path) -> None:
     assert "toolchain/scripts/__pycache__/helper.cpython-313.pyc" in issue_paths(report)
 
 
+def test_product_and_docs_bytecode_files_fail(tmp_path: Path) -> None:
+    repo_root = create_valid_repo(tmp_path)
+    write_file(repo_root / "product/harness/demo.pyc", "cache\n")
+    write_file(repo_root / "docs/project-maintenance/demo.pyo", "cache\n")
+
+    report = run_checks(repo_root)
+
+    assert {"FL004", "FL005"} <= issue_codes(report)
+    assert "product/harness/demo.pyc" in issue_paths(report)
+    assert "docs/project-maintenance/demo.pyo" in issue_paths(report)
+
+
 def test_tools_cache_content_fails(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
     write_file(repo_root / "tools/__pycache__/scope_gate_check.cpython-313.pyc", "cache\n")
