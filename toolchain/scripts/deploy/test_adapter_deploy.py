@@ -319,7 +319,58 @@ class AdapterDeployTest(unittest.TestCase):
                 "access": "public",
             },
         )
+        self.assertIn("toolchain/scripts/deploy/bin/check-root-publish.js", package["files"])
+        self.assertEqual(
+            package["scripts"]["prepublishOnly"],
+            "node toolchain/scripts/deploy/bin/check-root-publish.js",
+        )
         self.assertEqual(package["scripts"]["publish:dry-run"], "npm publish --dry-run --json")
+
+    def test_root_npm_publish_guard_allows_publish_dry_run(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.source_repo_root
+        guard_path = package_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js"
+        env = {
+            **os.environ,
+            "npm_config_dry_run": "true",
+        }
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(completed.stderr, "")
+
+    def test_root_npm_publish_guard_rejects_local_version_for_real_publish(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.source_repo_root
+        guard_path = package_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js"
+        env = {
+            **os.environ,
+        }
+        env.pop("npm_config_dry_run", None)
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("refusing to publish aw-installer 0.0.0-local", completed.stderr)
 
     def test_local_npm_installer_bin_help_preserves_current_command_surface(self) -> None:
         if shutil.which("node") is None:
@@ -473,6 +524,7 @@ class AdapterDeployTest(unittest.TestCase):
             "toolchain/scripts/deploy/adapter_deploy.py",
             "toolchain/scripts/deploy/harness_deploy.py",
             "toolchain/scripts/deploy/bin/aw-installer.js",
+            "toolchain/scripts/deploy/bin/check-root-publish.js",
             "product/harness/skills/harness-skill/SKILL.md",
             "product/harness/adapters/agents/skills/harness-skill/payload.json",
         }:

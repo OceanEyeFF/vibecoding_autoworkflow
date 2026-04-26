@@ -68,7 +68,7 @@ npm pack --dry-run --json
 npm run publish:dry-run --silent
 ```
 
-根 package 的 `publishConfig.registry` 固定为 `https://registry.npmjs.org/`，避免本机 npm mirror 配置影响目标 release channel。真实发布仍需要单独确认版本、tag、npm 凭证和 release 审批。
+根 package 的 `publishConfig.registry` 固定为 `https://registry.npmjs.org/`，避免本机 npm mirror 配置影响目标 release channel。根 package 的 `prepublishOnly` guard 会允许这个 dry-run；如果版本仍是 `0.0.0-local` 或其他 `-local` 版本，真实 `npm publish` 会被拒绝。真实发布仍需要单独确认非 local 版本、tag、npm 凭证和 release 审批。
 
 本地 scaffold packlist 仍在 scaffold package root 内检查：
 
