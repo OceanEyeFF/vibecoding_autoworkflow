@@ -73,11 +73,12 @@ npm pack --json --pack-destination "$tmpdir" > "$tmpdir/pack.json"
 package_file="$(node -e "const fs = require('node:fs'); const payload = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); console.log(payload[0].filename);" "$tmpdir/pack.json")"
 npm exec --yes --package "$tmpdir/$package_file" -- aw-harness-deploy --help
 AW_HARNESS_REPO_ROOT="$(pwd)/../../.." npm exec --yes --package "$tmpdir/$package_file" -- aw-harness-deploy diagnose --backend agents --json
+AW_HARNESS_REPO_ROOT="$(pwd)/../../.." npm exec --yes --package "$tmpdir/$package_file" -- aw-harness-deploy update --backend agents --json
 ```
 
-`AW_HARNESS_REPO_ROOT` 是 packaged wrapper 的 source checkout override。没有该 override 时，打包后的脚本会从 npm package 解压路径解析 source root，因此只能可靠验证 help surface。
+`AW_HARNESS_REPO_ROOT` 是 packaged wrapper 的 source checkout override。没有该 override 时，打包后的脚本会从 npm package 解压路径解析 source root，因此只能可靠验证 help surface。这里的 packaged `update` 只运行 dry-run JSON plan，不写 deploy target。
 
-CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 package smoke、pack dry-run 和带 `AW_HARNESS_REPO_ROOT` 的 tarball smoke。该 CI 覆盖仍只验证 repo-local scaffold，不代表 package 已发布。
+CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 package smoke、pack dry-run 和带 `AW_HARNESS_REPO_ROOT` 的 diagnose / update dry-run tarball smoke。该 CI 覆盖仍只验证 repo-local scaffold，不代表 package 已发布。
 
 暂不实现：
 
@@ -94,7 +95,7 @@ CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 package
 - `diagnose --backend agents --json` 是只读结构化诊断命令，发现问题时仍以 0 退出，用于给 operator 或外层自动化读取当前 deploy 状态
 - `verify --backend agents` 是只读辅助命令，不属于安装主线
 - 本地 `harness_deploy.py` wrapper 和未来 reusable package / npx-style wrapper 必须保持这些语义；包装层合同见 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)
-- `update` 当前不是可用命令；未来若实现，只能作为同一三步 destructive reinstall 的 one-shot 包装，并必须先满足 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 的准入条件
+- `update` 是三步 destructive reinstall 的 one-shot 包装；默认只输出 dry-run plan，只有显式传入 `--yes` 才会执行 `prune --all -> check_paths_exist -> install -> verify`
 - 原始来源（canonical source）、后端部署包（backend payload source）、目标入口（target entry）之间的正式映射规则，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
 - `prune --all` 只删除带可识别、且属于当前 backend 的受管 `aw.marker` 目录；无 marker、不可识别 marker 或 foreign 目录一律不碰
 - `check_paths_exist` 会基于当前 source 声明的 live bindings 解析目标路径；只要任一路径已存在，就全量列出冲突并失败退出，不做任何业务写入
@@ -114,6 +115,15 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ins
 ```
 
 如果当前 backend 需要显式 root override，例如 `agents` 通过 `--agents-root` 指到非默认 target root，就在这三条命令上附加对应参数。参数来源见 [Codex Usage Help](../usage-help/codex.md)。
+
+如果需要一个包装命令，先查看 dry-run plan，再显式 apply：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py update --backend agents
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py update --backend agents --yes
+```
+
+`update --json` 只输出 dry-run plan，不和 `--yes` 组合使用。
 
 ### 1. `prune --all`
 

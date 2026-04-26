@@ -343,11 +343,9 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                     cwd=package_root,
                 )
                 if exec_result["passed"]:
-                    for required_text in ("harness_deploy.py", "diagnose", "verify", "install"):
+                    for required_text in ("harness_deploy.py", "diagnose", "verify", "install", "update"):
                         if required_text not in exec_result["stdout"]:
                             failures.append(f"tarball help omitted {required_text!r}")
-                    if "update" in exec_result["stdout"]:
-                        failures.append("tarball help unexpectedly exposed 'update'")
                 subchecks.append({**exec_result, "name": "npm_exec_tarball"})
                 diagnose_result = run_command(
                     [
@@ -377,6 +375,36 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                         if diagnose_payload.get("binding_count", 0) <= 0:
                             failures.append("packaged diagnose did not load source bindings")
                 subchecks.append({**diagnose_result, "name": "npm_exec_tarball_diagnose"})
+                update_result = run_command(
+                    [
+                        "npm",
+                        "exec",
+                        "--yes",
+                        "--package",
+                        str(package_file),
+                        "--",
+                        "aw-harness-deploy",
+                        "update",
+                        "--backend",
+                        "agents",
+                        "--json",
+                    ],
+                    cwd=package_root,
+                    extra_env={"AW_HARNESS_REPO_ROOT": str(repo_root)},
+                )
+                if update_result["passed"]:
+                    try:
+                        update_payload = json.loads(update_result["stdout"])
+                    except json.JSONDecodeError as error:
+                        failures.append(f"invalid packaged update JSON: {error}")
+                    else:
+                        if update_payload.get("backend") != "agents":
+                            failures.append("packaged update did not report agents backend")
+                        if update_payload.get("blocking_issue_count", 0) != 0:
+                            failures.append("packaged update dry-run reported blocking issues")
+                        if not update_payload.get("planned_target_paths"):
+                            failures.append("packaged update dry-run did not report target paths")
+                subchecks.append({**update_result, "name": "npm_exec_tarball_update_dry_run"})
 
         passed = all(result["passed"] for result in subchecks) and not failures
         return {

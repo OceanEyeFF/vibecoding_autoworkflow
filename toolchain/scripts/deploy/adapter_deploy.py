@@ -47,6 +47,13 @@ CONFLICT_ISSUE_CODES = {
     "unrecognized-target-directory",
     "wrong-target-entry-type",
 }
+UPDATE_RECOVERABLE_ISSUE_CODES = {
+    "missing-target-root",
+    "missing-target-entry",
+    "missing-required-payload",
+    "target-payload-drift",
+    "unexpected-managed-directory",
+}
 
 
 class DeployError(RuntimeError):
@@ -189,6 +196,20 @@ def parse_args(
         "--all",
         action="store_true",
         help="Delete every recognized managed install directory in the target root.",
+    )
+
+    update_parser = subparsers.add_parser("update")
+    add_backend_args(update_parser)
+    add_target_override_args(update_parser)
+    update_parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Apply the destructive reinstall update after printing the preflight plan.",
+    )
+    update_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the dry-run update plan as JSON. Cannot be combined with --yes.",
     )
 
     return parser.parse_args(argv)
@@ -1384,6 +1405,64 @@ def managed_install_dirs(backend: str, target_root: Path) -> list[Path]:
     return managed_dirs
 
 
+def collect_update_target_entry_issues(
+    backend: str,
+    target_root: Path,
+    known_target_dir_names: set[str],
+) -> list[VerifyIssue]:
+    if not target_root.is_dir():
+        return []
+
+    issues: list[VerifyIssue] = []
+    for child in sorted(target_root.iterdir()):
+        if child.is_symlink() or not child.is_dir():
+            if child.name in known_target_dir_names:
+                issues.append(
+                    VerifyIssue(
+                        code="wrong-target-entry-type",
+                        path=child,
+                        detail="update target path must be a real directory before reinstall",
+                    )
+                )
+            continue
+
+        marker = load_runtime_marker(managed_skill_marker_path(child))
+        if marker is None:
+            issues.append(
+                VerifyIssue(
+                    code="unrecognized-target-directory",
+                    path=child,
+                    detail="update will not remove target directories without a recognized marker",
+                )
+            )
+            continue
+
+        if marker.backend != backend:
+            issues.append(
+                VerifyIssue(
+                    code="foreign-managed-directory",
+                    path=child,
+                    detail=(
+                        f"update will not remove managed directory for backend {marker.backend}"
+                    ),
+                )
+            )
+
+    return issues
+
+
+def dedupe_issues(issues: list[VerifyIssue]) -> list[VerifyIssue]:
+    seen: set[tuple[str, str]] = set()
+    unique_issues: list[VerifyIssue] = []
+    for issue in issues:
+        key = (issue.code, str(issue.path))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_issues.append(issue)
+    return unique_issues
+
+
 def issue_to_dict(issue: VerifyIssue) -> dict[str, str]:
     return {
         "code": issue.code,
@@ -1433,6 +1512,111 @@ def print_diagnostic_summary(summary: dict[str, Any]) -> None:
         print(f"conflict entries: {summary['conflict_count']}")
 
 
+def update_plan_summary(backend: str, args: argparse.Namespace) -> dict[str, Any]:
+    result = verify_backend(backend, args)
+    target_root = result.target_root
+    bindings = collect_skill_bindings(backend)
+
+    plan_issues: list[VerifyIssue] = []
+    plans: list[InstallPlan] = []
+    known_target_dir_names: set[str] = set()
+    if not bindings:
+        plan_issues.append(
+            VerifyIssue(
+                code="missing-backend-payload-source",
+                path=adapter_skills_dir_for(backend),
+                detail=f"No payload bindings found for backend {backend}.",
+            )
+        )
+    else:
+        try:
+            known_target_dir_names = all_known_target_dirs(bindings)
+            plans = [build_install_plan(binding, target_root) for binding in bindings]
+        except DeployError as exc:
+            plan_issues.append(
+                VerifyIssue(
+                    code="payload-contract-invalid",
+                    path=adapter_skills_dir_for(backend),
+                    detail=str(exc),
+                )
+            )
+
+    target_entry_issues = collect_update_target_entry_issues(
+        backend,
+        target_root,
+        known_target_dir_names,
+    )
+    all_issues = dedupe_issues([*result.issues, *plan_issues, *target_entry_issues])
+    blocking_issues = [
+        issue for issue in all_issues if issue.code not in UPDATE_RECOVERABLE_ISSUE_CODES
+    ]
+
+    return {
+        "backend": backend,
+        "target_root": str(target_root),
+        "operation_sequence": [
+            "prune --all",
+            "check_paths_exist",
+            "install",
+            "verify",
+        ],
+        "managed_installs_to_delete": [
+            str(path) for path in managed_install_dirs(backend, target_root)
+        ],
+        "planned_target_paths": [str(plan.target_skill_dir) for plan in plans],
+        "issue_count": len(all_issues),
+        "issues": [issue_to_dict(issue) for issue in all_issues],
+        "blocking_issue_count": len(blocking_issues),
+        "blocking_issues": [issue_to_dict(issue) for issue in blocking_issues],
+    }
+
+
+def print_update_plan(summary: dict[str, Any]) -> None:
+    print(f"[{summary['backend']}] update plan for {summary['target_root']}")
+    print("sequence: " + " -> ".join(summary["operation_sequence"]))
+    print(f"managed installs to delete: {len(summary['managed_installs_to_delete'])}")
+    for path in summary["managed_installs_to_delete"]:
+        print(f"  - {path}")
+    print(f"target paths to write: {len(summary['planned_target_paths'])}")
+    for path in summary["planned_target_paths"]:
+        print(f"  - {path}")
+    print(f"blocking preflight issues: {summary['blocking_issue_count']}")
+    for issue in summary["blocking_issues"]:
+        print(f"  - {issue['code']}: {issue['path']} ({issue['detail']})")
+
+
+def run_update_backend(backend: str, args: argparse.Namespace) -> int:
+    if args.json and args.yes:
+        raise DeployError("update --json is only supported for dry-run plans; omit --json with --yes")
+
+    summary = update_plan_summary(backend, args)
+    if args.json:
+        print(json.dumps(summary, indent=2, sort_keys=True))
+        return 1 if summary["blocking_issue_count"] else 0
+
+    print_update_plan(summary)
+    if summary["blocking_issue_count"]:
+        raise DeployError(
+            f"[{backend}] update blocked by {summary['blocking_issue_count']} preflight issue(s)"
+        )
+
+    if not args.yes:
+        print(f"[{backend}] dry-run only; pass --yes to apply update")
+        return 0
+
+    print(f"[{backend}] applying update")
+    prune_all_managed_target_dirs(backend, args)
+    check_backend_target_paths(backend, args)
+    install_backend_payloads(backend, args)
+    result = verify_backend(backend, args)
+    if result.issues:
+        print_verify_result(result)
+        raise DeployError(f"[{backend}] update failed strict verify with {len(result.issues)} issue(s)")
+    print_verify_result(result)
+    print(f"[{backend}] update complete")
+    return 0
+
+
 def main(
     argv: list[str] | None = None,
     *,
@@ -1478,6 +1662,12 @@ def main(
             for backend in iter_backends(args.backend):
                 install_backend_payloads(backend, args)
             return 0
+
+        if args.mode == "update":
+            exit_code = 0
+            for backend in iter_backends(args.backend):
+                exit_code = max(exit_code, run_update_backend(backend, args))
+            return exit_code
     except DeployError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

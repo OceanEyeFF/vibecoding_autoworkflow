@@ -91,6 +91,9 @@ class AdapterDeployTest(unittest.TestCase):
     def _prune_all(self, *extra_args: object) -> tuple[int, str, str]:
         return self._run_cli("prune", "--backend", "agents", "--all", *extra_args)
 
+    def _update(self, *extra_args: object) -> tuple[int, str, str]:
+        return self._run_cli("update", "--backend", "agents", *extra_args)
+
     def _load_json(self, path: Path) -> dict[str, object]:
         return json.loads(path.read_text(encoding="utf-8"))
 
@@ -233,6 +236,25 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("missing-target-root", stdout)
         self.assertEqual(stderr, "")
 
+    def test_harness_deploy_wrapper_update_dry_run_matches_adapter_json(self) -> None:
+        adapter_code, adapter_stdout, adapter_stderr = self._run_cli(
+            "update",
+            "--backend",
+            "agents",
+            "--json",
+        )
+        wrapper_code, wrapper_stdout, wrapper_stderr = self._run_wrapper_cli(
+            "update",
+            "--backend",
+            "agents",
+            "--json",
+        )
+
+        self.assertEqual(adapter_code, 0, adapter_stderr)
+        self.assertEqual(wrapper_code, 0, wrapper_stderr)
+        self.assertEqual(json.loads(wrapper_stdout), json.loads(adapter_stdout))
+        self.assertFalse(self.local_root.exists())
+
     def test_harness_deploy_wrapper_help_exposes_only_current_command_surface(self) -> None:
         stdout = io.StringIO()
         stderr = io.StringIO()
@@ -249,7 +271,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("diagnose", help_text)
         self.assertIn("verify", help_text)
         self.assertIn("install", help_text)
-        self.assertNotIn("update", help_text)
+        self.assertIn("update", help_text)
         self.assertNotIn("claude", help_text.lower())
         self.assertNotIn("opencode", help_text.lower())
         self.assertEqual(stderr.getvalue(), "")
@@ -290,7 +312,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("diagnose", completed.stdout)
         self.assertIn("verify", completed.stdout)
         self.assertIn("install", completed.stdout)
-        self.assertNotIn("update", completed.stdout)
+        self.assertIn("update", completed.stdout)
         self.assertEqual(completed.stderr, "")
 
     def test_local_npm_pack_dry_run_contains_only_package_surface(self) -> None:
@@ -367,7 +389,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("diagnose", exec_completed.stdout)
         self.assertIn("verify", exec_completed.stdout)
         self.assertIn("install", exec_completed.stdout)
-        self.assertNotIn("update", exec_completed.stdout)
+        self.assertIn("update", exec_completed.stdout)
         self.assertEqual(exec_completed.stderr, "")
 
     def test_local_npm_packed_tarball_diagnose_uses_repo_root_override(self) -> None:
@@ -421,6 +443,58 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertGreater(diagnose_payload["binding_count"], 0)
         self.assertFalse((package_root / payload[0]["filename"]).exists())
 
+    def test_local_npm_packed_tarball_update_dry_run_uses_repo_root_override(self) -> None:
+        if shutil.which("npm") is None:
+            self.skipTest("npm is not available")
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.source_repo_root / "toolchain" / "scripts" / "deploy"
+
+        with tempfile.TemporaryDirectory() as package_dir:
+            pack_completed = subprocess.run(
+                ["npm", "pack", "--json", "--pack-destination", package_dir],
+                cwd=package_root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(pack_completed.returncode, 0, pack_completed.stderr)
+            payload = json.loads(pack_completed.stdout)
+            package_file = Path(package_dir) / payload[0]["filename"]
+            env = {
+                **os.environ,
+                "AW_HARNESS_REPO_ROOT": str(self.source_repo_root),
+                "PYTHONDONTWRITEBYTECODE": "1",
+            }
+            update_completed = subprocess.run(
+                [
+                    "npm",
+                    "exec",
+                    "--yes",
+                    "--package",
+                    str(package_file),
+                    "--",
+                    "aw-harness-deploy",
+                    "update",
+                    "--backend",
+                    "agents",
+                    "--json",
+                ],
+                cwd=package_root,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+        self.assertEqual(update_completed.returncode, 0, update_completed.stderr)
+        update_payload = json.loads(update_completed.stdout)
+        self.assertEqual(update_payload["backend"], "agents")
+        self.assertEqual(update_payload["blocking_issue_count"], 0)
+        self.assertGreater(len(update_payload["planned_target_paths"]), 0)
+        self.assertFalse((package_root / payload[0]["filename"]).exists())
+
     def test_install_uses_override_root(self) -> None:
         code, stdout, stderr = self._install("--agents-root", self.override_root)
 
@@ -429,6 +503,97 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertTrue((self.override_root / "aw-harness-skill").is_dir())
         self.assertIn(str(self.override_root), stdout)
         self.assertFalse(self.local_root.exists())
+
+    def test_update_dry_run_reports_plan_without_mutating(self) -> None:
+        code, stdout, stderr = self._update()
+
+        self.assertEqual(code, 0, stderr)
+        self.assertIn("[agents] update plan", stdout)
+        self.assertIn("sequence: prune --all -> check_paths_exist -> install -> verify", stdout)
+        self.assertIn("target paths to write:", stdout)
+        self.assertIn("dry-run only; pass --yes to apply update", stdout)
+        self.assertFalse(self.local_root.exists())
+
+    def test_update_json_dry_run_reports_machine_readable_plan(self) -> None:
+        code, stdout, stderr = self._update("--json")
+
+        self.assertEqual(code, 0, stderr)
+        payload = json.loads(stdout)
+        self.assertEqual(payload["backend"], "agents")
+        self.assertEqual(payload["blocking_issue_count"], 0)
+        self.assertEqual(
+            payload["operation_sequence"],
+            ["prune --all", "check_paths_exist", "install", "verify"],
+        )
+        self.assertGreater(len(payload["planned_target_paths"]), 0)
+        self.assertEqual(stderr, "")
+        self.assertFalse(self.local_root.exists())
+
+    def test_update_rejects_json_apply_combo(self) -> None:
+        code, stdout, stderr = self._update("--json", "--yes")
+
+        self.assertEqual(code, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("update --json is only supported for dry-run plans", stderr)
+
+    def test_update_yes_installs_and_verifies_from_missing_root(self) -> None:
+        code, stdout, stderr = self._update("--yes")
+
+        self.assertEqual(code, 0, stderr)
+        self.assertTrue((self.local_root / "aw-harness-skill").is_dir())
+        self.assertIn("[agents] applying update", stdout)
+        self.assertIn("installed skill harness-skill", stdout)
+        self.assertIn("[agents] ok", stdout)
+        self.assertIn("[agents] update complete", stdout)
+
+    def test_update_yes_refreshes_drifted_managed_install(self) -> None:
+        code, stdout, stderr = self._install()
+        self.assertEqual(code, 0, stderr)
+        self._mutate_canonical_skill("harness-skill", "\n# updated source\n")
+        target_wrapper_path = self.local_root / "aw-harness-skill" / "SKILL.md"
+
+        code, stdout, stderr = self._update("--yes")
+
+        self.assertEqual(code, 0, stderr)
+        self.assertIn("removed managed skill dir", stdout)
+        self.assertEqual(
+            target_wrapper_path.read_text(encoding="utf-8"),
+            (
+                self.fake_repo_root
+                / "product"
+                / "harness"
+                / "skills"
+                / "harness-skill"
+                / "SKILL.md"
+            ).read_text(encoding="utf-8"),
+        )
+        code, stdout, stderr = self._verify()
+        self.assertEqual(code, 0, stderr)
+
+    def test_update_blocks_unrecognized_target_dir_without_writing(self) -> None:
+        self.local_root.mkdir(parents=True, exist_ok=True)
+        foreign_skill_dir = self._install_foreign_conflict()
+
+        code, stdout, stderr = self._update("--yes")
+
+        self.assertEqual(code, 1)
+        self.assertIn("blocking preflight issues: 1", stdout)
+        self.assertIn("unrecognized-target-directory", stdout)
+        self.assertIn("update blocked", stderr)
+        self.assertTrue(foreign_skill_dir.is_dir())
+        self.assertFalse((self.local_root / "aw-dispatch-skills").exists())
+
+    def test_update_blocks_foreign_managed_directory_without_writing(self) -> None:
+        self.local_root.mkdir(parents=True, exist_ok=True)
+        foreign_dir = self._install_managed_directory("foreign-managed", backend="claude")
+
+        code, stdout, stderr = self._update("--yes")
+
+        self.assertEqual(code, 1)
+        self.assertIn("foreign-managed-directory", stdout)
+        self.assertIn("update blocked", stderr)
+        self.assertTrue(foreign_dir.is_dir())
+        self.assertFalse((self.local_root / "aw-harness-skill").exists())
 
     def test_check_paths_exist_reports_ok_when_paths_are_free(self) -> None:
         code, stdout, stderr = self._check_paths_exist()
