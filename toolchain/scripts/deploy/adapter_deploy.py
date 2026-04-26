@@ -525,10 +525,9 @@ def expected_target_dirs(bindings: list[SkillBinding]) -> set[str]:
 def all_known_target_dirs(bindings: list[SkillBinding]) -> set[str]:
     """Return all target directory names known to belong to current bindings,
     including both current target_dirs and legacy_target_dirs."""
-    known: set[str] = set()
+    known = set(current_target_dirs_by_skill_id(bindings).values())
     for binding in bindings:
         metadata = load_binding_target_metadata(binding)
-        known.add(metadata.target_dir)
         known.update(metadata.legacy_target_dirs)
     return known
 

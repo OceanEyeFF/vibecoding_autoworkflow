@@ -1086,6 +1086,26 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertFalse(self.local_root.exists())
 
+    def test_update_json_blocks_duplicate_target_dirs_when_target_root_is_missing(self) -> None:
+        self._mutate_target_dir("dispatch-skills", "aw-harness-skill")
+
+        code, stdout, stderr = self._update("--json")
+
+        self.assertEqual(code, 1)
+        payload = json.loads(stdout)
+        self.assertEqual(payload["blocking_issue_count"], 1)
+        self.assertEqual(payload["planned_target_paths"], [])
+        self.assertEqual(
+            payload["blocking_issues"][0]["code"],
+            "payload-contract-invalid",
+        )
+        self.assertIn(
+            "Multiple skills map to the same target_dir for backend agents: aw-harness-skill",
+            payload["blocking_issues"][0]["detail"],
+        )
+        self.assertEqual(stderr, "")
+        self.assertFalse(self.local_root.exists())
+
     def test_update_rejects_json_apply_combo(self) -> None:
         code, stdout, stderr = self._update("--json", "--yes")
 
