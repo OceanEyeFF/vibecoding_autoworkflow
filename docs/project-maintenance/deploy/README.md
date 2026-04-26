@@ -27,7 +27,7 @@
 | 我想用 Claude Code 做项目级 skill entry smoke / 冷启动测试 | [claude-harness-test-runbook.md](./claude-harness-test-runbook.md) | 临时 repo、`.claude/skills/` 项目级安装、Claude 非交互读取与最小 `.aw/` 冷启动 |
 | 我想看已完成的 `continuous-autonomy` 手动观察证据 | [codex-harness-manual-run-continuous-2026-04-23.md](./codex-harness-manual-run-continuous-2026-04-23.md) | 记录 2026-04-23 到 2026-04-24 round-000 到 round-060 的连续 worktrack 推进、108 tests / 20 tests 复验结果，以及 budget 用尽与未用尽两种 stable handback 结论 |
 | 我想看 canonical source 到 target entry 的正式映射 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | 最小 deploy 合同，定义 canonical source / backend payload source / target / diagnose / verify |
-| 我想看 `npx aw-installer` 分发入口必须保持什么语义 | [distribution-entrypoint-contract.md](./distribution-entrypoint-contract.md) | 定义 `aw-installer` CLI + TUI 双模式包装层合同；不表示 package、TUI runtime 或 release channel 已实现 |
+| 我想看 `npx aw-installer` 分发入口必须保持什么语义 | [distribution-entrypoint-contract.md](./distribution-entrypoint-contract.md) | 定义 `aw-installer` CLI + TUI 双模式包装层合同；不表示 package 或 release channel 已实现 |
 | 我想看 `agents` canonical-copy payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | 定义 `product/harness/adapters/agents/skills/` 的 payload descriptor 结构，以及 target 如何复制 canonical skill 内容 |
 | 我想初始化 `.aw/` 样例并校验 `.aw_template` 最小结构 | [template-tooling-mvp.md](./template-tooling-mvp.md) | B2 的最小工作面，只做 `.aw_template -> .aw` 样例生成与前置校验 |
 | 我想把已有代码库接入 Harness 初始化流程 | [existing-code-adoption.md](./existing-code-adoption.md) | 定义 `.aw/repo/discovery-input.md` 作为只读事实输入，不作为 goal truth |
@@ -48,7 +48,7 @@
 - `diagnose --backend agents --json` 保留为只读状态摘要命令，用于输出 source / target / issue code / conflict / unrecognized 摘要，发现 issue 时仍以 0 退出
 - `verify --backend agents` 保留为只读严格复验命令，用于检查 source 合法性、target root 状态、live install 对齐，以及 conflict / unrecognized 情形，发现 issue 时非零退出
 - `update --backend agents` 默认只输出 dry-run plan；`update --backend agents --yes` 是同一三步 destructive reinstall 加严格复验的 one-shot 包装
-- 本地 `harness_deploy.py` thin wrapper、`toolchain/scripts/deploy/package.json` 的 `aw-installer` scaffold、`aw-harness-deploy` 兼容别名与目标 `npx aw-installer` wrapper 必须保持 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 中定义的只读、严格复验、三步 destructive reinstall，以及 CLI + TUI 双模式语义；当前尚未实现已发布 package、TUI runtime 或 npx 发布渠道
+- 本地 `harness_deploy.py` thin wrapper、`toolchain/scripts/deploy/package.json` 的 `aw-installer` scaffold、`aw-installer tui` shell、`aw-harness-deploy` 兼容别名与目标 `npx aw-installer` wrapper 必须保持 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 中定义的只读、严格复验、三步 destructive reinstall，以及 CLI + TUI 双模式语义；当前尚未实现已发布 package 或 npx 发布渠道
 - 不再承接这些主线语义：
   - `retired-target-dir`
   - `prune --outdated`

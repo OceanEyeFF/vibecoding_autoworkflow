@@ -46,7 +46,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-`harness_deploy.py` 不表示 package / npx 发布渠道已经实现；它只包装当前 `adapter_deploy.py` 命令面。当前本地 package scaffold 已暴露 `aw-installer` bin 和 `aw-harness-deploy` 兼容别名，但还没有发布 npm package，也没有实现 TUI runtime。
+`harness_deploy.py` 不表示 package / npx 发布渠道已经实现；它只包装当前 `adapter_deploy.py` 命令面。当前本地 package scaffold 已暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell 和 `aw-harness-deploy` 兼容别名，但还没有发布 npm package，也没有引入 full-screen TUI framework。
 
 本地 npm-style scaffold 可用下面的 smoke 命令验证 bin 入口能打开同一 help surface：
 
@@ -95,7 +95,7 @@ CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 package
 - `diagnose --backend agents --json` 是只读结构化诊断命令，发现问题时仍以 0 退出，用于给 operator 或外层自动化读取当前 deploy 状态
 - `verify --backend agents` 是只读辅助命令，不属于安装主线
 - 本地 `harness_deploy.py` wrapper、当前 `aw-installer` scaffold、`aw-harness-deploy` 兼容别名和目标 `npx aw-installer` wrapper 必须保持这些语义；包装层合同见 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)
-- `aw-installer` 的目标形态是 CLI + TUI 双模式：CLI 是脚本化合同，TUI 只能作为同一 deploy 合同上的交互式引导层，不能绕过只读 `diagnose / verify`、显式三步 reinstall 或 `update --yes` 确认边界
+- `aw-installer` 的目标形态是 CLI + TUI 双模式：CLI 是脚本化合同，当前 `tui` shell 是同一 deploy 合同上的交互式引导层，不能绕过只读 `diagnose / verify`、显式三步 reinstall 或 `update --yes` 确认边界
 - `update` 是三步 destructive reinstall 的 one-shot 包装；默认只输出 dry-run plan，只有显式传入 `--yes` 才会执行 `prune --all -> check_paths_exist -> install -> verify`
 - 原始来源（canonical source）、后端部署包（backend payload source）、目标入口（target entry）之间的正式映射规则，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
 - `prune --all` 只删除带可识别、且属于当前 backend 的受管 `aw.marker` 目录；无 marker、不可识别 marker 或 foreign 目录一律不碰

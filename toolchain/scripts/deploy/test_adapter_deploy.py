@@ -320,7 +320,55 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("verify", completed.stdout)
         self.assertIn("install", completed.stdout)
         self.assertIn("update", completed.stdout)
+        self.assertIn("tui", completed.stdout)
         self.assertEqual(completed.stderr, "")
+
+    def test_local_npm_installer_no_args_noninteractive_prints_help(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        bin_path = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+
+        completed = subprocess.run(
+            ["node", str(bin_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("usage: aw-installer", completed.stdout)
+        self.assertIn("tui", completed.stdout)
+        self.assertEqual(completed.stderr, "")
+
+    def test_local_npm_installer_tui_refuses_noninteractive_stdio(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        bin_path = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+
+        completed = subprocess.run(
+            ["node", str(bin_path), "tui"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("requires an interactive terminal", completed.stderr)
 
     def test_local_npm_pack_dry_run_contains_only_package_surface(self) -> None:
         if shutil.which("npm") is None:
@@ -398,6 +446,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("verify", exec_completed.stdout)
         self.assertIn("install", exec_completed.stdout)
         self.assertIn("update", exec_completed.stdout)
+        self.assertIn("tui", exec_completed.stdout)
         self.assertEqual(exec_completed.stderr, "")
 
     def test_local_npm_packed_tarball_diagnose_uses_repo_root_override(self) -> None:

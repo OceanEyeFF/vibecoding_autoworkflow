@@ -25,7 +25,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 
 package packlist 检查应在 `toolchain/scripts/deploy/` package root 内执行 `npm pack --dry-run --json`。不要从仓库根用 `--prefix` 运行 `pack`，因为该命令会寻找当前工作目录的 `package.json`。
 
-CI 必须显式设置 Node 后运行本地 package smoke、package-root pack dry-run，以及从临时 `.tgz` 执行 `aw-installer --help`、带 `AW_HARNESS_REPO_ROOT=<repo-root>` 的只读 `diagnose` 和 `update --json` dry-run tarball smoke；这些只验证当前 scaffold 的分发面，不表示 TUI runtime 或 npm/npx 发布渠道已经开启。
+CI 必须显式设置 Node 后运行本地 package smoke、package-root pack dry-run，以及从临时 `.tgz` 执行 `aw-installer --help`、带 `AW_HARNESS_REPO_ROOT=<repo-root>` 的只读 `diagnose` 和 `update --json` dry-run tarball smoke；这些只验证当前 scaffold 的分发面，不表示 npm/npx 发布渠道已经开启。
 
 `AW_HARNESS_REPO_ROOT` 是当前 packaged wrapper 的 source checkout bridge。包装层可以改变启动位置，但所有 deploy source / target / payload 合同仍必须以该 source checkout 为准，不能从 package 解压目录或 deploy target 反推业务真相。
 
@@ -80,7 +80,7 @@ npx aw-installer update --backend agents
 npx aw-installer update --backend agents --yes
 ```
 
-`npx aw-installer` 在交互式终端中可以进入 TUI；脚本和 CI 必须使用显式 CLI subcommand。非交互环境不得隐式启动 TUI，也不得要求方向键、全屏渲染或人工输入才能完成 CLI subcommand。
+`npx aw-installer` 在交互式终端中可以进入 TUI；`npx aw-installer tui` 显式启动当前最小交互 shell。脚本和 CI 必须使用显式 CLI subcommand。非交互环境不得隐式启动 TUI，也不得要求方向键、全屏渲染或人工输入才能完成 CLI subcommand。
 
 所有入口都必须投影到同一组 mode：
 
@@ -96,7 +96,7 @@ npx aw-installer update --backend agents --yes
 ## 三、CLI + TUI 双模式合同
 
 - CLI subcommands 是机器可读、可脚本化、可在 CI 中复验的稳定接口。
-- TUI 只负责引导 operator 选择 backend、查看诊断、确认 update plan 或启动已定义的 CLI 等价动作。
+- TUI 只负责引导 operator 选择 backend、查看诊断、确认 update plan 或启动已定义的 CLI 等价动作。当前本地 scaffold 已提供最小 `tui` shell，不包含 full-screen framework。
 - TUI 不得拥有独立于 CLI 的 deploy 语义；每一个 mutating TUI 动作都必须映射到一个明确的 CLI mode 和参数集合。
 - TUI 中的 destructive action 必须展示等价 dry-run plan，并要求显式确认；不能把 `update --yes`、`prune --all` 或 `install` 藏在默认启动流程里。
 - TUI 不能把 `claude` 或 `opencode` 展示为已支持 deploy backend。Claude skills distribution 只能作为 slower compatibility lane 的说明或未来保留项，不能覆盖当前 `agents` 合同。
@@ -138,4 +138,4 @@ npx aw-installer update --backend agents --yes
 
 ## 七、当前停止线
 
-当前仓库只承诺 repo-local deploy scripts、本地 npm-style `aw-installer` scaffold 和 `agents` backend。`harness_deploy.py`、`bin/aw-installer.js` 与 `bin/aw-harness-deploy.js` 都是本地薄包装入口，不是已发布 package，也不包含 TUI runtime。下一轮如果要进入 packaging，应以本文为合同输入，在已存在的 `aw-installer` CLI surface 上添加 TUI shell，然后讨论发布渠道。
+当前仓库只承诺 repo-local deploy scripts、本地 npm-style `aw-installer` scaffold、最小 `tui` shell 和 `agents` backend。`harness_deploy.py`、`bin/aw-installer.js` 与 `bin/aw-harness-deploy.js` 都是本地薄包装入口，不是已发布 package，也不是 full-screen TUI framework。下一轮如果要进入 packaging，应以本文为合同输入，在已存在的 `aw-installer` CLI/TUI surface 上讨论发布渠道。
