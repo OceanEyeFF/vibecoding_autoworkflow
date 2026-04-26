@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 治理入口"
 status: active
-updated: 2026-04-25
+updated: 2026-04-26
 owner: aw-kernel
-last_verified: 2026-04-25
+last_verified: 2026-04-26
 ---
 # Review / Verify 治理入口
 
@@ -66,33 +66,35 @@ last_verified: 2026-04-25
 
 按改动面选择最小验证集：
 
+运行本仓库内的 Python 验证、部署或辅助命令时，默认使用 `PYTHONDONTWRITEBYTECODE=1 python3 ...`。这样可以避免验证过程在 `product/`、`docs/` 或 `toolchain/` 下生成 `__pycache__` / `.pyc` 运行缓存；如果必须用其他 Python launcher，也应保留等价的 `PYTHONDONTWRITEBYTECODE=1` 环境变量。
+
 - 根目录、路径、分层、hidden/state 规则变更
-  - `python3 toolchain/scripts/test/folder_logic_check.py`
-  - `python3 toolchain/scripts/test/path_governance_check.py`
-  - `python3 toolchain/scripts/test/governance_semantic_check.py`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/folder_logic_check.py`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/path_governance_check.py`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_check.py`
 - skills / templates 分层规则变更
-  - `python3 toolchain/scripts/test/path_governance_check.py`
-  - `python3 toolchain/scripts/test/governance_semantic_check.py`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/path_governance_check.py`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_check.py`
 - branch / PR / baseline 规则或 hook 变更
   - `git symbolic-ref --quiet --short refs/remotes/origin/HEAD`
   - `bash -n toolchain/scripts/git-hooks/pre-push`
   - 用 `refs/heads/<baseline_branch>` 输入 dry-run 覆盖 hook 阻断路径
 - `.aw_template` 初始化工具或 `.aw/` legacy scaffold profile 生成逻辑变更
-  - `python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal`
-  - `python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_aw_scaffold.py'`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_aw_scaffold.py'`
 - closeout / gate / backfill 变更
-  - `python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`
   - 对应的最小 pytest
 - deploy mapping / payload contract 变更
-  - `python3 -m pytest toolchain/scripts/test/test_agents_adapter_contract.py`
-  - 如同时改了 gate 链路，再补 `python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_agents_adapter_contract.py`
+  - 如同时改了 gate 链路，再补 `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`
 - adapter / deploy 变更
-  - `python3 -m pytest toolchain/scripts/test/test_agents_adapter_contract.py`
-  - `python3 -m pytest toolchain/scripts/test/test_governance_semantic_check.py`
-  - `python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents`
-  - `python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents`
-  - `python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents`
-  - `python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_agents_adapter_contract.py`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_governance_semantic_check.py`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents`
 - Harness runtime 观察或 operator-facing runbook 变更
   - 先跑对应 deploy / adapter 最小验证
   - 再按 [Codex Harness Manual Runbook](../deploy/codex-harness-manual-runbook.md) 做真实手动观察；该路径不是 cheap deterministic gate，不用 mock smoke 替代
