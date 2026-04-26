@@ -322,6 +322,18 @@ def test_check_repo_python_commands_are_bytecode_free_accepts_prefixed_repo_comm
     assert report.failures == []
 
 
+def test_check_repo_python_commands_are_bytecode_free_flags_bare_tools_command(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/review-verify-handbook.md",
+        "Run `python3 tools/closeout_acceptance_gate.py --json`.\n",
+    )
+
+    report = SemanticReport()
+    check_repo_python_commands_are_bytecode_free(tmp_path, report)
+
+    assert any("review-verify-handbook.md:1" in item for item in report.failures)
+
+
 def test_check_repo_python_commands_are_bytecode_free_checks_each_occurrence(tmp_path: Path) -> None:
     write_doc(
         tmp_path / "toolchain/scripts/deploy/README.md",
