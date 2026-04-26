@@ -27,7 +27,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 
 根 package packlist 检查在仓库根目录执行 `npm pack --dry-run --json`。本地 scaffold packlist 检查仍在 `toolchain/scripts/deploy/` package root 内执行 `npm pack --dry-run --json`。
 
-CI 必须显式设置 Node 后运行本地 package smoke、本地 scaffold pack dry-run、根 package pack dry-run、根 package publish dry-run、本地 scaffold tarball smoke，以及根 `.tgz` 的 `aw-installer --help`、`aw-installer --version`、只读 `diagnose` 和 `update --json` dry-run smoke。根 `.tgz` smoke 不设置 `AW_HARNESS_REPO_ROOT`，用于证明 package 内 source payload 与当前工作目录 target root 已分离。
+CI 必须显式设置 Node 后运行本地 package smoke、本地 scaffold pack dry-run、根 package pack dry-run、根 package publish dry-run、本地 scaffold tarball smoke，以及根 `.tgz` 的 `aw-installer --help`、`aw-installer --version`、只读 `diagnose`、`update --json` dry-run、`install --backend agents` 和安装后的 `verify --backend agents` smoke。根 `.tgz` smoke 不设置 `AW_HARNESS_REPO_ROOT`，用于证明 package 内 source payload 与当前工作目录 target root 已分离。
 
 根 package `publishConfig.registry` 必须固定为 `https://registry.npmjs.org/`，避免真实 release 或 dry-run 被本机 npm mirror 配置改写。`npm run publish:dry-run --silent` 是发布前检查，不代表已经授权执行 `npm publish`。根 package 的 `prepublishOnly` guard 允许 `--dry-run`，但在版本仍为 `0.0.0-local` 或其他 `-local` 版本时拒绝真实 publish；真实 release 需要先经过版本、tag、凭证和发布审批。
 
