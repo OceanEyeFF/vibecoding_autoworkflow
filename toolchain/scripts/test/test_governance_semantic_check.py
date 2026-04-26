@@ -21,6 +21,7 @@ from governance_semantic_check import (
     check_review_verify_docs_list_closeout_steps,
     check_root_tool_shims_disable_bytecode,
     check_required_handoffs,
+    check_subagent_dispatch_default_contract,
 )
 
 
@@ -113,6 +114,24 @@ def test_check_append_request_contract_terms_flags_drift(tmp_path: Path) -> None
     check_append_request_contract_terms(tmp_path, report)
 
     assert any("continuation_blockers" in item for item in report.failures)
+
+
+def test_check_subagent_dispatch_default_contract_flags_missing_term(tmp_path: Path) -> None:
+    for relative_path in (
+        "product/harness/skills/harness-skill/SKILL.md",
+        "product/harness/skills/dispatch-skills/SKILL.md",
+        "docs/harness/foundations/Harness运行协议.md",
+        "docs/harness/Skills/catalog/worktrack.md",
+    ):
+        write_doc(
+            tmp_path / relative_path,
+            "默认\nSubAgent\n权限边界\nruntime fallback\n",
+        )
+
+    report = SemanticReport()
+    check_subagent_dispatch_default_contract(tmp_path, report)
+
+    assert any("dispatch package unsafe" in item for item in report.failures)
 
 
 def test_check_adapter_wrappers_are_thin_ignores_absent_adapter_layer(tmp_path: Path) -> None:

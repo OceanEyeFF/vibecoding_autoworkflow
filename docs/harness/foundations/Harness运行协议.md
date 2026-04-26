@@ -599,13 +599,14 @@ RepoScope.Observe ──→ RepoScope.Decide ──→ WorktrackScope.Init
 - `adjudicate`：形成 gate verdict
 - `update state`：只有在证据支持下，才更新 repo/worktrack/control state
 
-如果当前 host runtime 还没有稳定的 subagent dispatch shell，则允许暂时退化为：
+如果当前 host runtime 支持真实 subagent dispatch shell，且权限边界允许委派，则默认必须走 `dispatch subagent`。只有在 host runtime 没有稳定分派壳层、权限边界禁止委派，或当前 dispatch package 不满足安全分派条件时，才允许暂时退化为：
 
 `state estimate -> choose operator -> bind skill(s) -> package task/info -> execute in current carrier -> collect evidence -> adjudicate -> update state`
 
 但此时必须显式标注：
 
 - 当前是 runtime fallback，而不是完整 `subagent dispatch`
+- 没有使用 SubAgent 的明确阻断原因，例如 `runtime fallback`、`permission blocked` 或 `dispatch package unsafe`
 - 不得在报告里把"当前 carrier 内执行"写成"已经成功派发独立 subagent"
 
 ---

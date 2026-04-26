@@ -386,6 +386,8 @@ Harness 的核心交付物应至少覆盖下面几类正式对象。
 
 `state estimate -> choose operator -> bind skill(s) -> package task/info -> dispatch subagent -> collect evidence -> adjudicate -> update state`
 
+当宿主运行时支持真实 SubAgent 委派且权限边界允许时，`dispatch subagent` 是默认执行模式。只有运行时没有稳定分派壳层、权限边界禁止委派，或当前任务包不满足安全分派条件时，才允许退化为当前载体内执行；退化时必须显式说明 `runtime fallback`、`permission blocked` 或 `dispatch package unsafe` 等原因，不能把 current-carrier fallback 写成已经委派了 SubAgent。
+
 这里有两个关键约束：
 
 - `Skill` 不是严格数学意义上的状态转移函数，而是受约束的近似转移器
