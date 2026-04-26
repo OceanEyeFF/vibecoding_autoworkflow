@@ -302,8 +302,8 @@ def check_product_patterns(repo_root: Path, report: FolderLogicReport) -> None:
         if "runbook" in name.casefold():
             report.add_issue("FL004", relative_path, "product/ must not contain runbook documents or helper files")
             continue
-        if name in PRODUCT_STATE_FILENAMES or name.endswith(".log"):
-            report.add_issue("FL004", relative_path, "product/ must not contain runtime, state, or log files")
+        if name in PRODUCT_STATE_FILENAMES or name.endswith((".log", ".pyc", ".pyo")):
+            report.add_issue("FL004", relative_path, "product/ must not contain runtime, state, log, or bytecode files")
     report.add_info(f"checked {checked} product/ paths for misplaced runtime content")
 
 
@@ -316,8 +316,8 @@ def check_docs_patterns(repo_root: Path, report: FolderLogicReport) -> None:
         if path_has_segment(relative_path, DOCS_BANNED_SEGMENTS):
             report.add_issue("FL005", relative_path, "docs/ must not contain cache, build, or runtime directories")
             continue
-        if name in GENERIC_RUNTIME_FILENAMES or name.endswith(".log"):
-            report.add_issue("FL005", relative_path, "docs/ must not contain runtime artifact or log files")
+        if name in GENERIC_RUNTIME_FILENAMES or name.endswith((".log", ".pyc", ".pyo")):
+            report.add_issue("FL005", relative_path, "docs/ must not contain runtime artifact, log, or bytecode files")
             continue
         if path_has_suffix(relative_path, DOCS_SCRIPT_SUFFIXES):
             report.add_issue("FL005", relative_path, "docs/ must not contain script source files")
