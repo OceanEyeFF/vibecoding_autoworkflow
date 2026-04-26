@@ -115,6 +115,7 @@ APPEND_REQUEST_CLASSIFICATIONS = [
     "design-only",
     "design-then-implementation",
 ]
+ROOT_TOOL_SHIM_GLOB = "tools/*.py"
 BYTECODE_FREE_COMMAND_GLOBS = [
     "AGENTS.md",
     "docs/project-maintenance/**/*.md",
@@ -387,6 +388,26 @@ def check_repo_python_commands_are_bytecode_free(repo_root: Path, report: Semant
     report.add_info(f"checked {checked} repo Python command examples for bytecode-free invocation")
 
 
+def check_root_tool_shims_disable_bytecode(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    for shim_path in sorted(repo_root.glob(ROOT_TOOL_SHIM_GLOB)):
+        if not shim_path.is_file():
+            continue
+        checked += 1
+        relative_path = to_relative_posix(shim_path, repo_root)
+        text = shim_path.read_text(encoding="utf-8")
+        toolchain_import_index = text.find("from toolchain.")
+        if toolchain_import_index == -1:
+            continue
+        guard_index = text.find("sys.dont_write_bytecode = True")
+        if guard_index == -1 or guard_index > toolchain_import_index:
+            report.add_failure(
+                "root tool shim must disable bytecode before importing toolchain modules: "
+                f"{relative_path}"
+            )
+    report.add_info(f"checked {checked} root tool shims for bytecode guard ordering")
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -399,6 +420,7 @@ def main() -> int:
     check_adapter_wrappers_are_thin(repo_root, report)
     check_append_request_contract_terms(repo_root, report)
     check_repo_python_commands_are_bytecode_free(repo_root, report)
+    check_root_tool_shims_disable_bytecode(repo_root, report)
 
     payload = {
         "passed": not report.failures,
