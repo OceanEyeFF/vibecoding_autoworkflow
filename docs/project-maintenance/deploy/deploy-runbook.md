@@ -54,6 +54,15 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 npm --prefix toolchain/scripts/deploy run smoke --silent
 ```
 
+如果要检查 package packlist，进入 package root 后运行 dry-run：
+
+```bash
+cd toolchain/scripts/deploy
+npm pack --dry-run --json
+```
+
+该 dry-run 不应在仓库中留下 `.tgz` package artifact。
+
 暂不实现：
 
 - `claude`

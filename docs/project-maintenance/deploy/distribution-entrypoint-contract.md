@@ -23,6 +23,8 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 
 当前 `toolchain/scripts/deploy/package.json` 和 `bin/aw-harness-deploy.js` 只提供本地 npm-style scaffold；它们调用同一个 Python wrapper，不代表 package 已发布。
 
+package packlist 检查应在 `toolchain/scripts/deploy/` package root 内执行 `npm pack --dry-run --json`。不要从仓库根用 `--prefix` 运行 `pack`，因为该命令会寻找当前工作目录的 `package.json`。
+
 ## 一、范围
 
 本文定义未来分发入口的外层合同：
