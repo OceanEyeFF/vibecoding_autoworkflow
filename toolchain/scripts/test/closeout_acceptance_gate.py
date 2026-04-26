@@ -82,9 +82,11 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def run_command(command: list[str], *, cwd: Path) -> dict:
+def run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
     env = os.environ.copy()
     env["PYTHONDONTWRITEBYTECODE"] = "1"
+    if extra_env:
+        env.update(extra_env)
     try:
         completed = subprocess.run(command, capture_output=True, text=True, cwd=cwd, env=env)
     except FileNotFoundError as error:
@@ -347,6 +349,34 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                     if "update" in exec_result["stdout"]:
                         failures.append("tarball help unexpectedly exposed 'update'")
                 subchecks.append({**exec_result, "name": "npm_exec_tarball"})
+                diagnose_result = run_command(
+                    [
+                        "npm",
+                        "exec",
+                        "--yes",
+                        "--package",
+                        str(package_file),
+                        "--",
+                        "aw-harness-deploy",
+                        "diagnose",
+                        "--backend",
+                        "agents",
+                        "--json",
+                    ],
+                    cwd=package_root,
+                    extra_env={"AW_HARNESS_REPO_ROOT": str(repo_root)},
+                )
+                if diagnose_result["passed"]:
+                    try:
+                        diagnose_payload = json.loads(diagnose_result["stdout"])
+                    except json.JSONDecodeError as error:
+                        failures.append(f"invalid packaged diagnose JSON: {error}")
+                    else:
+                        if diagnose_payload.get("backend") != "agents":
+                            failures.append("packaged diagnose did not report agents backend")
+                        if diagnose_payload.get("binding_count", 0) <= 0:
+                            failures.append("packaged diagnose did not load source bindings")
+                subchecks.append({**diagnose_result, "name": "npm_exec_tarball_diagnose"})
 
         passed = all(result["passed"] for result in subchecks) and not failures
         return {

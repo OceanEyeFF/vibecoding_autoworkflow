@@ -31,7 +31,7 @@ def npm_pack_stdout(paths: set[str] | None = None, filename: str = "aw-harness-d
     )
 
 
-def successful_npm_command_result(command: list[str]) -> dict | None:
+def successful_npm_command_result(command: list[str], extra_env: dict[str, str] | None = None) -> dict | None:
     if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
         return {
             "command": command,
@@ -48,6 +48,22 @@ def successful_npm_command_result(command: list[str]) -> dict | None:
             "command": command,
             "returncode": 0,
             "stdout": npm_pack_stdout(),
+            "stderr": "",
+            "passed": True,
+        }
+    if command[:2] == ["npm", "exec"] and "diagnose" in command:
+        if extra_env is None or "AW_HARNESS_REPO_ROOT" not in extra_env:
+            return {
+                "command": command,
+                "returncode": 1,
+                "stdout": "",
+                "stderr": "missing AW_HARNESS_REPO_ROOT",
+                "passed": False,
+            }
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": json.dumps({"backend": "agents", "binding_count": 1}),
             "stderr": "",
             "passed": True,
         }
@@ -271,7 +287,7 @@ def test_root_tool_shims_dispatch() -> None:
 def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path) -> None:
     captured: dict[str, object] = {}
 
-    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
         captured["command"] = command
         return {
             "command": command,
@@ -303,7 +319,7 @@ def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path
 def test_run_spec_gate_includes_folder_logic(monkeypatch, tmp_path) -> None:
     commands: list[list[str]] = []
 
-    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
         commands.append(command)
         return {
             "command": command,
@@ -399,11 +415,11 @@ def test_run_cache_gate_allows_root_pytest_cache(tmp_path) -> None:
 
 
 def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
-    calls: list[tuple[list[str], Path]] = []
+    calls: list[tuple[list[str], Path, dict[str, str] | None]] = []
 
-    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
-        calls.append((command, cwd))
-        npm_result = successful_npm_command_result(command)
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
+        calls.append((command, cwd, extra_env))
+        npm_result = successful_npm_command_result(command, extra_env)
         if npm_result is not None:
             return npm_result
         return {
@@ -417,7 +433,7 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
 
     result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
-    commands = [command for command, _ in calls]
+    commands = [command for command, _, _ in calls]
 
     assert result["passed"] is True
     assert [item["name"] for item in result["subchecks"][:8]] == [
@@ -438,14 +454,20 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
     assert any(
         command == ["npm", "pack", "--dry-run", "--json"]
         and cwd == tmp_path / "toolchain" / "scripts" / "deploy"
-        for command, cwd in calls
+        for command, cwd, _ in calls
     )
     assert any(
         command[:3] == ["npm", "pack", "--json"]
         and cwd == tmp_path / "toolchain" / "scripts" / "deploy"
-        for command, cwd in calls
+        for command, cwd, _ in calls
     )
     assert any(command[:2] == ["npm", "exec"] for command in commands)
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and "diagnose" in command
+        and extra_env == {"AW_HARNESS_REPO_ROOT": str(tmp_path)}
+        for command, _, extra_env in calls
+    )
     deploy_verify_commands = [
         command
         for command in commands
@@ -463,9 +485,9 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
 def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path) -> None:
     commands: list[list[str]] = []
 
-    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
         commands.append(command)
-        npm_result = successful_npm_command_result(command)
+        npm_result = successful_npm_command_result(command, extra_env)
         if npm_result is not None:
             return npm_result
         if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]:
@@ -509,9 +531,9 @@ def test_run_test_gate_checks_broken_local_deploy_target_symlink(monkeypatch, tm
     broken_root.parent.mkdir(parents=True)
     broken_root.symlink_to(tmp_path / "missing-agents-skills")
 
-    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
         commands.append(command)
-        npm_result = successful_npm_command_result(command)
+        npm_result = successful_npm_command_result(command, extra_env)
         if npm_result is not None:
             return npm_result
         if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]:
@@ -541,7 +563,7 @@ def test_run_test_gate_checks_broken_local_deploy_target_symlink(monkeypatch, tm
 
 
 def test_run_test_gate_fails_on_unexpected_npm_packlist(monkeypatch, tmp_path) -> None:
-    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
         if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
             return {
                 "command": command,
@@ -550,7 +572,7 @@ def test_run_test_gate_fails_on_unexpected_npm_packlist(monkeypatch, tmp_path) -
                 "stderr": "",
                 "passed": True,
             }
-        npm_result = successful_npm_command_result(command)
+        npm_result = successful_npm_command_result(command, extra_env)
         if npm_result is not None:
             return npm_result
         return {
@@ -575,7 +597,7 @@ def test_run_test_gate_fails_on_unexpected_npm_packlist(monkeypatch, tmp_path) -
 
 
 def test_run_test_gate_fails_on_npm_tarball_exec_failure(monkeypatch, tmp_path) -> None:
-    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
         if command[:2] == ["npm", "exec"]:
             return {
                 "command": command,
@@ -584,7 +606,7 @@ def test_run_test_gate_fails_on_npm_tarball_exec_failure(monkeypatch, tmp_path) 
                 "stderr": "bin failed",
                 "passed": False,
             }
-        npm_result = successful_npm_command_result(command)
+        npm_result = successful_npm_command_result(command, extra_env)
         if npm_result is not None:
             return npm_result
         return {
