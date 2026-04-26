@@ -40,6 +40,21 @@ npx aw-installer install --backend agents
 
 `diagnose` 和 `verify` 是只读检查；`install` 是显式写入当前 payload 的底层命令；`update` 默认只输出 dry-run plan。推荐写入路径是在确认 plan 后运行 `update --yes`，它会按 `prune --all -> check_paths_exist -> install -> verify` 写入目标仓库的 `.agents/skills`。完整入口合同见 [`Distribution Entrypoint Contract`](./docs/project-maintenance/deploy/distribution-entrypoint-contract.md)，维护者验证与本地 tarball smoke 见 [`Deploy Runbook`](./docs/project-maintenance/deploy/deploy-runbook.md)。
 
+在 npm release channel 发布前，可以从当前 checkout 打一个本地 `.tgz`，再在目标项目根目录用同一 package 入口试跑：
+
+```bash
+tmpdir="$(mktemp -d)"
+npm pack --json --pack-destination "$tmpdir" > "$tmpdir/pack.json"
+package_file="$(node -e "const fs = require('node:fs'); const payload = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); console.log(payload[0].filename);" "$tmpdir/pack.json")"
+
+cd /path/to/target-project
+npm exec --yes --package "$tmpdir/$package_file" -- aw-installer diagnose --backend agents --json
+npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents
+npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents --yes
+```
+
+这条 pre-release 试用路径仍然从 `.tgz` 包内读取 source payload，并把命令运行时所在的目标项目作为 target repo；写入只发生在该目标项目的 `.agents/skills` 下。
+
 ## 我们在构建什么
 
 从产品视角看，这不是一个只服务单仓库的脚手架，而是一套可以持续复用和迭代的能力系统：
