@@ -15,6 +15,7 @@ from governance_semantic_check import (
     check_foundations_authority_shadows,
     check_outdated_placeholder_phrases,
     check_repo_python_commands_are_bytecode_free,
+    check_root_tool_shims_disable_bytecode,
     check_required_handoffs,
 )
 
@@ -376,3 +377,41 @@ def test_governance_semantic_cli_disables_bytecode_before_local_import(tmp_path:
     assert completed.returncode == 1
     assert not list(tmp_path.rglob("__pycache__"))
     assert not list(tmp_path.rglob("*.pyc"))
+
+
+def test_check_root_tool_shims_disable_bytecode_flags_late_guard(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "tools/scope_gate_check.py",
+        "\n".join(
+            [
+                "import sys",
+                "from toolchain.scripts.test.scope_gate_check import main",
+                "sys.dont_write_bytecode = True",
+            ]
+        )
+        + "\n",
+    )
+
+    report = SemanticReport()
+    check_root_tool_shims_disable_bytecode(tmp_path, report)
+
+    assert any("tools/scope_gate_check.py" in item for item in report.failures)
+
+
+def test_check_root_tool_shims_disable_bytecode_accepts_guard_before_import(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "tools/scope_gate_check.py",
+        "\n".join(
+            [
+                "import sys",
+                "sys.dont_write_bytecode = True",
+                "from toolchain.scripts.test.scope_gate_check import main",
+            ]
+        )
+        + "\n",
+    )
+
+    report = SemanticReport()
+    check_root_tool_shims_disable_bytecode(tmp_path, report)
+
+    assert report.failures == []
