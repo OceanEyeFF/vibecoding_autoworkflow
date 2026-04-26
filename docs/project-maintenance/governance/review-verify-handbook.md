@@ -92,6 +92,7 @@ last_verified: 2026-04-26
   - 如同时改了 gate 链路，再补 `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`
 - adapter / deploy 变更
   - `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_agents_adapter_contract.py`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'`
   - `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_governance_semantic_check.py`
   - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents`
   - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents`

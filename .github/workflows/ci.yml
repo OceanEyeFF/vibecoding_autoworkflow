@@ -7,6 +7,8 @@ on:
 jobs:
   governance:
     runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,3 +32,6 @@ jobs:
 
       - name: Governance tests
         run: python -m pytest toolchain/scripts/test
+
+      - name: Deploy regression tests
+        run: python -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
