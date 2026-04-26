@@ -21,11 +21,11 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-当前 `toolchain/scripts/deploy/package.json` 和 `bin/aw-harness-deploy.js` 只提供本地 npm-style scaffold；它们调用同一个 Python wrapper，不代表 package 已发布，也不是最终用户入口名。
+当前 `toolchain/scripts/deploy/package.json`、`bin/aw-installer.js` 和 `bin/aw-harness-deploy.js` 只提供本地 npm-style scaffold；它们调用同一个 Python wrapper，不代表 package 已发布。`aw-installer` 是当前本地 scaffold 的主 bin，`aw-harness-deploy` 是兼容别名。
 
 package packlist 检查应在 `toolchain/scripts/deploy/` package root 内执行 `npm pack --dry-run --json`。不要从仓库根用 `--prefix` 运行 `pack`，因为该命令会寻找当前工作目录的 `package.json`。
 
-CI 必须显式设置 Node 后运行本地 package smoke、package-root pack dry-run，以及从临时 `.tgz` 执行 `aw-harness-deploy --help`、带 `AW_HARNESS_REPO_ROOT=<repo-root>` 的只读 `diagnose` 和 `update --json` dry-run tarball smoke；这些只验证当前 scaffold 的分发面，不表示 `aw-installer`、TUI runtime 或 npm/npx 发布渠道已经开启。
+CI 必须显式设置 Node 后运行本地 package smoke、package-root pack dry-run，以及从临时 `.tgz` 执行 `aw-installer --help`、带 `AW_HARNESS_REPO_ROOT=<repo-root>` 的只读 `diagnose` 和 `update --json` dry-run tarball smoke；这些只验证当前 scaffold 的分发面，不表示 TUI runtime 或 npm/npx 发布渠道已经开启。
 
 `AW_HARNESS_REPO_ROOT` 是当前 packaged wrapper 的 source checkout bridge。包装层可以改变启动位置，但所有 deploy source / target / payload 合同仍必须以该 source checkout 为准，不能从 package 解压目录或 deploy target 反推业务真相。
 
@@ -35,7 +35,7 @@ CI 必须显式设置 Node 后运行本地 package smoke、package-root pack dry
 
 - 分发包装层可以改变 operator 如何启动命令，但不能改变 deploy 语义。
 - CLI 是稳定的脚本化合同；TUI 是同一合同上的交互式操作层。
-- `npx aw-installer` 是目标用户入口；当前 `aw-harness-deploy` 只是中间 scaffold。
+- `npx aw-installer` 是目标用户入口；当前 `aw-installer` package 仍是本地 scaffold，`aw-harness-deploy` 只是兼容别名。
 - 当前 `agents` backend 的 source / target / payload / marker 合同仍以 [Deploy Mapping Spec](./deploy-mapping-spec.md) 为准。
 - 当前 destructive reinstall 主流程仍以 [Deploy Runbook](./deploy-runbook.md) 为准。
 
@@ -57,6 +57,12 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py <mo
 ```
 
 当前本地 package scaffold 入口：
+
+```bash
+aw-installer <mode> --backend agents
+```
+
+兼容别名仍可调用同一 wrapper：
 
 ```bash
 aw-harness-deploy <mode> --backend agents
@@ -132,4 +138,4 @@ npx aw-installer update --backend agents --yes
 
 ## 七、当前停止线
 
-当前仓库只承诺 repo-local deploy scripts、本地 npm-style scaffold 和 `agents` backend。`harness_deploy.py` 与 `bin/aw-harness-deploy.js` 都是本地薄包装入口，不是已发布 package，也不是最终 `aw-installer` 入口。下一轮如果要进入 packaging，应以本文为合同输入，先建立 `aw-installer` CLI surface，再添加 TUI shell，最后讨论发布渠道。
+当前仓库只承诺 repo-local deploy scripts、本地 npm-style `aw-installer` scaffold 和 `agents` backend。`harness_deploy.py`、`bin/aw-installer.js` 与 `bin/aw-harness-deploy.js` 都是本地薄包装入口，不是已发布 package，也不包含 TUI runtime。下一轮如果要进入 packaging，应以本文为合同输入，在已存在的 `aw-installer` CLI surface 上添加 TUI shell，然后讨论发布渠道。

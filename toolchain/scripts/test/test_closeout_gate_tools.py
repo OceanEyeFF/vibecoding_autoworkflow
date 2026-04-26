@@ -18,7 +18,7 @@ from gate_status_backfill import update_state
 NPM_HELP_STDOUT = "usage: harness_deploy.py\ninstall\nverify\ndiagnose\nupdate\n"
 
 
-def npm_pack_stdout(paths: set[str] | None = None, filename: str = "aw-harness-deploy-0.0.0-local.tgz") -> str:
+def npm_pack_stdout(paths: set[str] | None = None, filename: str = "aw-installer-0.0.0-local.tgz") -> str:
     if paths is None:
         paths = closeout_acceptance_gate.EXPECTED_NPM_PACKAGE_FILES
     return json.dumps(
@@ -43,7 +43,7 @@ def successful_npm_command_result(command: list[str], extra_env: dict[str, str] 
     if command[:3] == ["npm", "pack", "--json"] and "--pack-destination" in command:
         package_dir = Path(command[command.index("--pack-destination") + 1])
         package_dir.mkdir(parents=True, exist_ok=True)
-        (package_dir / "aw-harness-deploy-0.0.0-local.tgz").write_text("fake package", encoding="utf-8")
+        (package_dir / "aw-installer-0.0.0-local.tgz").write_text("fake package", encoding="utf-8")
         return {
             "command": command,
             "returncode": 0,
@@ -119,6 +119,7 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             ".agents/skills/legacy-skill/SKILL.md",
             "toolchain/scripts/deploy/adapter_deploy.py",
             "toolchain/scripts/deploy/aw_scaffold.py",
+            "toolchain/scripts/deploy/bin/aw-installer.js",
             "toolchain/scripts/deploy/bin/aw-harness-deploy.js",
             "toolchain/scripts/deploy/harness_deploy.py",
             "toolchain/scripts/deploy/package.json",
@@ -466,8 +467,8 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
         "agents_adapter_contract_tests",
         "deploy_regression_tests",
         "repo_analysis_contract_check",
-        "npm_pack_dry_run_aw_harness_deploy",
-        "npm_tarball_smoke_aw_harness_deploy",
+        "npm_pack_dry_run_aw_installer",
+        "npm_tarball_smoke_aw_installer",
     ]
     assert any(command[-1] == "toolchain/scripts/test/test_folder_logic_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_path_governance_check.py" for command in commands)
@@ -620,7 +621,7 @@ def test_run_test_gate_fails_on_unexpected_npm_packlist(monkeypatch, tmp_path) -
     assert result["passed"] is False
     assert result["status"] == "failed"
     pack_result = next(
-        item for item in result["subchecks"] if item["name"] == "npm_pack_dry_run_aw_harness_deploy"
+        item for item in result["subchecks"] if item["name"] == "npm_pack_dry_run_aw_installer"
     )
     assert pack_result["passed"] is False
     assert "unexpected npm package files" in pack_result["stderr"]
@@ -654,7 +655,7 @@ def test_run_test_gate_fails_on_npm_tarball_exec_failure(monkeypatch, tmp_path) 
     assert result["passed"] is False
     assert result["status"] == "failed"
     tarball_result = next(
-        item for item in result["subchecks"] if item["name"] == "npm_tarball_smoke_aw_harness_deploy"
+        item for item in result["subchecks"] if item["name"] == "npm_tarball_smoke_aw_installer"
     )
     assert tarball_result["passed"] is False
     exec_result = next(item for item in tarball_result["subchecks"] if item["name"] == "npm_exec_tarball")

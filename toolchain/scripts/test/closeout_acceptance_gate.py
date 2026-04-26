@@ -29,6 +29,7 @@ DEPLOY_VERIFY_ENTRYPOINTS = (
 EXPECTED_NPM_PACKAGE_FILES = {
     "README.md",
     "adapter_deploy.py",
+    "bin/aw-installer.js",
     "bin/aw-harness-deploy.js",
     "harness_deploy.py",
     "package.json",
@@ -337,7 +338,7 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                         "--package",
                         str(package_file),
                         "--",
-                        "aw-harness-deploy",
+                        "aw-installer",
                         "--help",
                     ],
                     cwd=package_root,
@@ -355,7 +356,7 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                         "--package",
                         str(package_file),
                         "--",
-                        "aw-harness-deploy",
+                        "aw-installer",
                         "diagnose",
                         "--backend",
                         "agents",
@@ -383,7 +384,7 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                         "--package",
                         str(package_file),
                         "--",
-                        "aw-harness-deploy",
+                        "aw-installer",
                         "update",
                         "--backend",
                         "agents",
@@ -484,11 +485,11 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
             run_command([python, "toolchain/scripts/test/repo_analysis_contract_check.py"], cwd=repo_root),
         ),
         (
-            "npm_pack_dry_run_aw_harness_deploy",
+            "npm_pack_dry_run_aw_installer",
             run_npm_package_packlist(),
         ),
         (
-            "npm_tarball_smoke_aw_harness_deploy",
+            "npm_tarball_smoke_aw_installer",
             run_npm_package_tarball_smoke(),
         ),
     ]
