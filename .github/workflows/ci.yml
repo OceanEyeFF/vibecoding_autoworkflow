@@ -47,3 +47,12 @@ jobs:
       - name: Deploy package pack dry-run
         working-directory: toolchain/scripts/deploy
         run: npm pack --dry-run --json
+
+      - name: Deploy package tarball smoke
+        working-directory: toolchain/scripts/deploy
+        run: |
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+          npm pack --json --pack-destination "$tmpdir" > "$tmpdir/pack.json"
+          package_file="$(node -e "const fs = require('node:fs'); const payload = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); console.log(payload[0].filename);" "$tmpdir/pack.json")"
+          npm exec --yes --package "$tmpdir/$package_file" -- aw-harness-deploy --help

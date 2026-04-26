@@ -63,7 +63,18 @@ npm pack --dry-run --json
 
 该 dry-run 不应在仓库中留下 `.tgz` package artifact。
 
-CI 的 Governance Checks workflow 会显式设置 Node，并运行同一组本地 package smoke 与 pack dry-run。该 CI 覆盖仍只验证 repo-local scaffold，不代表 package 已发布。
+更接近真实分发路径的 smoke 应把 package 打到临时目录，再从 `.tgz` 执行 bin：
+
+```bash
+cd toolchain/scripts/deploy
+tmpdir="$(mktemp -d)"
+trap 'rm -rf "$tmpdir"' EXIT
+npm pack --json --pack-destination "$tmpdir" > "$tmpdir/pack.json"
+package_file="$(node -e "const fs = require('node:fs'); const payload = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); console.log(payload[0].filename);" "$tmpdir/pack.json")"
+npm exec --yes --package "$tmpdir/$package_file" -- aw-harness-deploy --help
+```
+
+CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 package smoke、pack dry-run 和 tarball smoke。该 CI 覆盖仍只验证 repo-local scaffold，不代表 package 已发布。
 
 暂不实现：
 
