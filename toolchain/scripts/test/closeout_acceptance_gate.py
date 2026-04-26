@@ -418,7 +418,7 @@ def main() -> int:
         if skip_reasons:
             backfill_details["skip_reasons"] = skip_reasons
 
-        backfill = subprocess.run(
+        backfill = run_command(
             [
                 python,
                 str(repo_root / "tools" / "gate_status_backfill.py"),
@@ -431,20 +431,18 @@ def main() -> int:
                 "--details",
                 json.dumps(backfill_details, sort_keys=True),
             ],
-            capture_output=True,
-            text=True,
             cwd=repo_root,
         )
         backfill_results.append(
             {
                 "gate": result["gate"],
-                "returncode": backfill.returncode,
-                "stdout": backfill.stdout,
-                "stderr": backfill.stderr,
-                "passed": backfill.returncode == 0,
+                "returncode": backfill["returncode"],
+                "stdout": backfill["stdout"],
+                "stderr": backfill["stderr"],
+                "passed": backfill["passed"],
             }
         )
-        step_passed = result["passed"] and backfill.returncode == 0
+        step_passed = result["passed"] and backfill["passed"]
         passed = passed and (step_passed or not step.required)
         if step.required and not step_passed:
             break
