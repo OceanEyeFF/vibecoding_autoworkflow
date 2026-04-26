@@ -249,12 +249,16 @@ def test_toolchain_cache_content_fails(tmp_path: Path) -> None:
 def test_product_and_docs_bytecode_files_fail(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
     write_file(repo_root / "product/harness/demo.pyc", "cache\n")
+    write_file(repo_root / "product/harness/demo.pyo", "cache\n")
+    write_file(repo_root / "docs/project-maintenance/demo.pyc", "cache\n")
     write_file(repo_root / "docs/project-maintenance/demo.pyo", "cache\n")
 
     report = run_checks(repo_root)
 
     assert {"FL004", "FL005"} <= issue_codes(report)
     assert "product/harness/demo.pyc" in issue_paths(report)
+    assert "product/harness/demo.pyo" in issue_paths(report)
+    assert "docs/project-maintenance/demo.pyc" in issue_paths(report)
     assert "docs/project-maintenance/demo.pyo" in issue_paths(report)
 
 
