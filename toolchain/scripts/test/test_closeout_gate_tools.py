@@ -259,6 +259,47 @@ def test_run_spec_gate_includes_folder_logic(monkeypatch, tmp_path) -> None:
     assert any("docs/harness" in command for command in commands)
 
 
+def test_run_command_disables_python_bytecode(monkeypatch, tmp_path) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_run(command: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
+        captured["command"] = command
+        captured["env"] = kwargs["env"]
+        return subprocess.CompletedProcess(command, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(closeout_acceptance_gate.subprocess, "run", fake_run)
+
+    result = closeout_acceptance_gate.run_command([sys.executable, "--version"], cwd=tmp_path)
+
+    assert result["passed"] is True
+    assert captured["env"]["PYTHONDONTWRITEBYTECODE"] == "1"
+
+
+def test_run_static_gate_uses_in_memory_syntax_check(tmp_path) -> None:
+    scripts_root = tmp_path / "toolchain" / "scripts" / "test"
+    scripts_root.mkdir(parents=True)
+    (scripts_root / "ok.py").write_text("value = 1\n", encoding="utf-8")
+
+    result = closeout_acceptance_gate.run_static_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is True
+    assert result["command"] == ["python-syntax-check", "toolchain/scripts/test"]
+    assert not list(tmp_path.rglob("__pycache__"))
+    assert not list(tmp_path.rglob("*.pyc"))
+
+
+def test_run_static_gate_reports_syntax_errors(tmp_path) -> None:
+    scripts_root = tmp_path / "toolchain" / "scripts" / "test"
+    scripts_root.mkdir(parents=True)
+    (scripts_root / "bad.py").write_text("def broken(:\n", encoding="utf-8")
+
+    result = closeout_acceptance_gate.run_static_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is False
+    assert result["returncode"] == 1
+    assert "toolchain/scripts/test/bad.py" in result["stderr"]
+
+
 def test_run_test_gate_includes_agents_adapter_contract_tests(monkeypatch, tmp_path) -> None:
     commands: list[list[str]] = []
 
