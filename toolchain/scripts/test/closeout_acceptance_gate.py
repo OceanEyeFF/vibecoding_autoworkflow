@@ -9,6 +9,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -288,6 +289,75 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
             }
         return {**result, "packed_files": sorted(packed_files)}
 
+    def run_npm_package_tarball_smoke() -> dict:
+        package_root = repo_root / "toolchain" / "scripts" / "deploy"
+        failures: list[str] = []
+        subchecks: list[dict] = []
+        package_filename = ""
+        with tempfile.TemporaryDirectory() as package_dir:
+            package_dir_path = Path(package_dir)
+            pack_result = {
+                **run_command(
+                    ["npm", "pack", "--json", "--pack-destination", str(package_dir_path)],
+                    cwd=package_root,
+                ),
+                "cwd": package_root.relative_to(repo_root).as_posix(),
+            }
+            subchecks.append({**pack_result, "name": "npm_pack_tarball"})
+            if pack_result["passed"]:
+                try:
+                    payload = json.loads(pack_result["stdout"])
+                except json.JSONDecodeError as error:
+                    failures.append(f"invalid npm pack JSON: {error}")
+                else:
+                    if len(payload) != 1:
+                        failures.append(f"expected one npm pack result, got {len(payload)}")
+                    else:
+                        package_filename = payload[0].get("filename", "")
+                        package_file = package_dir_path / package_filename
+                        if not package_filename:
+                            failures.append("missing npm package filename")
+                        elif not package_file.is_file():
+                            failures.append(f"packed tarball was not created: {package_file}")
+                        elif (package_root / package_filename).exists():
+                            failures.append(
+                                "packed tarball was written into repo: "
+                                f"{(package_root / package_filename).relative_to(repo_root).as_posix()}"
+                            )
+
+            if pack_result["passed"] and not failures:
+                package_file = package_dir_path / package_filename
+                exec_result = run_command(
+                    [
+                        "npm",
+                        "exec",
+                        "--yes",
+                        "--package",
+                        str(package_file),
+                        "--",
+                        "aw-harness-deploy",
+                        "--help",
+                    ],
+                    cwd=package_root,
+                )
+                if exec_result["passed"]:
+                    for required_text in ("harness_deploy.py", "diagnose", "verify", "install"):
+                        if required_text not in exec_result["stdout"]:
+                            failures.append(f"tarball help omitted {required_text!r}")
+                    if "update" in exec_result["stdout"]:
+                        failures.append("tarball help unexpectedly exposed 'update'")
+                subchecks.append({**exec_result, "name": "npm_exec_tarball"})
+
+        passed = all(result["passed"] for result in subchecks) and not failures
+        return {
+            "command": ["npm-package-tarball-smoke"],
+            "returncode": 0 if passed else 1,
+            "stdout": "",
+            "stderr": "\n".join(failures),
+            "passed": passed,
+            "subchecks": subchecks,
+        }
+
     def run_local_deploy_verify(backend: str, script_name: str) -> dict:
         command = [
             python,
@@ -342,6 +412,10 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
         (
             "npm_pack_dry_run_aw_harness_deploy",
             run_npm_package_packlist(),
+        ),
+        (
+            "npm_tarball_smoke_aw_harness_deploy",
+            run_npm_package_tarball_smoke(),
         ),
     ]
     subchecks.extend(
