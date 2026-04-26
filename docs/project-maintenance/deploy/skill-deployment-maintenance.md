@@ -1,13 +1,13 @@
 ---
 title: "Skill Deployment 维护流"
 status: active
-updated: 2026-04-19
+updated: 2026-04-26
 owner: aw-kernel
-last_verified: 2026-04-19
+last_verified: 2026-04-26
 ---
 # Skill Deployment 维护流
 
-> 目的：为当前仓库的 deploy target 提供统一的维护与诊断入口，回答“只读 `verify` 还看什么、什么时候该直接走 destructive reinstall、冲突和 drift 各怎么处理”。
+> 目的：为当前仓库的 deploy target 提供统一的维护与诊断入口，回答“只读 `diagnose` / `verify` 还看什么、什么时候该直接走 destructive reinstall、冲突和 drift 各怎么处理”。
 
 本页属于 [Deploy Runbooks](./README.md) 路径簇。
 
@@ -31,18 +31,32 @@ last_verified: 2026-04-19
 
 默认顺序固定为：
 
-1. 需要诊断时先跑一次 `verify`
-2. 需要恢复时直接跑 `prune --all -> check_paths_exist -> install`
-3. 需要确认结果时再跑一次 `verify`
+1. 需要机器可读状态时先跑一次 `diagnose --json`
+2. 需要严格复验时跑一次 `verify`
+3. 需要恢复时直接跑 `prune --all -> check_paths_exist -> install`
+4. 需要确认结果时再跑一次 `diagnose --json` 或 `verify`
 
 这个顺序的目的：
 
-- 先区分 source 合法性问题、target root 问题和 live install drift
-- 再决定是手工清冲突，还是直接按 destructive reinstall 重建
+- 先拿到 backend、target root、受管安装数量、issue code 与 unrecognized / conflict 摘要
+- 再区分 source 合法性问题、target root 问题和 live install drift
+- 然后决定是手工清冲突，还是直接按 destructive reinstall 重建
 - 最后确认恢复后问题是否真的消失
 - `check_paths_exist` 与 `install` 都必须做到“冲突前零业务写入”
 
-## 三、`verify` 在看什么
+## 三、`diagnose` 在看什么
+
+`diagnose` 是只读状态观察入口，适合外层自动化或 operator 先看摘要：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py diagnose --backend agents --json
+```
+
+它输出当前 backend、target root 状态、payload binding 数量、受管 install 数量、issue 数量、issue codes，以及 unrecognized / conflict 摘要。只要诊断本身成功收集到结果，即使存在 issue 也返回 0；需要把 issue 作为失败信号时，使用 `verify`。
+
+如果 backend 需要显式 root override，例如 `agents` 的 `--agents-root`，就在命令上附加对应参数。参数来源见 [Codex Usage Help](../usage-help/codex.md)。
+
+## 四、`verify` 在看什么
 
 ### 1. 通用 `verify`
 
@@ -65,9 +79,15 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ver
 如果手工改过 target root，导致它不是目录，`verify` 会把它报成结构错误。
 如果手工改过已安装 skill 目录中的同步文件，`verify` 会把它报成 live install drift 或 required payload 缺失。
 
-## 四、恢复主流程
+## 五、恢复主流程
 
-只读检查：
+只读诊断：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py diagnose --backend agents --json
+```
+
+严格复验：
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
@@ -88,7 +108,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ins
 - `install --backend agents` 只写当前 source 声明的 live payload；不会做 archive / history、增量修复或旧版本保活
 - `.agents/` 或其他 target root 不是 canonical truth；恢复动作不能反向把 target 当 source 改
 
-## 五、故障信号怎么路由
+## 六、故障信号怎么路由
 
 | 信号或症状 | 常见含义 | 优先处理方式 |
 |---|---|---|
@@ -106,7 +126,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ins
 | `missing-target-entry` / `missing-required-payload` | live install 缺 entry 或缺必需文件 | 先看是否 drift，再重跑三步主流程 |
 | `target-payload-drift` | 已安装 payload 与当前 source 不一致 | 直接走三步主流程恢复 |
 
-## 六、额外判断
+## 七、额外判断
 
 如果 `verify` 失败，但 `check_paths_exist` 通过：
 

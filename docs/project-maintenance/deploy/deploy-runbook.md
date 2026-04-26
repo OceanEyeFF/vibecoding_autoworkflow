@@ -1,13 +1,13 @@
 ---
 title: "Deploy Runbook"
 status: active
-updated: 2026-04-19
+updated: 2026-04-26
 owner: aw-kernel
-last_verified: 2026-04-19
+last_verified: 2026-04-26
 ---
 # Deploy Runbook
 
-> 目的：提供当前仓库的 deploy 快速上手指南，固定 destructive reinstall model：`prune --all -> check_paths_exist -> install --backend agents`。`verify` 只保留为辅助、只读的诊断与复验命令。
+> 目的：提供当前仓库的 deploy 快速上手指南，固定 destructive reinstall model：`prune --all -> check_paths_exist -> install --backend agents`。`diagnose` 与 `verify` 只保留为辅助、只读的诊断与复验命令。
 
 本页属于 [Deploy Runbooks](./README.md) 系列文档。
 
@@ -52,6 +52,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
   - `prune --all`
   - `check_paths_exist`
   - `install --backend agents`
+- `diagnose --backend agents --json` 是只读结构化诊断命令，发现问题时仍以 0 退出，用于给 operator 或外层自动化读取当前 deploy 状态
 - `verify --backend agents` 是只读辅助命令，不属于安装主线
 - 原始来源（canonical source）、后端部署包（backend payload source）、目标入口（target entry）之间的正式映射规则，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
 - `prune --all` 只删除带可识别、且属于当前 backend 的受管 `aw.marker` 目录；无 marker、不可识别 marker 或 foreign 目录一律不碰
@@ -94,6 +95,14 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ins
 - 如果冲突路径未清理完，也必须在写入前失败
 
 ## 四、可选复验
+
+如果需要先拿结构化状态摘要，执行：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py diagnose --backend agents --json
+```
+
+`diagnose` 当前只读输出 backend、target root、受管安装数量、issue 数量、issue code，以及 unrecognized / conflict 摘要。它用于状态观察；即使发现 drift 或 root 问题，也返回 0。
 
 主流程跑完后，如需只读复验，再执行：
 

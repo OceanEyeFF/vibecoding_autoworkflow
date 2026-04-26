@@ -31,6 +31,13 @@ EXPECTED_PAYLOAD_VERSIONS = {
 }
 MANAGED_SKILL_MARKER = "aw.marker"
 MANAGED_SKILL_MARKER_VERSION = "aw-managed-skill-marker.v2"
+UNRECOGNIZED_ISSUE_CODES = {
+    "unrecognized-target-directory",
+}
+CONFLICT_ISSUE_CODES = {
+    "unexpected-managed-directory",
+    "unrecognized-target-directory",
+}
 
 
 class DeployError(RuntimeError):
@@ -150,6 +157,15 @@ def parse_args() -> argparse.Namespace:
     verify_parser = subparsers.add_parser("verify")
     add_backend_args(verify_parser)
     add_target_override_args(verify_parser)
+
+    diagnose_parser = subparsers.add_parser("diagnose")
+    add_backend_args(diagnose_parser)
+    add_target_override_args(diagnose_parser)
+    diagnose_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print a structured diagnostic summary.",
+    )
 
     prune_parser = subparsers.add_parser("prune")
     add_backend_args(prune_parser)
@@ -1327,6 +1343,81 @@ def print_verify_result(result: VerifyResult) -> None:
         print(f"  - {issue.code}: {issue.path} ({issue.detail})")
 
 
+def target_root_status(path: Path) -> str:
+    if path.is_symlink():
+        if path.exists():
+            return "symlink"
+        return "broken-symlink"
+    if path.is_dir():
+        return "directory"
+    if path.exists():
+        return "wrong-type"
+    return "missing"
+
+
+def managed_install_dirs(backend: str, target_root: Path) -> list[Path]:
+    if not target_root.is_dir():
+        return []
+
+    managed_dirs: list[Path] = []
+    for child in sorted(target_root.iterdir()):
+        if child.is_symlink() or not child.is_dir():
+            continue
+        marker = load_runtime_marker(managed_skill_marker_path(child))
+        if marker is not None and marker.backend == backend:
+            managed_dirs.append(child)
+    return managed_dirs
+
+
+def issue_to_dict(issue: VerifyIssue) -> dict[str, str]:
+    return {
+        "code": issue.code,
+        "path": str(issue.path),
+        "detail": issue.detail,
+    }
+
+
+def diagnostic_summary(result: VerifyResult) -> dict[str, Any]:
+    issue_codes = sorted({issue.code for issue in result.issues})
+    managed_dirs = managed_install_dirs(result.backend, result.target_root)
+    unrecognized_issues = [
+        issue for issue in result.issues if issue.code in UNRECOGNIZED_ISSUE_CODES
+    ]
+    conflict_issues = [
+        issue for issue in result.issues if issue.code in CONFLICT_ISSUE_CODES
+    ]
+
+    return {
+        "backend": result.backend,
+        "target_root": str(result.target_root),
+        "target_root_status": target_root_status(result.target_root),
+        "target_root_exists": result.target_root.exists(),
+        "binding_count": len(collect_skill_bindings(result.backend)),
+        "managed_install_count": len(managed_dirs),
+        "managed_installs": [str(path) for path in managed_dirs],
+        "issue_count": len(result.issues),
+        "issue_codes": issue_codes,
+        "issues": [issue_to_dict(issue) for issue in result.issues],
+        "unrecognized_count": len(unrecognized_issues),
+        "unrecognized": [issue_to_dict(issue) for issue in unrecognized_issues],
+        "conflict_count": len(conflict_issues),
+        "conflicts": [issue_to_dict(issue) for issue in conflict_issues],
+    }
+
+
+def print_diagnostic_summary(summary: dict[str, Any]) -> None:
+    print(
+        f"[{summary['backend']}] diagnose: {summary['issue_count']} issue(s), "
+        f"{summary['managed_install_count']} managed install(s) at {summary['target_root']}"
+    )
+    if summary["issue_codes"]:
+        print(f"issue codes: {', '.join(summary['issue_codes'])}")
+    if summary["unrecognized_count"]:
+        print(f"unrecognized target entries: {summary['unrecognized_count']}")
+    if summary["conflict_count"]:
+        print(f"conflict entries: {summary['conflict_count']}")
+
+
 def main() -> int:
     args = parse_args()
     try:
@@ -1335,6 +1426,21 @@ def main() -> int:
             for result in results:
                 print_verify_result(result)
             return 1 if any(result.issues for result in results) else 0
+
+        if args.mode == "diagnose":
+            results = [verify_backend(backend, args) for backend in iter_backends(args.backend)]
+            summaries = [diagnostic_summary(result) for result in results]
+            if args.json:
+                payload: dict[str, Any]
+                if len(summaries) == 1:
+                    payload = summaries[0]
+                else:
+                    payload = {"backends": summaries}
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            else:
+                for summary in summaries:
+                    print_diagnostic_summary(summary)
+            return 0
 
         if args.mode == "prune":
             if not args.all:
