@@ -20,7 +20,12 @@
   ],
   "scripts": {
     "smoke": "node toolchain/scripts/deploy/bin/aw-installer.js --help",
-    "pack:dry-run": "npm pack --dry-run --json"
+    "pack:dry-run": "npm pack --dry-run --json",
+    "publish:dry-run": "npm publish --dry-run --json"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "engines": {
     "node": ">=18"

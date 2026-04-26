@@ -62,6 +62,9 @@ jobs:
       - name: Root aw-installer package pack dry-run
         run: npm pack --dry-run --json
 
+      - name: Root aw-installer publish dry-run
+        run: npm run publish:dry-run --silent
+
       - name: Root aw-installer package tarball smoke
         run: |
           tmpdir="$(mktemp -d)"

@@ -312,6 +312,14 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("product/harness/adapters/agents/skills", package["files"])
         self.assertIn("toolchain/scripts/deploy/harness_deploy.py", package["files"])
         self.assertIn("toolchain/scripts/deploy/adapter_deploy.py", package["files"])
+        self.assertEqual(
+            package["publishConfig"],
+            {
+                "registry": "https://registry.npmjs.org/",
+                "access": "public",
+            },
+        )
+        self.assertEqual(package["scripts"]["publish:dry-run"], "npm publish --dry-run --json")
 
     def test_local_npm_installer_bin_help_preserves_current_command_surface(self) -> None:
         if shutil.which("node") is None:
@@ -449,6 +457,29 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertFalse(any(path.startswith(".aw/") for path in packed_files))
         self.assertFalse(any(path.startswith(".agents/") for path in packed_files))
         self.assertFalse((package_root / payload[0]["filename"]).exists())
+
+    def test_root_npm_publish_dry_run_preserves_package_surface(self) -> None:
+        if shutil.which("npm") is None:
+            self.skipTest("npm is not available")
+        package_root = self.source_repo_root
+
+        completed = subprocess.run(
+            ["npm", "run", "publish:dry-run", "--silent"],
+            cwd=package_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload["name"], "aw-installer")
+        self.assertEqual(payload["version"], "0.0.0-local")
+        packed_files = {entry["path"] for entry in payload["files"]}
+        self.assertIn("package.json", packed_files)
+        self.assertIn("product/harness/skills/harness-skill/SKILL.md", packed_files)
+        self.assertIn("toolchain/scripts/deploy/bin/aw-installer.js", packed_files)
+        self.assertFalse((package_root / payload["filename"]).exists())
 
     def test_local_npm_packed_tarball_bin_help_preserves_current_command_surface(self) -> None:
         if shutil.which("npm") is None:

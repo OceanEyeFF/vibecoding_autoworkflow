@@ -49,6 +49,24 @@ def successful_npm_command_result(
             "stderr": "",
             "passed": True,
         }
+    if command == ["npm", "run", "publish:dry-run", "--silent"]:
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": json.dumps(
+                {
+                    "name": "aw-installer",
+                    "version": "0.0.0-local",
+                    "filename": "aw-installer-0.0.0-local.tgz",
+                    "files": [
+                        {"path": path}
+                        for path in sorted(closeout_acceptance_gate.ROOT_NPM_REQUIRED_PACKAGE_FILES)
+                    ],
+                }
+            ),
+            "stderr": "",
+            "passed": True,
+        }
     if command[:3] == ["npm", "pack", "--json"] and "--pack-destination" in command:
         package_dir = Path(command[command.index("--pack-destination") + 1])
         package_dir.mkdir(parents=True, exist_ok=True)

@@ -484,6 +484,45 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
             }
         return {**result, "packed_files": sorted(packed_files)}
 
+    def run_root_npm_publish_dry_run() -> dict:
+        result = run_command(["npm", "run", "publish:dry-run", "--silent"], cwd=repo_root)
+        result = {**result, "cwd": "."}
+        if not result["passed"]:
+            return result
+        try:
+            payload = json.loads(result["stdout"])
+        except json.JSONDecodeError as error:
+            return {
+                **result,
+                "returncode": 1,
+                "passed": False,
+                "stderr": f"{result['stderr']}\ninvalid root npm publish dry-run JSON: {error}".strip(),
+            }
+
+        packed_files = {entry["path"] for entry in payload.get("files", [])}
+        package_filename = payload.get("filename")
+        failures: list[str] = []
+        if payload.get("name") != "aw-installer":
+            failures.append("publish dry-run package name is not aw-installer")
+        missing_files = sorted(ROOT_NPM_REQUIRED_PACKAGE_FILES - packed_files)
+        if missing_files:
+            failures.append(f"root npm publish dry-run missing required files: {missing_files}")
+        if not package_filename:
+            failures.append("missing root npm publish dry-run package filename")
+        else:
+            artifact_path = repo_root / package_filename
+            if artifact_path.exists():
+                failures.append(f"publish dry-run left root package artifact: {artifact_path.name}")
+        if failures:
+            return {
+                **result,
+                "returncode": 1,
+                "passed": False,
+                "stderr": "\n".join(failures),
+                "packed_files": sorted(packed_files),
+            }
+        return {**result, "packed_files": sorted(packed_files)}
+
     def run_root_npm_package_tarball_smoke() -> dict:
         failures: list[str] = []
         subchecks: list[dict] = []
@@ -702,6 +741,10 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
         (
             "root_npm_pack_dry_run_aw_installer",
             run_root_npm_package_packlist(),
+        ),
+        (
+            "root_npm_publish_dry_run_aw_installer",
+            run_root_npm_publish_dry_run(),
         ),
         (
             "root_npm_tarball_smoke_aw_installer",
