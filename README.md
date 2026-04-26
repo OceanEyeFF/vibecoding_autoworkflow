@@ -30,6 +30,7 @@ npx aw-installer tui
 交互式终端中，`npx aw-installer` 可以进入最小 TUI；CI、脚本或非交互环境应使用显式 CLI：
 
 ```bash
+npx aw-installer --version
 npx aw-installer diagnose --backend agents --json
 npx aw-installer verify --backend agents
 npx aw-installer update --backend agents

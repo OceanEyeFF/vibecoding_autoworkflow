@@ -56,6 +56,7 @@ jobs:
           npm pack --json --pack-destination "$tmpdir" > "$tmpdir/pack.json"
           package_file="$(node -e "const fs = require('node:fs'); const payload = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); console.log(payload[0].filename);" "$tmpdir/pack.json")"
           npm exec --yes --package "$tmpdir/$package_file" -- aw-installer --help
+          npm exec --yes --package "$tmpdir/$package_file" -- aw-installer --version
           AW_HARNESS_REPO_ROOT="$GITHUB_WORKSPACE" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer diagnose --backend agents --json
           AW_HARNESS_REPO_ROOT="$GITHUB_WORKSPACE" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents --json
 
@@ -76,6 +77,7 @@ jobs:
           (
             cd "$target_repo"
             AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer --help
+            AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer --version
             AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer diagnose --backend agents --json
             AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents --json
           )

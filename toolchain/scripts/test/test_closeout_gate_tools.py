@@ -16,6 +16,7 @@ from gate_status_backfill import update_state
 
 
 NPM_HELP_STDOUT = "usage: aw-installer\nharness_deploy.py\ntui\ninstall\nverify\ndiagnose\nupdate\n"
+NPM_VERSION_STDOUT = "aw-installer 0.0.0-local\n"
 
 
 def npm_pack_stdout(paths: set[str] | None = None, filename: str = "aw-installer-0.0.0-local.tgz") -> str:
@@ -129,6 +130,14 @@ def successful_npm_command_result(
                     ],
                 }
             ),
+            "stderr": "",
+            "passed": True,
+        }
+    if command[:2] == ["npm", "exec"] and "--version" in command:
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": NPM_VERSION_STDOUT,
             "stderr": "",
             "passed": True,
         }
@@ -371,6 +380,7 @@ def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path
 
     assert result["passed"] is True
     command = captured["command"]
+    assert "README.md" in command
     assert "AGENTS.md" in command
     assert "CONTRIBUTING.md" in command
     assert "docs/README.md" in command
