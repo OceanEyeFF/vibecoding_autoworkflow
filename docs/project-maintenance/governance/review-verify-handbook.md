@@ -86,7 +86,7 @@ last_verified: 2026-04-26
   - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`
   - 对应的最小 pytest
   - closeout acceptance gate 当前按 `scope_gate -> spec_gate -> static_gate -> cache_gate -> test_gate -> smoke_gate` 顺序收口；其中 `cache_gate` 会扫描 `docs/`、`product/`、`toolchain/` 和 `tools/` 下的 `.pytest_cache`、`__pycache__`、`.pyc` 与 `.pyo` 运行缓存。
-  - closeout `test_gate` 会运行 closeout gate、folder logic、path governance、semantic governance、agents adapter contract 回归测试，以及 Repo Analysis contract check。
+  - closeout `test_gate` 会运行 closeout gate、folder logic、path governance、semantic governance、agents adapter contract 回归测试、Repo Analysis contract check，以及 `adapter_deploy.py` / `harness_deploy.py` 的 `agents` deploy verify。
 - deploy mapping / payload contract 变更
   - `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_agents_adapter_contract.py`
   - 如同时改了 gate 链路，再补 `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`
@@ -98,6 +98,7 @@ last_verified: 2026-04-26
   - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents`
   - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents`
   - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py verify --backend agents`
 - Harness runtime 观察或 operator-facing runbook 变更
   - 先跑对应 deploy / adapter 最小验证
   - 再按 [Codex Harness Manual Runbook](../deploy/codex-harness-manual-runbook.md) 做真实手动观察；该路径不是 cheap deterministic gate，不用 mock smoke 替代
