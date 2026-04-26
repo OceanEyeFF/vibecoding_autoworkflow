@@ -32,6 +32,7 @@
 - `diagnose` 由 `adapter_deploy.py diagnose --json` 提供，用于输出 backend、target root、受管安装数量、issue code 与 unrecognized / conflict 摘要；发现 issue 时仍返回 0
 - `verify` 由 `adapter_deploy.py verify` 提供，用于检查 source 合法性、target root 状态、live install 对齐，以及 conflict / unrecognized 情形
 - `harness_deploy.py` 当前只作为本地薄包装入口存在，不表示 package / npx 发布渠道已经实现
+- `update` 当前不是可用命令；未来若实现，只能包装同一三步 destructive reinstall，不得绕过 `check_paths_exist` 或 `verify` 语义
 - `npm --prefix toolchain/scripts/deploy run smoke --silent` 只验证本地 package scaffold 的 bin 能打开当前 help，不发布或安装 package
 - 如需检查 package packlist，在 `toolchain/scripts/deploy/` 目录内运行 `npm pack --dry-run --json`；不要从仓库根用 `--prefix` 跑 `pack`
 - 从打包后的 `.tgz` 执行非 help 命令时，使用 `AW_HARNESS_REPO_ROOT=<repo-root>` 指向真实 source checkout；否则脚本会从 package 解压路径解析 source root

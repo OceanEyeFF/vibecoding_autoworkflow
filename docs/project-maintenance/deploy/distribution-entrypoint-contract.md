@@ -42,7 +42,7 @@ CI 必须显式设置 Node 后运行本地 package smoke、package-root pack dry
 - npm/npx 包名、Python 包名、发布 registry 或版本策略。
 - 新的 deploy backend。
 - `adapter_deploy.py` 内部实现。
-- one-shot mutating install/update 行为。
+- one-shot mutating install/update 的当前可用实现。
 
 ## 二、当前与未来入口
 
@@ -62,7 +62,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py <mo
 | `prune --all` | 删除当前 backend 可识别且属于我方的受管安装目录 | 仍必须显式触发，不能静默并入只读命令 |
 | `check_paths_exist` | 写入前全量冲突扫描；发现冲突时失败且不写业务文件 | 保持零业务写入边界 |
 | `install` | 只写当前 source 声明的 live payload | 不接管 archive/history、增量修复或旧版本保活 |
-| `update` | 当前未实现 | 后续实现前必须先定义和验证它与三步 destructive reinstall 的关系 |
+| `update` | 当前未实现 | 只能作为三步 destructive reinstall 的显式 one-shot 包装；实现前必须满足本页准入合同 |
 
 ## 三、必须保持的不变量
 
@@ -76,15 +76,16 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py <mo
 
 ## 四、`update` 的准入条件
 
-后续若要添加 `update`，必须先完成一轮独立 worktrack，并至少回答：
+后续若要添加 `update`，必须先完成一轮独立实现 worktrack。本文先固定准入答案：
 
-- `update` 是否只是三步 destructive reinstall 的命名包装。
-- `update` 如何暴露将要删除和写入的 target paths。
-- `update` 在 unrecognized / foreign / conflict 目录存在时是否必须停止。
-- `update` 是否复用 `diagnose` 的状态摘要和 `verify` 的严格失败信号。
-- `update` 的回滚或恢复文档如何落在 [Skill Deployment 维护流](./skill-deployment-maintenance.md)。
+- `update` 只能是 `prune --all -> check_paths_exist -> install --backend <backend>` 的 one-shot 包装，不得引入增量修复、archive/history、旧版本保活或 target-to-source 反向同步。
+- `update` 必须在执行前暴露 target root、将删除的受管 install paths、将写入的 target paths，以及当前 conflict / unrecognized / foreign 摘要；该预览可以复用 `diagnose --json` 数据结构，但必须让 operator 或外层自动化能在写入前读到。
+- `update` 在 source contract 非法、target root 类型错误、坏链路、unrecognized / foreign 目录或待写入路径 conflict 存在时必须停止；`check_paths_exist` 失败时不得写业务文件。
+- `update` 必须复用 `diagnose` 的状态摘要和 `verify` 的严格失败信号：执行前可给出只读摘要，执行后必须跑等价严格复验并把 issue 作为失败信号。
+- `update` 不承诺自动回滚。恢复语义落在 [Skill Deployment 维护流](./skill-deployment-maintenance.md)：修正 source 或 target 后重新运行显式三步主流程，或在未来实现中重新运行同等 one-shot 包装。
+- `update` 的 help、README、package smoke 和 closeout coverage 必须同时验证：未实现时不出现在可用命令面；实现后不绕过三步 destructive reinstall 不变量。
 
-在这些问题被验证前，operator-facing 文档不得把 `update` 写成可用命令。
+在实现 worktrack 完成并验证前，operator-facing 文档不得把 `update` 写成可用命令。
 
 ## 五、包装层验收标准
 
