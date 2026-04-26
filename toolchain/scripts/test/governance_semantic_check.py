@@ -103,6 +103,13 @@ APPEND_REQUEST_CONTRACT_PATHS = [
 PATH_GOVERNANCE_CHECKS_DOC = "docs/project-maintenance/governance/path-governance-checks.md"
 REVIEW_VERIFY_HANDBOOK_DOC = "docs/project-maintenance/governance/review-verify-handbook.md"
 TOOLCHAIN_TEST_README_DOC = "toolchain/scripts/test/README.md"
+CODEX_HARNESS_MANUAL_RUNBOOK_DOC = (
+    "docs/project-maintenance/deploy/codex-harness-manual-runbook.md"
+)
+AGENTS_ADAPTER_SKILLS_DIR = "product/harness/adapters/agents/skills"
+MANUAL_RUNBOOK_AGENTS_SKILL_COUNT_RE = re.compile(
+    r"当前 `agents` install 已包含全部 (?P<count>\d+) 个 skills"
+)
 CLOSEOUT_ACCEPTANCE_GATE_STEPS = [
     "scope_gate",
     "spec_gate",
@@ -471,6 +478,51 @@ def check_docs_list_closeout_cache_roots(repo_root: Path, report: SemanticReport
     report.add_info(f"checked {checked} documented closeout cache roots")
 
 
+def count_agents_adapter_payload_skills(repo_root: Path, report: SemanticReport) -> int | None:
+    skills_dir = repo_root / AGENTS_ADAPTER_SKILLS_DIR
+    if not skills_dir.is_dir():
+        report.add_failure(f"missing agents adapter skills directory: {AGENTS_ADAPTER_SKILLS_DIR}")
+        return None
+
+    count = 0
+    for child in sorted(skills_dir.iterdir()):
+        if not child.is_dir():
+            continue
+        payload_path = child / "payload.json"
+        if payload_path.is_file():
+            count += 1
+    if count == 0:
+        report.add_failure(f"agents adapter skills directory has no payload sources: {AGENTS_ADAPTER_SKILLS_DIR}")
+        return None
+    return count
+
+
+def check_manual_runbook_agents_skill_count(repo_root: Path, report: SemanticReport) -> None:
+    expected_count = count_agents_adapter_payload_skills(repo_root, report)
+    doc_path = repo_root / CODEX_HARNESS_MANUAL_RUNBOOK_DOC
+    if not doc_path.exists():
+        report.add_failure(f"missing Codex Harness manual runbook: {CODEX_HARNESS_MANUAL_RUNBOOK_DOC}")
+        return
+
+    text = doc_path.read_text(encoding="utf-8")
+    match = MANUAL_RUNBOOK_AGENTS_SKILL_COUNT_RE.search(text)
+    if match is None:
+        report.add_failure(
+            "Codex Harness manual runbook missing agents skill count claim: "
+            f"{CODEX_HARNESS_MANUAL_RUNBOOK_DOC}"
+        )
+        return
+
+    documented_count = int(match.group("count"))
+    if expected_count is not None and documented_count != expected_count:
+        report.add_failure(
+            "Codex Harness manual runbook agents skill count mismatch: "
+            f"{CODEX_HARNESS_MANUAL_RUNBOOK_DOC} documents {documented_count}, "
+            f"adapter payload source has {expected_count}"
+        )
+    report.add_info("checked Codex Harness manual runbook agents skill count")
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -487,6 +539,7 @@ def main() -> int:
     check_path_governance_docs_list_gitignore_entries(repo_root, report)
     check_review_verify_docs_list_closeout_steps(repo_root, report)
     check_docs_list_closeout_cache_roots(repo_root, report)
+    check_manual_runbook_agents_skill_count(repo_root, report)
 
     payload = {
         "passed": not report.failures,

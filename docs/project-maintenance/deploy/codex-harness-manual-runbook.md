@@ -1,9 +1,9 @@
 ---
 title: "Codex Harness Manual Runbook"
 status: active
-updated: 2026-04-23
+updated: 2026-04-26
 owner: aw-kernel
-last_verified: 2026-04-23
+last_verified: 2026-04-26
 ---
 # Codex Harness Manual Runbook
 
@@ -113,7 +113,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ver
 这一步的作用是：
 
 - 在临时 repo 下准备一套隔离的 `agents` skill install
-- 当前 `agents` install 已包含全部 16 个 skills，覆盖完整 Harness 控制回路
+- 当前 `agents` install 已包含全部 17 个 skills，覆盖完整 Harness 控制回路
   - `RepoScope`：SetGoal / Observe / Decide / Close / ChangeGoal
   - `WorktrackScope`：Init / Observe / Decide / Dispatch / Verify / Judge / Recover / Close
 - `set-harness-goal-skill` 自带完整的 `.aw/` 模板资产（`assets/` 目录），可在运行时根据用户动态需求生成 goal charter、control state 和 repo snapshot，无需外部 scaffold 脚本预置 `.aw/`
