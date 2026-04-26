@@ -5,7 +5,7 @@
 当前主线：
 
 - `adapter_deploy.py`：为 `agents` 提供 destructive reinstall workflow 和只读 `verify`
-- `aw_scaffold.py`：从 `product/.aw_template/` 生成 `.aw/` 运行样例，并校验模板最小结构，包括 `Engineering Node Map` 与 `Node Type` 协议字段
+- `aw_scaffold.py`：从 `product/.aw_template/` 生成 `.aw/` 运行样例，并校验模板最小结构，包括 `Engineering Node Map`、`Repo Analysis` 与 `Node Type` 协议字段
 - `product/harness/adapters/agents/skills/`：`agents` canonical-copy payload descriptor source，由 `install --backend agents` 消费
 
 最小维护流：

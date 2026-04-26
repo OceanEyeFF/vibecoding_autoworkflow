@@ -15,6 +15,7 @@
 规则：
 
 - 这些资产只服务 `set-harness-goal-skill` 的 `.aw` 初始化流程
+- 默认初始化会生成 [repo/analysis.md](./repo/analysis.md)，作为 RepoScope 的阶段性决策支撑 artifact
 - Existing Code Project Adoption 模式可以额外生成 [repo/discovery-input.md](./repo/discovery-input.md)，把既有代码库观察结果写入 `.aw/repo/discovery-input.md`
 - `repo/discovery-input.md` 是只读事实输入，不是 goal truth；它只能作为 `goal-charter.md` 和 `snapshot-status.md` 的候选来源
 - 建议通过 [../scripts/deploy_aw.py](../scripts/deploy_aw.py) 生成 `.aw/` 样例，而不是手工复制这些文件

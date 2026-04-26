@@ -78,7 +78,13 @@ TEMPLATE_SPECS = {
             ("Current Control Level", ("repo_scope", "worktrack_scope")),
             (
                 "Linked Formal Documents",
-                ("repo_snapshot", "worktrack_contract", "plan_task_queue", "gate_evidence"),
+                (
+                    "repo_snapshot",
+                    "repo_analysis",
+                    "worktrack_contract",
+                    "plan_task_queue",
+                    "gate_evidence",
+                ),
             ),
             ("Approval Boundary", ("needs_programmer_approval", "reason")),
             (
@@ -164,6 +170,44 @@ TEMPLATE_SPECS = {
                     "checkpoint_type",
                 ),
             ),
+        ),
+    ),
+    "repo-analysis": TemplateSpec(
+        template_id="repo-analysis",
+        source_relpath="product/.aw_template/repo/analysis.md",
+        output_relpath="repo/analysis.md",
+        artifact_type="repo-analysis",
+        title="Repo Analysis",
+        instance_note=(
+            "这是 `.aw/repo/analysis.md` 的运行样例，用来记录 RepoScope 的阶段性分析与"
+            "优先级判断。它是决策支撑 artifact，不是 goal truth。"
+        ),
+        required_sections=(
+            "Metadata",
+            "Facts",
+            "Inferences",
+            "Unknowns",
+            "Main Contradiction",
+            "Priority Judgment",
+            "Routing Projection",
+            "Writeback Eligibility",
+            "Notes",
+        ),
+        required_keyed_fields_by_section=(
+            ("Metadata", ("repo", "baseline_branch", "baseline_ref", "updated", "analysis_status")),
+            ("Main Contradiction", ("current_main_contradiction", "main_aspect")),
+            ("Priority Judgment", ("current_highest_priority", "long_term_highest_priority", "do_not_do_now")),
+            (
+                "Routing Projection",
+                (
+                    "recommended_repo_action",
+                    "recommended_next_route",
+                    "suggested_node_type",
+                    "continuation_ready",
+                    "continuation_blockers",
+                ),
+            ),
+            ("Writeback Eligibility", ("writeback_eligibility",)),
         ),
     ),
     "worktrack-contract": TemplateSpec(
@@ -368,6 +412,7 @@ PROFILE_TEMPLATES = {
         "control-state",
         "goal-charter",
         "repo-snapshot-status",
+        "repo-analysis",
         "worktrack-contract",
         "worktrack-plan-task-queue",
     ),
@@ -375,6 +420,7 @@ PROFILE_TEMPLATES = {
 
 LINKED_PATH_FIELDS = {
     "repo_snapshot": "repo-snapshot-status",
+    "repo_analysis": "repo-analysis",
     "worktrack_contract": "worktrack-contract",
     "plan_task_queue": "worktrack-plan-task-queue",
     "gate_evidence": "worktrack-gate-evidence",

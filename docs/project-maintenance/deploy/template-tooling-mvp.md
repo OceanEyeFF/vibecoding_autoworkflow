@@ -65,6 +65,7 @@ last_verified: 2026-04-23
 
 - `control-state.md`
 - `goal-charter.md`
+- `repo/analysis.md`
 - `repo/snapshot-status.md`
 - `worktrack/contract.md`
 - `worktrack/plan-task-queue.md`
@@ -112,6 +113,7 @@ last_verified: 2026-04-23
 因此 `first-wave-minimal` profile 下：
 
 - `repo_snapshot`
+- `repo_analysis`
 - `worktrack_contract`
 - `plan_task_queue`
 

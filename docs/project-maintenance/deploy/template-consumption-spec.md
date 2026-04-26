@@ -113,6 +113,7 @@ goal 修正文档单独处理：
 
 - `control-state.md`
 - `goal-charter.md`
+- `repo/analysis.md`
 - `repo/snapshot-status.md`
 - `worktrack/contract.md`
 - `worktrack/plan-task-queue.md`

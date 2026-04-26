@@ -70,6 +70,7 @@ class AwScaffoldTest(unittest.TestCase):
             self.output_root / "control-state.md",
             self.output_root / "goal-charter.md",
             self.output_root / "repo" / "snapshot-status.md",
+            self.output_root / "repo" / "analysis.md",
             self.output_root / "worktrack" / "contract.md",
             self.output_root / "worktrack" / "plan-task-queue.md",
         ]
@@ -94,6 +95,12 @@ class AwScaffoldTest(unittest.TestCase):
         self.assertIn("## Engineering Node Map", goal_text)
         self.assertIn("  - if_interrupted_strategy: TODO(if_interrupted_strategy)", goal_text)
 
+        analysis_text = (self.output_root / "repo" / "analysis.md").read_text(encoding="utf-8")
+        self.assertIn('artifact_type: "repo-analysis"', analysis_text)
+        self.assertIn("- analysis_status: TODO(analysis_status)", analysis_text)
+        self.assertIn("- current_main_contradiction: TODO(current_main_contradiction)", analysis_text)
+        self.assertIn("- recommended_next_route: TODO(recommended_next_route)", analysis_text)
+
         plan_text = (self.output_root / "worktrack" / "plan-task-queue.md").read_text(encoding="utf-8")
         self.assertIn("- contract_ref: TODO(contract_ref)", plan_text)
         self.assertIn("- queue_status: TODO(queue_status)", plan_text)
@@ -106,6 +113,7 @@ class AwScaffoldTest(unittest.TestCase):
 
         control_state_text = (self.output_root / "control-state.md").read_text(encoding="utf-8")
         self.assertIn("- repo_snapshot: repo/snapshot-status.md", control_state_text)
+        self.assertIn("- repo_analysis: repo/analysis.md", control_state_text)
         self.assertIn("- worktrack_contract: worktrack/contract.md", control_state_text)
         self.assertIn("- plan_task_queue: worktrack/plan-task-queue.md", control_state_text)
         self.assertIn("- gate_evidence: TODO(gate_evidence)", control_state_text)
