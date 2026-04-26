@@ -620,6 +620,31 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                     failures.append("root tarball version probe omitted package version")
                 subchecks.append({**version_result, "name": "root_npm_exec_tarball_version"})
 
+                tui_result = run_command(
+                    [
+                        "npm",
+                        "exec",
+                        "--yes",
+                        "--package",
+                        str(package_file),
+                        "--",
+                        "aw-installer",
+                        "tui",
+                    ],
+                    cwd=target_repo,
+                    extra_env=clean_env,
+                )
+                tui_guard_passed = (
+                    tui_result["returncode"] == 1
+                    and "aw-installer tui requires an interactive terminal" in tui_result["stderr"]
+                    and tui_result["stdout"] == ""
+                )
+                if not tui_guard_passed:
+                    failures.append("root packaged tui did not enforce non-interactive guard")
+                subchecks.append(
+                    {**tui_result, "name": "root_npm_exec_tarball_tui_noninteractive", "passed": tui_guard_passed}
+                )
+
                 diagnose_result = run_command(
                     [
                         "npm",

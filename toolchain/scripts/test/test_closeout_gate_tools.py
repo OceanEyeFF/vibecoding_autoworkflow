@@ -123,6 +123,14 @@ def successful_npm_command_result(
             "stderr": "",
             "passed": True,
         }
+    if command[:2] == ["npm", "exec"] and "tui" in command:
+        return {
+            "command": command,
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "aw-installer tui requires an interactive terminal.\n",
+            "passed": False,
+        }
     if command[:2] == ["npm", "exec"] and "update" in command:
         if extra_env is None or "AW_HARNESS_REPO_ROOT" not in extra_env:
             return {
