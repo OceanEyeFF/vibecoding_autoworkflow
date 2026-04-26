@@ -18,6 +18,11 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Install test dependencies
         run: python -m pip install --upgrade pip pytest jsonschema
 
@@ -35,3 +40,10 @@ jobs:
 
       - name: Deploy regression tests
         run: python -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
+
+      - name: Deploy package smoke
+        run: npm --prefix toolchain/scripts/deploy run smoke --silent
+
+      - name: Deploy package pack dry-run
+        working-directory: toolchain/scripts/deploy
+        run: npm pack --dry-run --json
