@@ -235,6 +235,17 @@ def test_misplaced_content_patterns_fail(tmp_path: Path) -> None:
     assert {"FL004", "FL005", "FL006"} <= issue_codes(report)
 
 
+def test_toolchain_cache_content_fails(tmp_path: Path) -> None:
+    repo_root = create_valid_repo(tmp_path)
+    write_file(repo_root / "toolchain/scripts/__pycache__/helper.cpython-313.pyc", "cache\n")
+
+    report = run_checks(repo_root)
+
+    assert "FL006" in issue_codes(report)
+    assert "toolchain/scripts/__pycache__" in issue_paths(report)
+    assert "toolchain/scripts/__pycache__/helper.cpython-313.pyc" in issue_paths(report)
+
+
 def test_nav_extra_entry_fails(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
     write_file(repo_root / ".nav/@tmp", "bad\n")
