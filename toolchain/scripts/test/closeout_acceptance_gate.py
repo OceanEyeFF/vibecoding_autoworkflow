@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -67,7 +68,9 @@ def parse_args() -> argparse.Namespace:
 
 
 def run_command(command: list[str], *, cwd: Path) -> dict:
-    completed = subprocess.run(command, capture_output=True, text=True, cwd=cwd)
+    env = os.environ.copy()
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    completed = subprocess.run(command, capture_output=True, text=True, cwd=cwd, env=env)
     return {
         "command": command,
         "returncode": completed.returncode,
@@ -166,7 +169,29 @@ def run_spec_gate(repo_root: Path, python: str) -> dict:
 
 
 def run_static_gate(repo_root: Path, python: str) -> dict:
-    return run_command([python, "-m", "compileall", "toolchain/scripts/test"], cwd=repo_root)
+    del python
+    scan_root = repo_root / "toolchain" / "scripts" / "test"
+    checked: list[str] = []
+    failures: list[str] = []
+    for path in sorted(scan_root.rglob("*.py")):
+        relative_path = path.relative_to(repo_root).as_posix()
+        checked.append(relative_path)
+        try:
+            source = path.read_text(encoding="utf-8")
+            compile(source, relative_path, "exec", dont_inherit=True)
+        except SyntaxError as error:
+            failures.append(f"{relative_path}:{error.lineno}:{error.offset}: {error.msg}")
+        except OSError as error:
+            failures.append(f"{relative_path}: {error}")
+
+    passed = not failures
+    return {
+        "command": ["python-syntax-check", "toolchain/scripts/test"],
+        "returncode": 0 if passed else 1,
+        "stdout": "\n".join(f"checked {path}" for path in checked),
+        "stderr": "\n".join(failures),
+        "passed": passed,
+    }
 
 
 def run_test_gate(repo_root: Path, python: str) -> dict:
