@@ -14,6 +14,7 @@ from governance_semantic_check import (
     check_canonical_skill_packages_are_minimal,
     check_foundations_authority_shadows,
     check_outdated_placeholder_phrases,
+    check_path_governance_docs_list_gitignore_entries,
     check_repo_python_commands_are_bytecode_free,
     check_root_tool_shims_disable_bytecode,
     check_required_handoffs,
@@ -425,5 +426,43 @@ def test_check_root_tool_shims_disable_bytecode_accepts_guard_before_import(tmp_
 
     report = SemanticReport()
     check_root_tool_shims_disable_bytecode(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_path_governance_docs_list_gitignore_entries_flags_missing_entry(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/path-governance-checks.md",
+        "` .aw/ `\n",
+    )
+
+    report = SemanticReport()
+    check_path_governance_docs_list_gitignore_entries(tmp_path, report)
+
+    assert any(".agents/" in item for item in report.failures)
+
+
+def test_check_path_governance_docs_list_gitignore_entries_accepts_complete_list(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/path-governance-checks.md",
+        "\n".join(
+            [
+                "`.aw/`",
+                "`.agents/`",
+                "`.claude/`",
+                "`.opencode/`",
+                "`.autoworkflow/`",
+                "`.spec-workflow/`",
+                "`**/__pycache__/`",
+                "`.pytest_cache/`",
+                "`*.pyc`",
+                "`*.pyo`",
+            ]
+        )
+        + "\n",
+    )
+
+    report = SemanticReport()
+    check_path_governance_docs_list_gitignore_entries(tmp_path, report)
 
     assert report.failures == []
