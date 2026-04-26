@@ -128,7 +128,7 @@ BYTECODE_FREE_COMMAND_EXCLUDED_PATHS = {
 REPO_PYTHON_COMMAND_RE = re.compile(
     r"\bpython3\s+(?:"
     r"-m\s+(?:pytest|unittest)\b|"
-    r"(?:toolchain/scripts|scripts/deploy_aw\.py|product/harness/skills)/"
+    r"(?:toolchain/scripts|tools|scripts/deploy_aw\.py|product/harness/skills)/"
     r")"
 )
 
