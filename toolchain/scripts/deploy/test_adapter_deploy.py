@@ -292,6 +292,35 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertNotIn("update", completed.stdout)
         self.assertEqual(completed.stderr, "")
 
+    def test_local_npm_pack_dry_run_contains_only_package_surface(self) -> None:
+        if shutil.which("npm") is None:
+            self.skipTest("npm is not available")
+        package_root = self.source_repo_root / "toolchain" / "scripts" / "deploy"
+
+        completed = subprocess.run(
+            ["npm", "pack", "--dry-run", "--json"],
+            cwd=package_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertEqual(len(payload), 1)
+        packed_files = {entry["path"] for entry in payload[0]["files"]}
+        self.assertEqual(
+            packed_files,
+            {
+                "README.md",
+                "adapter_deploy.py",
+                "harness_deploy.py",
+                "bin/aw-harness-deploy.js",
+                "package.json",
+            },
+        )
+        self.assertFalse((package_root / payload[0]["filename"]).exists())
+
     def test_install_uses_override_root(self) -> None:
         code, stdout, stderr = self._install("--agents-root", self.override_root)
 
