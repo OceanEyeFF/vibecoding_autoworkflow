@@ -14,6 +14,7 @@ from governance_semantic_check import (
     check_canonical_skill_packages_are_minimal,
     check_docs_list_closeout_cache_roots,
     check_foundations_authority_shadows,
+    check_manual_runbook_agents_skill_count,
     check_outdated_placeholder_phrases,
     check_path_governance_docs_list_gitignore_entries,
     check_repo_python_commands_are_bytecode_free,
@@ -360,6 +361,40 @@ def test_check_repo_python_commands_are_bytecode_free_skips_historical_log(tmp_p
     check_repo_python_commands_are_bytecode_free(tmp_path, report)
 
     assert report.failures == []
+
+
+def test_check_manual_runbook_agents_skill_count_accepts_matching_count(tmp_path: Path) -> None:
+    for skill_id in ("harness-skill", "repo-status-skill"):
+        write_doc(
+            tmp_path / f"product/harness/adapters/agents/skills/{skill_id}/payload.json",
+            "{}\n",
+        )
+    write_doc(
+        tmp_path / "docs/project-maintenance/deploy/codex-harness-manual-runbook.md",
+        "- 当前 `agents` install 已包含全部 2 个 skills，覆盖完整 Harness 控制回路\n",
+    )
+
+    report = SemanticReport()
+    check_manual_runbook_agents_skill_count(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_manual_runbook_agents_skill_count_flags_mismatch(tmp_path: Path) -> None:
+    for skill_id in ("harness-skill", "repo-status-skill", "repo-whats-next-skill"):
+        write_doc(
+            tmp_path / f"product/harness/adapters/agents/skills/{skill_id}/payload.json",
+            "{}\n",
+        )
+    write_doc(
+        tmp_path / "docs/project-maintenance/deploy/codex-harness-manual-runbook.md",
+        "- 当前 `agents` install 已包含全部 2 个 skills，覆盖完整 Harness 控制回路\n",
+    )
+
+    report = SemanticReport()
+    check_manual_runbook_agents_skill_count(tmp_path, report)
+
+    assert any("documents 2, adapter payload source has 3" in item for item in report.failures)
 
 
 def test_governance_semantic_cli_disables_bytecode_before_local_import(tmp_path: Path) -> None:
