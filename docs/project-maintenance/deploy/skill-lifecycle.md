@@ -1,9 +1,9 @@
 ---
 title: "Skill 生命周期维护"
 status: active
-updated: 2026-04-19
+updated: 2026-04-26
 owner: aw-kernel
-last_verified: 2026-04-19
+last_verified: 2026-04-26
 ---
 # Skill 生命周期维护
 
@@ -46,7 +46,7 @@ last_verified: 2026-04-19
 - 当前 deploy 不会把 `.aw_template/` 当 deploy payload source（部署负载来源），也不会把它直接发往 target
 - `.aw_template/` 的 `.aw/` 目录结构、管理文档模板和待迁移模板边界见 [Template Consumption Spec](./template-consumption-spec.md)
 - 只有已经验证过的 root 状态，才写回 `docs/`
-- 当前 backend skills root 可以承接 tracked install payload（已跟踪的安装负载）；但它仍不是 truth owner，只是 deploy target
+- 当前 backend skills root 是 ignored repo-local deploy target；不得承接 tracked install payload，也不是 truth owner
 
 ## 三、当前执行边界
 

@@ -35,13 +35,13 @@ last_verified: 2026-04-26
 
 ## 三、受控例外与白名单
 
-### 0. Repo-local install payloads
+### 0. Repo-local deploy targets
 
-- `.agents/skills/`、`.claude/skills/`、`.opencode/skills/` 允许承接 tracked 的 repo-local install payload。
-- 这些 payload 可以用于 repo 内试用、安装兼容与文件分发，不再一律视为“不得入库”的纯 mount 垃圾层。
-- 但它们仍不是 canonical truth，也不是业务源码根。
-- `product/` 仍然是业务代码唯一源码根；repo-local install payload 不应反向替代 `product/` 或 `docs/` 的定义权。
-- 如果某个 payload 只是 deploy 结果镜像、临时 smoke 产物或 repo-local 噪音，仍不应入库。
+- `.agents/skills/`、`.claude/skills/`、`.opencode/skills/` 只承接 repo-local deploy 结果与 operator runtime 挂载。
+- 这些目录必须保持 ignored；不得把其中任何内容作为 tracked 主线文件入库。
+- 这些目录不是 canonical truth，也不是业务源码根；fresh checkout 不应携带 repo-local deploy target 镜像。
+- `product/` 仍然是业务代码唯一源码根；repo-local deploy target 不应反向替代 `product/` 或 `docs/` 的定义权。
+- 需要分发或回归验证的 skill 内容必须从 `product/`、`toolchain/` 或正式文档入口承接，而不是跟踪 `.agents/`、`.claude/` 或 `.opencode/` 下的安装结果。
 
 ### 1. `tools/`
 
