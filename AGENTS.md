@@ -89,7 +89,7 @@
 ## Review / Verify
 
 - 常规复核入口见 `docs/project-maintenance/governance/review-verify-handbook.md`。
-- 在本仓库运行 Python 验证、部署或辅助命令时，默认使用 `PYTHONDONTWRITEBYTECODE=1 python3 ...`，避免在 `product/`、`docs/` 或 `toolchain/` 下生成 `__pycache__` / `.pyc` 运行缓存。
+- 在本仓库运行 Python 验证、部署或辅助命令时，默认使用 `PYTHONDONTWRITEBYTECODE=1 python3 ...`，避免在 `product/`、`docs/`、`toolchain/` 或 `tools/` 下生成 `__pycache__` / `.pyc` 运行缓存。
 - 修复类任务不得只压住当前症状；必须检查相邻状态、恢复路径和 operator-facing 语义，避免引入新的问题源，并尽量把修复做完整。
 - 涉及根目录、路径、分层或治理规则时，优先跑：
   - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/folder_logic_check.py`
