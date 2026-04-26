@@ -715,7 +715,7 @@ def resolve_keyed_value(
         "owner": args.owner or placeholder("owner"),
         "updated": args.updated,
         "baseline_branch": args.baseline_branch or placeholder("baseline_branch"),
-        "baseline_ref": args.baseline_branch or placeholder("baseline_ref"),
+        "baseline_ref": placeholder("baseline_ref"),
         "worktrack_id": args.worktrack_id or placeholder("worktrack_id"),
         "branch": args.branch or placeholder("branch"),
         "status": placeholder("status"),

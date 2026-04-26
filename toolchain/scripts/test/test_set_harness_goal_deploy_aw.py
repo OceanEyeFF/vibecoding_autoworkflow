@@ -248,6 +248,36 @@ class SetHarnessGoalDeployAwValidationTest(unittest.TestCase):
         control_state_text = (output_root / ".aw" / "control-state.md").read_text(encoding="utf-8")
         self.assertIn("- repo_analysis: repo/analysis.md", control_state_text)
 
+    def test_repo_analysis_baseline_ref_stays_placeholder_when_only_branch_is_known(self) -> None:
+        output_root = Path(self.temp_dir.name)
+        args = deploy_aw.parse_args(
+            [
+                "generate",
+                "--template",
+                "repo-analysis",
+                "--deploy-path",
+                str(output_root),
+                "--baseline-branch",
+                "develop-main",
+                "--force",
+            ]
+        )
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            exit_code = deploy_aw.run_generate(
+                [deploy_aw.TEMPLATE_SPECS["repo-analysis"]],
+                [],
+                args,
+            )
+
+        self.assertEqual(exit_code, 0)
+        analysis_text = (output_root / ".aw" / "repo" / "analysis.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("- baseline_branch: develop-main", analysis_text)
+        self.assertIn("- baseline_ref: TODO(baseline_ref)", analysis_text)
+        self.assertNotIn("- baseline_ref: develop-main", analysis_text)
+
     def test_existing_code_adoption_env_deploy_path_writes_repository_path(self) -> None:
         output_root = Path(self.temp_dir.name)
         args = deploy_aw.parse_args(

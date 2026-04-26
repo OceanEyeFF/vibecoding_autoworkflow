@@ -1126,7 +1126,7 @@ def resolve_keyed_value(
         "adoption_mode": getattr(args, "adoption_mode", "new-goal-initialization"),
         "repository_path": str(getattr(args, "deploy_path", "") or placeholder("repository_path")),
         "baseline_branch": args.baseline_branch or placeholder("baseline_branch"),
-        "baseline_ref": args.baseline_branch or placeholder("baseline_ref"),
+        "baseline_ref": placeholder("baseline_ref"),
         "worktrack_id": args.worktrack_id or placeholder("worktrack_id"),
         "branch": args.branch or placeholder("branch"),
         "status": placeholder("status"),
