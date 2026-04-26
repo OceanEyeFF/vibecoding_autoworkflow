@@ -96,6 +96,7 @@ preferred scheduling fields：
 - 拒收超过单轮边界的 oversized packet，并把它退回 `schedule-worktrack-skill`
 - 优先选择合适的专门 skill 或 subagent 执行方式
 - 当系统中没有合适的专门 skill 时，自动 fallback 到通用任务完成 `SubAgent`
+- 当宿主运行时支持真实 SubAgent 委派且权限边界允许时，默认必须委派 SubAgent；只有 `runtime fallback`、`permission blocked` 或 `dispatch package unsafe` 时，才允许 current-carrier fallback
 - 跑一轮 bounded execution
 - 回传 evidence 和状态结果
 

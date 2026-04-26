@@ -106,6 +106,12 @@ TOOLCHAIN_TEST_README_DOC = "toolchain/scripts/test/README.md"
 CODEX_HARNESS_MANUAL_RUNBOOK_DOC = (
     "docs/project-maintenance/deploy/codex-harness-manual-runbook.md"
 )
+SUBAGENT_DEFAULT_CONTRACT_PATHS = [
+    "product/harness/skills/harness-skill/SKILL.md",
+    "product/harness/skills/dispatch-skills/SKILL.md",
+    "docs/harness/foundations/Harness运行协议.md",
+    "docs/harness/Skills/catalog/worktrack.md",
+]
 AGENTS_ADAPTER_SKILLS_DIR = "product/harness/adapters/agents/skills"
 MANUAL_RUNBOOK_AGENTS_SKILL_COUNT_RE = re.compile(
     r"当前 `agents` install 已包含全部 (?P<count>\d+) 个 skills"
@@ -117,6 +123,13 @@ CLOSEOUT_ACCEPTANCE_GATE_STEPS = [
     "cache_gate",
     "test_gate",
     "smoke_gate",
+]
+SUBAGENT_DEFAULT_REQUIRED_TERMS = [
+    "默认",
+    "SubAgent",
+    "权限边界",
+    "runtime fallback",
+    "dispatch package unsafe",
 ]
 APPEND_REQUEST_REQUIRED_TERMS = [
     "approval_required",
@@ -523,6 +536,23 @@ def check_manual_runbook_agents_skill_count(repo_root: Path, report: SemanticRep
     report.add_info("checked Codex Harness manual runbook agents skill count")
 
 
+def check_subagent_dispatch_default_contract(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    for relative_path in SUBAGENT_DEFAULT_CONTRACT_PATHS:
+        path = repo_root / relative_path
+        if not path.exists():
+            report.add_failure(f"missing SubAgent default contract source: {relative_path}")
+            continue
+        checked += 1
+        text = path.read_text(encoding="utf-8")
+        for term in SUBAGENT_DEFAULT_REQUIRED_TERMS:
+            if term not in text:
+                report.add_failure(
+                    f"SubAgent default contract missing required term {term!r}: {relative_path}"
+                )
+    report.add_info(f"checked {checked} SubAgent default dispatch contract sources")
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -540,6 +570,7 @@ def main() -> int:
     check_review_verify_docs_list_closeout_steps(repo_root, report)
     check_docs_list_closeout_cache_roots(repo_root, report)
     check_manual_runbook_agents_skill_count(repo_root, report)
+    check_subagent_dispatch_default_contract(repo_root, report)
 
     payload = {
         "passed": not report.failures,
