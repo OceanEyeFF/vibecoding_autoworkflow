@@ -100,6 +100,15 @@ APPEND_REQUEST_CONTRACT_PATHS = [
     "product/harness/skills/repo-append-request-skill/templates/append-request.template.md",
 ]
 PATH_GOVERNANCE_CHECKS_DOC = "docs/project-maintenance/governance/path-governance-checks.md"
+REVIEW_VERIFY_HANDBOOK_DOC = "docs/project-maintenance/governance/review-verify-handbook.md"
+CLOSEOUT_ACCEPTANCE_GATE_STEPS = [
+    "scope_gate",
+    "spec_gate",
+    "static_gate",
+    "cache_gate",
+    "test_gate",
+    "smoke_gate",
+]
 APPEND_REQUEST_REQUIRED_TERMS = [
     "approval_required",
     "continuation_ready",
@@ -427,6 +436,24 @@ def check_path_governance_docs_list_gitignore_entries(repo_root: Path, report: S
     report.add_info(f"checked {checked} documented .gitignore governance entries")
 
 
+def check_review_verify_docs_list_closeout_steps(repo_root: Path, report: SemanticReport) -> None:
+    doc_path = repo_root / REVIEW_VERIFY_HANDBOOK_DOC
+    if not doc_path.exists():
+        report.add_failure(f"missing review/verify handbook: {REVIEW_VERIFY_HANDBOOK_DOC}")
+        return
+
+    text = doc_path.read_text(encoding="utf-8")
+    checked = 0
+    for step in CLOSEOUT_ACCEPTANCE_GATE_STEPS:
+        checked += 1
+        if step not in text:
+            report.add_failure(
+                f"review/verify handbook missing closeout gate step {step!r}: "
+                f"{REVIEW_VERIFY_HANDBOOK_DOC}"
+            )
+    report.add_info(f"checked {checked} documented closeout gate steps")
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -441,6 +468,7 @@ def main() -> int:
     check_repo_python_commands_are_bytecode_free(repo_root, report)
     check_root_tool_shims_disable_bytecode(repo_root, report)
     check_path_governance_docs_list_gitignore_entries(repo_root, report)
+    check_review_verify_docs_list_closeout_steps(repo_root, report)
 
     payload = {
         "passed": not report.failures,
