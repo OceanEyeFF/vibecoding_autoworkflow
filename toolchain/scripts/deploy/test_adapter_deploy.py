@@ -774,6 +774,23 @@ class AdapterDeployTest(unittest.TestCase):
                 text=True,
                 check=False,
             )
+            tui_completed = subprocess.run(
+                [
+                    "npm",
+                    "exec",
+                    "--yes",
+                    "--package",
+                    str(package_file),
+                    "--",
+                    "aw-installer",
+                    "tui",
+                ],
+                cwd=target_repo,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
             update_completed = subprocess.run(
                 [
                     "npm",
@@ -872,6 +889,9 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(version_completed.returncode, 0, version_completed.stderr)
         self.assertEqual(version_completed.stdout, "aw-installer 0.0.0-local\n")
         self.assertEqual(version_completed.stderr, "")
+        self.assertEqual(tui_completed.returncode, 1)
+        self.assertEqual(tui_completed.stdout, "")
+        self.assertIn("aw-installer tui requires an interactive terminal", tui_completed.stderr)
 
         self.assertEqual(update_completed.returncode, 0, update_completed.stderr)
         update_payload = json.loads(update_completed.stdout)

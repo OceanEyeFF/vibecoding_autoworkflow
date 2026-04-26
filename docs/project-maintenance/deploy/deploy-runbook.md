@@ -92,6 +92,12 @@ mkdir -p "$target_repo"
   cd "$target_repo"
   AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer --help
   AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer --version
+  if AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer tui > "$tmpdir/tui.out" 2> "$tmpdir/tui.err"; then
+    echo "expected aw-installer tui to require an interactive terminal" >&2
+    exit 1
+  fi
+  test ! -s "$tmpdir/tui.out"
+  grep -F "aw-installer tui requires an interactive terminal" "$tmpdir/tui.err"
   AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer diagnose --backend agents --json
   AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents --json
   AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer install --backend agents
@@ -100,9 +106,9 @@ mkdir -p "$target_repo"
 )
 ```
 
-这里显式清空 `AW_HARNESS_REPO_ROOT` 与 `AW_HARNESS_TARGET_REPO_ROOT`，用于验证 packaged wrapper 会从 package 内读取 source payload，并把当前工作目录作为 target repo root。packaged `update --json` 只运行 dry-run JSON plan；随后 `install` 只写临时 target repo 的 `.agents/skills`，`verify` 复验该临时安装，最后 `update --yes` 覆盖同一临时 target 上的显式 apply + strict verify 路径。
+这里显式清空 `AW_HARNESS_REPO_ROOT` 与 `AW_HARNESS_TARGET_REPO_ROOT`，用于验证 packaged wrapper 会从 package 内读取 source payload，并把当前工作目录作为 target repo root。packaged `tui` 在非交互环境必须明确拒绝；`update --json` 只运行 dry-run JSON plan；随后 `install` 只写临时 target repo 的 `.agents/skills`，`verify` 复验该临时安装，最后 `update --yes` 覆盖同一临时 target 上的显式 apply + strict verify 路径。
 
-CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 scaffold smoke、本地 scaffold pack/tarball smoke、根 package pack dry-run、根 package publish dry-run，以及无 `AW_HARNESS_REPO_ROOT` 的根 `.tgz` help / version / diagnose / update dry-run / install / verify / update apply smoke。该 CI 覆盖验证 package envelope 和 publish preflight，不代表 npm release channel 已发布。
+CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 scaffold smoke、本地 scaffold pack/tarball smoke、根 package pack dry-run、根 package publish dry-run，以及无 `AW_HARNESS_REPO_ROOT` 的根 `.tgz` help / version / TUI non-interactive guard / diagnose / update dry-run / install / verify / update apply smoke。该 CI 覆盖验证 package envelope 和 publish preflight，不代表 npm release channel 已发布。
 
 暂不实现：
 
