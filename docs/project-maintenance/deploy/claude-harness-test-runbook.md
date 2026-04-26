@@ -30,6 +30,7 @@ last_verified: 2026-04-26
 ```bash
 TMP_REPO="$(mktemp -d)"
 git -C "$TMP_REPO" init
+git -C "$TMP_REPO" checkout -b main
 
 PYTHONDONTWRITEBYTECODE=1 python3 product/harness/skills/set-harness-goal-skill/scripts/deploy_aw.py \
   generate \
