@@ -271,12 +271,16 @@ def test_product_and_docs_bytecode_files_fail(tmp_path: Path) -> None:
 def test_tools_cache_content_fails(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
     write_file(repo_root / "tools/__pycache__/scope_gate_check.cpython-313.pyc", "cache\n")
+    write_file(repo_root / "tools/.pytest_cache/README.md", "cache\n")
+    write_file(repo_root / "tools/gate_status_backfill.pyo", "cache\n")
 
     report = run_checks(repo_root)
 
     assert "FL014" in issue_codes(report)
     assert "tools/__pycache__" in issue_paths(report)
     assert "tools/__pycache__/scope_gate_check.cpython-313.pyc" in issue_paths(report)
+    assert "tools/.pytest_cache" in issue_paths(report)
+    assert "tools/gate_status_backfill.pyo" in issue_paths(report)
 
 
 def test_nav_extra_entry_fails(tmp_path: Path) -> None:
