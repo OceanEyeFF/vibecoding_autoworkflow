@@ -13,6 +13,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import adapter_deploy
+import harness_deploy
 
 
 class AdapterDeployTest(unittest.TestCase):
@@ -66,6 +67,15 @@ class AdapterDeployTest(unittest.TestCase):
             contextlib.redirect_stderr(stderr),
         ):
             return adapter_deploy.main(), stdout.getvalue(), stderr.getvalue()
+
+    def _run_wrapper_cli(self, *argv: object) -> tuple[int, str, str]:
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with (
+            contextlib.redirect_stdout(stdout),
+            contextlib.redirect_stderr(stderr),
+        ):
+            return harness_deploy.main([*map(str, argv)]), stdout.getvalue(), stderr.getvalue()
 
     def _install(self, *extra_args: object) -> tuple[int, str, str]:
         return self._run_cli("install", "--backend", "agents", *extra_args)
@@ -195,6 +205,52 @@ class AdapterDeployTest(unittest.TestCase):
                 (target_skill_dir / "aw.marker").read_text(encoding="utf-8"),
                 self._runtime_marker_text(skill_id),
             )
+
+    def test_harness_deploy_wrapper_diagnose_matches_adapter_diagnose_json(self) -> None:
+        adapter_code, adapter_stdout, adapter_stderr = self._run_cli(
+            "diagnose",
+            "--backend",
+            "agents",
+            "--json",
+        )
+        wrapper_code, wrapper_stdout, wrapper_stderr = self._run_wrapper_cli(
+            "diagnose",
+            "--backend",
+            "agents",
+            "--json",
+        )
+
+        self.assertEqual(adapter_code, 0, adapter_stderr)
+        self.assertEqual(wrapper_code, 0, wrapper_stderr)
+        self.assertEqual(json.loads(wrapper_stdout), json.loads(adapter_stdout))
+
+    def test_harness_deploy_wrapper_verify_keeps_strict_failure_semantics(self) -> None:
+        code, stdout, stderr = self._run_wrapper_cli("verify", "--backend", "agents")
+
+        self.assertEqual(code, 1)
+        self.assertIn("missing-target-root", stdout)
+        self.assertEqual(stderr, "")
+
+    def test_harness_deploy_wrapper_help_exposes_only_current_command_surface(self) -> None:
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with (
+            contextlib.redirect_stdout(stdout),
+            contextlib.redirect_stderr(stderr),
+            self.assertRaises(SystemExit) as raised,
+        ):
+            harness_deploy.main(["--help"])
+
+        self.assertEqual(raised.exception.code, 0)
+        help_text = stdout.getvalue()
+        self.assertIn("harness_deploy.py", help_text)
+        self.assertIn("diagnose", help_text)
+        self.assertIn("verify", help_text)
+        self.assertIn("install", help_text)
+        self.assertNotIn("update", help_text)
+        self.assertNotIn("claude", help_text.lower())
+        self.assertNotIn("opencode", help_text.lower())
+        self.assertEqual(stderr.getvalue(), "")
 
     def test_install_uses_override_root(self) -> None:
         code, stdout, stderr = self._install("--agents-root", self.override_root)
