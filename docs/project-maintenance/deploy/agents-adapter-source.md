@@ -144,6 +144,6 @@ canonical truth（权威源）仍在：
 
 建议验证：
 
-- `python3 -m pytest toolchain/scripts/test/test_agents_adapter_contract.py`
-- `python3 -m pytest toolchain/scripts/deploy/test_adapter_deploy.py`
-- `python3 -m pytest toolchain/scripts/test/test_governance_semantic_check.py`
+- `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_agents_adapter_contract.py`
+- `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/deploy/test_adapter_deploy.py`
+- `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_governance_semantic_check.py`

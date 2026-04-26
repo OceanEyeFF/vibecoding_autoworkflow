@@ -139,19 +139,19 @@ last_verified: 2026-04-23
 先看当前 profile 和 template：
 
 ```bash
-python3 toolchain/scripts/deploy/aw_scaffold.py list
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/aw_scaffold.py list
 ```
 
 校验当前模板结构：
 
 ```bash
-python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal
 ```
 
 在临时目录生成 `.aw/` 样例：
 
 ```bash
-python3 toolchain/scripts/deploy/aw_scaffold.py generate \
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/aw_scaffold.py generate \
   --profile first-wave-minimal \
   --output-root /tmp/demo-aw \
   --repo vibecoding_autoworkflow \
@@ -164,7 +164,7 @@ python3 toolchain/scripts/deploy/aw_scaffold.py generate \
 单独生成 `gate-evidence` 样例：
 
 ```bash
-python3 toolchain/scripts/deploy/aw_scaffold.py generate \
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/aw_scaffold.py generate \
   --template worktrack-gate-evidence \
   --output-root /tmp/demo-aw
 ```

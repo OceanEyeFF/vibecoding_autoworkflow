@@ -92,20 +92,20 @@ git -C "$TMP_REPO" branch -m main
 ### 2. 用通用 deploy 脚本准备隔离的 `.agents/skills/`
 
 ```bash
-python3 toolchain/scripts/deploy/adapter_deploy.py prune \
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune \
   --all \
   --backend agents \
   --agents-root "$TMP_AGENTS_ROOT"
 
-python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist \
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist \
   --backend agents \
   --agents-root "$TMP_AGENTS_ROOT"
 
-python3 toolchain/scripts/deploy/adapter_deploy.py install \
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install \
   --backend agents \
   --agents-root "$TMP_AGENTS_ROOT"
 
-python3 toolchain/scripts/deploy/adapter_deploy.py verify \
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify \
   --backend agents \
   --agents-root "$TMP_AGENTS_ROOT"
 ```
