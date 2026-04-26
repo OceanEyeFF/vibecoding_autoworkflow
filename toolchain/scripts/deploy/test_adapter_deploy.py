@@ -321,6 +321,54 @@ class AdapterDeployTest(unittest.TestCase):
         )
         self.assertFalse((package_root / payload[0]["filename"]).exists())
 
+    def test_local_npm_packed_tarball_bin_help_preserves_current_command_surface(self) -> None:
+        if shutil.which("npm") is None:
+            self.skipTest("npm is not available")
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.source_repo_root / "toolchain" / "scripts" / "deploy"
+
+        with tempfile.TemporaryDirectory() as package_dir:
+            pack_completed = subprocess.run(
+                ["npm", "pack", "--json", "--pack-destination", package_dir],
+                cwd=package_root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(pack_completed.returncode, 0, pack_completed.stderr)
+            payload = json.loads(pack_completed.stdout)
+            self.assertEqual(len(payload), 1)
+            package_file = Path(package_dir) / payload[0]["filename"]
+            self.assertTrue(package_file.is_file())
+            self.assertFalse((package_root / payload[0]["filename"]).exists())
+
+            exec_completed = subprocess.run(
+                [
+                    "npm",
+                    "exec",
+                    "--yes",
+                    "--package",
+                    str(package_file),
+                    "--",
+                    "aw-harness-deploy",
+                    "--help",
+                ],
+                cwd=package_root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+        self.assertEqual(exec_completed.returncode, 0, exec_completed.stderr)
+        self.assertIn("harness_deploy.py", exec_completed.stdout)
+        self.assertIn("diagnose", exec_completed.stdout)
+        self.assertIn("verify", exec_completed.stdout)
+        self.assertIn("install", exec_completed.stdout)
+        self.assertNotIn("update", exec_completed.stdout)
+        self.assertEqual(exec_completed.stderr, "")
+
     def test_install_uses_override_root(self) -> None:
         code, stdout, stderr = self._install("--agents-root", self.override_root)
 
