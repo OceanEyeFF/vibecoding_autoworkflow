@@ -1,13 +1,13 @@
 ---
 title: "Agents Adapter Source"
 status: active
-updated: 2026-04-23
+updated: 2026-04-26
 owner: aw-kernel
-last_verified: 2026-04-23
+last_verified: 2026-04-26
 ---
 # Agents Adapter Source
 
-> 目的：固定 `agents` backend payload source（后端负载源，即实际交付给后端使用的文件集合）结构，让 `install --backend agents` 与 `verify --backend agents` 都按同一读取面消费 canonical-copy payload descriptor，并把完整 canonical skill 内容复制到 target，而不是把 target 做成 repo-read-through 脚手架。
+> 目的：固定 `agents` backend payload source（后端负载源，即实际交付给后端使用的文件集合）结构，让 `install --backend agents`、`diagnose --backend agents --json` 与 `verify --backend agents` 都按同一读取面消费 canonical-copy payload descriptor，并把完整 canonical skill 内容复制到 target，而不是把 target 做成 repo-read-through 脚手架。
 
 本页属于 [Deploy Runbooks](./README.md) 系列文档。
 
@@ -100,7 +100,7 @@ canonical truth（权威源）仍在：
 当前作用：
 
 - 表达“这个 target 目录是否对应当前 source 生成的 deploy payload”
-- 配合 deployed `payload.json`，让 `verify / prune / install` 判断当前目录是否属于当前 backend 的受管 live install
+- 配合 deployed `payload.json`，让 `diagnose / verify / prune / install` 判断当前目录是否属于当前 backend 的受管 live install
 - 避免把目录归属、仓库身份或历史接管语义编码进 target marker
 
 当前边界：
@@ -140,7 +140,7 @@ canonical truth（权威源）仍在：
 - `product/harness/adapters/agents/skills/<skill>/` 已对当前 `agents` live skill set 建立 payload source
 - 每个 payload 目录都能从 `payload.json` 直接追溯到 canonical source 与 target contract
 - `install --backend agents` 产出的 target skill 目录都包含完整 canonical skill copy，而不是 wrapper 快捷方式
-- 每个 `payload.json` 都能支持 destructive reinstall model 下的 install / verify 读取面
+- 每个 `payload.json` 都能支持 destructive reinstall model 下的 install / diagnose / verify 读取面
 
 建议验证：
 

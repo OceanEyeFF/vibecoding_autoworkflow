@@ -1,9 +1,9 @@
 ---
 title: "Deploy Mapping Spec"
 status: active
-updated: 2026-04-23
+updated: 2026-04-26
 owner: aw-kernel
-last_verified: 2026-04-23
+last_verified: 2026-04-26
 ---
 # Deploy Mapping Spec
 
@@ -25,7 +25,7 @@ last_verified: 2026-04-23
 - 如何从原始来源派生出后端部署包
 - payload descriptor 如何描述可分发对象
 - 目标入口如何命名与落点
-- 如何校验 live install 结果
+- 如何读取和校验 live install 结果
 
 本规范不定义：
 
@@ -56,8 +56,9 @@ last_verified: 2026-04-23
 - **目标入口（target entry）**
   - backend target root 下的最终落点
   - 是运行时可见的 live install 入口，只读，不回写原始来源
-- **校验（verify）**
-  - 检查目标入口、部署包文件以及各层之间是否一致
+- **读取与校验（diagnose / verify）**
+  - `diagnose` 是只读状态投影，输出 backend、target root、受管 install、issue code 与 conflict / unrecognized 摘要；它不替代严格失败信号
+  - `verify` 是只读严格校验，检查目标入口、部署包文件以及各层之间是否一致，并在发现问题时失败
 
 ## 三、最小字段
 
@@ -119,9 +120,11 @@ last_verified: 2026-04-23
 - 若分发，必须说明是复制、链接还是只保留 metadata 指针
 - 若不分发，校验不能将引用缺失视为失败
 
-### 9. 校验项
+### 9. 读取与校验项
 
-校验至少检查以下内容：
+`diagnose` 与 `verify` 消费同一套 source / target 读取面，但退出语义不同：`diagnose` 返回结构化状态摘要，即使发现 issue 也可正常退出；`verify` 把同类 issue 作为严格复验失败信号。
+
+读取与校验至少覆盖以下内容：
 
 - source 本身是否合法，例如 live bindings 是否出现重复 `target_dir`
 - target root 是否存在、是否是目录、是否是坏链路
@@ -175,7 +178,15 @@ last_verified: 2026-04-23
 - `install` 只写当前 source 声明的 live payload
 - `install` 不承接 archive/history、旧版本保活、增量修复，或“确认新目录可用再删旧目录”
 
-## 六、`.aw_template` 边界
+## 六、diagnose / verify 约束
+
+- `diagnose` 只读取 source contract、target root、managed install、conflict 和 unrecognized 状态，不写入 deploy target。
+- `diagnose` 的结构化摘要可用于 operator 或外层自动化做路由判断，但不能把 issue-free 摘要解释成安装主流程已经执行。
+- `diagnose` 发现 issue 时仍可正常退出；需要把 issue 作为失败信号时必须使用 `verify`。
+- `verify` 与 `diagnose` 使用同一类读取面，但承担严格复验语义，发现 source、target、payload、marker、drift 或 conflict 问题时必须失败。
+- 二者都不得接管 destructive reinstall 的三步主流程，也不得绕过 `check_paths_exist` 的冲突前零业务写入边界。
+
+## 七、`.aw_template` 边界
 
 `.aw_template/` 不参与部署包分发，也不是 skill deploy source。
 
@@ -190,16 +201,16 @@ last_verified: 2026-04-23
 - 将 `.aw_template/` 当作部署包的默认来源
 - 将 `.aw_template/` 当前目录中的模板文件位置，直接当作 skill owner 结论写进部署约定
 
-## 七、验收标准
+## 八、验收标准
 
 后续实现至少应满足：
 
 - 仅凭本规范和 payload descriptor，即可实现当前最小 deploy 读取面
 - 部署入口页可以直接引用本规范，无需再以"这里不定义映射"回避约定
-- 校验能区分缺失、不一致、类型错误、source 非法和冲突目录
+- `diagnose` 能输出结构化状态摘要，`verify` 能把缺失、不一致、类型错误、source 非法和冲突目录作为严格失败信号
 - destructive reinstall 流程不会把 foreign / unrecognized 目录当作可自动接管对象
 
-## 八、保留项
+## 九、保留项
 
 以下内容留给后续任务包：
 
