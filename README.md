@@ -1,9 +1,9 @@
 ---
 title: "AutoWorkflow"
 status: active
-updated: 2026-04-24
+updated: 2026-04-26
 owner: aw-kernel
-last_verified: 2026-04-24
+last_verified: 2026-04-26
 ---
 # AutoWorkflow
 
@@ -17,6 +17,28 @@ last_verified: 2026-04-24
    构建一个 `Codex-first` 的 AI coding harness，统一任务收束、上下文路由、执行、验证和回写。
 2. `Harness 分发`
    把这套 harness 作为可复用能力分发到包括本项目在内的多个仓库。
+
+## 使用 `aw-installer`
+
+`aw-installer` 是当前 Node/npm/npx 分发入口的目标包名。npm release channel 尚未发布；当前仓库已经验证 root package envelope、tarball smoke 和 publish dry-run。发布后，使用者应在目标项目根目录运行：
+
+```bash
+npx aw-installer
+npx aw-installer tui
+```
+
+交互式终端中，`npx aw-installer` 可以进入最小 TUI；CI、脚本或非交互环境应使用显式 CLI：
+
+```bash
+npx aw-installer diagnose --backend agents --json
+npx aw-installer verify --backend agents
+npx aw-installer update --backend agents
+npx aw-installer update --backend agents --yes
+npx aw-installer install --backend agents
+```
+
+`diagnose` 和 `verify` 是只读检查；`install` 是显式写入当前 payload 的底层命令；`update` 默认只输出 dry-run plan。推荐写入路径是在确认 plan 后运行 `update --yes`，它会按 `prune --all -> check_paths_exist -> install -> verify` 写入目标仓库的 `.agents/skills`。完整入口合同见 [`Distribution Entrypoint Contract`](./docs/project-maintenance/deploy/distribution-entrypoint-contract.md)，维护者验证与本地 tarball smoke 见 [`Deploy Runbook`](./docs/project-maintenance/deploy/deploy-runbook.md)。
+
 ## 我们在构建什么
 
 从产品视角看，这不是一个只服务单仓库的脚手架，而是一套可以持续复用和迭代的能力系统：
