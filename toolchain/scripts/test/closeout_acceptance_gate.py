@@ -257,6 +257,14 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
             run_command([python, "-m", "pytest", "toolchain/scripts/test/test_folder_logic_check.py"], cwd=repo_root),
         ),
         (
+            "path_governance_tests",
+            run_command([python, "-m", "pytest", "toolchain/scripts/test/test_path_governance_check.py"], cwd=repo_root),
+        ),
+        (
+            "governance_semantic_tests",
+            run_command([python, "-m", "pytest", "toolchain/scripts/test/test_governance_semantic_check.py"], cwd=repo_root),
+        ),
+        (
             "agents_adapter_contract_tests",
             run_command([python, "-m", "pytest", "toolchain/scripts/test/test_agents_adapter_contract.py"], cwd=repo_root),
         ),
