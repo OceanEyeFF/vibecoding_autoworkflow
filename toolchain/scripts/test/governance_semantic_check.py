@@ -6,8 +6,11 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+
+sys.dont_write_bytecode = True
 
 from path_governance_check import iter_relative_markdown_targets, resolve_markdown_target
 
