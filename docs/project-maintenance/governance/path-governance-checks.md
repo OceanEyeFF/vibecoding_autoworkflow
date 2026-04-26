@@ -83,6 +83,10 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
    - `.opencode/`
    - `.autoworkflow/`
    - `.spec-workflow/`
+   - `**/__pycache__/`
+   - `.pytest_cache/`
+   - `*.pyc`
+   - `*.pyo`
 18. `governance_semantic_check.py`
 19. 关键承接关系是否仍存在：
    - `toolchain/toolchain-layering.md -> toolchain/scripts/README.md`
