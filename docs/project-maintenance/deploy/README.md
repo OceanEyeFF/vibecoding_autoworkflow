@@ -47,7 +47,7 @@
 - `install --backend agents` 只写当前 source 声明的 live payload；若存在重复 `target_dir`、路径冲突或其他 source 非法情形，必须在写入前失败
 - `diagnose --backend agents --json` 保留为只读状态摘要命令，用于输出 source / target / issue code / conflict / unrecognized 摘要，发现 issue 时仍以 0 退出
 - `verify --backend agents` 保留为只读严格复验命令，用于检查 source 合法性、target root 状态、live install 对齐，以及 conflict / unrecognized 情形，发现 issue 时非零退出
-- 未来 reusable package / npx-style wrapper 必须保持 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 中定义的只读、严格复验和三步 destructive reinstall 语义；当前尚未实现包装层或 `update` 命令
+- 本地 `harness_deploy.py` thin wrapper 与未来 reusable package / npx-style wrapper 必须保持 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 中定义的只读、严格复验和三步 destructive reinstall 语义；当前尚未实现 package / npx 发布渠道或 `update` 命令
 - 不再承接这些主线语义：
   - `retired-target-dir`
   - `prune --outdated`

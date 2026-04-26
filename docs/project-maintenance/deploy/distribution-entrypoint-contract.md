@@ -15,6 +15,12 @@ last_verified: 2026-04-26
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 ```
 
+当前还提供一个本地薄包装入口，供后续 package runner 复用同一命令面：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
+```
+
 ## 一、范围
 
 本文定义未来分发入口的外层合同：
@@ -36,6 +42,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py <mode> --backend agents
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py <mode> --backend agents
 ```
 
 未来可复用包装层可以提供更短的启动形式，例如 package runner、project-local bin 或 thin wrapper，但必须投影到同一组 mode：
@@ -83,4 +90,4 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py <mo
 
 ## 六、当前停止线
 
-当前仓库只承诺 repo-local deploy script 和 `agents` backend。下一轮如果要进入 packaging，应以本文为合同输入，先建立包装层最小验证，再讨论发布渠道。
+当前仓库只承诺 repo-local deploy scripts 和 `agents` backend。`harness_deploy.py` 是本地薄包装入口，不是已发布 package。下一轮如果要进入 packaging，应以本文为合同输入，先建立包装层最小验证，再讨论发布渠道。

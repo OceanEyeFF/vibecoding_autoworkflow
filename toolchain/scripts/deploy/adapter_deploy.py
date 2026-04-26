@@ -141,9 +141,15 @@ def add_target_override_args(subparser: argparse.ArgumentParser) -> None:
     )
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(
+    argv: list[str] | None = None,
+    *,
+    prog: str | None = None,
+    description: str | None = None,
+) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Install and verify managed agents skill payloads."
+        prog=prog,
+        description=description or "Install and verify managed agents skill payloads.",
     )
     subparsers = parser.add_subparsers(dest="mode", required=True)
 
@@ -177,7 +183,7 @@ def parse_args() -> argparse.Namespace:
         help="Delete every recognized managed install directory in the target root.",
     )
 
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def iter_backends(selected: str) -> list[str]:
@@ -1419,8 +1425,13 @@ def print_diagnostic_summary(summary: dict[str, Any]) -> None:
         print(f"conflict entries: {summary['conflict_count']}")
 
 
-def main() -> int:
-    args = parse_args()
+def main(
+    argv: list[str] | None = None,
+    *,
+    prog: str | None = None,
+    description: str | None = None,
+) -> int:
+    args = parse_args(argv, prog=prog, description=description)
     try:
         if args.mode == "verify":
             results = [verify_backend(backend, args) for backend in iter_backends(args.backend)]
