@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -342,3 +344,35 @@ def test_check_repo_python_commands_are_bytecode_free_skips_historical_log(tmp_p
     check_repo_python_commands_are_bytecode_free(tmp_path, report)
 
     assert report.failures == []
+
+
+def test_governance_semantic_cli_disables_bytecode_before_local_import(tmp_path: Path) -> None:
+    source_script = Path(__file__).resolve().parent / "governance_semantic_check.py"
+    write_doc(tmp_path / "governance_semantic_check.py", source_script.read_text(encoding="utf-8"))
+    write_doc(
+        tmp_path / "path_governance_check.py",
+        "\n".join(
+            [
+                "def iter_relative_markdown_targets(text):",
+                "    return []",
+                "",
+                "def resolve_markdown_target(markdown_file, repo_root, target):",
+                "    return repo_root / target",
+            ]
+        )
+        + "\n",
+    )
+
+    env = os.environ.copy()
+    env.pop("PYTHONDONTWRITEBYTECODE", None)
+    completed = subprocess.run(
+        [sys.executable, str(tmp_path / "governance_semantic_check.py"), "--repo-root", str(tmp_path)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    assert completed.returncode == 1
+    assert not list(tmp_path.rglob("__pycache__"))
+    assert not list(tmp_path.rglob("*.pyc"))
