@@ -197,22 +197,24 @@ def test_retired_serena_root_directory_fails(tmp_path: Path) -> None:
     assert ".serena" in issue_paths(report)
 
 
-def test_repo_local_skill_payloads_may_be_tracked_but_other_mount_content_still_fails(tmp_path: Path) -> None:
+def test_repo_local_mount_content_must_not_be_tracked(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
     write_file(repo_root / ".agents/skills/demo-skill/SKILL.md", "---\nname: demo-skill\ndescription: demo\n---\n")
     git(repo_root, "add", ".agents/skills/demo-skill/SKILL.md", force=True)
 
-    allowed_report = run_checks(repo_root)
+    skill_payload_report = run_checks(repo_root)
 
-    assert "FL007" not in issue_codes(allowed_report)
+    assert "FL007" in issue_codes(skill_payload_report)
+    assert ".agents/skills/demo-skill/SKILL.md" in issue_paths(skill_payload_report)
 
+    git(repo_root, "rm", "--cached", ".agents/skills/demo-skill/SKILL.md")
     write_file(repo_root / ".agents/runtime.json", "{}\n")
     git(repo_root, "add", ".agents/runtime.json", force=True)
 
-    blocked_report = run_checks(repo_root)
+    runtime_report = run_checks(repo_root)
 
-    assert "FL007" in issue_codes(blocked_report)
-    assert ".agents/runtime.json" in issue_paths(blocked_report)
+    assert "FL007" in issue_codes(runtime_report)
+    assert ".agents/runtime.json" in issue_paths(runtime_report)
 
 
 def test_first_level_allowlist_drift_fails(tmp_path: Path) -> None:

@@ -61,8 +61,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
    - `toolchain/` 中的 canonical 业务源码目录、repo-local mount/state 内容、运行日志、运行缓存和 Python bytecode
    - `tools/` 中的 Python / pytest 运行缓存
 5. hidden/state/mount 层的 tracked 真实状态是否仍受控：
-   - `.agents/skills/`、`.claude/skills/`、`.opencode/skills/` 允许 tracked 的 repo-local install payload
-   - 这些目录之外的 mount-layer tracked 内容仍应失败
+   - `.agents/`、`.claude/`、`.opencode/` 是 repo-local deploy target / mount layer，任何 tracked 内容都应失败
    - `.codex/` 只允许 `config.toml` 与 `rules/repo.rules`
    - `tools/` 只允许显式 compat shim tracked 文件
    - `.pytest_cache/` 允许本地存在，但 tracked 时失败
@@ -101,7 +100,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
 
 说明：
 
-- `.agents/`、`.claude/`、`.opencode/` 仍应默认被 `.gitignore` 忽略；允许 tracked 的 install payload 属于受控例外，不改变默认忽略策略
+- `.agents/`、`.claude/`、`.opencode/` 仍应默认被 `.gitignore` 忽略；它们是 deploy target / mount layer，不承接 tracked install payload 例外
 - `folder_logic_check.py` 使用 `git ls-files` 的真实 tracked 状态，而不只看 `.gitignore`
 
 ## 四、什么时候运行
