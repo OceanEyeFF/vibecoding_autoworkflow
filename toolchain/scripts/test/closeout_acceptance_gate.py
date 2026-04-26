@@ -464,6 +464,22 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
             run_command([python, "-m", "pytest", "toolchain/scripts/test/test_agents_adapter_contract.py"], cwd=repo_root),
         ),
         (
+            "deploy_regression_tests",
+            run_command(
+                [
+                    python,
+                    "-m",
+                    "unittest",
+                    "discover",
+                    "-s",
+                    "toolchain/scripts/deploy",
+                    "-p",
+                    "test_*.py",
+                ],
+                cwd=repo_root,
+            ),
+        ),
+        (
             "repo_analysis_contract_check",
             run_command([python, "toolchain/scripts/test/repo_analysis_contract_check.py"], cwd=repo_root),
         ),

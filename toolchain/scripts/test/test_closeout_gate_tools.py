@@ -458,12 +458,13 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
     commands = [command for command, _, _ in calls]
 
     assert result["passed"] is True
-    assert [item["name"] for item in result["subchecks"][:8]] == [
+    assert [item["name"] for item in result["subchecks"][:9]] == [
         "gate_tool_tests",
         "folder_logic_tests",
         "path_governance_tests",
         "governance_semantic_tests",
         "agents_adapter_contract_tests",
+        "deploy_regression_tests",
         "repo_analysis_contract_check",
         "npm_pack_dry_run_aw_harness_deploy",
         "npm_tarball_smoke_aw_harness_deploy",
@@ -472,6 +473,7 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
     assert any(command[-1] == "toolchain/scripts/test/test_path_governance_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_governance_semantic_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_agents_adapter_contract.py" for command in commands)
+    assert any(command[:4] == [sys.executable, "-m", "unittest", "discover"] for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/repo_analysis_contract_check.py" for command in commands)
     assert any(
         command == ["npm", "pack", "--dry-run", "--json"]
