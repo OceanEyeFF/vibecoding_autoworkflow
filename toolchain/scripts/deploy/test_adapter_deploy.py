@@ -714,6 +714,7 @@ class AdapterDeployTest(unittest.TestCase):
         if shutil.which("node") is None:
             self.skipTest("node is not available")
         package_root = self.source_repo_root
+        installed_harness_skill = False
 
         with tempfile.TemporaryDirectory() as package_dir:
             package_dir_path = Path(package_dir)
@@ -793,6 +794,47 @@ class AdapterDeployTest(unittest.TestCase):
                 text=True,
                 check=False,
             )
+            install_completed = subprocess.run(
+                [
+                    "npm",
+                    "exec",
+                    "--yes",
+                    "--package",
+                    str(package_file),
+                    "--",
+                    "aw-installer",
+                    "install",
+                    "--backend",
+                    "agents",
+                ],
+                cwd=target_repo,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            installed_harness_skill = (
+                target_repo / ".agents" / "skills" / "aw-harness-skill" / "SKILL.md"
+            ).is_file()
+            verify_completed = subprocess.run(
+                [
+                    "npm",
+                    "exec",
+                    "--yes",
+                    "--package",
+                    str(package_file),
+                    "--",
+                    "aw-installer",
+                    "verify",
+                    "--backend",
+                    "agents",
+                ],
+                cwd=target_repo,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
 
         self.assertEqual(diagnose_completed.returncode, 0, diagnose_completed.stderr)
         diagnose_payload = json.loads(diagnose_completed.stdout)
@@ -821,6 +863,12 @@ class AdapterDeployTest(unittest.TestCase):
                 for path in update_payload["planned_target_paths"]
             )
         )
+
+        self.assertEqual(install_completed.returncode, 0, install_completed.stderr)
+        self.assertIn("installed skill harness-skill", install_completed.stdout)
+        self.assertTrue(installed_harness_skill)
+        self.assertEqual(verify_completed.returncode, 0, verify_completed.stderr)
+        self.assertIn("[agents] ok", verify_completed.stdout)
 
     def test_install_uses_override_root(self) -> None:
         code, stdout, stderr = self._install("--agents-root", self.override_root)

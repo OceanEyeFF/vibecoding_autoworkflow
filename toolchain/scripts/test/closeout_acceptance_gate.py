@@ -690,6 +690,46 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                             failures.append("root packaged update used target repo as source root")
                 subchecks.append({**update_result, "name": "root_npm_exec_tarball_update_dry_run"})
 
+                install_result = run_command(
+                    [
+                        "npm",
+                        "exec",
+                        "--yes",
+                        "--package",
+                        str(package_file),
+                        "--",
+                        "aw-installer",
+                        "install",
+                        "--backend",
+                        "agents",
+                    ],
+                    cwd=target_repo,
+                    extra_env=clean_env,
+                )
+                if install_result["passed"]:
+                    installed_skill = target_repo / ".agents" / "skills" / "aw-harness-skill" / "SKILL.md"
+                    if not installed_skill.is_file():
+                        failures.append("root packaged install did not write aw-harness-skill")
+                subchecks.append({**install_result, "name": "root_npm_exec_tarball_install"})
+
+                verify_result = run_command(
+                    [
+                        "npm",
+                        "exec",
+                        "--yes",
+                        "--package",
+                        str(package_file),
+                        "--",
+                        "aw-installer",
+                        "verify",
+                        "--backend",
+                        "agents",
+                    ],
+                    cwd=target_repo,
+                    extra_env=clean_env,
+                )
+                subchecks.append({**verify_result, "name": "root_npm_exec_tarball_verify"})
+
         passed = all(result["passed"] for result in subchecks) and not failures
         return {
             "command": ["root-npm-package-tarball-smoke"],
