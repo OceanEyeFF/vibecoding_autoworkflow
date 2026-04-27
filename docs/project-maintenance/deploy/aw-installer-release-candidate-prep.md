@@ -11,6 +11,8 @@ last_verified: 2026-04-27
 
 This page belongs to [Deploy Runbooks](./README.md). It consumes the publish gate in [aw-installer Release Channel Contract](./release-channel-contract.md), the CLI/TUI entrypoint contract in [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md), and the payload/update trust boundary in [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md).
 
+The concrete first `0.4.x` candidate approval package is tracked separately in [aw-installer RC Approval Package](./aw-installer-rc-approval-package.md). Keep this page as the reusable RC prep contract.
+
 ## Current Stop Line
 
 - The current root `package.json` version is `0.0.0-local`.
