@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 治理入口"
 status: active
-updated: 2026-04-26
+updated: 2026-04-27
 owner: aw-kernel
-last_verified: 2026-04-26
+last_verified: 2026-04-27
 ---
 # Review / Verify 治理入口
 
@@ -101,7 +101,7 @@ last_verified: 2026-04-26
   - 从临时 `npm pack --pack-destination` 产物运行 `npm exec --package <tgz> -- aw-harness-deploy --help`
   - 设置 `AW_HARNESS_REPO_ROOT=<repo-root>` 后，从同一个临时 `.tgz` 运行 `aw-harness-deploy diagnose --backend agents --json`
   - 设置 `AW_HARNESS_REPO_ROOT=<repo-root>` 后，从同一个临时 `.tgz` 运行 `aw-harness-deploy update --backend agents --json`
-  - 从根 package 临时 `.tgz` 在隔离 target repo 中运行无 `AW_HARNESS_REPO_ROOT` 的 `aw-installer diagnose --backend agents --json` 和 `aw-installer update --backend agents --json`
+  - 从根 package 临时 `.tgz` 在隔离 target repo 中运行无 `AW_HARNESS_REPO_ROOT` 的 `aw-installer diagnose --backend agents --json`、`aw-installer update --backend agents --json`、`aw-installer install --backend agents`、`aw-installer verify --backend agents` 和 `aw-installer update --backend agents --yes`；该 smoke 的验收口径是 source payload 来自 package 内，target repo root 来自当前工作目录，`AW_HARNESS_TARGET_REPO_ROOT` 与 `--agents-root` 只作为显式 target override
   - `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_governance_semantic_check.py`
   - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents`
   - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents`

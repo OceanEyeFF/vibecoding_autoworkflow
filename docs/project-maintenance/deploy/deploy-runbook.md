@@ -1,9 +1,9 @@
 ---
 title: "Deploy Runbook"
 status: active
-updated: 2026-04-26
+updated: 2026-04-27
 owner: aw-kernel
-last_verified: 2026-04-26
+last_verified: 2026-04-27
 ---
 # Deploy Runbook
 
@@ -61,6 +61,8 @@ npm pack --dry-run --json
 ```
 
 该 packlist 必须包含 `product/harness/skills`、`product/harness/adapters/agents/skills` 与 `toolchain/scripts/deploy/` wrapper 文件，并且不得包含 `.aw/`、`.agents/` 或 `.autoworkflow/`。
+
+`aw-installer` package payload provenance、source/target root 解析与 `update` trust boundary 见 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md)。当前 `update` 只使用当前 package 或 checkout 中的 source payload，不执行远程 fetch、channel 解析、自升级、验签或自动回滚。
 
 发布前 dry-run 只验证 npm publish 包面和 registry 配置，不上传 package：
 
@@ -127,6 +129,7 @@ CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 scaffol
 - 本地 `harness_deploy.py` wrapper、当前 `aw-installer` scaffold、`aw-harness-deploy` 兼容别名和目标 `npx aw-installer` wrapper 必须保持这些语义；包装层合同见 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)
 - `aw-installer` 的目标形态是 CLI + TUI 双模式：CLI 是脚本化合同，当前 `tui` shell 是同一 deploy 合同上的交互式引导层，不能绕过只读 `diagnose / verify`、显式三步 reinstall 或 `update --yes` 确认边界
 - `update` 是三步 destructive reinstall 的 one-shot 包装；默认只输出 dry-run plan，只有显式传入 `--yes` 才会执行 `prune --all -> check_paths_exist -> install -> verify`
+- `update` 的 payload provenance 与 trust boundary 见 [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md)；远程更新能力不属于当前实现
 - 原始来源（canonical source）、后端部署包（backend payload source）、目标入口（target entry）之间的正式映射规则，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
 - `prune --all` 只删除带可识别、且属于当前 backend 的受管 `aw.marker` 目录；无 marker、不可识别 marker 或 foreign 目录一律不碰
 - `check_paths_exist` 会基于当前 source 声明的 live bindings 解析目标路径；只要任一路径已存在，就全量列出冲突并失败退出，不做任何业务写入
@@ -216,4 +219,5 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ver
 - 根目录不一致（drift）、损坏链路、root 类型错误：查看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)
 - skills / `.aw_template` 的增删改查：查看 [skill-lifecycle.md](./skill-lifecycle.md)
 - 原始来源、后端部署包、目标入口的正式规则：查看 [Deploy Mapping Spec](./deploy-mapping-spec.md)
+- package payload、source/target root 和 update trust boundary：查看 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md)
 - `claude` / `opencode` 当前暂不在部署接口中实现；Claude skills 分发是慢车道兼容项，恢复前不要将它们写成稳定的 operator 流程

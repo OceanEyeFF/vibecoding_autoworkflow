@@ -1,9 +1,9 @@
 ---
 title: "Distribution Entrypoint Contract"
 status: active
-updated: 2026-04-26
+updated: 2026-04-27
 owner: aw-kernel
-last_verified: 2026-04-26
+last_verified: 2026-04-27
 ---
 # Distribution Entrypoint Contract
 
@@ -33,6 +33,8 @@ CI 必须显式设置 Node 后运行本地 package smoke、本地 scaffold pack 
 
 `AW_HARNESS_REPO_ROOT` 是 source checkout override。设置它时，source root 与默认 target repo root 保持旧的 repo-local 行为；未设置它时，packaged wrapper 从 package 解压根读取 source payload，并默认把当前工作目录作为用户项目 target repo root。`AW_HARNESS_TARGET_REPO_ROOT` 可显式覆盖 target repo root。
 
+`aw-installer` 的 package payload provenance、source/target root 解析和 `update` trust boundary 由 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md) 固定。包装层不得把远程 fetch、channel 解析、自升级、验签或自动回滚悄悄并入当前 `update --yes`。
+
 ## 一、范围
 
 本文定义 `aw-installer` 分发入口的外层合同：
@@ -46,6 +48,7 @@ CI 必须显式设置 Node 后运行本地 package smoke、本地 scaffold pack 
 本文不定义：
 
 - npm 发布账户、registry 凭证或 release workflow；release channel 与 publish readiness 准入见 [aw-installer Release Channel Contract](./release-channel-contract.md)。
+- 远程更新、payload manifest、签名/验签、自升级或自动回滚；这些能力必须先满足 [Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md) 的准入条件。
 - 具体 TUI framework、按键模型、配色或终端渲染实现。
 - 新的 deploy backend。
 - `adapter_deploy.py` 内部实现。
