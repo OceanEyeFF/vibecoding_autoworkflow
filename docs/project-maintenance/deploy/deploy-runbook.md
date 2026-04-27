@@ -68,7 +68,7 @@ npm pack --dry-run --json
 npm run publish:dry-run --silent
 ```
 
-根 package 的 `publishConfig.registry` 固定为 `https://registry.npmjs.org/`，避免本机 npm mirror 配置影响目标 release channel。根 package 的 `prepublishOnly` guard 会允许这个 dry-run；如果版本仍是 `0.0.0-local` 或其他 `-local` 版本，真实 `npm publish` 会被拒绝。真实发布仍需要单独确认非 local 版本、tag、npm 凭证和 release 审批。
+根 package 的 `publishConfig.registry` 固定为 `https://registry.npmjs.org/`，避免本机 npm mirror 配置影响目标 release channel。根 package 的 `prepublishOnly` guard 会允许这个 dry-run；真实 `npm publish` 必须满足 [aw-installer Release Channel Contract](./release-channel-contract.md) 中定义的非 local semver、release channel、npm dist-tag、CI、审批信号和 git tag 准入。真实发布仍需要单独确认 npm 凭证、release notes 和回滚/撤回计划。
 
 本地 scaffold packlist 仍在 scaffold package root 内检查：
 
@@ -108,7 +108,7 @@ mkdir -p "$target_repo"
 
 这里显式清空 `AW_HARNESS_REPO_ROOT` 与 `AW_HARNESS_TARGET_REPO_ROOT`，用于验证 packaged wrapper 会从 package 内读取 source payload，并把当前工作目录作为 target repo root。packaged `tui` 在非交互环境必须明确拒绝；`update --json` 只运行 dry-run JSON plan；随后 `install` 只写临时 target repo 的 `.agents/skills`，`verify` 复验该临时安装，最后 `update --yes` 覆盖同一临时 target 上的显式 apply + strict verify 路径。
 
-CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 scaffold smoke、本地 scaffold pack/tarball smoke、根 package pack dry-run、根 package publish dry-run，以及无 `AW_HARNESS_REPO_ROOT` 的根 `.tgz` help / version / TUI non-interactive guard / diagnose / update dry-run / install / verify / update apply smoke。该 CI 覆盖验证 package envelope 和 publish preflight，不代表 npm release channel 已发布。
+CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 scaffold smoke、本地 scaffold pack/tarball smoke、根 package pack dry-run、根 package publish dry-run，以及无 `AW_HARNESS_REPO_ROOT` 的根 `.tgz` help / version / TUI non-interactive guard / diagnose / update dry-run / install / verify / update apply smoke。该 CI 覆盖验证 package envelope 和 publish preflight，不代表 npm release channel 已发布；真实 release 还必须通过 release-channel guard。
 
 暂不实现：
 

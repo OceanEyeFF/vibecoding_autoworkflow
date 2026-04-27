@@ -36,7 +36,7 @@
 - `update --backend agents` 默认只输出 dry-run plan；`update --backend agents --yes` 包装同一三步 destructive reinstall，并在写入后运行严格 `verify`
 - `npm --prefix toolchain/scripts/deploy run smoke --silent` 只验证本地 package scaffold 的 bin 能打开当前 help，不发布或安装 package；`aw-installer --version` 是同一 Node wrapper 上的非交互 package metadata probe
 - 如需检查目标 package envelope，在仓库根目录运行 `npm pack --dry-run --json`；本地 scaffold packlist 仍在 `toolchain/scripts/deploy/` 目录内运行；根 `.tgz` smoke 应在临时 target repo 中覆盖 help/version/TUI non-interactive guard/diagnose/update dry-run/install/verify/update apply
-- 如需检查发布前包面，在仓库根目录运行 `npm run publish:dry-run --silent`；这只验证 npmjs publish dry-run，不上传 package；root package 的 `prepublishOnly` guard 会拒绝 `0.0.0-local` 或其他 `-local` 版本的真实 publish
+- 如需检查发布前包面，在仓库根目录运行 `npm run publish:dry-run --silent`；这只验证 npmjs publish dry-run，不上传 package；root package 的 `prepublishOnly` guard 会拒绝不满足 release-channel 准入的真实 publish，包括 local version、缺少 CI/审批信号、channel 与 dist-tag 不匹配或缺少匹配 git tag
 - 从根 package `.tgz` 执行非 help 命令时，不设置 `AW_HARNESS_REPO_ROOT` 即可从 package 内读取 source payload，并把当前工作目录作为 target repo root；`AW_HARNESS_REPO_ROOT` 仍保留为 source checkout override，`AW_HARNESS_TARGET_REPO_ROOT` 可显式覆盖 target repo root
 - 当前接口只实现 `agents`
 - 不再承接 `local/global` deploy modes、`prune --outdated`、archive/history、增量修复或旧版本保活
