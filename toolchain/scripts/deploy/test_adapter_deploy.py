@@ -35,15 +35,11 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
         self._seed_fake_repo()
+        self.context = adapter_deploy.build_deploy_context(
+            self.fake_repo_root,
+            self.fake_repo_root,
+        )
 
-        self.patches = [
-            mock.patch.object(adapter_deploy, "REPO_ROOT", self.fake_repo_root),
-            mock.patch.object(adapter_deploy, "LOCAL_TARGET_ROOTS", {"agents": self.local_root}),
-            mock.patch.object(adapter_deploy, "ADAPTER_SKILL_DIRS", {"agents": self.adapter_dir}),
-        ]
-        for patcher in self.patches:
-            patcher.start()
-        self.addCleanup(self._cleanup_patches)
         self.addCleanup(self.temp_dir.cleanup)
 
     def _seed_fake_repo(self) -> None:
@@ -56,16 +52,18 @@ class AdapterDeployTest(unittest.TestCase):
             self.fake_repo_root / "product" / "harness" / "skills",
         )
 
-    def _cleanup_patches(self) -> None:
-        for patcher in reversed(self.patches):
-            patcher.stop()
-
     def _run_cli(
         self, *argv: object, env: dict[str, str] | None = None
     ) -> tuple[int, str, str]:
         stdout = io.StringIO()
         stderr = io.StringIO()
-        env_patch = mock.patch.dict("os.environ", env or {}, clear=False)
+        command_env = {
+            "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
+            "AW_HARNESS_TARGET_REPO_ROOT": str(self.fake_repo_root),
+        }
+        if env is not None:
+            command_env.update(env)
+        env_patch = mock.patch.dict("os.environ", command_env, clear=False)
         with (
             mock.patch.object(sys, "argv", ["adapter_deploy.py", *map(str, argv)]),
             env_patch,
@@ -77,7 +75,16 @@ class AdapterDeployTest(unittest.TestCase):
     def _run_wrapper_cli(self, *argv: object) -> tuple[int, str, str]:
         stdout = io.StringIO()
         stderr = io.StringIO()
+        env_patch = mock.patch.dict(
+            "os.environ",
+            {
+                "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
+                "AW_HARNESS_TARGET_REPO_ROOT": str(self.fake_repo_root),
+            },
+            clear=False,
+        )
         with (
+            env_patch,
             contextlib.redirect_stdout(stdout),
             contextlib.redirect_stderr(stderr),
         ):
@@ -104,12 +111,16 @@ class AdapterDeployTest(unittest.TestCase):
     def _binding(self, skill_id: str) -> adapter_deploy.SkillBinding:
         return next(
             binding
-            for binding in adapter_deploy.collect_skill_bindings("agents")
+            for binding in adapter_deploy.collect_skill_bindings("agents", self.context)
             if binding.skill_id == skill_id
         )
 
     def _install_plan(self, skill_id: str, root: Path | None = None) -> adapter_deploy.InstallPlan:
-        return adapter_deploy.build_install_plan(self._binding(skill_id), root or self.local_root)
+        return adapter_deploy.build_install_plan(
+            self._binding(skill_id),
+            root or self.local_root,
+            self.context,
+        )
 
     def _runtime_marker_text(self, skill_id: str, root: Path | None = None) -> str:
         plan = self._install_plan(skill_id, root=root)
@@ -310,6 +321,7 @@ class AdapterDeployTest(unittest.TestCase):
             canonical_source = adapter_deploy.payload_canonical_source_metadata(
                 payload,
                 self._binding(skill_id),
+                self.context,
             )
             self.assertTrue(target_skill_dir.is_dir(), target_skill_dir)
             self.assertEqual(
@@ -376,7 +388,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(wrapper_code, 0, wrapper_stderr)
         self.assertEqual(json.loads(wrapper_stdout), json.loads(adapter_stdout))
 
-    def test_cli_refreshes_runtime_roots_from_env_after_import(self) -> None:
+    def test_cli_derives_runtime_context_from_env_after_import(self) -> None:
         target_repo = self.temp_root / "env-target"
 
         code, stdout, stderr = self._run_cli(
@@ -1226,7 +1238,7 @@ class AdapterDeployTest(unittest.TestCase):
             with self.assertRaisesRegex(adapter_deploy.DeployError, "update target entry issues"):
                 adapter_deploy.collect_update_target_entry_issues("agents", target_root, set())
             with self.assertRaisesRegex(adapter_deploy.DeployError, "managed install pruning"):
-                adapter_deploy.prune_all_managed_target_dirs("agents", prune_args)
+                adapter_deploy.prune_all_managed_target_dirs("agents", prune_args, self.context)
 
     def test_update_plan_summary_reuses_bindings_and_target_root_scan(self) -> None:
         code, _, stderr = self._install()
@@ -1245,7 +1257,7 @@ class AdapterDeployTest(unittest.TestCase):
                 wraps=adapter_deploy.iter_target_root_children,
             ) as iter_children,
         ):
-            summary = adapter_deploy.update_plan_summary("agents", args)
+            summary = adapter_deploy.update_plan_summary("agents", args, self.context)
 
         self.assertEqual(summary["blocking_issue_count"], 0)
         self.assertEqual(collect_bindings.call_count, 1)
