@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 "use strict";
 
-const { readFileSync } = require("node:fs");
+const { existsSync, readFileSync } = require("node:fs");
 const { join } = require("node:path");
 
 const packagePath = join(__dirname, "..", "..", "..", "..", "package.json");
+const scaffoldPackagePath = join(__dirname, "..", "package.json");
 const packageMetadata = JSON.parse(readFileSync(packagePath, "utf8"));
+const scaffoldPackageMetadata = existsSync(scaffoldPackagePath)
+  ? JSON.parse(readFileSync(scaffoldPackagePath, "utf8"))
+  : null;
 const packageJsonOverride = process.env.AW_INSTALLER_PACKAGE_JSON || "";
 const version = packageMetadata.version || "";
 const isDryRun = process.env.npm_config_dry_run === "true";
@@ -59,6 +63,12 @@ runChecks([
     test: () => !packageJsonOverride,
     message: () =>
       "refusing to publish aw-installer; AW_INSTALLER_PACKAGE_JSON override is not supported",
+  },
+  {
+    test: () =>
+      scaffoldPackageMetadata === null || scaffoldPackageMetadata.version === packageMetadata.version,
+    message: () =>
+      `refusing to publish aw-installer; root package version ${packageMetadata.version || "<missing-version>"} does not match local scaffold package version ${scaffoldPackageMetadata.version || "<missing-version>"}`,
   },
 ]);
 

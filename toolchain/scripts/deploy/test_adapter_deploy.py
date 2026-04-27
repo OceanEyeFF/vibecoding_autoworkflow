@@ -457,6 +457,12 @@ class AdapterDeployTest(unittest.TestCase):
             "node toolchain/scripts/deploy/bin/check-root-publish.js",
         )
         self.assertEqual(package["scripts"]["publish:dry-run"], "npm publish --dry-run --json")
+        scaffold_package = json.loads(
+            (self.source_repo_root / "toolchain" / "scripts" / "deploy" / "package.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(scaffold_package["version"], package["version"])
 
     def test_root_npm_publish_guard_allows_publish_dry_run(self) -> None:
         if shutil.which("node") is None:
@@ -480,6 +486,43 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(completed.stdout, "")
         self.assertEqual(completed.stderr, "")
+
+    def test_root_npm_publish_guard_rejects_scaffold_version_drift(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.temp_root / "release-package-root"
+        guard_dir = package_root / "toolchain" / "scripts" / "deploy" / "bin"
+        guard_dir.mkdir(parents=True)
+        guard_path = guard_dir / "check-root-publish.js"
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js",
+            guard_path,
+        )
+        (package_root / "package.json").write_text(
+            json.dumps({"name": "aw-installer", "version": "1.2.3"}),
+            encoding="utf-8",
+        )
+        (guard_dir.parent / "package.json").write_text(
+            json.dumps({"name": "aw-installer", "version": "1.2.4"}),
+            encoding="utf-8",
+        )
+        env = {
+            **os.environ,
+            "npm_config_dry_run": "true",
+        }
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("does not match local scaffold package version 1.2.4", completed.stderr)
 
     def test_root_npm_publish_guard_rejects_local_version_for_real_publish(self) -> None:
         if shutil.which("node") is None:

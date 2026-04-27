@@ -14,6 +14,18 @@ const env = {
 };
 const packageVersionFallbackMaxDepth = 20;
 
+function tryReadPackageVersionAt(candidate) {
+  try {
+    const packageMetadata = JSON.parse(readFileSync(candidate, "utf8"));
+    if (packageMetadata.name === "aw-installer" && packageMetadata.version) {
+      return packageMetadata.version;
+    }
+    return "";
+  } catch (error) {
+    throw new Error(`failed to read package metadata at ${candidate}: ${error.message}`);
+  }
+}
+
 function printHelp() {
   console.log(`usage: aw-installer [tui|<deploy-mode>] [options]
 
@@ -49,13 +61,9 @@ function readPackageVersion() {
     if (!existsSync(candidate)) {
       continue;
     }
-    try {
-      const packageMetadata = JSON.parse(readFileSync(candidate, "utf8"));
-      if (packageMetadata.name === "aw-installer" && packageMetadata.version) {
-        return packageMetadata.version;
-      }
-    } catch (error) {
-      throw new Error(`failed to read package metadata at ${candidate}: ${error.message}`);
+    const packageVersion = tryReadPackageVersionAt(candidate);
+    if (packageVersion) {
+      return packageVersion;
     }
   }
 
@@ -63,13 +71,9 @@ function readPackageVersion() {
   for (let depth = 0; depth < packageVersionFallbackMaxDepth; depth += 1) {
     const candidate = join(current, "package.json");
     if (existsSync(candidate)) {
-      try {
-        const packageMetadata = JSON.parse(readFileSync(candidate, "utf8"));
-        if (packageMetadata.name === "aw-installer" && packageMetadata.version) {
-          return packageMetadata.version;
-        }
-      } catch (error) {
-        throw new Error(`failed to read package metadata at ${candidate}: ${error.message}`);
+      const packageVersion = tryReadPackageVersionAt(candidate);
+      if (packageVersion) {
+        return packageVersion;
       }
     }
 
