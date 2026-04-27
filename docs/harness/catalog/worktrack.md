@@ -19,6 +19,11 @@ last_verified: 2026-04-20
 - `schedule-worktrack-skill` 是当前 `selected_next_action` 与 dispatch handoff packet 的唯一 authority
 - `dispatch-skills` 只消费 scheduling packet，不反向改写 queue 选择
 - 在 freshly seeded 或 autonomous continuation 的首个 execution-facing round，初始 slice 必须先收紧到最小可验证子片段，再允许 dispatch
+- `dispatch-skills` 的 `runtime_dispatch_mode` 读取顺序：
+  - `.aw/control-state.md` 的 `subagent_dispatch_mode`（显式覆盖）
+  - `.aw/worktrack/contract.md` 的 `runtime_dispatch_mode`（默认）
+  - host runtime 默认能力（有能力则 delegate）
+- `runtime_dispatch_mode` 支持 `auto` / `delegated` / `current-carrier`，默认值为 `auto`，`auto` 需显式写出 fallback 原因
 
 ## Catalog
 
@@ -38,7 +43,7 @@ last_verified: 2026-04-20
 
 canonical executable source：
 
-- [../../../../product/harness/skills/init-worktrack-skill/SKILL.md](../../../../product/harness/skills/init-worktrack-skill/SKILL.md)
+- [../../../product/harness/skills/init-worktrack-skill/SKILL.md](../../../product/harness/skills/init-worktrack-skill/SKILL.md)
 
 当前状态：
 
@@ -71,7 +76,7 @@ preferred initialization fields：
 
 canonical executable source：
 
-- [../../../../product/harness/skills/schedule-worktrack-skill/SKILL.md](../../../../product/harness/skills/schedule-worktrack-skill/SKILL.md)
+- [../../../product/harness/skills/schedule-worktrack-skill/SKILL.md](../../../product/harness/skills/schedule-worktrack-skill/SKILL.md)
 
 当前状态：
 
@@ -150,7 +155,7 @@ dispatch contract：
 
 canonical executable source：
 
-- [../../../../product/harness/skills/dispatch-skills/SKILL.md](../../../../product/harness/skills/dispatch-skills/SKILL.md)
+- [../../../product/harness/skills/dispatch-skills/SKILL.md](../../../product/harness/skills/dispatch-skills/SKILL.md)
 
 当前状态：
 
@@ -170,7 +175,7 @@ canonical executable source：
 
 canonical executable source：
 
-- [../../../../product/harness/skills/review-evidence-skill/SKILL.md](../../../../product/harness/skills/review-evidence-skill/SKILL.md)
+- [../../../product/harness/skills/review-evidence-skill/SKILL.md](../../../product/harness/skills/review-evidence-skill/SKILL.md)
 
 当前状态：
 
@@ -199,7 +204,7 @@ preferred review-lane fields：
 
 canonical executable source：
 
-- [../../../../product/harness/skills/test-evidence-skill/SKILL.md](../../../../product/harness/skills/test-evidence-skill/SKILL.md)
+- [../../../product/harness/skills/test-evidence-skill/SKILL.md](../../../product/harness/skills/test-evidence-skill/SKILL.md)
 
 当前状态：
 
@@ -228,7 +233,7 @@ preferred validation-lane fields：
 
 canonical executable source：
 
-- [../../../../product/harness/skills/rule-check-skill/SKILL.md](../../../../product/harness/skills/rule-check-skill/SKILL.md)
+- [../../../product/harness/skills/rule-check-skill/SKILL.md](../../../product/harness/skills/rule-check-skill/SKILL.md)
 
 当前状态：
 
@@ -248,7 +253,7 @@ canonical executable source：
 
 canonical executable source：
 
-- [../../../../product/harness/skills/gate-skill/SKILL.md](../../../../product/harness/skills/gate-skill/SKILL.md)
+- [../../../product/harness/skills/gate-skill/SKILL.md](../../../product/harness/skills/gate-skill/SKILL.md)
 
 当前状态：
 
@@ -277,7 +282,7 @@ preferred gate fields：
 
 canonical executable source：
 
-- [../../../../product/harness/skills/recover-worktrack-skill/SKILL.md](../../../../product/harness/skills/recover-worktrack-skill/SKILL.md)
+- [../../../product/harness/skills/recover-worktrack-skill/SKILL.md](../../../product/harness/skills/recover-worktrack-skill/SKILL.md)
 
 当前状态：
 
@@ -297,7 +302,7 @@ canonical executable source：
 
 canonical executable source：
 
-- [../../../../product/harness/skills/close-worktrack-skill/SKILL.md](../../../../product/harness/skills/close-worktrack-skill/SKILL.md)
+- [../../../product/harness/skills/close-worktrack-skill/SKILL.md](../../../product/harness/skills/close-worktrack-skill/SKILL.md)
 
 当前状态：
 

@@ -121,7 +121,7 @@ def test_check_subagent_dispatch_default_contract_flags_missing_term(tmp_path: P
         "product/harness/skills/harness-skill/SKILL.md",
         "product/harness/skills/dispatch-skills/SKILL.md",
         "docs/harness/foundations/Harness运行协议.md",
-        "docs/harness/Skills/catalog/worktrack.md",
+        "docs/harness/catalog/worktrack.md",
     ):
         write_doc(
             tmp_path / relative_path,

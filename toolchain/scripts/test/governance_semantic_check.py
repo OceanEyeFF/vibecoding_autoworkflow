@@ -110,7 +110,7 @@ SUBAGENT_DEFAULT_CONTRACT_PATHS = [
     "product/harness/skills/harness-skill/SKILL.md",
     "product/harness/skills/dispatch-skills/SKILL.md",
     "docs/harness/foundations/Harness运行协议.md",
-    "docs/harness/Skills/catalog/worktrack.md",
+    "docs/harness/catalog/worktrack.md",
 ]
 AGENTS_ADAPTER_SKILLS_DIR = "product/harness/adapters/agents/skills"
 MANUAL_RUNBOOK_AGENTS_SKILL_COUNT_RE = re.compile(

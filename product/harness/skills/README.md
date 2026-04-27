@@ -21,7 +21,7 @@
   - [gate-skill/](./gate-skill/) — 关卡判定
   - [recover-worktrack-skill/](./recover-worktrack-skill/) — 恢复工作追踪
   - [close-worktrack-skill/](./close-worktrack-skill/) — 关闭工作追踪
-- 上游技能目录见 [../../../docs/harness/Skills/README.md](../../../docs/harness/Skills/README.md)
+- 上游技能目录见 [../../../docs/harness/catalog/README.md](../../../docs/harness/catalog/README.md)
 - 后续新增内容应从 `docs/harness/` 的操作员定义、工作流程与治理规则推导而来
 - 不应先复制局部提示词，再反向让它生长出本体论
 
