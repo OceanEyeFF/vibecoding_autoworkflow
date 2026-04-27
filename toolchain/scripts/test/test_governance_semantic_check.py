@@ -120,12 +120,20 @@ def test_check_subagent_dispatch_default_contract_flags_missing_term(tmp_path: P
     for relative_path in (
         "product/harness/skills/harness-skill/SKILL.md",
         "product/harness/skills/dispatch-skills/SKILL.md",
+        "product/harness/skills/set-harness-goal-skill/SKILL.md",
+        "product/harness/skills/set-harness-goal-skill/assets/control-state.md",
+        "product/harness/skills/set-harness-goal-skill/assets/worktrack/contract.md",
+        "product/harness/skills/init-worktrack-skill/templates/contract.template.md",
+        "product/.aw_template/control-state.md",
+        "product/.aw_template/worktrack/contract.md",
+        "docs/harness/artifact/control/control-state.md",
+        "docs/harness/artifact/worktrack/contract.md",
         "docs/harness/foundations/Harness运行协议.md",
         "docs/harness/catalog/worktrack.md",
     ):
         write_doc(
             tmp_path / relative_path,
-            "默认\nSubAgent\n权限边界\nruntime fallback\n",
+            "默认\nSubAgent\n权限边界\nsubagent_dispatch_mode\nsubagent_dispatch_mode_override_scope\nworktrack-contract-primary\nglobal-override\nruntime_dispatch_mode\nauto\ndelegated\ncurrent-carrier\nruntime fallback\n",
         )
 
     report = SemanticReport()

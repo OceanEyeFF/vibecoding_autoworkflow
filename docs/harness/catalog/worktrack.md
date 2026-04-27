@@ -1,9 +1,9 @@
 ---
 title: "Harness Skill Catalog / WorktrackScope"
 status: draft
-updated: 2026-04-20
+updated: 2026-04-27
 owner: aw-kernel
-last_verified: 2026-04-20
+last_verified: 2026-04-27
 ---
 # WorktrackScope Skill Catalog
 
@@ -20,8 +20,10 @@ last_verified: 2026-04-20
 - `dispatch-skills` 只消费 scheduling packet，不反向改写 queue 选择
 - 在 freshly seeded 或 autonomous continuation 的首个 execution-facing round，初始 slice 必须先收紧到最小可验证子片段，再允许 dispatch
 - `dispatch-skills` 的 `runtime_dispatch_mode` 读取顺序：
-  - `.aw/control-state.md` 的 `subagent_dispatch_mode`（显式覆盖）
-  - `.aw/worktrack/contract.md` 的 `runtime_dispatch_mode`（默认）
+  - `.aw/control-state.md` 的 `subagent_dispatch_mode_override_scope`
+  - 默认 `worktrack-contract-primary` 下，`.aw/worktrack/contract.md` 的 `runtime_dispatch_mode` 优先
+  - 只有 `global-override` 下，`.aw/control-state.md` 的 `subagent_dispatch_mode` 才作为显式覆盖
+  - contract 未声明时，`.aw/control-state.md` 的 `subagent_dispatch_mode` 作为 repo 级默认值
   - host runtime 默认能力（有能力则 delegate）
 - `runtime_dispatch_mode` 支持 `auto` / `delegated` / `current-carrier`，默认值为 `auto`，`auto` 需显式写出 fallback 原因
 
@@ -101,7 +103,7 @@ preferred scheduling fields：
 - 拒收超过单轮边界的 oversized packet，并把它退回 `schedule-worktrack-skill`
 - 优先选择合适的专门 skill 或 subagent 执行方式
 - 当系统中没有合适的专门 skill 时，自动 fallback 到通用任务完成 `SubAgent`
-- 当宿主运行时支持真实 SubAgent 委派且权限边界允许时，默认必须委派 SubAgent；只有 `runtime fallback`、`permission blocked` 或 `dispatch package unsafe` 时，才允许 current-carrier fallback
+- 按 `runtime_dispatch_mode` 选择执行载体：`auto` 在 runtime 支持且权限边界允许时优先委派，无法安全委派时必须显式记录 `runtime fallback`、权限阻塞或 `dispatch package unsafe`；`delegated` 必须真实委派，无法委派时返回运行时缺口或权限阻塞；`current-carrier` 显式关闭委派
 - 跑一轮 bounded execution
 - 回传 evidence 和状态结果
 

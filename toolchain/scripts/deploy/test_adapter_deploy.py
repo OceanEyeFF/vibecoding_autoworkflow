@@ -26,7 +26,7 @@ class AdapterDeployTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         self.temp_root = Path(self.temp_dir.name)
-        self.source_repo_root = adapter_deploy.REPO_ROOT
+        self.source_repo_root = Path(__file__).resolve().parents[3]
         self.fake_repo_root = self.temp_root / "repo"
         self.local_root = self.fake_repo_root / ".agents" / "skills"
         self.override_root = self.temp_root / "custom-root" / "skills"
@@ -57,10 +57,7 @@ class AdapterDeployTest(unittest.TestCase):
     ) -> tuple[int, str, str]:
         stdout = io.StringIO()
         stderr = io.StringIO()
-        command_env = {
-            "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
-            "AW_HARNESS_TARGET_REPO_ROOT": str(self.fake_repo_root),
-        }
+        command_env = self._deploy_env()
         if env is not None:
             command_env.update(env)
         env_patch = mock.patch.dict("os.environ", command_env, clear=False)
@@ -75,20 +72,19 @@ class AdapterDeployTest(unittest.TestCase):
     def _run_wrapper_cli(self, *argv: object) -> tuple[int, str, str]:
         stdout = io.StringIO()
         stderr = io.StringIO()
-        env_patch = mock.patch.dict(
-            "os.environ",
-            {
-                "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
-                "AW_HARNESS_TARGET_REPO_ROOT": str(self.fake_repo_root),
-            },
-            clear=False,
-        )
+        env_patch = mock.patch.dict("os.environ", self._deploy_env(), clear=False)
         with (
             env_patch,
             contextlib.redirect_stdout(stdout),
             contextlib.redirect_stderr(stderr),
         ):
             return harness_deploy.main([*map(str, argv)]), stdout.getvalue(), stderr.getvalue()
+
+    def _deploy_env(self) -> dict[str, str]:
+        return {
+            "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
+            "AW_HARNESS_TARGET_REPO_ROOT": str(self.fake_repo_root),
+        }
 
     def _install(self, *extra_args: object) -> tuple[int, str, str]:
         return self._run_cli("install", "--backend", "agents", *extra_args)

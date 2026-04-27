@@ -602,9 +602,11 @@ RepoScope.Observe ──→ RepoScope.Decide ──→ WorktrackScope.Init
 如果当前 host runtime 支持真实 subagent dispatch shell，且权限边界允许委派，则默认必须走 `dispatch subagent`。只有在 host runtime 没有稳定分派壳层、权限边界禁止委派，或当前 dispatch package 不满足安全分派条件时，才允许暂时退化为：
 
 - `runtime_dispatch_mode` 可被显式配置，优先级如下：
-  - `.aw/control-state.md` 的 `subagent_dispatch_mode` 显式覆盖（`auto` / `delegated` / `current-carrier`）
-  - `current worktrack contract` 的 `runtime_dispatch_mode`（`auto` / `delegated` / `current-carrier`）
-  - 默认策略：`auto`
+  - 先读取 `.aw/control-state.md` 的 `subagent_dispatch_mode_override_scope`
+  - 默认 `worktrack-contract-primary` 下，`current worktrack contract` 的 `runtime_dispatch_mode` 优先（`auto` / `delegated` / `current-carrier`）
+  - 只有 `subagent_dispatch_mode_override_scope: global-override` 时，`.aw/control-state.md` 的 `subagent_dispatch_mode` 才作为显式全局覆盖（`auto` / `delegated` / `current-carrier`）
+  - 若 worktrack 未声明 `runtime_dispatch_mode`，则使用 control-state 的 `subagent_dispatch_mode` 作为 repo 级默认值
+  - 最终默认策略：`auto`
 
 - `auto` 语义：
   - 优先尝试 delegated subagent dispatch；

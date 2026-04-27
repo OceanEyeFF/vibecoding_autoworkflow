@@ -112,6 +112,8 @@ class DeployContext:
 
 
 def build_deploy_context(source_root: Path, target_repo_root: Path) -> DeployContext:
+    """Build source, target, and backend path roots for one deploy invocation."""
+
     return DeployContext(
         source_root=source_root,
         target_repo_root=target_repo_root,
@@ -131,7 +133,6 @@ def deploy_context_from_env() -> DeployContext:
     return build_deploy_context(source_root, resolve_target_repo_root(source_root))
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
 EXPECTED_PAYLOAD_POLICIES = {
     "agents": "canonical-copy",
 }
@@ -1111,6 +1112,8 @@ def collect_validated_bindings(
     *,
     source_failure_action: str,
 ) -> list[SkillBinding]:
+    """Collect backend bindings and fail with action-specific source validation context."""
+
     bindings = collect_skill_bindings(backend, context)
     if not bindings:
         raise DeployError(f"No payload bindings found for backend {backend}.")
@@ -1130,6 +1133,8 @@ def collect_validated_bindings(
 
 
 def target_root_blocking_issues(backend: str, target_root: Path) -> list[VerifyIssue]:
+    """Return target-root issues that block install/check actions."""
+
     return [
         issue
         for issue in verify_target_root(backend, target_root)
@@ -1143,6 +1148,8 @@ def ensure_target_root_ready_for_action(
     *,
     action: str,
 ) -> None:
+    """Raise an action-specific deploy error if target root cannot be used."""
+
     issues = target_root_blocking_issues(backend, target_root)
     if not issues:
         return

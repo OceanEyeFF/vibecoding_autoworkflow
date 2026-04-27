@@ -50,6 +50,7 @@
 - constraints_for_this_round:
 - acceptance_criteria_for_this_round:
 - verification_requirements:
+- runtime_dispatch_mode:
 - done_signal:
 - required_context:
 - return_to_schedule_if:

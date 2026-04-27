@@ -353,10 +353,13 @@ Gate 应汇总**正交校验面**的裁决：
 ### 10.4 子代理分派阶段
 
 1. 为选定的 Skill 构建限定范围任务简报和信息包
-2. 如果宿主运行时提供真实的子代理分派壳层，且当前权限边界允许委派，默认必须使用委派式 SubAgent
-3. 只有在宿主运行时不提供分派壳层、当前权限边界禁止委派，或任务包不满足安全分派条件时，才允许在当前载体内执行同一份限定范围约定
-4. 发生当前载体运行时回退时，必须显式记录回退原因、未委派原因和保持的任务/信息边界
-5. 不要声称已经分派了子代理，除非宿主运行时真的创建了委派载体
+2. 读取执行载体开关：先看 `.aw/control-state.md` 的 `subagent_dispatch_mode_override_scope`。默认 `worktrack-contract-primary` 表示当前 `Worktrack Contract` 的 `runtime_dispatch_mode` 优先；只有显式 `global-override` 才让 `.aw/control-state.md` 的 `subagent_dispatch_mode` 压过 worktrack。若 worktrack 未声明，再使用 control-state 作为 repo 级默认值，最终默认值为 `auto`
+3. `runtime_dispatch_mode` / `subagent_dispatch_mode` 支持 `auto` / `delegated` / `current-carrier`
+4. `auto` 表示宿主运行时提供真实的子代理分派壳层且权限边界允许时，默认使用委派式 SubAgent；运行时没有稳定分派壳层、权限边界禁止委派，或任务包不满足安全分派条件时，必须显式 fallback
+5. `delegated` 表示必须真实创建委派载体；如果无法委派，应返回运行时缺口或权限阻塞，而不是自动改为当前载体执行
+6. `current-carrier` 表示本轮显式关闭 SubAgent 委派，允许当前载体在同一份限定范围约定内执行
+7. 发生当前载体运行时回退时，必须显式记录回退原因、未委派原因和保持的任务/信息边界
+8. 不要声称已经分派了子代理，除非宿主运行时真的创建了委派载体
 
 ### 10.5 证据收集阶段
 
@@ -483,7 +486,7 @@ Gate 应汇总**正交校验面**的裁决：
 - **不要把 Harness 当成直接写代码的执行者。**
 - **不要把 Function 算子隐含在技能名称后面。** 必须在控制面上显性化 `Observe → Decide → Dispatch → Verify → Judge → Recover → Close → ChangeGoal` 的控制语义。
 - **不要把 `Harness` 自己定义具体代码仓库动作、任务列表内容或执行任务。** 这些由下游技能的算子实现负责。
-- **当宿主运行时支持真实 SubAgent 委派且权限边界允许时，Harness 的默认执行模式是委派 SubAgent，而不是当前载体内直接执行。**
+- **SubAgent 使用必须是可开关参数，而不是硬编码行为。** 控制态字段 `subagent_dispatch_mode` 与工作追踪约定字段 `runtime_dispatch_mode` 支持 `auto` / `delegated` / `current-carrier`；控制态字段 `subagent_dispatch_mode_override_scope` 默认是 `worktrack-contract-primary`，只有显式 `global-override` 才是全局覆盖；默认 `auto` 才表示在宿主运行时支持真实 SubAgent 委派且权限边界允许时优先委派。
 - **除非 `Harness Control State` 明确授予 `约定后自动性：最小委派`，否则不要开启约定后自动工作追踪。**
 - **不要用自动继续推进去重定义代码仓库目标、扩大范围，或消耗超出许可额度的自动工作追踪预算。**
 - **不要无限串接自动切片；一旦某个自动切片收束，就在 `要求自动切片后停止` 时重新交接。**

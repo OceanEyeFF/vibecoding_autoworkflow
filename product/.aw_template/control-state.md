@@ -39,10 +39,15 @@
 
 ## Continuation Authority
 
+> `subagent_dispatch_mode` 是使用 SubAgent 的 repo 级默认开关。`subagent_dispatch_mode_override_scope: worktrack-contract-primary` 表示默认让工作追踪内的 `runtime_dispatch_mode` 优先；只有显式改为 `global-override` 时，control-state 才压过 worktrack 合同。`auto` 默认优先委派 SubAgent；`delegated` 要求真实委派；`current-carrier` 明确关闭 SubAgent 委派。若 `auto` 不能安全委派，必须在结果中写明 `runtime fallback`、权限边界阻断或 `dispatch package unsafe`。
+
 - post_contract_autonomy: delegated-minimal
 - autonomy_scope: current-goal-only
 - max_auto_new_worktracks: 1
 - stop_after_autonomous_slice: yes
+- subagent_dispatch_mode: auto
+- subagent_dispatch_mode_override_scope: worktrack-contract-primary
+- subagent_default_model:
 
 ## Handback Guard
 
