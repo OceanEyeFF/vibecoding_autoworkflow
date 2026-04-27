@@ -9,6 +9,7 @@
 - 只读 `diagnose / verify` 的状态观察与诊断闭环
 - canonical source 到 backend payload / target entry 的映射合同
 - 目标 `npx aw-installer` reusable distribution entrypoint 的语义边界
+- `aw-installer` package payload provenance、source/target root 与 update trust boundary
 - `.aw_template/` 的 `.aw/` 使用合同与边界
 
 这里不适合放：
@@ -29,6 +30,7 @@
 | 我想看 canonical source 到 target entry 的正式映射 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | 最小 deploy 合同，定义 canonical source / backend payload source / target / diagnose / verify |
 | 我想看 `npx aw-installer` 分发入口必须保持什么语义 | [distribution-entrypoint-contract.md](./distribution-entrypoint-contract.md) | 定义 `aw-installer` CLI + TUI 双模式包装层合同；不表示 package 或 release channel 已实现 |
 | 我想看 `aw-installer` 真实 npm 发布前需要满足什么条件 | [release-channel-contract.md](./release-channel-contract.md) | 定义 release channel、publish readiness guard、版本/tag/审批边界；不授权真实 publish |
+| 我想看 `aw-installer` payload 从哪里来、`update` 信任边界在哪里 | [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md) | 定义 package payload、source/target root override、当前 update 边界与未来远程更新准入 |
 | 我想看 `agents` canonical-copy payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | 定义 `product/harness/adapters/agents/skills/` 的 payload descriptor 结构，以及 target 如何复制 canonical skill 内容 |
 | 我想初始化 `.aw/` 样例并校验 `.aw_template` 最小结构 | [template-tooling-mvp.md](./template-tooling-mvp.md) | B2 的最小工作面，只做 `.aw_template -> .aw` 样例生成与前置校验 |
 | 我想把已有代码库接入 Harness 初始化流程 | [existing-code-adoption.md](./existing-code-adoption.md) | 定义 `.aw/repo/discovery-input.md` 作为只读事实输入，不作为 goal truth |
@@ -51,6 +53,7 @@
 - `update --backend agents` 默认只输出 dry-run plan；`update --backend agents --yes` 是同一三步 destructive reinstall 加严格复验的 one-shot 包装
 - 本地 `harness_deploy.py` thin wrapper、根目录 `package.json` 的 self-contained `aw-installer` package envelope、`toolchain/scripts/deploy/package.json` 的本地 scaffold、`aw-installer tui` shell、`aw-harness-deploy` 兼容别名与目标 `npx aw-installer` wrapper 必须保持 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 中定义的只读、严格复验、三步 destructive reinstall，以及 CLI + TUI 双模式语义；当前尚未发布 npm release channel
 - 真实 npm publish 还必须满足 [aw-installer Release Channel Contract](./release-channel-contract.md)；publish dry-run 和 root `.tgz` smoke 不等于发布授权
+- `aw-installer` 的 payload provenance 与 update trust boundary 见 [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md)；当前 `update` 不做远程 fetch、channel 解析、验签、自升级或自动回滚
 - 不再承接这些主线语义：
   - `retired-target-dir`
   - `prune --outdated`
@@ -85,6 +88,8 @@
   mapping contract。回答 canonical source / backend payload source / target / diagnose / verify 的最小正式规则。
 - [distribution-entrypoint-contract.md](./distribution-entrypoint-contract.md)
   distribution entrypoint contract。回答目标 `npx aw-installer` CLI + TUI 包装层必须保持哪些 deploy 语义，以及哪些 packaging / TUI / release 行为尚未实现。
+- [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md)
+  payload provenance / update trust boundary。回答 root package `.tgz` 中的 deploy payload 从哪里来、source/target root 怎么解析，以及当前 `update` 为什么只能重装当前可信 source payload。
 - [agents-adapter-source.md](./agents-adapter-source.md)
   adapter source。回答 `agents` canonical-copy payload descriptor、copied skill files 与 runtime marker 边界。
 - [template-consumption-spec.md](./template-consumption-spec.md)

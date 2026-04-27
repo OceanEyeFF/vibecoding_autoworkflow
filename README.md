@@ -1,9 +1,9 @@
 ---
 title: "AutoWorkflow"
 status: active
-updated: 2026-04-26
+updated: 2026-04-27
 owner: aw-kernel
-last_verified: 2026-04-26
+last_verified: 2026-04-27
 ---
 # AutoWorkflow
 
@@ -40,6 +40,8 @@ npx aw-installer install --backend agents
 
 `diagnose` 和 `verify` 是只读检查；`install` 是显式写入当前 payload 的底层命令；`update` 默认只输出 dry-run plan。推荐写入路径是在确认 plan 后运行 `update --yes`，它会按 `prune --all -> check_paths_exist -> install -> verify` 写入目标仓库的 `.agents/skills`。完整入口合同见 [`Distribution Entrypoint Contract`](./docs/project-maintenance/deploy/distribution-entrypoint-contract.md)，维护者验证与本地 tarball smoke 见 [`Deploy Runbook`](./docs/project-maintenance/deploy/deploy-runbook.md)。
 
+`aw-installer` 当前只使用 package 或 checkout 中的 source payload；`update` 不做远程 fetch、channel 解析、自升级、验签或自动回滚。payload provenance 与 update trust boundary 见 [`Payload Provenance And Update Trust Boundary`](./docs/project-maintenance/deploy/payload-provenance-trust-boundary.md)。
+
 在 npm release channel 发布前，可以从当前 checkout 打一个本地 `.tgz`，再在目标项目根目录用同一 package 入口试跑：
 
 ```bash
@@ -48,12 +50,12 @@ npm pack --json --pack-destination "$tmpdir" > "$tmpdir/pack.json"
 package_file="$(node -e "const fs = require('node:fs'); const payload = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); console.log(payload[0].filename);" "$tmpdir/pack.json")"
 
 cd /path/to/target-project
-npm exec --yes --package "$tmpdir/$package_file" -- aw-installer diagnose --backend agents --json
-npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents
-npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents --yes
+AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer diagnose --backend agents --json
+AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents
+AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents --yes
 ```
 
-这条 pre-release 试用路径仍然从 `.tgz` 包内读取 source payload，并把命令运行时所在的目标项目作为 target repo；写入只发生在该目标项目的 `.agents/skills` 下。
+这条 pre-release 试用路径显式清空 `AW_HARNESS_REPO_ROOT` 与 `AW_HARNESS_TARGET_REPO_ROOT`，因此会从 `.tgz` 包内读取 source payload，并把命令运行时所在的目标项目作为 target repo；写入只发生在该目标项目的 `.agents/skills` 下。如果显式设置这些 override，则以 override 指向的 source/target 边界为准。
 
 ## 我们在构建什么
 

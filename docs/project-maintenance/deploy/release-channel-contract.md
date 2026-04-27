@@ -9,7 +9,7 @@ last_verified: 2026-04-27
 
 > 目的：定义 `aw-installer` 从本地 `.tgz` / publish dry-run 进入真实 npm release channel 前必须满足的发布准入合同。本文不授权真实 `npm publish`。
 
-本页属于 [Deploy Runbooks](./README.md) 系列，并承接 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 的发布准入部分。
+本页属于 [Deploy Runbooks](./README.md) 系列，并承接 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 的发布准入部分。运行时 payload provenance 与 update trust boundary 由 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md) 承接。
 
 ## 当前状态
 
@@ -61,7 +61,7 @@ Before setting `AW_INSTALLER_PUBLISH_APPROVED=1`, collect:
 
 - npm account setup, tokens, 2FA, or registry credential storage.
 - GitHub Actions release workflow implementation.
-- Payload provenance and update trust model; that belongs to the follow-up payload provenance worktrack.
+- Runtime payload provenance, remote update, self-update, signature verification, or rollback implementation; those remain governed by [Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md).
 - Running `npm publish`.
 
 ## Operator Notes
