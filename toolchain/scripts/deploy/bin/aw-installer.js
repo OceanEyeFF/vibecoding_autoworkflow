@@ -8,11 +8,24 @@ const readline = require("node:readline");
 
 const python = "python3";
 const wrapperPath = join(__dirname, "..", "harness_deploy.py");
+const defaultWrapperTimeoutMs = 300_000;
+const wrapperTimeoutMs = readWrapperTimeoutMs();
 const env = {
   ...process.env,
   PYTHONDONTWRITEBYTECODE: process.env.PYTHONDONTWRITEBYTECODE || "1",
 };
 const packageVersionFallbackMaxDepth = 20;
+
+function readWrapperTimeoutMs() {
+  const parsedTimeout = Number.parseInt(
+    process.env.AW_INSTALLER_WRAPPER_TIMEOUT_MS || `${defaultWrapperTimeoutMs}`,
+    10,
+  );
+  if (Number.isFinite(parsedTimeout) && parsedTimeout > 0) {
+    return parsedTimeout;
+  }
+  return defaultWrapperTimeoutMs;
+}
 
 function tryReadPackageVersionAt(candidate) {
   try {
@@ -22,7 +35,7 @@ function tryReadPackageVersionAt(candidate) {
     }
     return "";
   } catch (error) {
-    throw new Error(`failed to read package metadata at ${candidate}: ${error.message}`);
+    return "";
   }
 }
 
@@ -94,22 +107,68 @@ function printVersion() {
 
 function runWrapper(args) {
   return new Promise((resolve) => {
-    const child = spawn(python, [wrapperPath, ...args], {
-      env,
-      stdio: "inherit",
-    });
+    const abortController = new AbortController();
+    let timedOut = false;
+    let settled = false;
+    const finish = (status) => {
+      if (settled) {
+        return false;
+      }
+      settled = true;
+      clearTimeout(timer);
+      resolve(status);
+      return true;
+    };
+    const timeoutSeconds = Math.ceil(wrapperTimeoutMs / 1000);
+    const timer = setTimeout(() => {
+      timedOut = true;
+      abortController.abort();
+    }, wrapperTimeoutMs);
+    if (typeof timer.unref === "function") {
+      timer.unref();
+    }
 
-    child.on("error", (error) => {
+    let child;
+    try {
+      child = spawn(python, [wrapperPath, ...args], {
+        env,
+        signal: abortController.signal,
+        stdio: "inherit",
+      });
+    } catch (error) {
+      clearTimeout(timer);
       console.error(`aw-installer failed to start ${python}: ${error.message}`);
       resolve(1);
-    });
-    child.on("close", (code, signal) => {
-      if (signal) {
-        console.error(`aw-installer terminated by signal ${signal}`);
-        resolve(1);
+      return;
+    }
+
+    child.on("error", (error) => {
+      if (timedOut || error.name === "AbortError") {
+        if (finish(1)) {
+          console.error(`aw-installer timed out after ${timeoutSeconds}s`);
+        }
         return;
       }
-      resolve(code === null ? 1 : code);
+      if (!finish(1)) {
+        return;
+      }
+      console.error(`aw-installer failed to start ${python}: ${error.message}`);
+    });
+    child.on("close", (code, signal) => {
+      if (timedOut) {
+        if (finish(1)) {
+          console.error(`aw-installer timed out after ${timeoutSeconds}s`);
+        }
+        return;
+      }
+      if (signal) {
+        if (!finish(1)) {
+          return;
+        }
+        console.error(`aw-installer terminated by signal ${signal}`);
+        return;
+      }
+      finish(code === null ? 1 : code);
     });
   });
 }

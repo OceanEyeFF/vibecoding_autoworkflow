@@ -127,7 +127,7 @@ npx aw-installer update --backend agents --yes
 - `update` 只能是 `prune --all -> check_paths_exist -> install --backend <backend> -> verify --backend <backend>` 的 one-shot 包装，不得引入增量修复、archive/history、旧版本保活或 target-to-source 反向同步。
 - `update` 默认只输出 dry-run plan；只有显式传入 `--yes` 才会变更 target root。
 - `update` 必须在执行前暴露 target root、将删除的受管 install paths、将写入的 target paths，以及当前 conflict / unrecognized / foreign 摘要；`--json` 只用于 dry-run plan，以保证机器可读输出不会混入写入日志。
-- `update` 在 source contract 非法、target root 类型错误、坏链路、unrecognized / foreign 目录或待写入路径 conflict 存在时必须停止；旧的同 backend 受管目录可以由 `prune --all` 清理；`check_paths_exist` 失败时不得写业务文件。
+- `update` 在 source contract 非法、target root 类型错误、坏链路、待写入路径 conflict，或 planned / known AW target path 被 unrecognized / foreign 内容占用时必须停止；target root 下无关用户目录不属于 `update` 阻塞项，旧的同 backend 受管目录可以由 `prune --all` 清理；`check_paths_exist` 失败时不得写业务文件。
 - `update` 必须复用 `diagnose` 的状态摘要和 `verify` 的严格失败信号：执行前可给出只读摘要，执行后必须跑等价严格复验并把 issue 作为失败信号。
 - `update` 不承诺自动回滚。恢复语义落在 [Skill Deployment 维护流](./skill-deployment-maintenance.md)：修正 source 或 target 后重新运行显式三步主流程，或在未来实现中重新运行同等 one-shot 包装。
 - `update` 的 help、README、package smoke 和 closeout coverage 必须验证它不绕过三步 destructive reinstall 不变量。

@@ -170,6 +170,14 @@ class AdapterDeployTest(unittest.TestCase):
         payload = self._load_json(payload_path)
         return payload["target_dir"]
 
+    def _fake_sleeping_python_bin(self) -> Path:
+        fake_bin = self.temp_root / "fake-python-bin"
+        fake_bin.mkdir()
+        fake_python = fake_bin / "python3"
+        fake_python.write_text("#!/usr/bin/env sh\nsleep 1\n", encoding="utf-8")
+        fake_python.chmod(0o755)
+        return fake_bin
+
     def _remove_target_marker(self, skill_id: str) -> Path:
         target_dir_name = self._target_dir_for_skill(skill_id)
         marker_path = self.local_root / target_dir_name / "aw.marker"
@@ -412,6 +420,21 @@ class AdapterDeployTest(unittest.TestCase):
                 self.fake_repo_root,
             )
 
+    def test_target_repo_root_validation_allows_container_cwd_under_usr(self) -> None:
+        container_root = Path("/usr/src/app")
+
+        with mock.patch.object(Path, "cwd", return_value=container_root):
+            self.assertEqual(
+                adapter_deploy.validate_target_repo_root(container_root, self.fake_repo_root),
+                container_root,
+            )
+
+    def test_target_repo_root_validation_rejects_exact_system_roots(self) -> None:
+        for target_root in (Path("/usr"), Path("/etc")):
+            with self.subTest(target_root=target_root):
+                with self.assertRaisesRegex(adapter_deploy.DeployError, "protected"):
+                    adapter_deploy.validate_target_repo_root(target_root, self.fake_repo_root)
+
     def test_harness_deploy_wrapper_help_exposes_only_current_command_surface(self) -> None:
         stdout = io.StringIO()
         stderr = io.StringIO()
@@ -498,6 +521,7 @@ class AdapterDeployTest(unittest.TestCase):
 
         self.assertIn('const { spawn } = require("node:child_process");', installer_source)
         self.assertNotIn("spawnSync", installer_source)
+        self.assertIn("AbortController", installer_source)
         self.assertIn('await runWrapper(["update", "--backend", "agents", "--yes"])', installer_source)
 
     def test_root_npm_publish_guard_can_be_imported_without_running_checks(self) -> None:
@@ -957,6 +981,16 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.stdout, "")
         self.assertIn("within 20 parent directories", completed.stderr)
 
+    def test_local_npm_installer_try_read_version_failures_return_empty_result(self) -> None:
+        installer_path = (
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "aw-installer.js"
+        )
+
+        installer_source = installer_path.read_text(encoding="utf-8")
+
+        self.assertIn("function tryReadPackageVersionAt(candidate)", installer_source)
+        self.assertIn("} catch (error) {\n    return \"\";\n  }", installer_source)
+
     def test_local_npm_installer_no_args_noninteractive_prints_help(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
@@ -1044,6 +1078,47 @@ class AdapterDeployTest(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             payload = json.loads(completed.stdout)
             self.assertEqual(payload["target_root"], str(target_repo / ".agents" / "skills"))
+
+    def test_node_deploy_wrappers_time_out_stalled_python_processes(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        fake_bin = self._fake_sleeping_python_bin()
+        wrappers = [
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js",
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-harness-deploy.js",
+        ]
+        env = {
+            **os.environ,
+            "AW_INSTALLER_WRAPPER_TIMEOUT_MS": "10",
+            "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+
+        for wrapper in wrappers:
+            with self.subTest(wrapper=wrapper.name):
+                completed = subprocess.run(
+                    ["node", str(wrapper), "diagnose", "--backend", "agents", "--json"],
+                    cwd=self.source_repo_root,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    check=False,
+                )
+
+                self.assertEqual(completed.returncode, 1)
+                self.assertEqual(completed.stdout, "")
+                self.assertIn("timed out after 1s", completed.stderr)
 
     def test_local_npm_installer_tui_shows_update_plan_before_apply_confirmation(self) -> None:
         target_repo = self.temp_root / "tui-plan-target"
@@ -1846,9 +1921,31 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertTrue(foreign_skill_dir.is_dir())
         self.assertFalse((self.local_root / "aw-dispatch-skills").exists())
 
-    def test_update_blocks_foreign_managed_directory_without_writing(self) -> None:
+    def test_update_ignores_unrelated_user_skill_dir(self) -> None:
+        user_skill_dir = self.local_root / "my-custom-skill"
+        user_skill_dir.mkdir(parents=True)
+        (user_skill_dir / "SKILL.md").write_text("# user maintained skill\n", encoding="utf-8")
+
+        code, stdout, stderr = self._update("--json")
+
+        self.assertEqual(code, 0, stderr)
+        payload = json.loads(stdout)
+        self.assertEqual(payload["blocking_issue_count"], 0)
+        self.assertFalse(
+            any(
+                issue["code"] == "unrecognized-target-directory"
+                and issue["path"] == str(user_skill_dir)
+                for issue in payload["issues"]
+            )
+        )
+        self.assertTrue(user_skill_dir.is_dir())
+
+    def test_update_blocks_foreign_managed_planned_directory_without_writing(self) -> None:
         self.local_root.mkdir(parents=True, exist_ok=True)
-        foreign_dir = self._install_managed_directory("foreign-managed", backend="claude")
+        foreign_dir = self._install_managed_directory(
+            self._target_dir_for_skill("harness-skill"),
+            backend="claude",
+        )
 
         code, stdout, stderr = self._update("--yes")
 
@@ -1856,7 +1953,11 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("foreign-managed-directory", stdout)
         self.assertIn("update blocked", stderr)
         self.assertTrue(foreign_dir.is_dir())
-        self.assertFalse((self.local_root / "aw-harness-skill").exists())
+        marker = adapter_deploy.load_runtime_marker(adapter_deploy.managed_skill_marker_path(foreign_dir))
+        self.assertIsNotNone(marker)
+        assert marker is not None
+        self.assertEqual(marker.backend, "claude")
+        self.assertFalse((self.local_root / "aw-dispatch-skills").exists())
 
     def test_check_paths_exist_reports_ok_when_paths_are_free(self) -> None:
         code, stdout, stderr = self._check_paths_exist()
