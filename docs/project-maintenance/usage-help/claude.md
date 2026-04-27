@@ -1,9 +1,9 @@
 ---
 title: "Claude Repo-local Usage Help"
 status: active
-updated: 2026-04-26
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-26
+last_verified: 2026-04-28
 ---
 # Claude Repo-local Usage Help
 
@@ -12,6 +12,7 @@ last_verified: 2026-04-26
 先读通用 deploy 文档，再读本页：
 
 - [Deploy Runbook](../deploy/deploy-runbook.md)
+- [aw-installer Public Quickstart Prompts](../deploy/aw-installer-public-quickstart-prompts.md)
 - [Skill Deployment 维护流](../deploy/skill-deployment-maintenance.md)
 - [Skill 生命周期维护](../deploy/skill-lifecycle.md)
 - [Claude Harness Test Runbook](../deploy/claude-harness-test-runbook.md)
@@ -29,9 +30,9 @@ last_verified: 2026-04-26
 - `set-harness-goal-skill/scripts/deploy_aw.py` 的 `--claude-root` 只属于本文第五节的冷启动 helper 例外
 - 完整 smoke / 冷启动步骤见 [Claude Harness Test Runbook](../deploy/claude-harness-test-runbook.md)
 
-## 二、最小 smoke verify 口径
+## 二、最小 trial smoke verify 口径
 
-`claude` 是当前有稳定 smoke verify 口径的 backend 之一。前提是先让 `sync verify` 通过，再做最小 skill entry 可读性确认。
+`claude` 当前只是 runtime compatibility trial lane，不是已实现的 deploy adapter backend。前提是先按本文第五节安装项目级冷启动 helper，再做最小 skill entry 可读性确认。
 
 建议做法：
 
@@ -47,7 +48,7 @@ last_verified: 2026-04-26
 
 ## 三、和其他 backend 的区别
 
-- `claude` 保留 runtime skill entry 可读性 smoke verify；`agents` 当前只承接 deploy verify 与 Codex Harness manual run，不再承接 skills mock / contract smoke
+- `claude` 仅保留 runtime skill entry 可读性 trial smoke；`agents` 当前承接 deploy verify 与 Codex Harness manual run，不再承接 skills mock / contract smoke
 - `claude` 的常见 user-home runtime 路径是 `~/.claude/skills`，不依赖 `CODEX_HOME` 或 XDG 推导
 - 当前仓库不提供 `claude` backend 的 deploy adapter CLI；如果未来恢复，必须以新的真实命令面更新文档
 
@@ -69,7 +70,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 scripts/deploy_aw.py generate --deploy-path "$
 
 - 目标路径是 `<deploy-path>/.claude/skills/aw-set-harness-goal-skill/`
 - 默认不覆盖已有文件；需要覆盖时显式传 `--force`
-- `--claude-root` 可以指向 operator 管理的 symlink 或 mount 层，例如共享的 `.claude/skills`
+- `--claude-root` 只应在 operator 明确控制的 trial 环境中使用；公开试用优先使用目标 repo 的项目级 `.claude/skills/`，不要默认写入共享或 user-home runtime root
 - 目标 skill 目录 `aw-set-harness-goal-skill/` 本身不能是 symlink
 - 目标 skill 目录内部已有的 symlink 文件或子目录会被拒绝，避免 copy install 写出该 skill 目录
 - 如果目标 skill 目录本身不是 symlink，但经允许的 root symlink / mount 解析后就是当前运行的 skill 包，安装视为 already installed 并 no-op
