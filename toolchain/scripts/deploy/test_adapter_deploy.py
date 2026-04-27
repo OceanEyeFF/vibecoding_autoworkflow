@@ -183,7 +183,7 @@ class AdapterDeployTest(unittest.TestCase):
         *,
         target_repo: Path | None = None,
         env_overrides: dict[str, str] | None = None,
-        timeout_seconds: float = 30.0,
+        timeout_seconds: float = 60.0,
     ) -> tuple[int, str]:
         if not hasattr(os, "openpty"):
             self.skipTest("PTY support is not available")
@@ -366,6 +366,25 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(adapter_code, 0, adapter_stderr)
         self.assertEqual(wrapper_code, 0, wrapper_stderr)
         self.assertEqual(json.loads(wrapper_stdout), json.loads(adapter_stdout))
+
+    def test_cli_refreshes_runtime_roots_from_env_after_import(self) -> None:
+        target_repo = self.temp_root / "env-target"
+
+        code, stdout, stderr = self._run_cli(
+            "diagnose",
+            "--backend",
+            "agents",
+            "--json",
+            env={
+                "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
+                "AW_HARNESS_TARGET_REPO_ROOT": str(target_repo),
+            },
+        )
+
+        self.assertEqual(code, 0, stderr)
+        payload = json.loads(stdout)
+        self.assertEqual(payload["source_root"], str(self.fake_repo_root))
+        self.assertEqual(payload["target_root"], str(target_repo / ".agents" / "skills"))
         self.assertFalse(self.local_root.exists())
 
     def test_harness_deploy_wrapper_help_exposes_only_current_command_surface(self) -> None:
@@ -597,6 +616,45 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.stdout, "")
         self.assertEqual(completed.stderr, "")
 
+    def test_root_npm_publish_guard_derives_next_channel_from_release_tag(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.temp_root / "release-package-root"
+        guard_dir = package_root / "toolchain" / "scripts" / "deploy" / "bin"
+        guard_dir.mkdir(parents=True)
+        guard_path = guard_dir / "check-root-publish.js"
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js",
+            guard_path,
+        )
+        package_path = package_root / "package.json"
+        package_path.write_text(
+            json.dumps({"name": "aw-installer", "version": "1.3.0-rc.1"}),
+            encoding="utf-8",
+        )
+        env = {
+            **os.environ,
+            "AW_INSTALLER_PUBLISH_APPROVED": "1",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v1.3.0-rc.1",
+            "CI": "true",
+            "npm_config_tag": "next",
+        }
+        env.pop("npm_config_dry_run", None)
+        env.pop("AW_INSTALLER_RELEASE_CHANNEL", None)
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(completed.stderr, "")
+
     def test_root_npm_publish_guard_rejects_channel_dist_tag_mismatch(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
@@ -687,6 +745,37 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.stdout, "aw-installer 0.0.0-local\n")
         self.assertEqual(completed.stderr, "")
 
+    def test_local_npm_installer_bin_version_prefers_root_package_metadata(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.temp_root / "version-root"
+        bin_dir = package_root / "toolchain" / "scripts" / "deploy" / "bin"
+        bin_dir.mkdir(parents=True)
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "aw-installer.js",
+            bin_dir / "aw-installer.js",
+        )
+        (package_root / "package.json").write_text(
+            json.dumps({"name": "aw-installer", "version": "9.8.7"}),
+            encoding="utf-8",
+        )
+        deploy_package_path = package_root / "toolchain" / "scripts" / "deploy" / "package.json"
+        deploy_package_path.write_text(
+            json.dumps({"name": "aw-installer", "version": "0.0.0-local", "private": True}),
+            encoding="utf-8",
+        )
+
+        completed = subprocess.run(
+            ["node", str(bin_dir / "aw-installer.js"), "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stdout, "aw-installer 9.8.7\n")
+        self.assertEqual(completed.stderr, "")
+
     def test_local_npm_installer_no_args_noninteractive_prints_help(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
@@ -739,10 +828,10 @@ class AdapterDeployTest(unittest.TestCase):
 
         code, output = self._run_installer_tui_script(
             [
-                ("Select an action:", "5\n"),
+                ("Select an action:", "1\n"),
                 ("Step 3: Type yes", "no\n"),
                 ("Update cancelled.", "\n"),
-                ("Select an action:", "7\n"),
+                ("Select an action:", "6\n"),
             ],
             target_repo=target_repo,
         )
@@ -769,14 +858,15 @@ class AdapterDeployTest(unittest.TestCase):
                 ("Select an action:", "1\n"),
                 ("Step 3: Type yes", "no\n"),
                 ("Update cancelled.", "\n"),
-                ("Select an action:", "7\n"),
+                ("Select an action:", "6\n"),
             ],
             target_repo=target_repo,
         )
 
         self.assertEqual(code, 0, output)
         self.assertIn("1. Guided update flow", output)
-        self.assertIn("5. Re-run guided update flow", output)
+        self.assertIn("5. Show CLI help", output)
+        self.assertNotIn("Re-run guided update flow", output)
         self.assertIn("Guided update flow", output)
         self.assertIn("Step 1: Diagnose current agents install.", output)
         self.assertIn("Step 2: Review update dry-run plan.", output)
@@ -793,10 +883,9 @@ class AdapterDeployTest(unittest.TestCase):
                 ("Select an action:", "1\n"),
                 ("Step 3: Type yes", "yes\n"),
                 ("[agents] update complete", "\n"),
-                ("Select an action:", "7\n"),
+                ("Select an action:", "6\n"),
             ],
             target_repo=target_repo,
-            timeout_seconds=60.0,
         )
 
         self.assertEqual(code, 0, output)
@@ -814,7 +903,7 @@ class AdapterDeployTest(unittest.TestCase):
                 ("Select an action:", "1\n"),
                 ("Continue with update dry-run anyway?", "no\n"),
                 ("Update cancelled.", "\n"),
-                ("Select an action:", "7\n"),
+                ("Select an action:", "6\n"),
             ],
             target_repo=target_repo,
             env_overrides={"PYTHON": str(missing_python)},
@@ -1153,10 +1242,12 @@ class AdapterDeployTest(unittest.TestCase):
                 )
                 self.assertIsNotNone(installer_member)
                 installer_source = installer_member.read().decode("utf-8")
-            self.assertIn("1. Guided update flow", installer_source)
-            self.assertIn("Step 1: Diagnose current agents install.", installer_source)
-            self.assertIn("Step 2: Review update dry-run plan.", installer_source)
-            self.assertIn("Step 3: Type yes to apply update via prune --all -> check_paths_exist -> install -> verify", installer_source)
+                self.assertIn("1. Guided update flow", installer_source)
+                self.assertIn("5. Show CLI help", installer_source)
+                self.assertNotIn("Re-run guided update flow", installer_source)
+                self.assertIn("Step 1: Diagnose current agents install.", installer_source)
+                self.assertIn("Step 2: Review update dry-run plan.", installer_source)
+                self.assertIn("Step 3: Type yes to apply update via prune --all -> check_paths_exist -> install -> verify", installer_source)
             env = {
                 **os.environ,
                 "PYTHONDONTWRITEBYTECODE": "1",

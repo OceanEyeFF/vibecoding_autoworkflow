@@ -34,14 +34,28 @@ def resolve_target_repo_root(source_root: Path) -> Path:
     return Path.cwd().resolve()
 
 
-REPO_ROOT = resolve_repo_root()
-TARGET_REPO_ROOT = resolve_target_repo_root(REPO_ROOT)
-LOCAL_TARGET_ROOTS = {
-    "agents": TARGET_REPO_ROOT / ".agents" / "skills",
-}
-ADAPTER_SKILL_DIRS = {
-    "agents": REPO_ROOT / "product" / "harness" / "adapters" / "agents" / "skills",
-}
+def set_runtime_roots(source_root: Path, target_repo_root: Path) -> None:
+    """Update deploy runtime roots and derived backend paths together."""
+
+    global REPO_ROOT, TARGET_REPO_ROOT, LOCAL_TARGET_ROOTS, ADAPTER_SKILL_DIRS
+    REPO_ROOT = source_root
+    TARGET_REPO_ROOT = target_repo_root
+    LOCAL_TARGET_ROOTS = {
+        "agents": TARGET_REPO_ROOT / ".agents" / "skills",
+    }
+    ADAPTER_SKILL_DIRS = {
+        "agents": REPO_ROOT / "product" / "harness" / "adapters" / "agents" / "skills",
+    }
+
+
+def refresh_runtime_roots_from_env() -> None:
+    """Refresh runtime roots after callers set deploy environment overrides."""
+
+    source_root = resolve_repo_root()
+    set_runtime_roots(source_root, resolve_target_repo_root(source_root))
+
+
+refresh_runtime_roots_from_env()
 EXPECTED_PAYLOAD_POLICIES = {
     "agents": "canonical-copy",
 }
@@ -1489,6 +1503,14 @@ def collect_update_target_entry_issues(
 
 
 def dedupe_issues(issues: list[VerifyIssue]) -> list[VerifyIssue]:
+    """Keep the first issue for each code/path pair.
+
+    Update planning can collect the same blocking condition through multiple
+    sensors. The code/path pair is the stable operator-facing identity; detail
+    text is intentionally not part of the key so duplicate reports do not make
+    the same path look like multiple independent blockers.
+    """
+
     seen: set[tuple[str, str]] = set()
     unique_issues: list[VerifyIssue] = []
     for issue in issues:
@@ -1662,6 +1684,8 @@ def main(
     prog: str | None = None,
     description: str | None = None,
 ) -> int:
+    if "AW_HARNESS_REPO_ROOT" in os.environ or "AW_HARNESS_TARGET_REPO_ROOT" in os.environ:
+        refresh_runtime_roots_from_env()
     args = parse_args(argv, prog=prog, description=description)
     try:
         if args.mode == "verify":

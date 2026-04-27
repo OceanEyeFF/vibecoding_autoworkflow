@@ -40,6 +40,24 @@ options:
 }
 
 function readPackageVersion() {
+  const knownPackagePaths = [
+    join(__dirname, "..", "..", "..", "..", "package.json"),
+    join(__dirname, "..", "package.json"),
+  ];
+  for (const candidate of knownPackagePaths) {
+    if (!existsSync(candidate)) {
+      continue;
+    }
+    try {
+      const packageMetadata = JSON.parse(readFileSync(candidate, "utf8"));
+      if (packageMetadata.name === "aw-installer" && packageMetadata.version) {
+        return packageMetadata.version;
+      }
+    } catch (error) {
+      throw new Error(`failed to read package metadata at ${candidate}: ${error.message}`);
+    }
+  }
+
   let current = __dirname;
   while (true) {
     const candidate = join(current, "package.json");
@@ -154,9 +172,8 @@ Backend: agents
 2. Diagnose current install
 3. Verify current install
 4. Show update dry-run plan
-5. Re-run guided update flow
-6. Show CLI help
-7. Exit
+5. Show CLI help
+6. Exit
 `);
       const choice = (await question(rl, "Select an action: ")).trim().toLowerCase();
 
@@ -172,11 +189,9 @@ Backend: agents
         runWrapper(["update", "--backend", "agents"]);
         await pause(rl);
       } else if (choice === "5") {
-        await runGuidedUpdateFlow(rl);
-      } else if (choice === "6") {
         printHelp();
         await pause(rl);
-      } else if (choice === "7" || choice === "q" || choice === "quit" || choice === "exit") {
+      } else if (choice === "6" || choice === "q" || choice === "quit" || choice === "exit") {
         return 0;
       } else {
         console.log("Unknown selection.");
