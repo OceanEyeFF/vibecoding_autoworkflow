@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Non-Publish Release Rehearsal"
 status: active
-updated: 2026-04-27
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-27
+last_verified: 2026-04-28
 ---
 # aw-installer Non-Publish Release Rehearsal
 
@@ -91,7 +91,7 @@ node -e "const {deriveReleaseChannelFromTag}=require('./toolchain/scripts/deploy
 
 The direct guard command is expected to fail while `package.json` remains `0.0.0-local`. Treat that failure as a pass only when the error states that an approved non-local version is required.
 
-For target smoke, use [aw-installer External Target Smoke](./aw-installer-external-target-smoke.md) from the release checkpoint under review.
+For the older two-target target smoke shape, use [aw-installer External Target Smoke](./aw-installer-external-target-smoke.md) from the release checkpoint under review. Before external trial or publish approval, prefer [aw-installer Multi Temporary Workdir Smoke](./aw-installer-multi-temp-workdir-smoke.md), which covers multiple isolated temporary workdirs and approved target repositories only through temporary clones.
 
 ## Forbidden Interpretation
 

@@ -13,6 +13,7 @@ last_verified: 2026-04-28
 
 - [Deploy Runbook](../deploy/deploy-runbook.md)
 - [aw-installer Public Quickstart Prompts](../deploy/aw-installer-public-quickstart-prompts.md)
+- [aw-installer External Trial Feedback Contract](../deploy/aw-installer-external-trial-feedback.md)
 - [Skill Deployment 维护流](../deploy/skill-deployment-maintenance.md)
 - [Skill 生命周期维护](../deploy/skill-lifecycle.md)
 - [Claude Harness Test Runbook](../deploy/claude-harness-test-runbook.md)
@@ -32,7 +33,7 @@ last_verified: 2026-04-28
 
 ## 二、最小 trial smoke verify 口径
 
-`claude` 当前只是 runtime compatibility trial lane，不是已实现的 deploy adapter backend。前提是先按本文第五节安装项目级冷启动 helper，再做最小 skill entry 可读性确认。
+`claude` 当前只是 runtime compatibility trial lane，不是已实现的 deploy adapter backend，也不是 `agents` 外部试用主路径。前提是先按本文第五节安装项目级冷启动 helper，再做最小 skill entry 可读性确认。完整 Codex/Claude trial prompt 入口仍以 [aw-installer Public Quickstart Prompts](../deploy/aw-installer-public-quickstart-prompts.md) 为准。
 
 建议做法：
 
@@ -51,6 +52,7 @@ last_verified: 2026-04-28
 - `claude` 仅保留 runtime skill entry 可读性 trial smoke；`agents` 当前承接 deploy verify 与 Codex Harness manual run，不再承接 skills mock / contract smoke
 - `claude` 的常见 user-home runtime 路径是 `~/.claude/skills`，不依赖 `CODEX_HOME` 或 XDG 推导
 - 当前仓库不提供 `claude` backend 的 deploy adapter CLI；如果未来恢复，必须以新的真实命令面更新文档
+- Claude Code 试用反馈仍走 [aw-installer External Trial Feedback Contract](../deploy/aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)，并标明它是 compatibility trial lane
 
 ## 四、当前限制
 

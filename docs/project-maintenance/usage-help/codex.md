@@ -13,6 +13,8 @@ last_verified: 2026-04-28
 
 - [Deploy Runbook](../deploy/deploy-runbook.md)
 - [aw-installer Public Quickstart Prompts](../deploy/aw-installer-public-quickstart-prompts.md)
+- [aw-installer External Trial Feedback Contract](../deploy/aw-installer-external-trial-feedback.md)
+- [aw-installer Multi Temporary Workdir Smoke](../deploy/aw-installer-multi-temp-workdir-smoke.md)
 - [Skill Deployment 维护流](../deploy/skill-deployment-maintenance.md)
 - [Skill 生命周期维护](../deploy/skill-lifecycle.md)
 
@@ -27,6 +29,8 @@ last_verified: 2026-04-28
 - 如果没有 `--agents-root`，当前命令默认落到 repo-local `.agents/skills/`
 - 如果你要把 target root 指到别处，再显式传 repo-local 或 disposable 路径，例如 `--agents-root "$PWD/.agents/skills"`
 - `--agents-root` 只能指向目标 repo 内受控 `.agents/skills` 目录或专用临时 skills 目录；不要指向 home 目录、`.ssh`、shell 配置目录、系统配置目录或其他敏感可写路径
+- 外部试用优先从目标仓库根目录运行 pre-release `.tgz` 命令，并显式清空 `AW_HARNESS_REPO_ROOT` 与 `AW_HARNESS_TARGET_REPO_ROOT`；这样 source payload 来自 package，target repo root 来自当前工作目录
+- 已有工作内容的目标仓库必须先看 `diagnose` 和 dry-run `update`，确认 planned paths 只落在目标仓库 `.agents/skills/aw-*` 受管目录后，再执行 `update --yes`
 - deploy 主流程统一写在 [Deploy Runbook](../deploy/deploy-runbook.md)；本页只补 backend-specific 差异
 
 ## 二、Deploy verify 与真实 Harness 观察
@@ -74,3 +78,4 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ver
 - 最后一条是只读复验
 - 如果你就在当前仓库下部署到默认 repo-local target，可以省略 `--agents-root`
 - 不要把 `--agents-root` 指向与目标 repo 无关的敏感目录；外部试用优先使用默认 repo-local `.agents/skills/`
+- 外部试用反馈优先使用 [trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)，不要在长期文档中记录私有仓库标识、token 或完整敏感日志

@@ -1,9 +1,9 @@
 ---
 title: "Deploy Runbook"
 status: active
-updated: 2026-04-27
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-27
+last_verified: 2026-04-28
 ---
 # Deploy Runbook
 
@@ -18,6 +18,8 @@ last_verified: 2026-04-27
 - [Deploy Mapping Spec](./deploy-mapping-spec.md) —— 部署映射规范
 
 本页只保留快速入门和主流程。维护诊断请查看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)，业务生命周期边界请查看 [skill-lifecycle.md](./skill-lifecycle.md)。
+
+外部试用不要直接从本文截取 `npx aw-installer` 目标形态作为已发布事实。先使用 [aw-installer Public Quickstart Prompts](./aw-installer-public-quickstart-prompts.md) 的 pre-release `.tgz` 路径；反馈走 [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)；发布前多目标隔离验证走 [aw-installer Multi Temporary Workdir Smoke](./aw-installer-multi-temp-workdir-smoke.md)。
 
 ## 一、什么时候看这页
 

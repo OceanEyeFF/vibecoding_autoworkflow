@@ -1,9 +1,9 @@
 ---
 title: "aw-installer RC Approval Package"
 status: active
-updated: 2026-04-27
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-27
+last_verified: 2026-04-28
 ---
 # aw-installer RC Approval Package
 
@@ -40,7 +40,7 @@ The package should stay at `0.0.0-local` in normal development until a separate 
 
 | Field | Proposed value |
 |---|---|
-| package | `aw-installer` |
+| working package name / proposed package identity | `aw-installer` |
 | version | `0.4.0-rc.1` |
 | release channel | `next` |
 | npm dist-tag | `next` |
@@ -60,6 +60,7 @@ Use these evidence paths as the approval package bundle:
 | RC prep checklist | `docs/project-maintenance/deploy/aw-installer-release-candidate-prep.md` | active |
 | Payload/update trust boundary | `docs/project-maintenance/deploy/payload-provenance-trust-boundary.md` | active |
 | External target smoke runbook | `docs/project-maintenance/deploy/aw-installer-external-target-smoke.md` | active |
+| Multi temporary workdir smoke runbook | `docs/project-maintenance/deploy/aw-installer-multi-temp-workdir-smoke.md` | active |
 | Non-publish release rehearsal | `docs/project-maintenance/deploy/aw-installer-release-rehearsal.md` | passed |
 | Runtime external smoke operation artifact | `.aw/repo/aw-installer-external-target-smoke-runbook.md` | runtime evidence |
 | Runtime two-target smoke report | `.aw/repo/aw-installer-external-target-smoke-report.md` | passed for local `.tgz` / dry-run evidence |
@@ -75,7 +76,7 @@ Before approval, refresh or re-run evidence if the intended release checkpoint d
 
 Included:
 
-- self-contained npm package envelope named `aw-installer`.
+- self-contained npm package envelope using the working package name / proposed package identity `aw-installer`.
 - `aw-installer` CLI entrypoint and `aw-harness-deploy` compatibility alias.
 - `aw-installer tui` guided update flow over the same deploy contracts.
 - `agents` backend payload sourced from the package or an explicit trusted checkout override.
@@ -116,6 +117,7 @@ The eventual approval request should include:
 - release notes summary from this page
 - rollback/deprecation plan from this page
 - confirmation that the package payload does not rely on target repository source layout
+- confirmation that multi-temporary-workdir smoke has passed or has a documented, approval-visible rerun blocker
 - explicit acknowledgement that `AW_INSTALLER_PUBLISH_APPROVED=1` is not set by this document
 
 ## Forbidden Wording
