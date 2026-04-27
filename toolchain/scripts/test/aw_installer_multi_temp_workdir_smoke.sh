@@ -60,7 +60,14 @@ npm_state_root="$output_dir/npm-state"
 mkdir -p "$targets_root" "$evidence_root" "$npm_state_root/cache" "$npm_state_root/tmp" "$npm_state_root/home"
 printf 'audit=false\nfund=false\nupdate-notifier=false\n' > "$npm_state_root/npmrc"
 
-package_path="$(NPM_CONFIG_CACHE="$npm_state_root/cache" NPM_CONFIG_TMP="$npm_state_root/tmp" NPM_CONFIG_USERCONFIG="$npm_state_root/npmrc" HOME="$npm_state_root/home" "$repo_root/toolchain/scripts/test/npm_pack_tarball.sh" "$output_dir")"
+package_path="$(
+  cd "$repo_root"
+  NPM_CONFIG_CACHE="$npm_state_root/cache" \
+    NPM_CONFIG_TMP="$npm_state_root/tmp" \
+    NPM_CONFIG_USERCONFIG="$npm_state_root/npmrc" \
+    HOME="$npm_state_root/home" \
+    "$repo_root/toolchain/scripts/test/npm_pack_tarball.sh" "$output_dir"
+)"
 
 node --version > "$output_dir/node.version"
 npm --version > "$output_dir/npm.version"

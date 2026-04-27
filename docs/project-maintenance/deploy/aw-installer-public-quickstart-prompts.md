@@ -107,7 +107,7 @@ After initialization, summarize:
 - the next recommended Harness route
 ```
 
-If Codex does not recognize `$set-harness-goal-skill`, first confirm `verify --backend agents` passed and that the target repository contains `.agents/skills/set-harness-goal-skill/SKILL.md`.
+If Codex does not recognize `$set-harness-goal-skill`, first confirm `verify --backend agents` passed and that the target repository contains `.agents/skills/aw-set-harness-goal-skill/SKILL.md`.
 
 ## Claude Code Quickstart
 
