@@ -118,6 +118,26 @@ def run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | No
     }
 
 
+def npm_pack_record(payload: object, label: str) -> tuple[dict[str, object] | None, str]:
+    if not isinstance(payload, list):
+        return None, f"expected {label} npm pack JSON list, got {type(payload).__name__}"
+    if len(payload) != 1:
+        return None, f"expected one {label} npm pack result, got {len(payload)}"
+    record = payload[0]
+    if not isinstance(record, dict):
+        return None, f"expected {label} npm pack result object, got {type(record).__name__}"
+    files = record.get("files")
+    if not isinstance(files, list):
+        return None, f"expected {label} npm pack files list"
+    for entry in files:
+        if not isinstance(entry, dict) or not isinstance(entry.get("path"), str):
+            return None, f"expected {label} npm pack file entries with string path"
+    filename = record.get("filename")
+    if filename is not None and not isinstance(filename, str):
+        return None, f"expected {label} npm pack filename string"
+    return record, ""
+
+
 def run_scope_gate(repo_root: Path, python: str) -> dict:
     return run_command(
         [
@@ -275,16 +295,17 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                 "passed": False,
                 "stderr": f"{result['stderr']}\ninvalid npm pack JSON: {error}".strip(),
             }
-        if len(payload) != 1:
+        record, validation_error = npm_pack_record(payload, "deploy package")
+        if validation_error:
             return {
                 **result,
                 "returncode": 1,
                 "passed": False,
-                "stderr": f"expected one npm pack result, got {len(payload)}",
+                "stderr": validation_error,
             }
 
-        packed_files = {entry["path"] for entry in payload[0].get("files", [])}
-        package_filename = payload[0].get("filename")
+        packed_files = {entry["path"] for entry in record["files"]}
+        package_filename = record.get("filename")
         failures: list[str] = []
         if packed_files != EXPECTED_NPM_PACKAGE_FILES:
             failures.append(
@@ -328,10 +349,11 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                 except json.JSONDecodeError as error:
                     failures.append(f"invalid npm pack JSON: {error}")
                 else:
-                    if len(payload) != 1:
-                        failures.append(f"expected one npm pack result, got {len(payload)}")
+                    record, validation_error = npm_pack_record(payload, "deploy package")
+                    if validation_error:
+                        failures.append(validation_error)
                     else:
-                        package_filename = payload[0].get("filename", "")
+                        package_filename = str(record.get("filename") or "")
                         package_file = package_dir_path / package_filename
                         if not package_filename:
                             failures.append("missing npm package filename")
@@ -470,16 +492,17 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                 "passed": False,
                 "stderr": f"{result['stderr']}\ninvalid root npm pack JSON: {error}".strip(),
             }
-        if len(payload) != 1:
+        record, validation_error = npm_pack_record(payload, "root package")
+        if validation_error:
             return {
                 **result,
                 "returncode": 1,
                 "passed": False,
-                "stderr": f"expected one root npm pack result, got {len(payload)}",
+                "stderr": validation_error,
             }
 
-        packed_files = {entry["path"] for entry in payload[0].get("files", [])}
-        package_filename = payload[0].get("filename")
+        packed_files = {entry["path"] for entry in record["files"]}
+        package_filename = record.get("filename")
         failures: list[str] = []
         missing_files = sorted(ROOT_NPM_REQUIRED_PACKAGE_FILES - packed_files)
         if missing_files:
@@ -564,10 +587,11 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                 except json.JSONDecodeError as error:
                     failures.append(f"invalid root npm pack JSON: {error}")
                 else:
-                    if len(payload) != 1:
-                        failures.append(f"expected one root npm pack result, got {len(payload)}")
+                    record, validation_error = npm_pack_record(payload, "root package")
+                    if validation_error:
+                        failures.append(validation_error)
                     else:
-                        package_filename = payload[0].get("filename", "")
+                        package_filename = str(record.get("filename") or "")
                         package_file = package_dir_path / package_filename
                         if not package_filename:
                             failures.append("missing root npm package filename")
