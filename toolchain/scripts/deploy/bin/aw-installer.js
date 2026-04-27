@@ -12,6 +12,7 @@ const env = {
   ...process.env,
   PYTHONDONTWRITEBYTECODE: process.env.PYTHONDONTWRITEBYTECODE || "1",
 };
+const packageVersionFallbackMaxDepth = 20;
 
 function printHelp() {
   console.log(`usage: aw-installer [tui|<deploy-mode>] [options]
@@ -59,7 +60,7 @@ function readPackageVersion() {
   }
 
   let current = __dirname;
-  while (true) {
+  for (let depth = 0; depth < packageVersionFallbackMaxDepth; depth += 1) {
     const candidate = join(current, "package.json");
     if (existsSync(candidate)) {
       try {
@@ -78,6 +79,9 @@ function readPackageVersion() {
     }
     current = parent;
   }
+  throw new Error(
+    `could not find aw-installer package metadata within ${packageVersionFallbackMaxDepth} parent directories`,
+  );
 }
 
 function printVersion() {

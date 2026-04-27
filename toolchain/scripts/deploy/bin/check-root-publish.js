@@ -6,6 +6,7 @@ const { join } = require("node:path");
 
 const packagePath = join(__dirname, "..", "..", "..", "..", "package.json");
 const packageMetadata = JSON.parse(readFileSync(packagePath, "utf8"));
+const packageJsonOverride = process.env.AW_INSTALLER_PACKAGE_JSON || "";
 const version = packageMetadata.version || "";
 const isDryRun = process.env.npm_config_dry_run === "true";
 const isLocalVersion = version === "0.0.0-local" || version.includes("-local");
@@ -53,6 +54,11 @@ runChecks([
   {
     test: () => packageMetadata.name === "aw-installer",
     message: () => `refusing to publish unexpected package ${packageMetadata.name || "<missing-name>"}`,
+  },
+  {
+    test: () => !packageJsonOverride,
+    message: () =>
+      "refusing to publish aw-installer; AW_INSTALLER_PACKAGE_JSON override is not supported",
   },
 ]);
 
