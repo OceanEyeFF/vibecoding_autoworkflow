@@ -104,7 +104,7 @@ npx aw-installer update --backend agents --yes
 ## 三、CLI + TUI 双模式合同
 
 - CLI subcommands 是机器可读、可脚本化、可在 CI 中复验的稳定接口。
-- TUI 只负责引导 operator 选择 backend、查看诊断、确认 update plan 或启动已定义的 CLI 等价动作。当前本地 scaffold 已提供最小 `tui` shell，不包含 full-screen framework。
+- TUI 只负责引导 operator 选择 backend、查看诊断、确认 update plan 或启动已定义的 CLI 等价动作。当前本地 scaffold 已提供最小 `tui` shell，不包含 full-screen framework；主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 映射到现有 CLI wrapper。
 - TUI 不得拥有独立于 CLI 的 deploy 语义；每一个 mutating TUI 动作都必须映射到一个明确的 CLI mode 和参数集合。
 - TUI 中的 destructive action 必须展示等价 dry-run plan，并要求显式确认；不能把 `update --yes`、`prune --all` 或 `install` 藏在默认启动流程里。
 - TUI 不能把 `claude` 或 `opencode` 展示为已支持 deploy backend。Claude skills distribution 只能作为 slower compatibility lane 的说明或未来保留项，不能覆盖当前 `agents` 合同。
@@ -146,4 +146,4 @@ npx aw-installer update --backend agents --yes
 
 ## 七、当前停止线
 
-当前仓库只承诺 repo-local deploy scripts、本地 npm-style `aw-installer` scaffold、最小 `tui` shell、root package envelope 和 `agents` backend。`harness_deploy.py`、`bin/aw-installer.js` 与 `bin/aw-harness-deploy.js` 都是本地薄包装入口，不是已发布 package，也不是 full-screen TUI framework。进入真实 release 前必须同时满足本文的入口语义与 [aw-installer Release Channel Contract](./release-channel-contract.md) 的发布准入。
+当前仓库只承诺 repo-local deploy scripts、本地 npm-style `aw-installer` scaffold、带 guided update flow 的最小 `tui` shell、root package envelope 和 `agents` backend。`harness_deploy.py`、`bin/aw-installer.js` 与 `bin/aw-harness-deploy.js` 都是本地薄包装入口，不是已发布 package，也不是 full-screen TUI framework。进入真实 release 前必须同时满足本文的入口语义与 [aw-installer Release Channel Contract](./release-channel-contract.md) 的发布准入。
