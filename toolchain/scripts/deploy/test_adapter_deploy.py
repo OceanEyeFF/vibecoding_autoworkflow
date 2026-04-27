@@ -504,7 +504,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.stdout, "")
         self.assertIn("refusing to publish aw-installer 0.0.0-local", completed.stderr)
 
-    def test_root_npm_publish_guard_ignores_package_json_override_for_real_publish(self) -> None:
+    def test_root_npm_publish_guard_rejects_package_json_override_for_real_publish(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
         package_root = self.source_repo_root
@@ -536,7 +536,7 @@ class AdapterDeployTest(unittest.TestCase):
 
         self.assertEqual(completed.returncode, 1)
         self.assertEqual(completed.stdout, "")
-        self.assertIn("refusing to publish aw-installer 0.0.0-local", completed.stderr)
+        self.assertIn("AW_INSTALLER_PACKAGE_JSON override is not supported", completed.stderr)
 
     def test_root_npm_publish_guard_rejects_nonlocal_without_approval(self) -> None:
         if shutil.which("node") is None:
@@ -775,6 +775,28 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(completed.stdout, "aw-installer 9.8.7\n")
         self.assertEqual(completed.stderr, "")
+
+    def test_local_npm_installer_bin_version_fallback_has_depth_limit(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.temp_root / "version-depth-root"
+        bin_dir = package_root.joinpath(*(["nested"] * 24), "bin")
+        bin_dir.mkdir(parents=True)
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "aw-installer.js",
+            bin_dir / "aw-installer.js",
+        )
+
+        completed = subprocess.run(
+            ["node", str(bin_dir / "aw-installer.js"), "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("within 20 parent directories", completed.stderr)
 
     def test_local_npm_installer_no_args_noninteractive_prints_help(self) -> None:
         if shutil.which("node") is None:
