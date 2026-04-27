@@ -1,15 +1,20 @@
 ---
 title: "aw-installer External Trial Feedback Contract"
 status: active
-updated: 2026-04-27
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-27
+last_verified: 2026-04-28
 ---
 # aw-installer External Trial Feedback Contract
 
 > Purpose: define the target list template and feedback contract for post-RC `aw-installer` external trials. This page does not recruit testers, publish npm packages, or store private repository identifiers.
 
 This page belongs to [Deploy Runbooks](./README.md). It follows the candidate boundary in [aw-installer RC Approval Package](./aw-installer-rc-approval-package.md) and the non-publish rehearsal evidence in [aw-installer Non-Publish Release Rehearsal](./aw-installer-release-rehearsal.md).
+
+GitHub issue entry points:
+
+- [aw-installer trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml)
+- [aw-installer bug or blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)
 
 ## Control Signal
 
@@ -86,6 +91,8 @@ Use these labels to make feedback comparable:
 | `no-confusion-observed` | operator completed the trial without notable confusion |
 
 ## Trial Report Template
+
+For GitHub-based feedback, prefer the structured issue templates above. Use the Markdown template below when collecting evidence outside GitHub or when preparing a batch summary.
 
 ```markdown
 # aw-installer External Trial Report
