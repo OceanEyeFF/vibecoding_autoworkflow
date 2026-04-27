@@ -32,6 +32,7 @@
 | 我想看 `aw-installer` 真实 npm 发布前需要满足什么条件 | [release-channel-contract.md](./release-channel-contract.md) | 定义 release channel、publish readiness guard、版本/tag/审批边界；不授权真实 publish |
 | 我想准备 `aw-installer` release-candidate 证据包 | [aw-installer-release-candidate-prep.md](./aw-installer-release-candidate-prep.md) | 固定 RC prep checkpoint、证据 bundle、release notes 与 rollback/deprecation plan；不授权真实 publish |
 | 我想审查第一条 `aw-installer` RC 发布审批包 | [aw-installer-rc-approval-package.md](./aw-installer-rc-approval-package.md) | 固定 `0.4.x` 版本线、`0.4.0-rc.1` 候选、`next` channel、证据路径与回滚计划；不授权真实 publish |
+| 我想复核 `aw-installer` 非 publish 发布演练结果 | [aw-installer-release-rehearsal.md](./aw-installer-release-rehearsal.md) | 记录 pack、publish dry-run、publish guard、`0.4.0-rc.1 -> next` 推导和 two-target tarball smoke；不授权真实 publish |
 | 我想在隔离目标仓库验证本地 `.tgz` | [aw-installer-external-target-smoke.md](./aw-installer-external-target-smoke.md) | 提供 two-target tarball smoke 操作脚本和汇报模板；不授权真实 publish |
 | 我想看 `aw-installer` payload 从哪里来、`update` 信任边界在哪里 | [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md) | 定义 package payload、source/target root override、当前 update 边界与未来远程更新准入 |
 | 我想看 `agents` canonical-copy payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | 定义 `product/harness/adapters/agents/skills/` 的 payload descriptor 结构，以及 target 如何复制 canonical skill 内容 |
@@ -98,6 +99,8 @@
   release-candidate prep。回答如何准备 `aw-installer` RC evidence bundle、release notes 和 rollback/deprecation plan；不授权真实 npm publish。
 - [aw-installer-rc-approval-package.md](./aw-installer-rc-approval-package.md)
   RC approval package。回答第一条 `0.4.x` release-candidate 线如何命名、需要哪些 approval evidence、如何表述 release notes 与 rollback/deprecation plan；不授权真实 npm publish。
+- [aw-installer-release-rehearsal.md](./aw-installer-release-rehearsal.md)
+  non-publish release rehearsal。回答 `aw-installer` 在真实 publish 前的 pack、publish dry-run、publish guard、candidate channel 推导和 two-target tarball smoke 是否可复现；不授权真实 npm publish。
 - [aw-installer-external-target-smoke.md](./aw-installer-external-target-smoke.md)
   external target smoke。回答如何用本地 `.tgz` 在两个隔离目标仓库中验证 packaged `aw-installer` help/version/TUI guard/diagnose/update/install/verify/update apply，并给出汇报模板。
 - [agents-adapter-source.md](./agents-adapter-source.md)

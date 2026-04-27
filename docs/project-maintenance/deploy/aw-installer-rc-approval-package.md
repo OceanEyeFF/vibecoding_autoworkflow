@@ -60,6 +60,7 @@ Use these evidence paths as the approval package bundle:
 | RC prep checklist | `docs/project-maintenance/deploy/aw-installer-release-candidate-prep.md` | active |
 | Payload/update trust boundary | `docs/project-maintenance/deploy/payload-provenance-trust-boundary.md` | active |
 | External target smoke runbook | `docs/project-maintenance/deploy/aw-installer-external-target-smoke.md` | active |
+| Non-publish release rehearsal | `docs/project-maintenance/deploy/aw-installer-release-rehearsal.md` | passed |
 | Runtime external smoke operation artifact | `.aw/repo/aw-installer-external-target-smoke-runbook.md` | runtime evidence |
 | Runtime two-target smoke report | `.aw/repo/aw-installer-external-target-smoke-report.md` | passed for local `.tgz` / dry-run evidence |
 | Package metadata source | `package.json` | currently `0.0.0-local` |
