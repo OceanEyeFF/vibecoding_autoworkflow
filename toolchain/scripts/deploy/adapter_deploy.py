@@ -1105,7 +1105,12 @@ def verify_source_binding(binding: SkillBinding, context: DeployContext) -> list
     return issues
 
 
-def install_backend_payloads(backend: str, args: argparse.Namespace, context: DeployContext) -> None:
+def collect_validated_bindings(
+    backend: str,
+    context: DeployContext,
+    *,
+    source_failure_action: str,
+) -> list[SkillBinding]:
     bindings = collect_skill_bindings(backend, context)
     if not bindings:
         raise DeployError(f"No payload bindings found for backend {backend}.")
@@ -1117,19 +1122,45 @@ def install_backend_payloads(backend: str, args: argparse.Namespace, context: De
         details = "\n".join(
             f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in validation_issues
         )
-        raise DeployError(f"Cannot install because source validation failed:\n{details}")
+        raise DeployError(
+            f"Cannot {source_failure_action} because source validation failed:\n{details}"
+        )
 
-    target_root = target_root_for(backend, args, context)
-    target_root_issues = [
+    return bindings
+
+
+def target_root_blocking_issues(backend: str, target_root: Path) -> list[VerifyIssue]:
+    return [
         issue
         for issue in verify_target_root(backend, target_root)
         if issue.code != "missing-target-root"
     ]
-    if target_root_issues:
-        details = "\n".join(
-            f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in target_root_issues
-        )
-        raise DeployError(f"Cannot install because target root is not ready:\n{details}")
+
+
+def ensure_target_root_ready_for_action(
+    backend: str,
+    target_root: Path,
+    *,
+    action: str,
+) -> None:
+    issues = target_root_blocking_issues(backend, target_root)
+    if not issues:
+        return
+
+    details = "\n".join(
+        f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in issues
+    )
+    raise DeployError(f"Cannot {action} because target root is not ready:\n{details}")
+
+
+def install_backend_payloads(backend: str, args: argparse.Namespace, context: DeployContext) -> None:
+    bindings = collect_validated_bindings(
+        backend,
+        context,
+        source_failure_action="install",
+    )
+    target_root = target_root_for(backend, args, context)
+    ensure_target_root_ready_for_action(backend, target_root, action="install")
 
     current_target_dirs_by_skill_id(bindings)
     plans = [build_install_plan(binding, target_root, context) for binding in bindings]
@@ -1190,30 +1221,13 @@ def check_backend_target_paths(
     args: argparse.Namespace,
     context: DeployContext,
 ) -> None:
-    bindings = collect_skill_bindings(backend, context)
-    if not bindings:
-        raise DeployError(f"No payload bindings found for backend {backend}.")
-
-    validation_issues: list[VerifyIssue] = []
-    for binding in bindings:
-        validation_issues.extend(verify_source_binding(binding, context))
-    if validation_issues:
-        details = "\n".join(
-            f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in validation_issues
-        )
-        raise DeployError(f"Cannot check target paths because source validation failed:\n{details}")
-
+    bindings = collect_validated_bindings(
+        backend,
+        context,
+        source_failure_action="check target paths",
+    )
     target_root = target_root_for(backend, args, context)
-    target_root_issues = [
-        issue
-        for issue in verify_target_root(backend, target_root)
-        if issue.code != "missing-target-root"
-    ]
-    if target_root_issues:
-        details = "\n".join(
-            f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in target_root_issues
-        )
-        raise DeployError(f"Cannot check target paths because target root is not ready:\n{details}")
+    ensure_target_root_ready_for_action(backend, target_root, action="check target paths")
 
     current_target_dirs_by_skill_id(bindings)
     plans = [build_install_plan(binding, target_root, context) for binding in bindings]
