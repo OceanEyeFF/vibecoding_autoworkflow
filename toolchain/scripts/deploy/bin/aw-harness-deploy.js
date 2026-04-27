@@ -4,7 +4,7 @@
 const { spawnSync } = require("node:child_process");
 const { join } = require("node:path");
 
-const python = process.env.PYTHON || process.env.PYTHON3 || "python3";
+const python = "python3";
 const wrapperPath = join(__dirname, "..", "harness_deploy.py");
 const env = {
   ...process.env,

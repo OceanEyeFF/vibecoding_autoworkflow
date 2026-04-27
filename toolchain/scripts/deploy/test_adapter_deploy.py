@@ -387,6 +387,30 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(payload["target_root"], str(target_repo / ".agents" / "skills"))
         self.assertFalse(self.local_root.exists())
 
+    def test_cli_rejects_sensitive_target_repo_root_env_override(self) -> None:
+        code, stdout, stderr = self._run_cli(
+            "diagnose",
+            "--backend",
+            "agents",
+            "--json",
+            env={
+                "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
+                "AW_HARNESS_TARGET_REPO_ROOT": "/etc",
+            },
+        )
+
+        self.assertEqual(code, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("Target repo root is protected", stderr)
+        self.assertIn("/etc", stderr)
+
+    def test_target_repo_root_validation_rejects_home_credential_dirs(self) -> None:
+        with self.assertRaisesRegex(adapter_deploy.DeployError, "protected"):
+            adapter_deploy.validate_target_repo_root(
+                Path.home() / ".ssh" / "repo",
+                self.fake_repo_root,
+            )
+
     def test_harness_deploy_wrapper_help_exposes_only_current_command_surface(self) -> None:
         stdout = io.StringIO()
         stderr = io.StringIO()
@@ -888,6 +912,47 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.stdout, "")
         self.assertIn("requires an interactive terminal", completed.stderr)
 
+    def test_node_deploy_wrappers_ignore_python_env_overrides(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        target_repo = self.temp_root / "python-env-target"
+        env = {
+            **os.environ,
+            "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
+            "AW_HARNESS_TARGET_REPO_ROOT": str(target_repo),
+            "PYTHON": str(self.temp_root / "missing-python"),
+            "PYTHON3": str(self.temp_root / "missing-python3"),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+        wrappers = [
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js",
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-harness-deploy.js",
+        ]
+
+        for wrapper in wrappers:
+            completed = subprocess.run(
+                ["node", str(wrapper), "diagnose", "--backend", "agents", "--json"],
+                cwd=self.source_repo_root,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            payload = json.loads(completed.stdout)
+            self.assertEqual(payload["target_root"], str(target_repo / ".agents" / "skills"))
+
     def test_local_npm_installer_tui_shows_update_plan_before_apply_confirmation(self) -> None:
         target_repo = self.temp_root / "tui-plan-target"
 
@@ -961,7 +1026,6 @@ class AdapterDeployTest(unittest.TestCase):
 
     def test_local_npm_installer_tui_guided_flow_stops_after_failed_diagnose(self) -> None:
         target_repo = self.temp_root / "tui-diagnose-failure-target"
-        missing_python = self.temp_root / "missing-python"
 
         code, output = self._run_installer_tui_script(
             [
@@ -971,7 +1035,7 @@ class AdapterDeployTest(unittest.TestCase):
                 ("Select an action:", "6\n"),
             ],
             target_repo=target_repo,
-            env_overrides={"PYTHON": str(missing_python)},
+            env_overrides={"AW_HARNESS_TARGET_REPO_ROOT": "/etc"},
         )
 
         self.assertEqual(code, 0, output)

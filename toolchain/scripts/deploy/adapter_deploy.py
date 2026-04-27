@@ -14,6 +14,66 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 
+class DeployError(RuntimeError):
+    """Raised when deployment inputs or targets are invalid."""
+
+
+def path_is_relative_to(path: Path, parent: Path) -> bool:
+    try:
+        path.relative_to(parent)
+    except ValueError:
+        return False
+    return True
+
+
+def sensitive_target_repo_roots() -> tuple[Path, ...]:
+    roots = [
+        Path("/"),
+        Path("/bin"),
+        Path("/boot"),
+        Path("/dev"),
+        Path("/etc"),
+        Path("/lib"),
+        Path("/lib64"),
+        Path("/proc"),
+        Path("/run"),
+        Path("/sbin"),
+        Path("/sys"),
+        Path("/usr"),
+    ]
+    home = Path.home().expanduser()
+    roots.extend(home / name for name in (".aws", ".config", ".gnupg", ".ssh"))
+    return tuple(root.resolve() for root in roots)
+
+
+def allowed_target_repo_root_prefixes(source_root: Path) -> tuple[Path, ...]:
+    candidates = [
+        Path.cwd(),
+        source_root,
+        Path.home(),
+        Path("/tmp"),
+        Path("/var/tmp"),
+    ]
+    return tuple(dict.fromkeys(candidate.expanduser().resolve() for candidate in candidates))
+
+
+def validate_target_repo_root(path: Path, source_root: Path) -> Path:
+    resolved = path.expanduser().resolve()
+    for sensitive_root in sensitive_target_repo_roots():
+        if resolved == sensitive_root or (
+            sensitive_root != Path("/") and path_is_relative_to(resolved, sensitive_root)
+        ):
+            raise DeployError(f"Target repo root is protected and cannot be managed: {resolved}")
+
+    allowed_prefixes = allowed_target_repo_root_prefixes(source_root)
+    if not any(resolved == prefix or path_is_relative_to(resolved, prefix) for prefix in allowed_prefixes):
+        allowed_list = ", ".join(str(prefix) for prefix in allowed_prefixes)
+        raise DeployError(
+            f"Target repo root {resolved} is outside allowed paths: {allowed_list}"
+        )
+    return resolved
+
+
 def resolve_repo_root() -> Path:
     """Resolve the source root that owns canonical Harness payload files."""
 
@@ -28,10 +88,10 @@ def resolve_target_repo_root(source_root: Path) -> Path:
 
     target_override = os.environ.get("AW_HARNESS_TARGET_REPO_ROOT")
     if target_override:
-        return Path(target_override).expanduser().resolve()
+        return validate_target_repo_root(Path(target_override), source_root)
     if os.environ.get("AW_HARNESS_REPO_ROOT"):
-        return source_root
-    return Path.cwd().resolve()
+        return validate_target_repo_root(source_root, source_root)
+    return validate_target_repo_root(Path.cwd(), source_root)
 
 
 def set_runtime_roots(source_root: Path, target_repo_root: Path) -> None:
@@ -82,10 +142,6 @@ UPDATE_RECOVERABLE_ISSUE_CODES = {
     "target-payload-drift",
     "unexpected-managed-directory",
 }
-
-
-class DeployError(RuntimeError):
-    """Raised when deployment inputs or targets are invalid."""
 
 
 @dataclass
@@ -1684,10 +1740,10 @@ def main(
     prog: str | None = None,
     description: str | None = None,
 ) -> int:
-    if "AW_HARNESS_REPO_ROOT" in os.environ or "AW_HARNESS_TARGET_REPO_ROOT" in os.environ:
-        refresh_runtime_roots_from_env()
-    args = parse_args(argv, prog=prog, description=description)
     try:
+        if "AW_HARNESS_REPO_ROOT" in os.environ or "AW_HARNESS_TARGET_REPO_ROOT" in os.environ:
+            refresh_runtime_roots_from_env()
+        args = parse_args(argv, prog=prog, description=description)
         if args.mode == "verify":
             results = [verify_backend(backend, args) for backend in iter_backends(args.backend)]
             for result in results:

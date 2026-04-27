@@ -6,7 +6,7 @@ const { existsSync, readFileSync } = require("node:fs");
 const { dirname, join } = require("node:path");
 const readline = require("node:readline");
 
-const python = process.env.PYTHON || process.env.PYTHON3 || "python3";
+const python = "python3";
 const wrapperPath = join(__dirname, "..", "harness_deploy.py");
 const env = {
   ...process.env,
