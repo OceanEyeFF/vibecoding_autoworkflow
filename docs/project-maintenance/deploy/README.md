@@ -31,6 +31,7 @@
 | 我想看 `npx aw-installer` 分发入口必须保持什么语义 | [distribution-entrypoint-contract.md](./distribution-entrypoint-contract.md) | 定义 `aw-installer` CLI + TUI 双模式包装层合同；不表示 package 或 release channel 已实现 |
 | 我想看 `aw-installer` 真实 npm 发布前需要满足什么条件 | [release-channel-contract.md](./release-channel-contract.md) | 定义 release channel、publish readiness guard、版本/tag/审批边界；不授权真实 publish |
 | 我想准备 `aw-installer` release-candidate 证据包 | [aw-installer-release-candidate-prep.md](./aw-installer-release-candidate-prep.md) | 固定 RC prep checkpoint、证据 bundle、release notes 与 rollback/deprecation plan；不授权真实 publish |
+| 我想在隔离目标仓库验证本地 `.tgz` | [aw-installer-external-target-smoke.md](./aw-installer-external-target-smoke.md) | 提供 two-target tarball smoke 操作脚本和汇报模板；不授权真实 publish |
 | 我想看 `aw-installer` payload 从哪里来、`update` 信任边界在哪里 | [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md) | 定义 package payload、source/target root override、当前 update 边界与未来远程更新准入 |
 | 我想看 `agents` canonical-copy payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | 定义 `product/harness/adapters/agents/skills/` 的 payload descriptor 结构，以及 target 如何复制 canonical skill 内容 |
 | 我想初始化 `.aw/` 样例并校验 `.aw_template` 最小结构 | [template-tooling-mvp.md](./template-tooling-mvp.md) | B2 的最小工作面，只做 `.aw_template -> .aw` 样例生成与前置校验 |
@@ -93,6 +94,8 @@
   payload provenance / update trust boundary。回答 root package `.tgz` 中的 deploy payload 从哪里来、source/target root 怎么解析，以及当前 `update` 为什么只能重装当前可信 source payload。
 - [aw-installer-release-candidate-prep.md](./aw-installer-release-candidate-prep.md)
   release-candidate prep。回答如何准备 `aw-installer` RC evidence bundle、release notes 和 rollback/deprecation plan；不授权真实 npm publish。
+- [aw-installer-external-target-smoke.md](./aw-installer-external-target-smoke.md)
+  external target smoke。回答如何用本地 `.tgz` 在两个隔离目标仓库中验证 packaged `aw-installer` help/version/TUI guard/diagnose/update/install/verify/update apply，并给出汇报模板。
 - [agents-adapter-source.md](./agents-adapter-source.md)
   adapter source。回答 `agents` canonical-copy payload descriptor、copied skill files 与 runtime marker 边界。
 - [template-consumption-spec.md](./template-consumption-spec.md)
