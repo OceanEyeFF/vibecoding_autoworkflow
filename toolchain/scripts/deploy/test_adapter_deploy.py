@@ -182,6 +182,7 @@ class AdapterDeployTest(unittest.TestCase):
         steps: list[tuple[str, str]],
         *,
         target_repo: Path | None = None,
+        env_overrides: dict[str, str] | None = None,
         timeout_seconds: float = 30.0,
     ) -> tuple[int, str]:
         if not hasattr(os, "openpty"):
@@ -206,6 +207,8 @@ class AdapterDeployTest(unittest.TestCase):
             "AW_HARNESS_TARGET_REPO_ROOT": str(target_repo),
             "PYTHONDONTWRITEBYTECODE": "1",
         }
+        if env_overrides is not None:
+            env.update(env_overrides)
 
         master_fd, slave_fd = os.openpty()
         process: subprocess.Popen[bytes] | None = None
@@ -773,6 +776,7 @@ class AdapterDeployTest(unittest.TestCase):
 
         self.assertEqual(code, 0, output)
         self.assertIn("1. Guided update flow", output)
+        self.assertIn("5. Re-run guided update flow", output)
         self.assertIn("Guided update flow", output)
         self.assertIn("Step 1: Diagnose current agents install.", output)
         self.assertIn("Step 2: Review update dry-run plan.", output)
@@ -800,6 +804,44 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("[agents] applying update", output)
         self.assertIn("[agents] update complete", output)
         self.assertTrue((target_repo / ".agents" / "skills").is_dir())
+
+    def test_local_npm_installer_tui_guided_flow_stops_after_failed_diagnose(self) -> None:
+        target_repo = self.temp_root / "tui-diagnose-failure-target"
+        missing_python = self.temp_root / "missing-python"
+
+        code, output = self._run_installer_tui_script(
+            [
+                ("Select an action:", "1\n"),
+                ("Continue with update dry-run anyway?", "no\n"),
+                ("Update cancelled.", "\n"),
+                ("Select an action:", "7\n"),
+            ],
+            target_repo=target_repo,
+            env_overrides={"PYTHON": str(missing_python)},
+        )
+
+        self.assertEqual(code, 0, output)
+        self.assertIn("Diagnose failed; update may not succeed as expected.", output)
+        self.assertIn("Update cancelled.", output)
+        self.assertNotIn("[agents] update plan", output)
+        self.assertFalse((target_repo / ".agents" / "skills").exists())
+
+    def test_target_root_scans_raise_deploy_error_for_iterdir_failures(self) -> None:
+        target_root = self.temp_root / "scan-failure-target"
+        target_root.mkdir()
+        prune_args = adapter_deploy.parse_args(
+            ["prune", "--backend", "agents", "--agents-root", str(target_root)]
+        )
+
+        with mock.patch.object(Path, "iterdir", side_effect=PermissionError("denied")):
+            with self.assertRaisesRegex(adapter_deploy.DeployError, "unexpected managed target dirs"):
+                adapter_deploy.unexpected_managed_target_dirs("agents", target_root, set())
+            with self.assertRaisesRegex(adapter_deploy.DeployError, "managed install dirs"):
+                adapter_deploy.managed_install_dirs("agents", target_root)
+            with self.assertRaisesRegex(adapter_deploy.DeployError, "update target entry issues"):
+                adapter_deploy.collect_update_target_entry_issues("agents", target_root, set())
+            with self.assertRaisesRegex(adapter_deploy.DeployError, "managed install pruning"):
+                adapter_deploy.prune_all_managed_target_dirs("agents", prune_args)
 
     def test_local_npm_pack_dry_run_contains_only_package_surface(self) -> None:
         if shutil.which("npm") is None:

@@ -98,7 +98,19 @@ async function pause(rl) {
 async function runGuidedUpdateFlow(rl) {
   console.log("\nGuided update flow");
   console.log("Step 1: Diagnose current agents install.");
-  runWrapper(["diagnose", "--backend", "agents", "--json"]);
+  const diagnoseStatus = runWrapper(["diagnose", "--backend", "agents", "--json"]);
+  if (diagnoseStatus !== 0) {
+    console.log("Diagnose failed; update may not succeed as expected.");
+    const proceed = (await question(
+      rl,
+      "Continue with update dry-run anyway? Type yes to continue: ",
+    )).trim();
+    if (proceed !== "yes") {
+      console.log("Update cancelled.");
+      await pause(rl);
+      return;
+    }
+  }
 
   console.log("\nStep 2: Review update dry-run plan.");
   const dryRunStatus = runWrapper(["update", "--backend", "agents"]);
@@ -142,7 +154,7 @@ Backend: agents
 2. Diagnose current install
 3. Verify current install
 4. Show update dry-run plan
-5. Guided apply after explicit confirmation
+5. Re-run guided update flow
 6. Show CLI help
 7. Exit
 `);
