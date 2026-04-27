@@ -29,7 +29,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 
 CI 必须显式设置 Node 后运行本地 package smoke、本地 scaffold pack dry-run、根 package pack dry-run、根 package publish dry-run、本地 scaffold tarball smoke，以及根 `.tgz` 的 `aw-installer --help`、`aw-installer --version`、`aw-installer tui` 非交互 guard、只读 `diagnose`、`update --json` dry-run、`install --backend agents`、安装后的 `verify --backend agents` 和显式 `update --backend agents --yes` apply smoke。根 `.tgz` smoke 不设置 `AW_HARNESS_REPO_ROOT`，用于证明 package 内 source payload 与当前工作目录 target root 已分离。
 
-根 package `publishConfig.registry` 必须固定为 `https://registry.npmjs.org/`，避免真实 release 或 dry-run 被本机 npm mirror 配置改写。`npm run publish:dry-run --silent` 是发布前检查，不代表已经授权执行 `npm publish`。根 package 的 `prepublishOnly` guard 允许 `--dry-run`，但在版本仍为 `0.0.0-local` 或其他 `-local` 版本时拒绝真实 publish；真实 release 需要先经过版本、tag、凭证和发布审批。
+根 package `publishConfig.registry` 必须固定为 `https://registry.npmjs.org/`，避免真实 release 或 dry-run 被本机 npm mirror 配置改写。`npm run publish:dry-run --silent` 是发布前检查，不代表已经授权执行 `npm publish`。根 package 的 `prepublishOnly` guard 允许 `--dry-run`，但真实 publish 必须通过 [aw-installer Release Channel Contract](./release-channel-contract.md) 中定义的版本、channel、dist-tag、CI、审批和 git tag 准入。
 
 `AW_HARNESS_REPO_ROOT` 是 source checkout override。设置它时，source root 与默认 target repo root 保持旧的 repo-local 行为；未设置它时，packaged wrapper 从 package 解压根读取 source payload，并默认把当前工作目录作为用户项目 target repo root。`AW_HARNESS_TARGET_REPO_ROOT` 可显式覆盖 target repo root。
 
@@ -45,7 +45,7 @@ CI 必须显式设置 Node 后运行本地 package smoke、本地 scaffold pack 
 
 本文不定义：
 
-- npm 发布账户、registry 凭证、release channel 或版本策略。
+- npm 发布账户、registry 凭证或 release workflow；release channel 与 publish readiness 准入见 [aw-installer Release Channel Contract](./release-channel-contract.md)。
 - 具体 TUI framework、按键模型、配色或终端渲染实现。
 - 新的 deploy backend。
 - `adapter_deploy.py` 内部实现。
@@ -143,4 +143,4 @@ npx aw-installer update --backend agents --yes
 
 ## 七、当前停止线
 
-当前仓库只承诺 repo-local deploy scripts、本地 npm-style `aw-installer` scaffold、最小 `tui` shell 和 `agents` backend。`harness_deploy.py`、`bin/aw-installer.js` 与 `bin/aw-harness-deploy.js` 都是本地薄包装入口，不是已发布 package，也不是 full-screen TUI framework。下一轮如果要进入 packaging，应以本文为合同输入，在已存在的 `aw-installer` CLI/TUI surface 上讨论发布渠道。
+当前仓库只承诺 repo-local deploy scripts、本地 npm-style `aw-installer` scaffold、最小 `tui` shell、root package envelope 和 `agents` backend。`harness_deploy.py`、`bin/aw-installer.js` 与 `bin/aw-harness-deploy.js` 都是本地薄包装入口，不是已发布 package，也不是 full-screen TUI framework。进入真实 release 前必须同时满足本文的入口语义与 [aw-installer Release Channel Contract](./release-channel-contract.md) 的发布准入。
