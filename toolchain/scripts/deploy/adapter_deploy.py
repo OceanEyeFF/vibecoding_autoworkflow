@@ -26,20 +26,26 @@ def path_is_relative_to(path: Path, parent: Path) -> bool:
     return True
 
 
-def sensitive_target_repo_roots() -> tuple[Path, ...]:
+def exact_sensitive_target_repo_roots() -> tuple[Path, ...]:
     roots = [
         Path("/"),
         Path("/bin"),
         Path("/boot"),
-        Path("/dev"),
         Path("/etc"),
         Path("/lib"),
         Path("/lib64"),
+        Path("/sbin"),
+        Path("/usr"),
+    ]
+    return tuple(root.resolve() for root in roots)
+
+
+def recursive_sensitive_target_repo_roots() -> tuple[Path, ...]:
+    roots = [
+        Path("/dev"),
         Path("/proc"),
         Path("/run"),
-        Path("/sbin"),
         Path("/sys"),
-        Path("/usr"),
     ]
     home = Path.home().expanduser()
     roots.extend(home / name for name in (".aws", ".config", ".gnupg", ".ssh"))
@@ -59,10 +65,11 @@ def allowed_target_repo_root_prefixes(source_root: Path) -> tuple[Path, ...]:
 
 def validate_target_repo_root(path: Path, source_root: Path) -> Path:
     resolved = path.expanduser().resolve()
-    for sensitive_root in sensitive_target_repo_roots():
-        if resolved == sensitive_root or (
-            sensitive_root != Path("/") and path_is_relative_to(resolved, sensitive_root)
-        ):
+    for sensitive_root in exact_sensitive_target_repo_roots():
+        if resolved == sensitive_root:
+            raise DeployError(f"Target repo root is protected and cannot be managed: {resolved}")
+    for sensitive_root in recursive_sensitive_target_repo_roots():
+        if resolved == sensitive_root or path_is_relative_to(resolved, sensitive_root):
             raise DeployError(f"Target repo root is protected and cannot be managed: {resolved}")
 
     allowed_prefixes = allowed_target_repo_root_prefixes(source_root)
@@ -1555,15 +1562,17 @@ def collect_update_target_entry_issues(
         else iter_target_root_children(target_root, "update target entry issues")
     )
     for child in children:
+        if child.name not in known_target_dir_names:
+            continue
+
         if child.is_symlink() or not child.is_dir():
-            if child.name in known_target_dir_names:
-                issues.append(
-                    VerifyIssue(
-                        code="wrong-target-entry-type",
-                        path=child,
-                        detail="update target path must be a real directory before reinstall",
-                    )
+            issues.append(
+                VerifyIssue(
+                    code="wrong-target-entry-type",
+                    path=child,
+                    detail="update target path must be a real directory before reinstall",
                 )
+            )
             continue
 
         marker = load_runtime_marker(managed_skill_marker_path(child))

@@ -1,9 +1,9 @@
 ---
 title: "Deploy Mapping Spec"
 status: active
-updated: 2026-04-26
+updated: 2026-04-27
 owner: aw-kernel
-last_verified: 2026-04-26
+last_verified: 2026-04-27
 ---
 # Deploy Mapping Spec
 
@@ -208,7 +208,7 @@ last_verified: 2026-04-26
 - 仅凭本规范和 payload descriptor，即可实现当前最小 deploy 读取面
 - 部署入口页可以直接引用本规范，无需再以"这里不定义映射"回避约定
 - `diagnose` 能输出结构化状态摘要，`verify` 能把缺失、不一致、类型错误、source 非法和冲突目录作为严格失败信号
-- destructive reinstall 流程不会把 foreign / unrecognized 目录当作可自动接管对象
+- destructive reinstall 流程不会把 foreign / unrecognized 目录当作可自动接管对象；只有占用 planned / known AW target path 的此类目录会阻塞 `update`，无关用户目录保持不动
 
 ## 九、保留项
 
