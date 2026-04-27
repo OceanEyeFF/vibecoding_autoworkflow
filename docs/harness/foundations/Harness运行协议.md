@@ -601,6 +601,18 @@ RepoScope.Observe ──→ RepoScope.Decide ──→ WorktrackScope.Init
 
 如果当前 host runtime 支持真实 subagent dispatch shell，且权限边界允许委派，则默认必须走 `dispatch subagent`。只有在 host runtime 没有稳定分派壳层、权限边界禁止委派，或当前 dispatch package 不满足安全分派条件时，才允许暂时退化为：
 
+- `runtime_dispatch_mode` 可被显式配置，优先级如下：
+  - `.aw/control-state.md` 的 `subagent_dispatch_mode` 显式覆盖（`auto` / `delegated` / `current-carrier`）
+  - `current worktrack contract` 的 `runtime_dispatch_mode`（`auto` / `delegated` / `current-carrier`）
+  - 默认策略：`auto`
+
+- `auto` 语义：
+  - 优先尝试 delegated subagent dispatch；
+  - 当检测到 `permission blocked` 或 `dispatch package unsafe` 时，自动降级为 current-carrier；
+  - 每次降级必须在 dispatch 结果中写明 runtime fallback 原因。
+
+此时才允许暂时退化为：
+
 `state estimate -> choose operator -> bind skill(s) -> package task/info -> execute in current carrier -> collect evidence -> adjudicate -> update state`
 
 但此时必须显式标注：

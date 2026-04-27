@@ -44,7 +44,7 @@ last_verified: 2026-04-26
 
 canonical executable source：
 
-- [../../../../product/harness/skills/repo-status-skill/SKILL.md](../../../../product/harness/skills/repo-status-skill/SKILL.md)
+- [../../../product/harness/skills/repo-status-skill/SKILL.md](../../../product/harness/skills/repo-status-skill/SKILL.md)
 
 当前状态：
 
@@ -84,7 +84,7 @@ preferred handoff fields：
 
 canonical executable source：
 
-- [../../../../product/harness/skills/repo-whats-next-skill/SKILL.md](../../../../product/harness/skills/repo-whats-next-skill/SKILL.md)
+- [../../../product/harness/skills/repo-whats-next-skill/SKILL.md](../../../product/harness/skills/repo-whats-next-skill/SKILL.md)
 
 当前状态：
 
@@ -129,7 +129,7 @@ preferred decision fields：
 
 canonical executable source：
 
-- [../../../../product/harness/skills/repo-append-request-skill/SKILL.md](../../../../product/harness/skills/repo-append-request-skill/SKILL.md)
+- [../../../product/harness/skills/repo-append-request-skill/SKILL.md](../../../product/harness/skills/repo-append-request-skill/SKILL.md)
 
 当前状态：
 
@@ -173,7 +173,7 @@ preferred decision fields：
 
 canonical executable source：
 
-- [../../../../product/harness/skills/repo-change-goal-skill/SKILL.md](../../../../product/harness/skills/repo-change-goal-skill/SKILL.md)
+- [../../../product/harness/skills/repo-change-goal-skill/SKILL.md](../../../product/harness/skills/repo-change-goal-skill/SKILL.md)
 
 当前状态：
 
@@ -196,7 +196,7 @@ canonical executable source：
 
 canonical executable source：
 
-- [../../../../product/harness/skills/repo-refresh-skill/SKILL.md](../../../../product/harness/skills/repo-refresh-skill/SKILL.md)
+- [../../../product/harness/skills/repo-refresh-skill/SKILL.md](../../../product/harness/skills/repo-refresh-skill/SKILL.md)
 
 当前状态：
 

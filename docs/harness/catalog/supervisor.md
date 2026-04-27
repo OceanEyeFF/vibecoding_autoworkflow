@@ -26,7 +26,7 @@ last_verified: 2026-04-20
 
 canonical executable source：
 
-- [../../../../product/harness/skills/harness-skill/SKILL.md](../../../../product/harness/skills/harness-skill/SKILL.md)
+- [../../../product/harness/skills/harness-skill/SKILL.md](../../../product/harness/skills/harness-skill/SKILL.md)
 
 固定输出：
 
