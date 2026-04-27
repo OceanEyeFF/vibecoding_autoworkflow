@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 治理入口"
 status: active
-updated: 2026-04-27
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-27
+last_verified: 2026-04-28
 ---
 # Review / Verify 治理入口
 
@@ -43,6 +43,16 @@ last_verified: 2026-04-27
 - 修复类任务不能只压住当前症状；必须检查相邻状态、恢复路径、operator-facing 语义和已知脏数据场景，避免引入新的问题源，并尽量把修复做完整
 
 ## 三、推荐复核清单
+
+默认 review 至少覆盖五个互相独立的面：
+
+- 代码性能 review：复杂度、重复工作、I/O、资源使用、可扩展性风险
+- Repo 架构 review：目录层级、模块归属、依赖方向、truth/source/deploy target 边界
+- 代码安全 review：权限边界、外部输入、敏感数据、注入面、破坏性动作保护
+- 代码质量 review：可维护性、可读性、错误处理、恢复路径、operator-facing 语义
+- 测试 review：验收覆盖、回归覆盖、验证可信度、缺失测试或过期证据风险
+
+docs-only 或 governance-only 变更也要显式标出不适用的 review 面及理由，不能把未覆盖维度默认为通过。
 
 ### 1. 变更范围
 

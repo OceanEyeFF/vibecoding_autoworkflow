@@ -1,9 +1,9 @@
 ---
 title: Harness 运行协议
 status: draft
-updated: 2026-04-25
+updated: 2026-04-28
 owner: OceanEye
-last_verified: 2026-04-25
+last_verified: 2026-04-28
 ---
 
 # Harness 运行协议
@@ -55,6 +55,8 @@ Harness 的运行基于一条完整的控制回路：
 
 **关键约束**：单个 skill 的 `bounded round` 约束的是这次局部判断或局部执行包的边界，它**不自动等价于**"整个 Harness 本轮必须停机"。只要没有命中正式 stop condition，supervisor 应继续推进到下一个合法状态转移。
 
+**执行载体偏好**：当实现、审查或验证工作可以被压缩成边界明确、上下文充分、权限安全的一轮任务包时，`Harness` 默认应优先通过真实 `SubAgent` 或其它执行器完成，而不是让控制器自己承担执行平面工作。若运行时缺少稳定分派壳层、权限边界禁止委派，或分派包不安全，才允许当前载体回退；回退必须记录为 `runtime fallback`、`permission blocked` 或 `dispatch package unsafe` 等明确原因。
+
 ---
 
 ## 三、系统组件
@@ -68,6 +70,8 @@ Harness 的运行基于一条完整的控制回路：
 - 决定需要什么证据（定义 Verify 维度）
 - 判断当前状态能否推进（Gate 裁决）
 - 在 fail / drift / blocked 时选择恢复路径
+
+如果当前任务没有命中现成专用 skill，控制器仍不应直接扩张成执行者。正确做法是让 Dispatch 基于已选工作项生成一次性、限定范围的任务专用执行指令，并绑定到通用 `SubAgent`、human executor 或明确的当前载体回退；这类一次性指令不是新的 canonical skill。
 
 ### 3.2 传感器（Sensor）
 
