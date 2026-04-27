@@ -9,6 +9,7 @@ import select
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import unittest
@@ -1104,6 +1105,16 @@ class AdapterDeployTest(unittest.TestCase):
             self.assertEqual(pack_completed.returncode, 0, pack_completed.stderr)
             payload = json.loads(pack_completed.stdout)
             package_file = package_dir_path / payload[0]["filename"]
+            with tarfile.open(package_file, "r:gz") as package_tar:
+                installer_member = package_tar.extractfile(
+                    "package/toolchain/scripts/deploy/bin/aw-installer.js"
+                )
+                self.assertIsNotNone(installer_member)
+                installer_source = installer_member.read().decode("utf-8")
+            self.assertIn("1. Guided update flow", installer_source)
+            self.assertIn("Step 1: Diagnose current agents install.", installer_source)
+            self.assertIn("Step 2: Review update dry-run plan.", installer_source)
+            self.assertIn("Step 3: Type yes to apply update via prune --all -> check_paths_exist -> install -> verify", installer_source)
             env = {
                 **os.environ,
                 "PYTHONDONTWRITEBYTECODE": "1",
