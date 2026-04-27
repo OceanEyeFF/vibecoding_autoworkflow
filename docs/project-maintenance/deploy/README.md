@@ -35,6 +35,7 @@
 | 我想复核 `aw-installer` 非 publish 发布演练结果 | [aw-installer-release-rehearsal.md](./aw-installer-release-rehearsal.md) | 记录 pack、publish dry-run、publish guard、`0.4.0-rc.1 -> next` 推导和 two-target tarball smoke；不授权真实 publish |
 | 我想准备外部试用目标清单和反馈字段 | [aw-installer-external-trial-feedback.md](./aw-installer-external-trial-feedback.md) | 定义自有仓库与论坛志愿者试用模板、反馈字段、隐私边界和下一主要矛盾判定标准；不包含公开招募文案 |
 | 我想给外部试用者一份可复制粘贴的 Codex / Claude Code 安装与 `.aw/` 初始化提示 | [aw-installer-public-quickstart-prompts.md](./aw-installer-public-quickstart-prompts.md) | 汇总 pre-release `.tgz` 安装、Codex `agents` 主路径、Claude Code 兼容试用路径和 `.aw/` 初始化 prompt；不授权 npm publish |
+| 我想复核发布前文档治理状态与剩余 blocker 分类 | [aw-installer-pre-release-docs-governance-verification.md](./aw-installer-pre-release-docs-governance-verification.md) | 记录 quickstart、feedback、smoke、RC、usage-help 路由的最终文档治理验证；区分 docs blocker 与 approval blocker |
 | 我想在隔离目标仓库验证本地 `.tgz` | [aw-installer-external-target-smoke.md](./aw-installer-external-target-smoke.md) | 提供 two-target tarball smoke 操作脚本和汇报模板；不授权真实 publish |
 | 我想在多个临时 workdir / 临时 clone 中验证 packaged installer 不串台 | [aw-installer-multi-temp-workdir-smoke.md](./aw-installer-multi-temp-workdir-smoke.md) | 提供三目标 smoke 脚本，覆盖空临时 repo 与两个批准目标 repo 的临时 clone；不 push、不发布 npm |
 | 我想看 `aw-installer` payload 从哪里来、`update` 信任边界在哪里 | [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md) | 定义 package payload、source/target root override、当前 update 边界与未来远程更新准入 |
@@ -118,6 +119,8 @@
   external trial feedback。回答如何为自有仓库和论坛志愿者试用准备匿名目标清单、命令反馈字段、operator confusion 分类和下一主要矛盾判定标准；不包含公开招募文案。
 - [aw-installer-public-quickstart-prompts.md](./aw-installer-public-quickstart-prompts.md)
   public quickstart prompts。回答如何让外部试用者用当前 pre-release `.tgz` 路径安装 AW artifacts，并通过 Codex 或 Claude Code 初始化 `.aw/`；不授权 npm publish 或包名决定。
+- [aw-installer-pre-release-docs-governance-verification.md](./aw-installer-pre-release-docs-governance-verification.md)
+  pre-release docs governance verification。回答发布前文档路由是否一致、剩余 docs blocker 与 approval blocker 如何区分。
 - [aw-installer-external-target-smoke.md](./aw-installer-external-target-smoke.md)
   external target smoke。回答如何用本地 `.tgz` 在两个隔离目标仓库中验证 packaged `aw-installer` help/version/TUI guard/diagnose/update/install/verify/update apply，并给出汇报模板。
 - [aw-installer-multi-temp-workdir-smoke.md](./aw-installer-multi-temp-workdir-smoke.md)
