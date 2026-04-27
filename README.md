@@ -1,9 +1,9 @@
 ---
 title: "AutoWorkflow"
 status: active
-updated: 2026-04-27
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-27
+last_verified: 2026-04-28
 ---
 # AutoWorkflow
 
@@ -20,25 +20,25 @@ last_verified: 2026-04-27
 
 ## 使用 `aw-installer`
 
-`aw-installer` 是当前 Node/npm/npx 分发入口的目标包名。npm release channel 尚未发布；当前仓库已经验证 root package envelope、tarball smoke 和 publish dry-run。发布后，使用者应在目标项目根目录运行：
+`aw-installer` 是当前仓库内分发入口、CLI bin 和文档中的工作名，不表示最终 npm 包名已经确认。npm release channel 尚未发布；当前仓库已经验证 root package envelope、tarball smoke 和 publish dry-run。外部试用的复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)。最终包名确认并完成发布后，使用者应在目标项目根目录通过已批准的 package entrypoint 运行同等命令语义：
 
 ```bash
-npx aw-installer
-npx aw-installer tui
+npx <approved-package>
+npx <approved-package> tui
 ```
 
-交互式终端中，`npx aw-installer` 可以进入最小 TUI；CI、脚本或非交互环境应使用显式 CLI：
+交互式终端中，已批准 package entrypoint 可以进入最小 TUI；CI、脚本或非交互环境应使用显式 CLI：
 
 ```bash
-npx aw-installer --version
-npx aw-installer diagnose --backend agents --json
-npx aw-installer verify --backend agents
-npx aw-installer update --backend agents
-npx aw-installer update --backend agents --yes
-npx aw-installer install --backend agents
+npx <approved-package> --version
+npx <approved-package> diagnose --backend agents --json
+npx <approved-package> verify --backend agents
+npx <approved-package> update --backend agents
+npx <approved-package> update --backend agents --yes
+npx <approved-package> install --backend agents
 ```
 
-`diagnose` 和 `verify` 是只读检查；`install` 是显式写入当前 payload 的底层命令；`update` 默认只输出 dry-run plan。推荐写入路径是在确认 plan 后运行 `update --yes`，它会按 `prune --all -> check_paths_exist -> install -> verify` 写入目标仓库的 `.agents/skills`。完整入口合同见 [`Distribution Entrypoint Contract`](./docs/project-maintenance/deploy/distribution-entrypoint-contract.md)，维护者验证与本地 tarball smoke 见 [`Deploy Runbook`](./docs/project-maintenance/deploy/deploy-runbook.md)。
+这里的 `<approved-package>` 是未来确认后的 npm package entrypoint；当前不能把它替换成公开可用的 `aw-installer` npm 包。`diagnose` 和 `verify` 是只读检查；`install` 是显式写入当前 payload 的底层命令；`update` 默认只输出 dry-run plan。推荐写入路径是在确认 plan 后运行 `update --yes`，它会按 `prune --all -> check_paths_exist -> install -> verify` 写入目标仓库的 `.agents/skills`。完整入口合同见 [`Distribution Entrypoint Contract`](./docs/project-maintenance/deploy/distribution-entrypoint-contract.md)，维护者验证与本地 tarball smoke 见 [`Deploy Runbook`](./docs/project-maintenance/deploy/deploy-runbook.md)。
 
 `aw-installer` 当前只使用 package 或 checkout 中的 source payload；`update` 不做远程 fetch、channel 解析、自升级、验签或自动回滚。payload provenance 与 update trust boundary 见 [`Payload Provenance And Update Trust Boundary`](./docs/project-maintenance/deploy/payload-provenance-trust-boundary.md)。
 

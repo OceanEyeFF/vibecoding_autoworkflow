@@ -1,9 +1,9 @@
 ---
 title: "Codex Usage Help"
 status: active
-updated: 2026-04-24
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-24
+last_verified: 2026-04-28
 ---
 # Codex Usage Help
 
@@ -12,6 +12,7 @@ last_verified: 2026-04-24
 先读通用 deploy 文档，再读本页：
 
 - [Deploy Runbook](../deploy/deploy-runbook.md)
+- [aw-installer Public Quickstart Prompts](../deploy/aw-installer-public-quickstart-prompts.md)
 - [Skill Deployment 维护流](../deploy/skill-deployment-maintenance.md)
 - [Skill 生命周期维护](../deploy/skill-lifecycle.md)
 
@@ -24,7 +25,8 @@ last_verified: 2026-04-24
 说明：
 
 - 如果没有 `--agents-root`，当前命令默认落到 repo-local `.agents/skills/`
-- 如果你要把 target root 指到别处，再显式传 `--agents-root /your/custom/skills`
+- 如果你要把 target root 指到别处，再显式传 repo-local 或 disposable 路径，例如 `--agents-root "$PWD/.agents/skills"`
+- `--agents-root` 只能指向目标 repo 内受控 `.agents/skills` 目录或专用临时 skills 目录；不要指向 home 目录、`.ssh`、shell 配置目录、系统配置目录或其他敏感可写路径
 - deploy 主流程统一写在 [Deploy Runbook](../deploy/deploy-runbook.md)；本页只补 backend-specific 差异
 
 ## 二、Deploy verify 与真实 Harness 观察
@@ -60,10 +62,10 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ver
 `agents` backend 的主要差异只有 target root 参数：
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents --agents-root /your/custom/skills
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents --agents-root /your/custom/skills
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents --agents-root /your/custom/skills
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents --agents-root /your/custom/skills
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents --agents-root "$PWD/.agents/skills"
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents --agents-root "$PWD/.agents/skills"
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents --agents-root "$PWD/.agents/skills"
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents --agents-root "$PWD/.agents/skills"
 ```
 
 当前语义：
@@ -71,3 +73,4 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ver
 - 前三条构成主流程
 - 最后一条是只读复验
 - 如果你就在当前仓库下部署到默认 repo-local target，可以省略 `--agents-root`
+- 不要把 `--agents-root` 指向与目标 repo 无关的敏感目录；外部试用优先使用默认 repo-local `.agents/skills/`
