@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 "use strict";
 
-const { spawnSync } = require("node:child_process");
+const { spawn } = require("node:child_process");
 const { existsSync, readFileSync } = require("node:fs");
 const { dirname, join } = require("node:path");
 const readline = require("node:readline");
@@ -93,22 +93,25 @@ function printVersion() {
 }
 
 function runWrapper(args) {
-  const result = spawnSync(python, [wrapperPath, ...args], {
-    env,
-    stdio: "inherit",
+  return new Promise((resolve) => {
+    const child = spawn(python, [wrapperPath, ...args], {
+      env,
+      stdio: "inherit",
+    });
+
+    child.on("error", (error) => {
+      console.error(`aw-installer failed to start ${python}: ${error.message}`);
+      resolve(1);
+    });
+    child.on("close", (code, signal) => {
+      if (signal) {
+        console.error(`aw-installer terminated by signal ${signal}`);
+        resolve(1);
+        return;
+      }
+      resolve(code === null ? 1 : code);
+    });
   });
-
-  if (result.error) {
-    console.error(`aw-installer failed to start ${python}: ${result.error.message}`);
-    return 1;
-  }
-
-  if (result.signal) {
-    console.error(`aw-installer terminated by signal ${result.signal}`);
-    return 1;
-  }
-
-  return result.status === null ? 1 : result.status;
 }
 
 function question(rl, prompt) {
@@ -124,7 +127,7 @@ async function pause(rl) {
 async function runGuidedUpdateFlow(rl) {
   console.log("\nGuided update flow");
   console.log("Step 1: Diagnose current agents install.");
-  const diagnoseStatus = runWrapper(["diagnose", "--backend", "agents", "--json"]);
+  const diagnoseStatus = await runWrapper(["diagnose", "--backend", "agents", "--json"]);
   if (diagnoseStatus !== 0) {
     console.log("Diagnose failed; update may not succeed as expected.");
     const proceed = (await question(
@@ -139,7 +142,7 @@ async function runGuidedUpdateFlow(rl) {
   }
 
   console.log("\nStep 2: Review update dry-run plan.");
-  const dryRunStatus = runWrapper(["update", "--backend", "agents"]);
+  const dryRunStatus = await runWrapper(["update", "--backend", "agents"]);
   if (dryRunStatus !== 0) {
     console.log("Update plan failed; not applying.");
     await pause(rl);
@@ -152,7 +155,7 @@ async function runGuidedUpdateFlow(rl) {
   )).trim();
   if (confirmation === "yes") {
     console.log("\nStep 4: Applying update and running strict verify.");
-    runWrapper(["update", "--backend", "agents", "--yes"]);
+    await runWrapper(["update", "--backend", "agents", "--yes"]);
   } else {
     console.log("Update cancelled.");
   }
@@ -188,13 +191,13 @@ Backend: agents
       if (choice === "1") {
         await runGuidedUpdateFlow(rl);
       } else if (choice === "2") {
-        runWrapper(["diagnose", "--backend", "agents", "--json"]);
+        await runWrapper(["diagnose", "--backend", "agents", "--json"]);
         await pause(rl);
       } else if (choice === "3") {
-        runWrapper(["verify", "--backend", "agents"]);
+        await runWrapper(["verify", "--backend", "agents"]);
         await pause(rl);
       } else if (choice === "4") {
-        runWrapper(["update", "--backend", "agents"]);
+        await runWrapper(["update", "--backend", "agents"]);
         await pause(rl);
       } else if (choice === "5") {
         printHelp();
@@ -235,7 +238,7 @@ async function main() {
     return runTui();
   }
 
-  return runWrapper(args);
+  return await runWrapper(args);
 }
 
 main()
