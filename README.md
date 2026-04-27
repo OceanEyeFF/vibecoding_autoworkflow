@@ -42,6 +42,56 @@ npx <approved-package> install --backend agents
 
 `aw-installer` 当前只使用 package 或 checkout 中的 source payload；`update` 不做远程 fetch、channel 解析、自升级、验签或自动回滚。payload provenance 与 update trust boundary 见 [`Payload Provenance And Update Trust Boundary`](./docs/project-maintenance/deploy/payload-provenance-trust-boundary.md)。
 
+### 外部试用路径：目标仓库里运行
+
+发布后预期的最短路径是在目标项目根目录运行已批准 package entrypoint：
+
+```bash
+npx <approved-package> diagnose --backend agents --json
+npx <approved-package> update --backend agents
+npx <approved-package> update --backend agents --yes
+npx <approved-package> verify --backend agents
+```
+
+在 npm release channel 发布前，不要把 `<approved-package>` 替换成公开 npm 上的 `aw-installer`。当前外部试用应使用维护者提供的本地 `.tgz` 或明确 checkout source；完整复制粘贴流程见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)。
+
+### 干净目录初始化
+
+如果目标目录是一个新仓库或空工作目录，推荐先建立 git worktree，再从该目录运行 installer：
+
+```bash
+mkdir target-project
+cd target-project
+git init
+
+npx <approved-package> diagnose --backend agents --json
+npx <approved-package> update --backend agents
+npx <approved-package> update --backend agents --yes
+npx <approved-package> verify --backend agents
+```
+
+这一步只安装 AW skill payload 到目标项目的 `.agents/skills/`。之后在 Codex 中运行 `$set-harness-goal-skill`，再创建 `.aw/` 控制面；不要把 `.aw/` 初始化和 skill payload 安装混成同一个隐式写入步骤。
+
+### 已有工作内容的目录初始化
+
+如果目标仓库已经有代码、文档或进行中的工作，先用只读命令看计划，再由目标 owner 批准写入：
+
+```bash
+npx <approved-package> diagnose --backend agents --json
+npx <approved-package> update --backend agents
+```
+
+确认 dry-run 只会写入目标仓库的 `.agents/skills/aw-*` 受管目录后，再运行：
+
+```bash
+npx <approved-package> update --backend agents --yes
+npx <approved-package> verify --backend agents
+```
+
+随后让 Codex 初始化 `.aw/` 时，应要求它保留现有源码和文档，把已有仓库事实当作 discovery input，而不是覆盖已确认的项目真相。若目标仓库已经有 `.aw/`，必须先检查现有 control state；未经 operator 确认，不要覆盖 `.aw/goal-charter.md`。
+
+外部试用反馈请走 [`aw-installer External Trial Feedback Contract`](./docs/project-maintenance/deploy/aw-installer-external-trial-feedback.md)、[`trial feedback issue template`](./.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [`bug/blocker issue template`](./.github/ISSUE_TEMPLATE/aw-installer-bug.yml)；发布前多临时目录 smoke 路径见 [`aw-installer Multi Temporary Workdir Smoke`](./docs/project-maintenance/deploy/aw-installer-multi-temp-workdir-smoke.md)。
+
 在 npm release channel 发布前，可以从当前 checkout 打一个本地 `.tgz`，再在目标项目根目录用同一 package 入口试跑：
 
 ```bash
