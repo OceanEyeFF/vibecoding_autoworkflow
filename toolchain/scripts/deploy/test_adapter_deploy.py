@@ -735,24 +735,70 @@ class AdapterDeployTest(unittest.TestCase):
 
         code, output = self._run_installer_tui_script(
             [
-                ("Select an action:", "4\n"),
-                ("Review the plan above. Type yes", "no\n"),
+                ("Select an action:", "5\n"),
+                ("Step 3: Type yes", "no\n"),
                 ("Update cancelled.", "\n"),
-                ("Select an action:", "6\n"),
+                ("Select an action:", "7\n"),
             ],
             target_repo=target_repo,
         )
 
         self.assertEqual(code, 0, output)
+        diagnose_index = output.find("Step 1: Diagnose current agents install.")
         plan_index = output.find("[agents] update plan")
-        confirmation_index = output.find("Review the plan above. Type yes")
+        confirmation_index = output.find("Step 3: Type yes")
+        self.assertNotEqual(diagnose_index, -1, output)
         self.assertNotEqual(plan_index, -1, output)
         self.assertNotEqual(confirmation_index, -1, output)
+        self.assertLess(diagnose_index, plan_index)
         self.assertLess(plan_index, confirmation_index)
         self.assertIn("dry-run only; pass --yes to apply update", output)
         self.assertIn("Update cancelled.", output)
         self.assertNotIn("[agents] applying update", output)
         self.assertFalse((target_repo / ".agents" / "skills").exists())
+
+    def test_local_npm_installer_tui_guided_flow_is_primary_menu_action(self) -> None:
+        target_repo = self.temp_root / "tui-guided-target"
+
+        code, output = self._run_installer_tui_script(
+            [
+                ("Select an action:", "1\n"),
+                ("Step 3: Type yes", "no\n"),
+                ("Update cancelled.", "\n"),
+                ("Select an action:", "7\n"),
+            ],
+            target_repo=target_repo,
+        )
+
+        self.assertEqual(code, 0, output)
+        self.assertIn("1. Guided update flow", output)
+        self.assertIn("Guided update flow", output)
+        self.assertIn("Step 1: Diagnose current agents install.", output)
+        self.assertIn("Step 2: Review update dry-run plan.", output)
+        self.assertIn("Step 3: Type yes to apply update via prune --all -> check_paths_exist -> install -> verify", output)
+        self.assertIn("Update cancelled.", output)
+        self.assertNotIn("[agents] applying update", output)
+        self.assertFalse((target_repo / ".agents" / "skills").exists())
+
+    def test_local_npm_installer_tui_guided_flow_apply_runs_update_and_verify(self) -> None:
+        target_repo = self.temp_root / "tui-guided-apply-target"
+
+        code, output = self._run_installer_tui_script(
+            [
+                ("Select an action:", "1\n"),
+                ("Step 3: Type yes", "yes\n"),
+                ("[agents] update complete", "\n"),
+                ("Select an action:", "7\n"),
+            ],
+            target_repo=target_repo,
+            timeout_seconds=60.0,
+        )
+
+        self.assertEqual(code, 0, output)
+        self.assertIn("Step 4: Applying update and running strict verify.", output)
+        self.assertIn("[agents] applying update", output)
+        self.assertIn("[agents] update complete", output)
+        self.assertTrue((target_repo / ".agents" / "skills").is_dir())
 
     def test_local_npm_pack_dry_run_contains_only_package_surface(self) -> None:
         if shutil.which("npm") is None:

@@ -95,6 +95,32 @@ async function pause(rl) {
   await question(rl, "\nPress Enter to return to the installer menu...");
 }
 
+async function runGuidedUpdateFlow(rl) {
+  console.log("\nGuided update flow");
+  console.log("Step 1: Diagnose current agents install.");
+  runWrapper(["diagnose", "--backend", "agents", "--json"]);
+
+  console.log("\nStep 2: Review update dry-run plan.");
+  const dryRunStatus = runWrapper(["update", "--backend", "agents"]);
+  if (dryRunStatus !== 0) {
+    console.log("Update plan failed; not applying.");
+    await pause(rl);
+    return;
+  }
+
+  const confirmation = (await question(
+    rl,
+    "Step 3: Type yes to apply update via prune --all -> check_paths_exist -> install -> verify: ",
+  )).trim();
+  if (confirmation === "yes") {
+    console.log("\nStep 4: Applying update and running strict verify.");
+    runWrapper(["update", "--backend", "agents", "--yes"]);
+  } else {
+    console.log("Update cancelled.");
+  }
+  await pause(rl);
+}
+
 async function runTui() {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     console.error("aw-installer tui requires an interactive terminal.");
@@ -112,45 +138,33 @@ async function runTui() {
 AW Installer
 Backend: agents
 
-1. Diagnose current install
-2. Verify current install
-3. Show update dry-run plan
-4. Apply update after explicit confirmation
-5. Show CLI help
-6. Exit
+1. Guided update flow
+2. Diagnose current install
+3. Verify current install
+4. Show update dry-run plan
+5. Guided apply after explicit confirmation
+6. Show CLI help
+7. Exit
 `);
       const choice = (await question(rl, "Select an action: ")).trim().toLowerCase();
 
       if (choice === "1") {
+        await runGuidedUpdateFlow(rl);
+      } else if (choice === "2") {
         runWrapper(["diagnose", "--backend", "agents", "--json"]);
         await pause(rl);
-      } else if (choice === "2") {
+      } else if (choice === "3") {
         runWrapper(["verify", "--backend", "agents"]);
         await pause(rl);
-      } else if (choice === "3") {
+      } else if (choice === "4") {
         runWrapper(["update", "--backend", "agents"]);
         await pause(rl);
-      } else if (choice === "4") {
-        const dryRunStatus = runWrapper(["update", "--backend", "agents"]);
-        if (dryRunStatus !== 0) {
-          console.log("Update plan failed; not applying.");
-          await pause(rl);
-          continue;
-        }
-        const confirmation = (await question(
-          rl,
-          "Review the plan above. Type yes to apply update via prune --all -> check_paths_exist -> install -> verify: ",
-        )).trim();
-        if (confirmation === "yes") {
-          runWrapper(["update", "--backend", "agents", "--yes"]);
-        } else {
-          console.log("Update cancelled.");
-        }
-        await pause(rl);
       } else if (choice === "5") {
+        await runGuidedUpdateFlow(rl);
+      } else if (choice === "6") {
         printHelp();
         await pause(rl);
-      } else if (choice === "6" || choice === "q" || choice === "quit" || choice === "exit") {
+      } else if (choice === "7" || choice === "q" || choice === "quit" || choice === "exit") {
         return 0;
       } else {
         console.log("Unknown selection.");
