@@ -1275,6 +1275,13 @@ def verify_deployed_skill(binding: SkillBinding, target_root: Path) -> list[Veri
     return issues
 
 
+def iter_target_root_children(target_root: Path, scan_purpose: str) -> list[Path]:
+    try:
+        return sorted(target_root.iterdir())
+    except (FileNotFoundError, PermissionError) as exc:
+        raise DeployError(f"Failed to scan {scan_purpose} at {target_root}: {exc}") from exc
+
+
 def unexpected_managed_target_dirs(
     backend: str,
     target_root: Path,
@@ -1284,7 +1291,7 @@ def unexpected_managed_target_dirs(
         return []
 
     issues: list[VerifyIssue] = []
-    for child in sorted(target_root.iterdir()):
+    for child in iter_target_root_children(target_root, "unexpected managed target dirs"):
         if child.is_symlink() or not child.is_dir():
             continue
         if child.name in expected_target_dir_names:
@@ -1370,7 +1377,7 @@ def prune_all_managed_target_dirs(backend: str, args: argparse.Namespace) -> Non
         return
 
     removed_count = 0
-    for child in sorted(target_root.iterdir()):
+    for child in iter_target_root_children(target_root, "managed install pruning"):
         if child.is_symlink() or not child.is_dir():
             continue
 
@@ -1418,7 +1425,7 @@ def managed_install_dirs(backend: str, target_root: Path) -> list[Path]:
         return []
 
     managed_dirs: list[Path] = []
-    for child in sorted(target_root.iterdir()):
+    for child in iter_target_root_children(target_root, "managed install dirs"):
         if child.is_symlink() or not child.is_dir():
             continue
         marker = load_runtime_marker(managed_skill_marker_path(child))
@@ -1444,7 +1451,7 @@ def collect_update_target_entry_issues(
         return []
 
     issues: list[VerifyIssue] = []
-    for child in sorted(target_root.iterdir()):
+    for child in iter_target_root_children(target_root, "update target entry issues"):
         if child.is_symlink() or not child.is_dir():
             if child.name in known_target_dir_names:
                 issues.append(
