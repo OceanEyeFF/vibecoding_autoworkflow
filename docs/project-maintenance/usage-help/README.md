@@ -27,5 +27,10 @@
 
 - 通用 deploy 入口：看 [deploy/README.md](../deploy/README.md)
 - destructive reinstall 主流程：看 [deploy-runbook.md](../deploy/deploy-runbook.md)
+- 外部试用复制粘贴路径：看 [aw-installer Public Quickstart Prompts](../deploy/aw-installer-public-quickstart-prompts.md)
+- 外部试用反馈模板：看 [trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 与 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)
+- 多临时 workdir 验证：看 [aw-installer Multi Temporary Workdir Smoke](../deploy/aw-installer-multi-temp-workdir-smoke.md)
 - drift、冲突扫描、故障诊断：看 [skill-deployment-maintenance.md](../deploy/skill-deployment-maintenance.md)
 - `add / update / rename / remove`：看 [skill-lifecycle.md](../deploy/skill-lifecycle.md)
+
+当前 public/near-public trial 的稳定路径是 `agents` backend。Claude Code 只保留 compatibility trial lane；OpenCode 不提供稳定 deploy adapter CLI。

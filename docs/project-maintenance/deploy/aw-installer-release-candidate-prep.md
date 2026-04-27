@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Release Candidate Prep"
 status: active
-updated: 2026-04-27
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-27
+last_verified: 2026-04-28
 ---
 # aw-installer Release Candidate Prep
 
@@ -27,7 +27,7 @@ Use this proposal when preparing the first npm release-candidate checkpoint:
 
 | Field | Proposed value |
 |---|---|
-| package | `aw-installer` |
+| working package name / proposed package identity | `aw-installer` |
 | channel | `next` |
 | npm dist-tag | `next` |
 | version form | `x.y.z-rc.N` |
@@ -53,6 +53,7 @@ Collect this evidence before asking for real publish approval:
 - root `npm pack --dry-run --json`.
 - root `npm run publish:dry-run --silent`.
 - isolated root `.tgz` smoke with both `AW_HARNESS_REPO_ROOT=""` and `AW_HARNESS_TARGET_REPO_ROOT=""`.
+- multi-temporary-workdir smoke from [aw-installer Multi Temporary Workdir Smoke](./aw-installer-multi-temp-workdir-smoke.md), covering generated temporary targets and approved target repositories only through temporary clones/workdirs.
 - smoke coverage for:
   - `aw-installer --help`
   - `aw-installer --version`
@@ -72,7 +73,7 @@ Worktrack-specific smoke evidence may live in runtime artifacts while the releas
 
 The release notes or changelog summary should include:
 
-- package name and candidate version.
+- working package name / proposed package identity and candidate version.
 - supported backend list; currently only `agents`.
 - CLI/TUI entrypoints included in the package.
 - payload provenance summary: source payload comes from the package or explicit checkout override.

@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Release Channel Contract"
 status: active
-updated: 2026-04-27
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-27
+last_verified: 2026-04-28
 ---
 # aw-installer Release Channel Contract
 
@@ -13,7 +13,7 @@ last_verified: 2026-04-27
 
 ## 当前状态
 
-- 根目录 `package.json` 是 self-contained `aw-installer` package envelope。
+- 根目录 `package.json` 是 self-contained `aw-installer` package envelope；`aw-installer` 是当前 working package name / proposed package identity，不表示最终公开 npm 包名已经批准。
 - 当前版本仍是 `0.0.0-local`，真实 publish 必须被拒绝。
 - `npm pack --dry-run --json`、`npm run publish:dry-run --silent` 和根 `.tgz` smoke 只证明包面和运行入口，不等于发布授权。
 - `prepublishOnly` guard 位于 `toolchain/scripts/deploy/bin/check-root-publish.js`，负责在真实 publish 前执行机器准入检查。
@@ -32,7 +32,7 @@ last_verified: 2026-04-27
 
 真实 publish 必须同时满足：
 
-- package name is `aw-installer`.
+- package name matches the separately approved public package identity; before that approval, `aw-installer` is only the working package name / proposed package identity used by the local package envelope and release-candidate docs.
 - package version is valid semver and is not `0.0.0-local` or any `-local` version.
 - `CI=true`.
 - `AW_INSTALLER_PUBLISH_APPROVED=1`.

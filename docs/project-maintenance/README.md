@@ -11,10 +11,11 @@
 2. `governance/`
    固定 `review / verify / gate` 与路径治理检查入口。
 3. `deploy/`
-   固定 deploy 文档三分工：
-   - quick start: 首次安装、local/global deploy、最小复验
-   - lifecycle: add / update / rename / remove 的 source 与同步闭环
-   - maintenance: drift、stale、`--prune`、只读 `verify` 与诊断
+   固定当前 deploy 与外部试用入口：
+   - quick start: `agents` destructive reinstall、`diagnose / verify`、pre-release `.tgz` 与目标 package entrypoint 边界
+   - lifecycle: deploy 不承接业务层 `add / rename / remove` 决策，只消费已冻结 source layer
+   - maintenance: drift、conflict、unrecognized、只读 `diagnose / verify` 与恢复路径
+   - external trial: quickstart prompts、issue templates、multi-temp smoke、RC approval/rehearsal 边界
 4. `usage-help/`
    只保留 `agents`、`claude`、`opencode` 的 backend 差异，不再按 `memory-side/` 或 `task-interface/` 拆子树。
 

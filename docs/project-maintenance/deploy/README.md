@@ -45,6 +45,16 @@
 | 我在改 skills 或 `.aw_template/` | [skill-lifecycle.md](./skill-lifecycle.md) | 说明 lifecycle 边界，以及为什么 deploy 不承接业务生命周期决策 |
 | 我想看 backend 当前实现状态 | [deploy-runbook.md](./deploy-runbook.md) | 当前只保留 `agents` 已实现；其他 backend 不写成稳定 operator 流程 |
 
+## 外部试用路由
+
+外部试用者和维护者应按这个顺序进入，而不是从单个 `npx` 片段自行推断发布状态：
+
+- 安装与 `.aw/` 初始化提示：先看 [aw-installer Public Quickstart Prompts](./aw-installer-public-quickstart-prompts.md)。当前只承认 pre-release `.tgz` 或显式 checkout source；direct public `npx aw-installer` 仍等待 package name 与 npm publish 单独批准。
+- 反馈入口：用 [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)。
+- 发布前 smoke：用 [aw-installer Multi Temporary Workdir Smoke](./aw-installer-multi-temp-workdir-smoke.md) 验证空临时 repo 与批准目标 repo 临时 clone 的 source/target 隔离；不要写入非临时 checkout，不 push，不开 issue 或 PR。
+- 发布边界：RC 身份和证据包看 [aw-installer RC Approval Package](./aw-installer-rc-approval-package.md)，非 publish 演练看 [aw-installer Non-Publish Release Rehearsal](./aw-installer-release-rehearsal.md)。二者都不授权真实 npm publish。
+- backend 边界：Codex 走 `agents` backend；Claude Code 仅是 compatibility trial lane，不是稳定 deploy backend。
+
 ## 当前执行边界
 
 - 当前 deploy 工具只实现 `agents`

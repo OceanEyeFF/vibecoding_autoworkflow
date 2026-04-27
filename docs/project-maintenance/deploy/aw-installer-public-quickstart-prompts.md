@@ -153,7 +153,7 @@ If Claude Code does not recognize `/aw-set-harness-goal-skill`, confirm the targ
 
 ## What To Report
 
-Use [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md) for structured reporting. At minimum, preserve:
+Use [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md) for structured reporting. For GitHub reports, use the [aw-installer trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) or the [aw-installer bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml). At minimum, preserve:
 
 - target alias
 - target category
