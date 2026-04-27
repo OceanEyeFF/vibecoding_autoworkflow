@@ -245,9 +245,10 @@ class AdapterDeployTest(unittest.TestCase):
                 output = "".join(output_parts)
                 while step_index < len(steps):
                     pattern, response = steps[step_index]
-                    if output.find(pattern, search_pos) == -1:
+                    match_index = output.find(pattern, search_pos)
+                    if match_index == -1:
                         break
-                    search_pos = len(output)
+                    search_pos = match_index + len(pattern)
                     if response:
                         os.write(master_fd, response.encode("utf-8"))
                     step_index += 1
@@ -488,6 +489,48 @@ class AdapterDeployTest(unittest.TestCase):
         )
         self.assertEqual(scaffold_package["version"], package["version"])
 
+    def test_aw_installer_uses_async_spawn_wrapper(self) -> None:
+        installer_path = (
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "aw-installer.js"
+        )
+
+        installer_source = installer_path.read_text(encoding="utf-8")
+
+        self.assertIn('const { spawn } = require("node:child_process");', installer_source)
+        self.assertNotIn("spawnSync", installer_source)
+        self.assertIn('await runWrapper(["update", "--backend", "agents", "--yes"])', installer_source)
+
+    def test_root_npm_publish_guard_can_be_imported_without_running_checks(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        guard_path = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "check-root-publish.js"
+        )
+
+        completed = subprocess.run(
+            [
+                "node",
+                "-e",
+                (
+                    f"const guard = require({json.dumps(str(guard_path))}); "
+                    "console.log(guard.deriveReleaseChannelFromTag('v1.2.3', '1.2.3', ''));"
+                ),
+            ],
+            cwd=self.temp_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stdout, "latest\n")
+        self.assertEqual(completed.stderr, "")
+
     def test_root_npm_publish_guard_allows_publish_dry_run(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
@@ -547,6 +590,55 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 1)
         self.assertEqual(completed.stdout, "")
         self.assertIn("does not match local scaffold package version 1.2.4", completed.stderr)
+
+    def test_root_npm_publish_guard_rejects_scaffold_packlist_drift(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.temp_root / "release-package-root"
+        guard_dir = package_root / "toolchain" / "scripts" / "deploy" / "bin"
+        guard_dir.mkdir(parents=True)
+        guard_path = guard_dir / "check-root-publish.js"
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js",
+            guard_path,
+        )
+        (package_root / "package.json").write_text(
+            json.dumps(
+                {
+                    "name": "aw-installer",
+                    "version": "1.2.3",
+                    "files": ["toolchain/scripts/deploy/adapter_deploy.py"],
+                }
+            ),
+            encoding="utf-8",
+        )
+        (guard_dir.parent / "package.json").write_text(
+            json.dumps(
+                {
+                    "name": "aw-installer",
+                    "version": "1.2.3",
+                    "files": ["adapter_deploy.py", "harness_deploy.py"],
+                }
+            ),
+            encoding="utf-8",
+        )
+        env = {
+            **os.environ,
+            "npm_config_dry_run": "true",
+        }
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("root package files must cover every local scaffold package file", completed.stderr)
 
     def test_root_npm_publish_guard_rejects_local_version_for_real_publish(self) -> None:
         if shutil.which("node") is None:
@@ -1012,7 +1104,7 @@ class AdapterDeployTest(unittest.TestCase):
             [
                 ("Select an action:", "1\n"),
                 ("Step 3: Type yes", "yes\n"),
-                ("[agents] update complete", "\n"),
+                ("Press Enter to return to the installer menu", "\n"),
                 ("Select an action:", "6\n"),
             ],
             target_repo=target_repo,
@@ -1060,6 +1152,46 @@ class AdapterDeployTest(unittest.TestCase):
                 adapter_deploy.collect_update_target_entry_issues("agents", target_root, set())
             with self.assertRaisesRegex(adapter_deploy.DeployError, "managed install pruning"):
                 adapter_deploy.prune_all_managed_target_dirs("agents", prune_args)
+
+    def test_update_plan_summary_reuses_bindings_and_target_root_scan(self) -> None:
+        code, _, stderr = self._install()
+        self.assertEqual(code, 0, stderr)
+        args = adapter_deploy.parse_args(["update", "--backend", "agents"])
+
+        with (
+            mock.patch.object(
+                adapter_deploy,
+                "collect_skill_bindings",
+                wraps=adapter_deploy.collect_skill_bindings,
+            ) as collect_bindings,
+            mock.patch.object(
+                adapter_deploy,
+                "iter_target_root_children",
+                wraps=adapter_deploy.iter_target_root_children,
+            ) as iter_children,
+        ):
+            summary = adapter_deploy.update_plan_summary("agents", args)
+
+        self.assertEqual(summary["blocking_issue_count"], 0)
+        self.assertEqual(collect_bindings.call_count, 1)
+        self.assertEqual(iter_children.call_count, 1)
+
+    def test_update_apply_failure_prints_recovery_hint(self) -> None:
+        code, _, stderr = self._install()
+        self.assertEqual(code, 0, stderr)
+
+        with mock.patch.object(
+            adapter_deploy,
+            "install_backend_payloads",
+            side_effect=adapter_deploy.DeployError("install exploded"),
+        ):
+            code, stdout, stderr = self._update("--yes")
+
+        self.assertEqual(code, 1)
+        self.assertIn("[agents] applying update", stdout)
+        self.assertIn("install exploded", stderr)
+        self.assertIn("recovery: the update may be partially applied", stderr)
+        self.assertIn("aw-installer update --backend agents --yes", stderr)
 
     def test_local_npm_pack_dry_run_contains_only_package_surface(self) -> None:
         if shutil.which("npm") is None:

@@ -160,6 +160,8 @@ class VerifyResult:
     backend: str
     target_root: Path
     issues: list[VerifyIssue]
+    bindings: list[SkillBinding]
+    target_children: list[Path] | None
 
 
 @dataclass
@@ -1356,12 +1358,18 @@ def unexpected_managed_target_dirs(
     backend: str,
     target_root: Path,
     expected_target_dir_names: set[str],
+    target_children: list[Path] | None = None,
 ) -> list[VerifyIssue]:
     if not target_root.is_dir():
         return []
 
     issues: list[VerifyIssue] = []
-    for child in iter_target_root_children(target_root, "unexpected managed target dirs"):
+    children = (
+        target_children
+        if target_children is not None
+        else iter_target_root_children(target_root, "unexpected managed target dirs")
+    )
+    for child in children:
         if child.is_symlink() or not child.is_dir():
             continue
         if child.name in expected_target_dir_names:
@@ -1416,16 +1424,26 @@ def verify_backend(backend: str, args: argparse.Namespace) -> VerifyResult:
             )
 
     if not issues and target_root.is_dir():
+        target_children = list(iter_target_root_children(target_root, "verify target root"))
         for binding in bindings:
             issues.extend(verify_deployed_skill(binding, target_root))
         issues.extend(
-            unexpected_managed_target_dirs(backend, target_root, expected_target_dir_names)
+            unexpected_managed_target_dirs(
+                backend,
+                target_root,
+                expected_target_dir_names,
+                target_children,
+            )
         )
+    else:
+        target_children = None
 
     return VerifyResult(
         backend=backend,
         target_root=target_root,
         issues=issues,
+        bindings=bindings,
+        target_children=target_children,
     )
 
 
@@ -1490,12 +1508,21 @@ def target_root_status(path: Path) -> str:
     return "missing"
 
 
-def managed_install_dirs(backend: str, target_root: Path) -> list[Path]:
+def managed_install_dirs(
+    backend: str,
+    target_root: Path,
+    target_children: list[Path] | None = None,
+) -> list[Path]:
     if not target_root.is_dir():
         return []
 
     managed_dirs: list[Path] = []
-    for child in iter_target_root_children(target_root, "managed install dirs"):
+    children = (
+        target_children
+        if target_children is not None
+        else iter_target_root_children(target_root, "managed install dirs")
+    )
+    for child in children:
         if child.is_symlink() or not child.is_dir():
             continue
         marker = load_runtime_marker(managed_skill_marker_path(child))
@@ -1516,12 +1543,18 @@ def collect_update_target_entry_issues(
     backend: str,
     target_root: Path,
     known_target_dir_names: set[str],
+    target_children: list[Path] | None = None,
 ) -> list[VerifyIssue]:
     if not target_root.is_dir():
         return []
 
     issues: list[VerifyIssue] = []
-    for child in iter_target_root_children(target_root, "update target entry issues"):
+    children = (
+        target_children
+        if target_children is not None
+        else iter_target_root_children(target_root, "update target entry issues")
+    )
+    for child in children:
         if child.is_symlink() or not child.is_dir():
             if child.name in known_target_dir_names:
                 issues.append(
@@ -1588,7 +1621,7 @@ def issue_to_dict(issue: VerifyIssue) -> dict[str, str]:
 
 def diagnostic_summary(result: VerifyResult) -> dict[str, Any]:
     issue_codes = sorted({issue.code for issue in result.issues})
-    managed_dirs = managed_install_dirs(result.backend, result.target_root)
+    managed_dirs = managed_install_dirs(result.backend, result.target_root, result.target_children)
     unrecognized_issues = [
         issue for issue in result.issues if issue.code in UNRECOGNIZED_ISSUE_CODES
     ]
@@ -1602,7 +1635,7 @@ def diagnostic_summary(result: VerifyResult) -> dict[str, Any]:
         "target_root": str(result.target_root),
         "target_root_status": target_root_status(result.target_root),
         "target_root_exists": result.target_root.exists(),
-        "binding_count": len(collect_skill_bindings(result.backend)),
+        "binding_count": len(result.bindings),
         "managed_install_count": len(managed_dirs),
         "managed_installs": [str(path) for path in managed_dirs],
         "issue_count": len(result.issues),
@@ -1631,7 +1664,14 @@ def print_diagnostic_summary(summary: dict[str, Any]) -> None:
 def update_plan_summary(backend: str, args: argparse.Namespace) -> dict[str, Any]:
     result = verify_backend(backend, args)
     target_root = result.target_root
-    bindings = collect_skill_bindings(backend)
+    bindings = result.bindings
+    target_children = (
+        result.target_children
+        if result.target_children is not None
+        else list(iter_target_root_children(target_root, "update target root"))
+        if target_root.is_dir()
+        else None
+    )
 
     plan_issues: list[VerifyIssue] = []
     plans: list[InstallPlan] = []
@@ -1661,8 +1701,9 @@ def update_plan_summary(backend: str, args: argparse.Namespace) -> dict[str, Any
         backend,
         target_root,
         known_target_dir_names,
+        target_children,
     )
-    managed_installs_to_delete = managed_install_dirs(backend, target_root)
+    managed_installs_to_delete = managed_install_dirs(backend, target_root, target_children)
     managed_delete_paths = set(managed_installs_to_delete)
     all_issues = dedupe_issues([*result.issues, *plan_issues, *target_entry_issues])
     blocking_issues = [
@@ -1702,6 +1743,15 @@ def print_update_plan(summary: dict[str, Any]) -> None:
         print(f"  - {issue['code']}: {issue['path']} ({issue['detail']})")
 
 
+def update_failure_recovery_hint(backend: str, args: argparse.Namespace) -> str:
+    target_root = target_root_for(backend, args)
+    return (
+        f"[{backend}] recovery: the update may be partially applied at {target_root}. "
+        f"After fixing the reported error, run diagnose and then rerun "
+        f"`aw-installer update --backend {backend} --yes`."
+    )
+
+
 def run_update_backend(backend: str, args: argparse.Namespace) -> int:
     if args.json and args.yes:
         raise DeployError("update --json is only supported for dry-run plans; omit --json with --yes")
@@ -1722,13 +1772,16 @@ def run_update_backend(backend: str, args: argparse.Namespace) -> int:
         return 0
 
     print(f"[{backend}] applying update")
-    prune_all_managed_target_dirs(backend, args)
-    check_backend_target_paths(backend, args)
-    install_backend_payloads(backend, args)
-    result = verify_backend(backend, args)
-    if result.issues:
-        print_verify_result(result)
-        raise DeployError(f"[{backend}] update failed strict verify with {len(result.issues)} issue(s)")
+    try:
+        prune_all_managed_target_dirs(backend, args)
+        check_backend_target_paths(backend, args)
+        install_backend_payloads(backend, args)
+        result = verify_backend(backend, args)
+        if result.issues:
+            print_verify_result(result)
+            raise DeployError(f"[{backend}] update failed strict verify with {len(result.issues)} issue(s)")
+    except DeployError as exc:
+        raise DeployError(f"{exc}\n{update_failure_recovery_hint(backend, args)}") from exc
     print_verify_result(result)
     print(f"[{backend}] update complete")
     return 0
