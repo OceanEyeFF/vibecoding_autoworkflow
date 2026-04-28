@@ -22,6 +22,7 @@ def test_publish_workflow_uses_release_published_trigger_and_oidc() -> None:
     assert "types: [published]" in workflow
     assert re.search(r"\bid-token:\s*write\b", workflow)
     assert re.search(r"\bcontents:\s*read\b", workflow)
+    assert "persist-credentials: false" in workflow
 
 
 def test_publish_workflow_uses_npm_environment_and_registry() -> None:

@@ -560,10 +560,10 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(
             package["awInstallerRelease"],
             {
-                "realPublishApproval": "approved",
-                "approvedVersion": "0.4.0-rc.1",
-                "approvedGitTag": "v0.4.0-rc.1",
-                "approvedChannel": "next",
+                "realPublishApproval": "pending",
+                "approvedVersion": "",
+                "approvedGitTag": "",
+                "approvedChannel": "",
             },
         )
         scaffold_package = json.loads(
@@ -880,7 +880,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.stdout, "")
         self.assertIn("realPublishApproval must be approved", completed.stderr)
 
-    def test_root_npm_publish_guard_allows_current_approved_rc_metadata(self) -> None:
+    def test_root_npm_publish_guard_rejects_current_pending_rc_metadata(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
         package_root = self.source_repo_root
@@ -888,7 +888,7 @@ class AdapterDeployTest(unittest.TestCase):
         env = {
             **os.environ,
             "AW_INSTALLER_PUBLISH_APPROVED": "1",
-            "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.0-rc.1",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.0-rc.2",
             "CI": "true",
             "npm_config_tag": "next",
         }
@@ -904,9 +904,9 @@ class AdapterDeployTest(unittest.TestCase):
             check=False,
         )
 
-        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.returncode, 1)
         self.assertEqual(completed.stdout, "")
-        self.assertEqual(completed.stderr, "")
+        self.assertIn("realPublishApproval must be approved", completed.stderr)
 
     def test_root_npm_publish_guard_rejects_stale_approved_version_metadata(self) -> None:
         if shutil.which("node") is None:
@@ -1232,7 +1232,7 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertEqual(completed.stdout, "aw-installer 0.4.0-rc.1\n")
+        self.assertEqual(completed.stdout, "aw-installer 0.4.0-rc.2\n")
         self.assertEqual(completed.stderr, "")
 
     def test_local_npm_installer_bin_version_prefers_root_package_metadata(self) -> None:
@@ -1654,7 +1654,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         payload = json.loads(completed.stdout)
         self.assertEqual(payload["name"], "aw-installer")
-        self.assertEqual(payload["version"], "0.4.0-rc.1")
+        self.assertEqual(payload["version"], "0.4.0-rc.2")
         packed_files = {entry["path"] for entry in payload["files"]}
         self.assertIn("package.json", packed_files)
         self.assertIn("product/harness/skills/harness-skill/SKILL.md", packed_files)
@@ -2047,7 +2047,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertNotEqual(diagnose_payload["source_root"], str(target_repo))
 
         self.assertEqual(version_completed.returncode, 0, version_completed.stderr)
-        self.assertEqual(version_completed.stdout, "aw-installer 0.4.0-rc.1\n")
+        self.assertEqual(version_completed.stdout, "aw-installer 0.4.0-rc.2\n")
         self.assertEqual(version_completed.stderr, "")
         self.assertEqual(tui_completed.returncode, 1)
         self.assertEqual(tui_completed.stdout, "")
