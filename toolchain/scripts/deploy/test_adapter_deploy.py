@@ -442,6 +442,14 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("missing-target-root", stdout)
         self.assertEqual(stderr, "")
 
+    def test_adapter_main_fails_if_parsed_mode_has_no_handler(self) -> None:
+        with mock.patch.dict(adapter_deploy.MODE_HANDLERS, {"verify": None}):
+            code, stdout, stderr = self._verify()
+
+        self.assertEqual(code, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("Unsupported mode after parsing: verify", stderr)
+
     def test_harness_deploy_wrapper_update_dry_run_matches_adapter_json(self) -> None:
         adapter_code, adapter_stdout, adapter_stderr = self._run_cli(
             "update",
@@ -669,6 +677,66 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(completed.stdout, "latest\n")
         self.assertEqual(completed.stderr, "")
+
+    def test_root_npm_publish_dry_run_resolves_allowed_release_channel(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        script_path = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "publish-dry-run.js"
+        )
+
+        completed = subprocess.run(
+            [
+                "node",
+                "-e",
+                (
+                    f"const dryRun = require({json.dumps(str(script_path))}); "
+                    "console.log(dryRun.resolveReleaseChannel({npm_config_tag: 'canary'}));"
+                ),
+            ],
+            cwd=self.temp_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stdout, "canary\n")
+        self.assertEqual(completed.stderr, "")
+
+    def test_root_npm_publish_dry_run_rejects_unsupported_release_channel(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        script_path = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "publish-dry-run.js"
+        )
+        env = {
+            **os.environ,
+            "AW_INSTALLER_RELEASE_CHANNEL": "next;echo injected",
+        }
+
+        completed = subprocess.run(
+            ["node", str(script_path)],
+            cwd=self.source_repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("unsupported aw-installer release channel", completed.stderr)
 
     def test_root_npm_publish_guard_allows_publish_dry_run(self) -> None:
         if shutil.which("node") is None:
@@ -2267,6 +2335,25 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertFalse(self.local_root.exists())
 
+    def test_github_archive_ref_path_preserves_sha_ref(self) -> None:
+        self.assertEqual(
+            adapter_deploy.github_archive_ref_path("0123456789abcdef0123456789abcdef01234567"),
+            "0123456789abcdef0123456789abcdef01234567",
+        )
+        self.assertEqual(
+            adapter_deploy.github_archive_ref_path("master"),
+            "refs/heads/master",
+        )
+
+    def test_extracted_archive_root_error_includes_recovery_context(self) -> None:
+        extract_root = self.temp_root / "empty-archive"
+        extract_root.mkdir()
+
+        with self.assertRaises(adapter_deploy.DeployError) as ctx:
+            adapter_deploy.extracted_archive_root(extract_root)
+
+        self.assertIn("Check --github-repo/--github-ref", str(ctx.exception))
+
     def test_update_json_blocks_duplicate_target_dirs_when_target_root_is_missing(self) -> None:
         self._mutate_target_dir("dispatch-skills", "aw-harness-skill")
 
@@ -2711,6 +2798,20 @@ class AdapterDeployTest(unittest.TestCase):
         payload["legacy_target_dirs"] = ["old-harness-skill", "very-old-harness-skill"]
         metadata = adapter_deploy.payload_target_metadata(payload, binding)
         self.assertEqual(metadata.legacy_target_dirs, ["old-harness-skill", "very-old-harness-skill"])
+
+    def test_all_known_target_dirs_reads_each_binding_metadata_once(self) -> None:
+        bindings = adapter_deploy.collect_skill_bindings("agents", self.context)
+        real_loader = adapter_deploy.load_binding_target_metadata
+
+        with mock.patch.object(
+            adapter_deploy,
+            "load_binding_target_metadata",
+            side_effect=real_loader,
+        ) as load_binding_target_metadata:
+            known = adapter_deploy.all_known_target_dirs(bindings)
+
+        self.assertIn("aw-harness-skill", known)
+        self.assertEqual(load_binding_target_metadata.call_count, len(bindings))
 
     def test_payload_target_metadata_rejects_legacy_dir_with_path_separator(self) -> None:
         binding = self._binding("harness-skill")

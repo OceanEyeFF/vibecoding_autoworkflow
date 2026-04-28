@@ -26,6 +26,7 @@ class DeployError(RuntimeError):
 
 GITHUB_REPO_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 GITHUB_REF_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$")
+GITHUB_SHA_REF_PATTERN = re.compile(r"^[0-9a-fA-F]{40}$")
 DEFAULT_GITHUB_REPO = "OceanEyeFF/vibecoding_autoworkflow"
 
 
@@ -458,7 +459,9 @@ def extracted_archive_root(destination: Path) -> Path:
     candidates = [path for path in destination.iterdir() if path.is_dir()]
     if len(candidates) != 1:
         raise DeployError(
-            f"Expected GitHub archive to contain one repository root, found {len(candidates)}"
+            f"Expected GitHub archive to contain one repository root, found {len(candidates)}. "
+            "Check --github-repo/--github-ref and ensure the downloaded archive is a "
+            "GitHub source archive."
         )
     return candidates[0]
 
@@ -466,7 +469,7 @@ def extracted_archive_root(destination: Path) -> Path:
 def github_archive_ref_path(ref: str) -> str:
     if ref.startswith("refs/"):
         return ref
-    if re.fullmatch(r"[0-9a-fA-F]{40}", ref):
+    if GITHUB_SHA_REF_PATTERN.fullmatch(ref):
         return ref
     return f"refs/heads/{ref}"
 
@@ -485,7 +488,7 @@ def github_source_root(repo: str, ref: str) -> Iterator[Path]:
             with urllib.request.urlopen(archive_url, timeout=60) as response:
                 with zip_path.open("wb") as output:
                     shutil.copyfileobj(response, output, length=1024 * 1024)
-        except Exception as exc:
+        except OSError as exc:
             raise DeployError(
                 f"Failed to download GitHub source archive {safe_repo}@{safe_ref}: {exc}"
             ) from exc
@@ -617,17 +620,31 @@ def collect_skill_bindings(backend: str, context: DeployContext) -> list[SkillBi
     ]
 
 
-def load_json_file(path: Path) -> dict[str, Any]:
+def parse_json_object(text: str, path: Path) -> dict[str, Any]:
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError as exc:
-        raise DeployError(f"Missing JSON file: {path}") from exc
+        data = json.loads(text)
     except json.JSONDecodeError as exc:
         raise DeployError(f"Invalid JSON in {path}: {exc}") from exc
 
     if not isinstance(data, dict):
         raise DeployError(f"JSON payload must be an object: {path}")
     return data
+
+
+def load_json_text_file(path: Path) -> tuple[dict[str, Any], str]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise DeployError(f"Missing JSON file: {path}") from exc
+    return parse_json_object(text, path), text
+
+
+def load_json_file(path: Path) -> dict[str, Any]:
+    return load_json_text_file(path)[0]
+
+
+def load_binding_payload_with_text(binding: SkillBinding) -> tuple[dict[str, Any], str]:
+    return load_json_text_file(binding.payload_path)
 
 
 def string_list(value: object) -> list[str] | None:
@@ -835,9 +852,17 @@ def expected_target_dirs(bindings: list[SkillBinding]) -> set[str]:
 def all_known_target_dirs(bindings: list[SkillBinding]) -> set[str]:
     """Return all target directory names known to belong to current bindings,
     including both current target_dirs and legacy_target_dirs."""
-    known = set(current_target_dirs_by_skill_id(bindings).values())
+    target_dirs: set[str] = set()
+    known: set[str] = set()
     for binding in bindings:
         metadata = load_binding_target_metadata(binding)
+        if metadata.target_dir in target_dirs:
+            raise DeployError(
+                f"Multiple skills map to the same target_dir for backend {binding.backend}: "
+                f"{metadata.target_dir}"
+            )
+        target_dirs.add(metadata.target_dir)
+        known.add(metadata.target_dir)
         known.update(metadata.legacy_target_dirs)
     return known
 
@@ -964,18 +989,22 @@ def compute_payload_fingerprint(
     context: DeployContext,
     *,
     payload: dict[str, Any] | None = None,
+    payload_text: str | None = None,
 ) -> str:
     if payload is None:
-        payload = load_binding_payload(binding)
+        payload, loaded_payload_text = load_binding_payload_with_text(binding)
+        if payload_text is None:
+            payload_text = loaded_payload_text
 
     payload_version = payload_version_from_descriptor(payload, binding=binding)
     target_metadata = payload_target_metadata(payload, binding)
-    try:
-        payload_text = binding.payload_path.read_text(encoding="utf-8")
-    except FileNotFoundError as exc:
-        raise DeployError(
-            f"Missing payload source file while computing fingerprint: {exc.filename}"
-        ) from exc
+    if payload_text is None:
+        try:
+            payload_text = binding.payload_path.read_text(encoding="utf-8")
+        except FileNotFoundError as exc:
+            raise DeployError(
+                f"Missing payload source file while computing fingerprint: {exc.filename}"
+            ) from exc
 
     fingerprint_parts = [
         f"backend={binding.backend}\n"
@@ -1088,7 +1117,7 @@ def build_install_plan(
     target_root: Path,
     context: DeployContext,
 ) -> InstallPlan:
-    payload = load_binding_payload(binding)
+    payload, payload_text = load_binding_payload_with_text(binding)
     target_metadata = payload_target_metadata(payload, binding)
     payload_version = payload_version_from_descriptor(payload, binding=binding)
     return InstallPlan(
@@ -1096,7 +1125,12 @@ def build_install_plan(
         target_metadata=target_metadata,
         target_skill_dir=target_root / target_metadata.target_dir,
         payload_version=payload_version,
-        payload_fingerprint=compute_payload_fingerprint(binding, context, payload=payload),
+        payload_fingerprint=compute_payload_fingerprint(
+            binding,
+            context,
+            payload=payload,
+            payload_text=payload_text,
+        ),
     )
 
 
@@ -2174,8 +2208,9 @@ def main(
                 source_ref=source_ref,
             )
             handler = MODE_HANDLERS.get(args.mode)
-            if handler is not None:
-                return handler(args, context)
+            if handler is None:
+                raise DeployError(f"Unsupported mode after parsing: {args.mode}")
+            return handler(args, context)
     except DeployError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

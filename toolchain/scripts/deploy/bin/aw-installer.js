@@ -132,6 +132,7 @@ function printVersion() {
 function runWrapperWithCandidate(args, candidate) {
   return new Promise((resolve) => {
     const abortController = new AbortController();
+    // The child can emit both error and close; settle once and keep timeout reporting distinct.
     let timedOut = false;
     let settled = false;
     const finish = (status) => {
