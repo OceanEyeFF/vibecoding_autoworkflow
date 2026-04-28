@@ -24,8 +24,7 @@ function deriveReleaseChannelFromTag(tag, packageVersion, packagePrerelease) {
 }
 
 function fail(message) {
-  console.error(message);
-  process.exit(1);
+  throw new Error(message);
 }
 
 function runChecks(checks) {
@@ -69,6 +68,11 @@ function main() {
   const npmDistTag = process.env.npm_config_tag || "latest";
   const publishApproved = process.env.AW_INSTALLER_PUBLISH_APPROVED === "1";
   const isCiRelease = process.env.CI === "true";
+  const releaseApprovalMetadata = packageMetadata.awInstallerRelease || {};
+  const metadataPublishApproval = releaseApprovalMetadata.realPublishApproval || "";
+  const metadataApprovedVersion = releaseApprovalMetadata.approvedVersion || "";
+  const metadataApprovedGitTag = releaseApprovalMetadata.approvedGitTag || "";
+  const metadataApprovedChannel = releaseApprovalMetadata.approvedChannel || "";
 
   runChecks([
     {
@@ -115,6 +119,26 @@ function main() {
         "refusing to publish aw-installer; set AW_INSTALLER_PUBLISH_APPROVED=1 after release approval",
     },
     {
+      test: () => metadataPublishApproval === "approved",
+      message: () =>
+        "refusing to publish aw-installer; package metadata realPublishApproval must be approved by the explicit publish worktrack",
+    },
+    {
+      test: () => metadataApprovedVersion === version,
+      message: () =>
+        `refusing to publish aw-installer; package metadata approvedVersion ${metadataApprovedVersion || "<missing-version>"} must match ${version}`,
+    },
+    {
+      test: () => metadataApprovedGitTag === releaseTag,
+      message: () =>
+        `refusing to publish aw-installer; package metadata approvedGitTag ${metadataApprovedGitTag || "<missing-tag>"} must match ${releaseTag || "<missing-tag>"}`,
+    },
+    {
+      test: () => metadataApprovedChannel === releaseChannel,
+      message: () =>
+        `refusing to publish aw-installer; package metadata approvedChannel ${metadataApprovedChannel || "<missing-channel>"} must match ${releaseChannel || "<missing-channel>"}`,
+    },
+    {
       test: () => isCiRelease,
       message: () => "refusing to publish aw-installer; real publish must run from a CI release context",
     },
@@ -152,12 +176,19 @@ function main() {
 }
 
 if (require.main === module) {
-  process.exit(main());
+  try {
+    process.exit(main());
+  } catch (error) {
+    console.error(error.message || String(error));
+    process.exit(1);
+  }
 }
 
 module.exports = {
   deriveReleaseChannelFromTag,
+  fail,
   main,
   rootFilesCoverScaffoldFiles,
   runChecks,
+  semverPattern,
 };

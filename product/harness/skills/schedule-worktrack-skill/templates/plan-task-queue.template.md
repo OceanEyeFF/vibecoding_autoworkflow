@@ -90,6 +90,7 @@
 - 本轮约束：N/A
 - 本轮验收标准：N/A
 - 验证要求：N/A
+- runtime_dispatch_mode：N/A
 - 完成信号：N/A
 - 所需上下文：N/A
 - 返回调度条件：N/A

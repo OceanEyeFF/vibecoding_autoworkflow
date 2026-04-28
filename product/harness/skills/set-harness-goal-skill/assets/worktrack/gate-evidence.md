@@ -12,7 +12,11 @@
 
 ## Review Lane
 
+> 四路 review 覆盖：运行时支持真实委派时应并行分派四个 SubAgent；无法委派时记录 fallback。lane ids 为 `static-semantic-review`（静态语义解释）、`test-review`（测试 review）、`project-security-review`（security review）、`complexity-performance-review`（代码复杂度和性能 review）。
+
 ### Control Signal
+- review_subagent_lanes:
+- four_lane_dispatch_status:
 - confidence:
 - ready_for_gate:
 - residual_risks:
@@ -20,6 +24,11 @@
 ### Supporting Detail
 - input_ref:
 - freshness:
+- static_semantic_review:
+- test_review:
+- project_security_review:
+- complexity_performance_review:
+- four_lane_fallback_reason:
 - missing_evidence:
 - upstream_constraint_signals:
 - low_severity_absorption_applied:

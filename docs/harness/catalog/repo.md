@@ -1,9 +1,9 @@
 ---
 title: "Harness Skill Catalog / RepoScope"
 status: draft
-updated: 2026-04-26
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-26
+last_verified: 2026-04-28
 ---
 # RepoScope Skill Catalog
 
@@ -70,10 +70,13 @@ preferred handoff fields：
 - canonical skill 保留完整 `RepoScope.deciding` 动作空间，但如果当前 deploy profile 已收窄支持分支，输出必须反映 active route boundary，而不是继续暴露全量 canonical 路由
 - 主要依据 `Repo Goal / Charter`、`Repo Snapshot / Status` 与当前 `Harness Control State` 做 repo 级判断；`Worktrack Contract` / `Plan / Task Queue` 只能作为活跃或刚关闭 worktrack 的边界证据，不能当成 repo 级任务队列
 - 在默认 next-step 判断仍偏松时，启用轻量 `priority reframe / contradiction analysis` 模式
+- 在默认模式和优先级重构都完全找不到可更新内容时，启用 `overview fallback` 模式，用于生成未来 worktrack 候选建议
 - 用 `Facts / Inferences / Unknowns`、单一 `Current Primary Contradiction`、`Primary Aspect`、`Top Priority Now`、`Do Not Do`、`Recommended Repo Action` 与 `Minimal Missing Info` 压缩 repo 级优先级判断
 - 当存在新鲜 `Repo Analysis` artifact 时，可以把它作为该模式的结构化输入；没有该 artifact 时仍必须直接基于 Goal、Snapshot 与 Control State 完成判定
 - `Repo Analysis` 的 `recommended_repo_action` 必须再投影成 `recommended_next_route`、approval 字段与 continuation 字段，不能把分析结论当成已执行状态更新
-- 该模式属于 `RepoScope` 分析模式，不是新的 skill，也不是 `WorktrackScope` skill
+- `overview fallback` 可以参考 `project-dialectic-planning-skill` 的基本面与矛盾分析方法，使用 `Facts / Inferences / Unknowns` 区分事实、推断和未知项，但必须压缩为 repo 级候选建议，不得变成大型战略报告
+- `overview fallback` 只返回 `candidate_worktracks` 与 `top_candidate` 等候选建议，不创建工作追踪，不改变 Harness 控制状态
+- 这些模式属于 `RepoScope` 分析模式，不是新的 skill，也不是 `WorktrackScope` skill
 
 主要依赖：
 
@@ -90,6 +93,7 @@ canonical executable source：
 
 - `initial canonical executable skeleton landed, with bounded priority reframe mode folded into the same skill`
 - `agents deploy copies the canonical skill surface directly; runtime route boundaries should come from current repo artifacts and control state, not legacy payload metadata`
+- `overview fallback mode landed for no-action-found cases`
 
 preferred decision fields：
 
@@ -102,6 +106,9 @@ preferred decision fields：
 - `approval_required`
 - `approval_scope`
 - `approval_reason`
+- `overview_trigger_reason`
+- `candidate_worktracks`
+- `top_candidate`
 
 ### 3. repo-append-request-skill
 

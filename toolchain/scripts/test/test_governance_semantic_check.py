@@ -18,10 +18,13 @@ from governance_semantic_check import (
     check_outdated_placeholder_phrases,
     check_path_governance_docs_list_gitignore_entries,
     check_repo_python_commands_are_bytecode_free,
+    check_repo_whats_next_overview_fallback_contract,
+    check_review_evidence_four_lane_contract,
     check_review_verify_docs_list_closeout_steps,
     check_root_tool_shims_disable_bytecode,
     check_required_handoffs,
     check_subagent_dispatch_default_contract,
+    is_bytecode_free_command_excluded,
 )
 
 
@@ -120,18 +123,61 @@ def test_check_subagent_dispatch_default_contract_flags_missing_term(tmp_path: P
     for relative_path in (
         "product/harness/skills/harness-skill/SKILL.md",
         "product/harness/skills/dispatch-skills/SKILL.md",
+        "product/harness/skills/set-harness-goal-skill/SKILL.md",
+        "product/harness/skills/set-harness-goal-skill/assets/control-state.md",
+        "product/harness/skills/set-harness-goal-skill/assets/worktrack/contract.md",
+        "product/harness/skills/init-worktrack-skill/templates/contract.template.md",
+        "product/.aw_template/control-state.md",
+        "product/.aw_template/worktrack/contract.md",
+        "docs/harness/artifact/control/control-state.md",
+        "docs/harness/artifact/worktrack/contract.md",
         "docs/harness/foundations/Harness运行协议.md",
         "docs/harness/catalog/worktrack.md",
     ):
         write_doc(
             tmp_path / relative_path,
-            "默认\nSubAgent\n权限边界\nruntime fallback\n",
+            "默认\nSubAgent\n权限边界\nsubagent_dispatch_mode\nsubagent_dispatch_mode_override_scope\nworktrack-contract-primary\nglobal-override\nruntime_dispatch_mode\nauto\ndelegated\ncurrent-carrier\nruntime fallback\n",
         )
 
     report = SemanticReport()
     check_subagent_dispatch_default_contract(tmp_path, report)
 
     assert any("dispatch package unsafe" in item for item in report.failures)
+
+
+def test_check_review_evidence_four_lane_contract_flags_missing_lane(tmp_path: Path) -> None:
+    for relative_path in (
+        "product/harness/skills/review-evidence-skill/SKILL.md",
+        "docs/harness/catalog/worktrack.md",
+        "product/harness/skills/set-harness-goal-skill/assets/worktrack/gate-evidence.md",
+        "docs/harness/artifact/worktrack/gate-evidence.md",
+    ):
+        write_doc(
+            tmp_path / relative_path,
+            "并行\nSubAgent\nfallback\nstatic-semantic-review\ntest-review\nproject-security-review\n静态语义解释\n测试 review\nsecurity review\n代码复杂度和性能 review\n",
+        )
+
+    report = SemanticReport()
+    check_review_evidence_four_lane_contract(tmp_path, report)
+
+    assert any("complexity-performance-review" in item for item in report.failures)
+
+
+def test_check_repo_whats_next_overview_fallback_contract_flags_missing_term(tmp_path: Path) -> None:
+    for relative_path in (
+        "product/harness/skills/repo-whats-next-skill/SKILL.md",
+        "product/harness/skills/repo-whats-next-skill/references/overview-fallback-mode.md",
+        "docs/harness/catalog/repo.md",
+    ):
+        write_doc(
+            tmp_path / relative_path,
+            "overview fallback\nproject-dialectic-planning-skill\ncandidate_worktracks\ntop_candidate\nFacts / Inferences / Unknowns\n不创建工作追踪\n",
+        )
+
+    report = SemanticReport()
+    check_repo_whats_next_overview_fallback_contract(tmp_path, report)
+
+    assert any("不改变 Harness 控制状态" in item for item in report.failures)
 
 
 def test_check_adapter_wrappers_are_thin_ignores_absent_adapter_layer(tmp_path: Path) -> None:
@@ -396,7 +442,7 @@ def test_check_repo_python_commands_are_bytecode_free_checks_each_occurrence(tmp
 
 def test_check_repo_python_commands_are_bytecode_free_skips_historical_log(tmp_path: Path) -> None:
     write_doc(
-        tmp_path / "docs/project-maintenance/deploy/codex-harness-manual-run-continuous-2026-04-23.md",
+        tmp_path / "docs/project-maintenance/testing/codex-harness-manual-run-continuous-2026-05-01.md",
         "`python3 -m unittest discover -s tests -v`\n",
     )
 
@@ -404,6 +450,12 @@ def test_check_repo_python_commands_are_bytecode_free_skips_historical_log(tmp_p
     check_repo_python_commands_are_bytecode_free(tmp_path, report)
 
     assert report.failures == []
+    assert is_bytecode_free_command_excluded(
+        "docs/project-maintenance/testing/codex-harness-manual-run-continuous-2026-05-01.md"
+    )
+    assert not is_bytecode_free_command_excluded(
+        "docs/project-maintenance/testing/codex-harness-manual-run-continuous-latest.md"
+    )
 
 
 def test_check_manual_runbook_agents_skill_count_accepts_matching_count(tmp_path: Path) -> None:
@@ -413,7 +465,7 @@ def test_check_manual_runbook_agents_skill_count_accepts_matching_count(tmp_path
             "{}\n",
         )
     write_doc(
-        tmp_path / "docs/project-maintenance/deploy/codex-harness-manual-runbook.md",
+        tmp_path / "docs/project-maintenance/testing/codex-post-deploy-behavior-tests.md",
         "- 当前 `agents` install 已包含全部 2 个 skills，覆盖完整 Harness 控制回路\n",
     )
 
@@ -430,7 +482,7 @@ def test_check_manual_runbook_agents_skill_count_flags_mismatch(tmp_path: Path) 
             "{}\n",
         )
     write_doc(
-        tmp_path / "docs/project-maintenance/deploy/codex-harness-manual-runbook.md",
+        tmp_path / "docs/project-maintenance/testing/codex-post-deploy-behavior-tests.md",
         "- 当前 `agents` install 已包含全部 2 个 skills，覆盖完整 Harness 控制回路\n",
     )
 

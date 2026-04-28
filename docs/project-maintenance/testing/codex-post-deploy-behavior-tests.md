@@ -1,15 +1,15 @@
 ---
-title: "Codex Harness Manual Runbook"
+title: "Codex Post-Deploy Behavior Tests"
 status: active
-updated: 2026-04-26
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-26
+last_verified: 2026-04-28
 ---
-# Codex Harness Manual Runbook
+# Codex Post-Deploy Behavior Tests
 
 > 目的：固定一条最小手动工作流，在 `tmp` 目录下初始化临时测试 repo，用无交互 `Codex` 连续调用 `harness-skill` 推进固定题目，并由当前环境下的 `Codex` 直接监督每轮真实执行内容。
 
-本页属于 [Deploy Runbooks](./README.md) 系列文档。
+本页属于 [Testing Runbooks](./README.md) 系列文档。通用 deploy 主流程见 [Deploy Runbook](../deploy/deploy-runbook.md)。
 
 ## 一、适用范围
 
@@ -113,7 +113,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ver
 这一步的作用是：
 
 - 在临时 repo 下准备一套隔离的 `agents` skill install
-- 当前 `agents` install 已包含全部 17 个 skills，覆盖完整 Harness 控制回路
+- 当前 `agents` install 已包含全部 19 个 skills，覆盖完整 Harness 控制回路与通用执行 worker
   - `RepoScope`：SetGoal / Observe / Decide / Close / ChangeGoal
   - `WorktrackScope`：Init / Observe / Decide / Dispatch / Verify / Judge / Recover / Close
 - `set-harness-goal-skill` 自带完整的 `.aw/` 模板资产（`assets/` 目录），可在运行时根据用户动态需求生成 goal charter、control state 和 repo snapshot，无需外部 scaffold 脚本预置 `.aw/`
@@ -461,10 +461,10 @@ git -C "$TMP_REPO" diff --stat > "$TMP_RUN_ROOT/$ROUND_ID/git-diff-stat.txt"
 
 ## 八、已验证观察记录
 
-[Codex Harness Manual Run Evidence - Continuous Autonomy - 2026-04-23](./codex-harness-manual-run-continuous-2026-04-23.md) 记录了 `continuous-autonomy` 对照 run：`round-000` 到 `round-019` 连续打开并关闭 20 个 bounded worktracks，最终 `86 tests OK`，`round-020` 在预算耗尽后正确停在 strict handback。
+历史 `continuous-autonomy` 对照 run 已从长期入口中移除；需要复核旧 evidence 时使用对应 worktrack 交接或 git 历史。长期测试真相只保留本页的可重复运行步骤。
 
 ## 九、相关文档
 
-- [Deploy Runbook](./deploy-runbook.md)
-- [Template Tooling MVP](./template-tooling-mvp.md)
+- [Deploy Runbook](../deploy/deploy-runbook.md)
+- [Template Tooling MVP](../deploy/template-tooling-mvp.md)
 - [Codex Usage Help](../usage-help/codex.md)

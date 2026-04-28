@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 治理入口"
 status: active
-updated: 2026-04-27
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-27
+last_verified: 2026-04-28
 ---
 # Review / Verify 治理入口
 
@@ -43,6 +43,16 @@ last_verified: 2026-04-27
 - 修复类任务不能只压住当前症状；必须检查相邻状态、恢复路径、operator-facing 语义和已知脏数据场景，避免引入新的问题源，并尽量把修复做完整
 
 ## 三、推荐复核清单
+
+默认 review 至少覆盖五个互相独立的面：
+
+- 代码性能 review：复杂度、重复工作、I/O、资源使用、可扩展性风险
+- Repo 架构 review：目录层级、模块归属、依赖方向、truth/source/deploy target 边界
+- 代码安全 review：权限边界、外部输入、敏感数据、注入面、破坏性动作保护
+- 代码质量 review：可维护性、可读性、错误处理、恢复路径、operator-facing 语义
+- 测试 review：验收覆盖、回归覆盖、验证可信度、缺失测试或过期证据风险
+
+docs-only 或 governance-only 变更也要显式标出不适用的 review 面及理由，不能把未覆盖维度默认为通过。
 
 ### 1. 变更范围
 
@@ -86,7 +96,7 @@ last_verified: 2026-04-27
   - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`
   - 对应的最小 pytest
   - closeout acceptance gate 当前按 `scope_gate -> spec_gate -> static_gate -> cache_gate -> test_gate -> smoke_gate` 顺序收口；其中 `cache_gate` 会扫描 `docs/`、`product/`、`toolchain/` 和 `tools/` 下的 `.pytest_cache`、`__pycache__`、`.pyc` 与 `.pyo` 运行缓存。
-  - closeout `scope_gate` 允许 root `README.md`，因为它是根 `aw-installer` package envelope 的 npm README surface。
+  - closeout `scope_gate` 允许 root `README.md`，因为它是根 `aw-installer` package envelope 的 npm README surface；也允许 `product/.aw_template/`，因为它是 `.aw/` scaffold 模板源码层。
   - closeout `test_gate` 会运行 closeout gate、folder logic、path governance、semantic governance、agents adapter contract 回归测试、deploy regression unittest suite、Repo Analysis contract check、本地 npm deploy package 与根 `aw-installer` package envelope 的 `npm pack --dry-run --json` packlist 检查、根 package publish dry-run及其 `prepublishOnly` guard、临时 `.tgz` help/version/TUI non-interactive guard/diagnose/update dry-run/install/verify/update apply tarball smoke，以及 `adapter_deploy.py` / `harness_deploy.py` 的 `agents` deploy verify。
 - deploy mapping / payload contract 变更
   - `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_agents_adapter_contract.py`
@@ -110,7 +120,7 @@ last_verified: 2026-04-27
   - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py verify --backend agents`
 - Harness runtime 观察或 operator-facing runbook 变更
   - 先跑对应 deploy / adapter 最小验证
-  - 再按 [Codex Harness Manual Runbook](../deploy/codex-harness-manual-runbook.md) 做真实手动观察；该路径不是 cheap deterministic gate，不用 mock smoke 替代
+  - 再按 [Codex Post-Deploy Behavior Tests](../testing/codex-post-deploy-behavior-tests.md) 做真实手动观察；该路径不是 cheap deterministic gate，不用 mock smoke 替代
 
 ### 3.1 修复完整性
 

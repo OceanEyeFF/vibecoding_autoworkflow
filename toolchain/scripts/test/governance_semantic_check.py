@@ -104,11 +104,19 @@ PATH_GOVERNANCE_CHECKS_DOC = "docs/project-maintenance/governance/path-governanc
 REVIEW_VERIFY_HANDBOOK_DOC = "docs/project-maintenance/governance/review-verify-handbook.md"
 TOOLCHAIN_TEST_README_DOC = "toolchain/scripts/test/README.md"
 CODEX_HARNESS_MANUAL_RUNBOOK_DOC = (
-    "docs/project-maintenance/deploy/codex-harness-manual-runbook.md"
+    "docs/project-maintenance/testing/codex-post-deploy-behavior-tests.md"
 )
 SUBAGENT_DEFAULT_CONTRACT_PATHS = [
     "product/harness/skills/harness-skill/SKILL.md",
     "product/harness/skills/dispatch-skills/SKILL.md",
+    "product/harness/skills/set-harness-goal-skill/SKILL.md",
+    "product/harness/skills/set-harness-goal-skill/assets/control-state.md",
+    "product/harness/skills/set-harness-goal-skill/assets/worktrack/contract.md",
+    "product/harness/skills/init-worktrack-skill/templates/contract.template.md",
+    "product/.aw_template/control-state.md",
+    "product/.aw_template/worktrack/contract.md",
+    "docs/harness/artifact/control/control-state.md",
+    "docs/harness/artifact/worktrack/contract.md",
     "docs/harness/foundations/Harness运行协议.md",
     "docs/harness/catalog/worktrack.md",
 ]
@@ -128,8 +136,49 @@ SUBAGENT_DEFAULT_REQUIRED_TERMS = [
     "默认",
     "SubAgent",
     "权限边界",
+    "subagent_dispatch_mode",
+    "subagent_dispatch_mode_override_scope",
+    "worktrack-contract-primary",
+    "global-override",
+    "runtime_dispatch_mode",
+    "auto",
+    "delegated",
+    "current-carrier",
     "runtime fallback",
     "dispatch package unsafe",
+]
+REVIEW_EVIDENCE_FOUR_LANE_CONTRACT_PATHS = [
+    "product/harness/skills/review-evidence-skill/SKILL.md",
+    "docs/harness/catalog/worktrack.md",
+    "product/harness/skills/set-harness-goal-skill/assets/worktrack/gate-evidence.md",
+    "docs/harness/artifact/worktrack/gate-evidence.md",
+]
+REVIEW_EVIDENCE_FOUR_LANE_REQUIRED_TERMS = [
+    "并行",
+    "SubAgent",
+    "fallback",
+    "static-semantic-review",
+    "test-review",
+    "project-security-review",
+    "complexity-performance-review",
+    "静态语义解释",
+    "测试 review",
+    "security review",
+    "代码复杂度和性能 review",
+]
+REPO_WHATS_NEXT_OVERVIEW_FALLBACK_CONTRACT_PATHS = [
+    "product/harness/skills/repo-whats-next-skill/SKILL.md",
+    "product/harness/skills/repo-whats-next-skill/references/overview-fallback-mode.md",
+    "docs/harness/catalog/repo.md",
+]
+REPO_WHATS_NEXT_OVERVIEW_FALLBACK_REQUIRED_TERMS = [
+    "overview fallback",
+    "project-dialectic-planning-skill",
+    "candidate_worktracks",
+    "top_candidate",
+    "Facts / Inferences / Unknowns",
+    "不创建工作追踪",
+    "不改变 Harness 控制状态",
 ]
 APPEND_REQUEST_REQUIRED_TERMS = [
     "approval_required",
@@ -154,9 +203,12 @@ BYTECODE_FREE_COMMAND_GLOBS = [
     "product/harness/skills/**/*.md",
     "toolchain/scripts/deploy/README.md",
 ]
-BYTECODE_FREE_COMMAND_EXCLUDED_PATHS = {
-    "docs/project-maintenance/deploy/codex-harness-manual-run-continuous-2026-04-23.md",
-}
+BYTECODE_FREE_COMMAND_EXCLUDED_PATTERNS = (
+    re.compile(
+        r"docs/project-maintenance/testing/"
+        r"codex-harness-manual-run-continuous-\d{4}-\d{2}-\d{2}\.md"
+    ),
+)
 REPO_PYTHON_COMMAND_RE = re.compile(
     r"\bpython(?:3)?\s+(?:"
     r"-m\s+(?:pytest|unittest)\b|"
@@ -401,11 +453,15 @@ def iter_bytecode_free_command_files(repo_root: Path) -> list[Path]:
     return command_files
 
 
+def is_bytecode_free_command_excluded(relative_path: str) -> bool:
+    return any(pattern.fullmatch(relative_path) for pattern in BYTECODE_FREE_COMMAND_EXCLUDED_PATTERNS)
+
+
 def check_repo_python_commands_are_bytecode_free(repo_root: Path, report: SemanticReport) -> None:
     checked = 0
     for command_file in iter_bytecode_free_command_files(repo_root):
         relative_path = to_relative_posix(command_file, repo_root)
-        if relative_path in BYTECODE_FREE_COMMAND_EXCLUDED_PATHS:
+        if is_bytecode_free_command_excluded(relative_path):
             continue
 
         for line_number, line in enumerate(command_file.read_text(encoding="utf-8").splitlines(), 1):
@@ -553,6 +609,42 @@ def check_subagent_dispatch_default_contract(repo_root: Path, report: SemanticRe
     report.add_info(f"checked {checked} SubAgent default dispatch contract sources")
 
 
+def check_review_evidence_four_lane_contract(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    for relative_path in REVIEW_EVIDENCE_FOUR_LANE_CONTRACT_PATHS:
+        path = repo_root / relative_path
+        if not path.exists():
+            report.add_failure(f"missing review evidence four-lane contract source: {relative_path}")
+            continue
+        checked += 1
+        text = path.read_text(encoding="utf-8")
+        for term in REVIEW_EVIDENCE_FOUR_LANE_REQUIRED_TERMS:
+            if term not in text:
+                report.add_failure(
+                    f"review evidence four-lane contract missing required term {term!r}: {relative_path}"
+                )
+    report.add_info(f"checked {checked} review evidence four-lane contract sources")
+
+
+def check_repo_whats_next_overview_fallback_contract(
+    repo_root: Path, report: SemanticReport
+) -> None:
+    checked = 0
+    for relative_path in REPO_WHATS_NEXT_OVERVIEW_FALLBACK_CONTRACT_PATHS:
+        path = repo_root / relative_path
+        if not path.exists():
+            report.add_failure(f"missing repo whats-next overview fallback source: {relative_path}")
+            continue
+        checked += 1
+        text = path.read_text(encoding="utf-8")
+        for term in REPO_WHATS_NEXT_OVERVIEW_FALLBACK_REQUIRED_TERMS:
+            if term not in text:
+                report.add_failure(
+                    f"repo whats-next overview fallback missing required term {term!r}: {relative_path}"
+                )
+    report.add_info(f"checked {checked} repo whats-next overview fallback sources")
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -571,6 +663,8 @@ def main() -> int:
     check_docs_list_closeout_cache_roots(repo_root, report)
     check_manual_runbook_agents_skill_count(repo_root, report)
     check_subagent_dispatch_default_contract(repo_root, report)
+    check_review_evidence_four_lane_contract(repo_root, report)
+    check_repo_whats_next_overview_fallback_contract(repo_root, report)
 
     payload = {
         "passed": not report.failures,

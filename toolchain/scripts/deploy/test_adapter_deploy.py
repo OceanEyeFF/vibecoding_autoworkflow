@@ -13,6 +13,7 @@ import tarfile
 import tempfile
 import time
 import unittest
+import zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -26,24 +27,39 @@ class AdapterDeployTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         self.temp_root = Path(self.temp_dir.name)
-        self.source_repo_root = adapter_deploy.REPO_ROOT
+        self.source_repo_root = Path(__file__).resolve().parents[3]
         self.fake_repo_root = self.temp_root / "repo"
         self.local_root = self.fake_repo_root / ".agents" / "skills"
         self.override_root = self.temp_root / "custom-root" / "skills"
+        self.npm_state_root = self.temp_root / "npm-state"
+        self.npm_state_root.mkdir(parents=True)
+        (self.npm_state_root / "cache").mkdir()
+        (self.npm_state_root / "tmp").mkdir()
+        (self.npm_state_root / "npmrc").write_text(
+            "audit=false\nfund=false\nupdate-notifier=false\n",
+            encoding="utf-8",
+        )
+        self.npm_env_patch = mock.patch.dict(
+            os.environ,
+            {
+                "NPM_CONFIG_CACHE": str(self.npm_state_root / "cache"),
+                "NPM_CONFIG_TMP": str(self.npm_state_root / "tmp"),
+                "NPM_CONFIG_USERCONFIG": str(self.npm_state_root / "npmrc"),
+            },
+            clear=False,
+        )
+        self.npm_env_patch.start()
+        self.addCleanup(self.npm_env_patch.stop)
         self.adapter_dir = (
             self.fake_repo_root / "product" / "harness" / "adapters" / "agents" / "skills"
         )
 
         self._seed_fake_repo()
+        self.context = adapter_deploy.build_deploy_context(
+            self.fake_repo_root,
+            self.fake_repo_root,
+        )
 
-        self.patches = [
-            mock.patch.object(adapter_deploy, "REPO_ROOT", self.fake_repo_root),
-            mock.patch.object(adapter_deploy, "LOCAL_TARGET_ROOTS", {"agents": self.local_root}),
-            mock.patch.object(adapter_deploy, "ADAPTER_SKILL_DIRS", {"agents": self.adapter_dir}),
-        ]
-        for patcher in self.patches:
-            patcher.start()
-        self.addCleanup(self._cleanup_patches)
         self.addCleanup(self.temp_dir.cleanup)
 
     def _seed_fake_repo(self) -> None:
@@ -56,16 +72,15 @@ class AdapterDeployTest(unittest.TestCase):
             self.fake_repo_root / "product" / "harness" / "skills",
         )
 
-    def _cleanup_patches(self) -> None:
-        for patcher in reversed(self.patches):
-            patcher.stop()
-
     def _run_cli(
         self, *argv: object, env: dict[str, str] | None = None
     ) -> tuple[int, str, str]:
         stdout = io.StringIO()
         stderr = io.StringIO()
-        env_patch = mock.patch.dict("os.environ", env or {}, clear=False)
+        command_env = self._deploy_env()
+        if env is not None:
+            command_env.update(env)
+        env_patch = mock.patch.dict("os.environ", command_env, clear=False)
         with (
             mock.patch.object(sys, "argv", ["adapter_deploy.py", *map(str, argv)]),
             env_patch,
@@ -77,11 +92,19 @@ class AdapterDeployTest(unittest.TestCase):
     def _run_wrapper_cli(self, *argv: object) -> tuple[int, str, str]:
         stdout = io.StringIO()
         stderr = io.StringIO()
+        env_patch = mock.patch.dict("os.environ", self._deploy_env(), clear=False)
         with (
+            env_patch,
             contextlib.redirect_stdout(stdout),
             contextlib.redirect_stderr(stderr),
         ):
             return harness_deploy.main([*map(str, argv)]), stdout.getvalue(), stderr.getvalue()
+
+    def _deploy_env(self) -> dict[str, str]:
+        return {
+            "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
+            "AW_HARNESS_TARGET_REPO_ROOT": str(self.fake_repo_root),
+        }
 
     def _install(self, *extra_args: object) -> tuple[int, str, str]:
         return self._run_cli("install", "--backend", "agents", *extra_args)
@@ -101,15 +124,40 @@ class AdapterDeployTest(unittest.TestCase):
     def _load_json(self, path: Path) -> dict[str, object]:
         return json.loads(path.read_text(encoding="utf-8"))
 
+    def _release_package_metadata(self, version: str, *, channel: str | None = None) -> dict[str, object]:
+        prerelease = version.split("-", 1)[1] if "-" in version else ""
+        approved_channel = channel
+        if approved_channel is None:
+            if "canary" in prerelease.split("."):
+                approved_channel = "canary"
+            elif prerelease.startswith(("alpha", "beta", "rc")):
+                approved_channel = "next"
+            else:
+                approved_channel = "latest"
+        return {
+            "name": "aw-installer",
+            "version": version,
+            "awInstallerRelease": {
+                "realPublishApproval": "approved",
+                "approvedVersion": version,
+                "approvedGitTag": f"v{version}",
+                "approvedChannel": approved_channel,
+            },
+        }
+
     def _binding(self, skill_id: str) -> adapter_deploy.SkillBinding:
         return next(
             binding
-            for binding in adapter_deploy.collect_skill_bindings("agents")
+            for binding in adapter_deploy.collect_skill_bindings("agents", self.context)
             if binding.skill_id == skill_id
         )
 
     def _install_plan(self, skill_id: str, root: Path | None = None) -> adapter_deploy.InstallPlan:
-        return adapter_deploy.build_install_plan(self._binding(skill_id), root or self.local_root)
+        return adapter_deploy.build_install_plan(
+            self._binding(skill_id),
+            root or self.local_root,
+            self.context,
+        )
 
     def _runtime_marker_text(self, skill_id: str, root: Path | None = None) -> str:
         plan = self._install_plan(skill_id, root=root)
@@ -170,11 +218,46 @@ class AdapterDeployTest(unittest.TestCase):
         payload = self._load_json(payload_path)
         return payload["target_dir"]
 
+    def _fake_github_archive_bytes(self) -> bytes:
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            for path in sorted(self.fake_repo_root.rglob("*")):
+                if path.is_file():
+                    archive.write(path, Path("repo-master") / path.relative_to(self.fake_repo_root))
+        return buffer.getvalue()
+
+    def _fake_urlopen_response(self, payload: bytes):
+        class Response:
+            def __init__(self_inner):
+                self_inner.stream = io.BytesIO(payload)
+
+            def __enter__(self_inner):
+                return self_inner
+
+            def __exit__(self_inner, exc_type, exc, traceback):
+                return False
+
+            def read(self_inner, size: int = -1):
+                return self_inner.stream.read(size)
+
+        return Response()
+
     def _fake_sleeping_python_bin(self) -> Path:
         fake_bin = self.temp_root / "fake-python-bin"
         fake_bin.mkdir()
         fake_python = fake_bin / "python3"
         fake_python.write_text("#!/usr/bin/env sh\nsleep 1\n", encoding="utf-8")
+        fake_python.chmod(0o755)
+        return fake_bin
+
+    def _fake_python_fallback_bin(self) -> Path:
+        fake_bin = self.temp_root / "fake-python-fallback-bin"
+        fake_bin.mkdir()
+        fake_python = fake_bin / "python"
+        fake_python.write_text(
+            "#!/bin/sh\nprintf 'fake-python %s\\n' \"$*\"\n",
+            encoding="utf-8",
+        )
         fake_python.chmod(0o755)
         return fake_bin
 
@@ -191,7 +274,7 @@ class AdapterDeployTest(unittest.TestCase):
         *,
         target_repo: Path | None = None,
         env_overrides: dict[str, str] | None = None,
-        timeout_seconds: float = 60.0,
+        timeout_seconds: float = 90.0,
     ) -> tuple[int, str]:
         if not hasattr(os, "openpty"):
             self.skipTest("PTY support is not available")
@@ -310,6 +393,7 @@ class AdapterDeployTest(unittest.TestCase):
             canonical_source = adapter_deploy.payload_canonical_source_metadata(
                 payload,
                 self._binding(skill_id),
+                self.context,
             )
             self.assertTrue(target_skill_dir.is_dir(), target_skill_dir)
             self.assertEqual(
@@ -358,6 +442,14 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("missing-target-root", stdout)
         self.assertEqual(stderr, "")
 
+    def test_adapter_main_fails_if_parsed_mode_has_no_handler(self) -> None:
+        with mock.patch.dict(adapter_deploy.MODE_HANDLERS, {"verify": None}):
+            code, stdout, stderr = self._verify()
+
+        self.assertEqual(code, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("Unsupported mode after parsing: verify", stderr)
+
     def test_harness_deploy_wrapper_update_dry_run_matches_adapter_json(self) -> None:
         adapter_code, adapter_stdout, adapter_stderr = self._run_cli(
             "update",
@@ -376,7 +468,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(wrapper_code, 0, wrapper_stderr)
         self.assertEqual(json.loads(wrapper_stdout), json.loads(adapter_stdout))
 
-    def test_cli_refreshes_runtime_roots_from_env_after_import(self) -> None:
+    def test_cli_derives_runtime_context_from_env_after_import(self) -> None:
         target_repo = self.temp_root / "env-target"
 
         code, stdout, stderr = self._run_cli(
@@ -418,6 +510,24 @@ class AdapterDeployTest(unittest.TestCase):
             adapter_deploy.validate_target_repo_root(
                 Path.home() / ".ssh" / "repo",
                 self.fake_repo_root,
+            )
+
+    def test_source_repo_root_validation_rejects_sensitive_paths(self) -> None:
+        with self.assertRaisesRegex(adapter_deploy.DeployError, "Source repo root is protected"):
+            adapter_deploy.validate_source_repo_root(Path("/etc"))
+
+    def test_normalize_relative_wrappers_use_explicit_context(self) -> None:
+        with self.assertRaisesRegex(adapter_deploy.DeployError, "canonical skill directory"):
+            adapter_deploy.normalize_relative_canonical_path(
+                "/tmp/payload",
+                field_name="canonical_path",
+                skill_id="demo-skill",
+            )
+        with self.assertRaisesRegex(adapter_deploy.DeployError, "repository root"):
+            adapter_deploy.normalize_relative_repo_path(
+                "C:/payload",
+                field_name="repo_path",
+                skill_id="demo-skill",
             )
 
     def test_target_repo_root_validation_allows_container_cwd_under_usr(self) -> None:
@@ -500,11 +610,24 @@ class AdapterDeployTest(unittest.TestCase):
             },
         )
         self.assertIn("toolchain/scripts/deploy/bin/check-root-publish.js", package["files"])
+        self.assertIn("toolchain/scripts/deploy/bin/publish-dry-run.js", package["files"])
         self.assertEqual(
             package["scripts"]["prepublishOnly"],
             "node toolchain/scripts/deploy/bin/check-root-publish.js",
         )
-        self.assertEqual(package["scripts"]["publish:dry-run"], "npm publish --dry-run --json")
+        self.assertEqual(
+            package["scripts"]["publish:dry-run"],
+            "node toolchain/scripts/deploy/bin/publish-dry-run.js",
+        )
+        self.assertEqual(
+            package["awInstallerRelease"],
+            {
+                "realPublishApproval": "approved",
+                "approvedVersion": "0.4.0-rc.3",
+                "approvedGitTag": "v0.4.0-rc.3",
+                "approvedChannel": "next",
+            },
+        )
         scaffold_package = json.loads(
             (self.source_repo_root / "toolchain" / "scripts" / "deploy" / "package.json").read_text(
                 encoding="utf-8"
@@ -554,6 +677,66 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(completed.stdout, "latest\n")
         self.assertEqual(completed.stderr, "")
+
+    def test_root_npm_publish_dry_run_resolves_allowed_release_channel(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        script_path = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "publish-dry-run.js"
+        )
+
+        completed = subprocess.run(
+            [
+                "node",
+                "-e",
+                (
+                    f"const dryRun = require({json.dumps(str(script_path))}); "
+                    "console.log(dryRun.resolveReleaseChannel({npm_config_tag: 'canary'}));"
+                ),
+            ],
+            cwd=self.temp_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stdout, "canary\n")
+        self.assertEqual(completed.stderr, "")
+
+    def test_root_npm_publish_dry_run_rejects_unsupported_release_channel(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        script_path = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "publish-dry-run.js"
+        )
+        env = {
+            **os.environ,
+            "AW_INSTALLER_RELEASE_CHANNEL": "next;echo injected",
+        }
+
+        completed = subprocess.run(
+            ["node", str(script_path)],
+            cwd=self.source_repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("unsupported aw-installer release channel", completed.stderr)
 
     def test_root_npm_publish_guard_allows_publish_dry_run(self) -> None:
         if shutil.which("node") is None:
@@ -667,8 +850,22 @@ class AdapterDeployTest(unittest.TestCase):
     def test_root_npm_publish_guard_rejects_local_version_for_real_publish(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
-        package_root = self.source_repo_root
-        guard_path = package_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js"
+        package_root = self.temp_root / "local-release-package-root"
+        guard_dir = package_root / "toolchain" / "scripts" / "deploy" / "bin"
+        guard_dir.mkdir(parents=True)
+        guard_path = guard_dir / "check-root-publish.js"
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js",
+            guard_path,
+        )
+        (package_root / "package.json").write_text(
+            json.dumps({"name": "aw-installer", "version": "0.0.0-local", "files": []}),
+            encoding="utf-8",
+        )
+        (guard_dir.parent / "package.json").write_text(
+            json.dumps({"name": "aw-installer", "version": "0.0.0-local", "private": True}),
+            encoding="utf-8",
+        )
         env = {
             **os.environ,
         }
@@ -760,6 +957,238 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.stdout, "")
         self.assertIn("AW_INSTALLER_PUBLISH_APPROVED=1", completed.stderr)
 
+    def test_root_npm_publish_guard_rejects_blocked_preflight_metadata_for_real_publish(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.temp_root / "release-package-root"
+        guard_dir = package_root / "toolchain" / "scripts" / "deploy" / "bin"
+        guard_dir.mkdir(parents=True)
+        guard_path = guard_dir / "check-root-publish.js"
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js",
+            guard_path,
+        )
+        package_path = package_root / "package.json"
+        package_path.write_text(
+            json.dumps(
+                {
+                    "name": "aw-installer",
+                    "version": "0.4.0-rc.1",
+                    "awInstallerRelease": {"realPublishApproval": "blocked-until-P0-019"},
+                }
+            ),
+            encoding="utf-8",
+        )
+        env = {
+            **os.environ,
+            "AW_INSTALLER_PUBLISH_APPROVED": "1",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.0-rc.1",
+            "CI": "true",
+            "npm_config_tag": "next",
+        }
+        env.pop("npm_config_dry_run", None)
+        env.pop("AW_INSTALLER_RELEASE_CHANNEL", None)
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("realPublishApproval must be approved", completed.stderr)
+
+    def test_root_npm_publish_guard_accepts_current_approved_rc_metadata(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.source_repo_root
+        guard_path = package_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js"
+        env = {
+            **os.environ,
+            "AW_INSTALLER_PUBLISH_APPROVED": "1",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.0-rc.3",
+            "CI": "true",
+            "npm_config_tag": "next",
+        }
+        env.pop("npm_config_dry_run", None)
+        env.pop("AW_INSTALLER_RELEASE_CHANNEL", None)
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(completed.stderr, "")
+
+    def test_root_npm_publish_guard_rejects_stale_approved_version_metadata(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.temp_root / "release-package-root"
+        guard_dir = package_root / "toolchain" / "scripts" / "deploy" / "bin"
+        guard_dir.mkdir(parents=True)
+        guard_path = guard_dir / "check-root-publish.js"
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js",
+            guard_path,
+        )
+        package_path = package_root / "package.json"
+        metadata = self._release_package_metadata("1.2.4")
+        metadata["awInstallerRelease"]["approvedVersion"] = "1.2.3"
+        package_path.write_text(json.dumps(metadata), encoding="utf-8")
+        env = {
+            **os.environ,
+            "AW_INSTALLER_PUBLISH_APPROVED": "1",
+            "AW_INSTALLER_RELEASE_CHANNEL": "latest",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v1.2.4",
+            "CI": "true",
+            "npm_config_tag": "latest",
+        }
+        env.pop("npm_config_dry_run", None)
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("approvedVersion 1.2.3 must match 1.2.4", completed.stderr)
+
+    def test_root_npm_publish_guard_rejects_missing_version_bound_metadata(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.temp_root / "release-package-root"
+        guard_dir = package_root / "toolchain" / "scripts" / "deploy" / "bin"
+        guard_dir.mkdir(parents=True)
+        guard_path = guard_dir / "check-root-publish.js"
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js",
+            guard_path,
+        )
+        package_path = package_root / "package.json"
+        package_path.write_text(
+            json.dumps(
+                {
+                    "name": "aw-installer",
+                    "version": "1.2.4",
+                    "awInstallerRelease": {"realPublishApproval": "approved"},
+                }
+            ),
+            encoding="utf-8",
+        )
+        env = {
+            **os.environ,
+            "AW_INSTALLER_PUBLISH_APPROVED": "1",
+            "AW_INSTALLER_RELEASE_CHANNEL": "latest",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v1.2.4",
+            "CI": "true",
+            "npm_config_tag": "latest",
+        }
+        env.pop("npm_config_dry_run", None)
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("approvedVersion <missing-version> must match 1.2.4", completed.stderr)
+
+    def test_root_npm_publish_guard_rejects_stale_approved_tag_metadata(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.temp_root / "release-package-root"
+        guard_dir = package_root / "toolchain" / "scripts" / "deploy" / "bin"
+        guard_dir.mkdir(parents=True)
+        guard_path = guard_dir / "check-root-publish.js"
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js",
+            guard_path,
+        )
+        package_path = package_root / "package.json"
+        metadata = self._release_package_metadata("1.2.4")
+        metadata["awInstallerRelease"]["approvedGitTag"] = "v1.2.3"
+        package_path.write_text(json.dumps(metadata), encoding="utf-8")
+        env = {
+            **os.environ,
+            "AW_INSTALLER_PUBLISH_APPROVED": "1",
+            "AW_INSTALLER_RELEASE_CHANNEL": "latest",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v1.2.4",
+            "CI": "true",
+            "npm_config_tag": "latest",
+        }
+        env.pop("npm_config_dry_run", None)
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("approvedGitTag v1.2.3 must match v1.2.4", completed.stderr)
+
+    def test_root_npm_publish_guard_rejects_stale_approved_channel_metadata(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.temp_root / "release-package-root"
+        guard_dir = package_root / "toolchain" / "scripts" / "deploy" / "bin"
+        guard_dir.mkdir(parents=True)
+        guard_path = guard_dir / "check-root-publish.js"
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js",
+            guard_path,
+        )
+        package_path = package_root / "package.json"
+        metadata = self._release_package_metadata("1.2.4")
+        metadata["awInstallerRelease"]["approvedChannel"] = "next"
+        package_path.write_text(json.dumps(metadata), encoding="utf-8")
+        env = {
+            **os.environ,
+            "AW_INSTALLER_PUBLISH_APPROVED": "1",
+            "AW_INSTALLER_RELEASE_CHANNEL": "latest",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v1.2.4",
+            "CI": "true",
+            "npm_config_tag": "latest",
+        }
+        env.pop("npm_config_dry_run", None)
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("approvedChannel next must match latest", completed.stderr)
+
     def test_root_npm_publish_guard_allows_approved_latest_release_metadata(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
@@ -773,7 +1202,7 @@ class AdapterDeployTest(unittest.TestCase):
         )
         package_path = package_root / "package.json"
         package_path.write_text(
-            json.dumps({"name": "aw-installer", "version": "1.2.3"}),
+            json.dumps(self._release_package_metadata("1.2.3")),
             encoding="utf-8",
         )
         env = {
@@ -812,7 +1241,7 @@ class AdapterDeployTest(unittest.TestCase):
         )
         package_path = package_root / "package.json"
         package_path.write_text(
-            json.dumps({"name": "aw-installer", "version": "1.3.0-rc.1"}),
+            json.dumps(self._release_package_metadata("1.3.0-rc.1")),
             encoding="utf-8",
         )
         env = {
@@ -851,7 +1280,7 @@ class AdapterDeployTest(unittest.TestCase):
         )
         package_path = package_root / "package.json"
         package_path.write_text(
-            json.dumps({"name": "aw-installer", "version": "1.3.0-beta.1"}),
+            json.dumps(self._release_package_metadata("1.3.0-beta.1")),
             encoding="utf-8",
         )
         env = {
@@ -925,7 +1354,7 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertEqual(completed.stdout, "aw-installer 0.0.0-local\n")
+        self.assertEqual(completed.stdout, "aw-installer 0.4.0-rc.3\n")
         self.assertEqual(completed.stderr, "")
 
     def test_local_npm_installer_bin_version_prefers_root_package_metadata(self) -> None:
@@ -1079,6 +1508,46 @@ class AdapterDeployTest(unittest.TestCase):
             payload = json.loads(completed.stdout)
             self.assertEqual(payload["target_root"], str(target_repo / ".agents" / "skills"))
 
+    def test_node_deploy_wrappers_fall_back_to_python_when_python3_is_missing(self) -> None:
+        node_path = shutil.which("node")
+        if node_path is None:
+            self.skipTest("node is not available")
+        fake_bin = self._fake_python_fallback_bin()
+        env = {
+            **os.environ,
+            "PATH": str(fake_bin),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+        wrappers = [
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js",
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-harness-deploy.js",
+        ]
+
+        for wrapper in wrappers:
+            with self.subTest(wrapper=wrapper.name):
+                completed = subprocess.run(
+                    [node_path, str(wrapper), "diagnose", "--backend", "agents", "--json"],
+                    cwd=self.source_repo_root,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertIn("fake-python", completed.stdout)
+                self.assertIn("harness_deploy.py diagnose --backend agents --json", completed.stdout)
+
     def test_node_deploy_wrappers_time_out_stalled_python_processes(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
@@ -1226,7 +1695,7 @@ class AdapterDeployTest(unittest.TestCase):
             with self.assertRaisesRegex(adapter_deploy.DeployError, "update target entry issues"):
                 adapter_deploy.collect_update_target_entry_issues("agents", target_root, set())
             with self.assertRaisesRegex(adapter_deploy.DeployError, "managed install pruning"):
-                adapter_deploy.prune_all_managed_target_dirs("agents", prune_args)
+                adapter_deploy.prune_all_managed_target_dirs("agents", prune_args, self.context)
 
     def test_update_plan_summary_reuses_bindings_and_target_root_scan(self) -> None:
         code, _, stderr = self._install()
@@ -1245,7 +1714,7 @@ class AdapterDeployTest(unittest.TestCase):
                 wraps=adapter_deploy.iter_target_root_children,
             ) as iter_children,
         ):
-            summary = adapter_deploy.update_plan_summary("agents", args)
+            summary = adapter_deploy.update_plan_summary("agents", args, self.context)
 
         self.assertEqual(summary["blocking_issue_count"], 0)
         self.assertEqual(collect_bindings.call_count, 1)
@@ -1347,7 +1816,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         payload = json.loads(completed.stdout)
         self.assertEqual(payload["name"], "aw-installer")
-        self.assertEqual(payload["version"], "0.0.0-local")
+        self.assertEqual(payload["version"], "0.4.0-rc.3")
         packed_files = {entry["path"] for entry in payload["files"]}
         self.assertIn("package.json", packed_files)
         self.assertIn("product/harness/skills/harness-skill/SKILL.md", packed_files)
@@ -1454,7 +1923,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertGreater(diagnose_payload["binding_count"], 0)
         self.assertFalse((package_root / payload[0]["filename"]).exists())
 
-    def test_adapter_cli_rejects_source_root_override_without_payload_bindings(self) -> None:
+    def test_adapter_cli_rejects_source_root_override_without_payload_source(self) -> None:
         source_root = self.temp_root / "not-a-harness-checkout"
         target_repo = self.temp_root / "target-repo"
         source_root.mkdir()
@@ -1483,19 +1952,13 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
         self.assertEqual(verify_completed.returncode, 1)
-        self.assertIn("missing-backend-payload-source", verify_completed.stdout)
+        self.assertEqual(verify_completed.stdout, "")
+        self.assertIn("is not a Harness payload source", verify_completed.stderr)
         self.assertNotIn("[agents] ok", verify_completed.stdout)
-        self.assertEqual(verify_completed.stderr, "")
 
-        self.assertEqual(diagnose_completed.returncode, 0, diagnose_completed.stderr)
-        diagnose_payload = json.loads(diagnose_completed.stdout)
-        self.assertEqual(diagnose_payload["binding_count"], 0)
-        self.assertEqual(diagnose_payload["issue_count"], 1)
-        self.assertIn("missing-backend-payload-source", diagnose_payload["issue_codes"])
-        self.assertEqual(
-            diagnose_payload["issues"][0]["path"],
-            str(source_root / "product" / "harness" / "adapters" / "agents" / "skills"),
-        )
+        self.assertEqual(diagnose_completed.returncode, 1)
+        self.assertEqual(diagnose_completed.stdout, "")
+        self.assertIn("is not a Harness payload source", diagnose_completed.stderr)
 
     def test_local_npm_packed_tarball_update_dry_run_uses_repo_root_override(self) -> None:
         if shutil.which("npm") is None:
@@ -1740,7 +2203,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertNotEqual(diagnose_payload["source_root"], str(target_repo))
 
         self.assertEqual(version_completed.returncode, 0, version_completed.stderr)
-        self.assertEqual(version_completed.stdout, "aw-installer 0.0.0-local\n")
+        self.assertEqual(version_completed.stdout, "aw-installer 0.4.0-rc.3\n")
         self.assertEqual(version_completed.stderr, "")
         self.assertEqual(tui_completed.returncode, 1)
         self.assertEqual(tui_completed.stdout, "")
@@ -1797,6 +2260,8 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(code, 0, stderr)
         payload = json.loads(stdout)
         self.assertEqual(payload["backend"], "agents")
+        self.assertEqual(payload["source_kind"], "package")
+        self.assertEqual(payload["source_ref"], "package-local")
         self.assertEqual(payload["blocking_issue_count"], 0)
         self.assertEqual(
             payload["operation_sequence"],
@@ -1805,6 +2270,89 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertGreater(len(payload["planned_target_paths"]), 0)
         self.assertEqual(stderr, "")
         self.assertFalse(self.local_root.exists())
+
+    def test_update_json_can_use_github_source_archive(self) -> None:
+        archive_bytes = self._fake_github_archive_bytes()
+        with mock.patch.object(
+            adapter_deploy.urllib.request,
+            "urlopen",
+            return_value=self._fake_urlopen_response(archive_bytes),
+        ) as urlopen:
+            code, stdout, stderr = self._update(
+                "--json",
+                "--source",
+                "github",
+                "--github-repo",
+                "OceanEyeFF/vibecoding_autoworkflow",
+                "--github-ref",
+                "master",
+            )
+
+        self.assertEqual(code, 0, stderr)
+        urlopen.assert_called_once()
+        self.assertEqual(
+            urlopen.call_args.args[0],
+            "https://codeload.github.com/OceanEyeFF/vibecoding_autoworkflow/zip/refs/heads/master",
+        )
+        payload = json.loads(stdout)
+        self.assertEqual(payload["source_kind"], "github")
+        self.assertEqual(payload["source_ref"], "OceanEyeFF/vibecoding_autoworkflow@master")
+        self.assertTrue(payload["source_root"].endswith("repo-master"))
+        self.assertEqual(payload["target_root"], str(self.local_root))
+        self.assertEqual(payload["blocking_issue_count"], 0)
+        self.assertGreater(len(payload["planned_target_paths"]), 0)
+        self.assertEqual(stderr, "")
+        self.assertFalse(self.local_root.exists())
+
+    def test_update_json_github_source_default_repo_can_use_environment(self) -> None:
+        archive_bytes = self._fake_github_archive_bytes()
+        with mock.patch.object(
+            adapter_deploy.urllib.request,
+            "urlopen",
+            return_value=self._fake_urlopen_response(archive_bytes),
+        ) as urlopen:
+            code, stdout, stderr = self._run_cli(
+                "update",
+                "--backend",
+                "agents",
+                "--json",
+                "--source",
+                "github",
+                env={
+                    "GITHUB_REPOSITORY": "ForkOwner/forked_repo",
+                },
+            )
+
+        self.assertEqual(code, 0, stderr)
+        urlopen.assert_called_once()
+        self.assertEqual(
+            urlopen.call_args.args[0],
+            "https://codeload.github.com/ForkOwner/forked_repo/zip/refs/heads/master",
+        )
+        payload = json.loads(stdout)
+        self.assertEqual(payload["source_kind"], "github")
+        self.assertEqual(payload["source_ref"], "ForkOwner/forked_repo@master")
+        self.assertEqual(stderr, "")
+        self.assertFalse(self.local_root.exists())
+
+    def test_github_archive_ref_path_preserves_sha_ref(self) -> None:
+        self.assertEqual(
+            adapter_deploy.github_archive_ref_path("0123456789abcdef0123456789abcdef01234567"),
+            "0123456789abcdef0123456789abcdef01234567",
+        )
+        self.assertEqual(
+            adapter_deploy.github_archive_ref_path("master"),
+            "refs/heads/master",
+        )
+
+    def test_extracted_archive_root_error_includes_recovery_context(self) -> None:
+        extract_root = self.temp_root / "empty-archive"
+        extract_root.mkdir()
+
+        with self.assertRaises(adapter_deploy.DeployError) as ctx:
+            adapter_deploy.extracted_archive_root(extract_root)
+
+        self.assertIn("Check --github-repo/--github-ref", str(ctx.exception))
 
     def test_update_json_blocks_duplicate_target_dirs_when_target_root_is_missing(self) -> None:
         self._mutate_target_dir("dispatch-skills", "aw-harness-skill")
@@ -2250,6 +2798,20 @@ class AdapterDeployTest(unittest.TestCase):
         payload["legacy_target_dirs"] = ["old-harness-skill", "very-old-harness-skill"]
         metadata = adapter_deploy.payload_target_metadata(payload, binding)
         self.assertEqual(metadata.legacy_target_dirs, ["old-harness-skill", "very-old-harness-skill"])
+
+    def test_all_known_target_dirs_reads_each_binding_metadata_once(self) -> None:
+        bindings = adapter_deploy.collect_skill_bindings("agents", self.context)
+        real_loader = adapter_deploy.load_binding_target_metadata
+
+        with mock.patch.object(
+            adapter_deploy,
+            "load_binding_target_metadata",
+            side_effect=real_loader,
+        ) as load_binding_target_metadata:
+            known = adapter_deploy.all_known_target_dirs(bindings)
+
+        self.assertIn("aw-harness-skill", known)
+        self.assertEqual(load_binding_target_metadata.call_count, len(bindings))
 
     def test_payload_target_metadata_rejects_legacy_dir_with_path_separator(self) -> None:
         binding = self._binding("harness-skill")

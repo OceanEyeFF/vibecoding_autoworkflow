@@ -1,9 +1,9 @@
 ---
 title: "Harness Control State"
 status: active
-updated: 2026-04-23
+updated: 2026-04-27
 owner: aw-kernel
-last_verified: 2026-04-26
+last_verified: 2026-04-27
 ---
 # Harness Control State
 
@@ -52,12 +52,32 @@ last_verified: 2026-04-26
   - 大于 `1` 属于显式观察 profile / runtime override，不是初始化默认值
 - `stop_after_autonomous_slice`
   - 默认应为 `yes`
+- `subagent_dispatch_mode`
+  - `auto`
+  - `delegated`
+  - `current-carrier`
+  - 默认应为 `auto`
+  - 这是 repo 级 SubAgent 分派默认值，不应在默认 scaffold 中遮蔽 worktrack 级执行策略
+- `subagent_dispatch_mode_override_scope`
+  - `worktrack-contract-primary`
+  - `global-override`
+  - 默认应为 `worktrack-contract-primary`
+  - `worktrack-contract-primary` 表示当前 worktrack 的 `runtime_dispatch_mode` 优先；只有显式改成 `global-override` 时，control-state 的 `subagent_dispatch_mode` 才压过 worktrack contract
+- `subagent_default_model`
+  - 可选；用于记录宿主运行时支持时偏好的 delegated carrier model，不改变权限边界
 
 这些字段属于 control policy，不属于业务真相：
 
 - 它们回答的是“在当前 repo charter 内，Harness 是否被允许代替 programmer 自动开启下一段最小 bounded slice”
+- 它们回答的是“默认是否允许使用 SubAgent，以及在 `auto` / `delegated` / `current-carrier` 下如何选择执行载体”
 - 它们不回答 repo 目标本身是什么，也不替代 `Repo Goal / Charter`
 - 它们不替代具体 `Worktrack Contract`
+
+`subagent_dispatch_mode` 的语义必须与 worktrack 级 `runtime_dispatch_mode` 保持一致：
+
+- `auto`：宿主运行时支持真实 SubAgent 委派且权限边界允许时优先委派；如果没有稳定分派壳层、权限阻塞或 `dispatch package unsafe`，必须显式记录 `runtime fallback`
+- `delegated`：必须真实创建委派载体；无法委派时返回运行时缺口或权限阻塞，不得自动改为当前载体执行
+- `current-carrier`：显式关闭 SubAgent 委派，允许当前载体在同一份限定范围约定内执行
 
 但仅有 `Continuation Authority` policy 还不够。
 

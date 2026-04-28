@@ -16,10 +16,18 @@ from gate_status_backfill import update_state
 
 
 NPM_HELP_STDOUT = "usage: aw-installer\nharness_deploy.py\ntui\ninstall\nverify\ndiagnose\nupdate\n"
-NPM_VERSION_STDOUT = "aw-installer 0.0.0-local\n"
+NPM_VERSION = "0.4.0-rc.2"
+NPM_VERSION_STDOUT = f"aw-installer {NPM_VERSION}\n"
 
 
-def npm_pack_stdout(paths: set[str] | None = None, filename: str = "aw-installer-0.0.0-local.tgz") -> str:
+def write_root_package_json(repo_root: Path, version: str = NPM_VERSION) -> None:
+    (repo_root / "package.json").write_text(
+        json.dumps({"name": "aw-installer", "version": version}),
+        encoding="utf-8",
+    )
+
+
+def npm_pack_stdout(paths: set[str] | None = None, filename: str = f"aw-installer-{NPM_VERSION}.tgz") -> str:
     if paths is None:
         paths = closeout_acceptance_gate.EXPECTED_NPM_PACKAGE_FILES
     return json.dumps(
@@ -57,8 +65,8 @@ def successful_npm_command_result(
             "stdout": json.dumps(
                 {
                     "name": "aw-installer",
-                    "version": "0.0.0-local",
-                    "filename": "aw-installer-0.0.0-local.tgz",
+                    "version": NPM_VERSION,
+                    "filename": f"aw-installer-{NPM_VERSION}.tgz",
                     "files": [
                         {"path": path}
                         for path in sorted(closeout_acceptance_gate.ROOT_NPM_REQUIRED_PACKAGE_FILES)
@@ -71,7 +79,7 @@ def successful_npm_command_result(
     if command[:3] == ["npm", "pack", "--json"] and "--pack-destination" in command:
         package_dir = Path(command[command.index("--pack-destination") + 1])
         package_dir.mkdir(parents=True, exist_ok=True)
-        (package_dir / "aw-installer-0.0.0-local.tgz").write_text("fake package", encoding="utf-8")
+        (package_dir / f"aw-installer-{NPM_VERSION}.tgz").write_text("fake package", encoding="utf-8")
         packed_paths = (
             closeout_acceptance_gate.EXPECTED_NPM_PACKAGE_FILES
             if cwd is not None and cwd.as_posix().endswith("toolchain/scripts/deploy")
@@ -210,6 +218,7 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "docs/project-maintenance/governance/path-governance-checks.md",
             ".autoworkflow/closeout/demo/summary.json",
             "package.json",
+            "product/.aw_template/control-state.md",
             "product/harness/skills/harness-skill/SKILL.md",
             "product/harness/adapters/agents/skills/harness-skill/payload.json",
             ".agents/skills/legacy-skill/SKILL.md",
@@ -236,6 +245,7 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "docs/project-maintenance/",
             "docs/harness/",
             "product/README.md",
+            "product/.aw_template/",
             "product/harness/skills/",
             "product/harness/adapters/",
             ".agents/",
@@ -536,6 +546,7 @@ def test_run_cache_gate_allows_root_pytest_cache(tmp_path) -> None:
 
 
 def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
+    write_root_package_json(tmp_path)
     calls: list[tuple[list[str], Path, dict[str, str] | None]] = []
 
     def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
@@ -557,7 +568,8 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
     commands = [command for command, _, _ in calls]
 
     assert result["passed"] is True
-    assert [item["name"] for item in result["subchecks"][:9]] == [
+    assert [item["name"] for item in result["subchecks"][:10]] == [
+        "root_package_version_metadata",
         "gate_tool_tests",
         "folder_logic_tests",
         "path_governance_tests",
@@ -612,6 +624,7 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
 
 
 def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path) -> None:
+    write_root_package_json(tmp_path)
     commands: list[list[str]] = []
 
     def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
@@ -655,6 +668,7 @@ def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path)
 
 
 def test_run_test_gate_checks_broken_local_deploy_target_symlink(monkeypatch, tmp_path) -> None:
+    write_root_package_json(tmp_path)
     commands: list[list[str]] = []
     broken_root = tmp_path / ".agents" / "skills"
     broken_root.parent.mkdir(parents=True)
@@ -692,6 +706,7 @@ def test_run_test_gate_checks_broken_local_deploy_target_symlink(monkeypatch, tm
 
 
 def test_run_test_gate_fails_on_unexpected_npm_packlist(monkeypatch, tmp_path) -> None:
+    write_root_package_json(tmp_path)
     def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
         if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
             return {
@@ -725,7 +740,73 @@ def test_run_test_gate_fails_on_unexpected_npm_packlist(monkeypatch, tmp_path) -
     assert "unexpected npm package files" in pack_result["stderr"]
 
 
+def test_run_test_gate_fails_on_mismatched_tarball_version(monkeypatch, tmp_path) -> None:
+    write_root_package_json(tmp_path, version=NPM_VERSION)
+
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
+        if command[:2] == ["npm", "exec"] and "--version" in command:
+            return {
+                "command": command,
+                "returncode": 0,
+                "stdout": f"aw-installer {NPM_VERSION}0\n",
+                "stderr": "",
+                "passed": True,
+            }
+        npm_result = successful_npm_command_result(command, extra_env, cwd)
+        if npm_result is not None:
+            return npm_result
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is False
+    assert result["status"] == "failed"
+    tarball_results = [
+        item
+        for item in result["subchecks"]
+        if item["name"] in {"npm_tarball_smoke_aw_installer", "root_npm_tarball_smoke_aw_installer"}
+    ]
+    assert tarball_results
+    assert all(item["passed"] is False for item in tarball_results)
+    assert all("version probe omitted package version" in item["stderr"] for item in tarball_results)
+
+
+def test_run_test_gate_fails_on_invalid_root_package_json(monkeypatch, tmp_path) -> None:
+    (tmp_path / "package.json").write_text("{not-json", encoding="utf-8")
+
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
+        npm_result = successful_npm_command_result(command, extra_env, cwd)
+        if npm_result is not None:
+            return npm_result
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is False
+    version_result = result["subchecks"][0]
+    assert version_result["name"] == "root_package_version_metadata"
+    assert version_result["passed"] is False
+    assert "invalid root package.json version metadata" in version_result["stderr"]
+
+
 def test_run_test_gate_fails_on_npm_tarball_exec_failure(monkeypatch, tmp_path) -> None:
+    write_root_package_json(tmp_path)
     def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
         if command[:2] == ["npm", "exec"]:
             return {

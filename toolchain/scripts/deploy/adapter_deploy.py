@@ -4,18 +4,30 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
+import re
 import shutil
 import sys
+import tempfile
+import urllib.parse
+import urllib.request
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Any
+from typing import Any, Callable, Iterator
 
 
 class DeployError(RuntimeError):
     """Raised when deployment inputs or targets are invalid."""
+
+
+GITHUB_REPO_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+GITHUB_REF_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$")
+GITHUB_SHA_REF_PATTERN = re.compile(r"^[0-9a-fA-F]{40}$")
+DEFAULT_GITHUB_REPO = "OceanEyeFF/vibecoding_autoworkflow"
 
 
 def path_is_relative_to(path: Path, parent: Path) -> bool:
@@ -24,6 +36,13 @@ def path_is_relative_to(path: Path, parent: Path) -> bool:
     except ValueError:
         return False
     return True
+
+
+def relative_posix_path(path: Path, parent: Path) -> str:
+    try:
+        return path.relative_to(parent).as_posix()
+    except ValueError:
+        return path.as_posix()
 
 
 def exact_sensitive_target_repo_roots() -> tuple[Path, ...]:
@@ -81,48 +100,114 @@ def validate_target_repo_root(path: Path, source_root: Path) -> Path:
     return resolved
 
 
+def required_source_repo_root_paths(source_root: Path) -> tuple[Path, ...]:
+    return (
+        source_root / "product" / "harness" / "adapters" / "agents" / "skills",
+        source_root / "product" / "harness" / "skills",
+    )
+
+
+def validate_source_repo_root(path: Path) -> Path:
+    resolved = path.expanduser().resolve()
+    for sensitive_root in exact_sensitive_target_repo_roots():
+        if resolved == sensitive_root:
+            raise DeployError(f"Source repo root is protected and cannot be used: {resolved}")
+    for sensitive_root in recursive_sensitive_target_repo_roots():
+        if resolved == sensitive_root or path_is_relative_to(resolved, sensitive_root):
+            raise DeployError(f"Source repo root is protected and cannot be used: {resolved}")
+
+    missing_paths = [
+        relative_posix_path(required_path, resolved)
+        for required_path in required_source_repo_root_paths(resolved)
+        if not required_path.is_dir()
+    ]
+    if missing_paths:
+        missing_list = ", ".join(missing_paths)
+        raise DeployError(
+            f"Source repo root {resolved} is not a Harness payload source; missing: {missing_list}"
+        )
+    return resolved
+
+
 def resolve_repo_root() -> Path:
     """Resolve the source root that owns canonical Harness payload files."""
 
     override = os.environ.get("AW_HARNESS_REPO_ROOT")
     if override:
-        return Path(override).expanduser().resolve()
-    return Path(__file__).resolve().parents[3]
+        return validate_source_repo_root(Path(override))
+    return validate_source_repo_root(Path(__file__).resolve().parents[3])
 
 
-def resolve_target_repo_root(source_root: Path) -> Path:
+def resolve_target_repo_root(source_root: Path, *, source_root_from_env: bool = False) -> Path:
     """Resolve the user project root that receives backend install targets."""
 
     target_override = os.environ.get("AW_HARNESS_TARGET_REPO_ROOT")
     if target_override:
         return validate_target_repo_root(Path(target_override), source_root)
-    if os.environ.get("AW_HARNESS_REPO_ROOT"):
+    if source_root_from_env:
         return validate_target_repo_root(source_root, source_root)
     return validate_target_repo_root(Path.cwd(), source_root)
 
 
-def set_runtime_roots(source_root: Path, target_repo_root: Path) -> None:
-    """Update deploy runtime roots and derived backend paths together."""
+@dataclass(frozen=True)
+class DeployContext:
+    """Resolved deploy roots for one command invocation."""
 
-    global REPO_ROOT, TARGET_REPO_ROOT, LOCAL_TARGET_ROOTS, ADAPTER_SKILL_DIRS
-    REPO_ROOT = source_root
-    TARGET_REPO_ROOT = target_repo_root
-    LOCAL_TARGET_ROOTS = {
-        "agents": TARGET_REPO_ROOT / ".agents" / "skills",
-    }
-    ADAPTER_SKILL_DIRS = {
-        "agents": REPO_ROOT / "product" / "harness" / "adapters" / "agents" / "skills",
-    }
+    source_root: Path
+    target_repo_root: Path
+    local_target_roots: dict[str, Path]
+    adapter_skill_dirs: dict[str, Path]
+    source_kind: str = "package"
+    source_ref: str = "package-local"
 
 
-def refresh_runtime_roots_from_env() -> None:
-    """Refresh runtime roots after callers set deploy environment overrides."""
+def build_deploy_context(
+    source_root: Path,
+    target_repo_root: Path,
+    *,
+    source_kind: str = "package",
+    source_ref: str = "package-local",
+) -> DeployContext:
+    """Build source, target, and backend path roots for one deploy invocation."""
 
-    source_root = resolve_repo_root()
-    set_runtime_roots(source_root, resolve_target_repo_root(source_root))
+    return DeployContext(
+        source_root=source_root,
+        target_repo_root=target_repo_root,
+        local_target_roots={
+            "agents": target_repo_root / ".agents" / "skills",
+        },
+        adapter_skill_dirs={
+            "agents": source_root / "product" / "harness" / "adapters" / "agents" / "skills",
+        },
+        source_kind=source_kind,
+        source_ref=source_ref,
+    )
 
 
-refresh_runtime_roots_from_env()
+def deploy_context_from_env(
+    *,
+    source_root_override: Path | None = None,
+    source_kind: str = "package",
+    source_ref: str = "package-local",
+) -> DeployContext:
+    """Resolve deploy roots from the current process environment."""
+
+    source_root_from_env = source_root_override is None and bool(
+        os.environ.get("AW_HARNESS_REPO_ROOT")
+    )
+    source_root = (
+        validate_source_repo_root(source_root_override)
+        if source_root_override is not None
+        else resolve_repo_root()
+    )
+    return build_deploy_context(
+        source_root,
+        resolve_target_repo_root(source_root, source_root_from_env=source_root_from_env),
+        source_kind=source_kind,
+        source_ref=source_ref,
+    )
+
+
 EXPECTED_PAYLOAD_POLICIES = {
     "agents": "canonical-copy",
 }
@@ -165,6 +250,7 @@ class VerifyResult:
     """Collected verification state for one backend target root."""
 
     backend: str
+    source_root: Path
     target_root: Path
     issues: list[VerifyIssue]
     bindings: list[SkillBinding]
@@ -249,6 +335,36 @@ def add_target_override_args(subparser: argparse.ArgumentParser) -> None:
     )
 
 
+def default_github_repo() -> str:
+    return (
+        os.environ.get("AW_INSTALLER_GITHUB_REPO")
+        or os.environ.get("GITHUB_REPOSITORY")
+        or DEFAULT_GITHUB_REPO
+    )
+
+
+def add_update_source_args(subparser: argparse.ArgumentParser) -> None:
+    subparser.add_argument(
+        "--source",
+        choices=("package", "github"),
+        default="package",
+        help="Payload source for update. Defaults to the package-local payload.",
+    )
+    subparser.add_argument(
+        "--github-repo",
+        default=default_github_repo(),
+        help=(
+            "GitHub owner/repo to use when --source github is selected. "
+            "Defaults to AW_INSTALLER_GITHUB_REPO, GITHUB_REPOSITORY, or the upstream repo."
+        ),
+    )
+    subparser.add_argument(
+        "--github-ref",
+        default="master",
+        help="GitHub branch or ref to use when --source github is selected.",
+    )
+
+
 def parse_args(
     argv: list[str] | None = None,
     *,
@@ -294,6 +410,7 @@ def parse_args(
     update_parser = subparsers.add_parser("update")
     add_backend_args(update_parser)
     add_target_override_args(update_parser)
+    add_update_source_args(update_parser)
     update_parser.add_argument(
         "--yes",
         action="store_true",
@@ -308,15 +425,106 @@ def parse_args(
     return parser.parse_args(argv)
 
 
+def validate_github_repo(value: str) -> str:
+    if not GITHUB_REPO_PATTERN.fullmatch(value):
+        raise DeployError(
+            f"GitHub repo must use OWNER/REPO with safe characters only: {value}"
+        )
+    return value
+
+
+def validate_github_ref(value: str) -> str:
+    if (
+        not GITHUB_REF_PATTERN.fullmatch(value)
+        or ".." in value
+        or value.endswith("/")
+        or value.endswith(".lock")
+    ):
+        raise DeployError(f"GitHub ref contains unsupported characters: {value}")
+    return value
+
+
+def safe_extract_zip(zip_path: Path, destination: Path) -> None:
+    with zipfile.ZipFile(zip_path) as archive:
+        for member in archive.infolist():
+            member_path = destination / member.filename
+            try:
+                member_path.resolve().relative_to(destination.resolve())
+            except ValueError as exc:
+                raise DeployError(f"GitHub archive contains unsafe path: {member.filename}") from exc
+        archive.extractall(destination)
+
+
+def extracted_archive_root(destination: Path) -> Path:
+    candidates = [path for path in destination.iterdir() if path.is_dir()]
+    if len(candidates) != 1:
+        raise DeployError(
+            f"Expected GitHub archive to contain one repository root, found {len(candidates)}. "
+            "Check --github-repo/--github-ref and ensure the downloaded archive is a "
+            "GitHub source archive."
+        )
+    return candidates[0]
+
+
+def github_archive_ref_path(ref: str) -> str:
+    if ref.startswith("refs/"):
+        return ref
+    if GITHUB_SHA_REF_PATTERN.fullmatch(ref):
+        return ref
+    return f"refs/heads/{ref}"
+
+
+@contextlib.contextmanager
+def github_source_root(repo: str, ref: str) -> Iterator[Path]:
+    safe_repo = validate_github_repo(repo)
+    safe_ref = validate_github_ref(ref)
+    encoded_ref = urllib.parse.quote(github_archive_ref_path(safe_ref), safe="/")
+    archive_url = f"https://codeload.github.com/{safe_repo}/zip/{encoded_ref}"
+
+    with tempfile.TemporaryDirectory(prefix="aw-installer-github-source-") as temp_dir:
+        temp_root = Path(temp_dir)
+        zip_path = temp_root / "source.zip"
+        try:
+            with urllib.request.urlopen(archive_url, timeout=60) as response:
+                with zip_path.open("wb") as output:
+                    shutil.copyfileobj(response, output, length=1024 * 1024)
+        except OSError as exc:
+            raise DeployError(
+                f"Failed to download GitHub source archive {safe_repo}@{safe_ref}: {exc}"
+            ) from exc
+
+        extract_root = temp_root / "extract"
+        extract_root.mkdir()
+        safe_extract_zip(zip_path, extract_root)
+        source_root = validate_source_repo_root(extracted_archive_root(extract_root))
+        yield source_root
+
+
+@contextlib.contextmanager
+def source_root_for_args(args: argparse.Namespace) -> Iterator[tuple[Path | None, str, str]]:
+    if getattr(args, "source", "package") == "package":
+        yield None, "package", "package-local"
+        return
+
+    if args.source == "github":
+        repo = getattr(args, "github_repo", "")
+        ref = getattr(args, "github_ref", "")
+        with github_source_root(repo, ref) as source_root:
+            yield source_root, "github", f"{repo}@{ref}"
+        return
+
+    raise DeployError(f"Unsupported update source: {args.source}")
+
+
 def iter_backends(selected: str) -> list[str]:
     return [selected]
 
 
-def target_root_for(backend: str, args: argparse.Namespace) -> Path:
+def target_root_for(backend: str, args: argparse.Namespace, context: DeployContext) -> Path:
     if backend == "agents" and args.agents_root is not None:
         return args.agents_root
     try:
-        return LOCAL_TARGET_ROOTS[backend]
+        return context.local_target_roots[backend]
     except KeyError as exc:
         raise DeployError(f"Unsupported backend target root resolution: {backend}") from exc
 
@@ -333,7 +541,16 @@ def ensure_install_target_root(path: Path) -> None:
         print(f"ready target root {path}")
         return
 
-    path.mkdir(parents=True, exist_ok=True)
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except FileExistsError as exc:
+        raise DeployError(f"Target root exists but is not a directory: {path}") from exc
+    except OSError as exc:
+        raise DeployError(f"Target root could not be created: {path}: {exc}") from exc
+    if path.is_symlink():
+        raise DeployError(f"Target root must be a real directory, not a symlink: {path}")
+    if not path.is_dir():
+        raise DeployError(f"Target root exists but is not a directory: {path}")
     print(f"created target root {path}")
 
 
@@ -375,15 +592,15 @@ def verify_target_root(backend: str, target_root: Path) -> list[VerifyIssue]:
     ]
 
 
-def adapter_skills_dir_for(backend: str) -> Path:
+def adapter_skills_dir_for(backend: str, context: DeployContext) -> Path:
     try:
-        return ADAPTER_SKILL_DIRS[backend]
+        return context.adapter_skill_dirs[backend]
     except KeyError as exc:
         raise DeployError(f"Unsupported adapter directory for backend: {backend}") from exc
 
 
-def collect_skill_bindings(backend: str) -> list[SkillBinding]:
-    adapter_dir = adapter_skills_dir_for(backend)
+def collect_skill_bindings(backend: str, context: DeployContext) -> list[SkillBinding]:
+    adapter_dir = adapter_skills_dir_for(backend, context)
 
     adapter_skill_ids = (
         {path.name for path in adapter_dir.iterdir() if path.is_dir()}
@@ -403,11 +620,9 @@ def collect_skill_bindings(backend: str) -> list[SkillBinding]:
     ]
 
 
-def load_json_file(path: Path) -> dict[str, Any]:
+def parse_json_object(text: str, path: Path) -> dict[str, Any]:
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError as exc:
-        raise DeployError(f"Missing JSON file: {path}") from exc
+        data = json.loads(text)
     except json.JSONDecodeError as exc:
         raise DeployError(f"Invalid JSON in {path}: {exc}") from exc
 
@@ -416,13 +631,35 @@ def load_json_file(path: Path) -> dict[str, Any]:
     return data
 
 
+def load_json_text_file(path: Path) -> tuple[dict[str, Any], str]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise DeployError(f"Missing JSON file: {path}") from exc
+    return parse_json_object(text, path), text
+
+
+def load_json_file(path: Path) -> dict[str, Any]:
+    return load_json_text_file(path)[0]
+
+
+def load_binding_payload_with_text(binding: SkillBinding) -> tuple[dict[str, Any], str]:
+    return load_json_text_file(binding.payload_path)
+
+
 def string_list(value: object) -> list[str] | None:
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
         return None
     return value
 
 
-def normalize_relative_target_path(value: str, *, field_name: str, skill_id: str) -> str:
+def normalize_relative_path(
+    value: str,
+    *,
+    field_name: str,
+    skill_id: str,
+    root_description: str,
+) -> str:
     windows_path = PureWindowsPath(value)
     if (
         PurePosixPath(value).is_absolute()
@@ -431,7 +668,7 @@ def normalize_relative_target_path(value: str, *, field_name: str, skill_id: str
         or bool(windows_path.root)
     ):
         raise DeployError(
-            f"{field_name} must stay within the backend target root for skill {skill_id}: {value}"
+            f"{field_name} must stay within the {root_description} for skill {skill_id}: {value}"
         )
 
     segments = [segment for segment in value.replace("\\", "/").split("/") if segment]
@@ -447,20 +684,31 @@ def normalize_relative_target_path(value: str, *, field_name: str, skill_id: str
     return PurePosixPath(*segments).as_posix()
 
 
+def normalize_relative_target_path(value: str, *, field_name: str, skill_id: str) -> str:
+    return normalize_relative_path(
+        value,
+        field_name=field_name,
+        skill_id=skill_id,
+        root_description="backend target root",
+    )
+
+
 def normalize_relative_canonical_path(value: str, *, field_name: str, skill_id: str) -> str:
-    try:
-        return normalize_relative_target_path(value, field_name=field_name, skill_id=skill_id)
-    except DeployError as exc:
-        detail = str(exc).replace("backend target root", "canonical skill directory")
-        raise DeployError(detail) from exc
+    return normalize_relative_path(
+        value,
+        field_name=field_name,
+        skill_id=skill_id,
+        root_description="canonical skill directory",
+    )
 
 
 def normalize_relative_repo_path(value: str, *, field_name: str, skill_id: str) -> str:
-    try:
-        return normalize_relative_target_path(value, field_name=field_name, skill_id=skill_id)
-    except DeployError as exc:
-        detail = str(exc).replace("backend target root", "repository root")
-        raise DeployError(detail) from exc
+    return normalize_relative_path(
+        value,
+        field_name=field_name,
+        skill_id=skill_id,
+        root_description="repository root",
+    )
 
 
 def payload_target_metadata(payload: dict[str, Any], binding: SkillBinding) -> PayloadTargetMetadata:
@@ -604,9 +852,17 @@ def expected_target_dirs(bindings: list[SkillBinding]) -> set[str]:
 def all_known_target_dirs(bindings: list[SkillBinding]) -> set[str]:
     """Return all target directory names known to belong to current bindings,
     including both current target_dirs and legacy_target_dirs."""
-    known = set(current_target_dirs_by_skill_id(bindings).values())
+    target_dirs: set[str] = set()
+    known: set[str] = set()
     for binding in bindings:
         metadata = load_binding_target_metadata(binding)
+        if metadata.target_dir in target_dirs:
+            raise DeployError(
+                f"Multiple skills map to the same target_dir for backend {binding.backend}: "
+                f"{metadata.target_dir}"
+            )
+        target_dirs.add(metadata.target_dir)
+        known.add(metadata.target_dir)
         known.update(metadata.legacy_target_dirs)
     return known
 
@@ -627,7 +883,7 @@ def payload_version_from_descriptor(payload: dict[str, Any], *, binding: SkillBi
 
 
 def payload_canonical_source_metadata(
-    payload: dict[str, Any], binding: SkillBinding
+    payload: dict[str, Any], binding: SkillBinding, context: DeployContext
 ) -> CanonicalSourceMetadata:
     canonical_dir_value = payload.get("canonical_dir")
     canonical_paths_value = string_list(payload.get("canonical_paths"))
@@ -676,7 +932,9 @@ def payload_canonical_source_metadata(
             )
 
         included_paths.append(normalized_included_path)
-        canonical_files_by_relative_path[normalized_included_path] = REPO_ROOT / normalized_canonical_path
+        canonical_files_by_relative_path[normalized_included_path] = (
+            context.source_root / normalized_canonical_path
+        )
 
     return CanonicalSourceMetadata(
         canonical_dir=normalized_canonical_dir,
@@ -686,19 +944,24 @@ def payload_canonical_source_metadata(
 
 
 def canonical_source_files_by_target_relative_path(
-    binding: SkillBinding, *, payload: dict[str, Any] | None = None
+    binding: SkillBinding,
+    context: DeployContext,
+    *,
+    payload: dict[str, Any] | None = None,
 ) -> dict[str, Path]:
     if payload is None:
         payload = load_binding_payload(binding)
     return payload_canonical_source_metadata(
         payload,
         binding,
+        context,
     ).canonical_files_by_relative_path
 
 
 def source_path_for_target_relative_file(
     binding: SkillBinding,
     relative_name: str,
+    context: DeployContext,
     *,
     payload: dict[str, Any] | None = None,
 ) -> Path:
@@ -707,7 +970,11 @@ def source_path_for_target_relative_file(
     if relative_name == MANAGED_SKILL_MARKER:
         raise DeployError(f"{MANAGED_SKILL_MARKER} is runtime-generated for skill {binding.skill_id}")
 
-    canonical_files = canonical_source_files_by_target_relative_path(binding, payload=payload)
+    canonical_files = canonical_source_files_by_target_relative_path(
+        binding,
+        context,
+        payload=payload,
+    )
     try:
         return canonical_files[relative_name]
     except KeyError as exc:
@@ -717,18 +984,27 @@ def source_path_for_target_relative_file(
         ) from exc
 
 
-def compute_payload_fingerprint(binding: SkillBinding, *, payload: dict[str, Any] | None = None) -> str:
+def compute_payload_fingerprint(
+    binding: SkillBinding,
+    context: DeployContext,
+    *,
+    payload: dict[str, Any] | None = None,
+    payload_text: str | None = None,
+) -> str:
     if payload is None:
-        payload = load_binding_payload(binding)
+        payload, loaded_payload_text = load_binding_payload_with_text(binding)
+        if payload_text is None:
+            payload_text = loaded_payload_text
 
     payload_version = payload_version_from_descriptor(payload, binding=binding)
     target_metadata = payload_target_metadata(payload, binding)
-    try:
-        payload_text = binding.payload_path.read_text(encoding="utf-8")
-    except FileNotFoundError as exc:
-        raise DeployError(
-            f"Missing payload source file while computing fingerprint: {exc.filename}"
-        ) from exc
+    if payload_text is None:
+        try:
+            payload_text = binding.payload_path.read_text(encoding="utf-8")
+        except FileNotFoundError as exc:
+            raise DeployError(
+                f"Missing payload source file while computing fingerprint: {exc.filename}"
+            ) from exc
 
     fingerprint_parts = [
         f"backend={binding.backend}\n"
@@ -741,6 +1017,7 @@ def compute_payload_fingerprint(binding: SkillBinding, *, payload: dict[str, Any
         source_path = source_path_for_target_relative_file(
             binding,
             relative_name,
+            context,
             payload=payload,
         )
         try:
@@ -835,8 +1112,12 @@ def load_runtime_marker(path: Path) -> RuntimeMarker | None:
     return parse_runtime_marker(marker)
 
 
-def build_install_plan(binding: SkillBinding, target_root: Path) -> InstallPlan:
-    payload = load_binding_payload(binding)
+def build_install_plan(
+    binding: SkillBinding,
+    target_root: Path,
+    context: DeployContext,
+) -> InstallPlan:
+    payload, payload_text = load_binding_payload_with_text(binding)
     target_metadata = payload_target_metadata(payload, binding)
     payload_version = payload_version_from_descriptor(payload, binding=binding)
     return InstallPlan(
@@ -844,7 +1125,12 @@ def build_install_plan(binding: SkillBinding, target_root: Path) -> InstallPlan:
         target_metadata=target_metadata,
         target_skill_dir=target_root / target_metadata.target_dir,
         payload_version=payload_version,
-        payload_fingerprint=compute_payload_fingerprint(binding, payload=payload),
+        payload_fingerprint=compute_payload_fingerprint(
+            binding,
+            context,
+            payload=payload,
+            payload_text=payload_text,
+        ),
     )
 
 
@@ -910,7 +1196,7 @@ def format_path_conflicts(conflicts: list[PathConflict]) -> str:
     return "\n".join(lines)
 
 
-def verify_source_binding(binding: SkillBinding) -> list[VerifyIssue]:
+def verify_source_binding(binding: SkillBinding, context: DeployContext) -> list[VerifyIssue]:
     issues: list[VerifyIssue] = []
 
     if not binding.payload_dir.is_dir():
@@ -936,7 +1222,7 @@ def verify_source_binding(binding: SkillBinding) -> list[VerifyIssue]:
         return issues
 
     try:
-        canonical_source = payload_canonical_source_metadata(payload, binding)
+        canonical_source = payload_canonical_source_metadata(payload, binding, context)
     except DeployError as exc:
         issues.append(
             VerifyIssue(
@@ -948,7 +1234,7 @@ def verify_source_binding(binding: SkillBinding) -> list[VerifyIssue]:
         canonical_source = None
 
     canonical_dir_value = payload.get("canonical_dir")
-    canonical_dir = REPO_ROOT / (
+    canonical_dir = context.source_root / (
         canonical_source.canonical_dir
         if canonical_source is not None
         else str(canonical_dir_value)
@@ -1074,34 +1360,71 @@ def verify_source_binding(binding: SkillBinding) -> list[VerifyIssue]:
     return issues
 
 
-def install_backend_payloads(backend: str, args: argparse.Namespace) -> None:
-    bindings = collect_skill_bindings(backend)
+def collect_validated_bindings(
+    backend: str,
+    context: DeployContext,
+    *,
+    source_failure_action: str,
+) -> list[SkillBinding]:
+    """Collect backend bindings and fail with action-specific source validation context."""
+
+    bindings = collect_skill_bindings(backend, context)
     if not bindings:
         raise DeployError(f"No payload bindings found for backend {backend}.")
 
     validation_issues: list[VerifyIssue] = []
     for binding in bindings:
-        validation_issues.extend(verify_source_binding(binding))
+        validation_issues.extend(verify_source_binding(binding, context))
     if validation_issues:
         details = "\n".join(
             f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in validation_issues
         )
-        raise DeployError(f"Cannot install because source validation failed:\n{details}")
+        raise DeployError(
+            f"Cannot {source_failure_action} because source validation failed:\n{details}"
+        )
 
-    target_root = target_root_for(backend, args)
-    target_root_issues = [
+    return bindings
+
+
+def target_root_blocking_issues(backend: str, target_root: Path) -> list[VerifyIssue]:
+    """Return target-root issues that block install/check actions."""
+
+    return [
         issue
         for issue in verify_target_root(backend, target_root)
         if issue.code != "missing-target-root"
     ]
-    if target_root_issues:
-        details = "\n".join(
-            f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in target_root_issues
-        )
-        raise DeployError(f"Cannot install because target root is not ready:\n{details}")
+
+
+def ensure_target_root_ready_for_action(
+    backend: str,
+    target_root: Path,
+    *,
+    action: str,
+) -> None:
+    """Raise an action-specific deploy error if target root cannot be used."""
+
+    issues = target_root_blocking_issues(backend, target_root)
+    if not issues:
+        return
+
+    details = "\n".join(
+        f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in issues
+    )
+    raise DeployError(f"Cannot {action} because target root is not ready:\n{details}")
+
+
+def install_backend_payloads(backend: str, args: argparse.Namespace, context: DeployContext) -> None:
+    bindings = collect_validated_bindings(
+        backend,
+        context,
+        source_failure_action="install",
+    )
+    target_root = target_root_for(backend, args, context)
+    ensure_target_root_ready_for_action(backend, target_root, action="install")
 
     current_target_dirs_by_skill_id(bindings)
-    plans = [build_install_plan(binding, target_root) for binding in bindings]
+    plans = [build_install_plan(binding, target_root, context) for binding in bindings]
     conflicts = collect_path_conflicts(plans)
     conflicts.extend(collect_legacy_path_conflicts(plans, target_root))
     if conflicts:
@@ -1147,40 +1470,28 @@ def install_backend_payloads(backend: str, args: argparse.Namespace) -> None:
             source_path = source_path_for_target_relative_file(
                 binding,
                 relative_name,
+                context,
                 payload=payload,
             )
             shutil.copy2(source_path, target_path)
         print(f"installed skill {binding.skill_id} -> {target_skill_dir}")
 
 
-def check_backend_target_paths(backend: str, args: argparse.Namespace) -> None:
-    bindings = collect_skill_bindings(backend)
-    if not bindings:
-        raise DeployError(f"No payload bindings found for backend {backend}.")
-
-    validation_issues: list[VerifyIssue] = []
-    for binding in bindings:
-        validation_issues.extend(verify_source_binding(binding))
-    if validation_issues:
-        details = "\n".join(
-            f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in validation_issues
-        )
-        raise DeployError(f"Cannot check target paths because source validation failed:\n{details}")
-
-    target_root = target_root_for(backend, args)
-    target_root_issues = [
-        issue
-        for issue in verify_target_root(backend, target_root)
-        if issue.code != "missing-target-root"
-    ]
-    if target_root_issues:
-        details = "\n".join(
-            f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in target_root_issues
-        )
-        raise DeployError(f"Cannot check target paths because target root is not ready:\n{details}")
+def check_backend_target_paths(
+    backend: str,
+    args: argparse.Namespace,
+    context: DeployContext,
+) -> None:
+    bindings = collect_validated_bindings(
+        backend,
+        context,
+        source_failure_action="check target paths",
+    )
+    target_root = target_root_for(backend, args, context)
+    ensure_target_root_ready_for_action(backend, target_root, action="check target paths")
 
     current_target_dirs_by_skill_id(bindings)
-    plans = [build_install_plan(binding, target_root) for binding in bindings]
+    plans = [build_install_plan(binding, target_root, context) for binding in bindings]
     conflicts = collect_path_conflicts(plans)
     conflicts.extend(collect_legacy_path_conflicts(plans, target_root))
 
@@ -1193,9 +1504,13 @@ def check_backend_target_paths(backend: str, args: argparse.Namespace) -> None:
     print(f"[{backend}] ok: no conflicting target paths at {target_root}")
 
 
-def verify_deployed_skill(binding: SkillBinding, target_root: Path) -> list[VerifyIssue]:
+def verify_deployed_skill(
+    binding: SkillBinding,
+    target_root: Path,
+    context: DeployContext,
+) -> list[VerifyIssue]:
     try:
-        plan = build_install_plan(binding, target_root)
+        plan = build_install_plan(binding, target_root, context)
     except DeployError as exc:
         return [
             VerifyIssue(
@@ -1313,6 +1628,7 @@ def verify_deployed_skill(binding: SkillBinding, target_root: Path) -> list[Veri
         source_path = source_path_for_target_relative_file(
             binding,
             relative_name,
+            context,
             payload=skill_payload,
         )
         if source_path.read_text(encoding="utf-8") != target_path.read_text(encoding="utf-8"):
@@ -1400,22 +1716,22 @@ def unexpected_managed_target_dirs(
     return issues
 
 
-def verify_backend(backend: str, args: argparse.Namespace) -> VerifyResult:
-    target_root = target_root_for(backend, args)
+def verify_backend(backend: str, args: argparse.Namespace, context: DeployContext) -> VerifyResult:
+    target_root = target_root_for(backend, args, context)
     issues = verify_target_root(backend, target_root)
 
-    bindings = collect_skill_bindings(backend)
+    bindings = collect_skill_bindings(backend, context)
     if not bindings:
         issues.append(
             VerifyIssue(
                 code="missing-backend-payload-source",
-                path=adapter_skills_dir_for(backend),
+                path=adapter_skills_dir_for(backend, context),
                 detail=f"No payload bindings found for backend {backend}.",
             )
         )
     else:
         for binding in bindings:
-            issues.extend(verify_source_binding(binding))
+            issues.extend(verify_source_binding(binding, context))
 
     expected_target_dir_names: set[str] = set()
     if not issues:
@@ -1425,7 +1741,7 @@ def verify_backend(backend: str, args: argparse.Namespace) -> VerifyResult:
             issues.append(
                 VerifyIssue(
                     code="payload-contract-invalid",
-                    path=adapter_skills_dir_for(backend),
+                    path=adapter_skills_dir_for(backend, context),
                     detail=str(exc),
                 )
             )
@@ -1433,7 +1749,7 @@ def verify_backend(backend: str, args: argparse.Namespace) -> VerifyResult:
     if not issues and target_root.is_dir():
         target_children = list(iter_target_root_children(target_root, "verify target root"))
         for binding in bindings:
-            issues.extend(verify_deployed_skill(binding, target_root))
+            issues.extend(verify_deployed_skill(binding, target_root, context))
         issues.extend(
             unexpected_managed_target_dirs(
                 backend,
@@ -1447,6 +1763,7 @@ def verify_backend(backend: str, args: argparse.Namespace) -> VerifyResult:
 
     return VerifyResult(
         backend=backend,
+        source_root=context.source_root,
         target_root=target_root,
         issues=issues,
         bindings=bindings,
@@ -1454,8 +1771,12 @@ def verify_backend(backend: str, args: argparse.Namespace) -> VerifyResult:
     )
 
 
-def prune_all_managed_target_dirs(backend: str, args: argparse.Namespace) -> None:
-    target_root = target_root_for(backend, args)
+def prune_all_managed_target_dirs(
+    backend: str,
+    args: argparse.Namespace,
+    context: DeployContext,
+) -> None:
+    target_root = target_root_for(backend, args, context)
     target_root_issues = [
         issue
         for issue in verify_target_root(backend, target_root)
@@ -1640,7 +1961,7 @@ def diagnostic_summary(result: VerifyResult) -> dict[str, Any]:
 
     return {
         "backend": result.backend,
-        "source_root": str(REPO_ROOT),
+        "source_root": str(result.source_root),
         "target_root": str(result.target_root),
         "target_root_status": target_root_status(result.target_root),
         "target_root_exists": result.target_root.exists(),
@@ -1670,8 +1991,12 @@ def print_diagnostic_summary(summary: dict[str, Any]) -> None:
         print(f"conflict entries: {summary['conflict_count']}")
 
 
-def update_plan_summary(backend: str, args: argparse.Namespace) -> dict[str, Any]:
-    result = verify_backend(backend, args)
+def update_plan_summary(
+    backend: str,
+    args: argparse.Namespace,
+    context: DeployContext,
+) -> dict[str, Any]:
+    result = verify_backend(backend, args, context)
     target_root = result.target_root
     bindings = result.bindings
     target_children = (
@@ -1689,19 +2014,19 @@ def update_plan_summary(backend: str, args: argparse.Namespace) -> dict[str, Any
         plan_issues.append(
             VerifyIssue(
                 code="missing-backend-payload-source",
-                path=adapter_skills_dir_for(backend),
+                path=adapter_skills_dir_for(backend, context),
                 detail=f"No payload bindings found for backend {backend}.",
             )
         )
     else:
         try:
             known_target_dir_names = all_known_target_dirs(bindings)
-            plans = [build_install_plan(binding, target_root) for binding in bindings]
+            plans = [build_install_plan(binding, target_root, context) for binding in bindings]
         except DeployError as exc:
             plan_issues.append(
                 VerifyIssue(
                     code="payload-contract-invalid",
-                    path=adapter_skills_dir_for(backend),
+                    path=adapter_skills_dir_for(backend, context),
                     detail=str(exc),
                 )
             )
@@ -1721,7 +2046,9 @@ def update_plan_summary(backend: str, args: argparse.Namespace) -> dict[str, Any
 
     return {
         "backend": backend,
-        "source_root": str(REPO_ROOT),
+        "source_kind": context.source_kind,
+        "source_ref": context.source_ref,
+        "source_root": str(context.source_root),
         "target_root": str(target_root),
         "operation_sequence": [
             "prune --all",
@@ -1752,8 +2079,12 @@ def print_update_plan(summary: dict[str, Any]) -> None:
         print(f"  - {issue['code']}: {issue['path']} ({issue['detail']})")
 
 
-def update_failure_recovery_hint(backend: str, args: argparse.Namespace) -> str:
-    target_root = target_root_for(backend, args)
+def update_failure_recovery_hint(
+    backend: str,
+    args: argparse.Namespace,
+    context: DeployContext,
+) -> str:
+    target_root = target_root_for(backend, args, context)
     return (
         f"[{backend}] recovery: the update may be partially applied at {target_root}. "
         f"After fixing the reported error, run diagnose and then rerun "
@@ -1761,11 +2092,11 @@ def update_failure_recovery_hint(backend: str, args: argparse.Namespace) -> str:
     )
 
 
-def run_update_backend(backend: str, args: argparse.Namespace) -> int:
+def run_update_backend(backend: str, args: argparse.Namespace, context: DeployContext) -> int:
     if args.json and args.yes:
         raise DeployError("update --json is only supported for dry-run plans; omit --json with --yes")
 
-    summary = update_plan_summary(backend, args)
+    summary = update_plan_summary(backend, args, context)
     if args.json:
         print(json.dumps(summary, indent=2, sort_keys=True))
         return 1 if summary["blocking_issue_count"] else 0
@@ -1782,18 +2113,84 @@ def run_update_backend(backend: str, args: argparse.Namespace) -> int:
 
     print(f"[{backend}] applying update")
     try:
-        prune_all_managed_target_dirs(backend, args)
-        check_backend_target_paths(backend, args)
-        install_backend_payloads(backend, args)
-        result = verify_backend(backend, args)
+        prune_all_managed_target_dirs(backend, args, context)
+        check_backend_target_paths(backend, args, context)
+        install_backend_payloads(backend, args, context)
+        result = verify_backend(backend, args, context)
         if result.issues:
             print_verify_result(result)
             raise DeployError(f"[{backend}] update failed strict verify with {len(result.issues)} issue(s)")
     except DeployError as exc:
-        raise DeployError(f"{exc}\n{update_failure_recovery_hint(backend, args)}") from exc
+        raise DeployError(f"{exc}\n{update_failure_recovery_hint(backend, args, context)}") from exc
     print_verify_result(result)
     print(f"[{backend}] update complete")
     return 0
+
+
+def run_verify_mode(args: argparse.Namespace, context: DeployContext) -> int:
+    results = [
+        verify_backend(backend, args, context)
+        for backend in iter_backends(args.backend)
+    ]
+    for result in results:
+        print_verify_result(result)
+    return 1 if any(result.issues for result in results) else 0
+
+
+def run_diagnose_mode(args: argparse.Namespace, context: DeployContext) -> int:
+    results = [
+        verify_backend(backend, args, context)
+        for backend in iter_backends(args.backend)
+    ]
+    summaries = [diagnostic_summary(result) for result in results]
+    if args.json:
+        payload: dict[str, Any]
+        if len(summaries) == 1:
+            payload = summaries[0]
+        else:
+            payload = {"backends": summaries}
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        for summary in summaries:
+            print_diagnostic_summary(summary)
+    return 0
+
+
+def run_prune_mode(args: argparse.Namespace, context: DeployContext) -> int:
+    if not args.all:
+        raise DeployError("prune currently requires --all")
+    for backend in iter_backends(args.backend):
+        prune_all_managed_target_dirs(backend, args, context)
+    return 0
+
+
+def run_check_paths_exist_mode(args: argparse.Namespace, context: DeployContext) -> int:
+    for backend in iter_backends(args.backend):
+        check_backend_target_paths(backend, args, context)
+    return 0
+
+
+def run_install_mode(args: argparse.Namespace, context: DeployContext) -> int:
+    for backend in iter_backends(args.backend):
+        install_backend_payloads(backend, args, context)
+    return 0
+
+
+def run_update_mode(args: argparse.Namespace, context: DeployContext) -> int:
+    exit_code = 0
+    for backend in iter_backends(args.backend):
+        exit_code = max(exit_code, run_update_backend(backend, args, context))
+    return exit_code
+
+
+MODE_HANDLERS: dict[str, Callable[[argparse.Namespace, DeployContext], int]] = {
+    "verify": run_verify_mode,
+    "diagnose": run_diagnose_mode,
+    "prune": run_prune_mode,
+    "check_paths_exist": run_check_paths_exist_mode,
+    "install": run_install_mode,
+    "update": run_update_mode,
+}
 
 
 def main(
@@ -1803,52 +2200,17 @@ def main(
     description: str | None = None,
 ) -> int:
     try:
-        if "AW_HARNESS_REPO_ROOT" in os.environ or "AW_HARNESS_TARGET_REPO_ROOT" in os.environ:
-            refresh_runtime_roots_from_env()
         args = parse_args(argv, prog=prog, description=description)
-        if args.mode == "verify":
-            results = [verify_backend(backend, args) for backend in iter_backends(args.backend)]
-            for result in results:
-                print_verify_result(result)
-            return 1 if any(result.issues for result in results) else 0
-
-        if args.mode == "diagnose":
-            results = [verify_backend(backend, args) for backend in iter_backends(args.backend)]
-            summaries = [diagnostic_summary(result) for result in results]
-            if args.json:
-                payload: dict[str, Any]
-                if len(summaries) == 1:
-                    payload = summaries[0]
-                else:
-                    payload = {"backends": summaries}
-                print(json.dumps(payload, indent=2, sort_keys=True))
-            else:
-                for summary in summaries:
-                    print_diagnostic_summary(summary)
-            return 0
-
-        if args.mode == "prune":
-            if not args.all:
-                raise DeployError("prune currently requires --all")
-            for backend in iter_backends(args.backend):
-                prune_all_managed_target_dirs(backend, args)
-            return 0
-
-        if args.mode == "check_paths_exist":
-            for backend in iter_backends(args.backend):
-                check_backend_target_paths(backend, args)
-            return 0
-
-        if args.mode == "install":
-            for backend in iter_backends(args.backend):
-                install_backend_payloads(backend, args)
-            return 0
-
-        if args.mode == "update":
-            exit_code = 0
-            for backend in iter_backends(args.backend):
-                exit_code = max(exit_code, run_update_backend(backend, args))
-            return exit_code
+        with source_root_for_args(args) as (source_root_override, source_kind, source_ref):
+            context = deploy_context_from_env(
+                source_root_override=source_root_override,
+                source_kind=source_kind,
+                source_ref=source_ref,
+            )
+            handler = MODE_HANDLERS.get(args.mode)
+            if handler is None:
+                raise DeployError(f"Unsupported mode after parsing: {args.mode}")
+            return handler(args, context)
     except DeployError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

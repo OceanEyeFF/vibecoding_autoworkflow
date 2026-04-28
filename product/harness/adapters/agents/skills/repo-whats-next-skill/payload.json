@@ -5,6 +5,7 @@
   "canonical_dir": "product/harness/skills/repo-whats-next-skill",
   "canonical_paths": [
     "product/harness/skills/repo-whats-next-skill/SKILL.md",
+    "product/harness/skills/repo-whats-next-skill/references/overview-fallback-mode.md",
     "product/harness/skills/repo-whats-next-skill/references/priority-reframe-mode.md"
   ],
   "target_dir": "aw-repo-whats-next-skill",
@@ -16,6 +17,7 @@
   "reference_distribution": "copy-listed-canonical-paths",
   "required_payload_files": [
     "SKILL.md",
+    "references/overview-fallback-mode.md",
     "references/priority-reframe-mode.md",
     "payload.json",
     "aw.marker"
