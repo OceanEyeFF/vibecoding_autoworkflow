@@ -26,6 +26,7 @@ class DeployError(RuntimeError):
 
 GITHUB_REPO_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 GITHUB_REF_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$")
+DEFAULT_GITHUB_REPO = "OceanEyeFF/vibecoding_autoworkflow"
 
 
 def path_is_relative_to(path: Path, parent: Path) -> bool:
@@ -333,6 +334,14 @@ def add_target_override_args(subparser: argparse.ArgumentParser) -> None:
     )
 
 
+def default_github_repo() -> str:
+    return (
+        os.environ.get("AW_INSTALLER_GITHUB_REPO")
+        or os.environ.get("GITHUB_REPOSITORY")
+        or DEFAULT_GITHUB_REPO
+    )
+
+
 def add_update_source_args(subparser: argparse.ArgumentParser) -> None:
     subparser.add_argument(
         "--source",
@@ -342,8 +351,11 @@ def add_update_source_args(subparser: argparse.ArgumentParser) -> None:
     )
     subparser.add_argument(
         "--github-repo",
-        default="OceanEyeFF/vibecoding_autoworkflow",
-        help="GitHub owner/repo to use when --source github is selected.",
+        default=default_github_repo(),
+        help=(
+            "GitHub owner/repo to use when --source github is selected. "
+            "Defaults to AW_INSTALLER_GITHUB_REPO, GITHUB_REPOSITORY, or the upstream repo."
+        ),
     )
     subparser.add_argument(
         "--github-ref",
@@ -471,7 +483,8 @@ def github_source_root(repo: str, ref: str) -> Iterator[Path]:
         zip_path = temp_root / "source.zip"
         try:
             with urllib.request.urlopen(archive_url, timeout=60) as response:
-                zip_path.write_bytes(response.read())
+                with zip_path.open("wb") as output:
+                    shutil.copyfileobj(response, output, length=1024 * 1024)
         except Exception as exc:
             raise DeployError(
                 f"Failed to download GitHub source archive {safe_repo}@{safe_ref}: {exc}"

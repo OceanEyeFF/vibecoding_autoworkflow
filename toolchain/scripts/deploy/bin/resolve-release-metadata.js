@@ -7,7 +7,10 @@ const { join } = require("node:path");
 const { deriveReleaseChannelFromTag, semverPattern } = require("./check-root-publish.js");
 
 function isGithubReleasePrerelease(value) {
-  return value === true || value === "true";
+  return (
+    value === true ||
+    (typeof value === "string" && value.trim().toLowerCase() === "true")
+  );
 }
 
 function deriveReleaseMetadata({ version, releaseTag, releasePrerelease, releaseBody }) {
