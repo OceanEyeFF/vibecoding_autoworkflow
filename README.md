@@ -20,25 +20,25 @@ last_verified: 2026-04-28
 
 ## 使用 `aw-installer`
 
-`aw-installer` 是当前仓库内分发入口、CLI bin 和文档中的工作名，不表示最终 npm 包名已经确认。npm release channel 尚未发布；当前仓库已经验证 root package envelope、tarball smoke 和 publish dry-run。外部试用的复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)。最终包名确认并完成发布后，使用者应在目标项目根目录通过已批准的 package entrypoint 运行同等命令语义：
+`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。npm release channel 尚未发布；当前仓库已经验证 root package envelope、tarball smoke 和 publish dry-run，并确认 `npm whoami` 为 `oceaneye`、`npm view aw-installer` 当前返回未发布。外部试用的复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)。真实发布获批并完成后，使用者应在目标项目根目录运行同等命令语义：
 
 ```bash
-npx <approved-package>
-npx <approved-package> tui
+npx aw-installer
+npx aw-installer tui
 ```
 
 交互式终端中，已批准 package entrypoint 可以进入最小 TUI；CI、脚本或非交互环境应使用显式 CLI：
 
 ```bash
-npx <approved-package> --version
-npx <approved-package> diagnose --backend agents --json
-npx <approved-package> verify --backend agents
-npx <approved-package> update --backend agents
-npx <approved-package> update --backend agents --yes
-npx <approved-package> install --backend agents
+npx aw-installer --version
+npx aw-installer diagnose --backend agents --json
+npx aw-installer verify --backend agents
+npx aw-installer update --backend agents
+npx aw-installer update --backend agents --yes
+npx aw-installer install --backend agents
 ```
 
-这里的 `<approved-package>` 是未来确认后的 npm package entrypoint；当前不能把它替换成公开可用的 `aw-installer` npm 包。`diagnose` 和 `verify` 是只读检查；`install` 是显式写入当前 payload 的底层命令；`update` 默认只输出 dry-run plan。推荐写入路径是在确认 plan 后运行 `update --yes`，它会按 `prune --all -> check_paths_exist -> install -> verify` 写入目标仓库的 `.agents/skills`。完整入口合同见 [`Distribution Entrypoint Contract`](./docs/project-maintenance/deploy/distribution-entrypoint-contract.md)，维护者验证与本地 tarball smoke 见 [`Deploy Runbook`](./docs/project-maintenance/deploy/deploy-runbook.md)。
+这里的 `aw-installer` 是已批准包名，但当前仍不是公开可用的 npm package；只有真实 publish 获批并完成后，direct public `npx aw-installer` 才可作为 primary path。`diagnose` 和 `verify` 是只读检查；`install` 是显式写入当前 payload 的底层命令；`update` 默认只输出 dry-run plan。推荐写入路径是在确认 plan 后运行 `update --yes`，它会按 `prune --all -> check_paths_exist -> install -> verify` 写入目标仓库的 `.agents/skills`。完整入口合同见 [`Distribution Entrypoint Contract`](./docs/project-maintenance/deploy/distribution-entrypoint-contract.md)，维护者验证与本地 tarball smoke 见 [`Deploy Runbook`](./docs/project-maintenance/deploy/deploy-runbook.md)。
 
 `aw-installer` 当前只使用 package 或 checkout 中的 source payload；`update` 不做远程 fetch、channel 解析、自升级、验签或自动回滚。payload provenance 与 update trust boundary 见 [`Payload Provenance And Update Trust Boundary`](./docs/project-maintenance/deploy/payload-provenance-trust-boundary.md)。
 
@@ -47,13 +47,13 @@ npx <approved-package> install --backend agents
 发布后预期的最短路径是在目标项目根目录运行已批准 package entrypoint：
 
 ```bash
-npx <approved-package> diagnose --backend agents --json
-npx <approved-package> update --backend agents
-npx <approved-package> update --backend agents --yes
-npx <approved-package> verify --backend agents
+npx aw-installer diagnose --backend agents --json
+npx aw-installer update --backend agents
+npx aw-installer update --backend agents --yes
+npx aw-installer verify --backend agents
 ```
 
-在 npm release channel 发布前，不要把 `<approved-package>` 替换成公开 npm 上的 `aw-installer`。当前外部试用应使用维护者提供的本地 `.tgz` 或明确 checkout source；完整复制粘贴流程见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)。
+在 npm release channel 发布前，不要把这些 `npx aw-installer` 片段当作已公开可用。当前外部试用应使用维护者提供的本地 `.tgz` 或明确 checkout source；完整复制粘贴流程见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)。
 
 ### 干净目录初始化
 
@@ -64,10 +64,10 @@ mkdir target-project
 cd target-project
 git init
 
-npx <approved-package> diagnose --backend agents --json
-npx <approved-package> update --backend agents
-npx <approved-package> update --backend agents --yes
-npx <approved-package> verify --backend agents
+npx aw-installer diagnose --backend agents --json
+npx aw-installer update --backend agents
+npx aw-installer update --backend agents --yes
+npx aw-installer verify --backend agents
 ```
 
 这一步只安装 AW skill payload 到目标项目的 `.agents/skills/`。之后在 Codex 中运行 `$set-harness-goal-skill`，再创建 `.aw/` 控制面；不要把 `.aw/` 初始化和 skill payload 安装混成同一个隐式写入步骤。
@@ -77,15 +77,15 @@ npx <approved-package> verify --backend agents
 如果目标仓库已经有代码、文档或进行中的工作，先用只读命令看计划，再由目标 owner 批准写入：
 
 ```bash
-npx <approved-package> diagnose --backend agents --json
-npx <approved-package> update --backend agents
+npx aw-installer diagnose --backend agents --json
+npx aw-installer update --backend agents
 ```
 
 确认 dry-run 只会写入目标仓库的 `.agents/skills/aw-*` 受管目录后，再运行：
 
 ```bash
-npx <approved-package> update --backend agents --yes
-npx <approved-package> verify --backend agents
+npx aw-installer update --backend agents --yes
+npx aw-installer verify --backend agents
 ```
 
 随后让 Codex 初始化 `.aw/` 时，应要求它保留现有源码和文档，把已有仓库事实当作 discovery input，而不是覆盖已确认的项目真相。若目标仓库已经有 `.aw/`，必须先检查现有 control state；未经 operator 确认，不要覆盖 `.aw/goal-charter.md`。

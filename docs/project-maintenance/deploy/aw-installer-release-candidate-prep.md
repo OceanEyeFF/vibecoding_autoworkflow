@@ -27,7 +27,7 @@ Use this proposal when preparing the first npm release-candidate checkpoint:
 
 | Field | Proposed value |
 |---|---|
-| working package name / proposed package identity | `aw-installer` |
+| approved package identity | unscoped `aw-installer` |
 | channel | `next` |
 | npm dist-tag | `next` |
 | version form | `x.y.z-rc.N` |
@@ -73,7 +73,7 @@ Worktrack-specific smoke evidence may live in runtime artifacts while the releas
 
 The release notes or changelog summary should include:
 
-- working package name / proposed package identity and candidate version.
+- approved package identity and candidate version.
 - supported backend list; currently only `agents`.
 - CLI/TUI entrypoints included in the package.
 - payload provenance summary: source payload comes from the package or explicit checkout override.
