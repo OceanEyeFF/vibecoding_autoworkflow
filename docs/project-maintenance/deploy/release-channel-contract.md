@@ -7,7 +7,7 @@ last_verified: 2026-04-28
 ---
 # aw-installer Release Channel Contract
 
-> 目的：定义 `aw-installer` 从本地 `.tgz` / publish dry-run 进入真实 npm release channel 前必须满足的发布准入合同，并记录首个 RC publish 的 registry 事实。本文不授权后续稳定发布或 workflow 实现。
+> 目的：定义 `aw-installer` 从本地 `.tgz` / publish dry-run 进入真实 npm release channel 前必须满足的发布准入合同，并记录首个 RC publish 的 registry 事实。本文不授权后续稳定发布、未来 npm publish 或 npm-side Trusted Publisher 设置变更。
 
 本页属于 [Deploy Runbooks](./README.md) 系列，并承接 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 的发布准入部分。发布操作模型由 [aw-installer Release Operation Model](./aw-installer-release-operation-model.md) 承接；运行时 payload provenance 与 update trust boundary 由 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md) 承接。
 
@@ -17,6 +17,7 @@ last_verified: 2026-04-28
 - 当前 release metadata 使用 `0.4.0-rc.1` 作为首个 `0.4.x` RC checkpoint；`P0-019` 已跨过真实 publish 审批边界，并把 package metadata 设置为 `awInstallerRelease.realPublishApproval=approved`。后续 publish 仍必须同时满足本文的环境、tag、dist-tag、CI 与 registry 准入条件。
 - `npm pack --dry-run --json`、`npm run publish:dry-run --silent` 和根 `.tgz` smoke 只证明包面和运行入口，不等于发布授权。
 - `prepublishOnly` guard 位于 `toolchain/scripts/deploy/bin/check-root-publish.js`，负责在真实 publish 前执行机器准入检查。
+- repository-side GitHub Release `published` workflow preflight 位于 `.github/workflows/publish.yml`；它把 release tag、GitHub prerelease 状态、release-body approval marker、derived channel、local publish guard 和 npm provenance publish 串起来，但仍不替代未来 release-prep 审批或 npm-side Trusted Publisher 设置。
 - 首个 npm package version 的 registry 事实是 `next: 0.4.0-rc.1` 与 `latest: 0.4.0-rc.1` 同时存在；`npm dist-tag rm aw-installer latest` 对唯一版本返回 `E400 Bad Request`。P0-020 registry smoke 验证后，面向 RC 试用的主路径可以使用裸 `npx aw-installer`，需要显式证明 RC channel 时使用 `aw-installer@next`。
 
 ## Release Channels
@@ -43,6 +44,7 @@ Npm 的 `latest` tag 是默认安装解析入口：未指定版本或 tag 的 `n
 - derived or explicit release channel is one of `latest`, `next`, or `canary`.
 - npm dist-tag matches the derived or explicit release channel.
 - `AW_INSTALLER_RELEASE_GIT_TAG` equals `v<package.version>`.
+- GitHub Release body includes `aw-installer-publish-approved: v<package.version>`.
 - latest channel uses stable versions only.
 - next channel uses `alpha`, `beta`, or `rc` prerelease versions.
 - canary channel includes a `canary` prerelease segment.
@@ -64,7 +66,7 @@ Before setting `AW_INSTALLER_PUBLISH_APPROVED=1`, changing `awInstallerRelease.r
 ## Out Of Scope
 
 - npm account setup, tokens, 2FA, or registry credential storage.
-- GitHub Actions release workflow implementation; the selected design is tracked in [aw-installer Release Operation Model](./aw-installer-release-operation-model.md), but implementation remains a follow-up worktrack.
+- npm Trusted Publisher settings mutation or the first future Trusted Publishing run; the repository-side workflow preflight is tracked in [aw-installer Release Operation Model](./aw-installer-release-operation-model.md), but npm-side setup remains a separate operator action.
 - Runtime payload provenance, remote update, self-update, signature verification, or rollback implementation; those remain governed by [Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md).
 - Running future `npm publish` outside an explicit approval worktrack.
 

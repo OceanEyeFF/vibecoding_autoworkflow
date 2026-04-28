@@ -30,7 +30,7 @@
 | 我想看 canonical source 到 target entry 的正式映射 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | 最小 deploy 合同，定义 canonical source / backend payload source / target / diagnose / verify |
 | 我想看 `npx aw-installer` 分发入口必须保持什么语义 | [distribution-entrypoint-contract.md](./distribution-entrypoint-contract.md) | 定义 `aw-installer` CLI + TUI 双模式包装层合同；不表示 package 或 release channel 已实现 |
 | 我想看 `aw-installer` 真实 npm 发布前需要满足什么条件 | [release-channel-contract.md](./release-channel-contract.md) | 定义 release channel、publish readiness guard、版本/tag/审批边界；不授权真实 publish |
-| 我想看后续 npm 发布应采用哪种操作模型 | [aw-installer-release-operation-model.md](./aw-installer-release-operation-model.md) | 选择 GitHub Release `published` + npm Trusted Publishing 的发布模型；不添加 workflow、不授权后续 publish |
+| 我想看后续 npm 发布应采用哪种操作模型 | [aw-installer-release-operation-model.md](./aw-installer-release-operation-model.md) | 选择 GitHub Release `published` + npm Trusted Publishing 的发布模型，并记录 repository-side workflow preflight；不授权后续 publish |
 | 我想准备 `aw-installer` release-candidate 证据包 | [aw-installer-release-candidate-prep.md](./aw-installer-release-candidate-prep.md) | 固定 RC prep checkpoint、证据 bundle、release notes 与 rollback/deprecation plan；不授权真实 publish |
 | 我想审查第一条 `aw-installer` RC 发布审批包 | [aw-installer-rc-approval-package.md](./aw-installer-rc-approval-package.md) | 固定 `0.4.x` 版本线、`0.4.0-rc.1` 候选、`next` channel、证据路径与回滚计划；不授权真实 publish |
 | 我想复核 `aw-installer` 非 publish 发布演练结果 | [aw-installer-release-rehearsal.md](./aw-installer-release-rehearsal.md) | 记录 pack、publish dry-run、publish guard、`0.4.0-rc.1 -> next` 推导和 two-target tarball smoke；不授权真实 publish |
@@ -56,7 +56,7 @@
 - 反馈入口：用 [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)。
 - Registry npx smoke 与反馈日志：用 [aw-installer Registry npx Smoke](./aw-installer-registry-npx-smoke.md) 验证空临时 repo 与批准目标 repo 临时 clone 的 source/target 隔离，并生成可脱敏提交的 `aw-installer-npx-run.log`；不要写入非临时 checkout，不 push，不开 issue 或 PR。
 - 本地包 smoke：用 [aw-installer Multi Temporary Workdir Smoke](./aw-installer-multi-temp-workdir-smoke.md) 验证当前 checkout 打出的 `.tgz`。
-- 发布边界：RC 身份和证据包看 [aw-installer RC Approval Package](./aw-installer-rc-approval-package.md)，后续发布操作模型看 [aw-installer Release Operation Model](./aw-installer-release-operation-model.md)，非 publish 演练看 [aw-installer Non-Publish Release Rehearsal](./aw-installer-release-rehearsal.md)。当前已发布的 RC 不是稳定 release；后续 publish、stable/latest 语义和 workflow 实现仍需单独审批。
+- 发布边界：RC 身份和证据包看 [aw-installer RC Approval Package](./aw-installer-rc-approval-package.md)，后续发布操作模型看 [aw-installer Release Operation Model](./aw-installer-release-operation-model.md)，非 publish 演练看 [aw-installer Non-Publish Release Rehearsal](./aw-installer-release-rehearsal.md)。当前已发布的 RC 不是稳定 release；后续 publish、stable/latest 语义和 npm-side Trusted Publisher 设置仍需单独审批。
 - backend 边界：Codex 走 `agents` backend；Claude Code 仅是 compatibility trial lane，不是稳定 deploy backend。
 
 ## 当前执行边界
@@ -74,7 +74,7 @@
 - `update --backend agents` 默认只输出 dry-run plan；`update --backend agents --yes` 是同一三步 destructive reinstall 加严格复验的 one-shot 包装
 - `update` 只阻塞占用 planned / known AW target path 的 unrecognized / foreign 内容；无关用户目录由 AW deploy 保持不动
 - 本地 `harness_deploy.py` thin wrapper、根目录 `package.json` 的 self-contained `aw-installer` package envelope、`toolchain/scripts/deploy/package.json` 的本地 scaffold、`aw-installer tui` shell、`aw-harness-deploy` 兼容别名与目标 `npx aw-installer` wrapper 必须保持 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 中定义的只读、严格复验、三步 destructive reinstall，以及 CLI + TUI 双模式语义；当前 npm registry 已有 `aw-installer@0.4.0-rc.1` RC，裸 `aw-installer` package selector 解析到该 RC，`aw-installer@next` 可作为显式 RC pin。
-- 后续真实 npm publish 还必须满足 [aw-installer Release Channel Contract](./release-channel-contract.md)；发布操作模型见 [aw-installer Release Operation Model](./aw-installer-release-operation-model.md)，当前选择 GitHub Release `published` + npm Trusted Publishing，但尚未实现 workflow。publish dry-run 和 root `.tgz` smoke 不等于发布授权
+- 后续真实 npm publish 还必须满足 [aw-installer Release Channel Contract](./release-channel-contract.md)；发布操作模型见 [aw-installer Release Operation Model](./aw-installer-release-operation-model.md)，当前已添加 GitHub Release `published` + npm Trusted Publishing 的 repository-side workflow preflight，但 npm-side Trusted Publisher 设置和未来 publish 仍需单独审批。publish dry-run 和 root `.tgz` smoke 不等于发布授权
 - `aw-installer` 的 payload provenance 与 update trust boundary 见 [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md)；当前 `update` 不做远程 fetch、channel 解析、验签、自升级或自动回滚
 - 不再承接这些主线语义：
   - `retired-target-dir`
@@ -119,7 +119,7 @@
 - [aw-installer-release-rehearsal.md](./aw-installer-release-rehearsal.md)
   non-publish release rehearsal。回答 `aw-installer` 在真实 publish 前的 pack、publish dry-run、publish guard、candidate channel 推导和 two-target tarball smoke 是否可复现；不授权真实 npm publish。
 - [aw-installer-release-operation-model.md](./aw-installer-release-operation-model.md)
-  release operation model。回答后续发布为何选择 GitHub Release `published` + npm Trusted Publishing，以及 implementation worktrack 前必须保留哪些审批边界。
+  release operation model。回答后续发布为何选择 GitHub Release `published` + npm Trusted Publishing、repository-side workflow preflight 如何运行，以及未来 publish / npm-side Trusted Publisher 设置前必须保留哪些审批边界。
 - [aw-installer-external-trial-feedback.md](./aw-installer-external-trial-feedback.md)
   external trial feedback。回答如何为自有仓库和论坛志愿者试用准备匿名目标清单、命令反馈字段、operator confusion 分类和下一主要矛盾判定标准；不包含公开招募文案。
 - [aw-installer-public-quickstart-prompts.md](./aw-installer-public-quickstart-prompts.md)
