@@ -19,7 +19,7 @@ last_verified: 2026-04-28
 
 本页只保留快速入门和主流程。维护诊断请查看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)，业务生命周期边界请查看 [skill-lifecycle.md](./skill-lifecycle.md)。
 
-外部试用不要直接从本文截取 `npx aw-installer` 目标形态作为已发布事实。先使用 [aw-installer Public Quickstart Prompts](./aw-installer-public-quickstart-prompts.md) 的 pre-release `.tgz` 路径；反馈走 [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)；发布前多目标隔离验证走 [aw-installer Multi Temporary Workdir Smoke](./aw-installer-multi-temp-workdir-smoke.md)。
+外部试用不要直接从本文截取 `npx aw-installer` 目标形态作为已发布事实。先使用 [aw-installer Public Quickstart Prompts](./aw-installer-public-quickstart-prompts.md) 的当前 RC 路径；反馈走 [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)；npx / package smoke 走 [npx Command Test Execution](../testing/npx-command-test-execution.md)。
 
 ## 一、什么时候看这页
 
@@ -48,7 +48,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-`harness_deploy.py` 只包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 仍暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell 和 `aw-harness-deploy` 兼容别名；`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 调用同一 wrapper。`aw-installer@0.4.0-rc.1` 已作为 registry RC 发布；外部 RC 试用主路径是 `npx aw-installer`，需要显式 pin RC channel 时使用 `aw-installer@next`。当前还没有引入 full-screen TUI framework。
+`harness_deploy.py` 只包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 仍暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell 和 `aw-harness-deploy` 兼容别名；`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 调用同一 wrapper。当前 registry `next` 指向 `0.4.0-rc.2`，`latest` 仍指向 `0.4.0-rc.1`；外部 rc2 试用主路径应显式使用 `aw-installer@next`。当前还没有引入 full-screen TUI framework。
 
 本地 npm-style scaffold 可用下面的 smoke 命令验证 bin 入口能打开同一 help surface：
 

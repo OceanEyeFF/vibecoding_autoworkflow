@@ -120,7 +120,7 @@ docs-only 或 governance-only 变更也要显式标出不适用的 review 面及
   - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py verify --backend agents`
 - Harness runtime 观察或 operator-facing runbook 变更
   - 先跑对应 deploy / adapter 最小验证
-  - 再按 [Codex Harness Manual Runbook](../deploy/codex-harness-manual-runbook.md) 做真实手动观察；该路径不是 cheap deterministic gate，不用 mock smoke 替代
+  - 再按 [Codex Post-Deploy Behavior Tests](../testing/codex-post-deploy-behavior-tests.md) 做真实手动观察；该路径不是 cheap deterministic gate，不用 mock smoke 替代
 
 ### 3.1 修复完整性
 
