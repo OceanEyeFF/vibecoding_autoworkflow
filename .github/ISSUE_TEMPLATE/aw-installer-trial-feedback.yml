@@ -49,9 +49,10 @@ body:
     attributes:
       label: Candidate source
       options:
+        - registry npx aw-installer
+        - registry aw-installer@next
         - local .tgz
         - explicit source checkout
-        - separately approved release candidate
         - other
     validations:
       required: true
@@ -70,6 +71,15 @@ body:
       render: shell
     validations:
       required: true
+  - type: textarea
+    id: npx_run_log
+    attributes:
+      label: npx run log
+      description: Attach or paste the relevant sanitized excerpt from aw-installer-npx-run.log if you used the registry npx smoke runner. Remove private paths, secrets, private repo names, and user handles.
+      placeholder: "Attached aw-installer-npx-run.log, or: not used; manual terminal transcript summarized below."
+      render: shell
+    validations:
+      required: false
   - type: dropdown
     id: backend
     attributes:
@@ -215,5 +225,5 @@ body:
           required: true
         - label: I removed tokens, secrets, credentials, and full logs containing sensitive values.
           required: true
-        - label: I understand direct public npm/npx availability still requires separate package-name and publish approval.
+        - label: I understand stable release semantics and any future npm publish still require separate approval.
           required: true

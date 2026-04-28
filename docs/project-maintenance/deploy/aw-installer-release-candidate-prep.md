@@ -17,7 +17,7 @@ The concrete first `0.4.x` candidate approval package is tracked separately in [
 
 - The current root `package.json` version is `0.4.0-rc.1` as release-preflight metadata for the first `0.4.x` RC checkpoint.
 - `P0-019` is the explicit real-publish approval worktrack and changes the current root `package.json` lock to `awInstallerRelease.realPublishApproval=approved`.
-- Real publish for `0.4.0-rc.1` has executed and registry evidence is captured; public docs must still avoid making bare `npx aw-installer` the primary path until P0-020 registry smoke passes.
+- Real publish for `0.4.0-rc.1` has executed and registry evidence is captured; P0-020 registry npx smoke owns the public primary-path flip and feedback-log evidence.
 - A real npm release candidate requires this approval boundary, matching prerelease semver metadata, and the publish guard inputs listed below.
 - Publish dry-run and root `.tgz` smoke prove package surface and entrypoint behavior only; they are not release authorization.
 - `npm whoami` success is only an operator credential readiness signal. It does not approve real publish.
@@ -103,23 +103,21 @@ Before future real publish approval, name the recovery path for at least these c
 
 Do not describe automatic rollback unless that behavior has been implemented and verified in a separate approved worktrack.
 
-## Forbidden Wording
+## Historical Pre-Smoke Wording Boundary
 
-Avoid these phrases before registry smoke and public primary-path verification:
+Before P0-020 registry smoke, docs avoided these phrases:
 
-- `published RC`
 - `release is ready`
-- `npx aw-installer is available`
 - `update pulls latest`
 - `remote update`
 - `self-update`
 
-Prefer:
+Current docs may use `npx aw-installer` for the RC trial path after registry smoke evidence, but must still avoid stable-release claims. Use:
 
-- `release-candidate prep checkpoint`
-- `RC evidence bundle`
-- `local .tgz smoke`
-- `registry smoke pending`
+- `published RC candidate`
+- `registry npx smoke evidence`
+- `current RC trial path`
+- `explicit RC pin: aw-installer@next`
 - `update reinstalls from the current trusted package or checkout payload`
 
 ## Verification For This Prep Work

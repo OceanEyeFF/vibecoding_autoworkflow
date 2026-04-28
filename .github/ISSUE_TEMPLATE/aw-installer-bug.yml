@@ -49,7 +49,7 @@ body:
     id: candidate_version
     attributes:
       label: Candidate version/source
-      placeholder: "local .tgz 0.0.0-local, 0.4.0-rc.1, source checkout, or unknown"
+      placeholder: "registry npx aw-installer, aw-installer@next, local .tgz, source checkout, or unknown"
     validations:
       required: true
   - type: textarea
@@ -67,6 +67,14 @@ body:
       description: Include the first failure line or sanitized summary. Avoid full logs with secrets.
     validations:
       required: true
+  - type: textarea
+    id: npx_run_log
+    attributes:
+      label: npx run log
+      description: Attach or paste the relevant sanitized excerpt from aw-installer-npx-run.log if the registry npx smoke runner produced one.
+      render: shell
+    validations:
+      required: false
   - type: textarea
     id: expected
     attributes:
@@ -109,5 +117,5 @@ body:
           required: true
         - label: I did not include private repository names, private organization names, customer names, user handles, or private URLs unless explicitly approved.
           required: true
-        - label: I understand this report does not request or authorize npm publish.
+        - label: I understand this report does not request or authorize a stable release or future npm publish.
           required: true

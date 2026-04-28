@@ -17,7 +17,7 @@ last_verified: 2026-04-28
 - 当前 release metadata 使用 `0.4.0-rc.1` 作为首个 `0.4.x` RC checkpoint；`P0-019` 已跨过真实 publish 审批边界，并把 package metadata 设置为 `awInstallerRelease.realPublishApproval=approved`。后续 publish 仍必须同时满足本文的环境、tag、dist-tag、CI 与 registry 准入条件。
 - `npm pack --dry-run --json`、`npm run publish:dry-run --silent` 和根 `.tgz` smoke 只证明包面和运行入口，不等于发布授权。
 - `prepublishOnly` guard 位于 `toolchain/scripts/deploy/bin/check-root-publish.js`，负责在真实 publish 前执行机器准入检查。
-- 首个 npm package version 的 registry 事实是 `next: 0.4.0-rc.1` 与 `latest: 0.4.0-rc.1` 同时存在；`npm dist-tag rm aw-installer latest` 对唯一版本返回 `E400 Bad Request`。在稳定版本发布前，面向 RC 的命令与 smoke 应显式使用 `aw-installer@next`。
+- 首个 npm package version 的 registry 事实是 `next: 0.4.0-rc.1` 与 `latest: 0.4.0-rc.1` 同时存在；`npm dist-tag rm aw-installer latest` 对唯一版本返回 `E400 Bad Request`。P0-020 registry smoke 验证后，面向 RC 试用的主路径可以使用裸 `npx aw-installer`，需要显式证明 RC channel 时使用 `aw-installer@next`。
 
 ## Release Channels
 
@@ -85,4 +85,4 @@ AW_INSTALLER_RELEASE_GIT_TAG=v0.4.0-rc.1
 npm publish --tag next
 ```
 
-This command was used for `P0-019` and published `aw-installer@0.4.0-rc.1`. Registry evidence shows the approved `next` tag exists; because this is the only package version, npm also exposes `latest` for the same RC. Treat that `latest` alias as a registry default for the initial package, not as stable-release approval. Use `aw-installer@next` for RC smoke and trial commands until a stable release is explicitly approved.
+This command was used for `P0-019` and published `aw-installer@0.4.0-rc.1`. Registry evidence shows the approved `next` tag exists; because this is the only package version, npm also exposes `latest` for the same RC. Treat that `latest` alias as a registry default for the initial package, not as stable-release approval. P0-020 may use bare `npx aw-installer` as the current RC trial path after registry smoke evidence; use `aw-installer@next` when explicit RC-channel pinning is required.
