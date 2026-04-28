@@ -7,7 +7,7 @@ last_verified: 2026-04-28
 ---
 # aw-installer RC Approval Package
 
-> Purpose: assemble the approval package for the first `aw-installer` npm release-candidate line. This page does not authorize or run real `npm publish`.
+> Purpose: record the approval package and publish evidence for the first `aw-installer` npm release-candidate line. This page does not authorize stable/latest release semantics or future publish automation.
 
 This page belongs to [Deploy Runbooks](./README.md). It consumes the release channel rules in [aw-installer Release Channel Contract](./release-channel-contract.md), the candidate evidence checklist in [aw-installer Release Candidate Prep](./aw-installer-release-candidate-prep.md), and the package/source boundary in [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md).
 
@@ -25,6 +25,9 @@ This page belongs to [Deploy Runbooks](./README.md). It consumes the release cha
 - proposed_git_tag: `v0.4.0-rc.1`
 - proposed_publish_context: CI release context only
 - supported_backend_for_candidate: `agents`
+- registry_publish_status: published
+- registry_dist_tags_observed: `next: 0.4.0-rc.1`, `latest: 0.4.0-rc.1`
+- registry_primary_rc_selector: `aw-installer@next`
 
 ## Version Rationale
 
@@ -72,6 +75,25 @@ Use these evidence paths as the approval package bundle:
 
 Before publish execution, refresh or re-run evidence if the intended release checkpoint differs from the smoke checkpoint or if package metadata changes beyond the approved candidate version and approval-lock fields.
 
+## Publish Evidence
+
+`P0-019` published `aw-installer@0.4.0-rc.1` from release checkpoint `55ec715` with local annotated tag `v0.4.0-rc.1`.
+
+Registry evidence:
+
+- package: `aw-installer@0.4.0-rc.1`
+- npm account / maintainer: `oceaneye <fdch00@163.com>`
+- registry tarball: `https://registry.npmjs.org/aw-installer/-/aw-installer-0.4.0-rc.1.tgz`
+- gitHead: `55ec715c7be7878303e4ad0d34767c724947666c`
+- shasum: `27e9135f158050e1c615775d2cd05d17dade966b`
+- integrity: `sha512-5tt1gLFfSppW4ED3tw0qXfLwXpTSAfUP1SPxMUXFzG2Yd5F+tpOXik2AAlZUnEbHOyT+4SyQJguDwEV8kDqSPA==`
+- fileCount: 71
+- dist-tags observed after publish:
+  - `next: 0.4.0-rc.1`
+  - `latest: 0.4.0-rc.1`
+
+The `latest` alias exists because this is the first and only published package version. `npm dist-tag rm aw-installer latest` returned `E400 Bad Request`; do not treat the alias as stable release approval. Use `aw-installer@next` for RC smoke and trial commands until a stable release is explicitly approved.
+
 ## Release Notes Draft
 
 `aw-installer@0.4.0-rc.1` is the first proposed release-candidate line for the AW Harness installer.
@@ -94,13 +116,14 @@ Known exclusions:
 - no signature verification.
 - no automatic rollback.
 - no `claude` or `opencode` deploy backend.
-- no stable/latest npm publish without a separate approval decision.
+- no stable release semantics or future stable publish without a separate approval decision.
 
 ## Rollback Or Deprecation Plan
 
 | Failure after publish | Minimum response |
 |---|---|
-| Wrong npm dist-tag | Correct the dist-tag to `next`, record the correction, and preserve the audit note in the release evidence. |
+| Wrong npm dist-tag after multiple versions exist | Correct the dist-tag to the intended channel, record the correction, and preserve the audit note in the release evidence. |
+| Initial package exposes `latest` because it is the only version | Record the registry fact, require `aw-installer@next` in RC smoke/trial commands, and do not describe the RC as stable. |
 | Bad package surface | Deprecate `0.4.0-rc.1` with a clear message and open a bugfix worktrack before any replacement candidate. |
 | Target install failure | Stop recommending the candidate, preserve the target smoke output, and open a bugfix worktrack scoped to the failing command. |
 | Documentation mismatch | Patch deploy docs, rerun governance checks, and refresh the evidence bundle before requesting renewed approval. |
@@ -125,19 +148,19 @@ The eventual approval request should include:
 
 ## Forbidden Wording
 
-Do not use these phrases before real publish approval and execution:
+Do not use these phrases before registry smoke and public primary-path verification:
 
-- `published RC`
 - `release is ready`
-- `npx aw-installer is available`
+- `stable release`
+- `npx aw-installer is the primary path`
 - `update pulls latest`
 - `remote update`
 - `self-update`
 
 Prefer:
 
-- `RC approval package`
-- `proposed candidate version`
-- `local .tgz evidence`
-- `publish execution pending`
+- `published RC candidate`
+- `aw-installer@next`
+- `registry RC evidence`
+- `registry smoke pending`
 - `update reinstalls from the current trusted package or checkout payload`

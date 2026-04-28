@@ -48,7 +48,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-`harness_deploy.py` 不表示 npm release channel 已发布；它只包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 仍暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell和 `aw-harness-deploy` 兼容别名；`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 调用同一 wrapper。当前还没有执行 npm publish，也没有引入 full-screen TUI framework。
+`harness_deploy.py` 只包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 仍暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell 和 `aw-harness-deploy` 兼容别名；`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 调用同一 wrapper。`aw-installer@0.4.0-rc.1` 已作为 registry RC 发布；P0-020 registry smoke 完成前，外部 RC 命令应显式使用 `aw-installer@next`，裸 `npx aw-installer` 不作为 primary path。当前还没有引入 full-screen TUI framework。
 
 本地 npm-style scaffold 可用下面的 smoke 命令验证 bin 入口能打开同一 help surface：
 
@@ -66,13 +66,13 @@ npm pack --dry-run --json
 
 `aw-installer` package payload provenance、source/target root 解析与 `update` trust boundary 见 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md)。当前 `update` 只使用当前 package 或 checkout 中的 source payload，不执行远程 fetch、channel 解析、自升级、验签或自动回滚。
 
-发布前 dry-run 只验证 npm publish 包面和 registry 配置，不上传 package：
+发布 dry-run 只验证 npm publish 包面和 registry 配置，不上传 package：
 
 ```bash
 npm run publish:dry-run --silent
 ```
 
-根 package 的 `publishConfig.registry` 固定为 `https://registry.npmjs.org/`，避免本机 npm mirror 配置影响目标 release channel。根 package 的 `prepublishOnly` guard 会允许这个 dry-run；真实 `npm publish` 必须满足 [aw-installer Release Channel Contract](./release-channel-contract.md) 中定义的非 local semver、release channel、npm dist-tag、CI、审批信号和 git tag 准入。真实发布仍需要单独确认 npm 凭证、release notes 和回滚/撤回计划。
+根 package 的 `publishConfig.registry` 固定为 `https://registry.npmjs.org/`，避免本机 npm mirror 配置影响目标 release channel。根 package 的 `prepublishOnly` guard 会允许这个 dry-run；真实 `npm publish` 必须满足 [aw-installer Release Channel Contract](./release-channel-contract.md) 中定义的非 local semver、release channel、npm dist-tag、CI、审批信号和 git tag 准入。未来发布仍需要单独确认 npm 凭证、release notes 和回滚/撤回计划。
 
 本地 scaffold packlist 仍在 scaffold package root 内检查：
 

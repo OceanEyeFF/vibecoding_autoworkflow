@@ -14,7 +14,8 @@ This page belongs to [Deploy Runbooks](./README.md). It verifies the documentati
 ## Control Signal
 
 - docs_governance_status: passed for pre-release trial documentation
-- direct_public_npx_available: false
+- direct_public_npx_available: true-but-not-primary-until-registry-smoke
+- registry_rc_available: true
 - npm_publish_allowed: true-for-approved-P0-019-RC-command-only
 - package_name_decided: true
 - approved_package_name: unscoped `aw-installer`
@@ -23,7 +24,6 @@ This page belongs to [Deploy Runbooks](./README.md). It verifies the documentati
 - claude_code_status: compatibility trial lane only
 - remaining_docs_blockers: none known after this pass
 - remaining_approval_blockers:
-  - registry publish execution evidence
   - registry npx smoke and docs primary-path flip
   - external tester recruitment / execution approval
 
@@ -45,8 +45,8 @@ This page belongs to [Deploy Runbooks](./README.md). It verifies the documentati
 
 ## Non-contradiction Check
 
-- Direct public `npx aw-installer` is not presented as available until registry publish execution and npx smoke evidence exist; release-facing docs use pre-release `.tgz` or explicit checkout source for current trials, and reserve `npx aw-installer` as the post-publish public package path.
-- `aw-installer` is now the approved unscoped package identity; `P0-019` approves only `aw-installer@0.4.0-rc.1` on the `next` dist-tag.
+- Direct public `npx aw-installer` is technically available because `aw-installer@0.4.0-rc.1` is now the only published registry version; it is not yet the documentation primary path until P0-020 registry smoke passes.
+- `aw-installer` is now the approved unscoped package identity; `P0-019` approved `aw-installer@0.4.0-rc.1` as the RC. Registry facts show both `next` and `latest` currently point at this same RC, so RC smoke/trial commands should prefer the explicit selector `aw-installer@next`.
 - Codex with `agents` backend remains the primary trial path.
 - Claude Code remains a compatibility trial lane and is not described as an implemented deploy adapter backend.
 - Target writes are consistently scoped to the target repository `.agents/skills/` for `agents` install/update, or to the Claude project-level cold-start helper path for the Claude compatibility lane.
@@ -62,7 +62,6 @@ No documentation blocker is known after the P0-013, P0-014, P0-015, and P0-016 v
 
 ### Approval Blockers
 
-- Registry publish execution evidence is not captured yet.
 - Registry `npx aw-installer` smoke and public-docs primary-path flip remain in `P0-020`.
 - External tester recruitment and real trial execution are not approved by this page.
 
@@ -90,4 +89,4 @@ The P0-016 worktrack must preserve evidence for:
 
 ## Next Decision Boundary
 
-The documentation set is ready for the approved P0-019 RC publish execution and the follow-up P0-020 registry smoke. External-trial recruitment remains a separate approval boundary and must not be inferred from this verification record.
+The documentation set is ready for P0-020 registry smoke and public-docs primary-path verification. External-trial recruitment remains a separate approval boundary and must not be inferred from this verification record.
