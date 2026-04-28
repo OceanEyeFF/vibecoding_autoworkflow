@@ -453,6 +453,13 @@ TEMPLATE_SPECS = {
                 (
                     "input_ref",
                     "freshness",
+                    "review_subagent_lanes",
+                    "four_lane_dispatch_status",
+                    "static_semantic_review",
+                    "test_review",
+                    "project_security_review",
+                    "complexity_performance_review",
+                    "four_lane_fallback_reason",
                     "confidence",
                     "missing_evidence",
                     "residual_risks",
