@@ -24,6 +24,7 @@ from governance_semantic_check import (
     check_root_tool_shims_disable_bytecode,
     check_required_handoffs,
     check_subagent_dispatch_default_contract,
+    is_bytecode_free_command_excluded,
 )
 
 
@@ -441,7 +442,7 @@ def test_check_repo_python_commands_are_bytecode_free_checks_each_occurrence(tmp
 
 def test_check_repo_python_commands_are_bytecode_free_skips_historical_log(tmp_path: Path) -> None:
     write_doc(
-        tmp_path / "docs/project-maintenance/deploy/codex-harness-manual-run-continuous-2026-04-23.md",
+        tmp_path / "docs/project-maintenance/deploy/codex-harness-manual-run-continuous-2026-05-01.md",
         "`python3 -m unittest discover -s tests -v`\n",
     )
 
@@ -449,6 +450,12 @@ def test_check_repo_python_commands_are_bytecode_free_skips_historical_log(tmp_p
     check_repo_python_commands_are_bytecode_free(tmp_path, report)
 
     assert report.failures == []
+    assert is_bytecode_free_command_excluded(
+        "docs/project-maintenance/deploy/codex-harness-manual-run-continuous-2026-05-01.md"
+    )
+    assert not is_bytecode_free_command_excluded(
+        "docs/project-maintenance/deploy/codex-harness-manual-run-continuous-latest.md"
+    )
 
 
 def test_check_manual_runbook_agents_skill_count_accepts_matching_count(tmp_path: Path) -> None:

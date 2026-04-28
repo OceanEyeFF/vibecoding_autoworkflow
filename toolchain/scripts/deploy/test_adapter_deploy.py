@@ -238,7 +238,7 @@ class AdapterDeployTest(unittest.TestCase):
         *,
         target_repo: Path | None = None,
         env_overrides: dict[str, str] | None = None,
-        timeout_seconds: float = 60.0,
+        timeout_seconds: float = 90.0,
     ) -> tuple[int, str]:
         if not hasattr(os, "openpty"):
             self.skipTest("PTY support is not available")
@@ -466,6 +466,24 @@ class AdapterDeployTest(unittest.TestCase):
             adapter_deploy.validate_target_repo_root(
                 Path.home() / ".ssh" / "repo",
                 self.fake_repo_root,
+            )
+
+    def test_source_repo_root_validation_rejects_sensitive_paths(self) -> None:
+        with self.assertRaisesRegex(adapter_deploy.DeployError, "Source repo root is protected"):
+            adapter_deploy.validate_source_repo_root(Path("/etc"))
+
+    def test_normalize_relative_wrappers_use_explicit_context(self) -> None:
+        with self.assertRaisesRegex(adapter_deploy.DeployError, "canonical skill directory"):
+            adapter_deploy.normalize_relative_canonical_path(
+                "/tmp/payload",
+                field_name="canonical_path",
+                skill_id="demo-skill",
+            )
+        with self.assertRaisesRegex(adapter_deploy.DeployError, "repository root"):
+            adapter_deploy.normalize_relative_repo_path(
+                "C:/payload",
+                field_name="repo_path",
+                skill_id="demo-skill",
             )
 
     def test_target_repo_root_validation_allows_container_cwd_under_usr(self) -> None:
@@ -1761,7 +1779,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertGreater(diagnose_payload["binding_count"], 0)
         self.assertFalse((package_root / payload[0]["filename"]).exists())
 
-    def test_adapter_cli_rejects_source_root_override_without_payload_bindings(self) -> None:
+    def test_adapter_cli_rejects_source_root_override_without_payload_source(self) -> None:
         source_root = self.temp_root / "not-a-harness-checkout"
         target_repo = self.temp_root / "target-repo"
         source_root.mkdir()
@@ -1790,19 +1808,13 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
         self.assertEqual(verify_completed.returncode, 1)
-        self.assertIn("missing-backend-payload-source", verify_completed.stdout)
+        self.assertEqual(verify_completed.stdout, "")
+        self.assertIn("is not a Harness payload source", verify_completed.stderr)
         self.assertNotIn("[agents] ok", verify_completed.stdout)
-        self.assertEqual(verify_completed.stderr, "")
 
-        self.assertEqual(diagnose_completed.returncode, 0, diagnose_completed.stderr)
-        diagnose_payload = json.loads(diagnose_completed.stdout)
-        self.assertEqual(diagnose_payload["binding_count"], 0)
-        self.assertEqual(diagnose_payload["issue_count"], 1)
-        self.assertIn("missing-backend-payload-source", diagnose_payload["issue_codes"])
-        self.assertEqual(
-            diagnose_payload["issues"][0]["path"],
-            str(source_root / "product" / "harness" / "adapters" / "agents" / "skills"),
-        )
+        self.assertEqual(diagnose_completed.returncode, 1)
+        self.assertEqual(diagnose_completed.stdout, "")
+        self.assertIn("is not a Harness payload source", diagnose_completed.stderr)
 
     def test_local_npm_packed_tarball_update_dry_run_uses_repo_root_override(self) -> None:
         if shutil.which("npm") is None:

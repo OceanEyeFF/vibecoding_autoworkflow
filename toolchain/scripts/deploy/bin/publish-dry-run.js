@@ -21,7 +21,13 @@ function main() {
     return 1;
   }
 
-  return completed.status === null ? 1 : completed.status;
+  if (completed.status === null) {
+    console.error(
+      `npm publish --dry-run terminated by signal ${completed.signal || "<unknown>"}`,
+    );
+    return 1;
+  }
+  return completed.status;
 }
 
 if (require.main === module) {

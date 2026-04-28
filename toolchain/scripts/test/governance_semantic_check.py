@@ -203,9 +203,12 @@ BYTECODE_FREE_COMMAND_GLOBS = [
     "product/harness/skills/**/*.md",
     "toolchain/scripts/deploy/README.md",
 ]
-BYTECODE_FREE_COMMAND_EXCLUDED_PATHS = {
-    "docs/project-maintenance/deploy/codex-harness-manual-run-continuous-2026-04-23.md",
-}
+BYTECODE_FREE_COMMAND_EXCLUDED_PATTERNS = (
+    re.compile(
+        r"docs/project-maintenance/deploy/"
+        r"codex-harness-manual-run-continuous-\d{4}-\d{2}-\d{2}\.md"
+    ),
+)
 REPO_PYTHON_COMMAND_RE = re.compile(
     r"\bpython(?:3)?\s+(?:"
     r"-m\s+(?:pytest|unittest)\b|"
@@ -450,11 +453,15 @@ def iter_bytecode_free_command_files(repo_root: Path) -> list[Path]:
     return command_files
 
 
+def is_bytecode_free_command_excluded(relative_path: str) -> bool:
+    return any(pattern.fullmatch(relative_path) for pattern in BYTECODE_FREE_COMMAND_EXCLUDED_PATTERNS)
+
+
 def check_repo_python_commands_are_bytecode_free(repo_root: Path, report: SemanticReport) -> None:
     checked = 0
     for command_file in iter_bytecode_free_command_files(repo_root):
         relative_path = to_relative_posix(command_file, repo_root)
-        if relative_path in BYTECODE_FREE_COMMAND_EXCLUDED_PATHS:
+        if is_bytecode_free_command_excluded(relative_path):
             continue
 
         for line_number, line in enumerate(command_file.read_text(encoding="utf-8").splitlines(), 1):

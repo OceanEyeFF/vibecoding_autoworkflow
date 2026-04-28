@@ -23,6 +23,10 @@ def test_publish_workflow_uses_release_published_trigger_and_oidc() -> None:
     assert re.search(r"\bid-token:\s*write\b", workflow)
     assert re.search(r"\bcontents:\s*read\b", workflow)
     assert "persist-credentials: false" in workflow
+    assert "concurrency:" in workflow
+    assert "aw-installer-publish-${{ github.event.release.tag_name }}" in workflow
+    assert "cancel-in-progress: false" in workflow
+    assert re.search(r"\btimeout-minutes:\s*30\b", workflow)
 
 
 def test_publish_workflow_uses_npm_environment_and_registry() -> None:
@@ -41,6 +45,9 @@ def test_publish_workflow_resolves_and_checks_release_metadata_before_publish() 
 
     assert "AW_INSTALLER_RELEASE_GIT_TAG" in resolver
     assert "AW_INSTALLER_RELEASE_CHANNEL" in resolver
+    assert resolver.count("appendFileSync(") == 1
+    assert 'const { deriveReleaseChannelFromTag, semverPattern } = require("./check-root-publish.js");' in resolver
+    assert "const semverPattern =" not in resolver
     assert "GITHUB_RELEASE_TAG" in workflow
     assert "GITHUB_RELEASE_BODY" in workflow
     assert "NPM_CONFIG_TAG" in workflow
@@ -109,10 +116,52 @@ def test_release_metadata_resolver_accepts_rc_stable_and_canary_shapes() -> None
     ]
 
     for case in cases:
-        expected = str(case.pop("expected"))
-        completed = run_release_metadata_case(case)
+        expected = str(case["expected"])
+        input_case = {key: value for key, value in case.items() if key != "expected"}
+        completed = run_release_metadata_case(input_case)
         assert completed.returncode == 0, completed.stderr
         assert expected in completed.stdout
+
+
+def test_release_metadata_resolver_formats_github_env_as_single_block() -> None:
+    script = (
+        "const { formatGithubEnv } = require('./toolchain/scripts/deploy/bin/resolve-release-metadata.js');"
+        "console.log(JSON.stringify(formatGithubEnv({"
+        "releaseTag:'v1.2.3-rc.1',releaseChannel:'next',npmConfigTag:'next'})));"
+    )
+    completed = subprocess.run(
+        ["node", "-e", script],
+        cwd=REPO_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert json.loads(completed.stdout) == (
+        "AW_INSTALLER_RELEASE_GIT_TAG=v1.2.3-rc.1\n"
+        "AW_INSTALLER_RELEASE_CHANNEL=next\n"
+        "NPM_CONFIG_TAG=next\n"
+    )
+
+
+def test_publish_guard_run_checks_throws_instead_of_exiting() -> None:
+    script = (
+        "const { runChecks, semverPattern } = require('./toolchain/scripts/deploy/bin/check-root-publish.js');"
+        "try { runChecks([{ test: () => false, message: () => 'expected failure' }]); }"
+        "catch (error) { console.log(error.message); }"
+        "console.log(semverPattern.test('1.2.3-rc.1') ? 'semver-ok' : 'semver-fail');"
+    )
+    completed = subprocess.run(
+        ["node", "-e", script],
+        cwd=REPO_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout == "expected failure\nsemver-ok\n"
 
 
 def test_release_metadata_resolver_rejects_unsafe_shapes() -> None:
