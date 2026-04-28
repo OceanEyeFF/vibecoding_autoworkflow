@@ -71,6 +71,8 @@ commands:
   update --backend agents     print an update dry-run plan
   update --backend agents --yes
                               apply the explicit update plan
+  update --backend agents --source github --github-ref master
+                              update from the approved GitHub source archive
   prune --all --backend agents
                               remove managed installs for the backend
   check_paths_exist --backend agents
@@ -79,6 +81,9 @@ commands:
 options:
   -h, --help                  show this help message
   -V, --version               show package version
+  --source package|github     select package-local or GitHub update source
+  --github-repo OWNER/REPO    GitHub source repository for --source github
+  --github-ref REF            GitHub branch/ref for --source github
 `);
 }
 

@@ -13,6 +13,7 @@ import tarfile
 import tempfile
 import time
 import unittest
+import zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -216,6 +217,27 @@ class AdapterDeployTest(unittest.TestCase):
         payload_path = self.adapter_dir / skill_id / "payload.json"
         payload = self._load_json(payload_path)
         return payload["target_dir"]
+
+    def _fake_github_archive_bytes(self) -> bytes:
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            for path in sorted(self.fake_repo_root.rglob("*")):
+                if path.is_file():
+                    archive.write(path, Path("repo-master") / path.relative_to(self.fake_repo_root))
+        return buffer.getvalue()
+
+    def _fake_urlopen_response(self, payload: bytes):
+        class Response:
+            def __enter__(self_inner):
+                return self_inner
+
+            def __exit__(self_inner, exc_type, exc, traceback):
+                return False
+
+            def read(self_inner):
+                return payload
+
+        return Response()
 
     def _fake_sleeping_python_bin(self) -> Path:
         fake_bin = self.temp_root / "fake-python-bin"
@@ -590,8 +612,8 @@ class AdapterDeployTest(unittest.TestCase):
             package["awInstallerRelease"],
             {
                 "realPublishApproval": "approved",
-                "approvedVersion": "0.4.0-rc.2",
-                "approvedGitTag": "v0.4.0-rc.2",
+                "approvedVersion": "0.4.0-rc.3",
+                "approvedGitTag": "v0.4.0-rc.3",
                 "approvedChannel": "next",
             },
         )
@@ -917,7 +939,7 @@ class AdapterDeployTest(unittest.TestCase):
         env = {
             **os.environ,
             "AW_INSTALLER_PUBLISH_APPROVED": "1",
-            "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.0-rc.2",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.0-rc.3",
             "CI": "true",
             "npm_config_tag": "next",
         }
@@ -1261,7 +1283,7 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertEqual(completed.stdout, "aw-installer 0.4.0-rc.2\n")
+        self.assertEqual(completed.stdout, "aw-installer 0.4.0-rc.3\n")
         self.assertEqual(completed.stderr, "")
 
     def test_local_npm_installer_bin_version_prefers_root_package_metadata(self) -> None:
@@ -1723,7 +1745,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         payload = json.loads(completed.stdout)
         self.assertEqual(payload["name"], "aw-installer")
-        self.assertEqual(payload["version"], "0.4.0-rc.2")
+        self.assertEqual(payload["version"], "0.4.0-rc.3")
         packed_files = {entry["path"] for entry in payload["files"]}
         self.assertIn("package.json", packed_files)
         self.assertIn("product/harness/skills/harness-skill/SKILL.md", packed_files)
@@ -2110,7 +2132,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertNotEqual(diagnose_payload["source_root"], str(target_repo))
 
         self.assertEqual(version_completed.returncode, 0, version_completed.stderr)
-        self.assertEqual(version_completed.stdout, "aw-installer 0.4.0-rc.2\n")
+        self.assertEqual(version_completed.stdout, "aw-installer 0.4.0-rc.3\n")
         self.assertEqual(version_completed.stderr, "")
         self.assertEqual(tui_completed.returncode, 1)
         self.assertEqual(tui_completed.stdout, "")
@@ -2167,11 +2189,46 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(code, 0, stderr)
         payload = json.loads(stdout)
         self.assertEqual(payload["backend"], "agents")
+        self.assertEqual(payload["source_kind"], "package")
+        self.assertEqual(payload["source_ref"], "package-local")
         self.assertEqual(payload["blocking_issue_count"], 0)
         self.assertEqual(
             payload["operation_sequence"],
             ["prune --all", "check_paths_exist", "install", "verify"],
         )
+        self.assertGreater(len(payload["planned_target_paths"]), 0)
+        self.assertEqual(stderr, "")
+        self.assertFalse(self.local_root.exists())
+
+    def test_update_json_can_use_github_source_archive(self) -> None:
+        archive_bytes = self._fake_github_archive_bytes()
+        with mock.patch.object(
+            adapter_deploy.urllib.request,
+            "urlopen",
+            return_value=self._fake_urlopen_response(archive_bytes),
+        ) as urlopen:
+            code, stdout, stderr = self._update(
+                "--json",
+                "--source",
+                "github",
+                "--github-repo",
+                "OceanEyeFF/vibecoding_autoworkflow",
+                "--github-ref",
+                "master",
+            )
+
+        self.assertEqual(code, 0, stderr)
+        urlopen.assert_called_once()
+        self.assertEqual(
+            urlopen.call_args.args[0],
+            "https://codeload.github.com/OceanEyeFF/vibecoding_autoworkflow/zip/refs/heads/master",
+        )
+        payload = json.loads(stdout)
+        self.assertEqual(payload["source_kind"], "github")
+        self.assertEqual(payload["source_ref"], "OceanEyeFF/vibecoding_autoworkflow@master")
+        self.assertTrue(payload["source_root"].endswith("repo-master"))
+        self.assertEqual(payload["target_root"], str(self.local_root))
+        self.assertEqual(payload["blocking_issue_count"], 0)
         self.assertGreater(len(payload["planned_target_paths"]), 0)
         self.assertEqual(stderr, "")
         self.assertFalse(self.local_root.exists())

@@ -4,18 +4,28 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
+import re
 import shutil
 import sys
+import tempfile
+import urllib.parse
+import urllib.request
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 
 class DeployError(RuntimeError):
     """Raised when deployment inputs or targets are invalid."""
+
+
+GITHUB_REPO_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+GITHUB_REF_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$")
 
 
 def path_is_relative_to(path: Path, parent: Path) -> bool:
@@ -126,13 +136,13 @@ def resolve_repo_root() -> Path:
     return validate_source_repo_root(Path(__file__).resolve().parents[3])
 
 
-def resolve_target_repo_root(source_root: Path) -> Path:
+def resolve_target_repo_root(source_root: Path, *, source_root_from_env: bool = False) -> Path:
     """Resolve the user project root that receives backend install targets."""
 
     target_override = os.environ.get("AW_HARNESS_TARGET_REPO_ROOT")
     if target_override:
         return validate_target_repo_root(Path(target_override), source_root)
-    if os.environ.get("AW_HARNESS_REPO_ROOT"):
+    if source_root_from_env:
         return validate_target_repo_root(source_root, source_root)
     return validate_target_repo_root(Path.cwd(), source_root)
 
@@ -145,9 +155,17 @@ class DeployContext:
     target_repo_root: Path
     local_target_roots: dict[str, Path]
     adapter_skill_dirs: dict[str, Path]
+    source_kind: str = "package"
+    source_ref: str = "package-local"
 
 
-def build_deploy_context(source_root: Path, target_repo_root: Path) -> DeployContext:
+def build_deploy_context(
+    source_root: Path,
+    target_repo_root: Path,
+    *,
+    source_kind: str = "package",
+    source_ref: str = "package-local",
+) -> DeployContext:
     """Build source, target, and backend path roots for one deploy invocation."""
 
     return DeployContext(
@@ -159,14 +177,33 @@ def build_deploy_context(source_root: Path, target_repo_root: Path) -> DeployCon
         adapter_skill_dirs={
             "agents": source_root / "product" / "harness" / "adapters" / "agents" / "skills",
         },
+        source_kind=source_kind,
+        source_ref=source_ref,
     )
 
 
-def deploy_context_from_env() -> DeployContext:
+def deploy_context_from_env(
+    *,
+    source_root_override: Path | None = None,
+    source_kind: str = "package",
+    source_ref: str = "package-local",
+) -> DeployContext:
     """Resolve deploy roots from the current process environment."""
 
-    source_root = resolve_repo_root()
-    return build_deploy_context(source_root, resolve_target_repo_root(source_root))
+    source_root_from_env = source_root_override is None and bool(
+        os.environ.get("AW_HARNESS_REPO_ROOT")
+    )
+    source_root = (
+        validate_source_repo_root(source_root_override)
+        if source_root_override is not None
+        else resolve_repo_root()
+    )
+    return build_deploy_context(
+        source_root,
+        resolve_target_repo_root(source_root, source_root_from_env=source_root_from_env),
+        source_kind=source_kind,
+        source_ref=source_ref,
+    )
 
 
 EXPECTED_PAYLOAD_POLICIES = {
@@ -296,6 +333,25 @@ def add_target_override_args(subparser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_update_source_args(subparser: argparse.ArgumentParser) -> None:
+    subparser.add_argument(
+        "--source",
+        choices=("package", "github"),
+        default="package",
+        help="Payload source for update. Defaults to the package-local payload.",
+    )
+    subparser.add_argument(
+        "--github-repo",
+        default="OceanEyeFF/vibecoding_autoworkflow",
+        help="GitHub owner/repo to use when --source github is selected.",
+    )
+    subparser.add_argument(
+        "--github-ref",
+        default="master",
+        help="GitHub branch or ref to use when --source github is selected.",
+    )
+
+
 def parse_args(
     argv: list[str] | None = None,
     *,
@@ -341,6 +397,7 @@ def parse_args(
     update_parser = subparsers.add_parser("update")
     add_backend_args(update_parser)
     add_target_override_args(update_parser)
+    add_update_source_args(update_parser)
     update_parser.add_argument(
         "--yes",
         action="store_true",
@@ -353,6 +410,94 @@ def parse_args(
     )
 
     return parser.parse_args(argv)
+
+
+def validate_github_repo(value: str) -> str:
+    if not GITHUB_REPO_PATTERN.fullmatch(value):
+        raise DeployError(
+            f"GitHub repo must use OWNER/REPO with safe characters only: {value}"
+        )
+    return value
+
+
+def validate_github_ref(value: str) -> str:
+    if (
+        not GITHUB_REF_PATTERN.fullmatch(value)
+        or ".." in value
+        or value.endswith("/")
+        or value.endswith(".lock")
+    ):
+        raise DeployError(f"GitHub ref contains unsupported characters: {value}")
+    return value
+
+
+def safe_extract_zip(zip_path: Path, destination: Path) -> None:
+    with zipfile.ZipFile(zip_path) as archive:
+        for member in archive.infolist():
+            member_path = destination / member.filename
+            try:
+                member_path.resolve().relative_to(destination.resolve())
+            except ValueError as exc:
+                raise DeployError(f"GitHub archive contains unsafe path: {member.filename}") from exc
+        archive.extractall(destination)
+
+
+def extracted_archive_root(destination: Path) -> Path:
+    candidates = [path for path in destination.iterdir() if path.is_dir()]
+    if len(candidates) != 1:
+        raise DeployError(
+            f"Expected GitHub archive to contain one repository root, found {len(candidates)}"
+        )
+    return candidates[0]
+
+
+def github_archive_ref_path(ref: str) -> str:
+    if ref.startswith("refs/"):
+        return ref
+    if re.fullmatch(r"[0-9a-fA-F]{40}", ref):
+        return ref
+    return f"refs/heads/{ref}"
+
+
+@contextlib.contextmanager
+def github_source_root(repo: str, ref: str) -> Iterator[Path]:
+    safe_repo = validate_github_repo(repo)
+    safe_ref = validate_github_ref(ref)
+    encoded_ref = urllib.parse.quote(github_archive_ref_path(safe_ref), safe="/")
+    archive_url = f"https://codeload.github.com/{safe_repo}/zip/{encoded_ref}"
+
+    with tempfile.TemporaryDirectory(prefix="aw-installer-github-source-") as temp_dir:
+        temp_root = Path(temp_dir)
+        zip_path = temp_root / "source.zip"
+        try:
+            with urllib.request.urlopen(archive_url, timeout=60) as response:
+                zip_path.write_bytes(response.read())
+        except Exception as exc:
+            raise DeployError(
+                f"Failed to download GitHub source archive {safe_repo}@{safe_ref}: {exc}"
+            ) from exc
+
+        extract_root = temp_root / "extract"
+        extract_root.mkdir()
+        safe_extract_zip(zip_path, extract_root)
+        source_root = validate_source_repo_root(extracted_archive_root(extract_root))
+        yield source_root
+
+
+@contextlib.contextmanager
+def source_root_for_args(args: argparse.Namespace) -> Iterator[tuple[Path | None, str, str]]:
+    if getattr(args, "source", "package") == "package":
+        yield None, "package", "package-local"
+        return
+
+    if args.source == "github":
+        repo = getattr(args, "github_repo", "")
+        ref = getattr(args, "github_ref", "")
+        with github_source_root(repo, ref) as source_root:
+            yield source_root, "github", f"{repo}@{ref}"
+        return
+
+    raise DeployError(f"Unsupported update source: {args.source}")
 
 
 def iter_backends(selected: str) -> list[str]:
@@ -1854,6 +1999,8 @@ def update_plan_summary(
 
     return {
         "backend": backend,
+        "source_kind": context.source_kind,
+        "source_ref": context.source_ref,
         "source_root": str(context.source_root),
         "target_root": str(target_root),
         "operation_sequence": [
@@ -2006,11 +2153,16 @@ def main(
     description: str | None = None,
 ) -> int:
     try:
-        context = deploy_context_from_env()
         args = parse_args(argv, prog=prog, description=description)
-        handler = MODE_HANDLERS.get(args.mode)
-        if handler is not None:
-            return handler(args, context)
+        with source_root_for_args(args) as (source_root_override, source_kind, source_ref):
+            context = deploy_context_from_env(
+                source_root_override=source_root_override,
+                source_kind=source_kind,
+                source_ref=source_ref,
+            )
+            handler = MODE_HANDLERS.get(args.mode)
+            if handler is not None:
+                return handler(args, context)
     except DeployError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

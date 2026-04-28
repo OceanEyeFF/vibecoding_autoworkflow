@@ -1,13 +1,13 @@
 ---
 title: "Distribution Entrypoint Contract"
 status: active
-updated: 2026-04-28
+updated: 2026-04-29
 owner: aw-kernel
-last_verified: 2026-04-28
+last_verified: 2026-04-29
 ---
 # Distribution Entrypoint Contract
 
-> 目的：为 reusable install/update/verify/diagnose 分发入口固定最小合同。目标分发形态是 Node/npm/npx 上的 `aw-installer`，当前 rc2 试用入口收敛到 `aw-installer@next`；本文定义该包装层必须保持的语义，并记录当前 RC registry 入口边界。
+> 目的：为 reusable install/update/verify/diagnose 分发入口固定最小合同。目标分发形态是 Node/npm/npx 上的 `aw-installer`，当前 RC 试用入口收敛到 `aw-installer@next`；本文定义该包装层必须保持的语义，并记录当前 RC registry 入口边界。
 
 本页属于 [Deploy Runbooks](./README.md) 系列。当前可执行入口仍是仓库内脚本：
 
@@ -21,9 +21,9 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-当前根目录 `package.json` 是 `aw-installer` 的 npm/npx 分发包络。它从根目录打包 `product/harness/skills`、`product/harness/adapters/agents/skills` 与 `toolchain/scripts/deploy/` wrapper，使 `.tgz` 或 registry package 中的 source payload 可以脱离源码 checkout 被读取。`aw-installer@0.4.0-rc.2` 已发布到 npm `next` channel；裸 package selector `aw-installer` 仍按 npm `latest` 解析到 `0.4.0-rc.1`。
+当前根目录 `package.json` 是 `aw-installer` 的 npm/npx 分发包络。它从根目录打包 `product/harness/skills`、`product/harness/adapters/agents/skills` 与 `toolchain/scripts/deploy/` wrapper，使 `.tgz` 或 registry package 中的 source payload 可以脱离源码 checkout 被读取。当前 checkout 的 RC candidate 是 `0.4.0-rc.3`；当前 npm registry 事实仍是 `next=0.4.0-rc.2`、`latest=0.4.0-rc.1`。
 
-`toolchain/scripts/deploy/package.json`、`bin/aw-installer.js` 和 `bin/aw-harness-deploy.js` 仍保留为本地 npm-style scaffold；它们调用同一个 Python wrapper。`aw-installer` 是主 bin，`aw-harness-deploy` 是兼容别名。`0.4.0-rc.2` 在 Windows 上按 `py -3`、`python`、`python3` 尝试 Python launcher，在 Linux/macOS 上按 `python3`、`python` 尝试；wrapper 不接受 `PYTHON`/`PYTHON3` 环境变量覆盖。
+`toolchain/scripts/deploy/package.json`、`bin/aw-installer.js` 和 `bin/aw-harness-deploy.js` 仍保留为本地 npm-style scaffold；它们调用同一个 Python wrapper。`aw-installer` 是主 bin，`aw-harness-deploy` 是兼容别名。`0.4.0-rc.3` 在 Windows 上按 `py -3`、`python`、`python3` 尝试 Python launcher，在 Linux/macOS 上按 `python3`、`python` 尝试；wrapper 不接受 `PYTHON`/`PYTHON3` 环境变量覆盖。
 
 根 package packlist 检查在仓库根目录执行 `npm pack --dry-run --json`。本地 scaffold packlist 检查仍在 `toolchain/scripts/deploy/` package root 内执行 `npm pack --dry-run --json`。
 
@@ -33,7 +33,7 @@ CI 必须显式设置 Node 后运行本地 package smoke、本地 scaffold pack 
 
 `AW_HARNESS_REPO_ROOT` 是 source checkout override。设置它时，source root 与默认 target repo root 保持旧的 repo-local 行为；未设置它时，packaged wrapper 从 package 解压根读取 source payload，并默认把当前工作目录作为用户项目 target repo root。`AW_HARNESS_TARGET_REPO_ROOT` 可显式覆盖 target repo root。
 
-`aw-installer` 的 package payload provenance、source/target root 解析和 `update` trust boundary 由 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md) 固定。包装层不得把远程 fetch、channel 解析、自升级、验签或自动回滚悄悄并入当前 `update --yes`。
+`aw-installer` 的 package payload provenance、source/target root 解析和 `update` trust boundary 由 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md) 固定。`0.4.0-rc.3` 允许 `update --source github --github-repo OWNER/REPO --github-ref REF` 显式使用 GitHub source archive 作为本次 source root；包装层不得把 channel 解析、自升级、验签或自动回滚悄悄并入当前 `update --yes`。
 
 ## 一、范围
 
@@ -41,14 +41,14 @@ CI 必须显式设置 Node 后运行本地 package smoke、本地 scaffold pack 
 
 - 分发包装层可以改变 operator 如何启动命令，但不能改变 deploy 语义。
 - CLI 是稳定的脚本化合同；TUI 是同一合同上的交互式操作层。
-- `npx aw-installer@next` 是当前 rc2 用户入口；裸 `npx aw-installer` 仍解析到 `latest=0.4.0-rc.1`，`aw-harness-deploy` 只是兼容别名。
+- `npx aw-installer@next` 是当前 RC 用户入口；裸 `npx aw-installer` 仍解析到 `latest=0.4.0-rc.1`，`aw-harness-deploy` 只是兼容别名。
 - 当前 `agents` backend 的 source / target / payload / marker 合同仍以 [Deploy Mapping Spec](./deploy-mapping-spec.md) 为准。
 - 当前 destructive reinstall 主流程仍以 [Deploy Runbook](./deploy-runbook.md) 为准。
 
 本文不定义：
 
 - npm 发布账户、registry 凭证或 release workflow；release channel 与 publish readiness 准入见 [aw-installer Release Channel Contract](./release-channel-contract.md)。
-- 远程更新、payload manifest、签名/验签、自升级或自动回滚；这些能力必须先满足 [Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md) 的准入条件。
+- channel-based 远程更新、payload manifest、签名/验签、自升级或自动回滚；这些能力必须先满足 [Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md) 的准入条件。
 - 具体 TUI framework、按键模型、配色或终端渲染实现。
 - 新的 deploy backend。
 - `adapter_deploy.py` 内部实现。
@@ -75,7 +75,7 @@ aw-installer <mode> --backend agents
 aw-harness-deploy <mode> --backend agents
 ```
 
-目标 Node/npm/npx 用户入口。Package identity 已批准为 unscoped `aw-installer`；当前 rc2 registry 主试用入口是 `aw-installer@next` selector：
+目标 Node/npm/npx 用户入口。Package identity 已批准为 unscoped `aw-installer`；当前 registry 主试用入口是 `aw-installer@next` selector：
 
 ```bash
 npx aw-installer@next
@@ -86,9 +86,10 @@ npx aw-installer@next verify --backend agents
 npx aw-installer@next install --backend agents
 npx aw-installer@next update --backend agents
 npx aw-installer@next update --backend agents --yes
+npx aw-installer@next update --backend agents --source github --github-ref master
 ```
 
-Bare `npx aw-installer` currently resolves to the older rc1 package because npm exposes it through `latest`; do not use that as rc2 or stable-release evidence. `npx aw-installer@next ...` remains the explicit rc2 pin. `npx aw-installer@next` 在交互式终端中可以进入 TUI；`npx aw-installer@next tui` 显式启动当前最小交互 shell。脚本和 CI 必须使用显式 CLI subcommand。非交互环境不得隐式启动 TUI，也不得要求方向键、全屏渲染或人工输入才能完成 CLI subcommand。
+Bare `npx aw-installer` currently resolves to the older rc1 package because npm exposes it through `latest`; do not use that as current RC or stable-release evidence. `npx aw-installer@next ...` remains the explicit published RC pin. Before rc3 is published, `next` still resolves to `0.4.0-rc.2`; rc3 checkout evidence must use a local `.tgz` or source checkout. `npx aw-installer@next` 在交互式终端中可以进入 TUI；`npx aw-installer@next tui` 显式启动当前最小交互 shell。脚本和 CI 必须使用显式 CLI subcommand。非交互环境不得隐式启动 TUI，也不得要求方向键、全屏渲染或人工输入才能完成 CLI subcommand。
 
 所有入口都必须投影到同一组 mode：
 
@@ -126,6 +127,7 @@ Bare `npx aw-installer` currently resolves to the older rc1 package because npm 
 
 - `update` 只能是 `prune --all -> check_paths_exist -> install --backend <backend> -> verify --backend <backend>` 的 one-shot 包装，不得引入增量修复、archive/history、旧版本保活或 target-to-source 反向同步。
 - `update` 默认只输出 dry-run plan；只有显式传入 `--yes` 才会变更 target root。
+- `update --source github` 只在本次命令中把 GitHub source archive 作为 source root；target root 仍来自当前工作目录、`AW_HARNESS_TARGET_REPO_ROOT` 或 backend root override。
 - `update` 必须在执行前暴露 target root、将删除的受管 install paths、将写入的 target paths，以及当前 conflict / unrecognized / foreign 摘要；`--json` 只用于 dry-run plan，以保证机器可读输出不会混入写入日志。
 - `update` 在 source contract 非法、target root 类型错误、坏链路、待写入路径 conflict，或 planned / known AW target path 被 unrecognized / foreign 内容占用时必须停止；target root 下无关用户目录不属于 `update` 阻塞项，旧的同 backend 受管目录可以由 `prune --all` 清理；`check_paths_exist` 失败时不得写业务文件。
 - `update` 必须复用 `diagnose` 的状态摘要和 `verify` 的严格失败信号：执行前可给出只读摘要，执行后必须跑等价严格复验并把 issue 作为失败信号。

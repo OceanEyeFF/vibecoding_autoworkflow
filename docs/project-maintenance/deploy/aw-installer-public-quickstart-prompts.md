@@ -1,13 +1,13 @@
 ---
 title: "aw-installer Public Quickstart Prompts"
 status: active
-updated: 2026-04-28
+updated: 2026-04-29
 owner: aw-kernel
-last_verified: 2026-04-28
+last_verified: 2026-04-29
 ---
 # aw-installer Public Quickstart Prompts
 
-> Purpose: give external testers one copy-paste path for installing AW artifacts into a target repository and initializing `.aw/` through Codex or Claude Code. The current rc2 registry trial path is `aw-installer@next`; bare `aw-installer` still resolves through npm `latest`.
+> Purpose: give external testers one copy-paste path for installing AW artifacts into a target repository and initializing `.aw/` through Codex or Claude Code. The current published RC registry trial path is `aw-installer@next`; bare `aw-installer` still resolves through npm `latest`.
 
 This page belongs to [Deploy Runbooks](./README.md). It uses the current distribution boundary from [aw-installer Release Channel Contract](./release-channel-contract.md) and the feedback fields from [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md).
 
@@ -18,10 +18,10 @@ This page belongs to [Deploy Runbooks](./README.md). It uses the current distrib
 - direct_npx_available: true
 - direct_npx_primary_path: `aw-installer@next`
 - registry_rc_available: true
-- npm_publish_allowed: completed-for-0.4.0-rc.2-next
+- npm_publish_allowed: completed-for-0.4.0-rc.2-next; rc3-candidate-not-yet-published
 - package_name_decided: true
 - approved_package_name: unscoped `aw-installer`
-- current_install_source: `aw-installer@next`, local `.tgz` package, or explicit source checkout
+- current_install_source: published `aw-installer@next`, local `.tgz` package, or explicit source checkout
 - target_repo_writes:
   - `.agents/skills/` for Codex/agents install
   - `.claude/skills/aw-set-harness-goal-skill/` for Claude Code cold-start helper
@@ -34,10 +34,10 @@ Run commands from the target repository root unless a command explicitly names t
 Prerequisites:
 
 - Node.js and npm are available for the `aw-installer` package path.
-- Python is available for the wrapper. The `0.4.0-rc.2` candidate tries `py -3`, `python`, then `python3` on Windows, and `python3` then `python` on Linux/macOS. It intentionally ignores `PYTHON` and `PYTHON3` environment overrides.
+- Python is available for the wrapper. The current wrapper tries `py -3`, `python`, then `python3` on Windows, and `python3` then `python` on Linux/macOS. It intentionally ignores `PYTHON` and `PYTHON3` environment overrides.
 - The target repository is a git worktree you are allowed to modify.
 - You have registry access to `aw-installer`, a local `aw-installer` `.tgz` package from the maintainer, or an explicit AW source checkout path.
-- You understand that the current public trial path is RC pre-release: `aw-installer@next` resolves to `0.4.0-rc.2`, while bare `aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`. Stable release semantics still require separate approval.
+- You understand that the current public trial path is RC pre-release: `aw-installer@next` currently resolves to `0.4.0-rc.2` on npm `next`, while bare `aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`. Stable release semantics still require separate approval.
 
 Privacy rule:
 
@@ -46,7 +46,7 @@ Privacy rule:
 
 ## Current RC Install Source
 
-Use the rc2 registry package directly for the public trial path:
+Use the published RC registry package directly for the public trial path:
 
 ```bash
 AW_INSTALLER_PACKAGE="aw-installer@next"
@@ -73,10 +73,10 @@ printf 'AW_INSTALLER_PACKAGE=%s\n' "$AW_INSTALLER_PACKAGE"
 External testers who receive a `.tgz` can skip this step and set:
 
 ```bash
-AW_INSTALLER_PACKAGE="/path/to/aw-installer-0.4.0-rc.2.tgz"
+AW_INSTALLER_PACKAGE="/path/to/aw-installer-0.4.0-rc.3.tgz"
 ```
 
-The exact filename may differ. Prefer `aw-installer@next` for rc2 registry npx trials and local `.tgz` when validating the current checkout or when registry access is unavailable.
+The exact filename may differ. Prefer `aw-installer@next` for published RC registry npx trials and local `.tgz` when validating the current checkout or when registry access is unavailable.
 
 ## Codex Quickstart
 
@@ -132,7 +132,7 @@ Requirements:
 - Treat existing repository facts as discovery input, not as a replacement for the confirmed goal.
 - If the repository already has `.aw/`, inspect the current control state and avoid overwriting confirmed truth without asking.
 - Do not run npm publish.
-- Prefer `aw-installer@next` for the current rc2 registry trial path; bare `aw-installer` still resolves to the older `latest` path.
+- Prefer `aw-installer@next` for the published RC registry trial path; bare `aw-installer` still resolves to the older `latest` path.
 
 After initialization, summarize:
 - which `.aw/` files were created or reused
@@ -174,7 +174,7 @@ Requirements:
 - Preserve existing source code and docs.
 - Do not call `adapter_deploy.py --backend claude`; this repository does not provide that stable adapter.
 - Do not run npm publish.
-- Prefer `aw-installer@next` for the current rc2 registry trial path; bare `aw-installer` still resolves to the older `latest` path.
+- Prefer `aw-installer@next` for the published RC registry trial path; bare `aw-installer` still resolves to the older `latest` path.
 
 After initialization, summarize:
 - which `.aw/` files were created or reused
