@@ -13,11 +13,11 @@ This page belongs to [Deploy Runbooks](./README.md). It consumes the release cha
 
 ## Control Signal
 
-- approval_status: pending
-- real_npm_publish_allowed: false
-- publish_requires_separate_approval: true
+- approval_status: approved-for-P0-019
+- real_npm_publish_allowed: true-for-approved-RC-command-only
+- publish_requires_separate_approval: satisfied-by-P0-019
 - package_version_currently_committed: `0.4.0-rc.1`
-- package_real_publish_lock: `awInstallerRelease.realPublishApproval=blocked-until-P0-019`
+- package_real_publish_lock: `awInstallerRelease.realPublishApproval=approved`
 - proposed_version_line: `0.4.x`
 - proposed_candidate_version: `0.4.0-rc.1`
 - proposed_channel: `next`
@@ -35,7 +35,7 @@ The first release-candidate line should use `0.4.x` because this repository is n
 3. deployable `agents` backend payload and local package wrapper.
 4. `aw-installer` as the near-term Node/npm/npx distribution envelope.
 
-Normal development may use `0.0.0-local`; the release-preflight checkpoint uses `0.4.0-rc.1` only as candidate metadata. That metadata does not authorize registry publication by itself.
+Normal development may use `0.0.0-local`; the release-preflight checkpoint uses `0.4.0-rc.1` as candidate metadata. `P0-019` is the explicit approval worktrack that authorizes publishing this candidate to `next` when the guard inputs and verification evidence match.
 
 ## Candidate Identity
 
@@ -66,11 +66,11 @@ Use these evidence paths as the approval package bundle:
 | Runtime external smoke operation artifact | `.aw/repo/aw-installer-external-target-smoke-runbook.md` | runtime evidence |
 | Runtime two-target smoke report | `.aw/repo/aw-installer-external-target-smoke-report.md` | passed for local `.tgz` / dry-run evidence |
 | Package metadata source | `package.json` | currently `0.4.0-rc.1` release-preflight metadata |
-| Real publish metadata lock | `package.json` | currently `blocked-until-P0-019` |
+| Real publish metadata lock | `package.json` | currently `approved` for `P0-019` |
 | Worktrack backlog source | `.aw/repo/worktrack-backlog.md` | `P0-007` approval package source |
 | Latest repo snapshot | `.aw/repo/snapshot-status.md` | refreshed after `develop-aw@f16f55e` |
 
-Before approval, refresh or re-run evidence if the intended release checkpoint differs from the smoke checkpoint or if package metadata changes beyond the approved candidate version fields.
+Before publish execution, refresh or re-run evidence if the intended release checkpoint differs from the smoke checkpoint or if package metadata changes beyond the approved candidate version and approval-lock fields.
 
 ## Release Notes Draft
 
@@ -94,7 +94,7 @@ Known exclusions:
 - no signature verification.
 - no automatic rollback.
 - no `claude` or `opencode` deploy backend.
-- no real npm publish without a separate approval decision.
+- no stable/latest npm publish without a separate approval decision.
 
 ## Rollback Or Deprecation Plan
 
@@ -120,8 +120,8 @@ The eventual approval request should include:
 - rollback/deprecation plan from this page
 - confirmation that the package payload does not rely on target repository source layout
 - confirmation that multi-temporary-workdir smoke has passed or has a documented, approval-visible rerun blocker
-- explicit acknowledgement that `AW_INSTALLER_PUBLISH_APPROVED=1` is not set by this document
-- explicit acknowledgement that `awInstallerRelease.realPublishApproval` remains blocked until the real-publish approval worktrack
+- explicit acknowledgement that `AW_INSTALLER_PUBLISH_APPROVED=1` is supplied only for the approved publish command
+- explicit acknowledgement that `awInstallerRelease.realPublishApproval=approved` applies only to `0.4.0-rc.1` on `next`
 
 ## Forbidden Wording
 
@@ -139,5 +139,5 @@ Prefer:
 - `RC approval package`
 - `proposed candidate version`
 - `local .tgz evidence`
-- `publish approval pending`
+- `publish execution pending`
 - `update reinstalls from the current trusted package or checkout payload`

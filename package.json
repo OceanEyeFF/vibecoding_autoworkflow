@@ -30,7 +30,7 @@
     "access": "public"
   },
   "awInstallerRelease": {
-    "realPublishApproval": "blocked-until-P0-019"
+    "realPublishApproval": "approved"
   },
   "engines": {
     "node": ">=18"

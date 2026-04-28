@@ -14,7 +14,7 @@ last_verified: 2026-04-28
 ## 当前状态
 
 - 根目录 `package.json` 是 self-contained `aw-installer` package envelope；`aw-installer` 是已批准的 unscoped public package identity。当前 `npm view aw-installer` 返回未发布，因此还没有 registry owner/maintainer metadata。
-- 当前 release-preflight metadata 使用 `0.4.0-rc.1` 作为首个 `0.4.x` RC checkpoint；package metadata 仍设置 `awInstallerRelease.realPublishApproval=blocked-until-P0-019`，真实 publish 必须被拒绝，除非后续审批显式跨过 publish boundary 并更新该 tracked metadata lock。
+- 当前 release-preflight metadata 使用 `0.4.0-rc.1` 作为首个 `0.4.x` RC checkpoint；`P0-019` 已跨过真实 publish 审批边界，并把 package metadata 设置为 `awInstallerRelease.realPublishApproval=approved`。真实 publish 仍必须同时满足本文的环境、tag、dist-tag、CI 与 registry 准入条件。
 - `npm pack --dry-run --json`、`npm run publish:dry-run --silent` 和根 `.tgz` smoke 只证明包面和运行入口，不等于发布授权。
 - `prepublishOnly` guard 位于 `toolchain/scripts/deploy/bin/check-root-publish.js`，负责在真实 publish 前执行机器准入检查。
 
@@ -48,7 +48,7 @@ The guard intentionally allows publish dry-run before approval so maintainers ca
 
 ## Required Evidence Before Approval
 
-Before setting `AW_INSTALLER_PUBLISH_APPROVED=1` or changing `awInstallerRelease.realPublishApproval` to `approved`, collect:
+Before setting `AW_INSTALLER_PUBLISH_APPROVED=1`, changing `awInstallerRelease.realPublishApproval` to `approved`, or running real `npm publish`, collect:
 
 - clean worktree on the intended release checkpoint.
 - root `npm pack --dry-run --json`.
@@ -73,13 +73,13 @@ Use dry-run before real publish approval and execution:
 npm run publish:dry-run --silent
 ```
 
-Real publish requires a separate approval boundary, an explicit tracked metadata-lock change, and explicit release metadata. Contract shape after that approval:
+Real publish requires a separate approval boundary, an explicit tracked metadata-lock change, and explicit release metadata. The approved `P0-019` RC command shape is:
 
 ```text
 CI=true
 AW_INSTALLER_PUBLISH_APPROVED=1
-AW_INSTALLER_RELEASE_GIT_TAG=v<approved-version>
-npm publish --tag <approved-channel>
+AW_INSTALLER_RELEASE_GIT_TAG=v0.4.0-rc.1
+npm publish --tag next
 ```
 
-This command is an example of the guard contract, not a release instruction for the current repository state.
+This command publishes the RC to the `next` dist-tag only after the worktrack's pre-publish evidence and tool-level approval are complete.

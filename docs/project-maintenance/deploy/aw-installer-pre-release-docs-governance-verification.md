@@ -15,7 +15,7 @@ This page belongs to [Deploy Runbooks](./README.md). It verifies the documentati
 
 - docs_governance_status: passed for pre-release trial documentation
 - direct_public_npx_available: false
-- npm_publish_allowed: false
+- npm_publish_allowed: true-for-approved-P0-019-RC-command-only
 - package_name_decided: true
 - approved_package_name: unscoped `aw-installer`
 - external_trial_execution_started: false
@@ -23,8 +23,8 @@ This page belongs to [Deploy Runbooks](./README.md). It verifies the documentati
 - claude_code_status: compatibility trial lane only
 - remaining_docs_blockers: none known after this pass
 - remaining_approval_blockers:
-  - real npm publish approval
-  - release checkpoint metadata approval
+  - registry publish execution evidence
+  - registry npx smoke and docs primary-path flip
   - external tester recruitment / execution approval
 
 ## Verified Entry Points
@@ -38,19 +38,19 @@ This page belongs to [Deploy Runbooks](./README.md). It verifies the documentati
 | [Trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) | GitHub issue entry for structured trial feedback |
 | [Bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml) | GitHub issue entry for install, verify, update, initialization, or operator-confusion failures |
 | [Multi Temporary Workdir Smoke](./aw-installer-multi-temp-workdir-smoke.md) | preferred pre-trial package smoke across isolated temporary targets and approved target repo temporary clones |
-| [RC Approval Package](./aw-installer-rc-approval-package.md) | proposed `0.4.x` release-candidate evidence and approval request shape, without publish authorization |
-| [Non-Publish Release Rehearsal](./aw-installer-release-rehearsal.md) | reproducible pack / dry-run / guard / smoke rehearsal, without publish authorization |
+| [RC Approval Package](./aw-installer-rc-approval-package.md) | approved `0.4.x` release-candidate evidence and P0-019 publish command boundary |
+| [Non-Publish Release Rehearsal](./aw-installer-release-rehearsal.md) | historical pack / dry-run / guard / smoke rehearsal before publish authorization |
 | [Codex Usage Help](../usage-help/codex.md) | `agents` backend target-root and external trial safety guidance |
 | [Claude Usage Help](../usage-help/claude.md) | Claude Code runtime compatibility lane and cold-start helper boundary |
 
 ## Non-contradiction Check
 
-- Direct public `npx aw-installer` is not presented as available; release-facing docs use pre-release `.tgz` or explicit checkout source for current trials, and reserve `npx aw-installer` for the publish-after-approval public package path.
-- `aw-installer` is now the approved unscoped package identity; real npm publish remains a separate approval blocker.
+- Direct public `npx aw-installer` is not presented as available until registry publish execution and npx smoke evidence exist; release-facing docs use pre-release `.tgz` or explicit checkout source for current trials, and reserve `npx aw-installer` as the post-publish public package path.
+- `aw-installer` is now the approved unscoped package identity; `P0-019` approves only `aw-installer@0.4.0-rc.1` on the `next` dist-tag.
 - Codex with `agents` backend remains the primary trial path.
 - Claude Code remains a compatibility trial lane and is not described as an implemented deploy adapter backend.
 - Target writes are consistently scoped to the target repository `.agents/skills/` for `agents` install/update, or to the Claude project-level cold-start helper path for the Claude compatibility lane.
-- Temporary target repository smoke writes only inside generated temporary workdirs or approved target repository temporary clones; push, PR, issue creation, non-temporary checkout mutation, npm publish, and real publish execution remain out of scope.
+- Temporary target repository smoke writes only inside generated temporary workdirs or approved target repository temporary clones; push, PR, issue creation, non-temporary checkout mutation, stable/latest npm publish, and external trial execution remain out of scope.
 
 ## Blocker Classification
 
@@ -62,8 +62,8 @@ No documentation blocker is known after the P0-013, P0-014, P0-015, and P0-016 v
 
 ### Approval Blockers
 
-- Real npm publish is not approved.
-- Release checkpoint metadata is not approved.
+- Registry publish execution evidence is not captured yet.
+- Registry `npx aw-installer` smoke and public-docs primary-path flip remain in `P0-020`.
 - External tester recruitment and real trial execution are not approved by this page.
 
 ### Technical Blockers
@@ -90,4 +90,4 @@ The P0-016 worktrack must preserve evidence for:
 
 ## Next Decision Boundary
 
-The documentation set is ready for a publish / external-trial approval discussion. That discussion is a separate approval boundary and must not be inferred from this verification record.
+The documentation set is ready for the approved P0-019 RC publish execution and the follow-up P0-020 registry smoke. External-trial recruitment remains a separate approval boundary and must not be inferred from this verification record.
