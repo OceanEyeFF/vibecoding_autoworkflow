@@ -7,7 +7,7 @@ last_verified: 2026-04-28
 ---
 # aw-installer Pre-release Docs Governance Verification
 
-> Purpose: record the final documentation governance state before the first public or near-public `aw-installer` trial wave. This page does not authorize npm publish, decide the package name, recruit testers, or mutate external repositories.
+> Purpose: record the final documentation governance state before the first public or near-public `aw-installer` trial wave. This page does not authorize npm publish, recruit testers, or mutate external repositories.
 
 This page belongs to [Deploy Runbooks](./README.md). It verifies the documentation state after the Harness dispatch/review-gate tuning, root README onboarding update, and external-trial docs alignment worktracks.
 
@@ -16,13 +16,13 @@ This page belongs to [Deploy Runbooks](./README.md). It verifies the documentati
 - docs_governance_status: passed for pre-release trial documentation
 - direct_public_npx_available: false
 - npm_publish_allowed: false
-- package_name_decided: false
+- package_name_decided: true
+- approved_package_name: unscoped `aw-installer`
 - external_trial_execution_started: false
 - stable_trial_backend: `agents`
 - claude_code_status: compatibility trial lane only
 - remaining_docs_blockers: none known after this pass
 - remaining_approval_blockers:
-  - final public package name approval
   - real npm publish approval
   - release checkpoint metadata approval
   - external tester recruitment / execution approval
@@ -45,12 +45,12 @@ This page belongs to [Deploy Runbooks](./README.md). It verifies the documentati
 
 ## Non-contradiction Check
 
-- Direct public `npx aw-installer` is not presented as available; release-facing docs use pre-release `.tgz`, explicit checkout source, or `<approved-package>` when discussing the future public package entrypoint.
-- `aw-installer` is described as a working package name / proposed package identity where release approval is discussed; final npm package name remains an approval blocker.
+- Direct public `npx aw-installer` is not presented as available; release-facing docs use pre-release `.tgz` or explicit checkout source for current trials, and reserve `npx aw-installer` for the publish-after-approval public package path.
+- `aw-installer` is now the approved unscoped package identity; real npm publish remains a separate approval blocker.
 - Codex with `agents` backend remains the primary trial path.
 - Claude Code remains a compatibility trial lane and is not described as an implemented deploy adapter backend.
 - Target writes are consistently scoped to the target repository `.agents/skills/` for `agents` install/update, or to the Claude project-level cold-start helper path for the Claude compatibility lane.
-- Temporary target repository smoke writes only inside generated temporary workdirs or approved target repository temporary clones; push, PR, issue creation, non-temporary checkout mutation, npm publish, and package-name decisions remain out of scope.
+- Temporary target repository smoke writes only inside generated temporary workdirs or approved target repository temporary clones; push, PR, issue creation, non-temporary checkout mutation, npm publish, and real publish execution remain out of scope.
 
 ## Blocker Classification
 
@@ -62,7 +62,6 @@ No documentation blocker is known after the P0-013, P0-014, P0-015, and P0-016 v
 
 ### Approval Blockers
 
-- Public npm package name is not approved.
 - Real npm publish is not approved.
 - Release checkpoint metadata is not approved.
 - External tester recruitment and real trial execution are not approved by this page.
@@ -91,4 +90,4 @@ The P0-016 worktrack must preserve evidence for:
 
 ## Next Decision Boundary
 
-The documentation set is ready for a package-name / publish / external-trial approval discussion. That discussion is a separate approval boundary and must not be inferred from this verification record.
+The documentation set is ready for a publish / external-trial approval discussion. That discussion is a separate approval boundary and must not be inferred from this verification record.

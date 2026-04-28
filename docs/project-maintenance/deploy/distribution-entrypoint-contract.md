@@ -75,20 +75,20 @@ aw-installer <mode> --backend agents
 aw-harness-deploy <mode> --backend agents
 ```
 
-目标 Node/npm/npx 用户入口。这里使用 `<approved-package>` 表示未来单独批准并发布后的 public package entrypoint；当前不要把它替换成公开可用的 `aw-installer` npm 包：
+目标 Node/npm/npx 用户入口。Package identity 已批准为 unscoped `aw-installer`；当前 npm release channel 尚未发布，因此这些命令是 publish 后的 public package entrypoint 形态，不表示现在已经可从 registry 运行：
 
 ```bash
-npx <approved-package>
-npx <approved-package> tui
-npx <approved-package> --version
-npx <approved-package> diagnose --backend agents --json
-npx <approved-package> verify --backend agents
-npx <approved-package> install --backend agents
-npx <approved-package> update --backend agents
-npx <approved-package> update --backend agents --yes
+npx aw-installer
+npx aw-installer tui
+npx aw-installer --version
+npx aw-installer diagnose --backend agents --json
+npx aw-installer verify --backend agents
+npx aw-installer install --backend agents
+npx aw-installer update --backend agents
+npx aw-installer update --backend agents --yes
 ```
 
-`npx <approved-package>` 在交互式终端中可以进入 TUI；`npx <approved-package> tui` 显式启动当前最小交互 shell。脚本和 CI 必须使用显式 CLI subcommand。非交互环境不得隐式启动 TUI，也不得要求方向键、全屏渲染或人工输入才能完成 CLI subcommand。
+`npx aw-installer` 在交互式终端中可以进入 TUI；`npx aw-installer tui` 显式启动当前最小交互 shell。脚本和 CI 必须使用显式 CLI subcommand。非交互环境不得隐式启动 TUI，也不得要求方向键、全屏渲染或人工输入才能完成 CLI subcommand。
 
 所有入口都必须投影到同一组 mode：
 

@@ -7,7 +7,7 @@ last_verified: 2026-04-28
 ---
 # aw-installer Public Quickstart Prompts
 
-> Purpose: give external testers one copy-paste path for installing AW artifacts into a target repository and initializing `.aw/` through Codex or Claude Code. This page does not authorize npm publish, decide the package name, or claim direct `npx aw-installer` availability.
+> Purpose: give external testers one copy-paste path for installing AW artifacts into a target repository and initializing `.aw/` through Codex or Claude Code. This page does not authorize npm publish or claim direct `npx aw-installer` availability.
 
 This page belongs to [Deploy Runbooks](./README.md). It uses the current non-publish distribution boundary from [aw-installer Non-Publish Release Rehearsal](./aw-installer-release-rehearsal.md) and the feedback fields from [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md).
 
@@ -17,7 +17,8 @@ This page belongs to [Deploy Runbooks](./README.md). It uses the current non-pub
 - claude_code_path: trial-only compatibility lane
 - direct_npx_available: false
 - npm_publish_allowed: false
-- package_name_decided: false
+- package_name_decided: true
+- approved_package_name: unscoped `aw-installer`
 - current_install_source: local `.tgz` package or explicit source checkout
 - target_repo_writes:
   - `.agents/skills/` for Codex/agents install
@@ -33,7 +34,7 @@ Prerequisites:
 - Node.js and npm are available for the `aw-installer` package path.
 - The target repository is a git worktree you are allowed to modify.
 - You have either a local `aw-installer` `.tgz` package from the maintainer or an explicit AW source checkout path.
-- You understand that the current public trial path is pre-release: direct `npx aw-installer` waits for a separately approved npm package name and publish.
+- You understand that the current public trial path is pre-release: package name is approved as unscoped `aw-installer`, but direct `npx aw-installer` waits for a separately approved and executed npm publish.
 
 Privacy rule:
 
@@ -177,4 +178,4 @@ Stop and report a blocker if:
 - Codex cannot see `set-harness-goal-skill` after a passing agents install.
 - Claude Code cannot read the project-level `aw-set-harness-goal-skill` entry.
 - initialization would overwrite an existing confirmed `.aw/goal-charter.md` without operator approval.
-- the operator expects direct `npx aw-installer`; that remains blocked until package name and npm publish are separately approved.
+- the operator expects direct `npx aw-installer`; that remains blocked until real npm publish is separately approved and executed.

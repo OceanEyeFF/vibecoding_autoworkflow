@@ -50,7 +50,7 @@
 
 外部试用者和维护者应按这个顺序进入，而不是从单个 `npx` 片段自行推断发布状态：
 
-- 安装与 `.aw/` 初始化提示：先看 [aw-installer Public Quickstart Prompts](./aw-installer-public-quickstart-prompts.md)。当前只承认 pre-release `.tgz` 或显式 checkout source；direct public `npx aw-installer` 仍等待 package name 与 npm publish 单独批准。
+- 安装与 `.aw/` 初始化提示：先看 [aw-installer Public Quickstart Prompts](./aw-installer-public-quickstart-prompts.md)。当前只承认 pre-release `.tgz` 或显式 checkout source；package name 已批准为 unscoped `aw-installer`，但 direct public `npx aw-installer` 仍等待真实 npm publish 单独批准并执行。
 - 反馈入口：用 [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)。
 - 发布前 smoke：用 [aw-installer Multi Temporary Workdir Smoke](./aw-installer-multi-temp-workdir-smoke.md) 验证空临时 repo 与批准目标 repo 临时 clone 的 source/target 隔离；不要写入非临时 checkout，不 push，不开 issue 或 PR。
 - 发布边界：RC 身份和证据包看 [aw-installer RC Approval Package](./aw-installer-rc-approval-package.md)，非 publish 演练看 [aw-installer Non-Publish Release Rehearsal](./aw-installer-release-rehearsal.md)。二者都不授权真实 npm publish。
@@ -118,7 +118,7 @@
 - [aw-installer-external-trial-feedback.md](./aw-installer-external-trial-feedback.md)
   external trial feedback。回答如何为自有仓库和论坛志愿者试用准备匿名目标清单、命令反馈字段、operator confusion 分类和下一主要矛盾判定标准；不包含公开招募文案。
 - [aw-installer-public-quickstart-prompts.md](./aw-installer-public-quickstart-prompts.md)
-  public quickstart prompts。回答如何让外部试用者用当前 pre-release `.tgz` 路径安装 AW artifacts，并通过 Codex 或 Claude Code 初始化 `.aw/`；不授权 npm publish 或包名决定。
+  public quickstart prompts。回答如何让外部试用者用当前 pre-release `.tgz` 路径安装 AW artifacts，并通过 Codex 或 Claude Code 初始化 `.aw/`；不授权 npm publish，且不把已批准包名写成已发布 package。
 - [aw-installer-pre-release-docs-governance-verification.md](./aw-installer-pre-release-docs-governance-verification.md)
   pre-release docs governance verification。回答发布前文档路由是否一致、剩余 docs blocker 与 approval blocker 如何区分。
 - [aw-installer-external-target-smoke.md](./aw-installer-external-target-smoke.md)

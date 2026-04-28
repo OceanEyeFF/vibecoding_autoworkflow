@@ -40,7 +40,7 @@ The package should stay at `0.0.0-local` in normal development until a separate 
 
 | Field | Proposed value |
 |---|---|
-| working package name / proposed package identity | `aw-installer` |
+| approved package identity | unscoped `aw-installer` |
 | version | `0.4.0-rc.1` |
 | release channel | `next` |
 | npm dist-tag | `next` |
@@ -76,7 +76,7 @@ Before approval, refresh or re-run evidence if the intended release checkpoint d
 
 Included:
 
-- self-contained npm package envelope using the working package name / proposed package identity `aw-installer`.
+- self-contained npm package envelope using the approved unscoped package identity `aw-installer`.
 - `aw-installer` CLI entrypoint and `aw-harness-deploy` compatibility alias.
 - `aw-installer tui` guided update flow over the same deploy contracts.
 - `agents` backend payload sourced from the package or an explicit trusted checkout override.
