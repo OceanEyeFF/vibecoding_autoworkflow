@@ -16,9 +16,9 @@ The concrete first `0.4.x` candidate approval package is tracked separately in [
 ## Current Stop Line
 
 - The current root `package.json` version is `0.4.0-rc.1` as release-preflight metadata for the first `0.4.x` RC checkpoint.
-- The current root `package.json` also keeps `awInstallerRelease.realPublishApproval=blocked-until-P0-019`; changing that tracked lock is reserved for the explicit real-publish approval worktrack.
-- Until real publish approval is explicitly granted and executed, the valid release-candidate output is still a local `.tgz` plus dry-run and smoke evidence.
-- A real npm release candidate requires a separate approval boundary, matching prerelease semver metadata, and the publish guard inputs listed below.
+- `P0-019` is the explicit real-publish approval worktrack and changes the current root `package.json` lock to `awInstallerRelease.realPublishApproval=approved`.
+- Real publish for `0.4.0-rc.1` has executed and registry evidence is captured; public docs must still avoid making bare `npx aw-installer` the primary path until P0-020 registry smoke passes.
+- A real npm release candidate requires this approval boundary, matching prerelease semver metadata, and the publish guard inputs listed below.
 - Publish dry-run and root `.tgz` smoke prove package surface and entrypoint behavior only; they are not release authorization.
 - `npm whoami` success is only an operator credential readiness signal. It does not approve real publish.
 
@@ -49,7 +49,7 @@ Do not use `latest` for the first release-candidate checkpoint. Do not use `cana
 
 ## Evidence Bundle
 
-Collect this evidence before asking for real publish approval:
+Collect this evidence before asking for future real publish approval:
 
 - clean worktree on the intended release checkpoint.
 - root `npm pack --dry-run --json`.
@@ -92,7 +92,7 @@ The release notes or changelog summary should include:
 
 ## Rollback Or Deprecation Plan
 
-Before real publish approval, name the recovery path for at least these cases:
+Before future real publish approval, name the recovery path for at least these cases:
 
 | Failure after publish | Minimum recovery path |
 |---|---|
@@ -105,7 +105,7 @@ Do not describe automatic rollback unless that behavior has been implemented and
 
 ## Forbidden Wording
 
-Avoid these phrases before real publish approval and execution:
+Avoid these phrases before registry smoke and public primary-path verification:
 
 - `published RC`
 - `release is ready`
@@ -119,7 +119,7 @@ Prefer:
 - `release-candidate prep checkpoint`
 - `RC evidence bundle`
 - `local .tgz smoke`
-- `publish approval pending`
+- `registry smoke pending`
 - `update reinstalls from the current trusted package or checkout payload`
 
 ## Verification For This Prep Work
@@ -140,7 +140,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/closeout_acceptance_gat
 
 ## Handoff To Approval
 
-Only request real publish approval after the evidence bundle is complete. The approval request should include:
+Only request future real publish approval after the evidence bundle is complete. The approval request should include:
 
 - candidate version.
 - channel and npm dist-tag.
@@ -151,4 +151,4 @@ Only request real publish approval after the evidence bundle is complete. The ap
 - confirmation that the current package payload does not rely on target repo source layout.
 - confirmation that the tracked `awInstallerRelease.realPublishApproval` lock may be changed only in the publish approval worktrack.
 
-Real publish remains out of scope until the approval boundary is explicitly crossed.
+Real publish remains out of scope for ordinary prep work. It is in scope only for the explicit publish worktrack that records approval, metadata lock state, command, npm account, registry result, and repair path.

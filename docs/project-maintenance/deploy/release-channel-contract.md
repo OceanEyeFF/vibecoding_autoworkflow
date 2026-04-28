@@ -7,16 +7,17 @@ last_verified: 2026-04-28
 ---
 # aw-installer Release Channel Contract
 
-> 目的：定义 `aw-installer` 从本地 `.tgz` / publish dry-run 进入真实 npm release channel 前必须满足的发布准入合同。本文不授权真实 `npm publish`。
+> 目的：定义 `aw-installer` 从本地 `.tgz` / publish dry-run 进入真实 npm release channel 前必须满足的发布准入合同，并记录首个 RC publish 的 registry 事实。本文不授权后续稳定发布或自动化发布。
 
 本页属于 [Deploy Runbooks](./README.md) 系列，并承接 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 的发布准入部分。运行时 payload provenance 与 update trust boundary 由 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md) 承接。
 
 ## 当前状态
 
-- 根目录 `package.json` 是 self-contained `aw-installer` package envelope；`aw-installer` 是已批准的 unscoped public package identity。当前 `npm view aw-installer` 返回未发布，因此还没有 registry owner/maintainer metadata。
-- 当前 release-preflight metadata 使用 `0.4.0-rc.1` 作为首个 `0.4.x` RC checkpoint；package metadata 仍设置 `awInstallerRelease.realPublishApproval=blocked-until-P0-019`，真实 publish 必须被拒绝，除非后续审批显式跨过 publish boundary 并更新该 tracked metadata lock。
+- 根目录 `package.json` 是 self-contained `aw-installer` package envelope；`aw-installer` 是已批准的 unscoped public package identity。`aw-installer@0.4.0-rc.1` 已发布到 npm registry。
+- 当前 release metadata 使用 `0.4.0-rc.1` 作为首个 `0.4.x` RC checkpoint；`P0-019` 已跨过真实 publish 审批边界，并把 package metadata 设置为 `awInstallerRelease.realPublishApproval=approved`。后续 publish 仍必须同时满足本文的环境、tag、dist-tag、CI 与 registry 准入条件。
 - `npm pack --dry-run --json`、`npm run publish:dry-run --silent` 和根 `.tgz` smoke 只证明包面和运行入口，不等于发布授权。
 - `prepublishOnly` guard 位于 `toolchain/scripts/deploy/bin/check-root-publish.js`，负责在真实 publish 前执行机器准入检查。
+- 首个 npm package version 的 registry 事实是 `next: 0.4.0-rc.1` 与 `latest: 0.4.0-rc.1` 同时存在；`npm dist-tag rm aw-installer latest` 对唯一版本返回 `E400 Bad Request`。在稳定版本发布前，面向 RC 的命令与 smoke 应显式使用 `aw-installer@next`。
 
 ## Release Channels
 
@@ -27,6 +28,8 @@ last_verified: 2026-04-28
 | `canary` | `canary` | prerelease semver containing `canary`, for example `1.3.0-canary.20260427` | 短期实验验证 |
 
 真实 publish 时，release channel 必须与 npm dist-tag 一致。release channel 可由 `AW_INSTALLER_RELEASE_GIT_TAG=v<package.version>` 推导，也可由 `AW_INSTALLER_RELEASE_CHANNEL` 显式给出。未显式设置 npm dist-tag 时，npm 默认按 `latest` 处理，因此非 `latest` channel 必须显式传入对应 tag。
+
+Npm 的 `latest` tag 是默认安装解析入口：未指定版本或 tag 的 `npm install <pkg>`、`npm exec --package <pkg>`、`npx <pkg>` 会解析 `latest`。`next` 是普通 dist-tag，常被项目用作 upcoming / prerelease stream；除 `latest` 外，npm 本身不赋予其他 tag 特殊语义。见 npm 官方 `dist-tag` 文档：`https://docs.npmjs.com/cli/v8/commands/npm-dist-tag/`。
 
 ## Publish Readiness Gate
 
@@ -48,7 +51,7 @@ The guard intentionally allows publish dry-run before approval so maintainers ca
 
 ## Required Evidence Before Approval
 
-Before setting `AW_INSTALLER_PUBLISH_APPROVED=1` or changing `awInstallerRelease.realPublishApproval` to `approved`, collect:
+Before setting `AW_INSTALLER_PUBLISH_APPROVED=1`, changing `awInstallerRelease.realPublishApproval` to `approved`, or running real `npm publish`, collect:
 
 - clean worktree on the intended release checkpoint.
 - root `npm pack --dry-run --json`.
@@ -63,7 +66,7 @@ Before setting `AW_INSTALLER_PUBLISH_APPROVED=1` or changing `awInstallerRelease
 - npm account setup, tokens, 2FA, or registry credential storage.
 - GitHub Actions release workflow implementation.
 - Runtime payload provenance, remote update, self-update, signature verification, or rollback implementation; those remain governed by [Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md).
-- Running `npm publish`.
+- Running future `npm publish` outside an explicit approval worktrack.
 
 ## Operator Notes
 
@@ -73,13 +76,13 @@ Use dry-run before real publish approval and execution:
 npm run publish:dry-run --silent
 ```
 
-Real publish requires a separate approval boundary, an explicit tracked metadata-lock change, and explicit release metadata. Contract shape after that approval:
+Real publish requires a separate approval boundary, an explicit tracked metadata-lock change, and explicit release metadata. The approved `P0-019` RC command shape is:
 
 ```text
 CI=true
 AW_INSTALLER_PUBLISH_APPROVED=1
-AW_INSTALLER_RELEASE_GIT_TAG=v<approved-version>
-npm publish --tag <approved-channel>
+AW_INSTALLER_RELEASE_GIT_TAG=v0.4.0-rc.1
+npm publish --tag next
 ```
 
-This command is an example of the guard contract, not a release instruction for the current repository state.
+This command was used for `P0-019` and published `aw-installer@0.4.0-rc.1`. Registry evidence shows the approved `next` tag exists; because this is the only package version, npm also exposes `latest` for the same RC. Treat that `latest` alias as a registry default for the initial package, not as stable-release approval. Use `aw-installer@next` for RC smoke and trial commands until a stable release is explicitly approved.
