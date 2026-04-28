@@ -72,7 +72,7 @@ toolchain/scripts/test/aw_installer_multi_temp_workdir_smoke.sh --skip-remote
 - At least three independent target workdirs pass in the default network-enabled run.
 - The local-only fallback still covers three independent generated workdirs when remote access is unavailable.
 - Each target completes help/version/TUI guard/diagnose/update dry-run/install/verify/update apply/final diagnose.
-- Each final diagnose reports 17 managed installs, 0 conflicts, and 0 unrecognized entries.
+- Each final diagnose reports 19 managed installs, 0 conflicts, and 0 unrecognized entries.
 - Each dry-run planned target path stays inside its own temporary target workdir.
 - No observed source root resolves inside the AW source checkout.
 - No observed source root resolves inside any temporary target repository or equals a target root.

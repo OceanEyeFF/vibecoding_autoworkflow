@@ -1,9 +1,9 @@
 ---
 title: "Harness Skill Catalog / WorktrackScope"
 status: draft
-updated: 2026-04-27
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-27
+last_verified: 2026-04-28
 ---
 # WorktrackScope Skill Catalog
 
@@ -18,6 +18,8 @@ last_verified: 2026-04-27
 - 它们可以派发下游 subagent，但自身不应伪装成“控制平面 + 执行平面一体”
 - `schedule-worktrack-skill` 是当前 `selected_next_action` 与 dispatch handoff packet 的唯一 authority
 - `dispatch-skills` 只消费 scheduling packet，不反向改写 queue 选择
+- `generic-worker-skill` 是没有更窄专用 skill 时的通用执行载体
+- `doc-catch-up-worker-skill` 是 worktrack closeout 前推荐使用的文档基线追平载体
 - 在 freshly seeded 或 autonomous continuation 的首个 execution-facing round，初始 slice 必须先收紧到最小可验证子片段，再允许 dispatch
 - `dispatch-skills` 的 `runtime_dispatch_mode` 读取顺序：
   - `.aw/control-state.md` 的 `subagent_dispatch_mode_override_scope`
@@ -102,7 +104,8 @@ preferred scheduling fields：
 - 校验 scheduling 产出的 handoff packet
 - 拒收超过单轮边界的 oversized packet，并把它退回 `schedule-worktrack-skill`
 - 优先选择合适的专门 skill 或 subagent 执行方式
-- 当系统中没有合适的专门 skill 时，自动 fallback 到通用任务完成 `SubAgent`
+- 当系统中没有合适的专门 skill 时，自动 fallback 到 `generic-worker-skill` 承载的通用任务完成 `SubAgent`
+- 当当前任务主要是文档追平时，优先绑定 `doc-catch-up-worker-skill`
 - 按 `runtime_dispatch_mode` 选择执行载体：`auto` 在 runtime 支持且权限边界允许时优先委派，无法安全委派时必须显式记录 `runtime fallback`、权限阻塞或 `dispatch package unsafe`；`delegated` 必须真实委派，无法委派时返回运行时缺口或权限阻塞；`current-carrier` 显式关闭委派
 - 跑一轮 bounded execution
 - 回传 evidence 和状态结果
@@ -150,7 +153,8 @@ dispatch contract：
 选择规则：
 
 - 只有在专门 skill 对当前 work item 有清晰语义贴合时，才优先绑定该 skill
-- 没有清晰贴合的专门 skill 时，必须 fallback 到通用任务完成 `SubAgent`
+- 没有清晰贴合的专门 skill 时，必须 fallback 到 `generic-worker-skill` 承载的通用任务完成 `SubAgent`
+- 文档追平任务优先绑定 `doc-catch-up-worker-skill`
 - fallback 不得扩大 scope，也不得绕过 `verification_requirements`
 - handoff packet 缺失或不完整时，必须返回 `schedule-worktrack-skill`，而不是由 `dispatch-skills` 自己补齐
 - handoff packet 如果已经膨胀成多 acceptance slices、多队列项或“整包做完”的 execution tranche，也必须返回 `schedule-worktrack-skill`
@@ -163,7 +167,52 @@ canonical executable source：
 
 - `initial canonical executable skeleton landed`
 
-### 4. review-evidence-skill
+### 4. generic-worker-skill
+
+职责：
+
+- 接收限定范围 Prompt，并在当前权限边界内完成实现、修复、调查或验证任务
+- 作为无专用 skill 时的通用执行载体，避免 Harness 主控制器吸收执行责任
+- 返回执行报告、触及文件、验证结果和残留风险
+
+主要依赖：
+
+- `Dispatch Task Brief`
+- `Dispatch Info Packet`
+- 当前任务相关的最小上下文
+
+canonical executable source：
+
+- [../../../product/harness/skills/generic-worker-skill/SKILL.md](../../../product/harness/skills/generic-worker-skill/SKILL.md)
+
+当前状态：
+
+- `initial canonical executable skeleton landed`
+
+### 5. doc-catch-up-worker-skill
+
+职责：
+
+- 将已验证实现事实追平到正确长期文档层
+- 清理旧路径、旧数量、旧命令、旧流程和旧边界描述
+- 在 closeout 前降低后续开发引用过期上下文的风险
+
+主要依赖：
+
+- 当前 diff 与验证证据
+- `docs/project-maintenance/`
+- `docs/harness/`
+- 相关入口页和承接层正文
+
+canonical executable source：
+
+- [../../../product/harness/skills/doc-catch-up-worker-skill/SKILL.md](../../../product/harness/skills/doc-catch-up-worker-skill/SKILL.md)
+
+当前状态：
+
+- `initial canonical executable skeleton landed`
+
+### 6. review-evidence-skill
 
 职责：
 
@@ -192,7 +241,7 @@ preferred review-lane fields：
 - `low_severity_absorption_applied`
 - `ready_for_gate`
 
-### 5. test-evidence-skill
+### 7. test-evidence-skill
 
 职责：
 
@@ -221,7 +270,7 @@ preferred validation-lane fields：
 - `confidence_reason`
 - `ready_for_gate`
 
-### 6. rule-check-skill
+### 8. rule-check-skill
 
 职责：
 
@@ -241,7 +290,7 @@ canonical executable source：
 
 - `initial canonical executable skeleton landed`
 
-### 7. gate-skill
+### 9. gate-skill
 
 职责：
 
@@ -270,7 +319,7 @@ preferred gate fields：
 - `allowed_next_routes`
 - `recommended_next_route`
 
-### 8. recover-worktrack-skill
+### 10. recover-worktrack-skill
 
 职责：
 
@@ -290,7 +339,7 @@ canonical executable source：
 
 - `initial canonical executable skeleton landed`
 
-### 9. close-worktrack-skill
+### 11. close-worktrack-skill
 
 职责：
 

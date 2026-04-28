@@ -1,9 +1,9 @@
 ---
 title: "aw-installer External Target Smoke"
 status: active
-updated: 2026-04-27
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-27
+last_verified: 2026-04-28
 ---
 # aw-installer External Target Smoke
 
@@ -91,7 +91,7 @@ echo "evidence_dir=$tmpdir"
 - Non-interactive `aw-installer tui` fails with the expected guard message.
 - `diagnose --json` and `update --json` run before mutation and produce JSON evidence.
 - `install`, `verify`, and `update --yes` succeed in each target repository.
-- After install/update, each target reports 17 managed installs, 0 conflicts, and 0 unrecognized entries.
+- After install/update, each target reports 19 managed installs, 0 conflicts, and 0 unrecognized entries.
 - Source root in diagnose output points to the package installation used by `npm exec`, not the source checkout.
 - Target root points inside the temporary target repository.
 

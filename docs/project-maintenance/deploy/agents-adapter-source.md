@@ -1,9 +1,9 @@
 ---
 title: "Agents Adapter Source"
 status: active
-updated: 2026-04-26
+updated: 2026-04-28
 owner: aw-kernel
-last_verified: 2026-04-26
+last_verified: 2026-04-28
 ---
 # Agents Adapter Source
 
@@ -50,6 +50,8 @@ last_verified: 2026-04-26
 - `worktrack-status-skill`
 - `schedule-worktrack-skill`
 - `dispatch-skills`
+- `generic-worker-skill`
+- `doc-catch-up-worker-skill`
 - `review-evidence-skill`
 - `test-evidence-skill`
 - `rule-check-skill`
