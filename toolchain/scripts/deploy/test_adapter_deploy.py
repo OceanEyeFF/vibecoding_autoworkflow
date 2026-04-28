@@ -123,12 +123,24 @@ class AdapterDeployTest(unittest.TestCase):
     def _load_json(self, path: Path) -> dict[str, object]:
         return json.loads(path.read_text(encoding="utf-8"))
 
-    def _release_package_metadata(self, version: str) -> dict[str, object]:
+    def _release_package_metadata(self, version: str, *, channel: str | None = None) -> dict[str, object]:
+        prerelease = version.split("-", 1)[1] if "-" in version else ""
+        approved_channel = channel
+        if approved_channel is None:
+            if "canary" in prerelease.split("."):
+                approved_channel = "canary"
+            elif prerelease.startswith(("alpha", "beta", "rc")):
+                approved_channel = "next"
+            else:
+                approved_channel = "latest"
         return {
             "name": "aw-installer",
             "version": version,
             "awInstallerRelease": {
                 "realPublishApproval": "approved",
+                "approvedVersion": version,
+                "approvedGitTag": f"v{version}",
+                "approvedChannel": approved_channel,
             },
         }
 
@@ -536,14 +548,23 @@ class AdapterDeployTest(unittest.TestCase):
             },
         )
         self.assertIn("toolchain/scripts/deploy/bin/check-root-publish.js", package["files"])
+        self.assertIn("toolchain/scripts/deploy/bin/publish-dry-run.js", package["files"])
         self.assertEqual(
             package["scripts"]["prepublishOnly"],
             "node toolchain/scripts/deploy/bin/check-root-publish.js",
         )
-        self.assertEqual(package["scripts"]["publish:dry-run"], "npm publish --dry-run --json --tag next")
+        self.assertEqual(
+            package["scripts"]["publish:dry-run"],
+            "node toolchain/scripts/deploy/bin/publish-dry-run.js",
+        )
         self.assertEqual(
             package["awInstallerRelease"],
-            {"realPublishApproval": "approved"},
+            {
+                "realPublishApproval": "approved",
+                "approvedVersion": "0.4.0-rc.1",
+                "approvedGitTag": "v0.4.0-rc.1",
+                "approvedChannel": "next",
+            },
         )
         scaffold_package = json.loads(
             (self.source_repo_root / "toolchain" / "scripts" / "deploy" / "package.json").read_text(
@@ -886,6 +907,165 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(completed.stdout, "")
         self.assertEqual(completed.stderr, "")
+
+    def test_root_npm_publish_guard_rejects_stale_approved_version_metadata(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.temp_root / "release-package-root"
+        guard_dir = package_root / "toolchain" / "scripts" / "deploy" / "bin"
+        guard_dir.mkdir(parents=True)
+        guard_path = guard_dir / "check-root-publish.js"
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js",
+            guard_path,
+        )
+        package_path = package_root / "package.json"
+        metadata = self._release_package_metadata("1.2.4")
+        metadata["awInstallerRelease"]["approvedVersion"] = "1.2.3"
+        package_path.write_text(json.dumps(metadata), encoding="utf-8")
+        env = {
+            **os.environ,
+            "AW_INSTALLER_PUBLISH_APPROVED": "1",
+            "AW_INSTALLER_RELEASE_CHANNEL": "latest",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v1.2.4",
+            "CI": "true",
+            "npm_config_tag": "latest",
+        }
+        env.pop("npm_config_dry_run", None)
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("approvedVersion 1.2.3 must match 1.2.4", completed.stderr)
+
+    def test_root_npm_publish_guard_rejects_missing_version_bound_metadata(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.temp_root / "release-package-root"
+        guard_dir = package_root / "toolchain" / "scripts" / "deploy" / "bin"
+        guard_dir.mkdir(parents=True)
+        guard_path = guard_dir / "check-root-publish.js"
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js",
+            guard_path,
+        )
+        package_path = package_root / "package.json"
+        package_path.write_text(
+            json.dumps(
+                {
+                    "name": "aw-installer",
+                    "version": "1.2.4",
+                    "awInstallerRelease": {"realPublishApproval": "approved"},
+                }
+            ),
+            encoding="utf-8",
+        )
+        env = {
+            **os.environ,
+            "AW_INSTALLER_PUBLISH_APPROVED": "1",
+            "AW_INSTALLER_RELEASE_CHANNEL": "latest",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v1.2.4",
+            "CI": "true",
+            "npm_config_tag": "latest",
+        }
+        env.pop("npm_config_dry_run", None)
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("approvedVersion <missing-version> must match 1.2.4", completed.stderr)
+
+    def test_root_npm_publish_guard_rejects_stale_approved_tag_metadata(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.temp_root / "release-package-root"
+        guard_dir = package_root / "toolchain" / "scripts" / "deploy" / "bin"
+        guard_dir.mkdir(parents=True)
+        guard_path = guard_dir / "check-root-publish.js"
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js",
+            guard_path,
+        )
+        package_path = package_root / "package.json"
+        metadata = self._release_package_metadata("1.2.4")
+        metadata["awInstallerRelease"]["approvedGitTag"] = "v1.2.3"
+        package_path.write_text(json.dumps(metadata), encoding="utf-8")
+        env = {
+            **os.environ,
+            "AW_INSTALLER_PUBLISH_APPROVED": "1",
+            "AW_INSTALLER_RELEASE_CHANNEL": "latest",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v1.2.4",
+            "CI": "true",
+            "npm_config_tag": "latest",
+        }
+        env.pop("npm_config_dry_run", None)
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("approvedGitTag v1.2.3 must match v1.2.4", completed.stderr)
+
+    def test_root_npm_publish_guard_rejects_stale_approved_channel_metadata(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.temp_root / "release-package-root"
+        guard_dir = package_root / "toolchain" / "scripts" / "deploy" / "bin"
+        guard_dir.mkdir(parents=True)
+        guard_path = guard_dir / "check-root-publish.js"
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js",
+            guard_path,
+        )
+        package_path = package_root / "package.json"
+        metadata = self._release_package_metadata("1.2.4")
+        metadata["awInstallerRelease"]["approvedChannel"] = "next"
+        package_path.write_text(json.dumps(metadata), encoding="utf-8")
+        env = {
+            **os.environ,
+            "AW_INSTALLER_PUBLISH_APPROVED": "1",
+            "AW_INSTALLER_RELEASE_CHANNEL": "latest",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v1.2.4",
+            "CI": "true",
+            "npm_config_tag": "latest",
+        }
+        env.pop("npm_config_dry_run", None)
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("approvedChannel next must match latest", completed.stderr)
 
     def test_root_npm_publish_guard_allows_approved_latest_release_metadata(self) -> None:
         if shutil.which("node") is None:

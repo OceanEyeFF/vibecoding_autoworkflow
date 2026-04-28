@@ -14,8 +14,9 @@ last_verified: 2026-04-28
 ## 当前状态
 
 - 根目录 `package.json` 是 self-contained `aw-installer` package envelope；`aw-installer` 是已批准的 unscoped public package identity。`aw-installer@0.4.0-rc.1` 已发布到 npm registry。
-- 当前 release metadata 使用 `0.4.0-rc.1` 作为首个 `0.4.x` RC checkpoint；`P0-019` 已跨过真实 publish 审批边界，并把 package metadata 设置为 `awInstallerRelease.realPublishApproval=approved`。后续 publish 仍必须同时满足本文的环境、tag、dist-tag、CI 与 registry 准入条件。
+- 当前 release metadata 使用 `0.4.0-rc.1` 作为首个 `0.4.x` RC checkpoint；`P0-019` 已跨过真实 publish 审批边界，并把 package metadata 设置为 `awInstallerRelease.realPublishApproval=approved`、`approvedVersion=0.4.0-rc.1`、`approvedGitTag=v0.4.0-rc.1`、`approvedChannel=next`。后续 publish 仍必须同时满足本文的环境、tag、dist-tag、CI 与 registry 准入条件。
 - `npm pack --dry-run --json`、`npm run publish:dry-run --silent` 和根 `.tgz` smoke 只证明包面和运行入口，不等于发布授权。
+- `npm run publish:dry-run --silent` runs `toolchain/scripts/deploy/bin/publish-dry-run.js`, which defaults to `next` for the current RC lane but honors `AW_INSTALLER_RELEASE_CHANNEL` or `npm_config_tag` so release workflows rehearse the same channel they would publish.
 - `prepublishOnly` guard 位于 `toolchain/scripts/deploy/bin/check-root-publish.js`，负责在真实 publish 前执行机器准入检查。
 - repository-side GitHub Release `published` workflow preflight 位于 `.github/workflows/publish.yml`；它把 release tag、GitHub prerelease 状态、release-body approval marker、derived channel、local publish guard 和 npm provenance publish 串起来，但仍不替代未来 release-prep 审批或 npm-side Trusted Publisher 设置。
 - 首个 npm package version 的 registry 事实是 `next: 0.4.0-rc.1` 与 `latest: 0.4.0-rc.1` 同时存在；`npm dist-tag rm aw-installer latest` 对唯一版本返回 `E400 Bad Request`。P0-020 registry smoke 验证后，面向 RC 试用的主路径可以使用裸 `npx aw-installer`，需要显式证明 RC channel 时使用 `aw-installer@next`。
@@ -39,6 +40,7 @@ Npm 的 `latest` tag 是默认安装解析入口：未指定版本或 tag 的 `n
 - package name is the approved unscoped public package identity `aw-installer`.
 - package version is valid semver and is not `0.0.0-local` or any `-local` version.
 - package metadata has `awInstallerRelease.realPublishApproval=approved`, changed only inside the explicit real-publish approval worktrack.
+- package metadata `approvedVersion`, `approvedGitTag`, and `approvedChannel` exactly match the package version, release git tag, and derived release channel.
 - `CI=true`.
 - `AW_INSTALLER_PUBLISH_APPROVED=1`.
 - derived or explicit release channel is one of `latest`, `next`, or `canary`.
@@ -53,7 +55,7 @@ The guard intentionally allows publish dry-run before approval so maintainers ca
 
 ## Required Evidence Before Approval
 
-Before setting `AW_INSTALLER_PUBLISH_APPROVED=1`, changing `awInstallerRelease.realPublishApproval` to `approved`, or running real `npm publish`, collect:
+Before setting `AW_INSTALLER_PUBLISH_APPROVED=1`, changing `awInstallerRelease.realPublishApproval` / `approvedVersion` / `approvedGitTag` / `approvedChannel`, or running real `npm publish`, collect:
 
 - clean worktree on the intended release checkpoint.
 - root `npm pack --dry-run --json`.
@@ -78,7 +80,18 @@ Use dry-run before real publish approval and execution:
 npm run publish:dry-run --silent
 ```
 
-Real publish requires a separate approval boundary, an explicit tracked metadata-lock change, and explicit release metadata. The approved `P0-019` RC command shape is:
+Real publish requires a separate approval boundary, an explicit tracked metadata-lock change, and explicit release metadata. The approved `P0-019` RC metadata lock is:
+
+```json
+{
+  "realPublishApproval": "approved",
+  "approvedVersion": "0.4.0-rc.1",
+  "approvedGitTag": "v0.4.0-rc.1",
+  "approvedChannel": "next"
+}
+```
+
+The approved `P0-019` RC command shape is:
 
 ```text
 CI=true

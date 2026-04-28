@@ -27,7 +27,7 @@ This page belongs to [Deploy Runbooks](./README.md). It builds on [aw-installer 
 - recommended_node_version_for_publish_job: `24`
 - minimum_npm_cli_for_trusted_publishing: `11.5.1`
 - repository_workflow_requires_followup_worktrack: false
-- release_guard_hardening_requires_followup_worktrack: true
+- release_guard_hardening_requires_followup_worktrack: false
 
 ## Decision
 
@@ -110,7 +110,7 @@ jobs:
       - run: PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_check.py
       - run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
       - run: npm pack --dry-run --json
-      - run: npm publish --dry-run --json --tag "$AW_INSTALLER_RELEASE_CHANNEL"
+      - run: npm run publish:dry-run --silent
       - run: npm publish --provenance --access public --tag "$AW_INSTALLER_RELEASE_CHANNEL"
 ```
 
@@ -128,7 +128,7 @@ The first repository-side workflow preflight resolves these details:
 - the workflow rejects GitHub Releases whose prerelease flag and semver prerelease state disagree.
 - `npm publish --provenance --access public --tag <channel>` uses the derived `AW_INSTALLER_RELEASE_CHANNEL`.
 
-P0-023 remains the follow-up hardening lane for version-specific approval-lock semantics and deeper channel guard coverage. The current root package metadata still records `awInstallerRelease.realPublishApproval=approved` from P0-019, and this page does not broaden that approval to future versions.
+The root package metadata now binds the approval lock to the exact approved version, git tag, and channel through `approvedVersion`, `approvedGitTag`, and `approvedChannel`. Future versions must update those fields inside a separate approval worktrack before the local publish guard accepts a real publish.
 
 ## Approval Boundary
 

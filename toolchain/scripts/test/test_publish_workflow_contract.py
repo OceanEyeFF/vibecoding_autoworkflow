@@ -59,7 +59,7 @@ def test_publish_workflow_runs_pre_publish_validation_gates() -> None:
         "python -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'",
         "npm --prefix toolchain/scripts/deploy run smoke --silent",
         "npm pack --dry-run --json",
-        "npm publish --dry-run --json --tag \"$AW_INSTALLER_RELEASE_CHANNEL\"",
+        "npm run publish:dry-run --silent",
     ]
 
     for command in required_commands:
