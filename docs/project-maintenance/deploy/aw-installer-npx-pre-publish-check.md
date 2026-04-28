@@ -1,9 +1,9 @@
 ---
 title: "aw-installer npx Pre-Publish Check"
 status: active
-updated: 2026-04-28
+updated: 2026-04-29
 owner: aw-kernel
-last_verified: 2026-04-28
+last_verified: 2026-04-29
 ---
 # aw-installer npx Pre-Publish Check
 
@@ -32,6 +32,7 @@ Stop before publish if any of these are true:
 - docs still point users to the wrong selector, especially bare `npx aw-installer` when the candidate is only on `next`.
 - `npm pack --dry-run --json`, `npm run publish:dry-run --silent`, governance checks, deploy tests, or closeout gate fail.
 - local package smoke has not proved install/update/verify in temporary target repositories.
+- for rc3 or later, `update --source github --github-ref master --json` has not proved that the GitHub source archive contains a valid Harness payload source and keeps target root separate from the archive extraction root.
 - rollback/deprecation notes are missing.
 
 Do not rely on a later patch version to repair a package that was missing files, stale docs, or wrong metadata at publish time. A replacement version can supersede a broken version, but it cannot mutate the already published tarball.
@@ -50,7 +51,7 @@ Record the release tuple before any package or docs change:
 | release body marker | includes `aw-installer-publish-approved: v<package.version>` |
 | approval lock | `awInstallerRelease.approvedVersion`, `approvedGitTag`, and `approvedChannel` match the tuple |
 
-For rc2-style trials, user-facing commands must prefer `aw-installer@next`; bare `npx aw-installer` resolves through npm `latest` and may target an older RC.
+For RC trials, user-facing commands must prefer `aw-installer@next`; bare `npx aw-installer` resolves through npm `latest` and may target an older RC.
 
 ## 2. Packlist Review
 
@@ -127,6 +128,7 @@ Minimum evidence:
 
 - help/version/TUI guard succeed or fail as expected.
 - `diagnose --backend agents --json` and `update --backend agents --json` run before mutation.
+- `update --backend agents --source github --github-ref master --json` passes when the release includes GitHub source update capability.
 - `install --backend agents`, `verify --backend agents`, and `update --backend agents --yes` pass.
 - final diagnose reports managed installs equal to the selected candidate `binding_count`, with 0 conflicts and 0 unrecognized entries.
 - source root resolves to the package payload, not the source checkout or target repository.

@@ -1,13 +1,13 @@
 ---
 title: "aw-installer Payload Provenance And Update Trust Boundary"
 status: active
-updated: 2026-04-27
+updated: 2026-04-29
 owner: aw-kernel
-last_verified: 2026-04-27
+last_verified: 2026-04-29
 ---
 # aw-installer Payload Provenance And Update Trust Boundary
 
-> 目的：固定 `aw-installer` 在发布前后都必须保持的 payload provenance 与 update trust boundary。本文定义“payload 从哪里来、命令写到哪里、哪些覆盖是可信输入、哪些远程更新能力尚未实现”。
+> 目的：固定 `aw-installer` 在发布前后都必须保持的 payload provenance 与 update trust boundary。本文定义“payload 从哪里来、命令写到哪里、哪些覆盖是可信输入、哪些远程更新能力已经准入、哪些远程能力仍未实现”。
 
 本页属于 [Deploy Runbooks](./README.md) 系列。入口语义见 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)，真实 npm 发布准入见 [aw-installer Release Channel Contract](./release-channel-contract.md)。
 
@@ -37,6 +37,7 @@ last_verified: 2026-04-27
 - 未设置 `AW_HARNESS_TARGET_REPO_ROOT` 且未设置 `AW_HARNESS_REPO_ROOT` 时，target repo root 是命令运行时的当前工作目录。
 - 设置 `AW_HARNESS_TARGET_REPO_ROOT` 时，target repo root 显式指向该目录。
 - `--agents-root` 只覆盖当前命令的 `agents` target root，不改变 source root。
+- `update --source github --github-repo OWNER/REPO --github-ref REF` 会把 GitHub source archive 解压到一次性临时目录，并只在本次 `update` 中把它作为 source root；target repo root 仍按 `AW_HARNESS_TARGET_REPO_ROOT` 或当前工作目录解析。
 
 因此，pre-release `.tgz` 试用路径的可信边界是：payload 来自 `.tgz`，写入目标是 operator 当前所在项目的 `.agents/skills`。这也是 root `.tgz` smoke 必须清空 `AW_HARNESS_REPO_ROOT` 并在临时 target repo 中执行的原因。
 
@@ -49,6 +50,7 @@ last_verified: 2026-04-27
 | `install --backend agents` | 复制当前 source 声明的 live payload | 写入 resolved target root | 必须先通过 source contract 与 target conflict 检查；不做远程 fetch |
 | `update --backend agents` | 读取当前 source 声明的 live payload | 只输出 dry-run plan | 不写入；暴露将删除、将写入和 blocking issue 摘要 |
 | `update --backend agents --yes` | 复制当前 source 声明的 live payload | 显式 destructive reinstall | 只包装 `prune --all -> check_paths_exist -> install -> verify`；不做远程 fetch、增量更新或自动回滚 |
+| `update --backend agents --source github --github-repo OWNER/REPO --github-ref REF` | 下载并验证 GitHub source archive 后读取其中的 live payload | dry-run 或显式 destructive reinstall | 只允许 GitHub archive 成为本次 source root；仍执行同一 update plan、target checks 和 post-apply verify |
 | `prune --all --backend agents` | 不读取新 payload | 删除当前 backend 可识别受管目录 | 只删除带可识别 `aw.marker` 且属于当前 backend 的目录 |
 | `check_paths_exist --backend agents` | 读取当前 source 声明的目标路径 | 只读冲突扫描 | 失败时不得写业务文件 |
 
@@ -58,7 +60,7 @@ last_verified: 2026-04-27
 
 当前 `aw-installer` 不实现以下能力：
 
-- 从 registry、GitHub release、HTTP endpoint 或任意远程地址动态获取 deploy payload。
+- 从 registry、GitHub release、任意 HTTP endpoint 或非 GitHub source archive 动态获取 deploy payload。
 - 根据 dist-tag、release channel 或 latest 指针自动选择新 payload。
 - 在 `update --yes` 内执行远程检查、下载、验签、升级自身 package 或替换 source root。
 - 维护 archive/history、旧版本保活、增量 patch、自动回滚或 target-to-source 反向同步。
@@ -66,9 +68,28 @@ last_verified: 2026-04-27
 
 真实 npm 发布只改变 operator 获取 package 的方式，不改变本文定义的 payload/source/target 边界。
 
-## 五、未来远程更新准入条件
+## 五、GitHub source archive 准入
 
-任何未来 remote/channel-based update worktrack 必须先补齐以下合同与证据，不能直接扩展当前 `update --yes`：
+`0.4.0-rc.3` 开始，`update` 可以显式选择 GitHub source archive：
+
+```bash
+aw-installer update --backend agents --source github --github-repo OceanEyeFF/vibecoding_autoworkflow --github-ref master --json
+aw-installer update --backend agents --source github --github-repo OceanEyeFF/vibecoding_autoworkflow --github-ref master --yes
+```
+
+准入边界：
+
+- `--source github` 只支持 `OWNER/REPO` + branch/ref archive，不支持任意 URL。
+- 下载后的 archive 必须通过 Harness payload source validation：至少包含 `product/harness/skills` 与 `product/harness/adapters/agents/skills`。
+- GitHub source root 是一次性临时目录；命令结束后不得作为长期 source truth 保留。
+- target root 不得默认为 GitHub source root；默认仍是当前工作目录，或显式 `AW_HARNESS_TARGET_REPO_ROOT` / `--agents-root`。
+- `update --json` 必须暴露 `source_kind=github` 和 `source_ref=OWNER/REPO@REF`。
+- GitHub source 不改变 destructive reinstall 顺序、target conflict policy、marker policy 或 post-apply strict verify。
+- 当前 `master`/default branch 必须真实包含 Harness payload source；如果 GitHub archive 缺少 required source paths，update 必须失败，而不是回退到 package-local source。
+
+## 六、未来远程更新准入条件
+
+任何未来 channel-based update worktrack 必须先补齐以下合同与证据，不能直接扩展当前 `update --yes`：
 
 - 明确 remote manifest schema、payload digest、签名或等价完整性验证机制。
 - 明确 release channel 到 payload artifact 的解析规则，并与 release-channel contract 对齐。
@@ -76,9 +97,9 @@ last_verified: 2026-04-27
 - 明确 dry-run 输出中必须展示 remote artifact identity、digest、channel、source root、target root、将删除路径和将写入路径。
 - 补充 package/tarball smoke、deploy regression、PR-baseline CodeReview 和 closeout gate 证据。
 
-在这些条件满足前，`update` 只能表示“用当前可信 source payload 重装当前 target root”。
+在这些条件满足前，`update` 只能表示“用 package-local source 或显式 GitHub source archive 重装当前 target root”。
 
-## 六、验证要求
+## 七、验证要求
 
 涉及本文边界的后续改动至少应验证：
 
@@ -87,4 +108,5 @@ last_verified: 2026-04-27
 - `diagnose`、`verify` 仍是只读命令。
 - `update --backend agents` 默认只输出 dry-run plan。
 - `update --backend agents --yes` 仍执行 destructive reinstall，并在写入后运行严格 `verify`。
+- `update --backend agents --source github --github-ref master --json` 在 GitHub source 有效时输出 `source_kind=github`，在 GitHub source 缺少 payload source paths 时失败。
 - 文档同步 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)、[Deploy Runbook](./deploy-runbook.md) 和本页。

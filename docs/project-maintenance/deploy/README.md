@@ -48,9 +48,9 @@
 - `update --backend agents` 默认只输出 dry-run plan；`update --backend agents --yes` 是同一三步 destructive reinstall 加严格复验的 one-shot 包装。
 - `update` 只阻塞占用 planned / known AW target path 的 unrecognized / foreign 内容；无关用户目录由 AW deploy 保持不动。
 - 本地 `harness_deploy.py` thin wrapper、根目录 `package.json` 的 self-contained `aw-installer` package envelope、`toolchain/scripts/deploy/package.json` 的本地 scaffold、`aw-installer tui` shell、`aw-harness-deploy` 兼容别名与目标 `npx aw-installer` wrapper 必须保持 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 中定义的只读、严格复验、三步 destructive reinstall，以及 CLI + TUI 双模式语义。
-- 当前 registry 事实由 [aw-installer Release Channel Contract](./release-channel-contract.md) 承接：`next` 指向 `0.4.0-rc.2`，`latest` 仍指向 `0.4.0-rc.1`；`latest` 不代表稳定 release approval。
+- 当前 registry 事实由 [aw-installer Release Channel Contract](./release-channel-contract.md) 承接：`next` 当前指向 `0.4.0-rc.2`，`latest` 仍指向 `0.4.0-rc.1`；当前 checkout 的 rc3 candidate 需要后续通过 develop PR 进入 GitHub master 后再发布到 `next`。
 - 后续真实 npm publish 还必须满足 [aw-installer Release Channel Contract](./release-channel-contract.md)；发布操作模型见 [aw-installer Release Operation Model](./aw-installer-release-operation-model.md)。npm-side Trusted Publisher 设置、未来 publish、stable/latest 语义仍需单独审批。
-- `aw-installer` 的 payload provenance 与 update trust boundary 见 [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md)；当前 `update` 不做远程 fetch、channel 解析、验签、自升级或自动回滚。
+- `aw-installer` 的 payload provenance 与 update trust boundary 见 [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md)；当前 `update` 只准入 package-local source 与显式 GitHub source archive，不做 channel 解析、验签、自升级或自动回滚。
 - `aw.marker` 是 runtime-generated artifact，只用于标识“这是当前 backend 受管的 live install 目录”；它不是 source truth，也不是历史接管记录。
 - deploy target 不是 source of truth。skills / payload source 的正式 owner 仍在 `product/`。
 - Claude skills 分发当前只作为慢车道兼容项保留；Claude smoke/runbook 不能替代 `agents` deploy backend 合同，也不能把 `claude` 写成已实现 deploy backend。
