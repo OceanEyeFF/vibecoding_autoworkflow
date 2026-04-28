@@ -216,6 +216,7 @@ canonical executable source：
 
 职责：
 
+- 并行分派并综合四路 review SubAgent：静态语义解释、测试 review、符合项目情景的 security review、代码复杂度和性能 review
 - 汇总 code review、静态检查和结构评估结果
 - 形成 review lane envelope，供 gate 汇总
 - 对低严重度噪声做截断，并把重复症状标成可能的上游约束问题
@@ -235,6 +236,11 @@ canonical executable source：
 preferred review-lane fields：
 
 - `lane_id`
+- `review_subagent_lanes`
+- `static-semantic-review`
+- `test-review`
+- `project-security-review`
+- `complexity-performance-review`
 - `freshness`
 - `lane_verdict`
 - `confidence_reason`

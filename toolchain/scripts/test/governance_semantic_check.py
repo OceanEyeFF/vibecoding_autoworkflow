@@ -147,6 +147,25 @@ SUBAGENT_DEFAULT_REQUIRED_TERMS = [
     "runtime fallback",
     "dispatch package unsafe",
 ]
+REVIEW_EVIDENCE_FOUR_LANE_CONTRACT_PATHS = [
+    "product/harness/skills/review-evidence-skill/SKILL.md",
+    "docs/harness/catalog/worktrack.md",
+    "product/harness/skills/set-harness-goal-skill/assets/worktrack/gate-evidence.md",
+    "docs/harness/artifact/worktrack/gate-evidence.md",
+]
+REVIEW_EVIDENCE_FOUR_LANE_REQUIRED_TERMS = [
+    "并行",
+    "SubAgent",
+    "fallback",
+    "static-semantic-review",
+    "test-review",
+    "project-security-review",
+    "complexity-performance-review",
+    "静态语义解释",
+    "测试 review",
+    "security review",
+    "代码复杂度和性能 review",
+]
 APPEND_REQUEST_REQUIRED_TERMS = [
     "approval_required",
     "continuation_ready",
@@ -569,6 +588,23 @@ def check_subagent_dispatch_default_contract(repo_root: Path, report: SemanticRe
     report.add_info(f"checked {checked} SubAgent default dispatch contract sources")
 
 
+def check_review_evidence_four_lane_contract(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    for relative_path in REVIEW_EVIDENCE_FOUR_LANE_CONTRACT_PATHS:
+        path = repo_root / relative_path
+        if not path.exists():
+            report.add_failure(f"missing review evidence four-lane contract source: {relative_path}")
+            continue
+        checked += 1
+        text = path.read_text(encoding="utf-8")
+        for term in REVIEW_EVIDENCE_FOUR_LANE_REQUIRED_TERMS:
+            if term not in text:
+                report.add_failure(
+                    f"review evidence four-lane contract missing required term {term!r}: {relative_path}"
+                )
+    report.add_info(f"checked {checked} review evidence four-lane contract sources")
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -587,6 +623,7 @@ def main() -> int:
     check_docs_list_closeout_cache_roots(repo_root, report)
     check_manual_runbook_agents_skill_count(repo_root, report)
     check_subagent_dispatch_default_contract(repo_root, report)
+    check_review_evidence_four_lane_contract(repo_root, report)
 
     payload = {
         "passed": not report.failures,
