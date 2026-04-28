@@ -25,7 +25,7 @@ This page belongs to [Deploy Runbooks](./README.md). It builds on [aw-installer 
 - recommended_workflow_filename: `publish.yml`
 - recommended_github_environment: `npm`
 - recommended_node_version_for_publish_job: `24`
-- minimum_npm_cli_for_trusted_publishing: `11.5.1`
+- minimum_npm_cli_for_trusted_publishing: `11.5.1` per current npm Trusted Publishing documentation
 - repository_workflow_requires_followup_worktrack: false
 - release_guard_hardening_requires_followup_worktrack: false
 
@@ -78,11 +78,13 @@ The workflow must live at:
 
 Trusted Publishing uses short-lived OIDC credentials and should be preferred over `NPM_TOKEN` for this package. Traditional token-based publish remains a fallback only if Trusted Publishing is unavailable.
 
+npm's Trusted Publishing documentation currently requires npm CLI `11.5.1` or later and Node `22.14.0` or higher for this path. The workflow pins Node `24` and npm `11.5.1` because that is the documented minimum npm CLI floor for OIDC Trusted Publishing, not because this repository depends on an unrelated npm feature. See <https://docs.npmjs.com/trusted-publishers/>.
+
 ## Workflow Shape
 
 The repository-side workflow preflight now lives at `.github/workflows/publish.yml`. It is triggered only by GitHub Release `published`, grants `id-token: write`, uses the `npm` GitHub Environment, installs npm `11.5.1` on Node `24` for Trusted Publishing compatibility, resolves the release channel from `v<package.version>`, requires an exact release-body approval marker, rejects GitHub prerelease/channel mismatches, runs the local publish guard, and publishes with npm provenance only after the pre-publish checks pass.
 
-The implemented workflow follows this shape:
+The workflow file is the authority. The current implementation follows this shape:
 
 ```yaml
 name: Publish aw-installer
@@ -99,22 +101,92 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     environment: npm
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      GITHUB_RELEASE_TAG: ${{ github.event.release.tag_name }}
+      GITHUB_RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+      GITHUB_RELEASE_BODY: ${{ github.event.release.body }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
           node-version: "24"
-          registry-url: "https://registry.npmjs.org"
-      - run: npm install -g npm@11.5.1
-      - run: PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/path_governance_check.py
-      - run: PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_check.py
-      - run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
-      - run: npm pack --dry-run --json
-      - run: npm run publish:dry-run --silent
-      - run: npm publish --provenance --access public --tag "$AW_INSTALLER_RELEASE_CHANNEL"
+          registry-url: "https://registry.npmjs.org/"
+
+      - name: Set up npm for Trusted Publishing
+        run: |
+          npm install -g npm@11.5.1
+          node --version
+          npm --version
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest jsonschema
+
+      - name: Resolve release metadata
+        run: node toolchain/scripts/deploy/bin/resolve-release-metadata.js
+
+      - name: Folder logic check
+        run: PYTHONDONTWRITEBYTECODE=1 python toolchain/scripts/test/folder_logic_check.py
+
+      - name: Path governance check
+        run: PYTHONDONTWRITEBYTECODE=1 python toolchain/scripts/test/path_governance_check.py
+
+      - name: Governance semantic check
+        run: PYTHONDONTWRITEBYTECODE=1 python toolchain/scripts/test/governance_semantic_check.py
+
+      - name: Governance tests
+        run: PYTHONDONTWRITEBYTECODE=1 python -m pytest toolchain/scripts/test
+
+      - name: Deploy regression tests
+        run: PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
+
+      - name: Deploy package smoke
+        run: npm --prefix toolchain/scripts/deploy run smoke --silent
+
+      - name: Root aw-installer package pack dry-run
+        run: npm pack --dry-run --json
+
+      - name: Root aw-installer publish dry-run
+        run: npm run publish:dry-run --silent
+
+      - name: Real publish guard
+        env:
+          AW_INSTALLER_PUBLISH_APPROVED: "1"
+          CI: "true"
+        run: npm_config_tag="$NPM_CONFIG_TAG" node toolchain/scripts/deploy/bin/check-root-publish.js
+
+      - name: Publish to npm
+        env:
+          AW_INSTALLER_PUBLISH_APPROVED: "1"
+          CI: "true"
+        run: npm publish --provenance --access public --tag "$AW_INSTALLER_RELEASE_CHANNEL"
 ```
 
 The publish job intentionally remains stricter than `.github/workflows/ci.yml` about release metadata and registry authentication.
+
+## Release Procedure Navigation
+
+For a future release, follow this chain in order:
+
+1. Prepare the package version and candidate evidence in a normal worktrack. The candidate must not reuse an already published immutable npm version.
+2. Read [aw-installer Release Channel Contract](./release-channel-contract.md) for the channel mapping and publish-readiness gates.
+3. Update the root `package.json` `awInstallerRelease` metadata only in the explicit release-approval worktrack, binding `approvedVersion`, `approvedGitTag`, and `approvedChannel` to the candidate tuple.
+4. Create or publish a GitHub Release whose tag exactly matches `v<package.version>` and whose body includes `aw-installer-publish-approved: v<package.version>`.
+5. Let `.github/workflows/publish.yml` resolve release metadata, run governance/deploy/package checks, run the real publish guard, and publish with provenance.
+6. After publish, rerun [aw-installer Registry npx Smoke](./aw-installer-registry-npx-smoke.md) and record registry evidence.
+7. If Trusted Publishing cannot authenticate, use the manual fallback from [aw-installer RC Approval Package](./aw-installer-rc-approval-package.md) only after the same release tuple is explicitly approved.
+
+External state still required outside this repository: npm package owner configures the Trusted Publisher for this repository, workflow filename, and optional `npm` environment.
 
 ## Implemented Guard Shape
 
@@ -125,6 +197,10 @@ The first repository-side workflow preflight resolves these details:
 - `AW_INSTALLER_PUBLISH_APPROVED=1` remains required inside the publish job and is only set after `resolve-release-metadata.js` accepts the release metadata.
 - the GitHub Release body must contain `aw-installer-publish-approved: v<package.version>`.
 - prerelease GitHub Releases map to npm `next` or `canary`; stable GitHub Releases map to npm `latest`.
+  - prerelease semver containing a `canary` segment maps to `canary`.
+  - prerelease semver whose first prerelease segment starts with `alpha`, `beta`, or `rc` maps to `next`.
+  - semver without a prerelease segment maps to `latest`.
+  - other prerelease identifiers are rejected.
 - the workflow rejects GitHub Releases whose prerelease flag and semver prerelease state disagree.
 - `npm publish --provenance --access public --tag <channel>` uses the derived `AW_INSTALLER_RELEASE_CHANNEL`.
 

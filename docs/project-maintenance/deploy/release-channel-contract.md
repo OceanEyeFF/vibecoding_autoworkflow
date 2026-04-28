@@ -14,7 +14,7 @@ last_verified: 2026-04-28
 ## 当前状态
 
 - 根目录 `package.json` 是 self-contained `aw-installer` package envelope；`aw-installer` 是已批准的 unscoped public package identity。`aw-installer@0.4.0-rc.1` 已发布到 npm registry。
-- 当前 release metadata 使用 `0.4.0-rc.1` 作为首个 `0.4.x` RC checkpoint；`P0-019` 已跨过真实 publish 审批边界，并把 package metadata 设置为 `awInstallerRelease.realPublishApproval=approved`、`approvedVersion=0.4.0-rc.1`、`approvedGitTag=v0.4.0-rc.1`、`approvedChannel=next`。后续 publish 仍必须同时满足本文的环境、tag、dist-tag、CI 与 registry 准入条件。
+- `0.4.0-rc.1` 是首个已发布 `0.4.x` RC checkpoint；`P0-019` 已跨过该版本的真实 publish 审批边界。当前源码 package version 可以继续前进到新的未发布 RC，但 `awInstallerRelease` 必须保持 `pending` 或绑定到一个新的已审批 release tuple；后续 publish 仍必须同时满足本文的环境、tag、dist-tag、CI、package metadata approval lock 与 registry 准入条件。
 - `npm pack --dry-run --json`、`npm run publish:dry-run --silent` 和根 `.tgz` smoke 只证明包面和运行入口，不等于发布授权。
 - `npm run publish:dry-run --silent` runs `toolchain/scripts/deploy/bin/publish-dry-run.js`, which defaults to `next` for the current RC lane but honors `AW_INSTALLER_RELEASE_CHANNEL` or `npm_config_tag` so release workflows rehearse the same channel they would publish.
 - `prepublishOnly` guard 位于 `toolchain/scripts/deploy/bin/check-root-publish.js`，负责在真实 publish 前执行机器准入检查。
