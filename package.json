@@ -31,10 +31,10 @@
     "access": "public"
   },
   "awInstallerRelease": {
-    "realPublishApproval": "pending",
-    "approvedVersion": "",
-    "approvedGitTag": "",
-    "approvedChannel": ""
+    "realPublishApproval": "approved",
+    "approvedVersion": "0.4.0-rc.2",
+    "approvedGitTag": "v0.4.0-rc.2",
+    "approvedChannel": "next"
   },
   "engines": {
     "node": ">=18"
