@@ -15,8 +15,13 @@
    - quick start: `agents` destructive reinstall、`diagnose / verify`、pre-release `.tgz` 与目标 package entrypoint 边界
    - lifecycle: deploy 不承接业务层 `add / rename / remove` 决策，只消费已冻结 source layer
    - maintenance: drift、conflict、unrecognized、只读 `diagnose / verify` 与恢复路径
-   - external trial: quickstart prompts、issue templates、multi-temp smoke、RC approval/rehearsal 边界
-4. `usage-help/`
+   - distribution: release channel、payload provenance、public npx usage、feedback intake 与 publish approval 边界
+4. `testing/`
+   固定当前测试执行入口：
+   - Python 脚本、治理检查与 closeout gate 命令
+   - registry npx、本地 `.tgz` 与多临时 workdir smoke
+   - Codex / Claude 部署后的行为测试
+5. `usage-help/`
    只保留 `agents`、`claude`、`opencode` 的 backend 差异，不再按 `memory-side/` 或 `task-interface/` 拆子树。
 
 ## 从这里怎么进
@@ -24,6 +29,7 @@
 - [foundations/README.md](./foundations/README.md)
 - [governance/README.md](./governance/README.md)
 - [deploy/README.md](./deploy/README.md)
+- [testing/README.md](./testing/README.md)
 - [usage-help/README.md](./usage-help/README.md)
 
 ## Operator 常见入口
@@ -31,6 +37,7 @@
 - 第一次给某个 backend 安装 skill：先看 [deploy/deploy-runbook.md](./deploy/deploy-runbook.md)
 - 已有 mounts，只想更新或复验：先看 [deploy/skill-deployment-maintenance.md](./deploy/skill-deployment-maintenance.md)
 - 新增、改名、删除 skill source：先看 [deploy/skill-lifecycle.md](./deploy/skill-lifecycle.md)
+- 想运行治理检查、npx smoke 或 Codex/Claude 行为测试：先看 [testing/README.md](./testing/README.md)
 - 只想确认 `agents / claude / opencode` 差异：先看 [usage-help/README.md](./usage-help/README.md)
 
 AI 默认阅读顺序以 [AGENTS.md](../../AGENTS.md) 为准。

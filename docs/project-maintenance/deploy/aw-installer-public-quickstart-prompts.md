@@ -9,7 +9,7 @@ last_verified: 2026-04-28
 
 > Purpose: give external testers one copy-paste path for installing AW artifacts into a target repository and initializing `.aw/` through Codex or Claude Code. The current rc2 registry trial path is `aw-installer@next`; bare `aw-installer` still resolves through npm `latest`.
 
-This page belongs to [Deploy Runbooks](./README.md). It uses the current non-publish distribution boundary from [aw-installer Non-Publish Release Rehearsal](./aw-installer-release-rehearsal.md) and the feedback fields from [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md).
+This page belongs to [Deploy Runbooks](./README.md). It uses the current distribution boundary from [aw-installer Release Channel Contract](./release-channel-contract.md) and the feedback fields from [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md).
 
 ## Control Signal
 

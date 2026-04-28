@@ -1,19 +1,19 @@
 ---
-title: "Claude Harness Test Runbook"
+title: "Claude Post-Deploy Behavior Tests"
 status: active
 updated: 2026-04-26
 owner: aw-kernel
 last_verified: 2026-04-26
 ---
-# Claude Harness Test Runbook
+# Claude Post-Deploy Behavior Tests
 
 > 目的：给 Claude Code operator 一条隔离的 Harness runtime smoke 路径，用于确认 Claude 能读取项目级 skill entry，并能在临时 repo 中触发最小 `.aw/` 冷启动。本文不是 `claude` deploy adapter 合同。
 
 先读：
 
 - [Claude Repo-local Usage Help](../usage-help/claude.md)
-- [Deploy Runbook](./deploy-runbook.md)
-- [Skill 生命周期维护](./skill-lifecycle.md)
+- [Deploy Runbook](../deploy/deploy-runbook.md)
+- [Skill 生命周期维护](../deploy/skill-lifecycle.md)
 
 ## 一、边界
 

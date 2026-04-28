@@ -104,7 +104,7 @@ PATH_GOVERNANCE_CHECKS_DOC = "docs/project-maintenance/governance/path-governanc
 REVIEW_VERIFY_HANDBOOK_DOC = "docs/project-maintenance/governance/review-verify-handbook.md"
 TOOLCHAIN_TEST_README_DOC = "toolchain/scripts/test/README.md"
 CODEX_HARNESS_MANUAL_RUNBOOK_DOC = (
-    "docs/project-maintenance/deploy/codex-harness-manual-runbook.md"
+    "docs/project-maintenance/testing/codex-post-deploy-behavior-tests.md"
 )
 SUBAGENT_DEFAULT_CONTRACT_PATHS = [
     "product/harness/skills/harness-skill/SKILL.md",
@@ -205,7 +205,7 @@ BYTECODE_FREE_COMMAND_GLOBS = [
 ]
 BYTECODE_FREE_COMMAND_EXCLUDED_PATTERNS = (
     re.compile(
-        r"docs/project-maintenance/deploy/"
+        r"docs/project-maintenance/testing/"
         r"codex-harness-manual-run-continuous-\d{4}-\d{2}-\d{2}\.md"
     ),
 )

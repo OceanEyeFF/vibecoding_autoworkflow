@@ -9,7 +9,7 @@ last_verified: 2026-04-28
 
 > Purpose: define the `aw-installer` publish operating model after the first manual RC publish and registry npx smoke. This page records the selected GitHub Release `published` plus npm Trusted Publishing model and the repository-side workflow preflight. It does not authorize a future npm publish or mutate npm-side Trusted Publisher settings.
 
-This page belongs to [Deploy Runbooks](./README.md). It builds on [aw-installer Release Channel Contract](./release-channel-contract.md), [aw-installer RC Approval Package](./aw-installer-rc-approval-package.md), and [aw-installer Registry npx Smoke](./aw-installer-registry-npx-smoke.md).
+This page belongs to [Deploy Runbooks](./README.md). It builds on [aw-installer Release Channel Contract](./release-channel-contract.md) and [npx Command Test Execution](../testing/npx-command-test-execution.md).
 
 ## Control Signal
 
@@ -188,8 +188,8 @@ For a future release, follow this chain in order:
 3. Update the root `package.json` `awInstallerRelease` metadata only in the explicit release-approval worktrack, binding `approvedVersion`, `approvedGitTag`, and `approvedChannel` to the candidate tuple.
 4. Create or publish a GitHub Release whose tag exactly matches `v<package.version>` and whose body includes `aw-installer-publish-approved: v<package.version>`.
 5. Let `.github/workflows/publish.yml` resolve release metadata, run governance/deploy/package checks, run the real publish guard, and publish with provenance.
-6. After publish, rerun [aw-installer Registry npx Smoke](./aw-installer-registry-npx-smoke.md) and record registry evidence.
-7. If Trusted Publishing cannot authenticate, use the manual fallback from [aw-installer RC Approval Package](./aw-installer-rc-approval-package.md) only after the same release tuple is explicitly approved.
+6. After publish, rerun [npx Command Test Execution](../testing/npx-command-test-execution.md) and record registry evidence.
+7. If Trusted Publishing cannot authenticate, use the manual fallback below only after the same release tuple is explicitly approved.
 
 External state still required outside this repository: npm package owner configures the Trusted Publisher for this repository, workflow filename, and optional `npm` environment.
 
@@ -224,7 +224,7 @@ The repository-side workflow file exists, but a future Trusted Publishing run st
 
 ## Fallback
 
-If Trusted Publishing setup is blocked, keep the manual maintainer publish path from [aw-installer RC Approval Package](./aw-installer-rc-approval-package.md):
+If Trusted Publishing setup is blocked, keep the manual maintainer publish path:
 
 - exact release tuple is approved.
 - guard inputs are set explicitly.

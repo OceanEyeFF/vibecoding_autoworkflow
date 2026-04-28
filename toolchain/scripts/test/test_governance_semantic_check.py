@@ -442,7 +442,7 @@ def test_check_repo_python_commands_are_bytecode_free_checks_each_occurrence(tmp
 
 def test_check_repo_python_commands_are_bytecode_free_skips_historical_log(tmp_path: Path) -> None:
     write_doc(
-        tmp_path / "docs/project-maintenance/deploy/codex-harness-manual-run-continuous-2026-05-01.md",
+        tmp_path / "docs/project-maintenance/testing/codex-harness-manual-run-continuous-2026-05-01.md",
         "`python3 -m unittest discover -s tests -v`\n",
     )
 
@@ -451,10 +451,10 @@ def test_check_repo_python_commands_are_bytecode_free_skips_historical_log(tmp_p
 
     assert report.failures == []
     assert is_bytecode_free_command_excluded(
-        "docs/project-maintenance/deploy/codex-harness-manual-run-continuous-2026-05-01.md"
+        "docs/project-maintenance/testing/codex-harness-manual-run-continuous-2026-05-01.md"
     )
     assert not is_bytecode_free_command_excluded(
-        "docs/project-maintenance/deploy/codex-harness-manual-run-continuous-latest.md"
+        "docs/project-maintenance/testing/codex-harness-manual-run-continuous-latest.md"
     )
 
 
@@ -465,7 +465,7 @@ def test_check_manual_runbook_agents_skill_count_accepts_matching_count(tmp_path
             "{}\n",
         )
     write_doc(
-        tmp_path / "docs/project-maintenance/deploy/codex-harness-manual-runbook.md",
+        tmp_path / "docs/project-maintenance/testing/codex-post-deploy-behavior-tests.md",
         "- 当前 `agents` install 已包含全部 2 个 skills，覆盖完整 Harness 控制回路\n",
     )
 
@@ -482,7 +482,7 @@ def test_check_manual_runbook_agents_skill_count_flags_mismatch(tmp_path: Path) 
             "{}\n",
         )
     write_doc(
-        tmp_path / "docs/project-maintenance/deploy/codex-harness-manual-runbook.md",
+        tmp_path / "docs/project-maintenance/testing/codex-post-deploy-behavior-tests.md",
         "- 当前 `agents` install 已包含全部 2 个 skills，覆盖完整 Harness 控制回路\n",
     )
 

@@ -9,7 +9,7 @@ last_verified: 2026-04-28
 
 > Purpose: define the target list template and feedback contract for post-RC `aw-installer` external trials. This page does not recruit testers, publish npm packages, or store private repository identifiers.
 
-This page belongs to [Deploy Runbooks](./README.md). It follows the candidate boundary in [aw-installer RC Approval Package](./aw-installer-rc-approval-package.md) and the non-publish rehearsal evidence in [aw-installer Non-Publish Release Rehearsal](./aw-installer-release-rehearsal.md).
+This page belongs to [Deploy Runbooks](./README.md). It follows the candidate boundary in [aw-installer Release Channel Contract](./release-channel-contract.md) and the smoke/reporting route in [npx Command Test Execution](../testing/npx-command-test-execution.md).
 
 GitHub issue entry points:
 
@@ -42,11 +42,11 @@ Do not store private repository names, organization names, URLs, tokens, logs wi
 
 | Alias | Category | Repo shape | OS/runtime | Operator type | Candidate source | Status | Notes |
 |---|---|---|---|---|---|---|---|
-| owned-alpha | programmer-owned | N/A | N/A | maintainer | registry `npx aw-installer`, `aw-installer@next`, or local `.tgz` | planned | N/A |
-| owned-beta | programmer-owned | N/A | N/A | maintainer | registry `npx aw-installer`, `aw-installer@next`, or local `.tgz` | planned | N/A |
-| forum-alpha | forum volunteer | N/A | N/A | external tester | registry `npx aw-installer` unless a separate candidate handoff is explicit | planned | N/A |
-| forum-beta | forum volunteer | N/A | N/A | external tester | registry `npx aw-installer` unless a separate candidate handoff is explicit | planned | N/A |
-| unsupported-alpha | unsupported shape | N/A | N/A | maintainer or tester | registry `npx aw-installer`, `aw-installer@next`, or local `.tgz` | planned | N/A |
+| owned-alpha | programmer-owned | N/A | N/A | maintainer | `aw-installer@next`, local `.tgz`, or explicitly approved selector | planned | N/A |
+| owned-beta | programmer-owned | N/A | N/A | maintainer | `aw-installer@next`, local `.tgz`, or explicitly approved selector | planned | N/A |
+| forum-alpha | forum volunteer | N/A | N/A | external tester | `aw-installer@next` unless a separate candidate handoff is explicit | planned | N/A |
+| forum-beta | forum volunteer | N/A | N/A | external tester | `aw-installer@next` unless a separate candidate handoff is explicit | planned | N/A |
+| unsupported-alpha | unsupported shape | N/A | N/A | maintainer or tester | `aw-installer@next`, local `.tgz`, or explicitly approved selector | planned | N/A |
 
 ## Command Feedback Fields
 

@@ -73,6 +73,7 @@ REQUIRED_ENTRY_PATHS = [
     "docs/project-maintenance/foundations/README.md",
     "docs/project-maintenance/governance/README.md",
     "docs/project-maintenance/deploy/README.md",
+    "docs/project-maintenance/testing/README.md",
     "docs/project-maintenance/usage-help/README.md",
     "docs/project-maintenance/governance/path-governance-checks.md",
     "docs/project-maintenance/foundations/root-directory-layering.md",
@@ -195,6 +196,7 @@ ENTRYPOINT_LINK_RULES = {
         "docs/project-maintenance/foundations/README.md",
         "docs/project-maintenance/governance/README.md",
         "docs/project-maintenance/deploy/README.md",
+        "docs/project-maintenance/testing/README.md",
         "docs/project-maintenance/usage-help/README.md",
     ],
     "docs/project-maintenance/foundations/README.md": [
@@ -210,6 +212,12 @@ ENTRYPOINT_LINK_RULES = {
     "docs/project-maintenance/deploy/README.md": [
         "docs/project-maintenance/deploy/deploy-runbook.md",
         "docs/project-maintenance/deploy/skill-deployment-maintenance.md",
+    ],
+    "docs/project-maintenance/testing/README.md": [
+        "docs/project-maintenance/testing/python-script-test-execution.md",
+        "docs/project-maintenance/testing/npx-command-test-execution.md",
+        "docs/project-maintenance/testing/codex-post-deploy-behavior-tests.md",
+        "docs/project-maintenance/testing/claude-post-deploy-behavior-tests.md",
     ],
     "docs/project-maintenance/usage-help/README.md": [
         "docs/project-maintenance/usage-help/codex.md",
