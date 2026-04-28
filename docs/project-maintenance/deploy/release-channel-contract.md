@@ -9,7 +9,7 @@ last_verified: 2026-04-28
 
 > 目的：定义 `aw-installer` 从本地 `.tgz` / publish dry-run 进入真实 npm release channel 前必须满足的发布准入合同，并记录首个 RC publish 的 registry 事实。本文不授权后续稳定发布、未来 npm publish 或 npm-side Trusted Publisher 设置变更。
 
-本页属于 [Deploy Runbooks](./README.md) 系列，并承接 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 的发布准入部分。发布操作模型由 [aw-installer Release Operation Model](./aw-installer-release-operation-model.md) 承接；运行时 payload provenance 与 update trust boundary 由 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md) 承接。
+本页属于 [Deploy Runbooks](./README.md) 系列，并承接 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 的发布准入部分。发布前文件/文档/证据检查由 [aw-installer npx Pre-Publish Check](./aw-installer-npx-pre-publish-check.md) 承接；发布操作模型由 [aw-installer Release Operation Model](./aw-installer-release-operation-model.md) 承接；运行时 payload provenance 与 update trust boundary 由 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md) 承接。
 
 ## 当前状态
 
@@ -58,6 +58,7 @@ The guard intentionally allows publish dry-run before approval so maintainers ca
 Before setting `AW_INSTALLER_PUBLISH_APPROVED=1`, changing `awInstallerRelease.realPublishApproval` / `approvedVersion` / `approvedGitTag` / `approvedChannel`, or running real `npm publish`, collect:
 
 - clean worktree on the intended release checkpoint.
+- completed [aw-installer npx Pre-Publish Check](./aw-installer-npx-pre-publish-check.md).
 - root `npm pack --dry-run --json`.
 - root `npm run publish:dry-run --silent`.
 - root `.tgz` smoke from an isolated target repo.

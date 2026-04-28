@@ -22,6 +22,7 @@
 |---|---|---|
 | 我想运行 Python 脚本、治理检查或 closeout gate | [python-script-test-execution.md](./python-script-test-execution.md) | 固定 `PYTHONDONTWRITEBYTECODE=1 python3 ...` 口径和常用验证组合 |
 | 我想验证 `npx aw-installer`、registry package 或本地 `.tgz` | [npx-command-test-execution.md](./npx-command-test-execution.md) | 覆盖 registry npx smoke、本地 package smoke、多临时 workdir 和反馈日志 |
+| 我想在 npm publish 前确认 npx/package 文件、文档和证据 | [aw-installer npx Pre-Publish Check](../deploy/aw-installer-npx-pre-publish-check.md) | 固定发布前 packlist、metadata、dry-run、docs freshness 和 local package smoke 检查 |
 | 我想观察 Codex 部署后的 Harness 行为 | [codex-post-deploy-behavior-tests.md](./codex-post-deploy-behavior-tests.md) | 临时 repo、隔离 `.agents/skills/`、无交互 Codex 多轮观察 |
 | 我想观察 Claude Code 项目级 skill entry 和冷启动 | [claude-post-deploy-behavior-tests.md](./claude-post-deploy-behavior-tests.md) | 临时 repo、`.claude/skills/` 项目级安装、Claude 非交互读取与 `.aw/` 冷启动 |
 
@@ -31,4 +32,5 @@
 - destructive reinstall 主流程：看 [deploy-runbook.md](../deploy/deploy-runbook.md)
 - source / payload / target 映射合同：看 [deploy-mapping-spec.md](../deploy/deploy-mapping-spec.md)
 - release channel 与 publish 准入规则：看 [release-channel-contract.md](../deploy/release-channel-contract.md)
+- publish 前文件、文档和证据检查：看 [aw-installer npx Pre-Publish Check](../deploy/aw-installer-npx-pre-publish-check.md)
 - payload provenance 与 update trust boundary：看 [payload-provenance-trust-boundary.md](../deploy/payload-provenance-trust-boundary.md)
