@@ -22,7 +22,7 @@ GitHub issue entry points:
 - trial_sources:
   - programmer-owned repositories
   - forum volunteer repositories
-- real_npm_publish_allowed: false
+- future_npm_publish_allowed: false
 - public_recruitment_copy_in_scope: false
 - private_repo_identifiers_allowed_in_long_term_docs: false
 - supported_backend_for_trial: `agents`
@@ -42,11 +42,11 @@ Do not store private repository names, organization names, URLs, tokens, logs wi
 
 | Alias | Category | Repo shape | OS/runtime | Operator type | Candidate source | Status | Notes |
 |---|---|---|---|---|---|---|---|
-| owned-alpha | programmer-owned | N/A | N/A | maintainer | local `.tgz` or approved RC | planned | N/A |
-| owned-beta | programmer-owned | N/A | N/A | maintainer | local `.tgz` or approved RC | planned | N/A |
-| forum-alpha | forum volunteer | N/A | N/A | external tester | separately approved candidate only unless local tarball handoff is explicit | planned | N/A |
-| forum-beta | forum volunteer | N/A | N/A | external tester | separately approved candidate only unless local tarball handoff is explicit | planned | N/A |
-| unsupported-alpha | unsupported shape | N/A | N/A | maintainer or tester | local `.tgz` or approved RC | planned | N/A |
+| owned-alpha | programmer-owned | N/A | N/A | maintainer | registry `npx aw-installer`, `aw-installer@next`, or local `.tgz` | planned | N/A |
+| owned-beta | programmer-owned | N/A | N/A | maintainer | registry `npx aw-installer`, `aw-installer@next`, or local `.tgz` | planned | N/A |
+| forum-alpha | forum volunteer | N/A | N/A | external tester | registry `npx aw-installer` unless a separate candidate handoff is explicit | planned | N/A |
+| forum-beta | forum volunteer | N/A | N/A | external tester | registry `npx aw-installer` unless a separate candidate handoff is explicit | planned | N/A |
+| unsupported-alpha | unsupported shape | N/A | N/A | maintainer or tester | registry `npx aw-installer`, `aw-installer@next`, or local `.tgz` | planned | N/A |
 
 ## Command Feedback Fields
 
@@ -58,6 +58,8 @@ Each trial report should capture one row per target:
 | target category | yes | one of the categories above |
 | candidate version/source | yes | local `.tgz`, approved RC version, or explicit checkout override |
 | install command used | yes | redact paths if needed |
+| shell/runtime path | yes | Windows PowerShell, Linux bash, macOS bash, or other |
+| npx run log | conditional | attach or link sanitized `aw-installer-npx-run.log` when using the registry npx smoke runner; otherwise summarize the terminal transcript |
 | `aw-installer --help` | yes | pass/fail |
 | `aw-installer --version` | yes | observed version |
 | non-interactive `aw-installer tui` guard | yes | pass/fail or N/A for interactive trial |
@@ -101,6 +103,8 @@ For GitHub-based feedback, prefer the structured issue templates above. Use the 
 
 - candidate source: N/A
 - candidate version observed: N/A
+- shell/runtime path: N/A
+- sanitized npx run log: N/A
 - trial date: N/A
 - operator type: N/A
 
@@ -133,6 +137,7 @@ For GitHub-based feedback, prefer the structured issue templates above. Use the 
 - private repo names removed: N/A
 - tokens/secrets absent: N/A
 - user handles anonymized or consented: N/A
+- npx run log sanitized before sharing: N/A
 ```
 
 ## Decision Criteria
@@ -156,6 +161,7 @@ Minimum decision threshold:
 ## Out Of Scope
 
 - real npm publish.
+- future npm publish approval.
 - public recruitment copy.
 - storage of private repository identifiers.
 - support for non-`agents` backends.

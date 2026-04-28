@@ -29,6 +29,7 @@
 - destructive reinstall 主流程：看 [deploy-runbook.md](../deploy/deploy-runbook.md)
 - 外部试用复制粘贴路径：看 [aw-installer Public Quickstart Prompts](../deploy/aw-installer-public-quickstart-prompts.md)
 - 外部试用反馈模板：看 [trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 与 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)
+- registry npx 验证与反馈日志：看 [aw-installer Registry npx Smoke](../deploy/aw-installer-registry-npx-smoke.md)
 - 多临时 workdir 验证：看 [aw-installer Multi Temporary Workdir Smoke](../deploy/aw-installer-multi-temp-workdir-smoke.md)
 - drift、冲突扫描、故障诊断：看 [skill-deployment-maintenance.md](../deploy/skill-deployment-maintenance.md)
 - `add / update / rename / remove`：看 [skill-lifecycle.md](../deploy/skill-lifecycle.md)

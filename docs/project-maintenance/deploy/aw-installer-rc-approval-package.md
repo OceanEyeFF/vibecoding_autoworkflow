@@ -92,7 +92,7 @@ Registry evidence:
   - `next: 0.4.0-rc.1`
   - `latest: 0.4.0-rc.1`
 
-The `latest` alias exists because this is the first and only published package version. `npm dist-tag rm aw-installer latest` returned `E400 Bad Request`; do not treat the alias as stable release approval. Use `aw-installer@next` for RC smoke and trial commands until a stable release is explicitly approved.
+The `latest` alias exists because this is the first and only published package version. `npm dist-tag rm aw-installer latest` returned `E400 Bad Request`; do not treat the alias as stable release approval. P0-020 registry smoke uses the bare `aw-installer` selector as the public trial path and keeps `aw-installer@next` as an explicit RC-channel pin.
 
 ## Release Notes Draft
 
@@ -123,7 +123,7 @@ Known exclusions:
 | Failure after publish | Minimum response |
 |---|---|
 | Wrong npm dist-tag after multiple versions exist | Correct the dist-tag to the intended channel, record the correction, and preserve the audit note in the release evidence. |
-| Initial package exposes `latest` because it is the only version | Record the registry fact, require `aw-installer@next` in RC smoke/trial commands, and do not describe the RC as stable. |
+| Initial package exposes `latest` because it is the only version | Record the registry fact, allow bare `aw-installer` for RC trial smoke after P0-020 evidence, keep `aw-installer@next` for explicit RC pinning, and do not describe the RC as stable. |
 | Bad package surface | Deprecate `0.4.0-rc.1` with a clear message and open a bugfix worktrack before any replacement candidate. |
 | Target install failure | Stop recommending the candidate, preserve the target smoke output, and open a bugfix worktrack scoped to the failing command. |
 | Documentation mismatch | Patch deploy docs, rerun governance checks, and refresh the evidence bundle before requesting renewed approval. |
@@ -146,21 +146,21 @@ The eventual approval request should include:
 - explicit acknowledgement that `AW_INSTALLER_PUBLISH_APPROVED=1` is supplied only for the approved publish command
 - explicit acknowledgement that `awInstallerRelease.realPublishApproval=approved` applies only to `0.4.0-rc.1` on `next`
 
-## Forbidden Wording
+## Stable-Release Wording Boundary
 
-Do not use these phrases before registry smoke and public primary-path verification:
+Do not use these phrases for the current RC:
 
 - `release is ready`
 - `stable release`
-- `npx aw-installer is the primary path`
 - `update pulls latest`
 - `remote update`
 - `self-update`
 
-Prefer:
+Use these instead:
 
 - `published RC candidate`
-- `aw-installer@next`
+- `npx aw-installer` as the current RC trial path
+- `aw-installer@next` as the explicit RC-channel pin
 - `registry RC evidence`
-- `registry smoke pending`
+- `registry npx smoke evidence`
 - `update reinstalls from the current trusted package or checkout payload`
