@@ -52,6 +52,8 @@ Local package candidate:
 - `toolchain/scripts/test/aw_installer_multi_temp_workdir_smoke.sh --skip-remote --output-dir /tmp/aw-rc2-local-smoke-final`: passed for three generated temporary target workdirs.
 - local smoke report: `/tmp/aw-rc2-local-smoke-final/report.md`
 - local smoke summary: `/tmp/aw-rc2-local-smoke-final/summary.tsv`
+- `toolchain/scripts/test/aw_installer_multi_temp_workdir_smoke.sh --skip-remote`: passed again in the prepublish closeout pass for three generated temporary target workdirs.
+- explicit local `npx --package <aw-installer-0.4.0-rc.2.tgz> -- aw-installer update --backend agents --yes && verify`: passed for a generated target repo, with final `binding_count=19`, `managed_install_count=19`, `conflict_count=0`, and `unrecognized_count=0`.
 
 Registry current package:
 
@@ -80,5 +82,11 @@ Expected future release tuple if approved:
 - version: `0.4.0-rc.2`
 - git tag: `v0.4.0-rc.2`
 - npm dist-tag: `next`
+
+The rc2 publish approval package, release notes, and rollback plan are tracked separately:
+
+- [aw-installer RC2 Approval Package](./aw-installer-rc2-approval-package.md)
+- [aw-installer RC2 Release Notes](./aw-installer-rc2-release-notes.md)
+- [aw-installer RC2 Rollback And Deprecation Plan](./aw-installer-rc2-rollback-deprecation-plan.md)
 
 Do not run forum-facing instructions against Windows PowerShell until the registry `next` selector resolves to a package containing the launcher fallback.

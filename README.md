@@ -20,7 +20,7 @@ last_verified: 2026-04-28
 
 ## 使用 `aw-installer`
 
-`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。`aw-installer@0.4.0-rc.1` 已发布为 npm registry RC；当前 registry 的 `next` 和 `latest` 都指向这个唯一 RC 版本。当前 checkout 已准备 `0.4.0-rc.2` 候选修复，包含 Windows/Unix Python launcher fallback 和最新 19 个 agents skills；在 `rc.2` 发布前，论坛外部试用不要把 registry `0.4.0-rc.1` 当作最终候选。复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)。
+`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。`aw-installer@0.4.0-rc.1` 已发布为 npm registry RC；当前 registry 的 `next` 和 `latest` 都指向这个唯一 RC 版本。当前 checkout 已准备 `0.4.0-rc.2` 候选修复，包含 Windows/Unix Python launcher fallback 和最新 19 个 agents skills；在 `rc.2` 发布前，论坛外部试用不要把 registry `0.4.0-rc.1` 当作最终候选。复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)，rc2 安装就绪与发布边界见 [`aw-installer RC2 npx Install Readiness`](./docs/project-maintenance/deploy/aw-installer-rc2-npx-install-readiness.md) 和 [`aw-installer RC2 Approval Package`](./docs/project-maintenance/deploy/aw-installer-rc2-approval-package.md)。
 
 ```bash
 npx aw-installer
