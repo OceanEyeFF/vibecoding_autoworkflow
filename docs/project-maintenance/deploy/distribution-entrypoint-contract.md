@@ -35,6 +35,8 @@ CI 必须显式设置 Node 后运行本地 package smoke、本地 scaffold pack 
 
 `aw-installer` 的 package payload provenance、source/target root 解析和 `update` trust boundary 由 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md) 固定。`0.4.0-rc.3` 允许 `update --source github --github-repo OWNER/REPO --github-ref REF` 显式使用 GitHub source archive 作为本次 source root；包装层不得把 channel 解析、自升级、验签或自动回滚悄悄并入当前 `update --yes`。
 
+`--github-repo` 的默认值可以由 `AW_INSTALLER_GITHUB_REPO` 或 GitHub Actions 的 `GITHUB_REPOSITORY` 提供；两者都不存在时才回退到上游仓库。可移植脚本和 fork 验证应显式传 `--github-repo`，避免误读上游 source archive。
+
 ## 一、范围
 
 本文定义 `aw-installer` 分发入口的外层合同：

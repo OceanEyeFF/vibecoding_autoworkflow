@@ -228,14 +228,17 @@ class AdapterDeployTest(unittest.TestCase):
 
     def _fake_urlopen_response(self, payload: bytes):
         class Response:
+            def __init__(self_inner):
+                self_inner.stream = io.BytesIO(payload)
+
             def __enter__(self_inner):
                 return self_inner
 
             def __exit__(self_inner, exc_type, exc, traceback):
                 return False
 
-            def read(self_inner):
-                return payload
+            def read(self_inner, size: int = -1):
+                return self_inner.stream.read(size)
 
         return Response()
 
@@ -2230,6 +2233,37 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(payload["target_root"], str(self.local_root))
         self.assertEqual(payload["blocking_issue_count"], 0)
         self.assertGreater(len(payload["planned_target_paths"]), 0)
+        self.assertEqual(stderr, "")
+        self.assertFalse(self.local_root.exists())
+
+    def test_update_json_github_source_default_repo_can_use_environment(self) -> None:
+        archive_bytes = self._fake_github_archive_bytes()
+        with mock.patch.object(
+            adapter_deploy.urllib.request,
+            "urlopen",
+            return_value=self._fake_urlopen_response(archive_bytes),
+        ) as urlopen:
+            code, stdout, stderr = self._run_cli(
+                "update",
+                "--backend",
+                "agents",
+                "--json",
+                "--source",
+                "github",
+                env={
+                    "GITHUB_REPOSITORY": "ForkOwner/forked_repo",
+                },
+            )
+
+        self.assertEqual(code, 0, stderr)
+        urlopen.assert_called_once()
+        self.assertEqual(
+            urlopen.call_args.args[0],
+            "https://codeload.github.com/ForkOwner/forked_repo/zip/refs/heads/master",
+        )
+        payload = json.loads(stdout)
+        self.assertEqual(payload["source_kind"], "github")
+        self.assertEqual(payload["source_ref"], "ForkOwner/forked_repo@master")
         self.assertEqual(stderr, "")
         self.assertFalse(self.local_root.exists())
 

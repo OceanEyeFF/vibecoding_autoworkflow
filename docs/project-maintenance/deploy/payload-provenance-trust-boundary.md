@@ -37,7 +37,7 @@ last_verified: 2026-04-29
 - 未设置 `AW_HARNESS_TARGET_REPO_ROOT` 且未设置 `AW_HARNESS_REPO_ROOT` 时，target repo root 是命令运行时的当前工作目录。
 - 设置 `AW_HARNESS_TARGET_REPO_ROOT` 时，target repo root 显式指向该目录。
 - `--agents-root` 只覆盖当前命令的 `agents` target root，不改变 source root。
-- `update --source github --github-repo OWNER/REPO --github-ref REF` 会把 GitHub source archive 解压到一次性临时目录，并只在本次 `update` 中把它作为 source root；target repo root 仍按 `AW_HARNESS_TARGET_REPO_ROOT` 或当前工作目录解析。
+- `update --source github --github-repo OWNER/REPO --github-ref REF` 会把 GitHub source archive 解压到一次性临时目录，并只在本次 `update` 中把它作为 source root；target repo root 仍按 `AW_HARNESS_TARGET_REPO_ROOT` 或当前工作目录解析。未显式传 `--github-repo` 时，默认仓库依次来自 `AW_INSTALLER_GITHUB_REPO`、`GITHUB_REPOSITORY`，最后才回退到上游 `OceanEyeFF/vibecoding_autoworkflow`。
 
 因此，pre-release `.tgz` 试用路径的可信边界是：payload 来自 `.tgz`，写入目标是 operator 当前所在项目的 `.agents/skills`。这也是 root `.tgz` smoke 必须清空 `AW_HARNESS_REPO_ROOT` 并在临时 target repo 中执行的原因。
 
@@ -79,7 +79,7 @@ aw-installer update --backend agents --source github --github-repo OceanEyeFF/vi
 
 准入边界：
 
-- `--source github` 只支持 `OWNER/REPO` + branch/ref archive，不支持任意 URL。
+- `--source github` 只支持 `OWNER/REPO` + branch/ref archive，不支持任意 URL；fork 或重命名仓库应显式传 `--github-repo`，或设置 `AW_INSTALLER_GITHUB_REPO` / `GITHUB_REPOSITORY`。
 - 下载后的 archive 必须通过 Harness payload source validation：至少包含 `product/harness/skills` 与 `product/harness/adapters/agents/skills`。
 - GitHub source root 是一次性临时目录；命令结束后不得作为长期 source truth 保留。
 - target root 不得默认为 GitHub source root；默认仍是当前工作目录，或显式 `AW_HARNESS_TARGET_REPO_ROOT` / `--agents-root`。

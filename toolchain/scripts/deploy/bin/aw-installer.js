@@ -83,6 +83,8 @@ options:
   -V, --version               show package version
   --source package|github     select package-local or GitHub update source
   --github-repo OWNER/REPO    GitHub source repository for --source github
+                              defaults from AW_INSTALLER_GITHUB_REPO,
+                              GITHUB_REPOSITORY, then upstream repo
   --github-ref REF            GitHub branch/ref for --source github
 `);
 }

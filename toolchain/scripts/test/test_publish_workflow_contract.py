@@ -95,14 +95,14 @@ def test_release_metadata_resolver_accepts_rc_stable_and_canary_shapes() -> None
         {
             "version": "1.2.3-rc.1",
             "releaseTag": "v1.2.3-rc.1",
-            "releasePrerelease": True,
+            "releasePrerelease": "TRUE",
             "releaseBody": "aw-installer-publish-approved: v1.2.3-rc.1",
             "expected": '"releaseChannel":"next"',
         },
         {
             "version": "1.2.3",
             "releaseTag": "v1.2.3",
-            "releasePrerelease": False,
+            "releasePrerelease": "False",
             "releaseBody": "aw-installer-publish-approved: v1.2.3",
             "expected": '"releaseChannel":"latest"',
         },
