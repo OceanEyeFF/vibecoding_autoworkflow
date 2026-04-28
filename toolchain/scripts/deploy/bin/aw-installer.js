@@ -6,7 +6,6 @@ const { existsSync, readFileSync } = require("node:fs");
 const { dirname, join } = require("node:path");
 const readline = require("node:readline");
 
-const python = "python3";
 const wrapperPath = join(__dirname, "..", "harness_deploy.py");
 const defaultWrapperTimeoutMs = 300_000;
 const wrapperTimeoutMs = readWrapperTimeoutMs();
@@ -25,6 +24,24 @@ function readWrapperTimeoutMs() {
     return parsedTimeout;
   }
   return defaultWrapperTimeoutMs;
+}
+
+function pythonCandidates() {
+  if (process.platform === "win32") {
+    return [
+      { command: "py", args: ["-3"] },
+      { command: "python", args: [] },
+      { command: "python3", args: [] },
+    ];
+  }
+  return [
+    { command: "python3", args: [] },
+    { command: "python", args: [] },
+  ];
+}
+
+function formatPythonCandidate(candidate) {
+  return [candidate.command, ...candidate.args].join(" ");
 }
 
 function tryReadPackageVersionAt(candidate) {
@@ -105,7 +122,7 @@ function printVersion() {
   console.log(`aw-installer ${readPackageVersion()}`);
 }
 
-function runWrapper(args) {
+function runWrapperWithCandidate(args, candidate) {
   return new Promise((resolve) => {
     const abortController = new AbortController();
     let timedOut = false;
@@ -130,47 +147,80 @@ function runWrapper(args) {
 
     let child;
     try {
-      child = spawn(python, [wrapperPath, ...args], {
+      child = spawn(candidate.command, [...candidate.args, wrapperPath, ...args], {
         env,
         signal: abortController.signal,
         stdio: "inherit",
       });
     } catch (error) {
       clearTimeout(timer);
-      console.error(`aw-installer failed to start ${python}: ${error.message}`);
-      resolve(1);
+      if (error.code === "ENOENT") {
+        resolve({ status: 1, missing: true, error });
+        return;
+      }
+      console.error(
+        `aw-installer failed to start ${formatPythonCandidate(candidate)}: ${error.message}`,
+      );
+      resolve({ status: 1, missing: false, error });
       return;
     }
 
     child.on("error", (error) => {
       if (timedOut || error.name === "AbortError") {
-        if (finish(1)) {
+        if (finish({ status: 1, missing: false })) {
           console.error(`aw-installer timed out after ${timeoutSeconds}s`);
         }
         return;
       }
-      if (!finish(1)) {
+      if (error.code === "ENOENT") {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        resolve({ status: 1, missing: true, error });
         return;
       }
-      console.error(`aw-installer failed to start ${python}: ${error.message}`);
+      if (!finish({ status: 1, missing: false, error })) {
+        return;
+      }
+      console.error(
+        `aw-installer failed to start ${formatPythonCandidate(candidate)}: ${error.message}`,
+      );
     });
     child.on("close", (code, signal) => {
       if (timedOut) {
-        if (finish(1)) {
+        if (finish({ status: 1, missing: false })) {
           console.error(`aw-installer timed out after ${timeoutSeconds}s`);
         }
         return;
       }
       if (signal) {
-        if (!finish(1)) {
+        if (!finish({ status: 1, missing: false })) {
           return;
         }
         console.error(`aw-installer terminated by signal ${signal}`);
         return;
       }
-      finish(code === null ? 1 : code);
+      finish({ status: code === null ? 1 : code, missing: false });
     });
   });
+}
+
+async function runWrapper(args) {
+  const missingCandidates = [];
+  for (const candidate of pythonCandidates()) {
+    const result = await runWrapperWithCandidate(args, candidate);
+    if (result.missing) {
+      missingCandidates.push(formatPythonCandidate(candidate));
+      continue;
+    }
+    return result.status;
+  }
+  console.error(
+    `aw-installer failed to start Python; tried ${missingCandidates.join(", ")}`,
+  );
+  return 1;
 }
 
 function question(rl, prompt) {

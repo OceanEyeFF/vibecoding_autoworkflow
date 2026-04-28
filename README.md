@@ -20,7 +20,7 @@ last_verified: 2026-04-28
 
 ## 使用 `aw-installer`
 
-`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。`aw-installer@0.4.0-rc.1` 已发布为 npm registry RC；当前 registry 的 `next` 和 `latest` 都指向这个唯一 RC 版本。Registry npx smoke 已验证裸 package selector `aw-installer` 的本地多目标路径，外部试用的主路径现在是 `npx aw-installer`；需要显式 pin RC channel 时使用 `aw-installer@next`。复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)。
+`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。`aw-installer@0.4.0-rc.1` 已发布为 npm registry RC；当前 registry 的 `next` 和 `latest` 都指向这个唯一 RC 版本。当前 checkout 已准备 `0.4.0-rc.2` 候选修复，包含 Windows/Unix Python launcher fallback 和最新 19 个 agents skills；在 `rc.2` 发布前，论坛外部试用不要把 registry `0.4.0-rc.1` 当作最终候选。复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)。
 
 ```bash
 npx aw-installer
@@ -39,6 +39,8 @@ npx aw-installer install --backend agents
 ```
 
 这里的裸 `npx aw-installer` 解析到当前唯一 registry RC；这不是稳定 release 批准，稳定版本和未来 publish 仍需单独审批。`diagnose` 和 `verify` 是只读检查；`install` 是显式写入当前 payload 的底层命令；`update` 默认只输出 dry-run plan。推荐写入路径是在确认 plan 后运行 `update --yes`，它会按 `prune --all -> check_paths_exist -> install -> verify` 写入目标仓库的 `.agents/skills`。完整入口合同见 [`Distribution Entrypoint Contract`](./docs/project-maintenance/deploy/distribution-entrypoint-contract.md)，registry npx smoke 与反馈日志见 [`aw-installer Registry npx Smoke`](./docs/project-maintenance/deploy/aw-installer-registry-npx-smoke.md)。
+
+`aw-installer` 的 Node wrapper 需要目标机器可启动 Python。当前 checkout 的 `rc.2` 候选在 Windows 上按 `py -3`、`python`、`python3` 尝试，在 Linux/macOS 上按 `python3`、`python` 尝试；不依赖 `PYTHON` 或 `PYTHON3` 环境变量覆盖。registry `0.4.0-rc.1` 仍只硬编码 `python3`，因此 Windows PowerShell 论坛试用应等待 `rc.2` 发布。
 
 `aw-installer` 当前只使用 package 或 checkout 中的 source payload；`update` 不做远程 fetch、channel 解析、自升级、验签或自动回滚。payload provenance 与 update trust boundary 见 [`Payload Provenance And Update Trust Boundary`](./docs/project-maintenance/deploy/payload-provenance-trust-boundary.md)。
 

@@ -40,6 +40,7 @@
 | 我想在隔离目标仓库验证本地 `.tgz` | [aw-installer-external-target-smoke.md](./aw-installer-external-target-smoke.md) | 提供 two-target tarball smoke 操作脚本和汇报模板；不授权真实 publish |
 | 我想在多个临时 workdir / 临时 clone 中验证 packaged installer 不串台 | [aw-installer-multi-temp-workdir-smoke.md](./aw-installer-multi-temp-workdir-smoke.md) | 提供三目标 smoke 脚本，覆盖空临时 repo 与两个批准目标 repo 的临时 clone；不 push、不发布 npm |
 | 我想验证已发布 registry 包的 npx 路径并生成反馈日志 | [aw-installer-registry-npx-smoke.md](./aw-installer-registry-npx-smoke.md) | 提供 Windows PowerShell / Linux bash / macOS bash 可运行的 Node smoke runner，并为每个目标生成 `aw-installer-npx-run.log` |
+| 我想确认论坛试用前 `rc.2` 的 npx 安装流程是否已就绪 | [aw-installer-rc2-npx-install-readiness.md](./aw-installer-rc2-npx-install-readiness.md) | 记录 registry `rc.1` 与本地 `rc.2` 候选差异、Python launcher fallback、三目标本地 package smoke 和发布审批边界 |
 | 我想看 `aw-installer` payload 从哪里来、`update` 信任边界在哪里 | [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md) | 定义 package payload、source/target root override、当前 update 边界与未来远程更新准入 |
 | 我想看 `agents` canonical-copy payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | 定义 `product/harness/adapters/agents/skills/` 的 payload descriptor 结构，以及 target 如何复制 canonical skill 内容 |
 | 我想初始化 `.aw/` 样例并校验 `.aw_template` 最小结构 | [template-tooling-mvp.md](./template-tooling-mvp.md) | B2 的最小工作面，只做 `.aw_template -> .aw` 样例生成与前置校验 |
@@ -52,7 +53,7 @@
 
 外部试用者和维护者应按这个顺序进入，而不是从单个 `npx` 片段自行推断发布状态：
 
-- 安装与 `.aw/` 初始化提示：先看 [aw-installer Public Quickstart Prompts](./aw-installer-public-quickstart-prompts.md)。当前 `aw-installer@0.4.0-rc.1` 已发布为 registry RC；registry npx smoke 已覆盖 bare package selector `aw-installer` 的本地多目标路径，必要时可用 `aw-installer@next` 显式 pin 到 RC channel。
+- 安装与 `.aw/` 初始化提示：先看 [aw-installer Public Quickstart Prompts](./aw-installer-public-quickstart-prompts.md)。当前 `aw-installer@0.4.0-rc.1` 已发布为 registry RC；registry npx smoke 已覆盖 bare package selector `aw-installer` 的本地多目标路径，必要时可用 `aw-installer@next` 显式 pin 到 RC channel。论坛试用前先看 [aw-installer RC2 npx Install Readiness](./aw-installer-rc2-npx-install-readiness.md)，因为当前 checkout 的 `0.4.0-rc.2` 候选包含 registry `0.4.0-rc.1` 尚未具备的跨平台 Python launcher fallback 和最新 19-skill payload。
 - 反馈入口：用 [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)。
 - Registry npx smoke 与反馈日志：用 [aw-installer Registry npx Smoke](./aw-installer-registry-npx-smoke.md) 验证空临时 repo 与批准目标 repo 临时 clone 的 source/target 隔离，并生成可脱敏提交的 `aw-installer-npx-run.log`；不要写入非临时 checkout，不 push，不开 issue 或 PR。
 - 本地包 smoke：用 [aw-installer Multi Temporary Workdir Smoke](./aw-installer-multi-temp-workdir-smoke.md) 验证当前 checkout 打出的 `.tgz`。

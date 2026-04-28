@@ -225,6 +225,17 @@ class AdapterDeployTest(unittest.TestCase):
         fake_python.chmod(0o755)
         return fake_bin
 
+    def _fake_python_fallback_bin(self) -> Path:
+        fake_bin = self.temp_root / "fake-python-fallback-bin"
+        fake_bin.mkdir()
+        fake_python = fake_bin / "python"
+        fake_python.write_text(
+            "#!/bin/sh\nprintf 'fake-python %s\\n' \"$*\"\n",
+            encoding="utf-8",
+        )
+        fake_python.chmod(0o755)
+        return fake_bin
+
     def _remove_target_marker(self, skill_id: str) -> Path:
         target_dir_name = self._target_dir_for_skill(skill_id)
         marker_path = self.local_root / target_dir_name / "aw.marker"
@@ -1403,6 +1414,46 @@ class AdapterDeployTest(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             payload = json.loads(completed.stdout)
             self.assertEqual(payload["target_root"], str(target_repo / ".agents" / "skills"))
+
+    def test_node_deploy_wrappers_fall_back_to_python_when_python3_is_missing(self) -> None:
+        node_path = shutil.which("node")
+        if node_path is None:
+            self.skipTest("node is not available")
+        fake_bin = self._fake_python_fallback_bin()
+        env = {
+            **os.environ,
+            "PATH": str(fake_bin),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+        wrappers = [
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js",
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-harness-deploy.js",
+        ]
+
+        for wrapper in wrappers:
+            with self.subTest(wrapper=wrapper.name):
+                completed = subprocess.run(
+                    [node_path, str(wrapper), "diagnose", "--backend", "agents", "--json"],
+                    cwd=self.source_repo_root,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertIn("fake-python", completed.stdout)
+                self.assertIn("harness_deploy.py diagnose --backend agents --json", completed.stdout)
 
     def test_node_deploy_wrappers_time_out_stalled_python_processes(self) -> None:
         if shutil.which("node") is None:

@@ -23,7 +23,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 
 当前根目录 `package.json` 是 `aw-installer` 的 npm/npx 分发包络。它从根目录打包 `product/harness/skills`、`product/harness/adapters/agents/skills` 与 `toolchain/scripts/deploy/` wrapper，使 `.tgz` 或 registry package 中的 source payload 可以脱离源码 checkout 被读取。`aw-installer@0.4.0-rc.1` 已作为 registry RC 发布；裸 package selector `aw-installer` 当前解析到这个唯一 RC，`aw-installer@next` 可用于显式 pin RC channel。
 
-`toolchain/scripts/deploy/package.json`、`bin/aw-installer.js` 和 `bin/aw-harness-deploy.js` 仍保留为本地 npm-style scaffold；它们调用同一个 Python wrapper，不代表 package 已发布。`aw-installer` 是主 bin，`aw-harness-deploy` 是兼容别名。
+`toolchain/scripts/deploy/package.json`、`bin/aw-installer.js` 和 `bin/aw-harness-deploy.js` 仍保留为本地 npm-style scaffold；它们调用同一个 Python wrapper，不代表 package 已发布。`aw-installer` 是主 bin，`aw-harness-deploy` 是兼容别名。当前 checkout 的 `0.4.0-rc.2` 候选在 Windows 上按 `py -3`、`python`、`python3` 尝试 Python launcher，在 Linux/macOS 上按 `python3`、`python` 尝试；wrapper 不接受 `PYTHON`/`PYTHON3` 环境变量覆盖。
 
 根 package packlist 检查在仓库根目录执行 `npm pack --dry-run --json`。本地 scaffold packlist 检查仍在 `toolchain/scripts/deploy/` package root 内执行 `npm pack --dry-run --json`。
 

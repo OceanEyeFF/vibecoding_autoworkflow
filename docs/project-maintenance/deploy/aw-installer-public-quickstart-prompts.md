@@ -34,9 +34,10 @@ Run commands from the target repository root unless a command explicitly names t
 Prerequisites:
 
 - Node.js and npm are available for the `aw-installer` package path.
+- Python is available for the wrapper. The `0.4.0-rc.2` candidate tries `py -3`, `python`, then `python3` on Windows, and `python3` then `python` on Linux/macOS. It intentionally ignores `PYTHON` and `PYTHON3` environment overrides.
 - The target repository is a git worktree you are allowed to modify.
 - You have registry access to `aw-installer`, a local `aw-installer` `.tgz` package from the maintainer, or an explicit AW source checkout path.
-- You understand that the current public trial path is RC pre-release: `aw-installer@0.4.0-rc.1` is published, `next` and `latest` both point to the same only RC version, and stable release semantics still require separate approval.
+- You understand that the current public trial path is RC pre-release: `aw-installer@0.4.0-rc.1` is published, `next` and `latest` both point to the same only RC version, and stable release semantics still require separate approval. Windows PowerShell forum trials should wait for the `0.4.0-rc.2` candidate publish because `0.4.0-rc.1` still hardcodes `python3`.
 
 Privacy rule:
 
@@ -72,7 +73,7 @@ printf 'AW_INSTALLER_PACKAGE=%s\n' "$AW_INSTALLER_PACKAGE"
 External testers who receive a `.tgz` can skip this step and set:
 
 ```bash
-AW_INSTALLER_PACKAGE="/path/to/aw-installer-0.4.0-rc.1.tgz"
+AW_INSTALLER_PACKAGE="/path/to/aw-installer-0.4.0-rc.2.tgz"
 ```
 
 The exact filename may differ. Prefer `aw-installer` for registry npx trials; use `aw-installer@next` for explicit RC channel pinning and local `.tgz` when validating the current checkout or when registry access is unavailable.
