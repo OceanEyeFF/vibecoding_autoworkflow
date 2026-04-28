@@ -3,8 +3,27 @@
 
 const { spawnSync } = require("node:child_process");
 
+const allowedReleaseChannels = new Set(["latest", "next", "canary"]);
+
+function resolveReleaseChannel(env = process.env) {
+  const releaseChannel = env.AW_INSTALLER_RELEASE_CHANNEL || env.npm_config_tag || "next";
+  if (!allowedReleaseChannels.has(releaseChannel)) {
+    throw new Error(
+      `unsupported aw-installer release channel: ${releaseChannel}; expected latest, next, or canary`,
+    );
+  }
+  return releaseChannel;
+}
+
 function main() {
-  const releaseChannel = process.env.AW_INSTALLER_RELEASE_CHANNEL || process.env.npm_config_tag || "next";
+  let releaseChannel;
+  try {
+    releaseChannel = resolveReleaseChannel();
+  } catch (error) {
+    console.error(error.message);
+    return 1;
+  }
+
   const completed = spawnSync(
     "npm",
     ["publish", "--dry-run", "--json", "--tag", releaseChannel],
@@ -36,4 +55,5 @@ if (require.main === module) {
 
 module.exports = {
   main,
+  resolveReleaseChannel,
 };
