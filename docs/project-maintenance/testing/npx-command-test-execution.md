@@ -1,9 +1,9 @@
 ---
 title: "npx Command Test Execution"
 status: active
-updated: 2026-04-28
+updated: 2026-04-29
 owner: aw-kernel
-last_verified: 2026-04-28
+last_verified: 2026-04-29
 ---
 # npx Command Test Execution
 
@@ -148,12 +148,14 @@ The runner:
 
 - records Node/npm versions, local git branch/ref, `npm view <selector> version`, and `npm dist-tag ls aw-installer`.
 - creates one empty temporary git repo.
+- creates one local existing-work fixture with `README.md`, `package.json`, and `src/index.js` and verifies those files survive install/update unchanged.
 - clones the two approved target repositories into temporary directories unless `--skip-remote` is used.
 - disables push URLs in temporary remote clones before installer commands run.
 - runs help, version, non-interactive TUI guard, diagnose, update dry-run, install, verify, update apply, and final diagnose through npx.
 - pins npm cache, tmp, user config, and HOME/USERPROFILE under the evidence directory.
 - checks that target paths stay inside each temporary target workdir.
 - checks that the package source root is not the AW source checkout and not the target repo.
+- checks that `diagnose` reports `missing-target-root` before install and that `update --json` treats the missing target root as a non-blocking, recoverable issue.
 - writes `summary.tsv`, `report.md`, and one `aw-installer-npx-run.log` per target.
 
 ## Feedback Log
@@ -176,8 +178,10 @@ Before attaching a log to GitHub feedback, remove private paths, private repo na
 
 ## Pass Criteria
 
-- Local-only mode passes generated temporary target workdirs.
+- Local-only mode passes generated temporary target workdirs, including at least one empty target and one existing-work target.
 - Default mode passes the generated empty repo plus temporary clones of the approved target repositories, unless network access is unavailable and the blocker is recorded.
+- Before install, each target demonstrates missing target folder/path recovery: `diagnose` reports `missing-target-root`, and `update --json` does not treat that issue as blocking.
+- Existing-work fixture files are unchanged after install/update.
 - Each final diagnose reports managed installs equal to the selected package or candidate `binding_count`, with 0 conflicts and 0 unrecognized entries.
 - Each dry-run planned target path stays inside its own temporary target workdir.
 - No observed source root resolves inside the AW source checkout.
