@@ -158,8 +158,8 @@ function isInside(child, parent) {
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
-if (after.managed_install_count !== 17) {
-  fail(`expected 17 managed installs after install/update, got ${after.managed_install_count}`);
+if (after.managed_install_count !== 19) {
+  fail(`expected 19 managed installs after install/update, got ${after.managed_install_count}`);
 }
 if (after.conflict_count !== 0 || after.unrecognized_count !== 0) {
   fail(`expected no conflicts/unrecognized entries after install/update, got conflicts=${after.conflict_count} unrecognized=${after.unrecognized_count}`);
@@ -176,8 +176,8 @@ if (isInside(path.resolve(after.source_root), targetRepo)) {
 if (path.resolve(after.source_root) === path.resolve(after.target_root)) {
   fail(`source_root ${after.source_root} unexpectedly equals target_root ${after.target_root}`);
 }
-if (!Array.isArray(dryRun.planned_target_paths) || dryRun.planned_target_paths.length !== 17) {
-  fail(`expected 17 dry-run planned target paths, got ${dryRun.planned_target_paths && dryRun.planned_target_paths.length}`);
+if (!Array.isArray(dryRun.planned_target_paths) || dryRun.planned_target_paths.length !== 19) {
+  fail(`expected 19 dry-run planned target paths, got ${dryRun.planned_target_paths && dryRun.planned_target_paths.length}`);
 }
 for (const targetPath of dryRun.planned_target_paths) {
   if (!isInside(path.resolve(targetPath), targetRepo)) {

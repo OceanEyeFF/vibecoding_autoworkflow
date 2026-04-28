@@ -123,7 +123,7 @@ Before attaching a log to GitHub feedback, remove private paths, private repo na
 
 - Local-only mode passes three generated temporary target workdirs.
 - Default mode passes the generated empty repo plus temporary clones of the two approved target repositories, unless network access is unavailable and the blocker is recorded.
-- Each final diagnose reports 17 managed installs, 0 conflicts, and 0 unrecognized entries.
+- Each final diagnose reports managed installs equal to the published package `binding_count`, with 0 conflicts and 0 unrecognized entries.
 - Each dry-run planned target path stays inside its own temporary target workdir.
 - No observed source root resolves inside the AW source checkout.
 - No observed source root resolves inside any temporary target repository or equals a target root.

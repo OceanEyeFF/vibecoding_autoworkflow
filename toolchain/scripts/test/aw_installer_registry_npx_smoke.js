@@ -126,9 +126,16 @@ function validateTarget(repoRoot, targetRepo, beforePath, dryRunPath, afterPath)
   const before = JSON.parse(fs.readFileSync(beforePath, "utf8"));
   const dryRun = JSON.parse(fs.readFileSync(dryRunPath, "utf8"));
   const after = JSON.parse(fs.readFileSync(afterPath, "utf8"));
+  const expectedBindingCount = before.binding_count;
 
-  if (after.managed_install_count !== 17) {
-    fail(`expected 17 managed installs after install/update, got ${after.managed_install_count}`);
+  if (!Number.isInteger(expectedBindingCount) || expectedBindingCount <= 0) {
+    fail(`diagnose before must report a positive binding_count, got ${expectedBindingCount}`);
+  }
+  if (Number.isInteger(after.binding_count) && after.binding_count !== expectedBindingCount) {
+    fail(`expected final binding_count ${expectedBindingCount}, got ${after.binding_count}`);
+  }
+  if (after.managed_install_count !== expectedBindingCount) {
+    fail(`expected ${expectedBindingCount} managed installs after install/update, got ${after.managed_install_count}`);
   }
   if (after.conflict_count !== 0 || after.unrecognized_count !== 0) {
     fail(`expected no conflicts/unrecognized entries after install/update, got conflicts=${after.conflict_count} unrecognized=${after.unrecognized_count}`);
@@ -145,8 +152,8 @@ function validateTarget(repoRoot, targetRepo, beforePath, dryRunPath, afterPath)
   if (path.resolve(after.source_root) === path.resolve(after.target_root)) {
     fail(`source_root ${after.source_root} unexpectedly equals target_root ${after.target_root}`);
   }
-  if (!Array.isArray(dryRun.planned_target_paths) || dryRun.planned_target_paths.length !== 17) {
-    fail(`expected 17 dry-run planned target paths, got ${dryRun.planned_target_paths && dryRun.planned_target_paths.length}`);
+  if (!Array.isArray(dryRun.planned_target_paths) || dryRun.planned_target_paths.length !== expectedBindingCount) {
+    fail(`expected ${expectedBindingCount} dry-run planned target paths, got ${dryRun.planned_target_paths && dryRun.planned_target_paths.length}`);
   }
   for (const targetPath of dryRun.planned_target_paths) {
     if (!isInside(targetPath, targetRepo)) {

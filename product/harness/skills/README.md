@@ -6,6 +6,9 @@
 
 - 已落地的顶层入口是 [harness-skill/](./harness-skill/)：顶层监督入口
 - 已落地的分派入口是 [dispatch-skills/](./dispatch-skills/)：`WorktrackScope` 下的限定范围分派与后备执行载体
+- 已落地的通用执行载体：
+  - [generic-worker-skill/](./generic-worker-skill/) — 接收限定范围 Prompt 的通用执行 worker
+  - [doc-catch-up-worker-skill/](./doc-catch-up-worker-skill/) — 将已验证实现事实追平到正确文档层
 - 已落地的 `RepoScope` 技能骨架：
   - [repo-status-skill/](./repo-status-skill/) — 代码仓库状态观察
   - [repo-whats-next-skill/](./repo-whats-next-skill/) — 代码仓库下一步判断

@@ -12,7 +12,9 @@
 
 - `close-worktrack-skill`
 - `dispatch-skills`
+- `doc-catch-up-worker-skill`
 - `gate-skill`
+- `generic-worker-skill`
 - `harness-skill`
 - `init-worktrack-skill`
 - `recover-worktrack-skill`

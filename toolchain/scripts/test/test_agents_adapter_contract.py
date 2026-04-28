@@ -14,7 +14,9 @@ ADAPTER_DEPLOY_SCRIPT = REPO_ROOT / "toolchain" / "scripts" / "deploy" / "adapte
 EXPECTED_AGENTS_SKILLS = {
     "close-worktrack-skill",
     "dispatch-skills",
+    "doc-catch-up-worker-skill",
     "gate-skill",
+    "generic-worker-skill",
     "harness-skill",
     "init-worktrack-skill",
     "recover-worktrack-skill",

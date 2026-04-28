@@ -61,7 +61,7 @@ The smoke evidence directory is a runtime path from this rehearsal. If a future 
 Both targets finished with:
 
 - `issue_count: 0`
-- `managed_install_count: 17`
+- `managed_install_count: 19`
 - `conflict_count: 0`
 - `unrecognized_count: 0`
 
