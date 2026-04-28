@@ -16,7 +16,7 @@ The concrete first `0.4.x` candidate approval package is tracked separately in [
 ## Current Stop Line
 
 - The current root `package.json` version is `0.4.0-rc.1` as release-preflight metadata for the first `0.4.x` RC checkpoint.
-- `P0-019` is the explicit real-publish approval worktrack and changes the current root `package.json` lock to `awInstallerRelease.realPublishApproval=approved`.
+- `P0-019` is the explicit real-publish approval worktrack and changes the current root `package.json` lock to `awInstallerRelease.realPublishApproval=approved` with version-bound `approvedVersion`, `approvedGitTag`, and `approvedChannel` fields.
 - Real publish for `0.4.0-rc.1` has executed and registry evidence is captured; P0-020 registry npx smoke owns the public primary-path flip and feedback-log evidence.
 - A real npm release candidate requires this approval boundary, matching prerelease semver metadata, and the publish guard inputs listed below.
 - Publish dry-run and root `.tgz` smoke prove package surface and entrypoint behavior only; they are not release authorization.
@@ -38,7 +38,7 @@ Use this proposal when preparing the first npm release-candidate checkpoint:
 The release guard requires a real RC publish to satisfy all of these conditions:
 
 - root package version is valid semver and not `0.0.0-local`.
-- package metadata has `awInstallerRelease.realPublishApproval=approved`.
+- package metadata has `awInstallerRelease.realPublishApproval=approved`, `approvedVersion`, `approvedGitTag`, and `approvedChannel` matching the release tuple.
 - `AW_INSTALLER_RELEASE_GIT_TAG=v<package.version>`.
 - npm dist-tag is `next`.
 - `AW_INSTALLER_RELEASE_CHANNEL=next`, unless the guard derives the same channel from the release git tag.
@@ -147,6 +147,6 @@ Only request future real publish approval after the evidence bundle is complete.
 - release notes summary.
 - rollback or deprecation plan.
 - confirmation that the current package payload does not rely on target repo source layout.
-- confirmation that the tracked `awInstallerRelease.realPublishApproval` lock may be changed only in the publish approval worktrack.
+- confirmation that the tracked `awInstallerRelease.realPublishApproval` and version-bound approval fields may be changed only in the publish approval worktrack.
 
 Real publish remains out of scope for ordinary prep work. It is in scope only for the explicit publish worktrack that records approval, metadata lock state, command, npm account, registry result, and repair path.

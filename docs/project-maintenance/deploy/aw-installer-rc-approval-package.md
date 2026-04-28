@@ -17,7 +17,7 @@ This page belongs to [Deploy Runbooks](./README.md). It consumes the release cha
 - real_npm_publish_allowed: true-for-approved-RC-command-only
 - publish_requires_separate_approval: satisfied-by-P0-019
 - package_version_currently_committed: `0.4.0-rc.1`
-- package_real_publish_lock: `awInstallerRelease.realPublishApproval=approved`
+- package_real_publish_lock: `awInstallerRelease.realPublishApproval=approved`, `approvedVersion=0.4.0-rc.1`, `approvedGitTag=v0.4.0-rc.1`, `approvedChannel=next`
 - proposed_version_line: `0.4.x`
 - proposed_candidate_version: `0.4.0-rc.1`
 - proposed_channel: `next`
@@ -52,7 +52,7 @@ Normal development may use `0.0.0-local`; the release-preflight checkpoint uses 
 | backend | `agents` |
 | publish context | CI release context only |
 
-The publish guard must reject real publish unless all release-channel contract inputs are present, including tracked package metadata `awInstallerRelease.realPublishApproval=approved`, `CI=true`, `AW_INSTALLER_PUBLISH_APPROVED=1`, derived or explicit channel `next`, `AW_INSTALLER_RELEASE_GIT_TAG=v0.4.0-rc.1`, and the matching npm `--tag next`.
+The publish guard must reject real publish unless all release-channel contract inputs are present, including tracked package metadata `awInstallerRelease.realPublishApproval=approved`, `approvedVersion=0.4.0-rc.1`, `approvedGitTag=v0.4.0-rc.1`, `approvedChannel=next`, `CI=true`, `AW_INSTALLER_PUBLISH_APPROVED=1`, derived or explicit channel `next`, `AW_INSTALLER_RELEASE_GIT_TAG=v0.4.0-rc.1`, and the matching npm `--tag next`.
 
 ## Evidence Bundle
 
@@ -144,7 +144,7 @@ The eventual approval request should include:
 - confirmation that the package payload does not rely on target repository source layout
 - confirmation that multi-temporary-workdir smoke has passed or has a documented, approval-visible rerun blocker
 - explicit acknowledgement that `AW_INSTALLER_PUBLISH_APPROVED=1` is supplied only for the approved publish command
-- explicit acknowledgement that `awInstallerRelease.realPublishApproval=approved` applies only to `0.4.0-rc.1` on `next`
+- explicit acknowledgement that `awInstallerRelease.realPublishApproval=approved` plus `approvedVersion=0.4.0-rc.1`, `approvedGitTag=v0.4.0-rc.1`, and `approvedChannel=next` applies only to this RC tuple
 
 ## Stable-Release Wording Boundary
 

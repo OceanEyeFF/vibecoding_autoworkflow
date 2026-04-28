@@ -69,8 +69,11 @@ function main() {
   const npmDistTag = process.env.npm_config_tag || "latest";
   const publishApproved = process.env.AW_INSTALLER_PUBLISH_APPROVED === "1";
   const isCiRelease = process.env.CI === "true";
-  const metadataPublishApproval =
-    (packageMetadata.awInstallerRelease || {}).realPublishApproval || "";
+  const releaseApprovalMetadata = packageMetadata.awInstallerRelease || {};
+  const metadataPublishApproval = releaseApprovalMetadata.realPublishApproval || "";
+  const metadataApprovedVersion = releaseApprovalMetadata.approvedVersion || "";
+  const metadataApprovedGitTag = releaseApprovalMetadata.approvedGitTag || "";
+  const metadataApprovedChannel = releaseApprovalMetadata.approvedChannel || "";
 
   runChecks([
     {
@@ -120,6 +123,21 @@ function main() {
       test: () => metadataPublishApproval === "approved",
       message: () =>
         "refusing to publish aw-installer; package metadata realPublishApproval must be approved by the explicit publish worktrack",
+    },
+    {
+      test: () => metadataApprovedVersion === version,
+      message: () =>
+        `refusing to publish aw-installer; package metadata approvedVersion ${metadataApprovedVersion || "<missing-version>"} must match ${version}`,
+    },
+    {
+      test: () => metadataApprovedGitTag === releaseTag,
+      message: () =>
+        `refusing to publish aw-installer; package metadata approvedGitTag ${metadataApprovedGitTag || "<missing-tag>"} must match ${releaseTag || "<missing-tag>"}`,
+    },
+    {
+      test: () => metadataApprovedChannel === releaseChannel,
+      message: () =>
+        `refusing to publish aw-installer; package metadata approvedChannel ${metadataApprovedChannel || "<missing-channel>"} must match ${releaseChannel || "<missing-channel>"}`,
     },
     {
       test: () => isCiRelease,

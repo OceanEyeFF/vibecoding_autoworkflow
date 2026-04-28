@@ -16,6 +16,7 @@
     "toolchain/scripts/deploy/adapter_deploy.py",
     "toolchain/scripts/deploy/harness_deploy.py",
     "toolchain/scripts/deploy/bin/aw-installer.js",
+    "toolchain/scripts/deploy/bin/publish-dry-run.js",
     "toolchain/scripts/deploy/bin/check-root-publish.js",
     "toolchain/scripts/deploy/bin/aw-harness-deploy.js"
   ],
@@ -23,14 +24,17 @@
     "smoke": "node toolchain/scripts/deploy/bin/aw-installer.js --help",
     "pack:dry-run": "npm pack --dry-run --json",
     "prepublishOnly": "node toolchain/scripts/deploy/bin/check-root-publish.js",
-    "publish:dry-run": "npm publish --dry-run --json --tag next"
+    "publish:dry-run": "node toolchain/scripts/deploy/bin/publish-dry-run.js"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
   "awInstallerRelease": {
-    "realPublishApproval": "approved"
+    "realPublishApproval": "approved",
+    "approvedVersion": "0.4.0-rc.1",
+    "approvedGitTag": "v0.4.0-rc.1",
+    "approvedChannel": "next"
   },
   "engines": {
     "node": ">=18"
