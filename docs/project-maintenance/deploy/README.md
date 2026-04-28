@@ -33,6 +33,9 @@
 | 我想看后续 npm 发布应采用哪种操作模型 | [aw-installer-release-operation-model.md](./aw-installer-release-operation-model.md) | 选择 GitHub Release `published` + npm Trusted Publishing 的发布模型，并记录 repository-side workflow preflight；不授权后续 publish |
 | 我想准备 `aw-installer` release-candidate 证据包 | [aw-installer-release-candidate-prep.md](./aw-installer-release-candidate-prep.md) | 固定 RC prep checkpoint、证据 bundle、release notes 与 rollback/deprecation plan；不授权真实 publish |
 | 我想审查第一条 `aw-installer` RC 发布审批包 | [aw-installer-rc-approval-package.md](./aw-installer-rc-approval-package.md) | 固定 `0.4.x` 版本线、`0.4.0-rc.1` 候选、`next` channel、证据路径与回滚计划；不授权真实 publish |
+| 我想审查 `aw-installer@0.4.0-rc.2` 发布审批包 | [aw-installer-rc2-approval-package.md](./aw-installer-rc2-approval-package.md) | 固定 rc2 release tuple、审批锁预期值、本地 npx 证据、发布边界；不授权 stable/latest 语义 |
+| 我想看 `aw-installer@0.4.0-rc.2` 的发布说明 | [aw-installer-rc2-release-notes.md](./aw-installer-rc2-release-notes.md) | 汇总 rc2 相对 rc1 的 launcher fallback、19-skill payload、验证摘要和已知排除项 |
+| 我想看 `aw-installer@0.4.0-rc.2` 发布失败时怎么处理 | [aw-installer-rc2-rollback-deprecation-plan.md](./aw-installer-rc2-rollback-deprecation-plan.md) | 定义 dist-tag 修正、deprecation、replacement RC 和 forum handoff 暂停边界 |
 | 我想复核 `aw-installer` 非 publish 发布演练结果 | [aw-installer-release-rehearsal.md](./aw-installer-release-rehearsal.md) | 记录 pack、publish dry-run、publish guard、`0.4.0-rc.1 -> next` 推导和 two-target tarball smoke；不授权真实 publish |
 | 我想准备外部试用目标清单和反馈字段 | [aw-installer-external-trial-feedback.md](./aw-installer-external-trial-feedback.md) | 定义自有仓库与论坛志愿者试用模板、反馈字段、隐私边界和下一主要矛盾判定标准；不包含公开招募文案 |
 | 我想给外部试用者一份可复制粘贴的 Codex / Claude Code 安装与 `.aw/` 初始化提示 | [aw-installer-public-quickstart-prompts.md](./aw-installer-public-quickstart-prompts.md) | 汇总 registry npx 主路径、Codex `agents` 主路径、Claude Code 兼容试用路径和 `.aw/` 初始化 prompt |
@@ -57,7 +60,7 @@
 - 反馈入口：用 [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)。
 - Registry npx smoke 与反馈日志：用 [aw-installer Registry npx Smoke](./aw-installer-registry-npx-smoke.md) 验证空临时 repo 与批准目标 repo 临时 clone 的 source/target 隔离，并生成可脱敏提交的 `aw-installer-npx-run.log`；不要写入非临时 checkout，不 push，不开 issue 或 PR。
 - 本地包 smoke：用 [aw-installer Multi Temporary Workdir Smoke](./aw-installer-multi-temp-workdir-smoke.md) 验证当前 checkout 打出的 `.tgz`。
-- 发布边界：RC 身份和证据包看 [aw-installer RC Approval Package](./aw-installer-rc-approval-package.md)，后续发布操作模型看 [aw-installer Release Operation Model](./aw-installer-release-operation-model.md)，非 publish 演练看 [aw-installer Non-Publish Release Rehearsal](./aw-installer-release-rehearsal.md)。当前已发布的 RC 不是稳定 release；后续 publish、stable/latest 语义和 npm-side Trusted Publisher 设置仍需单独审批。
+- 发布边界：rc1 发布事实看 [aw-installer RC Approval Package](./aw-installer-rc-approval-package.md)；rc2 审批包、发布说明和回滚计划分别看 [aw-installer RC2 Approval Package](./aw-installer-rc2-approval-package.md)、[aw-installer RC2 Release Notes](./aw-installer-rc2-release-notes.md)、[aw-installer RC2 Rollback And Deprecation Plan](./aw-installer-rc2-rollback-deprecation-plan.md)。后续发布操作模型看 [aw-installer Release Operation Model](./aw-installer-release-operation-model.md)，非 publish 演练看 [aw-installer Non-Publish Release Rehearsal](./aw-installer-release-rehearsal.md)。当前已发布的 RC 不是稳定 release；后续 publish、stable/latest 语义和 npm-side Trusted Publisher 设置仍需单独审批。
 - backend 边界：Codex 走 `agents` backend；Claude Code 仅是 compatibility trial lane，不是稳定 deploy backend。
 
 ## 当前执行边界
