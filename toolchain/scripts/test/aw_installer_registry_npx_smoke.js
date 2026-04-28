@@ -131,6 +131,23 @@ function validateTarget(repoRoot, targetRepo, beforePath, dryRunPath, afterPath)
   if (!Number.isInteger(expectedBindingCount) || expectedBindingCount <= 0) {
     fail(`diagnose before must report a positive binding_count, got ${expectedBindingCount}`);
   }
+  if (before.target_root_exists !== false || before.target_root_status !== "missing") {
+    fail(`diagnose before must prove missing target root, got exists=${before.target_root_exists} status=${before.target_root_status}`);
+  }
+  if (!Array.isArray(before.issue_codes) || !before.issue_codes.includes("missing-target-root")) {
+    fail(`diagnose before must include missing-target-root, got ${JSON.stringify(before.issue_codes)}`);
+  }
+  if (dryRun.blocking_issue_count !== 0) {
+    fail(`update dry-run must not block on missing target root, got blocking_issue_count=${dryRun.blocking_issue_count}`);
+  }
+  const dryRunIssueCodes = Array.isArray(dryRun.issue_codes)
+    ? dryRun.issue_codes
+    : Array.isArray(dryRun.issues)
+      ? dryRun.issues.map((issue) => issue.code)
+      : [];
+  if (!dryRunIssueCodes.includes("missing-target-root")) {
+    fail(`update dry-run must carry missing-target-root as a non-blocking issue, got ${JSON.stringify(dryRunIssueCodes)}`);
+  }
   if (Number.isInteger(after.binding_count) && after.binding_count !== expectedBindingCount) {
     fail(`expected final binding_count ${expectedBindingCount}, got ${after.binding_count}`);
   }
@@ -162,6 +179,40 @@ function validateTarget(repoRoot, targetRepo, beforePath, dryRunPath, afterPath)
   }
   if (!before.source_root || !after.source_root) {
     fail("diagnose output must include source_root before and after install");
+  }
+}
+
+function writeExistingWorkFixture(targetRepo) {
+  writeFile(path.join(targetRepo, "README.md"), "# Existing Work Fixture\n\nThis file must survive aw-installer install/update.\n");
+  writeFile(
+    path.join(targetRepo, "package.json"),
+    JSON.stringify({ name: "existing-work-fixture", private: true, scripts: { test: "node -e \"process.exit(0)\"" } }, null, 2) + "\n",
+  );
+  writeFile(path.join(targetRepo, "src", "index.js"), "console.log('existing project file');\n");
+}
+
+function snapshotExistingWork(targetRepo) {
+  const files = ["README.md", "package.json", path.join("src", "index.js")];
+  const snapshot = {};
+  for (const file of files) {
+    const filePath = path.join(targetRepo, file);
+    if (fs.existsSync(filePath)) {
+      snapshot[file] = fs.readFileSync(filePath, "utf8");
+    }
+  }
+  return snapshot;
+}
+
+function validateExistingWorkPreserved(targetRepo, beforeSnapshot) {
+  for (const [file, expectedContent] of Object.entries(beforeSnapshot)) {
+    const filePath = path.join(targetRepo, file);
+    if (!fs.existsSync(filePath)) {
+      fail(`existing project file was removed: ${filePath}`);
+    }
+    const actualContent = fs.readFileSync(filePath, "utf8");
+    if (actualContent !== expectedContent) {
+      fail(`existing project file changed unexpectedly: ${filePath}`);
+    }
   }
 }
 
@@ -261,9 +312,9 @@ function main() {
   writeFile(path.join(outputDir, "npm-dist-tags.out"), registryDistTags.stdout);
   writeFile(path.join(outputDir, "npm-dist-tags.err"), registryDistTags.stderr);
 
-  const targetSpecs = [["empty-local", ""]];
+  const targetSpecs = [["empty-local", "empty"], ["existing-work-local", "existing-work"]];
   if (args.skipRemote) {
-    targetSpecs.push(["empty-beta", ""], ["empty-gamma", ""]);
+    targetSpecs.push(["empty-beta", "empty"]);
   } else {
     targetSpecs.push(
       ["t1-ai", "https://github.com/OceanEyeFF/T1.AI.git"],
@@ -277,16 +328,19 @@ function main() {
   };
   const summary = [];
 
-  for (const [targetName, targetUrl] of targetSpecs) {
+  for (const [targetName, targetSource] of targetSpecs) {
     const targetRepo = path.join(targetsRoot, targetName);
     const targetEvidence = path.join(evidenceRoot, targetName);
     const feedbackLog = path.join(targetEvidence, "aw-installer-npx-run.log");
+    const targetUrl = targetSource.startsWith("https://") ? targetSource : "";
+    const targetShape = targetUrl ? "remote-existing-work" : targetSource;
     ensureDir(targetEvidence);
     writeFile(
       feedbackLog,
       "# aw-installer npx run log\n\n" +
         `target_alias=${targetName}\n` +
-        `target_source=${targetUrl || "local-empty"}\n` +
+        `target_source=${targetUrl || targetShape}\n` +
+        `target_shape=${targetShape}\n` +
         `package_selector=${args.packageSelector}\n` +
         `node_version=${nodeVersion}\n` +
         `npm_version=${npmVersion}\n` +
@@ -313,6 +367,9 @@ function main() {
       writeFile(path.join(targetEvidence, "remotes.after-guard.out"), remotes.stdout);
     } else {
       ensureDir(targetRepo);
+      if (targetShape === "existing-work") {
+        writeExistingWorkFixture(targetRepo);
+      }
       const init = run("git", ["-C", targetRepo, "init"]);
       writeFile(path.join(targetEvidence, "git-init.out"), init.stdout);
       writeFile(path.join(targetEvidence, "git-init.err"), init.stderr);
@@ -320,6 +377,8 @@ function main() {
         throw new Error(`git init failed for ${targetRepo}: ${init.stderr}`);
       }
     }
+
+    const existingWorkBefore = targetShape === "existing-work" ? snapshotExistingWork(targetRepo) : {};
 
     runAwCapture(context, targetRepo, targetEvidence, "help", 0, ["--help"]);
     runAwCapture(context, targetRepo, targetEvidence, "version", 0, ["--version"]);
@@ -350,10 +409,12 @@ function main() {
       path.join(targetEvidence, "update.dry-run.json"),
       path.join(targetEvidence, "diagnose.after.json"),
     );
+    validateExistingWorkPreserved(targetRepo, existingWorkBefore);
 
     summary.push({
       targetName,
-      targetUrl: targetUrl || "local-empty",
+      targetUrl: targetUrl || targetShape,
+      targetShape,
       targetRepo,
       result: "passed",
       feedbackLog,
@@ -386,9 +447,9 @@ function main() {
     "",
     "## Target Summary",
     "",
-    "| Target | Source | Target repo | Result | Feedback log |",
-    "| --- | --- | --- | --- | --- |",
-    ...summary.map((row) => `| ${row.targetName} | ${row.targetUrl} | ${row.targetRepo} | ${row.result} | ${row.feedbackLog} |`),
+    "| Target | Source | Shape | Target repo | Result | Feedback log |",
+    "| --- | --- | --- | --- | --- | --- |",
+    ...summary.map((row) => `| ${row.targetName} | ${row.targetUrl} | ${row.targetShape} | ${row.targetRepo} | ${row.result} | ${row.feedbackLog} |`),
     "",
     "## Verdict",
     "",
@@ -397,6 +458,8 @@ function main() {
     "- source_root_checkout_leakage: not observed",
     "- source_root_target_repo_leakage: not observed",
     "- target_root_cross_workdir_leakage: not observed",
+    "- missing_target_root_handling: diagnose reports missing-target-root before install; update dry-run treats it as non-blocking",
+    "- existing_work_preserved: local existing-work fixture files unchanged after install/update",
     "- remote_mutation: not performed",
     "- remote_push_guard: remote clone push URLs set to DISABLED_BY_AW_TEMP_SMOKE_NO_PUSH",
     "- npm_publish_required: false",
