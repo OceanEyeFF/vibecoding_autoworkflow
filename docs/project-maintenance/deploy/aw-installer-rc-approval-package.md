@@ -16,7 +16,8 @@ This page belongs to [Deploy Runbooks](./README.md). It consumes the release cha
 - approval_status: pending
 - real_npm_publish_allowed: false
 - publish_requires_separate_approval: true
-- package_version_currently_committed: `0.0.0-local`
+- package_version_currently_committed: `0.4.0-rc.1`
+- package_real_publish_lock: `awInstallerRelease.realPublishApproval=blocked-until-P0-019`
 - proposed_version_line: `0.4.x`
 - proposed_candidate_version: `0.4.0-rc.1`
 - proposed_channel: `next`
@@ -34,7 +35,7 @@ The first release-candidate line should use `0.4.x` because this repository is n
 3. deployable `agents` backend payload and local package wrapper.
 4. `aw-installer` as the near-term Node/npm/npx distribution envelope.
 
-The package should stay at `0.0.0-local` in normal development until a separate publish approval changes the release checkpoint metadata. The approval package proposes the release identity; it does not mutate package metadata by itself.
+Normal development may use `0.0.0-local`; the release-preflight checkpoint uses `0.4.0-rc.1` only as candidate metadata. That metadata does not authorize registry publication by itself.
 
 ## Candidate Identity
 
@@ -48,7 +49,7 @@ The package should stay at `0.0.0-local` in normal development until a separate 
 | backend | `agents` |
 | publish context | CI release context only |
 
-The publish guard must reject real publish unless all release-channel contract inputs are present, including `CI=true`, `AW_INSTALLER_PUBLISH_APPROVED=1`, `AW_INSTALLER_RELEASE_CHANNEL=next`, `AW_INSTALLER_RELEASE_GIT_TAG=v0.4.0-rc.1`, and the matching npm `--tag next`.
+The publish guard must reject real publish unless all release-channel contract inputs are present, including tracked package metadata `awInstallerRelease.realPublishApproval=approved`, `CI=true`, `AW_INSTALLER_PUBLISH_APPROVED=1`, derived or explicit channel `next`, `AW_INSTALLER_RELEASE_GIT_TAG=v0.4.0-rc.1`, and the matching npm `--tag next`.
 
 ## Evidence Bundle
 
@@ -64,7 +65,8 @@ Use these evidence paths as the approval package bundle:
 | Non-publish release rehearsal | `docs/project-maintenance/deploy/aw-installer-release-rehearsal.md` | passed |
 | Runtime external smoke operation artifact | `.aw/repo/aw-installer-external-target-smoke-runbook.md` | runtime evidence |
 | Runtime two-target smoke report | `.aw/repo/aw-installer-external-target-smoke-report.md` | passed for local `.tgz` / dry-run evidence |
-| Package metadata source | `package.json` | currently `0.0.0-local` |
+| Package metadata source | `package.json` | currently `0.4.0-rc.1` release-preflight metadata |
+| Real publish metadata lock | `package.json` | currently `blocked-until-P0-019` |
 | Worktrack backlog source | `.aw/repo/worktrack-backlog.md` | `P0-007` approval package source |
 | Latest repo snapshot | `.aw/repo/snapshot-status.md` | refreshed after `develop-aw@f16f55e` |
 
@@ -119,6 +121,7 @@ The eventual approval request should include:
 - confirmation that the package payload does not rely on target repository source layout
 - confirmation that multi-temporary-workdir smoke has passed or has a documented, approval-visible rerun blocker
 - explicit acknowledgement that `AW_INSTALLER_PUBLISH_APPROVED=1` is not set by this document
+- explicit acknowledgement that `awInstallerRelease.realPublishApproval` remains blocked until the real-publish approval worktrack
 
 ## Forbidden Wording
 

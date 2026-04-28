@@ -69,6 +69,8 @@ function main() {
   const npmDistTag = process.env.npm_config_tag || "latest";
   const publishApproved = process.env.AW_INSTALLER_PUBLISH_APPROVED === "1";
   const isCiRelease = process.env.CI === "true";
+  const metadataPublishApproval =
+    (packageMetadata.awInstallerRelease || {}).realPublishApproval || "";
 
   runChecks([
     {
@@ -113,6 +115,11 @@ function main() {
       test: () => publishApproved,
       message: () =>
         "refusing to publish aw-installer; set AW_INSTALLER_PUBLISH_APPROVED=1 after release approval",
+    },
+    {
+      test: () => metadataPublishApproval === "approved",
+      message: () =>
+        "refusing to publish aw-installer; package metadata realPublishApproval must be approved by the explicit publish worktrack",
     },
     {
       test: () => isCiRelease,

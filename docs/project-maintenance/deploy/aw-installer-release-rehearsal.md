@@ -15,7 +15,8 @@ This page belongs to [Deploy Runbooks](./README.md). It validates the rehearsal 
 
 - rehearsal_status: passed
 - candidate_version_proposal: `0.4.0-rc.1`
-- current_package_version: `0.0.0-local`
+- rehearsal_package_version: `0.0.0-local`
+- current_preflight_package_version: `0.4.0-rc.1`
 - release_channel_under_review: `next`
 - npm_dist_tag_under_review: `next`
 - proposed_git_tag: `v0.4.0-rc.1`
@@ -28,9 +29,9 @@ This page belongs to [Deploy Runbooks](./README.md). It validates the rehearsal 
 
 | Check | Command shape | Result | Meaning |
 |---|---|---|---|
-| Pack local package | `npm pack --json --pack-destination <tmpdir>` | passed | root package envelope can produce `aw-installer-0.0.0-local.tgz` |
+| Pack local package | `npm pack --json --pack-destination <tmpdir>` | passed | historical local package envelope produced `aw-installer-0.0.0-local.tgz` |
 | Publish dry-run | `npm run publish:dry-run --silent` | passed | npm dry-run and `prepublishOnly` dry-run path remain reproducible |
-| Real publish guard | `node toolchain/scripts/deploy/bin/check-root-publish.js` | rejected as expected | real publish is blocked while package version remains `0.0.0-local` |
+| Real publish guard | `node toolchain/scripts/deploy/bin/check-root-publish.js` | rejected as expected | real publish remains blocked without explicit approval, CI, channel, dist-tag, and git-tag inputs |
 | Candidate channel derivation | `deriveReleaseChannelFromTag('v0.4.0-rc.1', '0.4.0-rc.1', 'rc.1')` | `next` | proposed candidate tag/version shape maps to the intended channel |
 | Two-target tarball smoke | local `.tgz` through `npm exec --package` in two temporary target repos | passed | packaged CLI/TUI guard/install/verify/update path is reproducible without source checkout reliance |
 
@@ -68,7 +69,7 @@ Both targets finished with:
 
 - N/A
 
-No technical blocker was found for the non-publish rehearsal path. The current package still intentionally identifies as `0.0.0-local`, so this rehearsal proves the package surface and guard behavior, not public availability.
+No technical blocker was found for the non-publish rehearsal path. This page preserves historical `0.0.0-local` rehearsal evidence; after the release-preflight metadata is set to `0.4.0-rc.1`, the active worktrack must refresh pack and publish dry-run evidence before any publish approval request.
 
 ## Approval Blockers
 
@@ -89,7 +90,7 @@ node toolchain/scripts/deploy/bin/check-root-publish.js
 node -e "const {deriveReleaseChannelFromTag}=require('./toolchain/scripts/deploy/bin/check-root-publish.js'); const channel=deriveReleaseChannelFromTag('v0.4.0-rc.1','0.4.0-rc.1','rc.1'); if (channel !== 'next') process.exit(1);"
 ```
 
-The direct guard command is expected to fail while `package.json` remains `0.0.0-local`. Treat that failure as a pass only when the error states that an approved non-local version is required.
+The direct guard command is expected to fail until real publish approval, CI context, channel, dist-tag, and matching release tag inputs are supplied. Treat that failure as a pass only when it preserves the real-publish boundary.
 
 For the older two-target target smoke shape, use [aw-installer External Target Smoke](./aw-installer-external-target-smoke.md) from the release checkpoint under review. Before external trial or publish approval, prefer [aw-installer Multi Temporary Workdir Smoke](./aw-installer-multi-temp-workdir-smoke.md), which covers multiple isolated temporary workdirs and approved target repositories only through temporary clones.
 

@@ -14,7 +14,7 @@ last_verified: 2026-04-28
 ## 当前状态
 
 - 根目录 `package.json` 是 self-contained `aw-installer` package envelope；`aw-installer` 是已批准的 unscoped public package identity。当前 `npm view aw-installer` 返回未发布，因此还没有 registry owner/maintainer metadata。
-- 当前版本仍是 `0.0.0-local`，真实 publish 必须被拒绝。
+- 当前 release-preflight metadata 使用 `0.4.0-rc.1` 作为首个 `0.4.x` RC checkpoint；package metadata 仍设置 `awInstallerRelease.realPublishApproval=blocked-until-P0-019`，真实 publish 必须被拒绝，除非后续审批显式跨过 publish boundary 并更新该 tracked metadata lock。
 - `npm pack --dry-run --json`、`npm run publish:dry-run --silent` 和根 `.tgz` smoke 只证明包面和运行入口，不等于发布授权。
 - `prepublishOnly` guard 位于 `toolchain/scripts/deploy/bin/check-root-publish.js`，负责在真实 publish 前执行机器准入检查。
 
@@ -26,7 +26,7 @@ last_verified: 2026-04-28
 | `next` | `next` | prerelease semver with `alpha`, `beta`, or `rc`, for example `1.3.0-beta.1` | 预发布验证 |
 | `canary` | `canary` | prerelease semver containing `canary`, for example `1.3.0-canary.20260427` | 短期实验验证 |
 
-真实 publish 时，`AW_INSTALLER_RELEASE_CHANNEL` 必须与 npm dist-tag 一致。未显式设置 npm dist-tag 时，npm 默认按 `latest` 处理，因此非 `latest` channel 必须显式传入对应 tag。
+真实 publish 时，release channel 必须与 npm dist-tag 一致。release channel 可由 `AW_INSTALLER_RELEASE_GIT_TAG=v<package.version>` 推导，也可由 `AW_INSTALLER_RELEASE_CHANNEL` 显式给出。未显式设置 npm dist-tag 时，npm 默认按 `latest` 处理，因此非 `latest` channel 必须显式传入对应 tag。
 
 ## Publish Readiness Gate
 
@@ -34,20 +34,21 @@ last_verified: 2026-04-28
 
 - package name is the approved unscoped public package identity `aw-installer`.
 - package version is valid semver and is not `0.0.0-local` or any `-local` version.
+- package metadata has `awInstallerRelease.realPublishApproval=approved`, changed only inside the explicit real-publish approval worktrack.
 - `CI=true`.
 - `AW_INSTALLER_PUBLISH_APPROVED=1`.
-- `AW_INSTALLER_RELEASE_CHANNEL` is one of `latest`, `next`, or `canary`.
-- npm dist-tag matches `AW_INSTALLER_RELEASE_CHANNEL`.
+- derived or explicit release channel is one of `latest`, `next`, or `canary`.
+- npm dist-tag matches the derived or explicit release channel.
 - `AW_INSTALLER_RELEASE_GIT_TAG` equals `v<package.version>`.
 - latest channel uses stable versions only.
 - next channel uses `alpha`, `beta`, or `rc` prerelease versions.
 - canary channel includes a `canary` prerelease segment.
 
-The guard intentionally allows publish dry-run with the local version so maintainers can keep validating package surface without authorizing a release.
+The guard intentionally allows publish dry-run before approval so maintainers can keep validating package surface without authorizing a release.
 
 ## Required Evidence Before Approval
 
-Before setting `AW_INSTALLER_PUBLISH_APPROVED=1`, collect:
+Before setting `AW_INSTALLER_PUBLISH_APPROVED=1` or changing `awInstallerRelease.realPublishApproval` to `approved`, collect:
 
 - clean worktree on the intended release checkpoint.
 - root `npm pack --dry-run --json`.
@@ -66,20 +67,19 @@ Before setting `AW_INSTALLER_PUBLISH_APPROVED=1`, collect:
 
 ## Operator Notes
 
-Use dry-run while the package remains local:
+Use dry-run before real publish approval and execution:
 
 ```bash
 npm run publish:dry-run --silent
 ```
 
-Real publish requires a separate approval boundary and explicit release metadata. Example shape:
+Real publish requires a separate approval boundary, an explicit tracked metadata-lock change, and explicit release metadata. Contract shape after that approval:
 
-```bash
-CI=true \
-AW_INSTALLER_PUBLISH_APPROVED=1 \
-AW_INSTALLER_RELEASE_CHANNEL=next \
-AW_INSTALLER_RELEASE_GIT_TAG=v1.3.0-beta.1 \
-npm publish --tag next
+```text
+CI=true
+AW_INSTALLER_PUBLISH_APPROVED=1
+AW_INSTALLER_RELEASE_GIT_TAG=v<approved-version>
+npm publish --tag <approved-channel>
 ```
 
 This command is an example of the guard contract, not a release instruction for the current repository state.

@@ -281,6 +281,29 @@ def run_cache_gate(repo_root: Path, python: str) -> dict:
 
 
 def run_test_gate(repo_root: Path, python: str) -> dict:
+    package_json_path = repo_root / "package.json"
+    version_metadata_error = ""
+    if package_json_path.is_file():
+        try:
+            package_metadata = json.loads(package_json_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as error:
+            package_metadata = {}
+            version_metadata_error = f"invalid root package.json version metadata: {error}"
+        package_version = package_metadata.get("version")
+        if not isinstance(package_version, str) or not package_version:
+            version_metadata_error = version_metadata_error or "root package.json must contain a string version"
+        expected_version_output = f"aw-installer {package_version}" if isinstance(package_version, str) else ""
+    else:
+        expected_version_output = "aw-installer 0.0.0-local"
+
+    version_metadata_check = {
+        "command": ["read-root-package-version", "package.json"],
+        "returncode": 0 if not version_metadata_error else 1,
+        "stdout": expected_version_output,
+        "stderr": version_metadata_error,
+        "passed": not version_metadata_error,
+    }
+
     def run_npm_package_packlist() -> dict:
         package_root = repo_root / "toolchain" / "scripts" / "deploy"
         result = run_command(["npm", "pack", "--dry-run", "--json"], cwd=package_root)
@@ -446,7 +469,7 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                 )
 
                 def validate_version(version_result: dict, version_failures: list[str]) -> None:
-                    if version_result["passed"] and "0.0.0-local" not in version_result["stdout"]:
+                    if version_result["passed"] and version_result["stdout"].strip() != expected_version_output:
                         version_failures.append("tarball version probe omitted package version")
 
                 subchecks.append(
@@ -651,7 +674,7 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                 )
 
                 def validate_root_version(version_result: dict, version_failures: list[str]) -> None:
-                    if version_result["passed"] and "0.0.0-local" not in version_result["stdout"]:
+                    if version_result["passed"] and version_result["stdout"].strip() != expected_version_output:
                         version_failures.append("root tarball version probe omitted package version")
 
                 subchecks.append(
@@ -837,6 +860,7 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
         return result
 
     subchecks = [
+        ("root_package_version_metadata", version_metadata_check),
         (
             "gate_tool_tests",
             run_command([python, "-m", "pytest", "toolchain/scripts/test/test_closeout_gate_tools.py"], cwd=repo_root),

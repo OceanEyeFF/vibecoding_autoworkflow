@@ -15,9 +15,10 @@ The concrete first `0.4.x` candidate approval package is tracked separately in [
 
 ## Current Stop Line
 
-- The current root `package.json` version is `0.0.0-local`.
-- While that version remains local, the valid release-candidate output is a local `.tgz` plus dry-run and smoke evidence.
-- A real npm release candidate requires a separate approval boundary and a non-local prerelease semver.
+- The current root `package.json` version is `0.4.0-rc.1` as release-preflight metadata for the first `0.4.x` RC checkpoint.
+- The current root `package.json` also keeps `awInstallerRelease.realPublishApproval=blocked-until-P0-019`; changing that tracked lock is reserved for the explicit real-publish approval worktrack.
+- Until real publish approval is explicitly granted and executed, the valid release-candidate output is still a local `.tgz` plus dry-run and smoke evidence.
+- A real npm release candidate requires a separate approval boundary, matching prerelease semver metadata, and the publish guard inputs listed below.
 - Publish dry-run and root `.tgz` smoke prove package surface and entrypoint behavior only; they are not release authorization.
 - `npm whoami` success is only an operator credential readiness signal. It does not approve real publish.
 
@@ -37,6 +38,7 @@ Use this proposal when preparing the first npm release-candidate checkpoint:
 The release guard requires a real RC publish to satisfy all of these conditions:
 
 - root package version is valid semver and not `0.0.0-local`.
+- package metadata has `awInstallerRelease.realPublishApproval=approved`.
 - `AW_INSTALLER_RELEASE_GIT_TAG=v<package.version>`.
 - npm dist-tag is `next`.
 - `AW_INSTALLER_RELEASE_CHANNEL=next`, unless the guard derives the same channel from the release git tag.
@@ -103,7 +105,7 @@ Do not describe automatic rollback unless that behavior has been implemented and
 
 ## Forbidden Wording
 
-Avoid these phrases while the package remains local:
+Avoid these phrases before real publish approval and execution:
 
 - `published RC`
 - `release is ready`
@@ -147,5 +149,6 @@ Only request real publish approval after the evidence bundle is complete. The ap
 - release notes summary.
 - rollback or deprecation plan.
 - confirmation that the current package payload does not rely on target repo source layout.
+- confirmation that the tracked `awInstallerRelease.realPublishApproval` lock may be changed only in the publish approval worktrack.
 
 Real publish remains out of scope until the approval boundary is explicitly crossed.
