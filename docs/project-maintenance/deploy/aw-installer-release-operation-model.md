@@ -97,10 +97,15 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: aw-installer-publish-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
     environment: npm
+    timeout-minutes: 30
     env:
       PYTHONDONTWRITEBYTECODE: "1"
       GITHUB_RELEASE_TAG: ${{ github.event.release.tag_name }}

@@ -11,7 +11,7 @@ import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Any
+from typing import Any, Callable
 
 
 class DeployError(RuntimeError):
@@ -24,6 +24,13 @@ def path_is_relative_to(path: Path, parent: Path) -> bool:
     except ValueError:
         return False
     return True
+
+
+def relative_posix_path(path: Path, parent: Path) -> str:
+    try:
+        return path.relative_to(parent).as_posix()
+    except ValueError:
+        return path.as_posix()
 
 
 def exact_sensitive_target_repo_roots() -> tuple[Path, ...]:
@@ -81,13 +88,42 @@ def validate_target_repo_root(path: Path, source_root: Path) -> Path:
     return resolved
 
 
+def required_source_repo_root_paths(source_root: Path) -> tuple[Path, ...]:
+    return (
+        source_root / "product" / "harness" / "adapters" / "agents" / "skills",
+        source_root / "product" / "harness" / "skills",
+    )
+
+
+def validate_source_repo_root(path: Path) -> Path:
+    resolved = path.expanduser().resolve()
+    for sensitive_root in exact_sensitive_target_repo_roots():
+        if resolved == sensitive_root:
+            raise DeployError(f"Source repo root is protected and cannot be used: {resolved}")
+    for sensitive_root in recursive_sensitive_target_repo_roots():
+        if resolved == sensitive_root or path_is_relative_to(resolved, sensitive_root):
+            raise DeployError(f"Source repo root is protected and cannot be used: {resolved}")
+
+    missing_paths = [
+        relative_posix_path(required_path, resolved)
+        for required_path in required_source_repo_root_paths(resolved)
+        if not required_path.is_dir()
+    ]
+    if missing_paths:
+        missing_list = ", ".join(missing_paths)
+        raise DeployError(
+            f"Source repo root {resolved} is not a Harness payload source; missing: {missing_list}"
+        )
+    return resolved
+
+
 def resolve_repo_root() -> Path:
     """Resolve the source root that owns canonical Harness payload files."""
 
     override = os.environ.get("AW_HARNESS_REPO_ROOT")
     if override:
-        return Path(override).expanduser().resolve()
-    return Path(__file__).resolve().parents[3]
+        return validate_source_repo_root(Path(override))
+    return validate_source_repo_root(Path(__file__).resolve().parents[3])
 
 
 def resolve_target_repo_root(source_root: Path) -> Path:
@@ -344,7 +380,16 @@ def ensure_install_target_root(path: Path) -> None:
         print(f"ready target root {path}")
         return
 
-    path.mkdir(parents=True, exist_ok=True)
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except FileExistsError as exc:
+        raise DeployError(f"Target root exists but is not a directory: {path}") from exc
+    except OSError as exc:
+        raise DeployError(f"Target root could not be created: {path}: {exc}") from exc
+    if path.is_symlink():
+        raise DeployError(f"Target root must be a real directory, not a symlink: {path}")
+    if not path.is_dir():
+        raise DeployError(f"Target root exists but is not a directory: {path}")
     print(f"created target root {path}")
 
 
@@ -433,7 +478,13 @@ def string_list(value: object) -> list[str] | None:
     return value
 
 
-def normalize_relative_target_path(value: str, *, field_name: str, skill_id: str) -> str:
+def normalize_relative_path(
+    value: str,
+    *,
+    field_name: str,
+    skill_id: str,
+    root_description: str,
+) -> str:
     windows_path = PureWindowsPath(value)
     if (
         PurePosixPath(value).is_absolute()
@@ -442,7 +493,7 @@ def normalize_relative_target_path(value: str, *, field_name: str, skill_id: str
         or bool(windows_path.root)
     ):
         raise DeployError(
-            f"{field_name} must stay within the backend target root for skill {skill_id}: {value}"
+            f"{field_name} must stay within the {root_description} for skill {skill_id}: {value}"
         )
 
     segments = [segment for segment in value.replace("\\", "/").split("/") if segment]
@@ -458,20 +509,31 @@ def normalize_relative_target_path(value: str, *, field_name: str, skill_id: str
     return PurePosixPath(*segments).as_posix()
 
 
+def normalize_relative_target_path(value: str, *, field_name: str, skill_id: str) -> str:
+    return normalize_relative_path(
+        value,
+        field_name=field_name,
+        skill_id=skill_id,
+        root_description="backend target root",
+    )
+
+
 def normalize_relative_canonical_path(value: str, *, field_name: str, skill_id: str) -> str:
-    try:
-        return normalize_relative_target_path(value, field_name=field_name, skill_id=skill_id)
-    except DeployError as exc:
-        detail = str(exc).replace("backend target root", "canonical skill directory")
-        raise DeployError(detail) from exc
+    return normalize_relative_path(
+        value,
+        field_name=field_name,
+        skill_id=skill_id,
+        root_description="canonical skill directory",
+    )
 
 
 def normalize_relative_repo_path(value: str, *, field_name: str, skill_id: str) -> str:
-    try:
-        return normalize_relative_target_path(value, field_name=field_name, skill_id=skill_id)
-    except DeployError as exc:
-        detail = str(exc).replace("backend target root", "repository root")
-        raise DeployError(detail) from exc
+    return normalize_relative_path(
+        value,
+        field_name=field_name,
+        skill_id=skill_id,
+        root_description="repository root",
+    )
 
 
 def payload_target_metadata(payload: dict[str, Any], binding: SkillBinding) -> PayloadTargetMetadata:
@@ -1871,6 +1933,72 @@ def run_update_backend(backend: str, args: argparse.Namespace, context: DeployCo
     return 0
 
 
+def run_verify_mode(args: argparse.Namespace, context: DeployContext) -> int:
+    results = [
+        verify_backend(backend, args, context)
+        for backend in iter_backends(args.backend)
+    ]
+    for result in results:
+        print_verify_result(result)
+    return 1 if any(result.issues for result in results) else 0
+
+
+def run_diagnose_mode(args: argparse.Namespace, context: DeployContext) -> int:
+    results = [
+        verify_backend(backend, args, context)
+        for backend in iter_backends(args.backend)
+    ]
+    summaries = [diagnostic_summary(result) for result in results]
+    if args.json:
+        payload: dict[str, Any]
+        if len(summaries) == 1:
+            payload = summaries[0]
+        else:
+            payload = {"backends": summaries}
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        for summary in summaries:
+            print_diagnostic_summary(summary)
+    return 0
+
+
+def run_prune_mode(args: argparse.Namespace, context: DeployContext) -> int:
+    if not args.all:
+        raise DeployError("prune currently requires --all")
+    for backend in iter_backends(args.backend):
+        prune_all_managed_target_dirs(backend, args, context)
+    return 0
+
+
+def run_check_paths_exist_mode(args: argparse.Namespace, context: DeployContext) -> int:
+    for backend in iter_backends(args.backend):
+        check_backend_target_paths(backend, args, context)
+    return 0
+
+
+def run_install_mode(args: argparse.Namespace, context: DeployContext) -> int:
+    for backend in iter_backends(args.backend):
+        install_backend_payloads(backend, args, context)
+    return 0
+
+
+def run_update_mode(args: argparse.Namespace, context: DeployContext) -> int:
+    exit_code = 0
+    for backend in iter_backends(args.backend):
+        exit_code = max(exit_code, run_update_backend(backend, args, context))
+    return exit_code
+
+
+MODE_HANDLERS: dict[str, Callable[[argparse.Namespace, DeployContext], int]] = {
+    "verify": run_verify_mode,
+    "diagnose": run_diagnose_mode,
+    "prune": run_prune_mode,
+    "check_paths_exist": run_check_paths_exist_mode,
+    "install": run_install_mode,
+    "update": run_update_mode,
+}
+
+
 def main(
     argv: list[str] | None = None,
     *,
@@ -1880,55 +2008,9 @@ def main(
     try:
         context = deploy_context_from_env()
         args = parse_args(argv, prog=prog, description=description)
-        if args.mode == "verify":
-            results = [
-                verify_backend(backend, args, context)
-                for backend in iter_backends(args.backend)
-            ]
-            for result in results:
-                print_verify_result(result)
-            return 1 if any(result.issues for result in results) else 0
-
-        if args.mode == "diagnose":
-            results = [
-                verify_backend(backend, args, context)
-                for backend in iter_backends(args.backend)
-            ]
-            summaries = [diagnostic_summary(result) for result in results]
-            if args.json:
-                payload: dict[str, Any]
-                if len(summaries) == 1:
-                    payload = summaries[0]
-                else:
-                    payload = {"backends": summaries}
-                print(json.dumps(payload, indent=2, sort_keys=True))
-            else:
-                for summary in summaries:
-                    print_diagnostic_summary(summary)
-            return 0
-
-        if args.mode == "prune":
-            if not args.all:
-                raise DeployError("prune currently requires --all")
-            for backend in iter_backends(args.backend):
-                prune_all_managed_target_dirs(backend, args, context)
-            return 0
-
-        if args.mode == "check_paths_exist":
-            for backend in iter_backends(args.backend):
-                check_backend_target_paths(backend, args, context)
-            return 0
-
-        if args.mode == "install":
-            for backend in iter_backends(args.backend):
-                install_backend_payloads(backend, args, context)
-            return 0
-
-        if args.mode == "update":
-            exit_code = 0
-            for backend in iter_backends(args.backend):
-                exit_code = max(exit_code, run_update_backend(backend, args, context))
-            return exit_code
+        handler = MODE_HANDLERS.get(args.mode)
+        if handler is not None:
+            return handler(args, context)
     except DeployError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

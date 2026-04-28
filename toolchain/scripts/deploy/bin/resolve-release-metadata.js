@@ -4,12 +4,9 @@
 const { appendFileSync, readFileSync } = require("node:fs");
 const { join } = require("node:path");
 
-const { deriveReleaseChannelFromTag } = require("./check-root-publish.js");
+const { deriveReleaseChannelFromTag, semverPattern } = require("./check-root-publish.js");
 
-const semverPattern =
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
-
-function parseBoolean(value) {
+function isGithubReleasePrerelease(value) {
   return value === true || value === "true";
 }
 
@@ -31,7 +28,7 @@ function deriveReleaseMetadata({ version, releaseTag, releasePrerelease, release
     );
   }
 
-  const isGithubPrerelease = parseBoolean(releasePrerelease);
+  const isGithubPrerelease = isGithubReleasePrerelease(releasePrerelease);
   if (isGithubPrerelease && channel === "latest") {
     throw new Error("GitHub prerelease releases cannot publish to latest");
   }
@@ -58,9 +55,16 @@ function readPackageMetadata(packagePath) {
 }
 
 function writeGithubEnv(githubEnvPath, metadata) {
-  appendFileSync(githubEnvPath, `AW_INSTALLER_RELEASE_GIT_TAG=${metadata.releaseTag}\n`);
-  appendFileSync(githubEnvPath, `AW_INSTALLER_RELEASE_CHANNEL=${metadata.releaseChannel}\n`);
-  appendFileSync(githubEnvPath, `NPM_CONFIG_TAG=${metadata.npmConfigTag}\n`);
+  appendFileSync(githubEnvPath, formatGithubEnv(metadata));
+}
+
+function formatGithubEnv(metadata) {
+  return [
+    `AW_INSTALLER_RELEASE_GIT_TAG=${metadata.releaseTag}`,
+    `AW_INSTALLER_RELEASE_CHANNEL=${metadata.releaseChannel}`,
+    `NPM_CONFIG_TAG=${metadata.npmConfigTag}`,
+    "",
+  ].join("\n");
 }
 
 function main() {
@@ -68,7 +72,7 @@ function main() {
   const packageMetadata = readPackageMetadata(packagePath);
   const metadata = deriveReleaseMetadata({
     version: packageMetadata.version || "",
-    releaseTag: process.env.GITHUB_RELEASE_TAG || process.env.GITHUB_REF_NAME || "",
+    releaseTag: process.env.GITHUB_RELEASE_TAG || "",
     releasePrerelease: process.env.GITHUB_RELEASE_PRERELEASE || "",
     releaseBody: process.env.GITHUB_RELEASE_BODY || "",
   });
@@ -94,5 +98,7 @@ if (require.main === module) {
 
 module.exports = {
   deriveReleaseMetadata,
+  formatGithubEnv,
+  isGithubReleasePrerelease,
   writeGithubEnv,
 };

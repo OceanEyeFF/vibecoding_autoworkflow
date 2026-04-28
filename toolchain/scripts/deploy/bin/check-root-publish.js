@@ -24,8 +24,7 @@ function deriveReleaseChannelFromTag(tag, packageVersion, packagePrerelease) {
 }
 
 function fail(message) {
-  console.error(message);
-  process.exit(1);
+  throw new Error(message);
 }
 
 function runChecks(checks) {
@@ -177,12 +176,19 @@ function main() {
 }
 
 if (require.main === module) {
-  process.exit(main());
+  try {
+    process.exit(main());
+  } catch (error) {
+    console.error(error.message || String(error));
+    process.exit(1);
+  }
 }
 
 module.exports = {
   deriveReleaseChannelFromTag,
+  fail,
   main,
   rootFilesCoverScaffoldFiles,
   runChecks,
+  semverPattern,
 };
