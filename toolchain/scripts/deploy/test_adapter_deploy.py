@@ -30,6 +30,25 @@ class AdapterDeployTest(unittest.TestCase):
         self.fake_repo_root = self.temp_root / "repo"
         self.local_root = self.fake_repo_root / ".agents" / "skills"
         self.override_root = self.temp_root / "custom-root" / "skills"
+        self.npm_state_root = self.temp_root / "npm-state"
+        self.npm_state_root.mkdir(parents=True)
+        (self.npm_state_root / "cache").mkdir()
+        (self.npm_state_root / "tmp").mkdir()
+        (self.npm_state_root / "npmrc").write_text(
+            "audit=false\nfund=false\nupdate-notifier=false\n",
+            encoding="utf-8",
+        )
+        self.npm_env_patch = mock.patch.dict(
+            os.environ,
+            {
+                "NPM_CONFIG_CACHE": str(self.npm_state_root / "cache"),
+                "NPM_CONFIG_TMP": str(self.npm_state_root / "tmp"),
+                "NPM_CONFIG_USERCONFIG": str(self.npm_state_root / "npmrc"),
+            },
+            clear=False,
+        )
+        self.npm_env_patch.start()
+        self.addCleanup(self.npm_env_patch.stop)
         self.adapter_dir = (
             self.fake_repo_root / "product" / "harness" / "adapters" / "agents" / "skills"
         )
@@ -103,6 +122,15 @@ class AdapterDeployTest(unittest.TestCase):
 
     def _load_json(self, path: Path) -> dict[str, object]:
         return json.loads(path.read_text(encoding="utf-8"))
+
+    def _release_package_metadata(self, version: str) -> dict[str, object]:
+        return {
+            "name": "aw-installer",
+            "version": version,
+            "awInstallerRelease": {
+                "realPublishApproval": "approved",
+            },
+        }
 
     def _binding(self, skill_id: str) -> adapter_deploy.SkillBinding:
         return next(
@@ -512,7 +540,11 @@ class AdapterDeployTest(unittest.TestCase):
             package["scripts"]["prepublishOnly"],
             "node toolchain/scripts/deploy/bin/check-root-publish.js",
         )
-        self.assertEqual(package["scripts"]["publish:dry-run"], "npm publish --dry-run --json")
+        self.assertEqual(package["scripts"]["publish:dry-run"], "npm publish --dry-run --json --tag next")
+        self.assertEqual(
+            package["awInstallerRelease"],
+            {"realPublishApproval": "blocked-until-P0-019"},
+        )
         scaffold_package = json.loads(
             (self.source_repo_root / "toolchain" / "scripts" / "deploy" / "package.json").read_text(
                 encoding="utf-8"
@@ -675,8 +707,22 @@ class AdapterDeployTest(unittest.TestCase):
     def test_root_npm_publish_guard_rejects_local_version_for_real_publish(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
-        package_root = self.source_repo_root
-        guard_path = package_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js"
+        package_root = self.temp_root / "local-release-package-root"
+        guard_dir = package_root / "toolchain" / "scripts" / "deploy" / "bin"
+        guard_dir.mkdir(parents=True)
+        guard_path = guard_dir / "check-root-publish.js"
+        shutil.copy2(
+            self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js",
+            guard_path,
+        )
+        (package_root / "package.json").write_text(
+            json.dumps({"name": "aw-installer", "version": "0.0.0-local", "files": []}),
+            encoding="utf-8",
+        )
+        (guard_dir.parent / "package.json").write_text(
+            json.dumps({"name": "aw-installer", "version": "0.0.0-local", "private": True}),
+            encoding="utf-8",
+        )
         env = {
             **os.environ,
         }
@@ -768,6 +814,34 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.stdout, "")
         self.assertIn("AW_INSTALLER_PUBLISH_APPROVED=1", completed.stderr)
 
+    def test_root_npm_publish_guard_rejects_current_preflight_metadata_for_real_publish(self) -> None:
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        package_root = self.source_repo_root
+        guard_path = package_root / "toolchain" / "scripts" / "deploy" / "bin" / "check-root-publish.js"
+        env = {
+            **os.environ,
+            "AW_INSTALLER_PUBLISH_APPROVED": "1",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.0-rc.1",
+            "CI": "true",
+            "npm_config_tag": "next",
+        }
+        env.pop("npm_config_dry_run", None)
+        env.pop("AW_INSTALLER_RELEASE_CHANNEL", None)
+
+        completed = subprocess.run(
+            ["node", str(guard_path)],
+            cwd=package_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("realPublishApproval must be approved", completed.stderr)
+
     def test_root_npm_publish_guard_allows_approved_latest_release_metadata(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
@@ -781,7 +855,7 @@ class AdapterDeployTest(unittest.TestCase):
         )
         package_path = package_root / "package.json"
         package_path.write_text(
-            json.dumps({"name": "aw-installer", "version": "1.2.3"}),
+            json.dumps(self._release_package_metadata("1.2.3")),
             encoding="utf-8",
         )
         env = {
@@ -820,7 +894,7 @@ class AdapterDeployTest(unittest.TestCase):
         )
         package_path = package_root / "package.json"
         package_path.write_text(
-            json.dumps({"name": "aw-installer", "version": "1.3.0-rc.1"}),
+            json.dumps(self._release_package_metadata("1.3.0-rc.1")),
             encoding="utf-8",
         )
         env = {
@@ -859,7 +933,7 @@ class AdapterDeployTest(unittest.TestCase):
         )
         package_path = package_root / "package.json"
         package_path.write_text(
-            json.dumps({"name": "aw-installer", "version": "1.3.0-beta.1"}),
+            json.dumps(self._release_package_metadata("1.3.0-beta.1")),
             encoding="utf-8",
         )
         env = {
@@ -933,7 +1007,7 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertEqual(completed.stdout, "aw-installer 0.0.0-local\n")
+        self.assertEqual(completed.stdout, "aw-installer 0.4.0-rc.1\n")
         self.assertEqual(completed.stderr, "")
 
     def test_local_npm_installer_bin_version_prefers_root_package_metadata(self) -> None:
@@ -1355,7 +1429,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         payload = json.loads(completed.stdout)
         self.assertEqual(payload["name"], "aw-installer")
-        self.assertEqual(payload["version"], "0.0.0-local")
+        self.assertEqual(payload["version"], "0.4.0-rc.1")
         packed_files = {entry["path"] for entry in payload["files"]}
         self.assertIn("package.json", packed_files)
         self.assertIn("product/harness/skills/harness-skill/SKILL.md", packed_files)
@@ -1748,7 +1822,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertNotEqual(diagnose_payload["source_root"], str(target_repo))
 
         self.assertEqual(version_completed.returncode, 0, version_completed.stderr)
-        self.assertEqual(version_completed.stdout, "aw-installer 0.0.0-local\n")
+        self.assertEqual(version_completed.stdout, "aw-installer 0.4.0-rc.1\n")
         self.assertEqual(version_completed.stderr, "")
         self.assertEqual(tui_completed.returncode, 1)
         self.assertEqual(tui_completed.stdout, "")
