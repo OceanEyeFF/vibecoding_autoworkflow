@@ -166,6 +166,20 @@ REVIEW_EVIDENCE_FOUR_LANE_REQUIRED_TERMS = [
     "security review",
     "代码复杂度和性能 review",
 ]
+REPO_WHATS_NEXT_OVERVIEW_FALLBACK_CONTRACT_PATHS = [
+    "product/harness/skills/repo-whats-next-skill/SKILL.md",
+    "product/harness/skills/repo-whats-next-skill/references/overview-fallback-mode.md",
+    "docs/harness/catalog/repo.md",
+]
+REPO_WHATS_NEXT_OVERVIEW_FALLBACK_REQUIRED_TERMS = [
+    "overview fallback",
+    "project-dialectic-planning-skill",
+    "candidate_worktracks",
+    "top_candidate",
+    "Facts / Inferences / Unknowns",
+    "不创建工作追踪",
+    "不改变 Harness 控制状态",
+]
 APPEND_REQUEST_REQUIRED_TERMS = [
     "approval_required",
     "continuation_ready",
@@ -605,6 +619,25 @@ def check_review_evidence_four_lane_contract(repo_root: Path, report: SemanticRe
     report.add_info(f"checked {checked} review evidence four-lane contract sources")
 
 
+def check_repo_whats_next_overview_fallback_contract(
+    repo_root: Path, report: SemanticReport
+) -> None:
+    checked = 0
+    for relative_path in REPO_WHATS_NEXT_OVERVIEW_FALLBACK_CONTRACT_PATHS:
+        path = repo_root / relative_path
+        if not path.exists():
+            report.add_failure(f"missing repo whats-next overview fallback source: {relative_path}")
+            continue
+        checked += 1
+        text = path.read_text(encoding="utf-8")
+        for term in REPO_WHATS_NEXT_OVERVIEW_FALLBACK_REQUIRED_TERMS:
+            if term not in text:
+                report.add_failure(
+                    f"repo whats-next overview fallback missing required term {term!r}: {relative_path}"
+                )
+    report.add_info(f"checked {checked} repo whats-next overview fallback sources")
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -624,6 +657,7 @@ def main() -> int:
     check_manual_runbook_agents_skill_count(repo_root, report)
     check_subagent_dispatch_default_contract(repo_root, report)
     check_review_evidence_four_lane_contract(repo_root, report)
+    check_repo_whats_next_overview_fallback_contract(repo_root, report)
 
     payload = {
         "passed": not report.failures,

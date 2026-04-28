@@ -136,6 +136,21 @@ class AgentsAdapterContractTest(unittest.TestCase):
         )
         self.assertIn("assets/repo/analysis.md", required_payload_files)
 
+    def test_repo_whats_next_payload_includes_overview_fallback_reference(self) -> None:
+        payload = load_json(
+            ADAPTER_SKILLS_DIR / "repo-whats-next-skill" / "payload.json"
+        )
+        canonical_paths = payload["canonical_paths"]
+        required_payload_files = payload["required_payload_files"]
+
+        self.assertIsInstance(canonical_paths, list)
+        self.assertIsInstance(required_payload_files, list)
+        self.assertIn(
+            "product/harness/skills/repo-whats-next-skill/references/overview-fallback-mode.md",
+            canonical_paths,
+        )
+        self.assertIn("references/overview-fallback-mode.md", required_payload_files)
+
     def test_agents_adapter_diagnose_json_reports_missing_root_without_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             target_root = Path(temp_dir) / "missing-agents-skills"

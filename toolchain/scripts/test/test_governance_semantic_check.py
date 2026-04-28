@@ -18,6 +18,7 @@ from governance_semantic_check import (
     check_outdated_placeholder_phrases,
     check_path_governance_docs_list_gitignore_entries,
     check_repo_python_commands_are_bytecode_free,
+    check_repo_whats_next_overview_fallback_contract,
     check_review_evidence_four_lane_contract,
     check_review_verify_docs_list_closeout_steps,
     check_root_tool_shims_disable_bytecode,
@@ -159,6 +160,23 @@ def test_check_review_evidence_four_lane_contract_flags_missing_lane(tmp_path: P
     check_review_evidence_four_lane_contract(tmp_path, report)
 
     assert any("complexity-performance-review" in item for item in report.failures)
+
+
+def test_check_repo_whats_next_overview_fallback_contract_flags_missing_term(tmp_path: Path) -> None:
+    for relative_path in (
+        "product/harness/skills/repo-whats-next-skill/SKILL.md",
+        "product/harness/skills/repo-whats-next-skill/references/overview-fallback-mode.md",
+        "docs/harness/catalog/repo.md",
+    ):
+        write_doc(
+            tmp_path / relative_path,
+            "overview fallback\nproject-dialectic-planning-skill\ncandidate_worktracks\ntop_candidate\nFacts / Inferences / Unknowns\n不创建工作追踪\n",
+        )
+
+    report = SemanticReport()
+    check_repo_whats_next_overview_fallback_contract(tmp_path, report)
+
+    assert any("不改变 Harness 控制状态" in item for item in report.failures)
 
 
 def test_check_adapter_wrappers_are_thin_ignores_absent_adapter_layer(tmp_path: Path) -> None:
