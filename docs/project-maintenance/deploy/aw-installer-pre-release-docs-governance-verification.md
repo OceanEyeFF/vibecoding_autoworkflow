@@ -14,12 +14,12 @@ This page belongs to [Deploy Runbooks](./README.md). It verifies the documentati
 ## Control Signal
 
 - docs_governance_status: passed for pre-release trial documentation
-- direct_public_npx_available: true-for-registry-rc1
-- direct_public_npx_primary_path: blocked-for-rc2-forum-handoff-until-publish-and-registry-smoke
+- direct_public_npx_available: true-for-registry-rc2-via-next
+- direct_public_npx_primary_path: `aw-installer@next`
 - registry_rc_available: true
-- registry_rc_version_currently_observed: `0.4.0-rc.1`
-- rc2_candidate_status: local-npx-flow-passed-but-unpublished
-- npm_publish_allowed: true-for-approved-P0-019-RC-command-only; false-for-rc2-until-explicit-approval-lock-update
+- registry_rc_version_currently_observed: `next=0.4.0-rc.2`, `latest=0.4.0-rc.1`
+- rc2_candidate_status: published-to-next-and-linux-registry-smoke-passed
+- npm_publish_allowed: completed-for-approved-rc2-next-command-only
 - package_name_decided: true
 - approved_package_name: unscoped `aw-installer`
 - external_trial_execution_started: false
@@ -27,10 +27,7 @@ This page belongs to [Deploy Runbooks](./README.md). It verifies the documentati
 - claude_code_status: compatibility trial lane only
 - remaining_docs_blockers: none known after this pass
 - remaining_approval_blockers:
-  - rc2 publish approval lock update
-  - rc2 git tag or GitHub Release marker
-  - Trusted Publishing confirmation or manual maintainer fallback selection
-  - post-publish registry npx smoke before Windows PowerShell forum handoff
+  - Windows PowerShell and macOS registry smoke before broad forum handoff
   - external tester recruitment / execution approval
 
 ## Verified Entry Points
@@ -54,9 +51,9 @@ This page belongs to [Deploy Runbooks](./README.md). It verifies the documentati
 
 ## Non-contradiction Check
 
-- Direct public `npx aw-installer` is available for the currently published `0.4.0-rc.1` registry package because it is now the only published registry version; registry npx smoke has verified the bare package selector for local multi-target trial use.
-- The `0.4.0-rc.2` candidate has passed local package and explicit local `npx --package <local.tgz>` install/update/verify flows, but it is not yet published. Do not describe registry `npx aw-installer` as rc2 until `aw-installer@next` resolves to `0.4.0-rc.2` and registry smoke passes.
-- `aw-installer` is now the approved unscoped package identity; `P0-019` approved `aw-installer@0.4.0-rc.1` as the RC. Registry facts show both `next` and `latest` currently point at this same RC, so `aw-installer@next` remains available when a report must explicitly pin the RC channel.
+- Direct public `aw-installer@next` is available for the currently published `0.4.0-rc.2` registry package; post-publish registry npx smoke has verified the selector for local multi-target trial use on Linux generated targets.
+- Bare `npx aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`; do not use the bare selector when rc2 behavior is required.
+- `aw-installer` is now the approved unscoped package identity; `P0-019` approved `aw-installer@0.4.0-rc.1`, and the later rc2 approval worktrack approved `aw-installer@0.4.0-rc.2` for the `next` channel.
 - Codex with `agents` backend remains the primary trial path.
 - Claude Code remains a compatibility trial lane and is not described as an implemented deploy adapter backend.
 - Target writes are consistently scoped to the target repository `.agents/skills/` for `agents` install/update, or to the Claude project-level cold-start helper path for the Claude compatibility lane.
@@ -72,15 +69,14 @@ No documentation blocker is known after the P0-013, P0-014, P0-015, and P0-016 v
 
 ### Approval Blockers
 
-- rc2 real npm publish is blocked until the approval lock is updated to the exact rc2 tuple and the tag/release marker path is selected.
-- Windows PowerShell forum handoff is blocked until rc2 is published and post-publish registry npx smoke passes.
+- Broad Windows PowerShell forum handoff should wait for real Windows registry smoke against `aw-installer@next`.
 - External tester recruitment and real trial execution are not approved by this page.
 
 ### Technical Blockers
 
 - N/A
 
-Current docs governance checks and closeout gate passed in the worktrack that created this page. The later rc2 local npx prepublish pass also proved the local package deployment path, but registry rc2 verification remains pending until publish.
+Current docs governance checks and closeout gate passed in the worktrack that created this page. The later rc2 local npx prepublish pass proved the local package deployment path, and the post-publish Linux registry smoke proved `aw-installer@next` installs 19 managed skills on generated temporary targets.
 
 ## Verification Evidence
 
@@ -100,4 +96,4 @@ The P0-016 worktrack must preserve evidence for:
 
 ## Next Decision Boundary
 
-The documentation set has been updated for the P0-020 registry npx primary path and feedback-log workflow, then refined for the unpublished rc2 candidate. External-trial recruitment and rc2 publish remain separate approval boundaries and must not be inferred from this verification record.
+The documentation set has been updated for the rc2 `aw-installer@next` registry npx path and feedback-log workflow. External-trial recruitment and broad Windows PowerShell forum handoff remain separate approval boundaries and must not be inferred from this verification record.

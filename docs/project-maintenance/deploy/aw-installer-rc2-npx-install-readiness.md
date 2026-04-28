@@ -7,32 +7,33 @@ last_verified: 2026-04-28
 ---
 # aw-installer RC2 npx Install Readiness
 
-> Purpose: record the current `aw-installer@0.4.0-rc.2` install-flow readiness facts before any forum trial handoff. This page does not authorize a new npm publish, stable/latest release, npm dist-tag mutation, or npm Trusted Publisher setup.
+> Purpose: record the `aw-installer@0.4.0-rc.2` install-flow readiness and post-publish registry smoke facts before any forum trial handoff. This page does not authorize stable/latest release, npm dist-tag mutation, or npm Trusted Publisher setup.
 
 This page belongs to [Deploy Runbooks](./README.md). It complements [aw-installer Registry npx Smoke](./aw-installer-registry-npx-smoke.md), [aw-installer Public Quickstart Prompts](./aw-installer-public-quickstart-prompts.md), and [aw-installer Release Channel Contract](./release-channel-contract.md).
 
 ## Control Signal
 
 - candidate_version: `0.4.0-rc.2`
-- readiness_status: local-package-install-flow-passed
-- registry_current_next_version: `0.4.0-rc.1`
-- registry_current_next_status: linux-local-registry-smoke-passed-but-stale
-- forum_trial_recommendation: wait-for-rc2-publish-before-Windows-PowerShell-forum-handoff
-- primary_blocker: registry `next` still points to `0.4.0-rc.1`, which lacks the `0.4.0-rc.2` Windows/Unix Python launcher fallback and the latest 19-skill payload.
+- readiness_status: registry-next-install-flow-passed
+- registry_current_next_version: `0.4.0-rc.2`
+- registry_current_latest_version: `0.4.0-rc.1`
+- registry_current_next_status: linux-local-registry-smoke-passed
+- forum_trial_recommendation: use `aw-installer@next` for rc2; do not use bare `aw-installer` when rc2 behavior is required
+- primary_blocker: Windows PowerShell and macOS registry smoke still need real host coverage before broad forum handoff
 - real_npm_publish_allowed_by_this_page: false
-- github_release_publish_priority: after registry `npx aw-installer` install flow is proven for the intended RC
+- github_release_publish_priority: after registry `aw-installer@next` install flow is proven for the intended RC
 
 ## Observed Registry State
 
-`npm view aw-installer name version dist-tags bin --json` currently reports:
+`npm view aw-installer name version dist-tags bin --json` and `npm view aw-installer@next name version bin --json` currently report:
 
 - package: `aw-installer`
-- version: `0.4.0-rc.1`
-- `next`: `0.4.0-rc.1`
+- default version through `latest`: `0.4.0-rc.1`
+- `next`: `0.4.0-rc.2`
 - `latest`: `0.4.0-rc.1`
 - bin entries: `aw-installer`, `aw-harness-deploy`
 
-The existing registry package can complete the Linux local temporary-target smoke, but it installs the older 17-skill payload. It should not be handed to Windows PowerShell forum testers as the current candidate.
+The current rc2 registry package is available through `aw-installer@next`. Bare `aw-installer` still resolves to `0.4.0-rc.1` through npm `latest`.
 
 ## RC2 Fix Scope
 
@@ -57,11 +58,11 @@ Local package candidate:
 
 Registry current package:
 
-- `node toolchain/scripts/test/aw_installer_registry_npx_smoke.js --package aw-installer@next --skip-remote --output-dir /tmp/aw-registry-current-smoke-final`: passed on Linux for three generated temporary target workdirs.
-- registry smoke report: `/tmp/aw-registry-current-smoke-final/report.md`
-- registry smoke summary: `/tmp/aw-registry-current-smoke-final/summary.tsv`
-- observed registry version: `0.4.0-rc.1`
-- observed final `binding_count`: `17`
+- `node toolchain/scripts/test/aw_installer_registry_npx_smoke.js --package aw-installer@next --skip-remote --output-dir /tmp/aw-rc2-postpublish-registry-smoke`: passed on Linux for three generated temporary target workdirs.
+- registry smoke report: `/tmp/aw-rc2-postpublish-registry-smoke/report.md`
+- registry smoke summary: `/tmp/aw-rc2-postpublish-registry-smoke/summary.tsv`
+- observed registry version for `aw-installer@next`: `0.4.0-rc.2`
+- observed final `binding_count`: `19`
 
 Focused wrapper verification:
 
@@ -72,12 +73,14 @@ Focused wrapper verification:
 
 ## Publish Boundary
 
-Publishing `0.4.0-rc.2` to npm still requires a separate explicit approval and a release approval lock update. Until that happens, root `package.json` keeps:
+Publishing `0.4.0-rc.2` to npm `next` has completed through the explicit approval-lock flow. Root `package.json` now binds:
 
-- `awInstallerRelease.realPublishApproval: pending`
-- empty approved version, tag, and channel fields
+- `awInstallerRelease.realPublishApproval: approved`
+- `approvedVersion: 0.4.0-rc.2`
+- `approvedGitTag: v0.4.0-rc.2`
+- `approvedChannel: next`
 
-Expected future release tuple if approved:
+Published release tuple:
 
 - version: `0.4.0-rc.2`
 - git tag: `v0.4.0-rc.2`
@@ -89,4 +92,4 @@ The rc2 publish approval package, release notes, and rollback plan are tracked s
 - [aw-installer RC2 Release Notes](./aw-installer-rc2-release-notes.md)
 - [aw-installer RC2 Rollback And Deprecation Plan](./aw-installer-rc2-rollback-deprecation-plan.md)
 
-Do not run forum-facing instructions against Windows PowerShell until the registry `next` selector resolves to a package containing the launcher fallback.
+Do not use bare `npx aw-installer` when rc2 behavior is required; use `aw-installer@next` until a future stable/latest release is explicitly approved.

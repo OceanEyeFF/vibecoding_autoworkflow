@@ -7,7 +7,7 @@ last_verified: 2026-04-28
 ---
 # aw-installer RC2 Release Notes
 
-> Purpose: provide the changelog summary for the proposed `aw-installer@0.4.0-rc.2` npm release-candidate. This page does not authorize npm publish or stable release semantics.
+> Purpose: provide the changelog summary for the published `aw-installer@0.4.0-rc.2` npm release-candidate. This page does not authorize stable release semantics.
 
 This page belongs to [Deploy Runbooks](./README.md). It supports [aw-installer RC2 Approval Package](./aw-installer-rc2-approval-package.md) and follows the release-note requirements in [aw-installer Release Candidate Prep](./aw-installer-release-candidate-prep.md).
 
@@ -15,9 +15,9 @@ This page belongs to [Deploy Runbooks](./README.md). It supports [aw-installer R
 
 - candidate_version: `0.4.0-rc.2`
 - release_channel: `next`
-- release_notes_status: ready-for-approval-review
+- release_notes_status: published
 - supported_backend: `agents`
-- registry_publish_status: not-yet-published
+- registry_publish_status: published-to-next
 - stable_release_semantics_allowed: false
 
 ## Draft Release Notes
@@ -38,13 +38,13 @@ Included changes:
 
 Supported operator surface:
 
-- `npx aw-installer --version`
-- `npx aw-installer diagnose --backend agents --json`
-- `npx aw-installer update --backend agents`
-- `npx aw-installer update --backend agents --yes`
-- `npx aw-installer verify --backend agents`
-- `npx aw-installer install --backend agents`
-- interactive `npx aw-installer tui` when a real terminal is available.
+- `npx aw-installer@next --version`
+- `npx aw-installer@next diagnose --backend agents --json`
+- `npx aw-installer@next update --backend agents`
+- `npx aw-installer@next update --backend agents --yes`
+- `npx aw-installer@next verify --backend agents`
+- `npx aw-installer@next install --backend agents`
+- interactive `npx aw-installer@next tui` when a real terminal is available.
 
 ## Verification Summary
 
@@ -53,12 +53,13 @@ The rc2 candidate has passed:
 - root package pack dry-run.
 - root publish dry-run.
 - release metadata derivation for `v0.4.0-rc.2 -> next`.
-- negative real-publish guard check while approval remains pending.
+- real-publish guard check after approval lock was opened.
 - deploy regression suite.
 - governance pytest suite.
 - folder/path/semantic governance checks.
 - local multi-temporary-workdir package smoke across three generated targets.
 - explicit local `npx --package <local.tgz>` install/update/verify flow, with 19 managed installs and no conflicts.
+- post-publish registry `aw-installer@next` smoke on Linux generated targets, with 19 managed installs and no conflicts.
 - closeout acceptance gate.
 
 ## Known Exclusions
@@ -76,4 +77,4 @@ This candidate still does not implement:
 
 ## Operator Notes
 
-Until `0.4.0-rc.2` is actually published, `aw-installer@next` still resolves to the older `0.4.0-rc.1` registry package. Do not use the registry package as the Windows PowerShell forum candidate until post-publish registry smoke proves `next` resolves to rc2.
+`aw-installer@next` resolves to `0.4.0-rc.2`. Bare `aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`, so use `aw-installer@next` when rc2 behavior is required.
