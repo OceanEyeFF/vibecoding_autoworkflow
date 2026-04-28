@@ -7,9 +7,9 @@ last_verified: 2026-04-28
 ---
 # aw-installer Release Channel Contract
 
-> 目的：定义 `aw-installer` 从本地 `.tgz` / publish dry-run 进入真实 npm release channel 前必须满足的发布准入合同，并记录首个 RC publish 的 registry 事实。本文不授权后续稳定发布或自动化发布。
+> 目的：定义 `aw-installer` 从本地 `.tgz` / publish dry-run 进入真实 npm release channel 前必须满足的发布准入合同，并记录首个 RC publish 的 registry 事实。本文不授权后续稳定发布或 workflow 实现。
 
-本页属于 [Deploy Runbooks](./README.md) 系列，并承接 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 的发布准入部分。运行时 payload provenance 与 update trust boundary 由 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md) 承接。
+本页属于 [Deploy Runbooks](./README.md) 系列，并承接 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 的发布准入部分。发布操作模型由 [aw-installer Release Operation Model](./aw-installer-release-operation-model.md) 承接；运行时 payload provenance 与 update trust boundary 由 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md) 承接。
 
 ## 当前状态
 
@@ -64,7 +64,7 @@ Before setting `AW_INSTALLER_PUBLISH_APPROVED=1`, changing `awInstallerRelease.r
 ## Out Of Scope
 
 - npm account setup, tokens, 2FA, or registry credential storage.
-- GitHub Actions release workflow implementation.
+- GitHub Actions release workflow implementation; the selected design is tracked in [aw-installer Release Operation Model](./aw-installer-release-operation-model.md), but implementation remains a follow-up worktrack.
 - Runtime payload provenance, remote update, self-update, signature verification, or rollback implementation; those remain governed by [Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md).
 - Running future `npm publish` outside an explicit approval worktrack.
 
