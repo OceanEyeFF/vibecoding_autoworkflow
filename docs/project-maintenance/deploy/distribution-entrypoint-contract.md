@@ -7,7 +7,7 @@ last_verified: 2026-04-28
 ---
 # Distribution Entrypoint Contract
 
-> 目的：为 reusable install/update/verify/diagnose 分发入口固定最小合同。目标分发形态是 Node/npm/npx 上的 `aw-installer`，用户入口收敛到 `npx aw-installer`；本文定义该包装层必须保持的语义，并记录当前 RC registry 入口边界。
+> 目的：为 reusable install/update/verify/diagnose 分发入口固定最小合同。目标分发形态是 Node/npm/npx 上的 `aw-installer`，当前 rc2 试用入口收敛到 `aw-installer@next`；本文定义该包装层必须保持的语义，并记录当前 RC registry 入口边界。
 
 本页属于 [Deploy Runbooks](./README.md) 系列。当前可执行入口仍是仓库内脚本：
 
@@ -21,9 +21,9 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-当前根目录 `package.json` 是 `aw-installer` 的 npm/npx 分发包络。它从根目录打包 `product/harness/skills`、`product/harness/adapters/agents/skills` 与 `toolchain/scripts/deploy/` wrapper，使 `.tgz` 或 registry package 中的 source payload 可以脱离源码 checkout 被读取。`aw-installer@0.4.0-rc.1` 已作为 registry RC 发布；裸 package selector `aw-installer` 当前解析到这个唯一 RC，`aw-installer@next` 可用于显式 pin RC channel。
+当前根目录 `package.json` 是 `aw-installer` 的 npm/npx 分发包络。它从根目录打包 `product/harness/skills`、`product/harness/adapters/agents/skills` 与 `toolchain/scripts/deploy/` wrapper，使 `.tgz` 或 registry package 中的 source payload 可以脱离源码 checkout 被读取。`aw-installer@0.4.0-rc.2` 已发布到 npm `next` channel；裸 package selector `aw-installer` 仍按 npm `latest` 解析到 `0.4.0-rc.1`。
 
-`toolchain/scripts/deploy/package.json`、`bin/aw-installer.js` 和 `bin/aw-harness-deploy.js` 仍保留为本地 npm-style scaffold；它们调用同一个 Python wrapper，不代表 package 已发布。`aw-installer` 是主 bin，`aw-harness-deploy` 是兼容别名。当前 checkout 的 `0.4.0-rc.2` 候选在 Windows 上按 `py -3`、`python`、`python3` 尝试 Python launcher，在 Linux/macOS 上按 `python3`、`python` 尝试；wrapper 不接受 `PYTHON`/`PYTHON3` 环境变量覆盖。
+`toolchain/scripts/deploy/package.json`、`bin/aw-installer.js` 和 `bin/aw-harness-deploy.js` 仍保留为本地 npm-style scaffold；它们调用同一个 Python wrapper。`aw-installer` 是主 bin，`aw-harness-deploy` 是兼容别名。`0.4.0-rc.2` 在 Windows 上按 `py -3`、`python`、`python3` 尝试 Python launcher，在 Linux/macOS 上按 `python3`、`python` 尝试；wrapper 不接受 `PYTHON`/`PYTHON3` 环境变量覆盖。
 
 根 package packlist 检查在仓库根目录执行 `npm pack --dry-run --json`。本地 scaffold packlist 检查仍在 `toolchain/scripts/deploy/` package root 内执行 `npm pack --dry-run --json`。
 
@@ -41,7 +41,7 @@ CI 必须显式设置 Node 后运行本地 package smoke、本地 scaffold pack 
 
 - 分发包装层可以改变 operator 如何启动命令，但不能改变 deploy 语义。
 - CLI 是稳定的脚本化合同；TUI 是同一合同上的交互式操作层。
-- `npx aw-installer` 是目标用户入口；当前已有 registry RC，外部试用主路径使用裸 `npx aw-installer`，`aw-installer@next` 只用于显式 RC channel pinning，`aw-harness-deploy` 只是兼容别名。
+- `npx aw-installer@next` 是当前 rc2 用户入口；裸 `npx aw-installer` 仍解析到 `latest=0.4.0-rc.1`，`aw-harness-deploy` 只是兼容别名。
 - 当前 `agents` backend 的 source / target / payload / marker 合同仍以 [Deploy Mapping Spec](./deploy-mapping-spec.md) 为准。
 - 当前 destructive reinstall 主流程仍以 [Deploy Runbook](./deploy-runbook.md) 为准。
 
@@ -75,20 +75,20 @@ aw-installer <mode> --backend agents
 aw-harness-deploy <mode> --backend agents
 ```
 
-目标 Node/npm/npx 用户入口。Package identity 已批准为 unscoped `aw-installer`；当前 registry 主试用入口是裸 `aw-installer` selector：
+目标 Node/npm/npx 用户入口。Package identity 已批准为 unscoped `aw-installer`；当前 rc2 registry 主试用入口是 `aw-installer@next` selector：
 
 ```bash
-npx aw-installer
-npx aw-installer tui
-npx aw-installer --version
-npx aw-installer diagnose --backend agents --json
-npx aw-installer verify --backend agents
-npx aw-installer install --backend agents
-npx aw-installer update --backend agents
-npx aw-installer update --backend agents --yes
+npx aw-installer@next
+npx aw-installer@next tui
+npx aw-installer@next --version
+npx aw-installer@next diagnose --backend agents --json
+npx aw-installer@next verify --backend agents
+npx aw-installer@next install --backend agents
+npx aw-installer@next update --backend agents
+npx aw-installer@next update --backend agents --yes
 ```
 
-Bare `npx aw-installer` currently resolves to the same RC because `0.4.0-rc.1` is the only published package version and npm exposes it through `latest`; do not use that as stable-release evidence. `npx aw-installer@next ...` remains the explicit RC-channel pin. `npx aw-installer` 在交互式终端中可以进入 TUI；`npx aw-installer tui` 显式启动当前最小交互 shell。脚本和 CI 必须使用显式 CLI subcommand。非交互环境不得隐式启动 TUI，也不得要求方向键、全屏渲染或人工输入才能完成 CLI subcommand。
+Bare `npx aw-installer` currently resolves to the older rc1 package because npm exposes it through `latest`; do not use that as rc2 or stable-release evidence. `npx aw-installer@next ...` remains the explicit rc2 pin. `npx aw-installer@next` 在交互式终端中可以进入 TUI；`npx aw-installer@next tui` 显式启动当前最小交互 shell。脚本和 CI 必须使用显式 CLI subcommand。非交互环境不得隐式启动 TUI，也不得要求方向键、全屏渲染或人工输入才能完成 CLI subcommand。
 
 所有入口都必须投影到同一组 mode：
 

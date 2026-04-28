@@ -50,7 +50,7 @@ Do not delete registry history as a primary repair path. npm package versions ar
 Before post-publish registry smoke passes, operator-facing docs may say:
 
 - `rc2 was published but is under smoke verification`
-- `use rc1 or wait for rc2 verification`
+- `use rc1 or pause until rc2 verification is restored`
 - `forum handoff is paused`
 
 They must not say:

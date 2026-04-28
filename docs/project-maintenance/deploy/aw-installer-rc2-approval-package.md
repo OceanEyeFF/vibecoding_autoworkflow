@@ -15,14 +15,14 @@ This page belongs to [Deploy Runbooks](./README.md). It consumes [aw-installer R
 
 - candidate_version: `0.4.0-rc.2`
 - implementation_checkpoint_before_approval_docs: `bf1910f85ce880db0574d2ad26cc8b961118de37`
-- final_publish_git_commit: pending explicit approval-lock commit
+- final_publish_git_commit: `9bf66998e89556db03686b8db0381d919eb32c59`
 - proposed_git_tag: `v0.4.0-rc.2`
 - proposed_channel: `next`
 - proposed_npm_dist_tag: `next`
-- approval_package_status: evidence-complete-for-human-approval-review
-- real_npm_publish_allowed_by_this_page: false
+- approval_package_status: published-to-next
+- real_npm_publish_allowed_by_this_page: completed-for-approved-rc2-tuple
 - stable_release_semantics_allowed: false
-- forum_handoff_allowed_before_registry_rc2_smoke: false
+- forum_handoff_allowed_before_registry_rc2_smoke: false; registry rc2 smoke now passed on Linux local generated targets
 - expected_package_lock_if_approved: `realPublishApproval=approved`, `approvedVersion=0.4.0-rc.2`, `approvedGitTag=v0.4.0-rc.2`, `approvedChannel=next`
 
 ## Candidate Identity
@@ -37,7 +37,7 @@ This page belongs to [Deploy Runbooks](./README.md). It consumes [aw-installer R
 | backend | `agents` |
 | publish context | explicit approval worktrack, then CI release workflow or manual maintainer fallback |
 
-`0.4.0-rc.2` is a replacement release-candidate for forum-facing installer trials. It does not change the package identity or stable channel. The current npm registry still resolves `aw-installer@next` to `0.4.0-rc.1` until this candidate is approved and published.
+`0.4.0-rc.2` is a replacement release-candidate for forum-facing installer trials. It does not change the package identity or stable channel. The npm registry now resolves `aw-installer@next` to `0.4.0-rc.2`; bare `aw-installer` still follows `latest` and resolves to `0.4.0-rc.1`.
 
 ## Delta From RC1
 
@@ -55,10 +55,10 @@ The rc2 candidate is scoped to installer reliability and payload freshness:
 | Evidence | Status | Notes |
 |---|---|---|
 | implementation checkpoint before approval docs | passed | `develop-aw@bf1910f85ce880db0574d2ad26cc8b961118de37` |
-| final publish checkpoint | pending | must be the commit that opens the rc2 approval lock before `v0.4.0-rc.2` is created |
-| current registry state | observed stale | `aw-installer@next` still points to `0.4.0-rc.1` |
+| final publish checkpoint | passed | `develop-aw@9bf66998e89556db03686b8db0381d919eb32c59`; local tag `v0.4.0-rc.2` points to this commit |
+| current registry state | passed | `aw-installer@next` points to `0.4.0-rc.2`; `latest` remains `0.4.0-rc.1` |
 | root package version | ready | `package.json` version is `0.4.0-rc.2` |
-| root package approval lock | pending | approval fields are intentionally not opened yet |
+| root package approval lock | approved | approval fields bind `0.4.0-rc.2`, `v0.4.0-rc.2`, and `next` |
 | root `npm pack --dry-run --json` | passed | candidate tarball reports `aw-installer-0.4.0-rc.2.tgz` |
 | root `npm run publish:dry-run --silent` | passed | dry-run package id is `aw-installer@0.4.0-rc.2` |
 | release metadata derivation | passed | `v0.4.0-rc.2` maps to npm channel `next` |
@@ -70,12 +70,14 @@ The rc2 candidate is scoped to installer reliability and payload freshness:
 | local multi-temp package smoke | passed | three generated temporary targets installed 19 managed skills |
 | explicit local `npx --package <local.tgz>` flow | passed | install/update/verify reached 19 managed installs |
 | closeout acceptance gate | passed | `closeout-governance-task-list-20260402` returned passed |
+| manual npm publish | passed | maintainer publish completed for `aw-installer@0.4.0-rc.2` on dist-tag `next` |
+| post-publish registry npx smoke | passed | `aw-installer@next` installed 19 managed skills across three generated Linux targets |
 
 Long-term documents keep this sanitized evidence summary. Raw transient logs and absolute `/tmp` paths should remain runtime evidence unless a later audit explicitly needs them.
 
 ## Approval Boundary
 
-This page prepares the approval decision. It does not open the publish lock. Real publish remains blocked until a separate explicit approval updates the root package metadata to:
+This page records the completed rc2 approval decision and publish result. The root package metadata is bound to:
 
 ```json
 {
@@ -98,32 +100,30 @@ The human approval request for rc2 should include:
 - release notes: [aw-installer RC2 Release Notes](./aw-installer-rc2-release-notes.md)
 - rollback/deprecation plan: [aw-installer RC2 Rollback And Deprecation Plan](./aw-installer-rc2-rollback-deprecation-plan.md)
 - confirmation that local package and explicit local npx deployment flows passed.
-- acknowledgement that registry `next` remains `0.4.0-rc.1` until publish succeeds.
-- acknowledgement that Windows PowerShell forum handoff waits for post-publish registry smoke.
+- acknowledgement that registry `next` now resolves to `0.4.0-rc.2` and `latest` remains `0.4.0-rc.1`.
+- acknowledgement that broad Windows PowerShell forum handoff still needs real Windows registry smoke.
 
-## Expected Publish Flow After Approval
+## Publish Flow Used
 
-After approval only:
+The completed flow was:
 
-1. update the root `package.json` approval lock to the exact rc2 tuple.
-2. commit the approval-lock change.
-3. create `v0.4.0-rc.2` at the approved commit or create a GitHub Release with that tag.
-4. publish through the GitHub Release workflow when Trusted Publishing is configured, or use the documented manual maintainer fallback.
-5. rerun registry npx smoke and record the result before forum handoff.
+1. updated the root `package.json` approval lock to the exact rc2 tuple.
+2. committed the approval-lock change.
+3. merged the approval branch back to `develop-aw`.
+4. created local tag `v0.4.0-rc.2` at `9bf66998e89556db03686b8db0381d919eb32c59`.
+5. published manually to npm with dist-tag `next`.
+6. reran registry npx smoke against `aw-installer@next`.
 
 ## Wording Boundary
 
-Allowed before publish:
+Allowed after publish:
 
-- `rc2 candidate`
-- `local package npx flow passed`
-- `evidence complete for approval review`
-- `expected release tuple`
+- `rc2 published to npm next`
+- `aw-installer@next resolves to 0.4.0-rc.2`
+- `post-publish Linux registry npx smoke passed`
 
-Not allowed before publish:
+Still not allowed:
 
-- `rc2 is published`
-- `registry next is rc2`
 - `stable release`
 - `latest is stable`
-- `forum handoff is ready`
+- `bare npx aw-installer installs rc2`

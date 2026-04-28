@@ -56,7 +56,7 @@
 
 外部试用者和维护者应按这个顺序进入，而不是从单个 `npx` 片段自行推断发布状态：
 
-- 安装与 `.aw/` 初始化提示：先看 [aw-installer Public Quickstart Prompts](./aw-installer-public-quickstart-prompts.md)。当前 `aw-installer@0.4.0-rc.1` 已发布为 registry RC；registry npx smoke 已覆盖 bare package selector `aw-installer` 的本地多目标路径，必要时可用 `aw-installer@next` 显式 pin 到 RC channel。论坛试用前先看 [aw-installer RC2 npx Install Readiness](./aw-installer-rc2-npx-install-readiness.md)，因为当前 checkout 的 `0.4.0-rc.2` 候选包含 registry `0.4.0-rc.1` 尚未具备的跨平台 Python launcher fallback 和最新 19-skill payload。
+- 安装与 `.aw/` 初始化提示：先看 [aw-installer Public Quickstart Prompts](./aw-installer-public-quickstart-prompts.md)。当前 `aw-installer@next` 已发布为 `0.4.0-rc.2` registry RC，并通过 Linux 本地多目标 registry npx smoke；裸 `aw-installer` 仍按 npm `latest` 解析到 `0.4.0-rc.1`。论坛试用前先看 [aw-installer RC2 npx Install Readiness](./aw-installer-rc2-npx-install-readiness.md)，并在命令中显式使用 `aw-installer@next`。
 - 反馈入口：用 [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)。
 - Registry npx smoke 与反馈日志：用 [aw-installer Registry npx Smoke](./aw-installer-registry-npx-smoke.md) 验证空临时 repo 与批准目标 repo 临时 clone 的 source/target 隔离，并生成可脱敏提交的 `aw-installer-npx-run.log`；不要写入非临时 checkout，不 push，不开 issue 或 PR。
 - 本地包 smoke：用 [aw-installer Multi Temporary Workdir Smoke](./aw-installer-multi-temp-workdir-smoke.md) 验证当前 checkout 打出的 `.tgz`。
