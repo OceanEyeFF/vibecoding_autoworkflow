@@ -9,7 +9,7 @@ last_verified: 2026-04-28
 
 > Purpose: define the `aw-installer` publish operating model after the first manual RC publish and registry npx smoke. This page records the selected GitHub Release `published` plus npm Trusted Publishing model and the repository-side workflow preflight. It does not authorize a future npm publish or mutate npm-side Trusted Publisher settings.
 
-This page belongs to [Deploy Runbooks](./README.md). It builds on [aw-installer Release Channel Contract](./release-channel-contract.md) and [npx Command Test Execution](../testing/npx-command-test-execution.md).
+This page belongs to [Deploy Runbooks](./README.md). It builds on [aw-installer Release Channel Contract](./release-channel-contract.md), [aw-installer npx Pre-Publish Check](./aw-installer-npx-pre-publish-check.md), and [npx Command Test Execution](../testing/npx-command-test-execution.md).
 
 ## Control Signal
 
@@ -185,11 +185,12 @@ For a future release, follow this chain in order:
 
 1. Prepare the package version and candidate evidence in a normal worktrack. The candidate must not reuse an already published immutable npm version.
 2. Read [aw-installer Release Channel Contract](./release-channel-contract.md) for the channel mapping and publish-readiness gates.
-3. Update the root `package.json` `awInstallerRelease` metadata only in the explicit release-approval worktrack, binding `approvedVersion`, `approvedGitTag`, and `approvedChannel` to the candidate tuple.
-4. Create or publish a GitHub Release whose tag exactly matches `v<package.version>` and whose body includes `aw-installer-publish-approved: v<package.version>`.
-5. Let `.github/workflows/publish.yml` resolve release metadata, run governance/deploy/package checks, run the real publish guard, and publish with provenance.
-6. After publish, rerun [npx Command Test Execution](../testing/npx-command-test-execution.md) and record registry evidence.
-7. If Trusted Publishing cannot authenticate, use the manual fallback below only after the same release tuple is explicitly approved.
+3. Complete [aw-installer npx Pre-Publish Check](./aw-installer-npx-pre-publish-check.md) so package files, docs, metadata, dry-run evidence, and local smoke are validated before publish.
+4. Update the root `package.json` `awInstallerRelease` metadata only in the explicit release-approval worktrack, binding `approvedVersion`, `approvedGitTag`, and `approvedChannel` to the candidate tuple.
+5. Create or publish a GitHub Release whose tag exactly matches `v<package.version>` and whose body includes `aw-installer-publish-approved: v<package.version>`.
+6. Let `.github/workflows/publish.yml` resolve release metadata, run governance/deploy/package checks, run the real publish guard, and publish with provenance.
+7. After publish, rerun [npx Command Test Execution](../testing/npx-command-test-execution.md) and record registry evidence.
+8. If Trusted Publishing cannot authenticate, use the manual fallback below only after the same release tuple is explicitly approved.
 
 External state still required outside this repository: npm package owner configures the Trusted Publisher for this repository, workflow filename, and optional `npm` environment.
 

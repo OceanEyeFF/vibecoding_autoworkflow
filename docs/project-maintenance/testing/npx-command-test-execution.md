@@ -9,7 +9,7 @@ last_verified: 2026-04-28
 
 > Purpose: verify `aw-installer` package and npx command behavior across isolated temporary targets, covering the published registry package, explicit RC selector, and local `.tgz` package smoke. This page does not authorize new npm publish, stable release semantics, external repository mutation, PRs, or issue creation.
 
-This page belongs to [Testing Runbooks](./README.md). Release channel and publish readiness rules live in [aw-installer Release Channel Contract](../deploy/release-channel-contract.md); deploy entrypoint semantics live in [Distribution Entrypoint Contract](../deploy/distribution-entrypoint-contract.md).
+This page belongs to [Testing Runbooks](./README.md). Release channel and publish readiness rules live in [aw-installer Release Channel Contract](../deploy/release-channel-contract.md); pre-publish file/docs/evidence checks live in [aw-installer npx Pre-Publish Check](../deploy/aw-installer-npx-pre-publish-check.md); deploy entrypoint semantics live in [Distribution Entrypoint Contract](../deploy/distribution-entrypoint-contract.md).
 
 ## Control Signal
 

@@ -14,6 +14,7 @@
 | 我想看 canonical source 到 target entry 的正式映射 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | 定义 canonical source / backend payload source / target / diagnose / verify |
 | 我想看 `npx aw-installer` 分发入口必须保持什么语义 | [distribution-entrypoint-contract.md](./distribution-entrypoint-contract.md) | 定义 `aw-installer` CLI + TUI 双模式包装层合同 |
 | 我想看 `aw-installer` 真实 npm 发布前需要满足什么条件 | [release-channel-contract.md](./release-channel-contract.md) | 定义 release channel、publish readiness guard、版本/tag/审批边界，并记录当前 registry 事实 |
+| 我想在 npm publish 前确认 npx/package 文件、文档和证据不会发布后补救 | [aw-installer-npx-pre-publish-check.md](./aw-installer-npx-pre-publish-check.md) | 固定 packlist、metadata、dry-run、docs freshness 和 smoke 证据检查 |
 | 我想看后续 npm 发布应采用哪种操作模型 | [aw-installer-release-operation-model.md](./aw-installer-release-operation-model.md) | 记录 GitHub Release `published` + npm Trusted Publishing 的发布模型与 repository-side workflow preflight |
 | 我想给外部试用者一份可复制粘贴的 Codex / Claude Code 安装与 `.aw/` 初始化提示 | [aw-installer-public-quickstart-prompts.md](./aw-installer-public-quickstart-prompts.md) | 汇总 registry npx 主路径、Codex `agents` 主路径、Claude Code 兼容试用路径和 `.aw/` 初始化 prompt |
 | 我想准备外部试用目标清单和反馈字段 | [aw-installer-external-trial-feedback.md](./aw-installer-external-trial-feedback.md) | 定义试用反馈字段、隐私边界和下一主要矛盾判定标准 |
