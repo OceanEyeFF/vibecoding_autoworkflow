@@ -589,10 +589,10 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(
             package["awInstallerRelease"],
             {
-                "realPublishApproval": "pending",
-                "approvedVersion": "",
-                "approvedGitTag": "",
-                "approvedChannel": "",
+                "realPublishApproval": "approved",
+                "approvedVersion": "0.4.0-rc.2",
+                "approvedGitTag": "v0.4.0-rc.2",
+                "approvedChannel": "next",
             },
         )
         scaffold_package = json.loads(
@@ -909,7 +909,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.stdout, "")
         self.assertIn("realPublishApproval must be approved", completed.stderr)
 
-    def test_root_npm_publish_guard_rejects_current_pending_rc_metadata(self) -> None:
+    def test_root_npm_publish_guard_accepts_current_approved_rc_metadata(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
         package_root = self.source_repo_root
@@ -933,9 +933,9 @@ class AdapterDeployTest(unittest.TestCase):
             check=False,
         )
 
-        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.returncode, 0)
         self.assertEqual(completed.stdout, "")
-        self.assertIn("realPublishApproval must be approved", completed.stderr)
+        self.assertEqual(completed.stderr, "")
 
     def test_root_npm_publish_guard_rejects_stale_approved_version_metadata(self) -> None:
         if shutil.which("node") is None:
