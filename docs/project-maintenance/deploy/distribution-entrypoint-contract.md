@@ -21,9 +21,9 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-当前根目录 `package.json` 是 `aw-installer` 的 npm/npx 分发包络。它从根目录打包 `product/harness/skills`、`product/harness/adapters/agents/skills`、`product/harness/adapters/claude/skills` 与 `toolchain/scripts/deploy/` wrapper，使 `.tgz` 或 registry package 中的 source payload 可以脱离源码 checkout 被读取。当前 checkout 的 RC candidate 是 `0.4.1-rc.1`；当前 npm registry 事实仍是 `next=0.4.0-rc.2`、`latest=0.4.0-rc.1`。
+当前根目录 `package.json` 是 `aw-installer` 的 npm/npx 分发包络。它从根目录打包 `product/harness/skills`、`product/harness/adapters/agents/skills`、`product/harness/adapters/claude/skills` 与 `toolchain/scripts/deploy/` wrapper，使 `.tgz` 或 registry package 中的 source payload 可以脱离源码 checkout 被读取。当前 checkout 的 RC candidate 是 `0.4.1-rc.2`；当前 npm registry 事实仍是 `next=0.4.0-rc.3`、`latest=0.4.0-rc.1`。
 
-`toolchain/scripts/deploy/package.json`、`bin/aw-installer.js` 和 `bin/aw-harness-deploy.js` 仍保留为本地 npm-style scaffold；它们调用同一个 Python wrapper。`aw-installer` 是主 bin，`aw-harness-deploy` 是兼容别名。`0.4.1-rc.1` 在 Windows 上按 `py -3`、`python`、`python3` 尝试 Python launcher，在 Linux/macOS 上按 `python3`、`python` 尝试；wrapper 不接受 `PYTHON`/`PYTHON3` 环境变量覆盖。
+`toolchain/scripts/deploy/package.json`、`bin/aw-installer.js` 和 `bin/aw-harness-deploy.js` 仍保留为本地 npm-style scaffold；它们调用同一个 Python wrapper。`aw-installer` 是主 bin，`aw-harness-deploy` 是兼容别名。`0.4.1-rc.2` 在 Windows 上按 `py -3`、`python`、`python3` 尝试 Python launcher，在 Linux/macOS 上按 `python3`、`python` 尝试；wrapper 不接受 `PYTHON`/`PYTHON3` 环境变量覆盖。
 
 根 package packlist 检查在仓库根目录执行 `npm pack --dry-run --json`。本地 scaffold packlist 检查仍在 `toolchain/scripts/deploy/` package root 内执行 `npm pack --dry-run --json`。
 
@@ -92,14 +92,14 @@ npx aw-installer@next verify --backend agents
 npx aw-installer@next install --backend agents
 npx aw-installer@next update --backend agents
 npx aw-installer@next update --backend agents --yes
-npx aw-installer@next update --backend agents --source github --github-ref master
+npx aw-installer@next update --backend agents --source github --github-ref <ref-containing-current-payload>
 npx aw-installer@next diagnose --backend claude --json
 npx aw-installer@next update --backend claude
 npx aw-installer@next install --backend claude
 npx aw-installer@next verify --backend claude
 ```
 
-Bare `npx aw-installer` currently resolves to the older rc1 package because npm exposes it through `latest`; do not use that as current RC or stable-release evidence. `npx aw-installer@next ...` remains the explicit published RC pin. Before `0.4.1-rc.1` is published, `next` still resolves to `0.4.0-rc.2`; checkout evidence must use a local `.tgz` or source checkout. `npx aw-installer@next` 在交互式终端中可以进入 TUI；`npx aw-installer@next tui` 显式启动当前最小交互 shell。脚本和 CI 必须使用显式 CLI subcommand。非交互环境不得隐式启动 TUI，也不得要求方向键、全屏渲染或人工输入才能完成 CLI subcommand。
+Bare `npx aw-installer` currently resolves to the older rc1 package because npm exposes it through `latest`; do not use that as current RC or stable-release evidence. `npx aw-installer@next ...` remains the explicit published RC pin. Before `0.4.1-rc.2` is published, `next` resolves to the currently published prerelease selector, observed as `0.4.0-rc.3` on 2026-04-29; checkout evidence must use a local `.tgz` or source checkout. `npx aw-installer@next` 在交互式终端中可以进入 TUI；`npx aw-installer@next tui` 显式启动当前最小交互 shell。脚本和 CI 必须使用显式 CLI subcommand。非交互环境不得隐式启动 TUI，也不得要求方向键、全屏渲染或人工输入才能完成 CLI subcommand。
 
 所有入口都必须投影到同一组 mode：
 
@@ -129,7 +129,7 @@ Bare `npx aw-installer` currently resolves to the older rc1 package because npm 
 - `check_paths_exist` 失败时不得写入业务文件。
 - `install` 不得跳过 source contract 校验、target path 冲突校验或 payload identity 校验。
 - deploy target 不是 source of truth；包装层不得从 `.agents/`、`.claude/` 或 `.opencode/` 反向生成 canonical source。
-- backend 支持列表必须来自实际实现；包装层不得把 `claude` 或 `opencode` 写成已支持 deploy backend。
+- backend 支持列表必须来自实际实现；包装层不得把 `opencode` 或完整 Claude Harness skill set 写成已支持 deploy backend。当前 `claude` 只能作为受控 `set-harness-goal-skill` compatibility backend 暴露。
 
 ## 五、`update` 的准入条件
 

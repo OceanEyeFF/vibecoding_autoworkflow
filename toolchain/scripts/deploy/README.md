@@ -4,11 +4,12 @@
 
 当前主线：
 
-- `adapter_deploy.py`：为 `agents` 提供 destructive reinstall workflow、只读 `diagnose` 和只读 `verify`
+- `adapter_deploy.py`：为 `agents` 提供 destructive reinstall workflow、只读 `diagnose` 和只读 `verify`，并为 `claude` 提供受控的 `set-harness-goal-skill` compatibility backend
 - `harness_deploy.py`：稳定的薄包装入口，保留 `adapter_deploy.py` 语义，供目标 `aw-installer` package / npx wrapper 复用
 - `package.json` + `bin/aw-installer.js` + `bin/aw-harness-deploy.js`：本地 npm-style package scaffold，只调用 `harness_deploy.py`；`aw-installer` 是主 bin 并提供带 guided update flow 的最小 `tui` shell，`aw-harness-deploy` 是兼容别名，不表示 package 已发布
 - `aw_scaffold.py`：从 `product/.aw_template/` 生成 `.aw/` 运行样例，并校验模板最小结构，包括 `Engineering Node Map`、`Repo Analysis` 与 `Node Type` 协议字段
 - `product/harness/adapters/agents/skills/`：`agents` canonical-copy payload descriptor source，由 `install --backend agents` 消费
+- `product/harness/adapters/claude/skills/`：`claude` compatibility payload descriptor source，当前只覆盖 `set-harness-goal-skill`
 
 最小维护流：
 
@@ -38,9 +39,9 @@
 - 如需检查目标 package envelope，在仓库根目录运行 `npm pack --dry-run --json`；本地 scaffold packlist 仍在 `toolchain/scripts/deploy/` 目录内运行；根 `.tgz` smoke 应在临时 target repo 中覆盖 help/version/TUI non-interactive guard/diagnose/update dry-run/install/verify/update apply
 - 如需检查发布前包面，在仓库根目录运行 `npm run publish:dry-run --silent`；这只验证 npmjs publish dry-run，不上传 package；root package 的 `prepublishOnly` guard 会拒绝不满足 release-channel 准入的真实 publish，包括 local version、缺少 CI/审批信号、channel 与 dist-tag 不匹配或缺少匹配 git tag
 - 从根 package `.tgz` 执行非 help 命令时，不设置 `AW_HARNESS_REPO_ROOT` 即可从 package 内读取 source payload，并把当前工作目录作为 target repo root；`AW_HARNESS_REPO_ROOT` 仍保留为 source checkout override，`AW_HARNESS_TARGET_REPO_ROOT` 可显式覆盖 target repo root。当前 `update` 只使用该 package 或 checkout source payload，不做远程 fetch、channel 解析、自升级、验签或自动回滚；完整边界见 `docs/project-maintenance/deploy/payload-provenance-trust-boundary.md`
-- 当前接口只实现 `agents`
+- 当前接口实现 `agents` 主路径，并提供受限 `claude` compatibility backend；不要把 `claude` 写成完整 Harness skill set 分发
 - 不再承接 `local/global` deploy modes、`prune --outdated`、archive/history、增量修复或旧版本保活
-- `claude` 与 `opencode` 后续如需恢复，应先重定义 contract 再实现；Claude skills 分发当前是慢车道兼容项，不阻塞 `aw-installer` 主线
+- `opencode` 后续如需恢复，应先重定义 contract 再实现；Claude skills 分发当前仍是慢车道兼容项，不阻塞 `aw-installer` 主线
 
 回归测试入口：
 

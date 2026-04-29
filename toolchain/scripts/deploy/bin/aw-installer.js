@@ -75,8 +75,8 @@ commands:
                               print an update dry-run plan
   update --backend agents --yes
                               apply the explicit update plan
-  update --backend agents --source github --github-ref master
-                              update from the approved GitHub source archive
+  update --backend agents --source github --github-ref REF
+                              update from a GitHub source archive containing current payloads
   prune --all --backend agents|claude
                               remove managed installs for the backend
   check_paths_exist --backend agents|claude
