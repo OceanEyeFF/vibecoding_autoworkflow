@@ -16,7 +16,7 @@ from gate_status_backfill import update_state
 
 
 NPM_HELP_STDOUT = "usage: aw-installer\nharness_deploy.py\ntui\ninstall\nverify\ndiagnose\nupdate\n"
-NPM_VERSION = "0.4.0-rc.2"
+NPM_VERSION = "0.4.0-rc.3"
 NPM_VERSION_STDOUT = f"aw-installer {NPM_VERSION}\n"
 
 

@@ -727,8 +727,8 @@ class AdapterDeployTest(unittest.TestCase):
             package["awInstallerRelease"],
             {
                 "realPublishApproval": "approved",
-                "approvedVersion": "0.4.1-rc.1",
-                "approvedGitTag": "v0.4.1-rc.1",
+                "approvedVersion": "0.4.1-rc.2",
+                "approvedGitTag": "v0.4.1-rc.2",
                 "approvedChannel": "next",
             },
         )
@@ -1114,7 +1114,7 @@ class AdapterDeployTest(unittest.TestCase):
         env = {
             **os.environ,
             "AW_INSTALLER_PUBLISH_APPROVED": "1",
-            "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.1-rc.1",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.1-rc.2",
             "CI": "true",
             "npm_config_tag": "next",
         }
@@ -1458,7 +1458,7 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertEqual(completed.stdout, "aw-installer 0.4.1-rc.1\n")
+        self.assertEqual(completed.stdout, "aw-installer 0.4.1-rc.2\n")
         self.assertEqual(completed.stderr, "")
 
     def test_local_npm_installer_bin_version_prefers_root_package_metadata(self) -> None:
@@ -1936,7 +1936,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         payload = json.loads(completed.stdout)
         self.assertEqual(payload["name"], "aw-installer")
-        self.assertEqual(payload["version"], "0.4.1-rc.1")
+        self.assertEqual(payload["version"], "0.4.1-rc.2")
         packed_files = {entry["path"] for entry in payload["files"]}
         self.assertIn("package.json", packed_files)
         self.assertIn("product/harness/skills/harness-skill/SKILL.md", packed_files)
@@ -2323,7 +2323,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertNotEqual(diagnose_payload["source_root"], str(target_repo))
 
         self.assertEqual(version_completed.returncode, 0, version_completed.stderr)
-        self.assertEqual(version_completed.stdout, "aw-installer 0.4.1-rc.1\n")
+        self.assertEqual(version_completed.stdout, "aw-installer 0.4.1-rc.2\n")
         self.assertEqual(version_completed.stderr, "")
         self.assertEqual(tui_completed.returncode, 1)
         self.assertEqual(tui_completed.stdout, "")

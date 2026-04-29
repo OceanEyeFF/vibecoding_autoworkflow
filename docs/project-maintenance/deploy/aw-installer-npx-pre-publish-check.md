@@ -32,7 +32,7 @@ Stop before publish if any of these are true:
 - docs still point users to the wrong selector, especially bare `npx aw-installer` when the candidate is only on `next`.
 - `npm pack --dry-run --json`, `npm run publish:dry-run --silent`, governance checks, deploy tests, or closeout gate fail.
 - local package smoke has not proved install/update/verify in temporary target repositories.
-- for rc3 or later, `update --source github --github-ref master --json` has not proved that the GitHub source archive contains a valid Harness payload source and keeps target root separate from the archive extraction root.
+- for rc3 or later, `update --source github --github-ref <ref-containing-current-payload> --json` has not proved that the selected GitHub source archive contains a valid Harness payload source and keeps target root separate from the archive extraction root.
 - rollback/deprecation notes are missing.
 
 Do not rely on a later patch version to repair a package that was missing files, stale docs, or wrong metadata at publish time. A replacement version can supersede a broken version, but it cannot mutate the already published tarball.
@@ -129,9 +129,9 @@ Minimum evidence:
 
 - help/version/TUI guard succeed or fail as expected.
 - `diagnose --backend agents --json` and `update --backend agents --json` run before mutation.
-- `diagnose --backend claude --json` and `update --backend claude --json` run for the compatibility payload when the candidate includes Claude backend support.
-- `update --backend agents --source github --github-ref master --json` passes when the release includes GitHub source update capability.
 - `install --backend agents`, `verify --backend agents`, and `update --backend agents --yes` pass.
+- The local package smoke proves the package-local agents path. When the candidate includes Claude backend support, run `diagnose --backend claude --json` and `update --backend claude --json` as separate focused checks until the smoke runner covers them directly.
+- When the release includes GitHub source update capability, run `update --backend agents --source github --github-ref <ref-containing-current-payload> --json` as a separate focused check. `master` is valid only after it contains the current required payload source.
 - final diagnose reports managed installs equal to the selected candidate `binding_count`, with 0 conflicts and 0 unrecognized entries.
 - source root resolves to the package payload, not the source checkout or target repository.
 - target root stays inside each temporary target workdir.

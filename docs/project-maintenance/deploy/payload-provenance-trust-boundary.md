@@ -77,8 +77,8 @@ last_verified: 2026-04-29
 `0.4.0-rc.3` 开始，`update` 可以显式选择 GitHub source archive：
 
 ```bash
-aw-installer update --backend agents --source github --github-repo OceanEyeFF/vibecoding_autoworkflow --github-ref master --json
-aw-installer update --backend agents --source github --github-repo OceanEyeFF/vibecoding_autoworkflow --github-ref master --yes
+aw-installer update --backend agents --source github --github-repo OceanEyeFF/vibecoding_autoworkflow --github-ref <ref-containing-current-payload> --json
+aw-installer update --backend agents --source github --github-repo OceanEyeFF/vibecoding_autoworkflow --github-ref <ref-containing-current-payload> --yes
 ```
 
 准入边界：
@@ -89,7 +89,7 @@ aw-installer update --backend agents --source github --github-repo OceanEyeFF/vi
 - target root 不得默认为 GitHub source root；默认仍是当前工作目录，或显式 `AW_HARNESS_TARGET_REPO_ROOT` / `--agents-root`。
 - `update --json` 必须暴露 `source_kind=github` 和 `source_ref=OWNER/REPO@REF`。
 - GitHub source 不改变 destructive reinstall 顺序、target conflict policy、marker policy 或 post-apply strict verify。
-- 当前 `master`/default branch 必须真实包含 Harness payload source；如果 GitHub archive 缺少 required source paths，update 必须失败，而不是回退到 package-local source。
+- 所选 GitHub ref 必须真实包含当前 Harness payload source；`master`/default branch 只有在已经包含这些 required source paths 时才是有效 ref。如果 GitHub archive 缺少 required source paths，update 必须失败，而不是回退到 package-local source。
 
 ## 六、未来远程更新准入条件
 
@@ -112,5 +112,5 @@ aw-installer update --backend agents --source github --github-repo OceanEyeFF/vi
 - `diagnose`、`verify` 仍是只读命令。
 - `update --backend agents` 默认只输出 dry-run plan。
 - `update --backend agents --yes` 仍执行 destructive reinstall，并在写入后运行严格 `verify`。
-- `update --backend agents --source github --github-ref master --json` 在 GitHub source 有效时输出 `source_kind=github`，在 GitHub source 缺少 payload source paths 时失败。
+- `update --backend agents --source github --github-ref <ref-containing-current-payload> --json` 在 GitHub source 有效时输出 `source_kind=github`，在 GitHub source 缺少 payload source paths 时失败。
 - 文档同步 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)、[Deploy Runbook](./deploy-runbook.md) 和本页。
