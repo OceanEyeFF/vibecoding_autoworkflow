@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Release Operation Model"
 status: active
-updated: 2026-04-28
+updated: 2026-04-29
 owner: aw-kernel
-last_verified: 2026-04-28
+last_verified: 2026-04-29
 ---
 # aw-installer Release Operation Model
 
@@ -113,17 +113,17 @@ jobs:
       GITHUB_RELEASE_BODY: ${{ github.event.release.body }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org/"
