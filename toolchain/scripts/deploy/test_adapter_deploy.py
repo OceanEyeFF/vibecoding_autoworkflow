@@ -609,6 +609,13 @@ class AdapterDeployTest(unittest.TestCase):
                 "access": "public",
             },
         )
+        self.assertEqual(
+            package["repository"],
+            {
+                "type": "git",
+                "url": "https://github.com/OceanEyeFF/vibecoding_autoworkflow",
+            },
+        )
         self.assertIn("toolchain/scripts/deploy/bin/check-root-publish.js", package["files"])
         self.assertIn("toolchain/scripts/deploy/bin/publish-dry-run.js", package["files"])
         self.assertEqual(
