@@ -509,6 +509,32 @@ class AdapterDeployTest(unittest.TestCase):
             )
         )
 
+    def test_agents_and_claude_installs_can_coexist_in_one_target_repo(self) -> None:
+        agents_code, agents_stdout, agents_stderr = self._install()
+        claude_code, claude_stdout, claude_stderr = self._claude_install()
+        agents_verify_code, agents_verify_stdout, agents_verify_stderr = self._verify()
+        claude_verify_code, claude_verify_stdout, claude_verify_stderr = self._claude_verify()
+
+        self.assertEqual(agents_code, 0, agents_stderr)
+        self.assertEqual(claude_code, 0, claude_stderr)
+        self.assertIn("installed skill harness-skill", agents_stdout)
+        self.assertIn("installed skill set-harness-goal-skill", claude_stdout)
+
+        agents_skill_dir = self.local_root / "aw-set-harness-goal-skill"
+        claude_skill_dir = self.claude_local_root / "aw-set-harness-goal-skill"
+        self.assertTrue((self.local_root / "aw-harness-skill" / "SKILL.md").is_file())
+        self.assertTrue((agents_skill_dir / "SKILL.md").is_file())
+        self.assertTrue((claude_skill_dir / "SKILL.md").is_file())
+        self.assertEqual(self._load_json(agents_skill_dir / "payload.json")["backend"], "agents")
+        self.assertEqual(self._load_json(claude_skill_dir / "payload.json")["backend"], "claude")
+        self.assertEqual(self._load_json(agents_skill_dir / "aw.marker")["backend"], "agents")
+        self.assertEqual(self._load_json(claude_skill_dir / "aw.marker")["backend"], "claude")
+
+        self.assertEqual(agents_verify_code, 0, agents_verify_stderr)
+        self.assertIn("[agents] ok", agents_verify_stdout)
+        self.assertEqual(claude_verify_code, 0, claude_verify_stderr)
+        self.assertIn("[claude] ok", claude_verify_stdout)
+
     def test_claude_root_override_is_used_without_touching_agents_root(self) -> None:
         code, stdout, stderr = self._claude_install("--claude-root", self.claude_override_root)
 

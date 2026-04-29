@@ -71,6 +71,21 @@ def successful_npm_command_result(
     extra_env: dict[str, str] | None = None,
     cwd: Path | None = None,
 ) -> dict | None:
+    def npm_exec_backend() -> str:
+        if "--backend" in command:
+            return command[command.index("--backend") + 1]
+        return "agents"
+
+    def npm_exec_target_root() -> Path:
+        repo = cwd or Path("/tmp/repo")
+        if npm_exec_backend() == "claude":
+            return repo / ".claude" / "skills"
+        return repo / ".agents" / "skills"
+
+    def npm_exec_skill_dir() -> Path:
+        skill_name = "aw-set-harness-goal-skill" if npm_exec_backend() == "claude" else "aw-harness-skill"
+        return npm_exec_target_root() / skill_name
+
     if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
         packed_paths = (
             closeout_acceptance_gate.EXPECTED_NPM_PACKAGE_FILES
@@ -132,27 +147,28 @@ def successful_npm_command_result(
             "returncode": 0,
             "stdout": json.dumps(
                 {
-                    "backend": "agents",
+                    "backend": npm_exec_backend(),
                     "binding_count": 1,
                     "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
-                    "target_root": str((cwd or Path("/tmp/repo")) / ".agents" / "skills"),
+                    "target_root": str(npm_exec_target_root()),
                 }
             ),
             "stderr": "",
             "passed": True,
         }
     if command[:2] == ["npm", "exec"] and "update" in command and command[-1] == "--yes":
-        target = (cwd or Path("/tmp/repo")) / ".agents" / "skills" / "aw-harness-skill"
+        backend = npm_exec_backend()
+        target = npm_exec_skill_dir()
         target.mkdir(parents=True, exist_ok=True)
         (target / "SKILL.md").write_text("# harness\n", encoding="utf-8")
         return {
             "command": command,
             "returncode": 0,
             "stdout": (
-                "[agents] applying update\n"
-                "installed skill harness-skill\n"
-                "[agents] ok: target root is ready\n"
-                "[agents] update complete\n"
+                f"[{backend}] applying update\n"
+                f"installed skill {target.name.removeprefix('aw-')}\n"
+                f"[{backend}] ok: target root is ready\n"
+                f"[{backend}] update complete\n"
             ),
             "stderr": "",
             "passed": True,
@@ -179,12 +195,12 @@ def successful_npm_command_result(
             "returncode": 0,
             "stdout": json.dumps(
                 {
-                    "backend": "agents",
+                    "backend": npm_exec_backend(),
                     "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
-                    "target_root": str((cwd or Path("/tmp/repo")) / ".agents" / "skills"),
+                    "target_root": str(npm_exec_target_root()),
                     "blocking_issue_count": 0,
                     "planned_target_paths": [
-                        str((cwd or Path("/tmp/repo")) / ".agents" / "skills" / "aw-harness-skill")
+                        str(npm_exec_skill_dir())
                     ],
                 }
             ),
@@ -192,21 +208,22 @@ def successful_npm_command_result(
             "passed": True,
         }
     if command[:2] == ["npm", "exec"] and "install" in command:
-        target = (cwd or Path("/tmp/repo")) / ".agents" / "skills" / "aw-harness-skill"
+        target = npm_exec_skill_dir()
         target.mkdir(parents=True, exist_ok=True)
         (target / "SKILL.md").write_text("# harness\n", encoding="utf-8")
         return {
             "command": command,
             "returncode": 0,
-            "stdout": "installed skill harness-skill\n",
+            "stdout": f"installed skill {target.name.removeprefix('aw-')}\n",
             "stderr": "",
             "passed": True,
         }
     if command[:2] == ["npm", "exec"] and "verify" in command:
+        backend = npm_exec_backend()
         return {
             "command": command,
             "returncode": 0,
-            "stdout": "[agents] ok: target root is ready\n",
+            "stdout": f"[{backend}] ok: target root is ready\n",
             "stderr": "",
             "passed": True,
         }
