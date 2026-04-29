@@ -1440,6 +1440,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("install", completed.stdout)
         self.assertIn("update", completed.stdout)
         self.assertIn("tui", completed.stdout)
+        self.assertIn("--github-archive-sha256 SHA256", completed.stdout)
         self.assertEqual(completed.stderr, "")
 
     def test_local_npm_installer_bin_version_reports_package_version(self) -> None:
@@ -2008,6 +2009,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("install", exec_completed.stdout)
         self.assertIn("update", exec_completed.stdout)
         self.assertIn("tui", exec_completed.stdout)
+        self.assertIn("--github-archive-sha256 SHA256", exec_completed.stdout)
         self.assertEqual(exec_completed.stderr, "")
 
     def test_local_npm_packed_tarball_diagnose_uses_repo_root_override(self) -> None:

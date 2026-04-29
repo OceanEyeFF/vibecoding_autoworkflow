@@ -15,6 +15,12 @@ from scope_gate_check import check_scope, normalize_status_path
 from gate_status_backfill import update_state
 
 
+def test_local_deploy_target_roots_match_supported_verify_backends() -> None:
+    assert set(closeout_acceptance_gate.LOCAL_DEPLOY_TARGET_ROOTS) == set(
+        closeout_acceptance_gate.SUPPORTED_DEPLOY_VERIFY_BACKENDS
+    )
+
+
 NPM_HELP_STDOUT = (
     "usage: aw-installer [tui|<deploy-mode>] [options]\n"
     "harness_deploy.py\n"

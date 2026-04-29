@@ -20,7 +20,6 @@ WORKFLOW_ID = "closeout-governance-task-list-20260402"
 LOCAL_DEPLOY_TARGET_ROOTS = {
     "agents": REPO_ROOT / ".agents" / "skills",
     "claude": REPO_ROOT / ".claude" / "skills",
-    "opencode": REPO_ROOT / ".opencode" / "skills",
 }
 SUPPORTED_DEPLOY_VERIFY_BACKENDS = ("agents", "claude")
 DEPLOY_VERIFY_ENTRYPOINTS = (
