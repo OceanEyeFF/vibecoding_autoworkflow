@@ -1697,6 +1697,20 @@ class AdapterDeployTest(unittest.TestCase):
             with self.assertRaisesRegex(adapter_deploy.DeployError, "managed install pruning"):
                 adapter_deploy.prune_all_managed_target_dirs("agents", prune_args, self.context)
 
+    def test_agents_root_override_is_validated_with_protected_root_guardrails(self) -> None:
+        code, _, stderr = self._run_cli(
+            "diagnose",
+            "--backend",
+            "agents",
+            "--agents-root",
+            "/etc",
+            "--json",
+        )
+
+        self.assertEqual(code, 1)
+        self.assertIn("Target repo root is protected", stderr)
+        self.assertIn("/etc", stderr)
+
     def test_update_plan_summary_reuses_bindings_and_target_root_scan(self) -> None:
         code, _, stderr = self._install()
         self.assertEqual(code, 0, stderr)

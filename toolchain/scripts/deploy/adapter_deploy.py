@@ -522,7 +522,7 @@ def iter_backends(selected: str) -> list[str]:
 
 def target_root_for(backend: str, args: argparse.Namespace, context: DeployContext) -> Path:
     if backend == "agents" and args.agents_root is not None:
-        return args.agents_root
+        return validate_target_repo_root(args.agents_root, context.source_root)
     try:
         return context.local_target_roots[backend]
     except KeyError as exc:
