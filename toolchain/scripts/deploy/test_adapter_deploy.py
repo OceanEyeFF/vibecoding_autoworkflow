@@ -43,8 +43,8 @@ class AdapterDeployTest(unittest.TestCase):
             os.environ,
             {
                 "NPM_CONFIG_CACHE": str(self.npm_state_root / "cache"),
-                "NPM_CONFIG_TMP": str(self.npm_state_root / "tmp"),
                 "NPM_CONFIG_USERCONFIG": str(self.npm_state_root / "npmrc"),
+                "TMPDIR": str(self.npm_state_root / "tmp"),
             },
             clear=False,
         )
