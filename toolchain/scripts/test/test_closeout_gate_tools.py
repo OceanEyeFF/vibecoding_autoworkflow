@@ -15,13 +15,39 @@ from scope_gate_check import check_scope, normalize_status_path
 from gate_status_backfill import update_state
 
 
-NPM_HELP_STDOUT = "usage: aw-installer\nharness_deploy.py\ntui\ninstall\nverify\ndiagnose\nupdate\n"
-NPM_VERSION = "0.4.0-rc.2"
+def test_local_deploy_target_roots_match_supported_verify_backends() -> None:
+    assert set(closeout_acceptance_gate.LOCAL_DEPLOY_TARGET_ROOTS) == set(
+        closeout_acceptance_gate.SUPPORTED_DEPLOY_VERIFY_BACKENDS
+    )
+
+
+NPM_HELP_STDOUT = (
+    "usage: aw-installer [tui|<deploy-mode>] [options]\n"
+    "harness_deploy.py\n"
+    "adapter_deploy.py\n"
+    "tui\n"
+    "diagnose --backend agents|claude\n"
+    "verify --backend agents|claude\n"
+    "install --backend agents|claude\n"
+    "update --backend agents|claude\n"
+    "prune --all --backend agents|claude\n"
+    "check_paths_exist --backend agents|claude\n"
+)
+NPM_VERSION = "0.4.1-rc.2"
 NPM_VERSION_STDOUT = f"aw-installer {NPM_VERSION}\n"
 
 
 def write_root_package_json(repo_root: Path, version: str = NPM_VERSION) -> None:
     (repo_root / "package.json").write_text(
+        json.dumps({"name": "aw-installer", "version": version}),
+        encoding="utf-8",
+    )
+
+
+def write_deploy_package_json(repo_root: Path, version: str = NPM_VERSION) -> None:
+    package_path = repo_root / "toolchain" / "scripts" / "deploy" / "package.json"
+    package_path.parent.mkdir(parents=True, exist_ok=True)
+    package_path.write_text(
         json.dumps({"name": "aw-installer", "version": version}),
         encoding="utf-8",
     )
@@ -614,12 +640,15 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
         for command in commands
         if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]
     ]
-    assert len(deploy_verify_commands) == 2
+    assert len(deploy_verify_commands) == 4
     assert {Path(command[1]).name for command in deploy_verify_commands} == {
         "adapter_deploy.py",
         "harness_deploy.py",
     }
-    assert all(command[-2:] == ["--backend", "agents"] for command in deploy_verify_commands)
+    assert {tuple(command[-2:]) for command in deploy_verify_commands} == {
+        ("--backend", "agents"),
+        ("--backend", "claude"),
+    }
     assert all("--target" not in command for command in deploy_verify_commands)
 
 
@@ -660,7 +689,12 @@ def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path)
     deploy_results = {
         item["name"]: item for item in result["subchecks"] if item["name"].startswith("deploy_verify_")
     }
-    assert set(deploy_results) == {"deploy_verify_adapter_agents", "deploy_verify_wrapper_agents"}
+    assert set(deploy_results) == {
+        "deploy_verify_adapter_agents",
+        "deploy_verify_wrapper_agents",
+        "deploy_verify_adapter_claude",
+        "deploy_verify_wrapper_claude",
+    }
     assert all(item["passed"] is True for item in deploy_results.values())
     assert all(item["skipped"] is True for item in deploy_results.values())
     assert any("adapter_deploy.py" in command[1] for command in commands)
@@ -803,6 +837,33 @@ def test_run_test_gate_fails_on_invalid_root_package_json(monkeypatch, tmp_path)
     assert version_result["name"] == "root_package_version_metadata"
     assert version_result["passed"] is False
     assert "invalid root package.json version metadata" in version_result["stderr"]
+
+
+def test_run_test_gate_fails_on_mismatched_deploy_package_version(monkeypatch, tmp_path) -> None:
+    write_root_package_json(tmp_path, version=NPM_VERSION)
+    write_deploy_package_json(tmp_path, version=f"{NPM_VERSION}.mismatch")
+
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
+        npm_result = successful_npm_command_result(command, extra_env, cwd)
+        if npm_result is not None:
+            return npm_result
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is False
+    version_result = result["subchecks"][0]
+    assert version_result["name"] == "root_package_version_metadata"
+    assert version_result["passed"] is False
+    assert "root package.json version must match toolchain/scripts/deploy/package.json" in version_result["stderr"]
 
 
 def test_run_test_gate_fails_on_npm_tarball_exec_failure(monkeypatch, tmp_path) -> None:

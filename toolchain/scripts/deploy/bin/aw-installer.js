@@ -65,27 +65,35 @@ semantics.
 
 commands:
   tui                         open the interactive installer shell
-  diagnose --backend agents   print a read-only deploy status summary
-  verify --backend agents     run strict read-only deploy verification
-  install --backend agents    install the current source payload
-  update --backend agents     print an update dry-run plan
+  diagnose --backend agents|claude
+                              print a read-only deploy status summary
+  verify --backend agents|claude
+                              run strict read-only deploy verification
+  install --backend agents|claude
+                              install the current source payload
+  update --backend agents|claude
+                              print an update dry-run plan
   update --backend agents --yes
                               apply the explicit update plan
-  update --backend agents --source github --github-ref master
-                              update from the approved GitHub source archive
-  prune --all --backend agents
+  update --backend agents --source github --github-ref REF
+                              update from a GitHub source archive containing current payloads
+  prune --all --backend agents|claude
                               remove managed installs for the backend
-  check_paths_exist --backend agents
+  check_paths_exist --backend agents|claude
                               scan write paths before install
 
 options:
   -h, --help                  show this help message
   -V, --version               show package version
   --source package|github     select package-local or GitHub update source
+  --agents-root PATH          override the managed agents skills target root
+  --claude-root PATH          override the managed Claude skills target root
   --github-repo OWNER/REPO    GitHub source repository for --source github
                               defaults from AW_INSTALLER_GITHUB_REPO,
                               GITHUB_REPOSITORY, then upstream repo
   --github-ref REF            GitHub branch/ref for --source github
+  --github-archive-sha256 SHA256
+                              optional SHA256 digest for the GitHub source archive
 `);
 }
 

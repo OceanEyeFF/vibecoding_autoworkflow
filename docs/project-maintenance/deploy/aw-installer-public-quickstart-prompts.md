@@ -18,7 +18,7 @@ This page belongs to [Deploy Runbooks](./README.md). It uses the current distrib
 - direct_npx_available: true
 - direct_npx_primary_path: `aw-installer@next`
 - registry_rc_available: true
-- npm_publish_allowed: completed-for-0.4.0-rc.2-next; rc3-candidate-not-yet-published
+- npm_publish_allowed: completed-for-0.4.0-rc.3-next; 0.4.1-rc.2-candidate-not-yet-published
 - package_name_decided: true
 - approved_package_name: unscoped `aw-installer`
 - current_install_source: published `aw-installer@next`, local `.tgz` package, or explicit source checkout
@@ -37,7 +37,7 @@ Prerequisites:
 - Python is available for the wrapper. The current wrapper tries `py -3`, `python`, then `python3` on Windows, and `python3` then `python` on Linux/macOS. It intentionally ignores `PYTHON` and `PYTHON3` environment overrides.
 - The target repository is a git worktree you are allowed to modify.
 - You have registry access to `aw-installer`, a local `aw-installer` `.tgz` package from the maintainer, or an explicit AW source checkout path.
-- You understand that the current public trial path is RC pre-release: `aw-installer@next` currently resolves to `0.4.0-rc.2` on npm `next`, while bare `aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`. Stable release semantics still require separate approval.
+- You understand that the current public trial path is RC pre-release: `aw-installer@next` currently resolves to `0.4.0-rc.3` on npm `next`, while bare `aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`. Stable release semantics still require separate approval.
 
 Privacy rule:
 
@@ -73,7 +73,7 @@ printf 'AW_INSTALLER_PACKAGE=%s\n' "$AW_INSTALLER_PACKAGE"
 External testers who receive a `.tgz` can skip this step and set:
 
 ```bash
-AW_INSTALLER_PACKAGE="/path/to/aw-installer-0.4.0-rc.3.tgz"
+AW_INSTALLER_PACKAGE="/path/to/aw-installer-0.4.1-rc.2.tgz"
 ```
 
 The exact filename may differ. Prefer `aw-installer@next` for published RC registry npx trials and local `.tgz` when validating the current checkout or when registry access is unavailable.
@@ -145,9 +145,11 @@ If Codex does not recognize `$set-harness-goal-skill`, first confirm `verify --b
 
 ## Claude Code Quickstart
 
-Use this path only for the current Claude Code compatibility trial. The repository does not provide a stable `adapter_deploy.py --backend claude` contract.
+Use this path only for the current Claude Code compatibility trial. The repository provides a bounded `adapter_deploy.py --backend claude` compatibility contract for `set-harness-goal-skill`; it is not the full `agents` mainline.
 
-From the AW source checkout, install the Claude project-level cold-start helper into the target repository:
+Claude compatibility requires an install source that contains `product/harness/adapters/claude/skills`. Until the published selector is verified for that payload, use an explicit source checkout or maintainer-provided local `.tgz` rather than assuming every registry selector contains the Claude lane.
+
+From the AW source checkout, install the Claude project-level cold-start helper into the target repository. The helper path remains the most explicit cold-start route:
 
 ```bash
 AW_SOURCE_REPO="/path/to/vibecoding_autoworkflow"
@@ -156,6 +158,16 @@ TARGET_REPO="/path/to/target-project"
 PYTHONDONTWRITEBYTECODE=1 python3 "$AW_SOURCE_REPO/product/harness/skills/set-harness-goal-skill/scripts/deploy_aw.py" \
   install-claude-skill \
   --deploy-path "$TARGET_REPO"
+```
+
+The equivalent managed adapter path is:
+
+```bash
+AW_HARNESS_TARGET_REPO_ROOT="$TARGET_REPO" \
+PYTHONDONTWRITEBYTECODE=1 python3 "$AW_SOURCE_REPO/toolchain/scripts/deploy/adapter_deploy.py" install --backend claude
+
+AW_HARNESS_TARGET_REPO_ROOT="$TARGET_REPO" \
+PYTHONDONTWRITEBYTECODE=1 python3 "$AW_SOURCE_REPO/toolchain/scripts/deploy/adapter_deploy.py" verify --backend claude
 ```
 
 Then open Claude Code in the target repository and paste:
@@ -172,7 +184,7 @@ Requirements:
 - Use the project-level `aw-set-harness-goal-skill` entry.
 - Create the minimal `.aw/goal-charter.md`, `.aw/control-state.md`, and `.aw/repo/snapshot-status.md` artifacts if they do not exist.
 - Preserve existing source code and docs.
-- Do not call `adapter_deploy.py --backend claude`; this repository does not provide that stable adapter.
+- If using `adapter_deploy.py --backend claude`, treat it as the bounded `set-harness-goal-skill` compatibility path, not full Claude backend support.
 - Do not run npm publish.
 - Prefer `aw-installer@next` for the published RC registry trial path; bare `aw-installer` still resolves to the older `latest` path.
 

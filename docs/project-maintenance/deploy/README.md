@@ -20,6 +20,7 @@
 | 我想准备外部试用目标清单和反馈字段 | [aw-installer-external-trial-feedback.md](./aw-installer-external-trial-feedback.md) | 定义试用反馈字段、隐私边界和下一主要矛盾判定标准 |
 | 我想看 `aw-installer` payload 从哪里来、`update` 信任边界在哪里 | [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md) | 定义 package payload、source/target root override、当前 update 边界与未来远程更新准入 |
 | 我想看 `agents` canonical-copy payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | 定义 `product/harness/adapters/agents/skills/` 的 payload descriptor 结构，以及 target 如何复制 canonical skill 内容 |
+| 我想看 `claude` compatibility payload source 怎么组织 | [claude-adapter-source.md](./claude-adapter-source.md) | 定义 `product/harness/adapters/claude/skills/` 的首个 payload descriptor、`.claude/skills` target 和 compatibility lane 边界 |
 | 我想初始化 `.aw/` 样例并校验 `.aw_template` 最小结构 | [template-tooling-mvp.md](./template-tooling-mvp.md) | B2 的最小工作面，只做 `.aw_template -> .aw` 样例生成与前置校验 |
 | 我想理解 `.aw_template/` 的模板消费边界 | [template-consumption-spec.md](./template-consumption-spec.md) | 定义 `.aw_template/` 中哪些内容属于 `.aw/` 运行管理面，哪些只是待迁移模板 |
 | 我想把已有代码库接入 Harness 初始化流程 | [existing-code-adoption.md](./existing-code-adoption.md) | 定义 `.aw/repo/discovery-input.md` 作为只读事实输入，不作为 goal truth |
@@ -35,25 +36,25 @@
 
 ## 当前执行边界
 
-- 当前 deploy 工具只实现 `agents` backend。
+- 当前 deploy 工具实现 `agents` backend，并提供 `claude` compatibility backend 的首个受控 payload：`set-harness-goal-skill`。
 - operator-facing 主流程固定为三步：
   - `prune --all`
   - `check_paths_exist`
-  - `install --backend agents`
+  - `install --backend <backend>`
 - `prune --all` 只删除 resolved backend target root 下、带可识别且属于当前 backend 的受管 `aw.marker` 目录；无 marker、marker 不可识别或 foreign 目录一律不碰。
 - `check_paths_exist` 基于当前 source 声明的 live bindings 解析目标路径；只要任一路径已存在，就全量列出冲突并失败退出，不做任何业务写入。
-- `install --backend agents` 只写当前 source 声明的 live payload；若存在重复 `target_dir`、路径冲突或其他 source 非法情形，必须在写入前失败。
-- `diagnose --backend agents --json` 是只读状态摘要命令，用于输出 source / target / issue code / conflict / unrecognized 摘要，发现 issue 时仍以 0 退出。
-- `verify --backend agents` 是只读严格复验命令，用于检查 source 合法性、target root 状态、live install 对齐，以及 conflict / unrecognized 情形，发现 issue 时非零退出。
-- `update --backend agents` 默认只输出 dry-run plan；`update --backend agents --yes` 是同一三步 destructive reinstall 加严格复验的 one-shot 包装。
+- `install --backend <backend>` 只写当前 source 声明的 live payload；若存在重复 `target_dir`、路径冲突或其他 source 非法情形，必须在写入前失败。
+- `diagnose --backend <backend> --json` 是只读状态摘要命令，用于输出 source / target / issue code / conflict / unrecognized 摘要，发现 issue 时仍以 0 退出。
+- `verify --backend <backend>` 是只读严格复验命令，用于检查 source 合法性、target root 状态、live install 对齐，以及 conflict / unrecognized 情形，发现 issue 时非零退出。
+- `update --backend <backend>` 默认只输出 dry-run plan；`update --backend <backend> --yes` 是同一三步 destructive reinstall 加严格复验的 one-shot 包装。
 - `update` 只阻塞占用 planned / known AW target path 的 unrecognized / foreign 内容；无关用户目录由 AW deploy 保持不动。
 - 本地 `harness_deploy.py` thin wrapper、根目录 `package.json` 的 self-contained `aw-installer` package envelope、`toolchain/scripts/deploy/package.json` 的本地 scaffold、`aw-installer tui` shell、`aw-harness-deploy` 兼容别名与目标 `npx aw-installer` wrapper 必须保持 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 中定义的只读、严格复验、三步 destructive reinstall，以及 CLI + TUI 双模式语义。
-- 当前 registry 事实由 [aw-installer Release Channel Contract](./release-channel-contract.md) 承接：`next` 当前指向 `0.4.0-rc.2`，`latest` 仍指向 `0.4.0-rc.1`；当前 checkout 的 rc3 candidate 需要后续通过 develop PR 进入 GitHub master 后再发布到 `next`。
+- 当前 registry 事实由 [aw-installer Release Channel Contract](./release-channel-contract.md) 承接：`next` 当前指向 `0.4.0-rc.3`，`latest` 仍指向 `0.4.0-rc.1`；当前 checkout 的 `0.4.1-rc.2` candidate 需要后续通过 develop PR 进入 GitHub master 后再发布到 `next`。
 - 后续真实 npm publish 还必须满足 [aw-installer Release Channel Contract](./release-channel-contract.md)；发布操作模型见 [aw-installer Release Operation Model](./aw-installer-release-operation-model.md)。npm-side Trusted Publisher 设置、未来 publish、stable/latest 语义仍需单独审批。
 - `aw-installer` 的 payload provenance 与 update trust boundary 见 [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md)；当前 `update` 只准入 package-local source 与显式 GitHub source archive，不做 channel 解析、验签、自升级或自动回滚。
 - `aw.marker` 是 runtime-generated artifact，只用于标识“这是当前 backend 受管的 live install 目录”；它不是 source truth，也不是历史接管记录。
 - deploy target 不是 source of truth。skills / payload source 的正式 owner 仍在 `product/`。
-- Claude skills 分发当前只作为慢车道兼容项保留；Claude smoke/runbook 不能替代 `agents` deploy backend 合同，也不能把 `claude` 写成已实现 deploy backend。
+- Claude skills 分发当前只作为慢车道兼容项保留；`claude` backend 当前只准入 `set-harness-goal-skill` 的 canonical-copy payload，不能替代 `agents` 主路径，也不能把 Claude compatibility lane 写成完整 Harness skill set 分发。
 - 当前 B2 初始化工具只处理 `.aw_template -> .aw` 样例，不消费 payload descriptor、不生成 deploy payload，也不写入 deploy target。
 - Existing Code Project Adoption 的 `.aw/repo/discovery-input.md` 是只读事实输入，不是 `goal-charter.md` 的替代物。
 - `docs/harness/` 继续承接 Harness doctrine；deploy 文档只定义 operator-facing deploy 合同。

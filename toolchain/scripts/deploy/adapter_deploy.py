@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Runtime install and verify endpoints for agents skill payload targets."""
+"""Runtime install and verify endpoints for Harness skill payload targets."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ import urllib.request
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Iterator, Mapping, Sequence
 
 
 class DeployError(RuntimeError):
@@ -27,7 +27,9 @@ class DeployError(RuntimeError):
 GITHUB_REPO_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 GITHUB_REF_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$")
 GITHUB_SHA_REF_PATTERN = re.compile(r"^[0-9a-fA-F]{40}$")
+SHA256_HEX_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
 DEFAULT_GITHUB_REPO = "OceanEyeFF/vibecoding_autoworkflow"
+SUPPORTED_BACKENDS = ("agents", "claude")
 
 
 def path_is_relative_to(path: Path, parent: Path) -> bool:
@@ -103,6 +105,7 @@ def validate_target_repo_root(path: Path, source_root: Path) -> Path:
 def required_source_repo_root_paths(source_root: Path) -> tuple[Path, ...]:
     return (
         source_root / "product" / "harness" / "adapters" / "agents" / "skills",
+        source_root / "product" / "harness" / "adapters" / "claude" / "skills",
         source_root / "product" / "harness" / "skills",
     )
 
@@ -133,6 +136,8 @@ def resolve_repo_root() -> Path:
     """Resolve the source root that owns canonical Harness payload files."""
 
     override = os.environ.get("AW_HARNESS_REPO_ROOT")
+    # Empty overrides intentionally fall back to package-local resolution. CI
+    # uses this to verify packaged CLI behavior from a throwaway target repo.
     if override:
         return validate_source_repo_root(Path(override))
     return validate_source_repo_root(Path(__file__).resolve().parents[3])
@@ -180,9 +185,11 @@ def build_deploy_context(
         target_repo_root=target_repo_root,
         local_target_roots={
             "agents": target_repo_root / ".agents" / "skills",
+            "claude": target_repo_root / ".claude" / "skills",
         },
         adapter_skill_dirs={
             "agents": source_root / "product" / "harness" / "adapters" / "agents" / "skills",
+            "claude": source_root / "product" / "harness" / "adapters" / "claude" / "skills",
         },
         source_kind=source_kind,
         source_ref=source_ref,
@@ -215,13 +222,39 @@ def deploy_context_from_env(
 
 EXPECTED_PAYLOAD_POLICIES = {
     "agents": "canonical-copy",
+    "claude": "canonical-copy",
 }
 EXPECTED_REFERENCE_DISTRIBUTION = {
     "agents": "copy-listed-canonical-paths",
+    "claude": "copy-listed-canonical-paths",
 }
 EXPECTED_PAYLOAD_VERSIONS = {
     "agents": "agents-skill-payload.v1",
+    "claude": "claude-skill-payload.v1",
 }
+BACKEND_TARGET_ROOT_ARGS = {
+    "agents": "agents_root",
+    "claude": "claude_root",
+}
+
+
+def validate_supported_backend_map(name: str, mapping: Mapping[str, object]) -> None:
+    supported = set(SUPPORTED_BACKENDS)
+    configured = set(mapping)
+    if configured != supported:
+        missing = ", ".join(sorted(supported - configured)) or "none"
+        extra = ", ".join(sorted(configured - supported)) or "none"
+        raise RuntimeError(
+            f"{name} must define exactly SUPPORTED_BACKENDS; missing: {missing}; extra: {extra}"
+        )
+
+
+validate_supported_backend_map("EXPECTED_PAYLOAD_POLICIES", EXPECTED_PAYLOAD_POLICIES)
+validate_supported_backend_map("EXPECTED_REFERENCE_DISTRIBUTION", EXPECTED_REFERENCE_DISTRIBUTION)
+validate_supported_backend_map("EXPECTED_PAYLOAD_VERSIONS", EXPECTED_PAYLOAD_VERSIONS)
+validate_supported_backend_map("BACKEND_TARGET_ROOT_ARGS", BACKEND_TARGET_ROOT_ARGS)
+
+PAYLOAD_DESCRIPTOR = "payload.json"
 MANAGED_SKILL_MARKER = "aw.marker"
 MANAGED_SKILL_MARKER_VERSION = "aw-managed-skill-marker.v2"
 UNRECOGNIZED_ISSUE_CODES = {
@@ -326,18 +359,19 @@ class PathConflict:
 def add_backend_args(subparser: argparse.ArgumentParser) -> None:
     subparser.add_argument(
         "--backend",
-        choices=("agents",),
+        choices=SUPPORTED_BACKENDS,
         default="agents",
-        help="Which backend target to operate on. Only agents is implemented.",
+        help="Which backend target to operate on.",
     )
 
 
 def add_target_override_args(subparser: argparse.ArgumentParser) -> None:
-    subparser.add_argument(
-        "--agents-root",
-        type=Path,
-        help="Override the managed agents skills target root.",
-    )
+    for backend, argument_name in BACKEND_TARGET_ROOT_ARGS.items():
+        subparser.add_argument(
+            f"--{argument_name.replace('_', '-')}",
+            type=Path,
+            help=f"Override the managed {backend} skills target root.",
+        )
 
 
 def default_github_repo() -> str:
@@ -367,6 +401,14 @@ def add_update_source_args(subparser: argparse.ArgumentParser) -> None:
         "--github-ref",
         default="master",
         help="GitHub branch or ref to use when --source github is selected.",
+    )
+    subparser.add_argument(
+        "--github-archive-sha256",
+        default="",
+        help=(
+            "Optional SHA256 digest for the downloaded GitHub source archive. "
+            "When set, update rejects archives whose digest does not match."
+        ),
     )
 
 
@@ -449,20 +491,46 @@ def validate_github_ref(value: str) -> str:
     return value
 
 
-def normalize_zip_member_path(member_name: str) -> str:
-    windows_path = PureWindowsPath(member_name)
+def validate_sha256_digest(value: str) -> str:
+    if not SHA256_HEX_PATTERN.fullmatch(value):
+        raise DeployError(f"SHA256 digest must be 64 hexadecimal characters: {value}")
+    return value.lower()
+
+
+def normalize_safe_relative_path(
+    value: str,
+    *,
+    absolute_error: str,
+    empty_error: str,
+    invalid_segment_error: Callable[[str], str],
+) -> str:
+    windows_path = PureWindowsPath(value)
     if (
-        PurePosixPath(member_name).is_absolute()
+        PurePosixPath(value).is_absolute()
         or windows_path.is_absolute()
         or bool(windows_path.drive)
         or bool(windows_path.root)
     ):
-        raise DeployError(f"GitHub archive contains unsafe path: {member_name}")
+        raise DeployError(absolute_error)
 
-    segments = [segment for segment in member_name.replace("\\", "/").split("/") if segment]
-    if not segments or any(segment in (".", "..") for segment in segments):
-        raise DeployError(f"GitHub archive contains unsafe path: {member_name}")
+    segments = [segment for segment in value.replace("\\", "/").split("/") if segment]
+    if not segments:
+        raise DeployError(empty_error)
+
+    invalid_segment = next((segment for segment in segments if segment in (".", "..")), None)
+    if invalid_segment is not None:
+        raise DeployError(invalid_segment_error(invalid_segment))
     return PurePosixPath(*segments).as_posix()
+
+
+def normalize_zip_member_path(member_name: str) -> str:
+    unsafe_message = f"GitHub archive contains unsafe path: {member_name}"
+    return normalize_safe_relative_path(
+        member_name,
+        absolute_error=unsafe_message,
+        empty_error=unsafe_message,
+        invalid_segment_error=lambda _segment: unsafe_message,
+    )
 
 
 def safe_extract_zip(zip_path: Path, destination: Path) -> None:
@@ -490,11 +558,18 @@ def safe_extract_zip(zip_path: Path, destination: Path) -> None:
                 with archive.open(member) as source, member_path.open("wb") as output:
                     shutil.copyfileobj(source, output)
 
-            for child in Path(staging_dir).iterdir():
-                target_path = destination / child.name
-                if path_exists_or_is_symlink(target_path):
-                    raise DeployError(f"GitHub archive extraction target already exists: {target_path}")
-                shutil.move(str(child), target_path)
+            try:
+                destination.rmdir()
+            except OSError as exc:
+                raise DeployError(
+                    f"GitHub archive extraction destination must remain empty: {destination}"
+                ) from exc
+            try:
+                os.replace(staging_root, destination)
+            except OSError as exc:
+                raise DeployError(
+                    f"GitHub archive extraction target could not be finalized: {destination}: {exc}"
+                ) from exc
 
 
 def extracted_archive_root(destination: Path) -> Path:
@@ -517,9 +592,12 @@ def github_archive_ref_path(ref: str) -> str:
 
 
 @contextlib.contextmanager
-def github_source_root(repo: str, ref: str) -> Iterator[Path]:
+def github_source_root(repo: str, ref: str, archive_sha256: str = "") -> Iterator[Path]:
     safe_repo = validate_github_repo(repo)
     safe_ref = validate_github_ref(ref)
+    expected_archive_sha256 = (
+        validate_sha256_digest(archive_sha256) if archive_sha256 else ""
+    )
     encoded_ref = urllib.parse.quote(github_archive_ref_path(safe_ref), safe="/")
     archive_url = f"https://codeload.github.com/{safe_repo}/zip/{encoded_ref}"
 
@@ -534,6 +612,14 @@ def github_source_root(repo: str, ref: str) -> Iterator[Path]:
             raise DeployError(
                 f"Failed to download GitHub source archive {safe_repo}@{safe_ref}: {exc}"
             ) from exc
+
+        if expected_archive_sha256:
+            actual_archive_sha256 = hashlib.sha256(zip_path.read_bytes()).hexdigest()
+            if actual_archive_sha256 != expected_archive_sha256:
+                raise DeployError(
+                    "GitHub source archive SHA256 mismatch: "
+                    f"expected {expected_archive_sha256}, got {actual_archive_sha256}"
+                )
 
         extract_root = temp_root / "extract"
         extract_root.mkdir()
@@ -551,7 +637,8 @@ def source_root_for_args(args: argparse.Namespace) -> Iterator[tuple[Path | None
     if args.source == "github":
         repo = getattr(args, "github_repo", "")
         ref = getattr(args, "github_ref", "")
-        with github_source_root(repo, ref) as source_root:
+        archive_sha256 = getattr(args, "github_archive_sha256", "")
+        with github_source_root(repo, ref, archive_sha256) as source_root:
             yield source_root, "github", f"{repo}@{ref}"
         return
 
@@ -563,8 +650,11 @@ def iter_backends(selected: str) -> list[str]:
 
 
 def target_root_for(backend: str, args: argparse.Namespace, context: DeployContext) -> Path:
-    if backend == "agents" and args.agents_root is not None:
-        return validate_target_repo_root(args.agents_root, context.source_root)
+    target_root_arg = BACKEND_TARGET_ROOT_ARGS.get(backend)
+    if target_root_arg:
+        target_root = getattr(args, target_root_arg, None)
+        if target_root is not None:
+            return validate_target_repo_root(target_root, context.source_root)
     try:
         return context.local_target_roots[backend]
     except KeyError as exc:
@@ -656,7 +746,7 @@ def collect_skill_bindings(backend: str, context: DeployContext) -> list[SkillBi
             backend=backend,
             skill_id=skill_id,
             payload_dir=adapter_dir / skill_id,
-            payload_path=adapter_dir / skill_id / "payload.json",
+            payload_path=adapter_dir / skill_id / PAYLOAD_DESCRIPTOR,
         )
         for skill_id in skill_ids
     ]
@@ -702,28 +792,16 @@ def normalize_relative_path(
     skill_id: str,
     root_description: str,
 ) -> str:
-    windows_path = PureWindowsPath(value)
-    if (
-        PurePosixPath(value).is_absolute()
-        or windows_path.is_absolute()
-        or bool(windows_path.drive)
-        or bool(windows_path.root)
-    ):
-        raise DeployError(
+    return normalize_safe_relative_path(
+        value,
+        absolute_error=(
             f"{field_name} must stay within the {root_description} for skill {skill_id}: {value}"
-        )
-
-    segments = [segment for segment in value.replace("\\", "/").split("/") if segment]
-    if not segments:
-        raise DeployError(f"{field_name} must be a non-empty relative path for skill {skill_id}")
-
-    invalid_segment = next((segment for segment in segments if segment in (".", "..")), None)
-    if invalid_segment is not None:
-        raise DeployError(
+        ),
+        empty_error=f"{field_name} must be a non-empty relative path for skill {skill_id}",
+        invalid_segment_error=lambda invalid_segment: (
             f"{field_name} must not contain {invalid_segment!r} path segments for skill {skill_id}: {value}"
-        )
-
-    return PurePosixPath(*segments).as_posix()
+        ),
+    )
 
 
 def normalize_relative_target_path(value: str, *, field_name: str, skill_id: str) -> str:
@@ -796,9 +874,9 @@ def payload_target_metadata(payload: dict[str, Any], binding: SkillBinding) -> P
             f"required_payload_files for skill {binding.skill_id}"
         )
 
-    if "payload.json" not in normalized_required_payload_files:
+    if PAYLOAD_DESCRIPTOR not in normalized_required_payload_files:
         raise DeployError(
-            f"payload required_payload_files must include payload.json for skill {binding.skill_id}"
+            f"payload required_payload_files must include {PAYLOAD_DESCRIPTOR} for skill {binding.skill_id}"
         )
 
     if MANAGED_SKILL_MARKER not in normalized_required_payload_files:
@@ -1007,7 +1085,7 @@ def source_path_for_target_relative_file(
     *,
     payload: dict[str, Any] | None = None,
 ) -> Path:
-    if relative_name == "payload.json":
+    if relative_name == PAYLOAD_DESCRIPTOR:
         return binding.payload_path
     if relative_name == MANAGED_SKILL_MARKER:
         raise DeployError(f"{MANAGED_SKILL_MARKER} is runtime-generated for skill {binding.skill_id}")
@@ -1024,6 +1102,51 @@ def source_path_for_target_relative_file(
             f"payload required file {relative_name} is not declared in payload canonical_paths "
             f"for skill {binding.skill_id}"
         ) from exc
+
+
+def collect_payload_fingerprint_source_files(
+    binding: SkillBinding,
+    context: DeployContext,
+    target_metadata: PayloadTargetMetadata,
+    *,
+    payload: dict[str, Any],
+) -> list[tuple[str, Path, os.stat_result]]:
+    source_files: list[tuple[str, Path, os.stat_result]] = []
+    for relative_name in target_metadata.required_payload_files:
+        if relative_name in (MANAGED_SKILL_MARKER, PAYLOAD_DESCRIPTOR):
+            continue
+        source_path = source_path_for_target_relative_file(
+            binding,
+            relative_name,
+            context,
+            payload=payload,
+        )
+        try:
+            source_stat = source_path.stat()
+        except FileNotFoundError as exc:
+            raise DeployError(
+                f"Missing payload source file while computing fingerprint: {exc.filename}"
+            ) from exc
+        source_files.append((relative_name, source_path, source_stat))
+    return source_files
+
+
+def payload_fingerprint_cache_key(
+    binding: SkillBinding,
+    *,
+    payload_text: str,
+    source_files: Sequence[tuple[str, Path, os.stat_result]],
+) -> tuple[object, ...]:
+    return (
+        binding.backend,
+        binding.skill_id,
+        str(binding.payload_path),
+        payload_text,
+        tuple(
+            (relative_name, str(source_path), source_stat.st_mtime_ns, source_stat.st_size)
+            for relative_name, source_path, source_stat in source_files
+        ),
+    )
 
 
 def compute_payload_fingerprint(
@@ -1054,33 +1177,16 @@ def compute_payload_fingerprint(
         f"payload_version={payload_version}\n"
     ]
 
-    source_files: list[tuple[str, Path, os.stat_result]] = []
-    for relative_name in target_metadata.required_payload_files:
-        if relative_name == MANAGED_SKILL_MARKER:
-            continue
-        source_path = source_path_for_target_relative_file(
-            binding,
-            relative_name,
-            context,
-            payload=payload,
-        )
-        try:
-            source_stat = source_path.stat()
-        except FileNotFoundError as exc:
-            raise DeployError(
-                f"Missing payload source file while computing fingerprint: {exc.filename}"
-            ) from exc
-        source_files.append((relative_name, source_path, source_stat))
-
-    cache_key = (
-        binding.backend,
-        binding.skill_id,
-        str(binding.payload_path),
-        payload_text,
-        tuple(
-            (relative_name, str(source_path), source_stat.st_mtime_ns, source_stat.st_size)
-            for relative_name, source_path, source_stat in source_files
-        ),
+    source_files = collect_payload_fingerprint_source_files(
+        binding,
+        context,
+        target_metadata,
+        payload=payload,
+    )
+    cache_key = payload_fingerprint_cache_key(
+        binding,
+        payload_text=payload_text,
+        source_files=source_files,
     )
     cached_fingerprint = context.payload_fingerprint_cache.get(cache_key)
     if cached_fingerprint is not None:
@@ -1095,7 +1201,7 @@ def compute_payload_fingerprint(
             ) from exc
         fingerprint_parts.append(f"file:{relative_name}\n{source_text}\n")
 
-    fingerprint_parts.append(f"file:payload.json\n{payload_text}\n")
+    fingerprint_parts.append(f"file:{PAYLOAD_DESCRIPTOR}\n{payload_text}\n")
     fingerprint = hashlib.sha256("".join(fingerprint_parts).encode("utf-8")).hexdigest()
     context.payload_fingerprint_cache[cache_key] = fingerprint
     return fingerprint
@@ -1385,7 +1491,7 @@ def verify_source_binding(binding: SkillBinding, context: DeployContext) -> list
     else:
         expected_required_payload_files = [
             *(canonical_source.included_paths if canonical_source is not None else []),
-            "payload.json",
+            PAYLOAD_DESCRIPTOR,
             MANAGED_SKILL_MARKER,
         ]
         if target_metadata.required_payload_files != expected_required_payload_files:
@@ -1395,7 +1501,7 @@ def verify_source_binding(binding: SkillBinding, context: DeployContext) -> list
                     path=binding.payload_path,
                     detail=(
                         "payload required_payload_files must equal payload canonical_paths plus "
-                        "payload.json and aw.marker "
+                        f"{PAYLOAD_DESCRIPTOR} and {MANAGED_SKILL_MARKER} "
                         f"for skill {binding.skill_id}"
                     ),
                 )

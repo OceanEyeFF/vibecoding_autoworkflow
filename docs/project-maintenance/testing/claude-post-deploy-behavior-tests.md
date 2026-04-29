@@ -1,13 +1,13 @@
 ---
 title: "Claude Post-Deploy Behavior Tests"
 status: active
-updated: 2026-04-26
+updated: 2026-04-29
 owner: aw-kernel
-last_verified: 2026-04-26
+last_verified: 2026-04-29
 ---
 # Claude Post-Deploy Behavior Tests
 
-> 目的：给 Claude Code operator 一条隔离的 Harness runtime smoke 路径，用于确认 Claude 能读取项目级 skill entry，并能在临时 repo 中触发最小 `.aw/` 冷启动。本文不是 `claude` deploy adapter 合同。
+> 目的：给 Claude Code operator 一条隔离的 Harness runtime smoke 路径，用于确认 Claude 能读取项目级 skill entry，并能在临时 repo 中触发最小 `.aw/` 冷启动。本文补充 `claude` compatibility backend 行为测试，但不把 Claude 写成完整 Harness skill set 分发合同。
 
 先读：
 
@@ -17,11 +17,11 @@ last_verified: 2026-04-26
 
 ## 一、边界
 
-- 当前仓库不提供 `adapter_deploy.py --backend claude`。
-- 本 runbook 只覆盖 `set-harness-goal-skill/scripts/deploy_aw.py` 的 Claude 冷启动 helper。
+- 当前仓库提供受控的 `adapter_deploy.py --backend claude` compatibility lane，只覆盖 `set-harness-goal-skill` payload。
+- 本 runbook 覆盖 `adapter_deploy.py --backend claude` 的受管 payload smoke，以及 `set-harness-goal-skill/scripts/deploy_aw.py` 的 Claude 冷启动 helper。
 - 所有写入都必须发生在临时 repo 或明确指定的测试 worktree。
 - `.claude/skills/` 是 ignored repo-local deploy target / runtime mount，不是 source of truth。
-- 成功标准是 Claude runtime 能读取 skill entry，并生成最小 Harness control-plane artifacts；不代表完整多轮 Harness 行为已经验证。
+- 成功标准是 Claude runtime 能读取 skill entry，并生成最小 Harness control-plane artifacts；不代表完整多轮 Harness 行为或完整 Harness skill set 分发已经验证。
 
 ## 二、准备临时 repo
 
@@ -37,6 +37,16 @@ PYTHONDONTWRITEBYTECODE=1 python3 product/harness/skills/set-harness-goal-skill/
   --deploy-path "$TMP_REPO"
 ```
 
+也可以通过受管 adapter payload 安装同一个 skill：
+
+```bash
+AW_HARNESS_TARGET_REPO_ROOT="$TMP_REPO" \
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend claude
+
+AW_HARNESS_TARGET_REPO_ROOT="$TMP_REPO" \
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend claude
+```
+
 确认项目级 Claude skill 已安装：
 
 ```bash
@@ -47,7 +57,7 @@ find "$TMP_REPO/.claude/skills/aw-set-harness-goal-skill" -maxdepth 2 -type f | 
 
 - 至少存在 `SKILL.md`
 - 不出现 symlink 写入
-- 不需要当前仓库的 `adapter_deploy.py --backend claude`
+- 使用 helper 安装时不需要 `adapter_deploy.py --backend claude`；使用 adapter 安装时 target 目录还会包含 `payload.json` 与 `aw.marker`
 
 ## 三、Skill Entry 可读性 Smoke
 
@@ -70,7 +80,7 @@ claude --bare -p '/aw-set-harness-goal-skill
 
 - 如果 skill 不可识别，先检查 `$TMP_REPO/.claude/skills/aw-set-harness-goal-skill/SKILL.md` 是否存在。
 - 如果 Claude 未读取项目级 skills，检查当前 Claude Code 版本、启动目录和项目 trust 状态。
-- 不要改用 `adapter_deploy.py --backend claude` 兜底。
+- 如果使用 helper 路径失败，不要把 adapter 路径当成静默兜底；应按本次测试选择的安装入口定位问题。
 
 ## 四、冷启动写入 Smoke
 

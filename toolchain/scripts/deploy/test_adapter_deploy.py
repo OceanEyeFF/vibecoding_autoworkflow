@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import errno
+import hashlib
 import io
 import json
 import os
@@ -30,7 +31,9 @@ class AdapterDeployTest(unittest.TestCase):
         self.source_repo_root = Path(__file__).resolve().parents[3]
         self.fake_repo_root = self.temp_root / "repo"
         self.local_root = self.fake_repo_root / ".agents" / "skills"
+        self.claude_local_root = self.fake_repo_root / ".claude" / "skills"
         self.override_root = self.temp_root / "custom-root" / "skills"
+        self.claude_override_root = self.temp_root / "custom-claude-root" / "skills"
         self.npm_state_root = self.temp_root / "npm-state"
         self.npm_state_root.mkdir(parents=True)
         (self.npm_state_root / "cache").mkdir()
@@ -52,6 +55,9 @@ class AdapterDeployTest(unittest.TestCase):
         self.addCleanup(self.npm_env_patch.stop)
         self.adapter_dir = (
             self.fake_repo_root / "product" / "harness" / "adapters" / "agents" / "skills"
+        )
+        self.claude_adapter_dir = (
+            self.fake_repo_root / "product" / "harness" / "adapters" / "claude" / "skills"
         )
 
         self._seed_fake_repo()
@@ -121,6 +127,18 @@ class AdapterDeployTest(unittest.TestCase):
     def _update(self, *extra_args: object) -> tuple[int, str, str]:
         return self._run_cli("update", "--backend", "agents", *extra_args)
 
+    def _claude_install(self, *extra_args: object) -> tuple[int, str, str]:
+        return self._run_cli("install", "--backend", "claude", *extra_args)
+
+    def _claude_verify(self, *extra_args: object) -> tuple[int, str, str]:
+        return self._run_cli("verify", "--backend", "claude", *extra_args)
+
+    def _claude_update(self, *extra_args: object) -> tuple[int, str, str]:
+        return self._run_cli("update", "--backend", "claude", *extra_args)
+
+    def _claude_prune_all(self, *extra_args: object) -> tuple[int, str, str]:
+        return self._run_cli("prune", "--backend", "claude", "--all", *extra_args)
+
     def _load_json(self, path: Path) -> dict[str, object]:
         return json.loads(path.read_text(encoding="utf-8"))
 
@@ -145,17 +163,24 @@ class AdapterDeployTest(unittest.TestCase):
             },
         }
 
-    def _binding(self, skill_id: str) -> adapter_deploy.SkillBinding:
+    def _binding(self, skill_id: str, backend: str = "agents") -> adapter_deploy.SkillBinding:
         return next(
             binding
-            for binding in adapter_deploy.collect_skill_bindings("agents", self.context)
+            for binding in adapter_deploy.collect_skill_bindings(backend, self.context)
             if binding.skill_id == skill_id
         )
 
-    def _install_plan(self, skill_id: str, root: Path | None = None) -> adapter_deploy.InstallPlan:
+    def _install_plan(
+        self,
+        skill_id: str,
+        root: Path | None = None,
+        backend: str = "agents",
+    ) -> adapter_deploy.InstallPlan:
+        if root is None:
+            root = self.local_root if backend == "agents" else self.claude_local_root
         return adapter_deploy.build_install_plan(
-            self._binding(skill_id),
-            root or self.local_root,
+            self._binding(skill_id, backend=backend),
+            root,
             self.context,
         )
 
@@ -383,6 +408,7 @@ class AdapterDeployTest(unittest.TestCase):
 
         self.assertEqual(code, 0, stderr)
         self.assertTrue(self.local_root.is_dir())
+        self.assertFalse(self.claude_local_root.exists())
         self.assertIn("created target root", stdout)
 
         for source_payload_dir in sorted(path for path in self.adapter_dir.iterdir() if path.is_dir()):
@@ -416,6 +442,81 @@ class AdapterDeployTest(unittest.TestCase):
                 (target_skill_dir / "aw.marker").read_text(encoding="utf-8"),
                 self._runtime_marker_text(skill_id),
             )
+
+    def test_backend_choices_include_claude(self) -> None:
+        args = adapter_deploy.parse_args(["diagnose", "--backend", "claude"])
+
+        self.assertEqual(args.backend, "claude")
+        self.assertIn("claude", adapter_deploy.SUPPORTED_BACKENDS)
+
+    def test_claude_default_target_root_is_claude_skills(self) -> None:
+        code, stdout, stderr = self._run_cli(
+            "diagnose",
+            "--backend",
+            "claude",
+            "--json",
+        )
+
+        self.assertEqual(code, 0, stderr)
+        payload = json.loads(stdout)
+        self.assertEqual(payload["backend"], "claude")
+        self.assertEqual(payload["target_root"], str(self.claude_local_root))
+        self.assertEqual(
+            payload["binding_count"],
+            1,
+        )
+        self.assertFalse(self.local_root.exists())
+
+    def test_claude_install_verify_and_update_dry_run_use_claude_payloads(self) -> None:
+        install_code, install_stdout, install_stderr = self._claude_install()
+        verify_code, verify_stdout, verify_stderr = self._claude_verify()
+        update_code, update_stdout, update_stderr = self._claude_update()
+        update_json_code, update_json_stdout, update_json_stderr = self._claude_update("--json")
+
+        self.assertEqual(install_code, 0, install_stderr)
+        self.assertIn("installed skill set-harness-goal-skill", install_stdout)
+        target_skill_dir = self.claude_local_root / "aw-set-harness-goal-skill"
+        self.assertTrue((target_skill_dir / "SKILL.md").is_file())
+        payload = self._load_json(
+            target_skill_dir / "payload.json"
+        )
+        self.assertEqual(payload["backend"], "claude")
+        self.assertEqual(payload["skill_id"], "set-harness-goal-skill")
+        self.assertEqual(payload["payload_version"], "claude-skill-payload.v1")
+        marker = self._load_json(target_skill_dir / "aw.marker")
+        self.assertEqual(marker["backend"], "claude")
+        self.assertEqual(marker["skill_id"], "set-harness-goal-skill")
+        self.assertEqual(marker["payload_version"], "claude-skill-payload.v1")
+        self.assertFalse(self.local_root.exists())
+
+        self.assertEqual(verify_code, 0, verify_stderr)
+        self.assertIn("[claude] ok", verify_stdout)
+
+        self.assertEqual(update_code, 0, update_stderr)
+        self.assertIn("[claude] update plan", update_stdout)
+        self.assertIn(str(target_skill_dir), update_stdout)
+        self.assertIn("dry-run only; pass --yes to apply update", update_stdout)
+
+        self.assertEqual(update_json_code, 0, update_json_stderr)
+        update_payload = json.loads(update_json_stdout)
+        self.assertEqual(update_payload["backend"], "claude")
+        self.assertEqual(update_payload["target_root"], str(self.claude_local_root))
+        self.assertEqual(update_payload["blocking_issue_count"], 0)
+        self.assertTrue(
+            all(
+                path.startswith(str(self.claude_local_root))
+                for path in update_payload["planned_target_paths"]
+            )
+        )
+
+    def test_claude_root_override_is_used_without_touching_agents_root(self) -> None:
+        code, stdout, stderr = self._claude_install("--claude-root", self.claude_override_root)
+
+        self.assertEqual(code, 0, stderr)
+        self.assertTrue((self.claude_override_root / "aw-set-harness-goal-skill").is_dir())
+        self.assertIn(str(self.claude_override_root), stdout)
+        self.assertFalse(self.claude_local_root.exists())
+        self.assertFalse(self.local_root.exists())
 
     def test_harness_deploy_wrapper_diagnose_matches_adapter_diagnose_json(self) -> None:
         adapter_code, adapter_stdout, adapter_stderr = self._run_cli(
@@ -562,7 +663,6 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("verify", help_text)
         self.assertIn("install", help_text)
         self.assertIn("update", help_text)
-        self.assertNotIn("claude", help_text.lower())
         self.assertNotIn("opencode", help_text.lower())
         self.assertEqual(stderr.getvalue(), "")
 
@@ -600,6 +700,7 @@ class AdapterDeployTest(unittest.TestCase):
         )
         self.assertIn("product/harness/skills", package["files"])
         self.assertIn("product/harness/adapters/agents/skills", package["files"])
+        self.assertIn("product/harness/adapters/claude/skills", package["files"])
         self.assertIn("toolchain/scripts/deploy/harness_deploy.py", package["files"])
         self.assertIn("toolchain/scripts/deploy/adapter_deploy.py", package["files"])
         self.assertEqual(
@@ -630,8 +731,8 @@ class AdapterDeployTest(unittest.TestCase):
             package["awInstallerRelease"],
             {
                 "realPublishApproval": "approved",
-                "approvedVersion": "0.4.0-rc.3",
-                "approvedGitTag": "v0.4.0-rc.3",
+                "approvedVersion": "0.4.1-rc.2",
+                "approvedGitTag": "v0.4.1-rc.2",
                 "approvedChannel": "next",
             },
         )
@@ -1017,7 +1118,7 @@ class AdapterDeployTest(unittest.TestCase):
         env = {
             **os.environ,
             "AW_INSTALLER_PUBLISH_APPROVED": "1",
-            "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.0-rc.3",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.1-rc.2",
             "CI": "true",
             "npm_config_tag": "next",
         }
@@ -1339,6 +1440,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("install", completed.stdout)
         self.assertIn("update", completed.stdout)
         self.assertIn("tui", completed.stdout)
+        self.assertIn("--github-archive-sha256 SHA256", completed.stdout)
         self.assertEqual(completed.stderr, "")
 
     def test_local_npm_installer_bin_version_reports_package_version(self) -> None:
@@ -1361,7 +1463,7 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertEqual(completed.stdout, "aw-installer 0.4.0-rc.3\n")
+        self.assertEqual(completed.stdout, "aw-installer 0.4.1-rc.2\n")
         self.assertEqual(completed.stderr, "")
 
     def test_local_npm_installer_bin_version_prefers_root_package_metadata(self) -> None:
@@ -1718,6 +1820,20 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("Target repo root is protected", stderr)
         self.assertIn("/etc", stderr)
 
+    def test_claude_root_override_is_validated_with_protected_root_guardrails(self) -> None:
+        code, _, stderr = self._run_cli(
+            "diagnose",
+            "--backend",
+            "claude",
+            "--claude-root",
+            "/etc",
+            "--json",
+        )
+
+        self.assertEqual(code, 1)
+        self.assertIn("Target repo root is protected", stderr)
+        self.assertIn("/etc", stderr)
+
     def test_update_plan_summary_reuses_bindings_and_target_root_scan(self) -> None:
         code, _, stderr = self._install()
         self.assertEqual(code, 0, stderr)
@@ -1815,10 +1931,12 @@ class AdapterDeployTest(unittest.TestCase):
             "toolchain/scripts/deploy/bin/check-root-publish.js",
             "product/harness/skills/harness-skill/SKILL.md",
             "product/harness/adapters/agents/skills/harness-skill/payload.json",
+            "product/harness/adapters/claude/skills/set-harness-goal-skill/payload.json",
         }:
             self.assertIn(required_path, packed_files)
         self.assertFalse(any(path.startswith(".aw/") for path in packed_files))
         self.assertFalse(any(path.startswith(".agents/") for path in packed_files))
+        self.assertFalse(any(path.startswith(".claude/") for path in packed_files))
         self.assertFalse((package_root / payload[0]["filename"]).exists())
 
     def test_root_npm_publish_dry_run_preserves_package_surface(self) -> None:
@@ -1837,7 +1955,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         payload = json.loads(completed.stdout)
         self.assertEqual(payload["name"], "aw-installer")
-        self.assertEqual(payload["version"], "0.4.0-rc.3")
+        self.assertEqual(payload["version"], "0.4.1-rc.2")
         packed_files = {entry["path"] for entry in payload["files"]}
         self.assertIn("package.json", packed_files)
         self.assertIn("product/harness/skills/harness-skill/SKILL.md", packed_files)
@@ -1891,6 +2009,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("install", exec_completed.stdout)
         self.assertIn("update", exec_completed.stdout)
         self.assertIn("tui", exec_completed.stdout)
+        self.assertIn("--github-archive-sha256 SHA256", exec_completed.stdout)
         self.assertEqual(exec_completed.stderr, "")
 
     def test_local_npm_packed_tarball_diagnose_uses_repo_root_override(self) -> None:
@@ -2224,7 +2343,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertNotEqual(diagnose_payload["source_root"], str(target_repo))
 
         self.assertEqual(version_completed.returncode, 0, version_completed.stderr)
-        self.assertEqual(version_completed.stdout, "aw-installer 0.4.0-rc.3\n")
+        self.assertEqual(version_completed.stdout, "aw-installer 0.4.1-rc.2\n")
         self.assertEqual(version_completed.stderr, "")
         self.assertEqual(tui_completed.returncode, 1)
         self.assertEqual(tui_completed.stdout, "")
@@ -2294,6 +2413,7 @@ class AdapterDeployTest(unittest.TestCase):
 
     def test_update_json_can_use_github_source_archive(self) -> None:
         archive_bytes = self._fake_github_archive_bytes()
+        archive_sha256 = hashlib.sha256(archive_bytes).hexdigest()
         with mock.patch.object(
             adapter_deploy.urllib.request,
             "urlopen",
@@ -2307,6 +2427,8 @@ class AdapterDeployTest(unittest.TestCase):
                 "OceanEyeFF/vibecoding_autoworkflow",
                 "--github-ref",
                 "master",
+                "--github-archive-sha256",
+                archive_sha256,
             )
 
         self.assertEqual(code, 0, stderr)
@@ -2323,6 +2445,30 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(payload["blocking_issue_count"], 0)
         self.assertGreater(len(payload["planned_target_paths"]), 0)
         self.assertEqual(stderr, "")
+        self.assertFalse(self.local_root.exists())
+
+    def test_update_json_rejects_github_source_archive_sha256_mismatch(self) -> None:
+        archive_bytes = self._fake_github_archive_bytes()
+        with mock.patch.object(
+            adapter_deploy.urllib.request,
+            "urlopen",
+            return_value=self._fake_urlopen_response(archive_bytes),
+        ):
+            code, stdout, stderr = self._update(
+                "--json",
+                "--source",
+                "github",
+                "--github-repo",
+                "OceanEyeFF/vibecoding_autoworkflow",
+                "--github-ref",
+                "master",
+                "--github-archive-sha256",
+                "0" * 64,
+            )
+
+        self.assertEqual(code, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("GitHub source archive SHA256 mismatch", stderr)
         self.assertFalse(self.local_root.exists())
 
     def test_update_json_github_source_default_repo_can_use_environment(self) -> None:
@@ -2721,6 +2867,19 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertFalse((self.local_root / "aw-harness-skill").exists())
         self.assertFalse((self.local_root / "aw-dispatch-skills").exists())
 
+    def test_claude_prune_all_removes_only_claude_managed_skill_dirs(self) -> None:
+        code, _, stderr = self._install()
+        self.assertEqual(code, 0, stderr)
+        code, _, stderr = self._claude_install()
+        self.assertEqual(code, 0, stderr)
+
+        code, stdout, stderr = self._claude_prune_all()
+
+        self.assertEqual(code, 0, stderr)
+        self.assertIn("removed managed skill dir", stdout)
+        self.assertFalse((self.claude_local_root / "aw-set-harness-goal-skill").exists())
+        self.assertTrue((self.local_root / "aw-harness-skill").is_dir())
+
     def test_prune_all_keeps_foreign_and_invalid_marker_dirs(self) -> None:
         code, stdout, stderr = self._install()
         self.assertEqual(code, 0, stderr)
@@ -2836,6 +2995,46 @@ class AdapterDeployTest(unittest.TestCase):
         plan_after = self._install_plan("harness-skill")
 
         self.assertNotEqual(plan_before.payload_fingerprint, plan_after.payload_fingerprint)
+
+    def test_payload_fingerprint_hashes_payload_descriptor_once(self) -> None:
+        binding = self._binding("harness-skill")
+        payload, payload_text = adapter_deploy.load_binding_payload_with_text(binding)
+        target_metadata = adapter_deploy.payload_target_metadata(payload, binding)
+        fingerprint_parts = [
+            f"backend={binding.backend}\n"
+            f"skill_id={binding.skill_id}\n"
+            f"payload_version={adapter_deploy.payload_version_from_descriptor(payload, binding=binding)}\n"
+        ]
+
+        for relative_name in target_metadata.required_payload_files:
+            if relative_name in (
+                adapter_deploy.MANAGED_SKILL_MARKER,
+                adapter_deploy.PAYLOAD_DESCRIPTOR,
+            ):
+                continue
+            source_path = adapter_deploy.source_path_for_target_relative_file(
+                binding,
+                relative_name,
+                self.context,
+                payload=payload,
+            )
+            fingerprint_parts.append(
+                f"file:{relative_name}\n{source_path.read_text(encoding='utf-8')}\n"
+            )
+        fingerprint_parts.append(f"file:{adapter_deploy.PAYLOAD_DESCRIPTOR}\n{payload_text}\n")
+        expected_fingerprint = hashlib.sha256(
+            "".join(fingerprint_parts).encode("utf-8")
+        ).hexdigest()
+
+        self.assertEqual(
+            adapter_deploy.compute_payload_fingerprint(
+                binding,
+                self.context,
+                payload=payload,
+                payload_text=payload_text,
+            ),
+            expected_fingerprint,
+        )
 
     def test_verify_reports_unexpected_managed_directory(self) -> None:
         code, stdout, stderr = self._install()

@@ -24,20 +24,36 @@ jobs:
       GITHUB_RELEASE_BODY: ${{ github.event.release.body }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org/"
+
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('.github/workflows/publish.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Cache npm downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('package.json', 'toolchain/scripts/deploy/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
 
       - name: Set up npm for Trusted Publishing
         run: |
@@ -52,19 +68,19 @@ jobs:
         run: node toolchain/scripts/deploy/bin/resolve-release-metadata.js
 
       - name: Folder logic check
-        run: PYTHONDONTWRITEBYTECODE=1 python toolchain/scripts/test/folder_logic_check.py
+        run: python toolchain/scripts/test/folder_logic_check.py
 
       - name: Path governance check
-        run: PYTHONDONTWRITEBYTECODE=1 python toolchain/scripts/test/path_governance_check.py
+        run: python toolchain/scripts/test/path_governance_check.py
 
       - name: Governance semantic check
-        run: PYTHONDONTWRITEBYTECODE=1 python toolchain/scripts/test/governance_semantic_check.py
+        run: python toolchain/scripts/test/governance_semantic_check.py
 
       - name: Governance tests
-        run: PYTHONDONTWRITEBYTECODE=1 python -m pytest toolchain/scripts/test
+        run: python -m pytest toolchain/scripts/test
 
       - name: Deploy regression tests
-        run: PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
+        run: python -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
 
       - name: Deploy package smoke
         run: npm --prefix toolchain/scripts/deploy run smoke --silent

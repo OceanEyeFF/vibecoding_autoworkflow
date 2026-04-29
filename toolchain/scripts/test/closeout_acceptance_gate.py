@@ -20,9 +20,8 @@ WORKFLOW_ID = "closeout-governance-task-list-20260402"
 LOCAL_DEPLOY_TARGET_ROOTS = {
     "agents": REPO_ROOT / ".agents" / "skills",
     "claude": REPO_ROOT / ".claude" / "skills",
-    "opencode": REPO_ROOT / ".opencode" / "skills",
 }
-SUPPORTED_DEPLOY_VERIFY_BACKENDS = ("agents",)
+SUPPORTED_DEPLOY_VERIFY_BACKENDS = ("agents", "claude")
 DEPLOY_VERIFY_ENTRYPOINTS = (
     ("adapter", "adapter_deploy.py"),
     ("wrapper", "harness_deploy.py"),
@@ -45,6 +44,7 @@ ROOT_NPM_REQUIRED_PACKAGE_FILES = {
     "toolchain/scripts/deploy/bin/check-root-publish.js",
     "product/harness/skills/harness-skill/SKILL.md",
     "product/harness/adapters/agents/skills/harness-skill/payload.json",
+    "product/harness/adapters/claude/skills/set-harness-goal-skill/payload.json",
 }
 CACHE_SCAN_ROOTS = ("docs", "product", "toolchain", "tools")
 CACHE_DIR_NAMES = {"__pycache__", ".pytest_cache"}
@@ -282,6 +282,7 @@ def run_cache_gate(repo_root: Path, python: str) -> dict:
 
 def run_test_gate(repo_root: Path, python: str) -> dict:
     package_json_path = repo_root / "package.json"
+    deploy_package_json_path = repo_root / "toolchain" / "scripts" / "deploy" / "package.json"
     version_metadata_error = ""
     if package_json_path.is_file():
         try:
@@ -292,6 +293,29 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
         package_version = package_metadata.get("version")
         if not isinstance(package_version, str) or not package_version:
             version_metadata_error = version_metadata_error or "root package.json must contain a string version"
+        if deploy_package_json_path.is_file():
+            try:
+                deploy_package_metadata = json.loads(
+                    deploy_package_json_path.read_text(encoding="utf-8")
+                )
+            except (json.JSONDecodeError, OSError) as error:
+                deploy_package_metadata = {}
+                version_metadata_error = (
+                    version_metadata_error
+                    or f"invalid deploy package.json version metadata: {error}"
+                )
+            deploy_package_version = deploy_package_metadata.get("version")
+            if not isinstance(deploy_package_version, str) or not deploy_package_version:
+                version_metadata_error = (
+                    version_metadata_error
+                    or "deploy package.json must contain a string version"
+                )
+            elif isinstance(package_version, str) and deploy_package_version != package_version:
+                version_metadata_error = (
+                    version_metadata_error
+                    or "root package.json version must match toolchain/scripts/deploy/package.json: "
+                    f"{package_version} != {deploy_package_version}"
+                )
         expected_version_output = f"aw-installer {package_version}" if isinstance(package_version, str) else ""
     else:
         expected_version_output = "aw-installer 0.0.0-local"
