@@ -19,15 +19,13 @@
 
 - `scripts/deploy/`
 - `scripts/test/`
-- `evals/`
 
 AI 先读什么：
 
-1. `docs/knowledge/foundations/toolchain-layering.md`
-2. `toolchain/scripts/README.md` 或 `toolchain/evals/README.md`
+1. `toolchain/toolchain-layering.md`
+2. `toolchain/scripts/README.md`
 3. 需要部署时进入 `scripts/deploy/`
 4. 需要做轻量治理回归时进入 `scripts/test/`
-5. 只有任务明确涉及已准入测量资产时，才进入 `scripts/research/` 或 `evals/`
 
 暂时不要先读什么：
 
@@ -38,10 +36,6 @@ AI 先读什么：
 
 - `scripts/README.md`
 - `scripts/deploy/README.md`
-- `scripts/research/README.md`
 - `scripts/test/README.md`
-- `evals/README.md`
-- `evals/fixtures/README.md`
-- `evals/memory-side/README.md`
 
-治理说明见 `docs/knowledge/foundations/toolchain-layering.md`。
+治理说明见 `toolchain/toolchain-layering.md`。

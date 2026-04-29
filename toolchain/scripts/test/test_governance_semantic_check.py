@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -7,13 +9,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from governance_semantic_check import (
     SemanticReport,
-    check_canonical_entrypoints_cover_required_formats,
-    check_canonical_skill_packages_are_minimal,
+    check_append_request_contract_terms,
     check_adapter_wrappers_are_thin,
+    check_canonical_skill_packages_are_minimal,
+    check_docs_list_closeout_cache_roots,
     check_foundations_authority_shadows,
+    check_manual_runbook_agents_skill_count,
     check_outdated_placeholder_phrases,
-    check_prompt_template_knowledge_backlinks,
+    check_path_governance_docs_list_gitignore_entries,
+    check_repo_python_commands_are_bytecode_free,
+    check_repo_whats_next_overview_fallback_contract,
+    check_review_evidence_four_lane_contract,
+    check_review_verify_docs_list_closeout_steps,
+    check_root_tool_shims_disable_bytecode,
     check_required_handoffs,
+    check_subagent_dispatch_default_contract,
+    is_bytecode_free_command_excluded,
 )
 
 
@@ -24,44 +35,45 @@ def write_doc(path: Path, content: str) -> None:
 
 def test_check_required_handoffs_flags_missing_link(tmp_path: Path) -> None:
     write_doc(
-        tmp_path / "docs/knowledge/foundations/toolchain-layering.md",
-        "[scripts](../../../toolchain/scripts/README.md)\n",
+        tmp_path / "product/README.md",
+        "[harness](./harness/README.md)\n",
     )
+    write_doc(
+        tmp_path / "product/harness/README.md",
+        "[docs](../../docs/harness/README.md)\n[skills](./skills/README.md)\n[adapters](./adapters/README.md)\n",
+    )
+    write_doc(tmp_path / "product/harness/skills/README.md", "# skills\n")
+    write_doc(tmp_path / "product/harness/adapters/README.md", "# adapters\n")
+    write_doc(
+        tmp_path / "toolchain/toolchain-layering.md",
+        "missing script handoff\n",
+    )
+    write_doc(tmp_path / "docs/harness/README.md", "")
+    write_doc(tmp_path / "docs/harness/foundations/README.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/README.md", "")
+    write_doc(tmp_path / "docs/harness/workflow-families/README.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/task-interface/README.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/task-interface/task-contract.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/README.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/overview.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/layer-boundary.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/skill-agent-model.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/context-routing.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/writeback-cleanup.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md", "")
+    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md", "")
     write_doc(tmp_path / "toolchain/scripts/README.md", "# scripts\n")
-    write_doc(tmp_path / "toolchain/evals/README.md", "# evals\n")
-    write_doc(tmp_path / "docs/knowledge/foundations/README.md", "")
-    write_doc(tmp_path / "docs/knowledge/foundations/task-contract-template.md", "")
-    write_doc(tmp_path / "docs/knowledge/foundations/context-entry-template.md", "")
-    write_doc(tmp_path / "docs/knowledge/foundations/writeback-log-template.md", "")
-    write_doc(tmp_path / "docs/knowledge/foundations/decision-record-template.md", "")
-    write_doc(tmp_path / "docs/knowledge/foundations/module-entry-template.md", "")
-    write_doc(tmp_path / "docs/knowledge/memory-side/context-routing.md", "")
-    write_doc(tmp_path / "docs/knowledge/memory-side/writeback-cleanup.md", "")
-    write_doc(tmp_path / "docs/knowledge/autoresearch/README.md", "")
 
     report = SemanticReport()
     check_required_handoffs(tmp_path, report)
 
-    assert any("toolchain-layering.md -> toolchain/evals/README.md" in item for item in report.failures)
+    assert any("toolchain-layering.md -> toolchain/scripts/README.md" in item for item in report.failures)
 
 
 def test_check_foundations_authority_shadows_flags_prefixed_duplicate(tmp_path: Path) -> None:
-    foundations_dir = tmp_path / "docs/knowledge/foundations"
+    foundations_dir = tmp_path / "docs/project-maintenance/foundations"
     foundations_dir.mkdir(parents=True, exist_ok=True)
-    required = [
-        "root-directory-layering.md",
-        "path-governance-ai-routing.md",
-        "docs-governance.md",
-        "toolchain-layering.md",
-        "partition-model.md",
-        "task-contract-template.md",
-        "context-entry-template.md",
-        "writeback-log-template.md",
-        "decision-record-template.md",
-        "module-entry-template.md",
-    ]
-    for name in required:
-        write_doc(foundations_dir / name, "# doc\n")
+    write_doc(foundations_dir / "root-directory-layering.md", "# doc\n")
     write_doc(foundations_dir / "root-directory-layering-v2.md", "# shadow\n")
 
     report = SemanticReport()
@@ -75,14 +87,7 @@ def test_check_outdated_placeholder_phrases_flags_stale_text(tmp_path: Path) -> 
         tmp_path / "toolchain/scripts/README.md",
         "`research/`：预留给后续准入的最小研究脚本\n",
     )
-    write_doc(
-        tmp_path / "toolchain/evals/README.md",
-        "`memory-side/` 当前承接已准入主题的 eval 入口。\n",
-    )
-    write_doc(
-        tmp_path / "docs/knowledge/foundations/toolchain-layering.md",
-        "current wording\n",
-    )
+    write_doc(tmp_path / "toolchain/toolchain-layering.md", "current wording\n")
 
     report = SemanticReport()
     check_outdated_placeholder_phrases(tmp_path, report)
@@ -90,59 +95,125 @@ def test_check_outdated_placeholder_phrases_flags_stale_text(tmp_path: Path) -> 
     assert any("toolchain/scripts/README.md" in item for item in report.failures)
 
 
-def test_check_prompt_template_knowledge_backlinks_flags_missing_link(tmp_path: Path) -> None:
+def test_check_append_request_contract_terms_flags_drift(tmp_path: Path) -> None:
     write_doc(
-        tmp_path / "docs/operations/prompt-templates/README.md",
-        "[knowledge](../../knowledge/README.md)\n",
+        tmp_path / "docs/harness/artifact/control/append-request.md",
+        "append-feature\nappend-design\ngoal change\nnew worktrack\nscope expansion\ndesign-only\ndesign-then-implementation\napproval_required\ncontinuation_ready\n",
     )
     write_doc(
-        tmp_path / "docs/operations/prompt-templates/simple-subagent-workflow.md",
-        "# template without backlinks\n",
+        tmp_path / "docs/harness/workflow-families/repo-evolution/append-request-routing.md",
+        "append-feature\nappend-design\ngoal change\nnew worktrack\nscope expansion\ndesign-only\ndesign-then-implementation\napproval_required\ncontinuation_ready\ncontinuation_blockers\n",
     )
-    write_doc(tmp_path / "docs/knowledge/README.md", "# knowledge\n")
+    write_doc(
+        tmp_path / "product/harness/skills/repo-append-request-skill/SKILL.md",
+        "append-feature\nappend-design\ngoal change\nnew worktrack\nscope expansion\ndesign-only\ndesign-then-implementation\napproval_required\ncontinuation_ready\ncontinuation_blockers\n",
+    )
+    write_doc(
+        tmp_path / "product/harness/skills/repo-append-request-skill/templates/append-request.template.md",
+        "approval_required\ncontinuation_ready\ncontinuation_blockers\n",
+    )
 
     report = SemanticReport()
-    check_prompt_template_knowledge_backlinks(tmp_path, report)
+    check_append_request_contract_terms(tmp_path, report)
 
-    assert any("simple-subagent-workflow.md" in item for item in report.failures)
+    assert any("continuation_blockers" in item for item in report.failures)
 
 
-def test_check_prompt_template_knowledge_backlinks_flags_missing_canonical_shim_link(tmp_path: Path) -> None:
+def test_check_subagent_dispatch_default_contract_flags_missing_term(tmp_path: Path) -> None:
+    for relative_path in (
+        "product/harness/skills/harness-skill/SKILL.md",
+        "product/harness/skills/dispatch-skills/SKILL.md",
+        "product/harness/skills/set-harness-goal-skill/SKILL.md",
+        "product/harness/skills/set-harness-goal-skill/assets/control-state.md",
+        "product/harness/skills/set-harness-goal-skill/assets/worktrack/contract.md",
+        "product/harness/skills/init-worktrack-skill/templates/contract.template.md",
+        "product/.aw_template/control-state.md",
+        "product/.aw_template/worktrack/contract.md",
+        "docs/harness/artifact/control/control-state.md",
+        "docs/harness/artifact/worktrack/contract.md",
+        "docs/harness/foundations/Harness运行协议.md",
+        "docs/harness/catalog/worktrack.md",
+    ):
+        write_doc(
+            tmp_path / relative_path,
+            "默认\nSubAgent\n权限边界\nsubagent_dispatch_mode\nsubagent_dispatch_mode_override_scope\nworktrack-contract-primary\nglobal-override\nruntime_dispatch_mode\nauto\ndelegated\ncurrent-carrier\nruntime fallback\n",
+        )
+
+    report = SemanticReport()
+    check_subagent_dispatch_default_contract(tmp_path, report)
+
+    assert any("dispatch package unsafe" in item for item in report.failures)
+
+
+def test_check_review_evidence_four_lane_contract_flags_missing_lane(tmp_path: Path) -> None:
+    for relative_path in (
+        "product/harness/skills/review-evidence-skill/SKILL.md",
+        "docs/harness/catalog/worktrack.md",
+        "product/harness/skills/set-harness-goal-skill/assets/worktrack/gate-evidence.md",
+        "docs/harness/artifact/worktrack/gate-evidence.md",
+    ):
+        write_doc(
+            tmp_path / relative_path,
+            "并行\nSubAgent\nfallback\nstatic-semantic-review\ntest-review\nproject-security-review\n静态语义解释\n测试 review\nsecurity review\n代码复杂度和性能 review\n",
+        )
+
+    report = SemanticReport()
+    check_review_evidence_four_lane_contract(tmp_path, report)
+
+    assert any("complexity-performance-review" in item for item in report.failures)
+
+
+def test_check_repo_whats_next_overview_fallback_contract_flags_missing_term(tmp_path: Path) -> None:
+    for relative_path in (
+        "product/harness/skills/repo-whats-next-skill/SKILL.md",
+        "product/harness/skills/repo-whats-next-skill/references/overview-fallback-mode.md",
+        "docs/harness/catalog/repo.md",
+    ):
+        write_doc(
+            tmp_path / relative_path,
+            "overview fallback\nproject-dialectic-planning-skill\ncandidate_worktracks\ntop_candidate\nFacts / Inferences / Unknowns\n不创建工作追踪\n",
+        )
+
+    report = SemanticReport()
+    check_repo_whats_next_overview_fallback_contract(tmp_path, report)
+
+    assert any("不改变 Harness 控制状态" in item for item in report.failures)
+
+
+def test_check_adapter_wrappers_are_thin_ignores_absent_adapter_layer(tmp_path: Path) -> None:
+    report = SemanticReport()
+    check_adapter_wrappers_are_thin(tmp_path, report)
+    assert report.failures == []
+
+
+def test_check_adapter_wrappers_are_thin_accepts_valid_wrapper(tmp_path: Path) -> None:
     write_doc(
-        tmp_path / "docs/operations/prompt-templates/README.md",
+        tmp_path / "product/harness/adapters/agents/skills/demo-skill/SKILL.md",
         "\n".join(
             [
-                "[knowledge](../../knowledge/README.md)",
-                "[product](../../../product/harness-operations/README.md)",
+                "# Demo Adapter Wrapper",
+                "## Canonical Source",
+                "## Backend Notes",
+                "## Deploy Target",
             ]
         )
         + "\n",
     )
-    write_doc(
-        tmp_path / "docs/operations/prompt-templates/simple-subagent-workflow.md",
-        "[knowledge](../../knowledge/README.md)\n",
-    )
-    write_doc(tmp_path / "docs/knowledge/README.md", "# knowledge\n")
-    write_doc(
-        tmp_path / "product/harness-operations/README.md",
-        "# harness operations\n",
-    )
 
     report = SemanticReport()
-    check_prompt_template_knowledge_backlinks(tmp_path, report)
+    check_adapter_wrappers_are_thin(tmp_path, report)
 
-    assert any("canonical source link" in item for item in report.failures)
+    assert report.failures == []
 
 
-def test_check_adapter_wrappers_are_thin_flags_legacy_sections(tmp_path: Path) -> None:
+def test_check_adapter_wrappers_are_thin_flags_missing_heading_and_duplication(tmp_path: Path) -> None:
     write_doc(
-        tmp_path / "product/memory-side/adapters/agents/skills/context-routing-skill/SKILL.md",
+        tmp_path / "product/harness/adapters/agents/skills/demo-skill/SKILL.md",
         "\n".join(
             [
-                "# Wrapper",
+                "# Demo Adapter Wrapper",
                 "## Canonical Source",
                 "## Backend Notes",
-                "## Deploy Target",
                 "## Execution Rules",
             ]
         )
@@ -152,112 +223,429 @@ def test_check_adapter_wrappers_are_thin_flags_legacy_sections(tmp_path: Path) -
     report = SemanticReport()
     check_adapter_wrappers_are_thin(tmp_path, report)
 
+    assert any("Deploy Target" in item for item in report.failures)
     assert any("Execution Rules" in item for item in report.failures)
 
 
-def test_check_canonical_skill_packages_are_minimal_accepts_valid_package(tmp_path: Path) -> None:
+def test_check_adapter_wrappers_are_thin_ignores_code_fence_headings(tmp_path: Path) -> None:
     write_doc(
-        tmp_path / "product/memory-side/skills/demo-skill/SKILL.md",
+        tmp_path / "product/harness/adapters/agents/skills/demo-skill/SKILL.md",
         "\n".join(
             [
-                "# Demo Skill",
-                "## Overview",
-                "## When To Use",
-                "## Workflow",
-                "## Hard Constraints",
-                "## Expected Output",
-                "## Resources",
+                "# Demo Adapter Wrapper",
+                "## Canonical Source",
+                "## Backend Notes",
+                "## Deploy Target",
+                "```md",
+                "## Execution Rules",
+                "```",
             ]
         )
         + "\n",
     )
-    write_doc(
-        tmp_path / "product/memory-side/skills/demo-skill/references/entrypoints.md",
-        "# Demo references\n\n## Reading Policy\n",
-    )
 
+    report = SemanticReport()
+    check_adapter_wrappers_are_thin(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_canonical_skill_packages_are_minimal_accepts_valid_package(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/harness/skills/demo-skill/SKILL.md",
+        "\n".join(
+            [
+                "---",
+                "name: demo-skill",
+                "description: Demo.",
+                "---",
+                "# Demo Skill",
+            ]
+        )
+        + "\n",
+    )
     report = SemanticReport()
     check_canonical_skill_packages_are_minimal(tmp_path, report)
 
     assert report.failures == []
 
 
-def test_check_canonical_skill_packages_are_minimal_flags_adapter_leakage(tmp_path: Path) -> None:
+def test_check_canonical_skill_packages_are_minimal_flags_deprecated_entrypoint_reference(
+    tmp_path: Path,
+) -> None:
     write_doc(
-        tmp_path / "product/task-interface/skills/demo-skill/SKILL.md",
+        tmp_path / "product/harness/skills/demo-skill/SKILL.md",
         "\n".join(
             [
+                "---",
+                "name: demo-skill",
+                "description: Demo.",
+                "---",
                 "# Demo Skill",
-                "## Overview",
-                "## When To Use",
-                "## Workflow",
-                "## Hard Constraints",
-                "## Expected Output",
-                "## Resources",
-                "## Backend Notes",
+                "1. Read `references/entrypoints.md`.",
+            ]
+        )
+        + "\n",
+    )
+
+    report = SemanticReport()
+    check_canonical_skill_packages_are_minimal(tmp_path, report)
+
+    assert any("deprecated references/entrypoints.md" in item for item in report.failures)
+
+
+def test_check_canonical_skill_packages_are_minimal_flags_deprecated_entrypoint_file(
+    tmp_path: Path,
+) -> None:
+    write_doc(
+        tmp_path / "product/harness/skills/demo-skill/SKILL.md",
+        "\n".join(
+            [
+                "---",
+                "name: demo-skill",
+                "description: Demo.",
+                "---",
+                "# Demo Skill",
             ]
         )
         + "\n",
     )
     write_doc(
-        tmp_path / "product/task-interface/skills/demo-skill/references/entrypoints.md",
+        tmp_path / "product/harness/skills/demo-skill/references/entrypoints.md",
         "# Demo references\n\n## Reading Policy\n",
     )
 
+    report = SemanticReport()
+    check_canonical_skill_packages_are_minimal(tmp_path, report)
+
+    assert any("deprecated references/entrypoints.md file" in item for item in report.failures)
+
+
+def test_check_canonical_skill_packages_are_minimal_flags_adapter_leakage(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/harness/skills/demo-skill/SKILL.md",
+        "\n".join(
+            [
+                "---",
+                "name: demo-skill",
+                "description: Demo.",
+                "---",
+                "# Demo Skill",
+                "## Backend Notes",
+            ]
+        )
+        + "\n",
+    )
     report = SemanticReport()
     check_canonical_skill_packages_are_minimal(tmp_path, report)
 
     assert any("Backend Notes" in item for item in report.failures)
 
 
-def test_check_canonical_skill_packages_are_minimal_requires_harness_prompt_and_bindings(tmp_path: Path) -> None:
+def test_check_canonical_skill_packages_are_minimal_ignores_code_fence_headings(
+    tmp_path: Path,
+) -> None:
     write_doc(
-        tmp_path / "product/harness-operations/skills/demo-workflow/SKILL.md",
+        tmp_path / "product/harness/skills/demo-skill/SKILL.md",
         "\n".join(
             [
+                "---",
+                "name: demo-skill",
+                "description: Demo.",
+                "---",
                 "# Demo Skill",
-                "## Overview",
-                "## When To Use",
-                "## Workflow",
-                "## Hard Constraints",
-                "## Expected Output",
-                "## Resources",
+                "```md",
+                "## Backend Notes",
+                "```",
             ]
         )
         + "\n",
     )
-    write_doc(
-        tmp_path / "product/harness-operations/skills/demo-workflow/references/entrypoints.md",
-        "# Demo references\n\n## Reading Policy\n",
-    )
-
     report = SemanticReport()
     check_canonical_skill_packages_are_minimal(tmp_path, report)
 
-    assert any("references/prompt.md" in item for item in report.failures)
-    assert any("references/bindings.md" in item for item in report.failures)
+    assert report.failures == []
 
 
-def test_check_canonical_entrypoints_cover_required_formats_flags_missing_link(tmp_path: Path) -> None:
+def test_check_repo_python_commands_are_bytecode_free_flags_bare_repo_command(tmp_path: Path) -> None:
     write_doc(
-        tmp_path / "product/memory-side/skills/context-routing-skill/references/entrypoints.md",
-        "# refs\n\n- `docs/knowledge/memory-side/context-routing-rules.md`\n",
-    )
-    write_doc(
-        tmp_path / "product/memory-side/skills/writeback-cleanup-skill/references/entrypoints.md",
-        "# refs\n\n- `docs/knowledge/memory-side/writeback-cleanup-rules.md`\n",
-    )
-    write_doc(
-        tmp_path / "docs/knowledge/memory-side/formats/context-routing-output-format.md",
-        "# format\n",
-    )
-    write_doc(
-        tmp_path / "docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md",
-        "# format\n",
+        tmp_path / "docs/project-maintenance/governance/review-verify-handbook.md",
+        "Run `python3 toolchain/scripts/test/folder_logic_check.py`.\n",
     )
 
     report = SemanticReport()
-    check_canonical_entrypoints_cover_required_formats(tmp_path, report)
+    check_repo_python_commands_are_bytecode_free(tmp_path, report)
 
-    assert any("context-routing-output-format.md" in item for item in report.failures)
-    assert any("writeback-cleanup-output-format.md" in item for item in report.failures)
+    assert any("review-verify-handbook.md:1" in item for item in report.failures)
+
+
+def test_check_repo_python_commands_are_bytecode_free_flags_bare_python_repo_command(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/branch-pr-governance.md",
+        "Run `python toolchain/scripts/test/folder_logic_check.py`.\n",
+    )
+
+    report = SemanticReport()
+    check_repo_python_commands_are_bytecode_free(tmp_path, report)
+
+    assert any("branch-pr-governance.md:1" in item for item in report.failures)
+
+
+def test_check_repo_python_commands_are_bytecode_free_flags_bare_python_module_command(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/branch-pr-governance.md",
+        "Run `python -m pytest toolchain/scripts/test/test_folder_logic_check.py`.\n",
+    )
+
+    report = SemanticReport()
+    check_repo_python_commands_are_bytecode_free(tmp_path, report)
+
+    assert any("branch-pr-governance.md:1" in item for item in report.failures)
+
+
+def test_check_repo_python_commands_are_bytecode_free_accepts_prefixed_repo_command(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/review-verify-handbook.md",
+        "Run `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/folder_logic_check.py`.\n",
+    )
+
+    report = SemanticReport()
+    check_repo_python_commands_are_bytecode_free(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_repo_python_commands_are_bytecode_free_flags_bare_tools_command(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/review-verify-handbook.md",
+        "Run `python3 tools/closeout_acceptance_gate.py --json`.\n",
+    )
+
+    report = SemanticReport()
+    check_repo_python_commands_are_bytecode_free(tmp_path, report)
+
+    assert any("review-verify-handbook.md:1" in item for item in report.failures)
+
+
+def test_check_repo_python_commands_are_bytecode_free_checks_each_occurrence(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "toolchain/scripts/deploy/README.md",
+        "`PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/aw_scaffold.py list` and "
+        "`python3 -m pytest toolchain/scripts/test/test_folder_logic_check.py`\n",
+    )
+
+    report = SemanticReport()
+    check_repo_python_commands_are_bytecode_free(tmp_path, report)
+
+    assert len(report.failures) == 1
+
+
+def test_check_repo_python_commands_are_bytecode_free_skips_historical_log(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/testing/codex-harness-manual-run-continuous-2026-05-01.md",
+        "`python3 -m unittest discover -s tests -v`\n",
+    )
+
+    report = SemanticReport()
+    check_repo_python_commands_are_bytecode_free(tmp_path, report)
+
+    assert report.failures == []
+    assert is_bytecode_free_command_excluded(
+        "docs/project-maintenance/testing/codex-harness-manual-run-continuous-2026-05-01.md"
+    )
+    assert not is_bytecode_free_command_excluded(
+        "docs/project-maintenance/testing/codex-harness-manual-run-continuous-latest.md"
+    )
+
+
+def test_check_manual_runbook_agents_skill_count_accepts_matching_count(tmp_path: Path) -> None:
+    for skill_id in ("harness-skill", "repo-status-skill"):
+        write_doc(
+            tmp_path / f"product/harness/adapters/agents/skills/{skill_id}/payload.json",
+            "{}\n",
+        )
+    write_doc(
+        tmp_path / "docs/project-maintenance/testing/codex-post-deploy-behavior-tests.md",
+        "- 当前 `agents` install 已包含全部 2 个 skills，覆盖完整 Harness 控制回路\n",
+    )
+
+    report = SemanticReport()
+    check_manual_runbook_agents_skill_count(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_manual_runbook_agents_skill_count_flags_mismatch(tmp_path: Path) -> None:
+    for skill_id in ("harness-skill", "repo-status-skill", "repo-whats-next-skill"):
+        write_doc(
+            tmp_path / f"product/harness/adapters/agents/skills/{skill_id}/payload.json",
+            "{}\n",
+        )
+    write_doc(
+        tmp_path / "docs/project-maintenance/testing/codex-post-deploy-behavior-tests.md",
+        "- 当前 `agents` install 已包含全部 2 个 skills，覆盖完整 Harness 控制回路\n",
+    )
+
+    report = SemanticReport()
+    check_manual_runbook_agents_skill_count(tmp_path, report)
+
+    assert any("documents 2, adapter payload source has 3" in item for item in report.failures)
+
+
+def test_governance_semantic_cli_disables_bytecode_before_local_import(tmp_path: Path) -> None:
+    source_script = Path(__file__).resolve().parent / "governance_semantic_check.py"
+    write_doc(tmp_path / "governance_semantic_check.py", source_script.read_text(encoding="utf-8"))
+    write_doc(
+        tmp_path / "path_governance_check.py",
+        "\n".join(
+            [
+                "def iter_relative_markdown_targets(text):",
+                "    return []",
+                "",
+                "def resolve_markdown_target(markdown_file, repo_root, target):",
+                "    return repo_root / target",
+            ]
+        )
+        + "\n",
+    )
+
+    env = os.environ.copy()
+    env.pop("PYTHONDONTWRITEBYTECODE", None)
+    completed = subprocess.run(
+        [sys.executable, str(tmp_path / "governance_semantic_check.py"), "--repo-root", str(tmp_path)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    assert completed.returncode == 1
+    assert not list(tmp_path.rglob("__pycache__"))
+    assert not list(tmp_path.rglob("*.pyc"))
+
+
+def test_check_root_tool_shims_disable_bytecode_flags_late_guard(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "tools/scope_gate_check.py",
+        "\n".join(
+            [
+                "import sys",
+                "from toolchain.scripts.test.scope_gate_check import main",
+                "sys.dont_write_bytecode = True",
+            ]
+        )
+        + "\n",
+    )
+
+    report = SemanticReport()
+    check_root_tool_shims_disable_bytecode(tmp_path, report)
+
+    assert any("tools/scope_gate_check.py" in item for item in report.failures)
+
+
+def test_check_root_tool_shims_disable_bytecode_accepts_guard_before_import(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "tools/scope_gate_check.py",
+        "\n".join(
+            [
+                "import sys",
+                "sys.dont_write_bytecode = True",
+                "from toolchain.scripts.test.scope_gate_check import main",
+            ]
+        )
+        + "\n",
+    )
+
+    report = SemanticReport()
+    check_root_tool_shims_disable_bytecode(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_path_governance_docs_list_gitignore_entries_flags_missing_entry(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/path-governance-checks.md",
+        "` .aw/ `\n",
+    )
+
+    report = SemanticReport()
+    check_path_governance_docs_list_gitignore_entries(tmp_path, report)
+
+    assert any(".agents/" in item for item in report.failures)
+
+
+def test_check_path_governance_docs_list_gitignore_entries_accepts_complete_list(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/path-governance-checks.md",
+        "\n".join(
+            [
+                "`.aw/`",
+                "`.agents/`",
+                "`.claude/`",
+                "`.opencode/`",
+                "`.autoworkflow/`",
+                "`.spec-workflow/`",
+                "`**/__pycache__/`",
+                "`.pytest_cache/`",
+                "`*.pyc`",
+                "`*.pyo`",
+            ]
+        )
+        + "\n",
+    )
+
+    report = SemanticReport()
+    check_path_governance_docs_list_gitignore_entries(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_review_verify_docs_list_closeout_steps_flags_missing_step(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/review-verify-handbook.md",
+        "scope_gate -> spec_gate -> static_gate -> test_gate -> smoke_gate\n",
+    )
+
+    report = SemanticReport()
+    check_review_verify_docs_list_closeout_steps(tmp_path, report)
+
+    assert any("cache_gate" in item for item in report.failures)
+
+
+def test_check_review_verify_docs_list_closeout_steps_accepts_complete_sequence(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/review-verify-handbook.md",
+        "scope_gate -> spec_gate -> static_gate -> cache_gate -> test_gate -> smoke_gate\n",
+    )
+
+    report = SemanticReport()
+    check_review_verify_docs_list_closeout_steps(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_docs_list_closeout_cache_roots_flags_missing_root(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/project-maintenance/governance/review-verify-handbook.md",
+        "`docs/` `product/` `toolchain/`\n",
+    )
+    write_doc(
+        tmp_path / "toolchain/scripts/test/README.md",
+        "`docs/` `product/` `toolchain/` `tools/`\n",
+    )
+
+    report = SemanticReport()
+    check_docs_list_closeout_cache_roots(tmp_path, report)
+
+    assert any("tools" in item for item in report.failures)
+
+
+def test_check_docs_list_closeout_cache_roots_accepts_complete_roots(tmp_path: Path) -> None:
+    roots = "`docs/` `product/` `toolchain/` `tools/`\n"
+    write_doc(tmp_path / "docs/project-maintenance/governance/review-verify-handbook.md", roots)
+    write_doc(tmp_path / "toolchain/scripts/test/README.md", roots)
+
+    report = SemanticReport()
+    check_docs_list_closeout_cache_roots(tmp_path, report)
+
+    assert report.failures == []

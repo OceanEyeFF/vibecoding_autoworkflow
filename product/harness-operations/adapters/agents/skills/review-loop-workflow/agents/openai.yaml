@@ -1,4 +1,0 @@
-interface:
-  display_name: "Review Loop Workflow (Repo)"
-  short_description: "Apply the repo-local Harness Operations review-loop adapter"
-  default_prompt: "Use the repo-local $review-loop-workflow wrapper in .agents/skills to run a code-first review loop with harness state, staged findings, controlled fixes, and integration-only acceptance."

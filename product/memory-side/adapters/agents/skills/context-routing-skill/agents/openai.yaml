@@ -1,4 +1,0 @@
-interface:
-  display_name: "Context Routing (Repo)"
-  short_description: "Apply the repo-local Memory Side routing adapter"
-  default_prompt: "Use the repo-local $context-routing-skill wrapper in .agents/skills to produce a minimal Route Card for this repository with ordered entrypoints and explicit do-not-read boundaries."

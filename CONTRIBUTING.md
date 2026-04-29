@@ -16,15 +16,15 @@ Run these before requesting review:
 python toolchain/scripts/test/folder_logic_check.py
 python toolchain/scripts/test/path_governance_check.py
 python toolchain/scripts/test/governance_semantic_check.py
-python -m pytest toolchain/scripts/test/test_folder_logic_check.py toolchain/scripts/test/test_closeout_gate_tools.py
+python -m pytest toolchain/scripts/test/test_folder_logic_check.py toolchain/scripts/test/test_closeout_gate_tools.py toolchain/scripts/test/test_agents_adapter_contract.py
 ```
 
 ## Review Expectations
 
-- Follow `docs/operations/review-verify-handbook.md`.
+- Follow `docs/project-maintenance/governance/review-verify-handbook.md`.
 - If you touch governance rules, update the matching docs and checks in the same PR.
-- If you introduce a new root-level object, update `docs/knowledge/foundations/root-directory-layering.md` and folder logic checks.
+- If you introduce a new root-level object, update `docs/project-maintenance/foundations/root-directory-layering.md` and folder logic checks.
 
 ## PR / Branch Rules
 
-See `docs/operations/branch-pr-governance.md` for the branch model, PR requirements, and CI expectations.
+See `docs/project-maintenance/governance/branch-pr-governance.md` for the branch model, PR requirements, and CI expectations.

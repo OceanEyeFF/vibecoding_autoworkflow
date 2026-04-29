@@ -7,6 +7,8 @@ on:
 jobs:
   governance:
     runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -16,8 +18,13 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Install test dependencies
-        run: python -m pip install --upgrade pip pytest
+        run: python -m pip install --upgrade pip pytest jsonschema
 
       - name: Folder logic check
         run: python toolchain/scripts/test/folder_logic_check.py
@@ -29,4 +36,55 @@ jobs:
         run: python toolchain/scripts/test/governance_semantic_check.py
 
       - name: Governance tests
-        run: python -m pytest toolchain/scripts/test/test_folder_logic_check.py toolchain/scripts/test/test_closeout_gate_tools.py
+        run: python -m pytest toolchain/scripts/test
+
+      - name: Deploy regression tests
+        run: python -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
+
+      - name: Deploy package smoke
+        run: npm --prefix toolchain/scripts/deploy run smoke --silent
+
+      - name: Deploy package pack dry-run
+        working-directory: toolchain/scripts/deploy
+        run: npm pack --dry-run --json
+
+      - name: Deploy package tarball smoke
+        working-directory: toolchain/scripts/deploy
+        run: |
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+          package_path="$(bash "$GITHUB_WORKSPACE/toolchain/scripts/test/npm_pack_tarball.sh" "$tmpdir")"
+          npm exec --yes --package "$package_path" -- aw-installer --help
+          npm exec --yes --package "$package_path" -- aw-installer --version
+          AW_HARNESS_REPO_ROOT="$GITHUB_WORKSPACE" npm exec --yes --package "$package_path" -- aw-installer diagnose --backend agents --json
+          AW_HARNESS_REPO_ROOT="$GITHUB_WORKSPACE" npm exec --yes --package "$package_path" -- aw-installer update --backend agents --json
+
+      - name: Root aw-installer package pack dry-run
+        run: npm pack --dry-run --json
+
+      - name: Root aw-installer publish dry-run
+        run: npm run publish:dry-run --silent
+
+      - name: Root aw-installer package tarball smoke
+        run: |
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+          package_path="$(bash toolchain/scripts/test/npm_pack_tarball.sh "$tmpdir")"
+          target_repo="$tmpdir/target-repo"
+          mkdir -p "$target_repo"
+          (
+            cd "$target_repo"
+            AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer --help
+            AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer --version
+            if AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer tui > "$tmpdir/tui.out" 2> "$tmpdir/tui.err"; then
+              echo "expected aw-installer tui to require an interactive terminal" >&2
+              exit 1
+            fi
+            test ! -s "$tmpdir/tui.out"
+            grep -F "aw-installer tui requires an interactive terminal" "$tmpdir/tui.err"
+            AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer diagnose --backend agents --json
+            AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer update --backend agents --json
+            AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer install --backend agents
+            AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer verify --backend agents
+            AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer update --backend agents --yes
+          )

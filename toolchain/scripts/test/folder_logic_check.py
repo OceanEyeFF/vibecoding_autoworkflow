@@ -19,9 +19,11 @@ ROOT_ALLOWED_NAMES = {
     "GUIDE.md",
     "INDEX.md",
     "LICENSE",
+    "package.json",
     "README.md",
     "ROADMAP.md",
     ".github",
+    ".aw",
     ".codex",
     "docs",
     "product",
@@ -34,18 +36,17 @@ ROOT_ALLOWED_NAMES = {
     ".nav",
     ".opencode",
     ".pytest_cache",
-    ".serena",
     ".spec-workflow",
 }
 ROOT_ALLOWED_PREFIXES = (".git",)
 NAV_SLOT_TARGETS = {
     "@docs": "docs",
-    "@skills": "product/memory-side/skills",
+    "@skills": "product/harness/skills",
 }
 FIRST_LEVEL_ALLOWLIST = {
-    "product": {"README.md", "memory-side", "task-interface", "harness-operations"},
-    "docs": {"README.md", "analysis", "archive", "ideas", "knowledge", "operations", "reference"},
-    "toolchain": {"README.md", "evals", "scripts"},
+    "product": {"README.md", ".aw_template", "harness"},
+    "docs": {"README.md", "project-maintenance", "harness"},
+    "toolchain": {"README.md", "toolchain-layering.md", "scripts"},
 }
 TOOLS_TRACKED_ALLOWLIST = {
     "tools/closeout_acceptance_gate.py",
@@ -56,11 +57,8 @@ CODEX_TRACKED_ALLOWLIST = {
     ".codex/config.toml",
     ".codex/rules/repo.rules",
 }
-SERENA_TRACKED_ALLOWLIST = {
-    ".serena/.gitignore",
-    ".serena/memories/Claude-Workspace-Architecture.md",
-    ".serena/project.yml",
-}
+MOUNT_LAYER_PREFIXES = (".agents/", ".claude/", ".opencode/")
+RUNTIME_STATE_LAYER_PREFIXES = (".aw/",)
 CODEX_ALLOWED_ENTRIES = {"config.toml", "rules"}
 CODEX_RULES_ALLOWED_ENTRIES = {"repo.rules"}
 NAV_ALLOWED_ENTRIES = {"README.md", "@docs", "@skills"}
@@ -72,12 +70,14 @@ PRODUCT_BANNED_SEGMENTS = {
     ".pytest_cache",
     ".autoworkflow",
     ".spec-workflow",
-    ".serena",
     "cache",
     "logs",
     "operations",
     "runbook",
     "runbooks",
+}
+PRODUCT_ALLOWED_HIDDEN_DIRS = {
+    "product/.aw_template",
 }
 DOCS_BANNED_SEGMENTS = {
     "__pycache__",
@@ -95,9 +95,11 @@ TOOLCHAIN_BANNED_SEGMENTS = {
     ".claude",
     ".nav",
     ".opencode",
-    ".serena",
+    ".pytest_cache",
     ".spec-workflow",
+    "__pycache__",
     "adapters",
+    "cache",
     "logs",
     "manifests",
     "skills",
@@ -120,7 +122,6 @@ class FolderRules:
     )
     tools_tracked_allowlist: set[str] = field(default_factory=lambda: set(TOOLS_TRACKED_ALLOWLIST))
     codex_tracked_allowlist: set[str] = field(default_factory=lambda: set(CODEX_TRACKED_ALLOWLIST))
-    serena_tracked_allowlist: set[str] = field(default_factory=lambda: set(SERENA_TRACKED_ALLOWLIST))
 
 
 @dataclass
@@ -291,14 +292,16 @@ def check_product_patterns(repo_root: Path, report: FolderLogicReport) -> None:
     for relative_path in iter_relative_paths(repo_root / "product", repo_root):
         checked += 1
         name = Path(relative_path).name
+        if relative_path == "product/.aw_template" or relative_path.startswith("product/.aw_template/"):
+            continue
         if path_has_segment(relative_path, PRODUCT_BANNED_SEGMENTS):
             report.add_issue("FL004", relative_path, "product/ must not contain runbook, cache, log, or state directories")
             continue
         if "runbook" in name.casefold():
             report.add_issue("FL004", relative_path, "product/ must not contain runbook documents or helper files")
             continue
-        if name in PRODUCT_STATE_FILENAMES or name.endswith(".log"):
-            report.add_issue("FL004", relative_path, "product/ must not contain runtime, state, or log files")
+        if name in PRODUCT_STATE_FILENAMES or name.endswith((".log", ".pyc", ".pyo")):
+            report.add_issue("FL004", relative_path, "product/ must not contain runtime, state, log, or bytecode files")
     report.add_info(f"checked {checked} product/ paths for misplaced runtime content")
 
 
@@ -311,8 +314,8 @@ def check_docs_patterns(repo_root: Path, report: FolderLogicReport) -> None:
         if path_has_segment(relative_path, DOCS_BANNED_SEGMENTS):
             report.add_issue("FL005", relative_path, "docs/ must not contain cache, build, or runtime directories")
             continue
-        if name in GENERIC_RUNTIME_FILENAMES or name.endswith(".log"):
-            report.add_issue("FL005", relative_path, "docs/ must not contain runtime artifact or log files")
+        if name in GENERIC_RUNTIME_FILENAMES or name.endswith((".log", ".pyc", ".pyo")):
+            report.add_issue("FL005", relative_path, "docs/ must not contain runtime artifact, log, or bytecode files")
             continue
         if path_has_suffix(relative_path, DOCS_SCRIPT_SUFFIXES):
             report.add_issue("FL005", relative_path, "docs/ must not contain script source files")
@@ -331,12 +334,22 @@ def check_toolchain_patterns(repo_root: Path, report: FolderLogicReport) -> None
             report.add_issue(
                 "FL006",
                 relative_path,
-                "toolchain/ must not contain canonical source roots, repo-local mount content, or state layers",
+                "toolchain/ must not contain canonical source roots, repo-local mount content, caches, or state layers",
             )
             continue
-        if name in GENERIC_RUNTIME_FILENAMES or name.endswith(".log"):
-            report.add_issue("FL006", relative_path, "toolchain/ must not contain runtime logs or state files")
+        if name in GENERIC_RUNTIME_FILENAMES or name.endswith((".log", ".pyc", ".pyo")):
+            report.add_issue("FL006", relative_path, "toolchain/ must not contain runtime logs, state files, or bytecode caches")
     report.add_info(f"checked {checked} toolchain/ paths for misplaced canonical or runtime content")
+
+
+def check_tools_patterns(repo_root: Path, report: FolderLogicReport) -> None:
+    checked = 0
+    for relative_path in iter_relative_paths(repo_root / "tools", repo_root):
+        checked += 1
+        name = Path(relative_path).name
+        if name in {"__pycache__", ".pytest_cache"} or name.endswith((".pyc", ".pyo")):
+            report.add_issue("FL014", relative_path, "tools/ must not contain runtime cache content")
+    report.add_info(f"checked {checked} tools/ paths for runtime cache content")
 
 
 def check_tracked_exceptions(tracked_paths: set[str], report: FolderLogicReport, rules: FolderRules) -> None:
@@ -351,11 +364,13 @@ def check_tracked_exceptions(tracked_paths: set[str], report: FolderLogicReport,
             if tracked_path not in rules.codex_tracked_allowlist:
                 report.add_issue("FL016", tracked_path, ".codex/ only allows the explicit tracked whitelist")
             continue
-        if tracked_path.startswith((".agents/", ".claude/", ".opencode/")):
-            report.add_issue("FL007", tracked_path, "repo-local mount layers must not contain tracked content")
+        if tracked_path.startswith(MOUNT_LAYER_PREFIXES + RUNTIME_STATE_LAYER_PREFIXES):
+            report.add_issue(
+                "FL007",
+                tracked_path,
+                "repo-local runtime/install/mount layers must not contain tracked content",
+            )
             continue
-        if tracked_path.startswith(".serena/") and tracked_path not in rules.serena_tracked_allowlist:
-            report.add_issue("FL008", tracked_path, ".serena/ only allows the explicit tracked whitelist")
     report.add_info(f"checked {checked} tracked paths for hidden-layer exceptions")
 
 
@@ -405,6 +420,7 @@ def run_checks(repo_root: Path, rules: FolderRules | None = None) -> FolderLogic
     check_product_patterns(repo_root, report)
     check_docs_patterns(repo_root, report)
     check_toolchain_patterns(repo_root, report)
+    check_tools_patterns(repo_root, report)
     check_tracked_exceptions(tracked_paths, report, effective_rules)
     check_nav_layer(repo_root, report)
     return report

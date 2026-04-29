@@ -1,4 +1,0 @@
-interface:
-  display_name: "Writeback Cleanup (Repo)"
-  short_description: "Apply the repo-local Memory Side closeout adapter"
-  default_prompt: "Use the repo-local $writeback-cleanup-skill wrapper in .agents/skills to produce a Writeback Card for this repository that maps verified results to canonical docs and cleanup targets."

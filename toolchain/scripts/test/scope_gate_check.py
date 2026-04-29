@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import codecs
 import json
 import subprocess
 from dataclasses import dataclass
@@ -12,15 +13,28 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_ALLOWED_PREFIXES = (
+    "docs/README.md",
     ".autoworkflow/contracts/",
     ".autoworkflow/closeout/",
     ".autoworkflow/state/",
-    "docs/analysis/README.md",
-    "docs/analysis/autoresearch-closeout-",
-    "docs/knowledge/README.md",
-    "docs/knowledge/autoresearch/README.md",
-    "docs/knowledge/autoresearch/overview.md",
-    "docs/operations/",
+    "docs/project-maintenance/",
+    "docs/harness/",
+    "product/README.md",
+    "product/.aw_template/",
+    "package.json",
+    "product/harness/skills/",
+    "product/harness/adapters/",
+    ".agents/",
+    ".claude/",
+    ".opencode/",
+    "toolchain/scripts/deploy/adapter_deploy.py",
+    "toolchain/scripts/deploy/aw_scaffold.py",
+    "toolchain/scripts/deploy/bin/",
+    "toolchain/scripts/deploy/harness_deploy.py",
+    "toolchain/scripts/deploy/package.json",
+    "toolchain/scripts/deploy/README.md",
+    "toolchain/scripts/deploy/test_adapter_deploy.py",
+    "toolchain/scripts/deploy/test_aw_scaffold.py",
     "toolchain/scripts/test/",
     "tools/closeout_acceptance_gate.py",
     "tools/gate_status_backfill.py",
@@ -59,7 +73,16 @@ def parse_args() -> argparse.Namespace:
 
 def collect_changed_files(repo_root: Path) -> list[str]:
     completed = subprocess.run(
-        ["git", "-C", str(repo_root), "status", "--short", "--untracked-files=all"],
+        [
+            "git",
+            "-C",
+            str(repo_root),
+            "-c",
+            "core.quotePath=false",
+            "status",
+            "--short",
+            "--untracked-files=all",
+        ],
         check=True,
         capture_output=True,
         text=True,
@@ -71,8 +94,27 @@ def collect_changed_files(repo_root: Path) -> list[str]:
         path = raw_line[3:].strip()
         if " -> " in path:
             path = path.split(" -> ", 1)[1].strip()
+        path = normalize_status_path(path)
         changed.append(path)
     return changed
+
+
+def normalize_status_path(path: str) -> str:
+    """Decode Git-quoted UTF-8 octal paths from status output.
+
+    `latin-1` is used only as a byte-preserving bridge after
+    `unicode_escape`; it is not an assertion that repository paths are
+    Latin-1 encoded. `collect_changed_files` requests `core.quotePath=false`,
+    so this is mainly a compatibility fallback for quoted status lines.
+    """
+    if len(path) < 2 or not (path.startswith('"') and path.endswith('"')):
+        return path
+    inner = path[1:-1]
+    try:
+        decoded = codecs.decode(inner, "unicode_escape")
+        return decoded.encode("latin-1").decode("utf-8")
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        return path
 
 
 def check_scope(changed_files: list[str], allowed_prefixes: tuple[str, ...]) -> ScopeGateResult:

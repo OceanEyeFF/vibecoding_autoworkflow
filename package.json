@@ -1,0 +1,42 @@
+{
+  "name": "aw-installer",
+  "version": "0.4.0-rc.3",
+  "description": "Self-contained npm package envelope for the AW Harness installer.",
+  "license": "MIT",
+  "bin": {
+    "aw-installer": "toolchain/scripts/deploy/bin/aw-installer.js",
+    "aw-harness-deploy": "toolchain/scripts/deploy/bin/aw-harness-deploy.js"
+  },
+  "files": [
+    "README.md",
+    "LICENSE",
+    "product/harness/skills",
+    "product/harness/adapters/agents/skills",
+    "toolchain/scripts/deploy/README.md",
+    "toolchain/scripts/deploy/adapter_deploy.py",
+    "toolchain/scripts/deploy/harness_deploy.py",
+    "toolchain/scripts/deploy/bin/aw-installer.js",
+    "toolchain/scripts/deploy/bin/publish-dry-run.js",
+    "toolchain/scripts/deploy/bin/check-root-publish.js",
+    "toolchain/scripts/deploy/bin/aw-harness-deploy.js"
+  ],
+  "scripts": {
+    "smoke": "node toolchain/scripts/deploy/bin/aw-installer.js --help",
+    "pack:dry-run": "npm pack --dry-run --json",
+    "prepublishOnly": "node toolchain/scripts/deploy/bin/check-root-publish.js",
+    "publish:dry-run": "node toolchain/scripts/deploy/bin/publish-dry-run.js"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "awInstallerRelease": {
+    "realPublishApproval": "approved",
+    "approvedVersion": "0.4.0-rc.3",
+    "approvedGitTag": "v0.4.0-rc.3",
+    "approvedChannel": "next"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

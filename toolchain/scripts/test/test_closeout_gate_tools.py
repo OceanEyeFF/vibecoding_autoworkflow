@@ -1,15 +1,206 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import closeout_acceptance_gate
-from scope_gate_check import check_scope
+from scope_gate_check import check_scope, normalize_status_path
 from gate_status_backfill import update_state
+
+
+NPM_HELP_STDOUT = "usage: aw-installer\nharness_deploy.py\ntui\ninstall\nverify\ndiagnose\nupdate\n"
+NPM_VERSION = "0.4.0-rc.2"
+NPM_VERSION_STDOUT = f"aw-installer {NPM_VERSION}\n"
+
+
+def write_root_package_json(repo_root: Path, version: str = NPM_VERSION) -> None:
+    (repo_root / "package.json").write_text(
+        json.dumps({"name": "aw-installer", "version": version}),
+        encoding="utf-8",
+    )
+
+
+def npm_pack_stdout(paths: set[str] | None = None, filename: str = f"aw-installer-{NPM_VERSION}.tgz") -> str:
+    if paths is None:
+        paths = closeout_acceptance_gate.EXPECTED_NPM_PACKAGE_FILES
+    return json.dumps(
+        [
+            {
+                "filename": filename,
+                "files": [{"path": path} for path in sorted(paths)],
+            }
+        ]
+    )
+
+
+def successful_npm_command_result(
+    command: list[str],
+    extra_env: dict[str, str] | None = None,
+    cwd: Path | None = None,
+) -> dict | None:
+    if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
+        packed_paths = (
+            closeout_acceptance_gate.EXPECTED_NPM_PACKAGE_FILES
+            if cwd is not None and cwd.as_posix().endswith("toolchain/scripts/deploy")
+            else closeout_acceptance_gate.ROOT_NPM_REQUIRED_PACKAGE_FILES
+        )
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": npm_pack_stdout(packed_paths),
+            "stderr": "",
+            "passed": True,
+        }
+    if command == ["npm", "run", "publish:dry-run", "--silent"]:
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": json.dumps(
+                {
+                    "name": "aw-installer",
+                    "version": NPM_VERSION,
+                    "filename": f"aw-installer-{NPM_VERSION}.tgz",
+                    "files": [
+                        {"path": path}
+                        for path in sorted(closeout_acceptance_gate.ROOT_NPM_REQUIRED_PACKAGE_FILES)
+                    ],
+                }
+            ),
+            "stderr": "",
+            "passed": True,
+        }
+    if command[:3] == ["npm", "pack", "--json"] and "--pack-destination" in command:
+        package_dir = Path(command[command.index("--pack-destination") + 1])
+        package_dir.mkdir(parents=True, exist_ok=True)
+        (package_dir / f"aw-installer-{NPM_VERSION}.tgz").write_text("fake package", encoding="utf-8")
+        packed_paths = (
+            closeout_acceptance_gate.EXPECTED_NPM_PACKAGE_FILES
+            if cwd is not None and cwd.as_posix().endswith("toolchain/scripts/deploy")
+            else closeout_acceptance_gate.ROOT_NPM_REQUIRED_PACKAGE_FILES
+        )
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": npm_pack_stdout(packed_paths),
+            "stderr": "",
+            "passed": True,
+        }
+    if command[:2] == ["npm", "exec"] and "diagnose" in command:
+        if extra_env is None or "AW_HARNESS_REPO_ROOT" not in extra_env:
+            return {
+                "command": command,
+                "returncode": 1,
+                "stdout": "",
+                "stderr": "missing AW_HARNESS_REPO_ROOT",
+                "passed": False,
+            }
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": json.dumps(
+                {
+                    "backend": "agents",
+                    "binding_count": 1,
+                    "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
+                    "target_root": str((cwd or Path("/tmp/repo")) / ".agents" / "skills"),
+                }
+            ),
+            "stderr": "",
+            "passed": True,
+        }
+    if command[:2] == ["npm", "exec"] and "update" in command and command[-1] == "--yes":
+        target = (cwd or Path("/tmp/repo")) / ".agents" / "skills" / "aw-harness-skill"
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "SKILL.md").write_text("# harness\n", encoding="utf-8")
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": (
+                "[agents] applying update\n"
+                "installed skill harness-skill\n"
+                "[agents] ok: target root is ready\n"
+                "[agents] update complete\n"
+            ),
+            "stderr": "",
+            "passed": True,
+        }
+    if command[:2] == ["npm", "exec"] and "tui" in command:
+        return {
+            "command": command,
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "aw-installer tui requires an interactive terminal.\n",
+            "passed": False,
+        }
+    if command[:2] == ["npm", "exec"] and "update" in command:
+        if extra_env is None or "AW_HARNESS_REPO_ROOT" not in extra_env:
+            return {
+                "command": command,
+                "returncode": 1,
+                "stdout": "",
+                "stderr": "missing AW_HARNESS_REPO_ROOT",
+                "passed": False,
+            }
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": json.dumps(
+                {
+                    "backend": "agents",
+                    "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
+                    "target_root": str((cwd or Path("/tmp/repo")) / ".agents" / "skills"),
+                    "blocking_issue_count": 0,
+                    "planned_target_paths": [
+                        str((cwd or Path("/tmp/repo")) / ".agents" / "skills" / "aw-harness-skill")
+                    ],
+                }
+            ),
+            "stderr": "",
+            "passed": True,
+        }
+    if command[:2] == ["npm", "exec"] and "install" in command:
+        target = (cwd or Path("/tmp/repo")) / ".agents" / "skills" / "aw-harness-skill"
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "SKILL.md").write_text("# harness\n", encoding="utf-8")
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "installed skill harness-skill\n",
+            "stderr": "",
+            "passed": True,
+        }
+    if command[:2] == ["npm", "exec"] and "verify" in command:
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "[agents] ok: target root is ready\n",
+            "stderr": "",
+            "passed": True,
+        }
+    if command[:2] == ["npm", "exec"] and "--version" in command:
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": NPM_VERSION_STDOUT,
+            "stderr": "",
+            "passed": True,
+        }
+    if command[:2] == ["npm", "exec"]:
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": NPM_HELP_STDOUT,
+            "stderr": "",
+            "passed": True,
+        }
+    return None
 
 
 def test_check_scope_accepts_allowed_prefixes() -> None:
@@ -19,12 +210,27 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "CONTRIBUTING.md",
             ".codex/config.toml",
             ".github/workflows/ci.yml",
-            "docs/analysis/README.md",
-            "docs/knowledge/README.md",
-            "docs/knowledge/autoresearch/README.md",
-            "docs/operations/autoresearch-closeout-acceptance-gate.md",
-            "docs/operations/review-verify-handbook.md",
+            "docs/README.md",
+            "docs/harness/README.md",
+            "docs/project-maintenance/README.md",
+            "product/README.md",
+            "docs/project-maintenance/governance/review-verify-handbook.md",
+            "docs/project-maintenance/governance/path-governance-checks.md",
             ".autoworkflow/closeout/demo/summary.json",
+            "package.json",
+            "product/.aw_template/control-state.md",
+            "product/harness/skills/harness-skill/SKILL.md",
+            "product/harness/adapters/agents/skills/harness-skill/payload.json",
+            ".agents/skills/legacy-skill/SKILL.md",
+            "toolchain/scripts/deploy/adapter_deploy.py",
+            "toolchain/scripts/deploy/aw_scaffold.py",
+            "toolchain/scripts/deploy/bin/aw-installer.js",
+            "toolchain/scripts/deploy/bin/aw-harness-deploy.js",
+            "toolchain/scripts/deploy/harness_deploy.py",
+            "toolchain/scripts/deploy/package.json",
+            "toolchain/scripts/deploy/README.md",
+            "toolchain/scripts/deploy/test_adapter_deploy.py",
+            "toolchain/scripts/deploy/test_aw_scaffold.py",
             "toolchain/scripts/test/scope_gate_check.py",
             "tools/scope_gate_check.py",
         ],
@@ -33,11 +239,24 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "CONTRIBUTING.md",
             ".codex/",
             ".github/",
+            "docs/README.md",
             ".autoworkflow/closeout/",
-            "docs/analysis/README.md",
-            "docs/knowledge/README.md",
-            "docs/knowledge/autoresearch/README.md",
-            "docs/operations/",
+            "package.json",
+            "docs/project-maintenance/",
+            "docs/harness/",
+            "product/README.md",
+            "product/.aw_template/",
+            "product/harness/skills/",
+            "product/harness/adapters/",
+            ".agents/",
+            "toolchain/scripts/deploy/adapter_deploy.py",
+            "toolchain/scripts/deploy/aw_scaffold.py",
+            "toolchain/scripts/deploy/bin/",
+            "toolchain/scripts/deploy/harness_deploy.py",
+            "toolchain/scripts/deploy/package.json",
+            "toolchain/scripts/deploy/README.md",
+            "toolchain/scripts/deploy/test_adapter_deploy.py",
+            "toolchain/scripts/deploy/test_aw_scaffold.py",
             "toolchain/scripts/test/",
             "tools/scope_gate_check.py",
         ),
@@ -48,17 +267,106 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
 
 def test_check_scope_accepts_closeout_prefix() -> None:
     result = check_scope(
-        ["docs/analysis/autoresearch-closeout-governance-goals.md"],
-        ("docs/analysis/autoresearch-closeout-",),
+        ["docs/project-maintenance/governance/review-verify-handbook.md"],
+        ("docs/project-maintenance/governance/",),
     )
     assert result.passed is True
     assert result.violations == []
 
 
 def test_check_scope_flags_disallowed_changes() -> None:
-    result = check_scope(["docs/analysis/autoresearch-closeout-governance-task-list.md"], ("docs/operations/",))
+    result = check_scope(["GUIDE.md"], ("docs/project-maintenance/",))
     assert result.passed is False
-    assert result.violations == ["docs/analysis/autoresearch-closeout-governance-task-list.md"]
+    assert result.violations == ["GUIDE.md"]
+
+
+def test_normalize_status_path_decodes_git_quoted_utf8_path() -> None:
+    quoted = '"docs/harness/foundations/Harness\\350\\277\\220\\350\\241\\214\\345\\215\\217\\350\\256\\256.md"'
+
+    assert normalize_status_path(quoted) == "docs/harness/foundations/Harness运行协议.md"
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
+def test_pre_push_blocks_origin_head_baseline(tmp_path) -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    hook_path = repo_root / "toolchain" / "scripts" / "git-hooks" / "pre-push"
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(
+        [
+            "git",
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            "refs/remotes/origin/master",
+        ],
+        cwd=tmp_path,
+        check=True,
+    )
+
+    completed = subprocess.run(
+        ["bash", str(hook_path)],
+        cwd=tmp_path,
+        input=(
+            "refs/heads/master 0000000000000000000000000000000000000000 "
+            "refs/heads/master 0000000000000000000000000000000000000000\n"
+        ),
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 1
+    assert "direct push to protected baseline 'master' is blocked" in completed.stderr
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
+def test_pre_push_allows_non_baseline_branch(tmp_path) -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    hook_path = repo_root / "toolchain" / "scripts" / "git-hooks" / "pre-push"
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(
+        [
+            "git",
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            "refs/remotes/origin/master",
+        ],
+        cwd=tmp_path,
+        check=True,
+    )
+
+    completed = subprocess.run(
+        ["bash", str(hook_path)],
+        cwd=tmp_path,
+        input=(
+            "refs/heads/work/test 0000000000000000000000000000000000000000 "
+            "refs/heads/work/test 0000000000000000000000000000000000000000\n"
+        ),
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0
+    assert completed.stderr == ""
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
+def test_pre_push_fallback_blocks_main_when_origin_head_unresolved(tmp_path) -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    hook_path = repo_root / "toolchain" / "scripts" / "git-hooks" / "pre-push"
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+
+    completed = subprocess.run(
+        ["bash", str(hook_path)],
+        cwd=tmp_path,
+        input=(
+            "refs/heads/main 0000000000000000000000000000000000000000 "
+            "refs/heads/main 0000000000000000000000000000000000000000\n"
+        ),
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 1
+    assert "fallback protects main/master" in completed.stderr
 
 
 def test_update_state_backfills_gate_status() -> None:
@@ -109,7 +417,7 @@ def test_root_tool_shims_dispatch() -> None:
 def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path) -> None:
     captured: dict[str, object] = {}
 
-    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
         captured["command"] = command
         return {
             "command": command,
@@ -125,23 +433,24 @@ def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path
 
     assert result["passed"] is True
     command = captured["command"]
+    assert "README.md" in command
     assert "AGENTS.md" in command
     assert "CONTRIBUTING.md" in command
+    assert "docs/README.md" in command
     assert ".codex/" in command
     assert ".github/" in command
-    assert "docs/knowledge/README.md" in command
-    assert "docs/knowledge/autoresearch/README.md" in command
-    assert "docs/knowledge/autoresearch/overview.md" in command
-    assert "docs/knowledge/foundations/path-governance-ai-routing.md" in command
-    assert "docs/knowledge/foundations/root-directory-layering.md" in command
-    assert "docs/knowledge/foundations/toolchain-layering.md" in command
-    assert "docs/operations/review-verify-handbook.md" in command
+    assert "docs/project-maintenance/README.md" in command
+    assert "docs/harness/" in command
+    assert "product/README.md" in command
+    assert "docs/project-maintenance/foundations/root-directory-layering.md" in command
+    assert "toolchain/toolchain-layering.md" in command
+    assert "docs/project-maintenance/governance/review-verify-handbook.md" in command
 
 
 def test_run_spec_gate_includes_folder_logic(monkeypatch, tmp_path) -> None:
     commands: list[list[str]] = []
 
-    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
         commands.append(command)
         return {
             "command": command,
@@ -163,14 +472,88 @@ def test_run_spec_gate_includes_folder_logic(monkeypatch, tmp_path) -> None:
     ]
     assert any(command[-2:] == ["--repo-root", str(tmp_path)] for command in commands)
     assert any("folder_logic_check.py" in command[1] for command in commands)
-    assert any("docs/knowledge/autoresearch" in command for command in commands)
+    assert any("docs/harness" in command for command in commands)
 
 
-def test_run_test_gate_includes_folder_logic_tests(monkeypatch, tmp_path) -> None:
-    commands: list[list[str]] = []
+def test_run_command_disables_python_bytecode(monkeypatch, tmp_path) -> None:
+    captured: dict[str, object] = {}
 
-    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
-        commands.append(command)
+    def fake_run(command: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
+        captured["command"] = command
+        captured["env"] = kwargs["env"]
+        return subprocess.CompletedProcess(command, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(closeout_acceptance_gate.subprocess, "run", fake_run)
+
+    result = closeout_acceptance_gate.run_command([sys.executable, "--version"], cwd=tmp_path)
+
+    assert result["passed"] is True
+    assert captured["env"]["PYTHONDONTWRITEBYTECODE"] == "1"
+
+
+def test_run_static_gate_uses_in_memory_syntax_check(tmp_path) -> None:
+    scripts_root = tmp_path / "toolchain" / "scripts" / "test"
+    scripts_root.mkdir(parents=True)
+    (scripts_root / "ok.py").write_text("value = 1\n", encoding="utf-8")
+
+    result = closeout_acceptance_gate.run_static_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is True
+    assert result["command"] == ["python-syntax-check", "toolchain/scripts/test"]
+    assert not list(tmp_path.rglob("__pycache__"))
+    assert not list(tmp_path.rglob("*.pyc"))
+
+
+def test_run_static_gate_reports_syntax_errors(tmp_path) -> None:
+    scripts_root = tmp_path / "toolchain" / "scripts" / "test"
+    scripts_root.mkdir(parents=True)
+    (scripts_root / "bad.py").write_text("def broken(:\n", encoding="utf-8")
+
+    result = closeout_acceptance_gate.run_static_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is False
+    assert result["returncode"] == 1
+    assert "toolchain/scripts/test/bad.py" in result["stderr"]
+
+
+def test_run_cache_gate_rejects_runtime_cache_under_controlled_roots(tmp_path) -> None:
+    cache_dir = tmp_path / "toolchain" / "scripts" / ".pytest_cache"
+    cache_dir.mkdir(parents=True)
+    (tmp_path / "product" / "demo" / "__pycache__").mkdir(parents=True)
+    (tmp_path / "tools" / "__pycache__").mkdir(parents=True)
+    (tmp_path / "docs" / "demo.pyc").parent.mkdir(parents=True)
+    (tmp_path / "docs" / "demo.pyc").write_text("cache\n", encoding="utf-8")
+    (tmp_path / "product" / "demo.pyo").write_text("cache\n", encoding="utf-8")
+
+    result = closeout_acceptance_gate.run_cache_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is False
+    assert "toolchain/scripts/.pytest_cache" in result["stderr"]
+    assert "product/demo/__pycache__" in result["stderr"]
+    assert "tools/__pycache__" in result["stderr"]
+    assert "docs/demo.pyc" in result["stderr"]
+    assert "product/demo.pyo" in result["stderr"]
+
+
+def test_run_cache_gate_allows_root_pytest_cache(tmp_path) -> None:
+    (tmp_path / ".pytest_cache").mkdir()
+    (tmp_path / "toolchain").mkdir()
+
+    result = closeout_acceptance_gate.run_cache_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is True
+    assert result["stderr"] == ""
+
+
+def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
+    write_root_package_json(tmp_path)
+    calls: list[tuple[list[str], Path, dict[str, str] | None]] = []
+
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
+        calls.append((command, cwd, extra_env))
+        npm_result = successful_npm_command_result(command, extra_env, cwd)
+        if npm_result is not None:
+            return npm_result
         return {
             "command": command,
             "returncode": 0,
@@ -182,21 +565,74 @@ def test_run_test_gate_includes_folder_logic_tests(monkeypatch, tmp_path) -> Non
     monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
 
     result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
+    commands = [command for command, _, _ in calls]
 
     assert result["passed"] is True
-    assert [item["name"] for item in result["subchecks"][:2]] == [
+    assert [item["name"] for item in result["subchecks"][:10]] == [
+        "root_package_version_metadata",
         "gate_tool_tests",
         "folder_logic_tests",
+        "path_governance_tests",
+        "governance_semantic_tests",
+        "agents_adapter_contract_tests",
+        "deploy_regression_tests",
+        "repo_analysis_contract_check",
+        "npm_pack_dry_run_aw_installer",
+        "npm_tarball_smoke_aw_installer",
     ]
     assert any(command[-1] == "toolchain/scripts/test/test_folder_logic_check.py" for command in commands)
+    assert any(command[-1] == "toolchain/scripts/test/test_path_governance_check.py" for command in commands)
+    assert any(command[-1] == "toolchain/scripts/test/test_governance_semantic_check.py" for command in commands)
+    assert any(command[-1] == "toolchain/scripts/test/test_agents_adapter_contract.py" for command in commands)
+    assert any(command[:4] == [sys.executable, "-m", "unittest", "discover"] for command in commands)
+    assert any(command[-1] == "toolchain/scripts/test/repo_analysis_contract_check.py" for command in commands)
+    assert any(
+        command == ["npm", "pack", "--dry-run", "--json"]
+        and cwd == tmp_path / "toolchain" / "scripts" / "deploy"
+        for command, cwd, _ in calls
+    )
+    assert any(
+        command[:3] == ["npm", "pack", "--json"]
+        and cwd == tmp_path / "toolchain" / "scripts" / "deploy"
+        for command, cwd, _ in calls
+    )
+    assert any(command[:2] == ["npm", "exec"] for command in commands)
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and "diagnose" in command
+        and extra_env == {"AW_HARNESS_REPO_ROOT": str(tmp_path)}
+        for command, _, extra_env in calls
+    )
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and "update" in command
+        and extra_env == {"AW_HARNESS_REPO_ROOT": str(tmp_path)}
+        for command, _, extra_env in calls
+    )
+    deploy_verify_commands = [
+        command
+        for command in commands
+        if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]
+    ]
+    assert len(deploy_verify_commands) == 2
+    assert {Path(command[1]).name for command in deploy_verify_commands} == {
+        "adapter_deploy.py",
+        "harness_deploy.py",
+    }
+    assert all(command[-2:] == ["--backend", "agents"] for command in deploy_verify_commands)
+    assert all("--target" not in command for command in deploy_verify_commands)
 
 
 def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path) -> None:
+    write_root_package_json(tmp_path)
     commands: list[list[str]] = []
 
-    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
         commands.append(command)
-        if "adapter_deploy.py" in command[1]:
+        npm_result = successful_npm_command_result(command, extra_env, cwd)
+        if npm_result is not None:
+            return npm_result
+        if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]:
             return {
                 "command": command,
                 "returncode": 1,
@@ -224,20 +660,26 @@ def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path)
     deploy_results = {
         item["name"]: item for item in result["subchecks"] if item["name"].startswith("deploy_verify_")
     }
+    assert set(deploy_results) == {"deploy_verify_adapter_agents", "deploy_verify_wrapper_agents"}
     assert all(item["passed"] is True for item in deploy_results.values())
     assert all(item["skipped"] is True for item in deploy_results.values())
     assert any("adapter_deploy.py" in command[1] for command in commands)
+    assert any("harness_deploy.py" in command[1] for command in commands)
 
 
 def test_run_test_gate_checks_broken_local_deploy_target_symlink(monkeypatch, tmp_path) -> None:
+    write_root_package_json(tmp_path)
     commands: list[list[str]] = []
     broken_root = tmp_path / ".agents" / "skills"
     broken_root.parent.mkdir(parents=True)
     broken_root.symlink_to(tmp_path / "missing-agents-skills")
 
-    def fake_run_command(command: list[str], *, cwd: Path) -> dict:
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
         commands.append(command)
-        if "adapter_deploy.py" in command[1]:
+        npm_result = successful_npm_command_result(command, extra_env, cwd)
+        if npm_result is not None:
+            return npm_result
+        if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]:
             return {
                 "command": command,
                 "returncode": 1,
@@ -260,6 +702,143 @@ def test_run_test_gate_checks_broken_local_deploy_target_symlink(monkeypatch, tm
     assert result["passed"] is False
     assert result["status"] == "failed"
     assert any("adapter_deploy.py" in command[1] for command in commands)
+    assert any("harness_deploy.py" in command[1] for command in commands)
+
+
+def test_run_test_gate_fails_on_unexpected_npm_packlist(monkeypatch, tmp_path) -> None:
+    write_root_package_json(tmp_path)
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
+        if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
+            return {
+                "command": command,
+                "returncode": 0,
+                "stdout": npm_pack_stdout({"README.md", "test_adapter_deploy.py"}),
+                "stderr": "",
+                "passed": True,
+            }
+        npm_result = successful_npm_command_result(command, extra_env, cwd)
+        if npm_result is not None:
+            return npm_result
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is False
+    assert result["status"] == "failed"
+    pack_result = next(
+        item for item in result["subchecks"] if item["name"] == "npm_pack_dry_run_aw_installer"
+    )
+    assert pack_result["passed"] is False
+    assert "unexpected npm package files" in pack_result["stderr"]
+
+
+def test_run_test_gate_fails_on_mismatched_tarball_version(monkeypatch, tmp_path) -> None:
+    write_root_package_json(tmp_path, version=NPM_VERSION)
+
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
+        if command[:2] == ["npm", "exec"] and "--version" in command:
+            return {
+                "command": command,
+                "returncode": 0,
+                "stdout": f"aw-installer {NPM_VERSION}0\n",
+                "stderr": "",
+                "passed": True,
+            }
+        npm_result = successful_npm_command_result(command, extra_env, cwd)
+        if npm_result is not None:
+            return npm_result
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is False
+    assert result["status"] == "failed"
+    tarball_results = [
+        item
+        for item in result["subchecks"]
+        if item["name"] in {"npm_tarball_smoke_aw_installer", "root_npm_tarball_smoke_aw_installer"}
+    ]
+    assert tarball_results
+    assert all(item["passed"] is False for item in tarball_results)
+    assert all("version probe omitted package version" in item["stderr"] for item in tarball_results)
+
+
+def test_run_test_gate_fails_on_invalid_root_package_json(monkeypatch, tmp_path) -> None:
+    (tmp_path / "package.json").write_text("{not-json", encoding="utf-8")
+
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
+        npm_result = successful_npm_command_result(command, extra_env, cwd)
+        if npm_result is not None:
+            return npm_result
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is False
+    version_result = result["subchecks"][0]
+    assert version_result["name"] == "root_package_version_metadata"
+    assert version_result["passed"] is False
+    assert "invalid root package.json version metadata" in version_result["stderr"]
+
+
+def test_run_test_gate_fails_on_npm_tarball_exec_failure(monkeypatch, tmp_path) -> None:
+    write_root_package_json(tmp_path)
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
+        if command[:2] == ["npm", "exec"]:
+            return {
+                "command": command,
+                "returncode": 1,
+                "stdout": "",
+                "stderr": "bin failed",
+                "passed": False,
+            }
+        npm_result = successful_npm_command_result(command, extra_env, cwd)
+        if npm_result is not None:
+            return npm_result
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
+
+    assert result["passed"] is False
+    assert result["status"] == "failed"
+    tarball_result = next(
+        item for item in result["subchecks"] if item["name"] == "npm_tarball_smoke_aw_installer"
+    )
+    assert tarball_result["passed"] is False
+    exec_result = next(item for item in tarball_result["subchecks"] if item["name"] == "npm_exec_tarball")
+    assert exec_result["stderr"] == "bin failed"
 
 
 def test_closeout_gate_fails_closed_on_test_gate_failure(monkeypatch, tmp_path, capsys) -> None:
@@ -288,6 +867,7 @@ def test_closeout_gate_fails_closed_on_test_gate_failure(monkeypatch, tmp_path, 
         "scope_gate",
         "spec_gate",
         "static_gate",
+        "cache_gate",
         "test_gate",
     ]
 
@@ -297,16 +877,16 @@ def test_run_smoke_gate_skips_missing_runtime_root(monkeypatch, tmp_path) -> Non
     runtime_dir = (
         primary_root
         / ".autoworkflow"
-        / "autoresearch"
-        / "manual-cr-codex-loop-3round-r000001-m000642"
+        / "closeout"
+        / "manual-governance-loop-3round-r000001-m000642"
     )
     runtime_dir.mkdir(parents=True)
     (runtime_dir / "runtime.json").write_text('{"active_round": null}', encoding="utf-8")
     other_runtime_dir = (
         primary_root
         / ".autoworkflow"
-        / "autoresearch"
-        / "manual-cr-codex-loop-6-3-3-r000001-m046830"
+        / "closeout"
+        / "manual-governance-loop-6-3-3-r000001-m046830"
     )
     other_runtime_dir.mkdir(parents=True)
     (other_runtime_dir / "runtime.json").write_text('{"active_round": null}', encoding="utf-8")
@@ -336,8 +916,8 @@ def test_run_smoke_gate_fails_when_runtime_root_exists_but_retained_files_are_mi
     (
         tmp_path
         / ".autoworkflow"
-        / "autoresearch"
-        / "manual-cr-codex-loop-3round-r000001-m000642"
+        / "closeout"
+        / "manual-governance-loop-3round-r000001-m000642"
     ).mkdir(parents=True)
     monkeypatch.setattr(
         closeout_acceptance_gate,
@@ -359,9 +939,9 @@ def test_run_smoke_gate_fails_when_runtime_root_exists_but_retained_files_are_mi
     assert all(check["missing"] is True for check in result["runtime_checks"])
 
 
-def test_run_smoke_gate_fails_when_only_unrelated_runtime_artifacts_exist(monkeypatch, tmp_path) -> None:
+def test_run_smoke_gate_skips_when_only_unrelated_runtime_artifacts_exist(monkeypatch, tmp_path) -> None:
     primary_root = tmp_path / "primary"
-    (primary_root / ".autoworkflow" / "autoresearch" / "some-other-run").mkdir(parents=True)
+    (primary_root / ".autoworkflow" / "closeout" / "some-other-run").mkdir(parents=True)
     monkeypatch.setattr(closeout_acceptance_gate, "find_primary_worktree_root", lambda repo_root: primary_root)
     monkeypatch.setattr(
         closeout_acceptance_gate,
@@ -376,10 +956,10 @@ def test_run_smoke_gate_fails_when_only_unrelated_runtime_artifacts_exist(monkey
     )
 
     result = closeout_acceptance_gate.run_smoke_gate(tmp_path, sys.executable, "workflow-1")
-    assert result["passed"] is False
-    assert result["status"] == "failed"
-    assert len(result["runtime_checks"]) == 2
-    assert all(check["missing"] is True for check in result["runtime_checks"])
+    assert result["passed"] is True
+    assert result["status"] == "skipped"
+    assert len(result["runtime_checks"]) == 1
+    assert result["runtime_checks"][0]["skipped"] is True
 
 
 def test_closeout_gate_backfills_skipped_status(monkeypatch, tmp_path, capsys) -> None:
@@ -429,6 +1009,32 @@ def test_closeout_gate_backfills_skipped_status(monkeypatch, tmp_path, capsys) -
     assert test_gate_backfill[test_gate_backfill.index("--status") + 1] == "skipped"
     details = json.loads(test_gate_backfill[test_gate_backfill.index("--details") + 1])
     assert "skip_reasons" in details
+
+
+def test_closeout_gate_backfill_subprocess_uses_bytecode_free_env(monkeypatch, tmp_path, capsys) -> None:
+    class Args:
+        repo_root = tmp_path
+        workflow_id = "workflow-1"
+        json = True
+
+    captured_envs: list[dict[str, str]] = []
+
+    def fake_run_gate(gate: str, *, repo_root: Path, python: str, workflow_id: str) -> dict:
+        return {"passed": True, "returncode": 0}
+
+    def fake_subprocess_run(*args, **kwargs) -> subprocess.CompletedProcess[str]:
+        if "gate_status_backfill.py" in args[0][1]:
+            captured_envs.append(kwargs["env"])
+        return subprocess.CompletedProcess(args[0], 0, stdout="{}", stderr="")
+
+    monkeypatch.setattr(closeout_acceptance_gate, "parse_args", lambda: Args())
+    monkeypatch.setattr(closeout_acceptance_gate, "run_gate", fake_run_gate)
+    monkeypatch.setattr(closeout_acceptance_gate.subprocess, "run", fake_subprocess_run)
+
+    assert closeout_acceptance_gate.main() == 0
+    json.loads(capsys.readouterr().out)
+    assert captured_envs
+    assert all(env["PYTHONDONTWRITEBYTECODE"] == "1" for env in captured_envs)
 
 
 def test_find_primary_worktree_root_prefers_non_nested_worktree(monkeypatch, tmp_path) -> None:

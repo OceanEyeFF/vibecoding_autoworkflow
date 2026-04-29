@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run lightweight governance checks for path layout and AI routing docs."""
+"""Run lightweight governance checks for path layout and AGENTS-based routing."""
 
 from __future__ import annotations
 
@@ -11,10 +11,9 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-PATH_GOVERNANCE_DOC = "docs/knowledge/foundations/path-governance-ai-routing.md"
-DOCS_GOVERNANCE_DOC = "docs/knowledge/foundations/docs-governance.md"
-ANALYSIS_README = "docs/analysis/README.md"
-KNOWLEDGE_README = "docs/knowledge/README.md"
+AGENTS_CONTRACT_DOC = "AGENTS.md"
+PROJECT_MAINTENANCE_README = "docs/project-maintenance/README.md"
+HARNESS_README = "docs/harness/README.md"
 DEFAULT_SCAN_PATHS = [
     "README.md",
     "INDEX.md",
@@ -33,150 +32,218 @@ REQUIRED_ENTRY_PATHS = [
     "GUIDE.md",
     "ROADMAP.md",
     "docs/README.md",
-    KNOWLEDGE_README,
-    "docs/knowledge/foundations/README.md",
-    "docs/knowledge/memory-side/README.md",
-    "docs/knowledge/task-interface/README.md",
-    "docs/operations/README.md",
-    "docs/operations/deploy/README.md",
-    "docs/operations/memory-side/README.md",
-    "docs/operations/prompt-templates/README.md",
-    "docs/operations/task-interface/README.md",
-    "docs/operations/path-governance-checks.md",
-    DOCS_GOVERNANCE_DOC,
-    PATH_GOVERNANCE_DOC,
-    "docs/knowledge/foundations/root-directory-layering.md",
-    "docs/knowledge/foundations/toolchain-layering.md",
-    "docs/knowledge/foundations/context-entry-template.md",
-    "docs/knowledge/foundations/writeback-log-template.md",
-    "docs/knowledge/foundations/decision-record-template.md",
-    "docs/knowledge/foundations/module-entry-template.md",
+    PROJECT_MAINTENANCE_README,
+    HARNESS_README,
+    "docs/harness/foundations/README.md",
+    "docs/harness/foundations/Harness指导思想.md",
+    "docs/harness/foundations/Harness运行协议.md",
+    "docs/harness/scope/README.md",
+    "docs/harness/artifact/README.md",
+    "docs/harness/catalog/README.md",
+    "docs/harness/catalog/supervisor.md",
+    "docs/harness/catalog/repo.md",
+    "docs/harness/catalog/worktrack.md",
+    "docs/harness/artifact/repo/README.md",
+    "docs/harness/artifact/repo/goal-charter.md",
+    "docs/harness/artifact/repo/snapshot-status.md",
+    "docs/harness/artifact/worktrack/README.md",
+    "docs/harness/artifact/worktrack/contract.md",
+    "docs/harness/artifact/worktrack/plan-task-queue.md",
+    "docs/harness/artifact/worktrack/gate-evidence.md",
+    "docs/harness/artifact/control/README.md",
+    "docs/harness/artifact/control/control-state.md",
+    "docs/harness/artifact/control/goal-change-request.md",
+    "docs/harness/adjacent-systems/README.md",
+    "docs/harness/adjacent-systems/task-interface/README.md",
+    "docs/harness/adjacent-systems/task-interface/task-contract.md",
+    "docs/harness/adjacent-systems/memory-side/README.md",
+    "docs/harness/adjacent-systems/memory-side/overview.md",
+    "docs/harness/adjacent-systems/memory-side/layer-boundary.md",
+    "docs/harness/adjacent-systems/memory-side/knowledge-base.md",
+    "docs/harness/adjacent-systems/memory-side/context-routing.md",
+    "docs/harness/adjacent-systems/memory-side/context-routing-rules.md",
+    "docs/harness/adjacent-systems/memory-side/writeback-cleanup.md",
+    "docs/harness/adjacent-systems/memory-side/writeback-cleanup-rules.md",
+    "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
+    "docs/harness/adjacent-systems/memory-side/formats/README.md",
+    "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md",
+    "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md",
+    "docs/harness/workflow-families/README.md",
+    "docs/harness/workflow-families/repo-evolution/README.md",
+    "docs/project-maintenance/foundations/README.md",
+    "docs/project-maintenance/governance/README.md",
+    "docs/project-maintenance/deploy/README.md",
+    "docs/project-maintenance/testing/README.md",
+    "docs/project-maintenance/usage-help/README.md",
+    "docs/project-maintenance/governance/path-governance-checks.md",
+    "docs/project-maintenance/foundations/root-directory-layering.md",
+    "toolchain/toolchain-layering.md",
     "product/README.md",
-    "product/harness-operations/README.md",
-    "product/harness-operations/skills/README.md",
-    "product/harness-operations/adapters/README.md",
-    "product/harness-operations/manifests/README.md",
-    "product/memory-side/README.md",
-    "product/memory-side/skills/README.md",
-    "product/memory-side/adapters/README.md",
+    "product/harness/README.md",
+    "product/harness/skills/README.md",
+    "product/harness/adapters/README.md",
     "toolchain/README.md",
     "toolchain/scripts/README.md",
     "toolchain/scripts/test/README.md",
-    "toolchain/evals/README.md",
-    "toolchain/evals/memory-side/README.md",
 ]
-PATH_GOVERNANCE_BACKLINK_PATHS = [
+AGENTS_CONTRACT_BACKLINK_PATHS = [
     "AGENTS.md",
     "README.md",
     "INDEX.md",
     "GUIDE.md",
     "ROADMAP.md",
     "docs/README.md",
-    KNOWLEDGE_README,
-    "docs/knowledge/foundations/README.md",
-    "docs/knowledge/foundations/root-directory-layering.md",
+    PROJECT_MAINTENANCE_README,
+    HARNESS_README,
+    "docs/project-maintenance/foundations/README.md",
+    "docs/project-maintenance/governance/path-governance-checks.md",
     ".nav/README.md",
-]
-DOCS_GOVERNANCE_BACKLINK_PATHS = [
-    "AGENTS.md",
-    "README.md",
-    "INDEX.md",
-    "GUIDE.md",
-    "ROADMAP.md",
-    "docs/README.md",
-    KNOWLEDGE_README,
-    "docs/knowledge/foundations/README.md",
-    ANALYSIS_README,
-    "docs/operations/README.md",
-    "docs/operations/path-governance-checks.md",
 ]
 ENTRYPOINT_LINK_RULES = {
     "AGENTS.md": [
-        KNOWLEDGE_README,
+        "docs/README.md",
     ],
     "README.md": [
-        KNOWLEDGE_README,
+        "docs/README.md",
     ],
     "INDEX.md": [
-        KNOWLEDGE_README,
+        "docs/README.md",
     ],
     "GUIDE.md": [
-        KNOWLEDGE_README,
+        "docs/README.md",
     ],
     "ROADMAP.md": [
-        KNOWLEDGE_README,
+        "docs/README.md",
     ],
     "docs/README.md": [
-        KNOWLEDGE_README,
+        PROJECT_MAINTENANCE_README,
+        HARNESS_README,
     ],
-    "docs/operations/README.md": [
-        KNOWLEDGE_README,
-        "docs/operations/deploy/README.md",
-        "docs/operations/prompt-templates/README.md",
-        "docs/operations/memory-side/README.md",
-        "docs/operations/task-interface/README.md",
+    HARNESS_README: [
+        "docs/harness/foundations/README.md",
+        "docs/harness/scope/README.md",
+        "docs/harness/artifact/README.md",
+        "docs/harness/catalog/README.md",
+        "docs/harness/adjacent-systems/README.md",
+        "docs/harness/workflow-families/README.md",
+        AGENTS_CONTRACT_DOC,
     ],
-    "docs/operations/prompt-templates/README.md": [
-        KNOWLEDGE_README,
-        "product/harness-operations/README.md",
+    "docs/harness/catalog/README.md": [
+        "docs/harness/catalog/supervisor.md",
+        "docs/harness/catalog/repo.md",
+        "docs/harness/catalog/worktrack.md",
+        "docs/harness/foundations/Harness指导思想.md",
+        "docs/harness/foundations/Harness运行协议.md",
+        "product/harness/skills/README.md",
     ],
-    "docs/analysis/README.md": [
-        KNOWLEDGE_README,
+    "docs/harness/foundations/README.md": [
+        "docs/harness/foundations/Harness指导思想.md",
+        "docs/harness/foundations/Harness运行协议.md",
+    ],
+    "docs/harness/scope/README.md": [
+        "docs/harness/scope/repo-scope.md",
+        "docs/harness/scope/worktrack-scope.md",
+        "docs/harness/scope/state-loop.md",
+    ],
+    "docs/harness/artifact/README.md": [
+        "docs/harness/artifact/repo/README.md",
+        "docs/harness/artifact/worktrack/README.md",
+        "docs/harness/artifact/control/README.md",
+    ],
+    "docs/harness/artifact/repo/README.md": [
+        "docs/harness/artifact/repo/goal-charter.md",
+        "docs/harness/artifact/repo/snapshot-status.md",
+    ],
+    "docs/harness/artifact/worktrack/README.md": [
+        "docs/harness/artifact/worktrack/contract.md",
+        "docs/harness/artifact/worktrack/plan-task-queue.md",
+        "docs/harness/artifact/worktrack/gate-evidence.md",
+    ],
+    "docs/harness/artifact/control/README.md": [
+        "docs/harness/artifact/control/control-state.md",
+        "docs/harness/artifact/control/goal-change-request.md",
+    ],
+    "docs/harness/adjacent-systems/README.md": [
+        "docs/harness/adjacent-systems/task-interface/README.md",
+        "docs/harness/adjacent-systems/memory-side/README.md",
+    ],
+    "docs/harness/adjacent-systems/task-interface/README.md": [
+        "docs/harness/adjacent-systems/task-interface/task-contract.md",
+    ],
+    "docs/harness/adjacent-systems/memory-side/README.md": [
+        "docs/harness/adjacent-systems/memory-side/overview.md",
+        "docs/harness/adjacent-systems/memory-side/layer-boundary.md",
+        "docs/harness/adjacent-systems/memory-side/knowledge-base.md",
+        "docs/harness/adjacent-systems/memory-side/context-routing.md",
+        "docs/harness/adjacent-systems/memory-side/context-routing-rules.md",
+        "docs/harness/adjacent-systems/memory-side/writeback-cleanup.md",
+        "docs/harness/adjacent-systems/memory-side/writeback-cleanup-rules.md",
+        "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
+        "docs/harness/adjacent-systems/memory-side/formats/README.md",
+    ],
+    "docs/harness/adjacent-systems/memory-side/formats/README.md": [
+        "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md",
+        "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md",
+    ],
+    "docs/harness/workflow-families/README.md": [
+        "docs/harness/workflow-families/repo-evolution/README.md",
+    ],
+    "docs/harness/workflow-families/repo-evolution/README.md": [
+        "docs/harness/workflow-families/repo-evolution/standard-worktrack.md",
+        "docs/harness/workflow-families/repo-evolution/policy-profiles.md",
+    ],
+    PROJECT_MAINTENANCE_README: [
+        "docs/project-maintenance/foundations/README.md",
+        "docs/project-maintenance/governance/README.md",
+        "docs/project-maintenance/deploy/README.md",
+        "docs/project-maintenance/testing/README.md",
+        "docs/project-maintenance/usage-help/README.md",
+    ],
+    "docs/project-maintenance/foundations/README.md": [
+        "docs/project-maintenance/foundations/root-directory-layering.md",
+        "toolchain/toolchain-layering.md",
+        AGENTS_CONTRACT_DOC,
+    ],
+    "docs/project-maintenance/governance/README.md": [
+        "docs/project-maintenance/governance/review-verify-handbook.md",
+        "docs/project-maintenance/governance/path-governance-checks.md",
+        "docs/project-maintenance/governance/branch-pr-governance.md",
+    ],
+    "docs/project-maintenance/deploy/README.md": [
+        "docs/project-maintenance/deploy/deploy-runbook.md",
+        "docs/project-maintenance/deploy/skill-deployment-maintenance.md",
+    ],
+    "docs/project-maintenance/testing/README.md": [
+        "docs/project-maintenance/testing/python-script-test-execution.md",
+        "docs/project-maintenance/testing/npx-command-test-execution.md",
+        "docs/project-maintenance/testing/codex-post-deploy-behavior-tests.md",
+        "docs/project-maintenance/testing/claude-post-deploy-behavior-tests.md",
+    ],
+    "docs/project-maintenance/usage-help/README.md": [
+        "docs/project-maintenance/usage-help/codex.md",
+        "docs/project-maintenance/usage-help/claude.md",
+        "docs/project-maintenance/usage-help/opencode.md",
     ],
     "product/README.md": [
-        "product/memory-side/README.md",
-        "product/task-interface/README.md",
-        "product/harness-operations/README.md",
+        "product/harness/README.md",
     ],
-    "docs/reference/README.md": [
-        KNOWLEDGE_README,
-    ],
-    KNOWLEDGE_README: [
-        "docs/knowledge/foundations/README.md",
-        "docs/knowledge/memory-side/README.md",
-        "docs/knowledge/task-interface/README.md",
-    ],
-    "docs/knowledge/foundations/README.md": [
-        "docs/knowledge/foundations/root-directory-layering.md",
-        "docs/knowledge/foundations/path-governance-ai-routing.md",
-        "docs/knowledge/foundations/docs-governance.md",
-        "docs/knowledge/foundations/toolchain-layering.md",
-        "docs/knowledge/foundations/partition-model.md",
-        "docs/knowledge/foundations/task-contract-template.md",
-        "docs/knowledge/foundations/context-entry-template.md",
-        "docs/knowledge/foundations/writeback-log-template.md",
-        "docs/knowledge/foundations/decision-record-template.md",
-        "docs/knowledge/foundations/module-entry-template.md",
-    ],
-    "docs/knowledge/memory-side/README.md": [
-        "docs/knowledge/memory-side/overview.md",
-        "docs/knowledge/memory-side/layer-boundary.md",
-        "docs/knowledge/memory-side/knowledge-base.md",
-        "docs/knowledge/memory-side/context-routing.md",
-        "docs/knowledge/memory-side/context-routing-rules.md",
-        "docs/knowledge/memory-side/writeback-cleanup.md",
-        "docs/knowledge/memory-side/writeback-cleanup-rules.md",
-        "docs/knowledge/memory-side/skill-agent-model.md",
-        "docs/knowledge/memory-side/formats/context-routing-output-format.md",
-        "docs/knowledge/memory-side/formats/writeback-cleanup-output-format.md",
-        "docs/knowledge/memory-side/prompts/knowledge-base-adapter-prompt.md",
-        "docs/knowledge/memory-side/prompts/context-routing-adapter-prompt.md",
-        "docs/knowledge/memory-side/prompts/writeback-cleanup-adapter-prompt.md",
-        "docs/knowledge/memory-side/skills/knowledge-base-skill.md",
-        "docs/knowledge/memory-side/skills/context-routing-skill.md",
-        "docs/knowledge/memory-side/skills/writeback-cleanup-skill.md",
-    ],
-    "docs/knowledge/task-interface/README.md": [
-        "docs/knowledge/task-interface/task-contract.md",
-        "docs/knowledge/task-interface/skills/task-contract-skill.md",
+    "product/harness/README.md": [
+        "docs/harness/README.md",
+        "product/harness/skills/README.md",
+        "product/harness/adapters/README.md",
     ],
 }
 REQUIRED_GITIGNORE_ENTRIES = [
+    ".aw/",
     ".agents/",
     ".claude/",
     ".opencode/",
     ".autoworkflow/",
     ".spec-workflow/",
+    "**/__pycache__/",
+    ".pytest_cache/",
+    "*.pyc",
+    "*.pyo",
 ]
 FRONTMATTER_REQUIRED_KEYS = [
     "title",
@@ -186,14 +253,8 @@ FRONTMATTER_REQUIRED_KEYS = [
     "last_verified",
 ]
 STATUS_RULES = [
-    ("docs/reference/", {"reference"}),
-    ("docs/archive/", {"archived"}),
-    ("docs/ideas/active/", {"active"}),
-    ("docs/ideas/incubating/", {"incubating"}),
-    ("docs/ideas/archived/", {"archived"}),
-    ("docs/knowledge/", {"active", "draft", "superseded"}),
-    ("docs/operations/", {"active", "draft", "superseded"}),
-    ("docs/analysis/", {"active", "draft", "superseded"}),
+    ("docs/project-maintenance/", {"active", "draft", "superseded"}),
+    ("docs/harness/", {"active", "draft", "superseded"}),
 ]
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -213,7 +274,7 @@ class CheckReport:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate path-governance docs, main entrypoints, and lightweight markdown links."
+        description="Validate AGENTS routing contract, main entrypoints, and lightweight markdown links."
     )
     parser.add_argument(
         "--repo-root",
@@ -394,25 +455,6 @@ def check_docs_frontmatter(repo_root: Path, report: CheckReport) -> None:
     report.add_info(f"checked {len(docs_files)} docs substantive frontmatter blocks")
 
 
-def check_analysis_readme_links(repo_root: Path, report: CheckReport) -> None:
-    analysis_readme_path = repo_root / ANALYSIS_README
-    if not analysis_readme_path.exists():
-        report.add_failure(f"missing analysis entrypoint: {ANALYSIS_README}")
-        return
-
-    analysis_docs = sorted(
-        path for path in (repo_root / "docs/analysis").glob("*.md") if path.name != "README.md"
-    )
-    for doc_path in analysis_docs:
-        relative_path = to_relative_posix(doc_path, repo_root)
-        if not file_links_to(repo_root, analysis_readme_path, relative_path):
-            report.add_failure(
-                f"analysis README missing document link: {ANALYSIS_README} -> {relative_path}"
-            )
-
-    report.add_info(f"checked {len(analysis_docs)} analysis README document links")
-
-
 def check_required_entrypoint_links(repo_root: Path, report: CheckReport) -> None:
     for readme_path, target_paths in ENTRYPOINT_LINK_RULES.items():
         readme = repo_root / readme_path
@@ -455,20 +497,12 @@ def main() -> int:
     check_required_backlinks(
         repo_root,
         report,
-        label="path-governance",
-        target_relative_path=PATH_GOVERNANCE_DOC,
-        backlink_paths=PATH_GOVERNANCE_BACKLINK_PATHS,
-    )
-    check_required_backlinks(
-        repo_root,
-        report,
-        label="docs-governance",
-        target_relative_path=DOCS_GOVERNANCE_DOC,
-        backlink_paths=DOCS_GOVERNANCE_BACKLINK_PATHS,
+        label="agents-contract",
+        target_relative_path=AGENTS_CONTRACT_DOC,
+        backlink_paths=AGENTS_CONTRACT_BACKLINK_PATHS,
     )
     check_docs_frontmatter(repo_root, report)
     check_required_entrypoint_links(repo_root, report)
-    check_analysis_readme_links(repo_root, report)
     check_gitignore(repo_root, report)
 
     for info in report.infos:

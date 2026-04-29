@@ -1,4 +1,0 @@
-interface:
-  display_name: "Execution Contract Template (Repo)"
-  short_description: "Apply the repo-local Harness Operations execution contract adapter"
-  default_prompt: "Use the repo-local $execution-contract-template wrapper in .agents/skills to freeze one execution round into a contract covering goal, scope, validation, exit criteria, and risks."
