@@ -68,7 +68,8 @@ Review the emitted file list before approval. It must include:
 - deploy wrapper scripts used by the package entrypoint.
 - `product/harness/skills/` canonical skill payload files required by agents bindings.
 - `product/harness/adapters/agents/skills/` payload descriptors.
-- `product/.aw_template/` files required for `.aw/` scaffold behavior.
+- `product/harness/adapters/claude/skills/` payload descriptors for the Claude compatibility lane.
+- `set-harness-goal-skill` assets required for `.aw/` scaffold behavior.
 - release/deploy docs needed by the package README or operator paths.
 
 It must not include:
@@ -128,6 +129,7 @@ Minimum evidence:
 
 - help/version/TUI guard succeed or fail as expected.
 - `diagnose --backend agents --json` and `update --backend agents --json` run before mutation.
+- `diagnose --backend claude --json` and `update --backend claude --json` run for the compatibility payload when the candidate includes Claude backend support.
 - `update --backend agents --source github --github-ref master --json` passes when the release includes GitHub source update capability.
 - `install --backend agents`, `verify --backend agents`, and `update --backend agents --yes` pass.
 - final diagnose reports managed installs equal to the selected candidate `binding_count`, with 0 conflicts and 0 unrecognized entries.

@@ -21,9 +21,9 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-当前根目录 `package.json` 是 `aw-installer` 的 npm/npx 分发包络。它从根目录打包 `product/harness/skills`、`product/harness/adapters/agents/skills` 与 `toolchain/scripts/deploy/` wrapper，使 `.tgz` 或 registry package 中的 source payload 可以脱离源码 checkout 被读取。当前 checkout 的 RC candidate 是 `0.4.0-rc.3`；当前 npm registry 事实仍是 `next=0.4.0-rc.2`、`latest=0.4.0-rc.1`。
+当前根目录 `package.json` 是 `aw-installer` 的 npm/npx 分发包络。它从根目录打包 `product/harness/skills`、`product/harness/adapters/agents/skills`、`product/harness/adapters/claude/skills` 与 `toolchain/scripts/deploy/` wrapper，使 `.tgz` 或 registry package 中的 source payload 可以脱离源码 checkout 被读取。当前 checkout 的 RC candidate 是 `0.4.1-rc.1`；当前 npm registry 事实仍是 `next=0.4.0-rc.2`、`latest=0.4.0-rc.1`。
 
-`toolchain/scripts/deploy/package.json`、`bin/aw-installer.js` 和 `bin/aw-harness-deploy.js` 仍保留为本地 npm-style scaffold；它们调用同一个 Python wrapper。`aw-installer` 是主 bin，`aw-harness-deploy` 是兼容别名。`0.4.0-rc.3` 在 Windows 上按 `py -3`、`python`、`python3` 尝试 Python launcher，在 Linux/macOS 上按 `python3`、`python` 尝试；wrapper 不接受 `PYTHON`/`PYTHON3` 环境变量覆盖。
+`toolchain/scripts/deploy/package.json`、`bin/aw-installer.js` 和 `bin/aw-harness-deploy.js` 仍保留为本地 npm-style scaffold；它们调用同一个 Python wrapper。`aw-installer` 是主 bin，`aw-harness-deploy` 是兼容别名。`0.4.1-rc.1` 在 Windows 上按 `py -3`、`python`、`python3` 尝试 Python launcher，在 Linux/macOS 上按 `python3`、`python` 尝试；wrapper 不接受 `PYTHON`/`PYTHON3` 环境变量覆盖。
 
 根 package packlist 检查在仓库根目录执行 `npm pack --dry-run --json`。本地 scaffold packlist 检查仍在 `toolchain/scripts/deploy/` package root 内执行 `npm pack --dry-run --json`。
 
@@ -45,6 +45,7 @@ CI 必须显式设置 Node 后运行本地 package smoke、本地 scaffold pack 
 - CLI 是稳定的脚本化合同；TUI 是同一合同上的交互式操作层。
 - `npx aw-installer@next` 是当前 RC 用户入口；裸 `npx aw-installer` 仍解析到 `latest=0.4.0-rc.1`，`aw-harness-deploy` 只是兼容别名。
 - 当前 `agents` backend 的 source / target / payload / marker 合同仍以 [Deploy Mapping Spec](./deploy-mapping-spec.md) 为准。
+- 当前 `claude` backend 只作为 compatibility lane 准入 `set-harness-goal-skill` payload；边界见 [Claude Adapter Source](./claude-adapter-source.md)。
 - 当前 destructive reinstall 主流程仍以 [Deploy Runbook](./deploy-runbook.md) 为准。
 
 本文不定义：
@@ -52,7 +53,7 @@ CI 必须显式设置 Node 后运行本地 package smoke、本地 scaffold pack 
 - npm 发布账户、registry 凭证或 release workflow；release channel 与 publish readiness 准入见 [aw-installer Release Channel Contract](./release-channel-contract.md)。
 - channel-based 远程更新、payload manifest、签名/验签、自升级或自动回滚；这些能力必须先满足 [Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md) 的准入条件。
 - 具体 TUI framework、按键模型、配色或终端渲染实现。
-- 新的 deploy backend。
+- 完整 Claude Harness skill set 分发或新的非 `agents` / `claude` backend。
 - `adapter_deploy.py` 内部实现。
 - 新的 install/update 策略。
 
@@ -62,13 +63,16 @@ CI 必须显式设置 Node 后运行本地 package smoke、本地 scaffold pack 
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py <mode> --backend agents
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py <mode> --backend claude
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py <mode> --backend agents
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py <mode> --backend claude
 ```
 
 当前本地 package scaffold 入口：
 
 ```bash
 aw-installer <mode> --backend agents
+aw-installer <mode> --backend claude
 ```
 
 兼容别名仍可调用同一 wrapper：
@@ -89,9 +93,13 @@ npx aw-installer@next install --backend agents
 npx aw-installer@next update --backend agents
 npx aw-installer@next update --backend agents --yes
 npx aw-installer@next update --backend agents --source github --github-ref master
+npx aw-installer@next diagnose --backend claude --json
+npx aw-installer@next update --backend claude
+npx aw-installer@next install --backend claude
+npx aw-installer@next verify --backend claude
 ```
 
-Bare `npx aw-installer` currently resolves to the older rc1 package because npm exposes it through `latest`; do not use that as current RC or stable-release evidence. `npx aw-installer@next ...` remains the explicit published RC pin. Before rc3 is published, `next` still resolves to `0.4.0-rc.2`; rc3 checkout evidence must use a local `.tgz` or source checkout. `npx aw-installer@next` 在交互式终端中可以进入 TUI；`npx aw-installer@next tui` 显式启动当前最小交互 shell。脚本和 CI 必须使用显式 CLI subcommand。非交互环境不得隐式启动 TUI，也不得要求方向键、全屏渲染或人工输入才能完成 CLI subcommand。
+Bare `npx aw-installer` currently resolves to the older rc1 package because npm exposes it through `latest`; do not use that as current RC or stable-release evidence. `npx aw-installer@next ...` remains the explicit published RC pin. Before `0.4.1-rc.1` is published, `next` still resolves to `0.4.0-rc.2`; checkout evidence must use a local `.tgz` or source checkout. `npx aw-installer@next` 在交互式终端中可以进入 TUI；`npx aw-installer@next tui` 显式启动当前最小交互 shell。脚本和 CI 必须使用显式 CLI subcommand。非交互环境不得隐式启动 TUI，也不得要求方向键、全屏渲染或人工输入才能完成 CLI subcommand。
 
 所有入口都必须投影到同一组 mode：
 
@@ -110,7 +118,7 @@ Bare `npx aw-installer` currently resolves to the older rc1 package because npm 
 - TUI 只负责引导 operator 选择 backend、查看诊断、确认 update plan 或启动已定义的 CLI 等价动作。当前本地 scaffold 已提供最小 `tui` shell，不包含 full-screen framework；主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 映射到现有 CLI wrapper。
 - TUI 不得拥有独立于 CLI 的 deploy 语义；每一个 mutating TUI 动作都必须映射到一个明确的 CLI mode 和参数集合。
 - TUI 中的 destructive action 必须展示等价 dry-run plan，并要求显式确认；不能把 `update --yes`、`prune --all` 或 `install` 藏在默认启动流程里。
-- TUI 不能把 `claude` 或 `opencode` 展示为已支持 deploy backend。Claude skills distribution 只能作为 slower compatibility lane 的说明或未来保留项，不能覆盖当前 `agents` 合同。
+- TUI 不能把 `opencode` 展示为已支持 deploy backend。Claude skills distribution 只能作为 slower compatibility lane 的受控入口展示，且必须说明当前只覆盖 `set-harness-goal-skill`，不能覆盖当前 `agents` 主合同。
 - CLI 和 TUI 的输出边界要清楚：`--json` 只属于 CLI 机器输出；TUI 可以展示同一数据，但不能让机器可读输出混入交互渲染。
 
 ## 四、必须保持的不变量

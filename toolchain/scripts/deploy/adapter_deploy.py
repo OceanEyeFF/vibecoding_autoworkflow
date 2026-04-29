@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Runtime install and verify endpoints for agents skill payload targets."""
+"""Runtime install and verify endpoints for Harness skill payload targets."""
 
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ GITHUB_REPO_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 GITHUB_REF_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$")
 GITHUB_SHA_REF_PATTERN = re.compile(r"^[0-9a-fA-F]{40}$")
 DEFAULT_GITHUB_REPO = "OceanEyeFF/vibecoding_autoworkflow"
+SUPPORTED_BACKENDS = ("agents", "claude")
 
 
 def path_is_relative_to(path: Path, parent: Path) -> bool:
@@ -103,6 +104,7 @@ def validate_target_repo_root(path: Path, source_root: Path) -> Path:
 def required_source_repo_root_paths(source_root: Path) -> tuple[Path, ...]:
     return (
         source_root / "product" / "harness" / "adapters" / "agents" / "skills",
+        source_root / "product" / "harness" / "adapters" / "claude" / "skills",
         source_root / "product" / "harness" / "skills",
     )
 
@@ -180,9 +182,11 @@ def build_deploy_context(
         target_repo_root=target_repo_root,
         local_target_roots={
             "agents": target_repo_root / ".agents" / "skills",
+            "claude": target_repo_root / ".claude" / "skills",
         },
         adapter_skill_dirs={
             "agents": source_root / "product" / "harness" / "adapters" / "agents" / "skills",
+            "claude": source_root / "product" / "harness" / "adapters" / "claude" / "skills",
         },
         source_kind=source_kind,
         source_ref=source_ref,
@@ -215,12 +219,15 @@ def deploy_context_from_env(
 
 EXPECTED_PAYLOAD_POLICIES = {
     "agents": "canonical-copy",
+    "claude": "canonical-copy",
 }
 EXPECTED_REFERENCE_DISTRIBUTION = {
     "agents": "copy-listed-canonical-paths",
+    "claude": "copy-listed-canonical-paths",
 }
 EXPECTED_PAYLOAD_VERSIONS = {
     "agents": "agents-skill-payload.v1",
+    "claude": "claude-skill-payload.v1",
 }
 MANAGED_SKILL_MARKER = "aw.marker"
 MANAGED_SKILL_MARKER_VERSION = "aw-managed-skill-marker.v2"
@@ -326,9 +333,9 @@ class PathConflict:
 def add_backend_args(subparser: argparse.ArgumentParser) -> None:
     subparser.add_argument(
         "--backend",
-        choices=("agents",),
+        choices=SUPPORTED_BACKENDS,
         default="agents",
-        help="Which backend target to operate on. Only agents is implemented.",
+        help="Which backend target to operate on.",
     )
 
 
@@ -337,6 +344,11 @@ def add_target_override_args(subparser: argparse.ArgumentParser) -> None:
         "--agents-root",
         type=Path,
         help="Override the managed agents skills target root.",
+    )
+    subparser.add_argument(
+        "--claude-root",
+        type=Path,
+        help="Override the managed Claude skills target root.",
     )
 
 
@@ -565,6 +577,8 @@ def iter_backends(selected: str) -> list[str]:
 def target_root_for(backend: str, args: argparse.Namespace, context: DeployContext) -> Path:
     if backend == "agents" and args.agents_root is not None:
         return validate_target_repo_root(args.agents_root, context.source_root)
+    if backend == "claude" and args.claude_root is not None:
+        return validate_target_repo_root(args.claude_root, context.source_root)
     try:
         return context.local_target_roots[backend]
     except KeyError as exc:

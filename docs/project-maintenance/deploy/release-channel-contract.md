@@ -13,13 +13,13 @@ last_verified: 2026-04-29
 
 ## 当前状态
 
-- 根目录 `package.json` 是 self-contained `aw-installer` package envelope；`aw-installer` 是已批准的 unscoped public package identity。`aw-installer@0.4.0-rc.1` 已发布到 npm `latest`，`aw-installer@0.4.0-rc.2` 已发布到 npm `next`；当前 checkout 的 next RC candidate 是 `0.4.0-rc.3`。
-- `0.4.0-rc.1` 是首个已发布 `0.4.x` RC checkpoint；`P0-019` 已跨过该版本的真实 publish 审批边界。`0.4.0-rc.3` 是后续 `next` RC candidate，绑定 `v0.4.0-rc.3` 与 root package approval lock。后续 publish 仍必须同时满足本文的环境、tag、dist-tag、CI、package metadata approval lock、GitHub master source readiness 与 registry 准入条件。
+- 根目录 `package.json` 是 self-contained `aw-installer` package envelope；`aw-installer` 是已批准的 unscoped public package identity。`aw-installer@0.4.0-rc.1` 已发布到 npm `latest`，`aw-installer@0.4.0-rc.2` 已发布到 npm `next`；当前 checkout 的 next RC candidate 是 `0.4.1-rc.1`。
+- `0.4.0-rc.1` 是首个已发布 `0.4.x` RC checkpoint；`P0-019` 已跨过该版本的真实 publish 审批边界。`0.4.1-rc.1` 是后续 `next` RC candidate，绑定 `v0.4.1-rc.1` 与 root package approval lock。后续 publish 仍必须同时满足本文的环境、tag、dist-tag、CI、package metadata approval lock、GitHub master source readiness 与 registry 准入条件。
 - `npm pack --dry-run --json`、`npm run publish:dry-run --silent` 和根 `.tgz` smoke 只证明包面和运行入口，不等于发布授权。
 - `npm run publish:dry-run --silent` runs `toolchain/scripts/deploy/bin/publish-dry-run.js`, which defaults to `next` for the current RC lane but honors `AW_INSTALLER_RELEASE_CHANNEL` or `npm_config_tag` so release workflows rehearse the same channel they would publish. The dry-run wrapper rejects any channel outside `latest`, `next`, or `canary` before invoking npm.
 - `prepublishOnly` guard 位于 `toolchain/scripts/deploy/bin/check-root-publish.js`，负责在真实 publish 前执行机器准入检查。
 - repository-side GitHub Release `published` workflow preflight 位于 `.github/workflows/publish.yml`；它把 release tag、GitHub prerelease 状态、release-body approval marker、derived channel、local publish guard 和 npm provenance publish 串起来，但仍不替代未来 release-prep 审批或 npm-side Trusted Publisher 设置。
-- 当前 registry 事实是 `next: 0.4.0-rc.2` 与 `latest: 0.4.0-rc.1`。面向已发布 RC 试用必须显式使用 `aw-installer@next`；裸 `npx aw-installer` 仍按 npm `latest` 解析到 rc1。`0.4.0-rc.3` 在 develop-aw 完成后，还需要按仓库规则通过 develop PR 进入 GitHub `master`，再执行真实 npm `next` publish。
+- 当前 registry 事实是 `next: 0.4.0-rc.2` 与 `latest: 0.4.0-rc.1`。面向已发布 RC 试用必须显式使用 `aw-installer@next`；裸 `npx aw-installer` 仍按 npm `latest` 解析到 rc1。`0.4.1-rc.1` 在 develop-aw 完成后，还需要按仓库规则通过 develop PR 进入 GitHub `master`，再执行真实 npm `next` publish。
 
 ## Release Channels
 
@@ -81,24 +81,24 @@ Use dry-run before real publish approval and execution:
 npm run publish:dry-run --silent
 ```
 
-Real publish requires a separate approval boundary, an explicit tracked metadata-lock change, and explicit release metadata. The prepared rc3 metadata lock is:
+Real publish requires a separate approval boundary, an explicit tracked metadata-lock change, and explicit release metadata. The prepared `0.4.1-rc.1` metadata lock is:
 
 ```json
 {
   "realPublishApproval": "approved",
-  "approvedVersion": "0.4.0-rc.3",
-  "approvedGitTag": "v0.4.0-rc.3",
+  "approvedVersion": "0.4.1-rc.1",
+  "approvedGitTag": "v0.4.1-rc.1",
   "approvedChannel": "next"
 }
 ```
 
-The rc3 command shape, after GitHub `master` source readiness is proven, is:
+The `0.4.1-rc.1` command shape, after GitHub `master` source readiness is proven, is:
 
 ```text
 CI=true
 AW_INSTALLER_PUBLISH_APPROVED=1
-AW_INSTALLER_RELEASE_GIT_TAG=v0.4.0-rc.3
+AW_INSTALLER_RELEASE_GIT_TAG=v0.4.1-rc.1
 npm publish --tag next
 ```
 
-The rc3 publish will move npm `next` to `0.4.0-rc.3`; until that publish happens, npm `next` remains `0.4.0-rc.2` and npm `latest` remains `0.4.0-rc.1`. Treat `latest` as the older rc1 selector, not as stable-release approval.
+The `0.4.1-rc.1` publish will move npm `next` to `0.4.1-rc.1`; until that publish happens, npm `next` remains `0.4.0-rc.2` and npm `latest` remains `0.4.0-rc.1`. Treat `latest` as the older rc1 selector, not as stable-release approval.
