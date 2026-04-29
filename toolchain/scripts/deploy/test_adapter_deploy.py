@@ -2359,6 +2359,33 @@ class AdapterDeployTest(unittest.TestCase):
             "refs/heads/master",
         )
 
+    def test_safe_extract_zip_rejects_parent_traversal(self) -> None:
+        zip_path = self.temp_root / "unsafe.zip"
+        destination = self.temp_root / "extract-unsafe"
+        destination.mkdir()
+        with zipfile.ZipFile(zip_path, "w") as archive:
+            archive.writestr("repo-master/../evil.txt", "bad")
+
+        with self.assertRaises(adapter_deploy.DeployError) as ctx:
+            adapter_deploy.safe_extract_zip(zip_path, destination)
+
+        self.assertIn("GitHub archive contains unsafe path", str(ctx.exception))
+        self.assertEqual(list(destination.iterdir()), [])
+        self.assertFalse((self.temp_root / "evil.txt").exists())
+
+    def test_safe_extract_zip_rejects_windows_absolute_path(self) -> None:
+        zip_path = self.temp_root / "unsafe-windows.zip"
+        destination = self.temp_root / "extract-unsafe-windows"
+        destination.mkdir()
+        with zipfile.ZipFile(zip_path, "w") as archive:
+            archive.writestr("C:\\temp\\evil.txt", "bad")
+
+        with self.assertRaises(adapter_deploy.DeployError) as ctx:
+            adapter_deploy.safe_extract_zip(zip_path, destination)
+
+        self.assertIn("GitHub archive contains unsafe path", str(ctx.exception))
+        self.assertEqual(list(destination.iterdir()), [])
+
     def test_extracted_archive_root_error_includes_recovery_context(self) -> None:
         extract_root = self.temp_root / "empty-archive"
         extract_root.mkdir()
@@ -2794,6 +2821,14 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(code, 1, stderr)
         self.assertIn("target-payload-drift", stdout)
         self.assertIn("harness-skill", stdout)
+
+    def test_payload_fingerprint_cache_invalidates_when_source_file_changes(self) -> None:
+        plan_before = self._install_plan("harness-skill")
+        self._mutate_canonical_skill("harness-skill", "\n# cache invalidation\n")
+
+        plan_after = self._install_plan("harness-skill")
+
+        self.assertNotEqual(plan_before.payload_fingerprint, plan_after.payload_fingerprint)
 
     def test_verify_reports_unexpected_managed_directory(self) -> None:
         code, stdout, stderr = self._install()

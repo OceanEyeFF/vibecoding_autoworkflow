@@ -15,7 +15,7 @@ import tempfile
 import urllib.parse
 import urllib.request
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Callable, Iterator
 
@@ -159,6 +159,11 @@ class DeployContext:
     adapter_skill_dirs: dict[str, Path]
     source_kind: str = "package"
     source_ref: str = "package-local"
+    payload_fingerprint_cache: dict[tuple[object, ...], str] = field(
+        default_factory=dict,
+        compare=False,
+        repr=False,
+    )
 
 
 def build_deploy_context(
@@ -444,15 +449,52 @@ def validate_github_ref(value: str) -> str:
     return value
 
 
+def normalize_zip_member_path(member_name: str) -> str:
+    windows_path = PureWindowsPath(member_name)
+    if (
+        PurePosixPath(member_name).is_absolute()
+        or windows_path.is_absolute()
+        or bool(windows_path.drive)
+        or bool(windows_path.root)
+    ):
+        raise DeployError(f"GitHub archive contains unsafe path: {member_name}")
+
+    segments = [segment for segment in member_name.replace("\\", "/").split("/") if segment]
+    if not segments or any(segment in (".", "..") for segment in segments):
+        raise DeployError(f"GitHub archive contains unsafe path: {member_name}")
+    return PurePosixPath(*segments).as_posix()
+
+
 def safe_extract_zip(zip_path: Path, destination: Path) -> None:
+    destination.mkdir(parents=True, exist_ok=True)
+    if any(destination.iterdir()):
+        raise DeployError(f"GitHub archive extraction destination must be empty: {destination}")
+
     with zipfile.ZipFile(zip_path) as archive:
-        for member in archive.infolist():
-            member_path = destination / member.filename
-            try:
-                member_path.resolve().relative_to(destination.resolve())
-            except ValueError as exc:
-                raise DeployError(f"GitHub archive contains unsafe path: {member.filename}") from exc
-        archive.extractall(destination)
+        with tempfile.TemporaryDirectory(
+            prefix="aw-installer-extract-",
+            dir=destination.parent,
+        ) as staging_dir:
+            staging_root = Path(staging_dir).resolve()
+            for member in archive.infolist():
+                relative_member_path = normalize_zip_member_path(member.filename)
+                member_path = (staging_root / relative_member_path).resolve()
+                if not path_is_relative_to(member_path, staging_root):
+                    raise DeployError(f"GitHub archive contains unsafe path: {member.filename}")
+
+                if member.is_dir():
+                    member_path.mkdir(parents=True, exist_ok=True)
+                    continue
+
+                member_path.parent.mkdir(parents=True, exist_ok=True)
+                with archive.open(member) as source, member_path.open("wb") as output:
+                    shutil.copyfileobj(source, output)
+
+            for child in Path(staging_dir).iterdir():
+                target_path = destination / child.name
+                if path_exists_or_is_symlink(target_path):
+                    raise DeployError(f"GitHub archive extraction target already exists: {target_path}")
+                shutil.move(str(child), target_path)
 
 
 def extracted_archive_root(destination: Path) -> Path:
@@ -1011,6 +1053,8 @@ def compute_payload_fingerprint(
         f"skill_id={binding.skill_id}\n"
         f"payload_version={payload_version}\n"
     ]
+
+    source_files: list[tuple[str, Path, os.stat_result]] = []
     for relative_name in target_metadata.required_payload_files:
         if relative_name == MANAGED_SKILL_MARKER:
             continue
@@ -1021,6 +1065,29 @@ def compute_payload_fingerprint(
             payload=payload,
         )
         try:
+            source_stat = source_path.stat()
+        except FileNotFoundError as exc:
+            raise DeployError(
+                f"Missing payload source file while computing fingerprint: {exc.filename}"
+            ) from exc
+        source_files.append((relative_name, source_path, source_stat))
+
+    cache_key = (
+        binding.backend,
+        binding.skill_id,
+        str(binding.payload_path),
+        payload_text,
+        tuple(
+            (relative_name, str(source_path), source_stat.st_mtime_ns, source_stat.st_size)
+            for relative_name, source_path, source_stat in source_files
+        ),
+    )
+    cached_fingerprint = context.payload_fingerprint_cache.get(cache_key)
+    if cached_fingerprint is not None:
+        return cached_fingerprint
+
+    for relative_name, source_path, _source_stat in source_files:
+        try:
             source_text = source_path.read_text(encoding="utf-8")
         except FileNotFoundError as exc:
             raise DeployError(
@@ -1029,7 +1096,9 @@ def compute_payload_fingerprint(
         fingerprint_parts.append(f"file:{relative_name}\n{source_text}\n")
 
     fingerprint_parts.append(f"file:payload.json\n{payload_text}\n")
-    return hashlib.sha256("".join(fingerprint_parts).encode("utf-8")).hexdigest()
+    fingerprint = hashlib.sha256("".join(fingerprint_parts).encode("utf-8")).hexdigest()
+    context.payload_fingerprint_cache[cache_key] = fingerprint
+    return fingerprint
 
 
 def runtime_marker_to_dict(marker: RuntimeMarker) -> dict[str, str]:
