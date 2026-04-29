@@ -92,6 +92,8 @@ options:
                               defaults from AW_INSTALLER_GITHUB_REPO,
                               GITHUB_REPOSITORY, then upstream repo
   --github-ref REF            GitHub branch/ref for --source github
+  --github-archive-sha256 SHA256
+                              optional SHA256 digest for the GitHub source archive
 `);
 }
 

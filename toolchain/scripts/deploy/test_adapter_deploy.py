@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import errno
+import hashlib
 import io
 import json
 import os
@@ -134,6 +135,9 @@ class AdapterDeployTest(unittest.TestCase):
 
     def _claude_update(self, *extra_args: object) -> tuple[int, str, str]:
         return self._run_cli("update", "--backend", "claude", *extra_args)
+
+    def _claude_prune_all(self, *extra_args: object) -> tuple[int, str, str]:
+        return self._run_cli("prune", "--backend", "claude", "--all", *extra_args)
 
     def _load_json(self, path: Path) -> dict[str, object]:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -1436,6 +1440,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("install", completed.stdout)
         self.assertIn("update", completed.stdout)
         self.assertIn("tui", completed.stdout)
+        self.assertIn("--github-archive-sha256 SHA256", completed.stdout)
         self.assertEqual(completed.stderr, "")
 
     def test_local_npm_installer_bin_version_reports_package_version(self) -> None:
@@ -1815,6 +1820,20 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("Target repo root is protected", stderr)
         self.assertIn("/etc", stderr)
 
+    def test_claude_root_override_is_validated_with_protected_root_guardrails(self) -> None:
+        code, _, stderr = self._run_cli(
+            "diagnose",
+            "--backend",
+            "claude",
+            "--claude-root",
+            "/etc",
+            "--json",
+        )
+
+        self.assertEqual(code, 1)
+        self.assertIn("Target repo root is protected", stderr)
+        self.assertIn("/etc", stderr)
+
     def test_update_plan_summary_reuses_bindings_and_target_root_scan(self) -> None:
         code, _, stderr = self._install()
         self.assertEqual(code, 0, stderr)
@@ -1990,6 +2009,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("install", exec_completed.stdout)
         self.assertIn("update", exec_completed.stdout)
         self.assertIn("tui", exec_completed.stdout)
+        self.assertIn("--github-archive-sha256 SHA256", exec_completed.stdout)
         self.assertEqual(exec_completed.stderr, "")
 
     def test_local_npm_packed_tarball_diagnose_uses_repo_root_override(self) -> None:
@@ -2393,6 +2413,7 @@ class AdapterDeployTest(unittest.TestCase):
 
     def test_update_json_can_use_github_source_archive(self) -> None:
         archive_bytes = self._fake_github_archive_bytes()
+        archive_sha256 = hashlib.sha256(archive_bytes).hexdigest()
         with mock.patch.object(
             adapter_deploy.urllib.request,
             "urlopen",
@@ -2406,6 +2427,8 @@ class AdapterDeployTest(unittest.TestCase):
                 "OceanEyeFF/vibecoding_autoworkflow",
                 "--github-ref",
                 "master",
+                "--github-archive-sha256",
+                archive_sha256,
             )
 
         self.assertEqual(code, 0, stderr)
@@ -2422,6 +2445,30 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(payload["blocking_issue_count"], 0)
         self.assertGreater(len(payload["planned_target_paths"]), 0)
         self.assertEqual(stderr, "")
+        self.assertFalse(self.local_root.exists())
+
+    def test_update_json_rejects_github_source_archive_sha256_mismatch(self) -> None:
+        archive_bytes = self._fake_github_archive_bytes()
+        with mock.patch.object(
+            adapter_deploy.urllib.request,
+            "urlopen",
+            return_value=self._fake_urlopen_response(archive_bytes),
+        ):
+            code, stdout, stderr = self._update(
+                "--json",
+                "--source",
+                "github",
+                "--github-repo",
+                "OceanEyeFF/vibecoding_autoworkflow",
+                "--github-ref",
+                "master",
+                "--github-archive-sha256",
+                "0" * 64,
+            )
+
+        self.assertEqual(code, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("GitHub source archive SHA256 mismatch", stderr)
         self.assertFalse(self.local_root.exists())
 
     def test_update_json_github_source_default_repo_can_use_environment(self) -> None:
@@ -2820,6 +2867,19 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertFalse((self.local_root / "aw-harness-skill").exists())
         self.assertFalse((self.local_root / "aw-dispatch-skills").exists())
 
+    def test_claude_prune_all_removes_only_claude_managed_skill_dirs(self) -> None:
+        code, _, stderr = self._install()
+        self.assertEqual(code, 0, stderr)
+        code, _, stderr = self._claude_install()
+        self.assertEqual(code, 0, stderr)
+
+        code, stdout, stderr = self._claude_prune_all()
+
+        self.assertEqual(code, 0, stderr)
+        self.assertIn("removed managed skill dir", stdout)
+        self.assertFalse((self.claude_local_root / "aw-set-harness-goal-skill").exists())
+        self.assertTrue((self.local_root / "aw-harness-skill").is_dir())
+
     def test_prune_all_keeps_foreign_and_invalid_marker_dirs(self) -> None:
         code, stdout, stderr = self._install()
         self.assertEqual(code, 0, stderr)
@@ -2935,6 +2995,46 @@ class AdapterDeployTest(unittest.TestCase):
         plan_after = self._install_plan("harness-skill")
 
         self.assertNotEqual(plan_before.payload_fingerprint, plan_after.payload_fingerprint)
+
+    def test_payload_fingerprint_hashes_payload_descriptor_once(self) -> None:
+        binding = self._binding("harness-skill")
+        payload, payload_text = adapter_deploy.load_binding_payload_with_text(binding)
+        target_metadata = adapter_deploy.payload_target_metadata(payload, binding)
+        fingerprint_parts = [
+            f"backend={binding.backend}\n"
+            f"skill_id={binding.skill_id}\n"
+            f"payload_version={adapter_deploy.payload_version_from_descriptor(payload, binding=binding)}\n"
+        ]
+
+        for relative_name in target_metadata.required_payload_files:
+            if relative_name in (
+                adapter_deploy.MANAGED_SKILL_MARKER,
+                adapter_deploy.PAYLOAD_DESCRIPTOR,
+            ):
+                continue
+            source_path = adapter_deploy.source_path_for_target_relative_file(
+                binding,
+                relative_name,
+                self.context,
+                payload=payload,
+            )
+            fingerprint_parts.append(
+                f"file:{relative_name}\n{source_path.read_text(encoding='utf-8')}\n"
+            )
+        fingerprint_parts.append(f"file:{adapter_deploy.PAYLOAD_DESCRIPTOR}\n{payload_text}\n")
+        expected_fingerprint = hashlib.sha256(
+            "".join(fingerprint_parts).encode("utf-8")
+        ).hexdigest()
+
+        self.assertEqual(
+            adapter_deploy.compute_payload_fingerprint(
+                binding,
+                self.context,
+                payload=payload,
+                payload_text=payload_text,
+            ),
+            expected_fingerprint,
+        )
 
     def test_verify_reports_unexpected_managed_directory(self) -> None:
         code, stdout, stderr = self._install()
