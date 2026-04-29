@@ -10,6 +10,7 @@ from pathlib import Path, PurePosixPath
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ADAPTER_SKILLS_DIR = REPO_ROOT / "product" / "harness" / "adapters" / "agents" / "skills"
+CLAUDE_ADAPTER_SKILLS_DIR = REPO_ROOT / "product" / "harness" / "adapters" / "claude" / "skills"
 ADAPTER_DEPLOY_SCRIPT = REPO_ROOT / "toolchain" / "scripts" / "deploy" / "adapter_deploy.py"
 EXPECTED_AGENTS_SKILLS = {
     "close-worktrack-skill",
@@ -31,6 +32,9 @@ EXPECTED_AGENTS_SKILLS = {
     "set-harness-goal-skill",
     "test-evidence-skill",
     "worktrack-status-skill",
+}
+EXPECTED_CLAUDE_SKILLS = {
+    "set-harness-goal-skill",
 }
 
 
@@ -90,6 +94,49 @@ class AgentsAdapterContractTest(unittest.TestCase):
             self.assertNotIn("first_wave_profile", payload)
             self.assertNotIn("first_wave_scope_kind", payload)
             self.assertNotIn("supported_repo_actions", payload)
+            self.assertEqual(Path(str(canonical_dir)).name, skill_id)
+
+            for canonical_path in canonical_paths:
+                self.assertTrue((REPO_ROOT / canonical_path).is_file(), canonical_path)
+
+    def test_claude_adapter_payloads_follow_canonical_copy_contract(self) -> None:
+        adapter_skill_dirs = sorted(
+            path.name for path in CLAUDE_ADAPTER_SKILLS_DIR.iterdir() if path.is_dir()
+        )
+        self.assertEqual(adapter_skill_dirs, sorted(EXPECTED_CLAUDE_SKILLS))
+
+        for skill_id in adapter_skill_dirs:
+            payload_path = CLAUDE_ADAPTER_SKILLS_DIR / skill_id / "payload.json"
+
+            self.assertTrue(payload_path.is_file(), payload_path)
+            self.assertEqual(
+                sorted(
+                    path.name
+                    for path in (CLAUDE_ADAPTER_SKILLS_DIR / skill_id).iterdir()
+                    if path.is_file()
+                ),
+                ["payload.json"],
+            )
+
+            payload = load_json(payload_path)
+            included_paths = included_paths_from_payload(payload)
+            canonical_dir = payload["canonical_dir"]
+            canonical_paths = payload["canonical_paths"]
+
+            self.assertEqual(payload["payload_version"], "claude-skill-payload.v1")
+            self.assertEqual(payload["backend"], "claude")
+            self.assertEqual(payload["skill_id"], skill_id)
+            self.assertEqual(payload["canonical_dir"], f"product/harness/skills/{skill_id}")
+            self.assertEqual(payload["canonical_paths"], [f"{canonical_dir}/{path}" for path in included_paths])
+            self.assertEqual(payload["target_dir"], f"aw-{skill_id}")
+            self.assertEqual(payload["target_entry_name"], "SKILL.md")
+            self.assertEqual(payload["payload_policy"], "canonical-copy")
+            self.assertEqual(payload["supported_target_scopes"], ["local"])
+            self.assertEqual(payload["reference_distribution"], "copy-listed-canonical-paths")
+            self.assertEqual(
+                payload["required_payload_files"],
+                [*included_paths, "payload.json", "aw.marker"],
+            )
             self.assertEqual(Path(str(canonical_dir)).name, skill_id)
 
             for canonical_path in canonical_paths:

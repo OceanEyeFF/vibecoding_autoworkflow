@@ -45,6 +45,7 @@ ROOT_NPM_REQUIRED_PACKAGE_FILES = {
     "toolchain/scripts/deploy/bin/check-root-publish.js",
     "product/harness/skills/harness-skill/SKILL.md",
     "product/harness/adapters/agents/skills/harness-skill/payload.json",
+    "product/harness/adapters/claude/skills/set-harness-goal-skill/payload.json",
 }
 CACHE_SCAN_ROOTS = ("docs", "product", "toolchain", "tools")
 CACHE_DIR_NAMES = {"__pycache__", ".pytest_cache"}

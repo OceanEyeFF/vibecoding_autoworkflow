@@ -1,9 +1,9 @@
 ---
 title: "Skill 生命周期维护"
 status: active
-updated: 2026-04-26
+updated: 2026-04-29
 owner: aw-kernel
-last_verified: 2026-04-26
+last_verified: 2026-04-29
 ---
 # Skill 生命周期维护
 
@@ -50,10 +50,10 @@ last_verified: 2026-04-26
 
 ## 三、当前执行边界
 
-- 当前 deploy 接口只对 `agents` 生效
-- 主流程固定为 `prune --all -> check_paths_exist -> install --backend agents`
-- `install --backend agents` 只消费当前 live payload descriptor，并把 canonical skill copy、payload descriptor 与 runtime-generated `aw.marker` 写入当前 backend 的 resolved target root
-- `verify --backend agents` 只读检查 source layer、live install drift，以及 conflict / unrecognized 目录
+- 当前 deploy 接口对 `agents` 生效，并对 `claude` 提供 `set-harness-goal-skill` compatibility payload
+- 主流程固定为 `prune --all -> check_paths_exist -> install --backend <backend>`
+- `install --backend <backend>` 只消费当前 live payload descriptor，并把 canonical skill copy、payload descriptor 与 runtime-generated `aw.marker` 写入当前 backend 的 resolved target root
+- `verify --backend <backend>` 只读检查 source layer、live install drift，以及 conflict / unrecognized 目录
 - `prune --all` 只删除带可识别、且属于当前 backend 的受管 marker 目录
 - `check_paths_exist` 只做冲突扫描；任何冲突都必须在写入前失败
 - skills 的 canonical source、backend payload source、部署负载规则与 verify 口径，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
