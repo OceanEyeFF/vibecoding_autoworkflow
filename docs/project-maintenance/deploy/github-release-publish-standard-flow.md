@@ -19,6 +19,7 @@ This page belongs to [Deploy Runbooks](./README.md). It applies after the candid
   - `approvedGitTag`
   - `approvedChannel`
 - The candidate branch contains the current package payload, docs, tests, and approval lock.
+- The operator has prepared version-specific release notes that describe what changed in this version, not only that validation passed.
 - npm has not already published the same immutable package version.
 - The GitHub Release tag does not already exist.
 - `gh` is authenticated against the target GitHub repository.
@@ -136,6 +137,16 @@ Create a GitHub Release whose tag exactly matches `v<package.version>`. For prer
 aw-installer-publish-approved: v<package.version>
 ```
 
+The release body must also explain the current version's actual changes in a structured format. Do not publish a GitHub Release whose notes only say "release", "validation passed", or a generic summary that could apply to any version. The notes must include:
+
+- `## Summary`: one or two bullets describing the release purpose.
+- `## Changes`: version-specific user-facing or operator-facing changes. Group bullets by area when helpful, such as `CLI`, `Deploy`, `Docs`, `Governance`, or `Packaging`.
+- `## Operator Impact`: selector/channel and any behavior an external user or maintainer should notice.
+- `## Validation`: the concrete local and CI checks used for this version.
+- `## Links`: the merge PR, publish workflow, or other durable release evidence when available.
+
+Use concise bullets with concrete nouns and verbs. Avoid placeholders, future intentions, or vague items such as `misc fixes`.
+
 Command shape:
 
 ```bash
@@ -143,7 +154,7 @@ gh release create v<package.version> \
   --target <master-merge-commit-sha> \
   --title "aw-installer v<package.version>" \
   --prerelease \
-  --notes $'aw-installer-publish-approved: v<package.version>\n\n## Summary\n- ...\n\n## Validation\n- ...'
+  --notes $'aw-installer-publish-approved: v<package.version>\n\n## Summary\n- Publish aw-installer v<package.version> from the merged master release commit.\n- Move the <channel> channel to this version.\n\n## Changes\n### CLI\n- <describe command or behavior change>\n\n### Deploy / Packaging\n- <describe payload, adapter, package, or release contract change>\n\n### Docs / Governance\n- <describe documentation, runbook, or check change>\n\n## Operator Impact\n- Install or test with `npx --package aw-installer@<channel> -- aw-installer ...`.\n- `<channel>` should resolve to `<package.version>` after the publish workflow succeeds.\n\n## Validation\n- <local release-candidate check>\n- <GitHub check or publish workflow gate>\n- <post-publish registry smoke>\n\n## Links\n- PR: <merge-pr-url>\n- Publish workflow: <workflow-run-url>'
 ```
 
 The GitHub Release `published` event triggers `.github/workflows/publish.yml`.
