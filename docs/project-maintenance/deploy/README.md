@@ -21,7 +21,8 @@
 | 我想准备外部试用目标清单和反馈字段 | [aw-installer-external-trial-feedback.md](./aw-installer-external-trial-feedback.md) | 定义试用反馈字段、隐私边界和下一主要矛盾判定标准 |
 | 我想看 `aw-installer` payload 从哪里来、`update` 信任边界在哪里 | [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md) | 定义 package payload、source/target root override、当前 update 边界与未来远程更新准入 |
 | 我想看 `agents` canonical-copy payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | 定义 `product/harness/adapters/agents/skills/` 的 payload descriptor 结构，以及 target 如何复制 canonical skill 内容 |
-| 我想看 `claude` compatibility payload source 怎么组织 | [claude-adapter-source.md](./claude-adapter-source.md) | 定义 `product/harness/adapters/claude/skills/` 的首个 payload descriptor、`.claude/skills` target 和 compatibility lane 边界 |
+| 我想看 `claude` payload source 怎么组织 | [claude-adapter-source.md](./claude-adapter-source.md) | 定义 `product/harness/adapters/claude/skills/` 的 full skill payload descriptors、`.claude/skills` target 和 Claude frontmatter 边界 |
+| 我想看 Claude full skill distribution 下一阶段设计 | [claude-full-skill-distribution-design.md](./claude-full-skill-distribution-design.md) | P0-036 设计切片，定义完整 Claude payload set、target 命名、side-effecting skill 保护和验证矩阵 |
 | 我想初始化 `.aw/` 样例并校验 `.aw_template` 最小结构 | [template-tooling-mvp.md](./template-tooling-mvp.md) | B2 的最小工作面，只做 `.aw_template -> .aw` 样例生成与前置校验 |
 | 我想理解 `.aw_template/` 的模板消费边界 | [template-consumption-spec.md](./template-consumption-spec.md) | 定义 `.aw_template/` 中哪些内容属于 `.aw/` 运行管理面，哪些只是待迁移模板 |
 | 我想把已有代码库接入 Harness 初始化流程 | [existing-code-adoption.md](./existing-code-adoption.md) | 定义 `.aw/repo/discovery-input.md` 作为只读事实输入，不作为 goal truth |
@@ -37,7 +38,7 @@
 
 ## 当前执行边界
 
-- 当前 deploy 工具实现 `agents` backend，并提供 `claude` compatibility backend 的首个受控 payload：`set-harness-goal-skill`。
+- 当前 deploy 工具实现 `agents` backend，并提供 `claude` backend 的完整 Harness skill payload set。
 - operator-facing 主流程固定为三步：
   - `prune --all`
   - `check_paths_exist`
@@ -50,12 +51,12 @@
 - `update --backend <backend>` 默认只输出 dry-run plan；`update --backend <backend> --yes` 是同一三步 destructive reinstall 加严格复验的 one-shot 包装。
 - `update` 只阻塞占用 planned / known AW target path 的 unrecognized / foreign 内容；无关用户目录由 AW deploy 保持不动。
 - 本地 `harness_deploy.py` thin wrapper、根目录 `package.json` 的 self-contained `aw-installer` package envelope、`toolchain/scripts/deploy/package.json` 的本地 scaffold、`aw-installer tui` shell、`aw-harness-deploy` 兼容别名与目标 `npx aw-installer` wrapper 必须保持 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 中定义的只读、严格复验、三步 destructive reinstall，以及 CLI + TUI 双模式语义。
-- 当前 registry 事实由 [aw-installer Release Channel Contract](./release-channel-contract.md) 承接：`next` 当前指向 `0.4.2-rc.0`，`latest` 仍指向 `0.4.0-rc.1`；已发布的 `0.4.2-rc.0` artifact 绑定 `gitHead=bb0af57300c0ead130a5ac39349ac93dffe51949`，不得对同一 immutable npm version 重复 publish。当前本地 release-prep candidate 是 `0.4.3-rc.0`。
+- 当前 registry 事实由 [aw-installer Release Channel Contract](./release-channel-contract.md) 承接：`next` 当前指向 `0.4.3-rc.0`，`latest` 仍指向 `0.4.0-rc.1`；已发布的 `0.4.3-rc.0` artifact 绑定 `gitHead=085173cd9dea63a029b9f93b9e9c0bd91f5d4662`，不得对同一 immutable npm version 重复 publish。
 - 后续真实 npm publish 还必须满足 [aw-installer Release Channel Contract](./release-channel-contract.md)；发布操作模型见 [aw-installer Release Operation Model](./aw-installer-release-operation-model.md)。npm-side Trusted Publisher 设置、未来 publish、stable/latest 语义仍需单独审批。
 - `aw-installer` 的 payload provenance 与 update trust boundary 见 [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md)；当前 `update` 只准入 package-local source 与显式 GitHub source archive，不做 channel 解析、验签、自升级或自动回滚。
 - `aw.marker` 是 runtime-generated artifact，只用于标识“这是当前 backend 受管的 live install 目录”；它不是 source truth，也不是历史接管记录。
 - deploy target 不是 source of truth。skills / payload source 的正式 owner 仍在 `product/`。
-- Claude skills 分发当前只作为慢车道兼容项保留；`claude` backend 当前只准入 `set-harness-goal-skill` 的 canonical-copy payload，不能替代 `agents` 主路径，也不能把 Claude compatibility lane 写成完整 Harness skill set 分发。
+- Claude skills 分发当前作为慢车道适配项保留；`claude` backend 准入完整 Harness skill set 的 canonical-copy payload，但不替代 `agents` 主路径，也不改变 release approval 边界。
 - 当前 B2 初始化工具只处理 `.aw_template -> .aw` 样例，不消费 payload descriptor、不生成 deploy payload，也不写入 deploy target。
 - Existing Code Project Adoption 的 `.aw/repo/discovery-input.md` 是只读事实输入，不是 `goal-charter.md` 的替代物。
 - `docs/harness/` 继续承接 Harness doctrine；deploy 文档只定义 operator-facing deploy 合同。

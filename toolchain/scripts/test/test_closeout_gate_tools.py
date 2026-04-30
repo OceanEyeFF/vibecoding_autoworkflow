@@ -56,6 +56,27 @@ NPM_HELP_STDOUT = (
 )
 NPM_VERSION = "0.4.3-rc.0"
 NPM_VERSION_STDOUT = f"aw-installer {NPM_VERSION}\n"
+CLAUDE_SKILL_DIR_NAMES = (
+    "close-worktrack-skill",
+    "dispatch-skills",
+    "doc-catch-up-worker-skill",
+    "gate-skill",
+    "generic-worker-skill",
+    "harness-skill",
+    "init-worktrack-skill",
+    "recover-worktrack-skill",
+    "repo-append-request-skill",
+    "repo-change-goal-skill",
+    "repo-refresh-skill",
+    "repo-status-skill",
+    "repo-whats-next-skill",
+    "review-evidence-skill",
+    "rule-check-skill",
+    "schedule-worktrack-skill",
+    "set-harness-goal-skill",
+    "test-evidence-skill",
+    "worktrack-status-skill",
+)
 
 
 def write_root_package_json(repo_root: Path, version: str = NPM_VERSION) -> None:
@@ -103,9 +124,10 @@ def successful_npm_command_result(
             return repo / ".claude" / "skills"
         return repo / ".agents" / "skills"
 
-    def npm_exec_skill_dir() -> Path:
-        skill_name = "aw-set-harness-goal-skill" if npm_exec_backend() == "claude" else "aw-harness-skill"
-        return npm_exec_target_root() / skill_name
+    def npm_exec_skill_dirs() -> list[Path]:
+        if npm_exec_backend() == "claude":
+            return [npm_exec_target_root() / skill_name for skill_name in CLAUDE_SKILL_DIR_NAMES]
+        return [npm_exec_target_root() / "aw-harness-skill"]
 
     if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
         packed_paths = (
@@ -169,7 +191,7 @@ def successful_npm_command_result(
             "stdout": json.dumps(
                 {
                     "backend": npm_exec_backend(),
-                    "binding_count": 1,
+                    "binding_count": len(npm_exec_skill_dirs()),
                     "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
                     "target_root": str(npm_exec_target_root()),
                 }
@@ -179,17 +201,18 @@ def successful_npm_command_result(
         }
     if command[:2] == ["npm", "exec"] and "update" in command and command[-1] == "--yes":
         backend = npm_exec_backend()
-        target = npm_exec_skill_dir()
-        target.mkdir(parents=True, exist_ok=True)
-        (target / "SKILL.md").write_text("# harness\n", encoding="utf-8")
+        targets = npm_exec_skill_dirs()
+        for target in targets:
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "SKILL.md").write_text("# harness\n", encoding="utf-8")
         return {
             "command": command,
             "returncode": 0,
             "stdout": (
                 f"[{backend}] applying update\n"
-                f"installed skill {target.name.removeprefix('aw-')}\n"
-                f"[{backend}] ok: target root is ready\n"
-                f"[{backend}] update complete\n"
+                + "".join(f"installed skill {target.name.removeprefix('aw-')}\n" for target in targets)
+                + f"[{backend}] ok: target root is ready\n"
+                + f"[{backend}] update complete\n"
             ),
             "stderr": "",
             "passed": True,
@@ -220,22 +243,21 @@ def successful_npm_command_result(
                     "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
                     "target_root": str(npm_exec_target_root()),
                     "blocking_issue_count": 0,
-                    "planned_target_paths": [
-                        str(npm_exec_skill_dir())
-                    ],
+                    "planned_target_paths": [str(target) for target in npm_exec_skill_dirs()],
                 }
             ),
             "stderr": "",
             "passed": True,
         }
     if command[:2] == ["npm", "exec"] and "install" in command:
-        target = npm_exec_skill_dir()
-        target.mkdir(parents=True, exist_ok=True)
-        (target / "SKILL.md").write_text("# harness\n", encoding="utf-8")
+        targets = npm_exec_skill_dirs()
+        for target in targets:
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "SKILL.md").write_text("# harness\n", encoding="utf-8")
         return {
             "command": command,
             "returncode": 0,
-            "stdout": f"installed skill {target.name.removeprefix('aw-')}\n",
+            "stdout": "".join(f"installed skill {target.name.removeprefix('aw-')}\n" for target in targets),
             "stderr": "",
             "passed": True,
         }

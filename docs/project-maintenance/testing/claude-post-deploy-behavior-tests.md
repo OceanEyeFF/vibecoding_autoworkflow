@@ -1,13 +1,13 @@
 ---
 title: "Claude Post-Deploy Behavior Tests"
 status: active
-updated: 2026-04-29
+updated: 2026-05-01
 owner: aw-kernel
-last_verified: 2026-04-29
+last_verified: 2026-05-01
 ---
 # Claude Post-Deploy Behavior Tests
 
-> 目的：给 Claude Code operator 一条隔离的 Harness runtime smoke 路径，用于确认 Claude 能读取项目级 skill entry，并能在临时 repo 中触发最小 `.aw/` 冷启动。本文补充 `claude` compatibility backend 行为测试，但不把 Claude 写成完整 Harness skill set 分发合同。
+> 目的：给 Claude Code operator 一条隔离的 Harness runtime smoke 路径，用于确认 Claude 能读取项目级 skill entry，并能在临时 repo 中触发最小 `.aw/` 冷启动。本文补充 `claude` backend 行为测试，但不把 Claude 写成 `agents` 主路径替代品。
 
 先读：
 
@@ -17,11 +17,11 @@ last_verified: 2026-04-29
 
 ## 一、边界
 
-- 当前仓库提供受控的 `adapter_deploy.py --backend claude` compatibility lane，只覆盖 `set-harness-goal-skill` payload。
+- 当前仓库提供受控的 `adapter_deploy.py --backend claude` payload lane，覆盖完整 Harness skill set。
 - 本 runbook 覆盖 `adapter_deploy.py --backend claude` 的受管 payload smoke，以及 `set-harness-goal-skill/scripts/deploy_aw.py` 的 Claude 冷启动 helper。
 - 所有写入都必须发生在临时 repo 或明确指定的测试 worktree。
 - `.claude/skills/` 是 ignored repo-local deploy target / runtime mount，不是 source of truth。
-- 成功标准是 Claude runtime 能读取 skill entry，并生成最小 Harness control-plane artifacts；不代表完整多轮 Harness 行为或完整 Harness skill set 分发已经验证。
+- 成功标准是 Claude runtime 能读取 skill entry，并生成最小 Harness control-plane artifacts；不代表完整多轮 Harness 行为已经验证。
 
 ## 二、准备临时 repo
 
@@ -50,7 +50,8 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ver
 确认项目级 Claude skill 已安装：
 
 ```bash
-find "$TMP_REPO/.claude/skills/aw-set-harness-goal-skill" -maxdepth 2 -type f | sort
+find "$TMP_REPO/.claude/skills/set-harness-goal-skill" -maxdepth 2 -type f | sort
+find "$TMP_REPO/.claude/skills/harness-skill" -maxdepth 1 -type f | sort
 ```
 
 期望：
@@ -66,7 +67,7 @@ find "$TMP_REPO/.claude/skills/aw-set-harness-goal-skill" -maxdepth 2 -type f | 
 ```bash
 cd "$TMP_REPO"
 
-claude --bare -p '/aw-set-harness-goal-skill
+claude --bare -p '/set-harness-goal-skill
 只做 smoke verify：读取这个 skill entry，输出你识别到的技能名称、用途和当前不应执行的写入动作。不要修改文件。'
 ```
 
@@ -78,7 +79,7 @@ claude --bare -p '/aw-set-harness-goal-skill
 
 失败处理：
 
-- 如果 skill 不可识别，先检查 `$TMP_REPO/.claude/skills/aw-set-harness-goal-skill/SKILL.md` 是否存在。
+- 如果 skill 不可识别，先检查 `$TMP_REPO/.claude/skills/set-harness-goal-skill/SKILL.md` 是否存在。
 - 如果 Claude 未读取项目级 skills，检查当前 Claude Code 版本、启动目录和项目 trust 状态。
 - 如果使用 helper 路径失败，不要把 adapter 路径当成静默兜底；应按本次测试选择的安装入口定位问题。
 
@@ -90,7 +91,7 @@ claude --bare -p '/aw-set-harness-goal-skill
 cd "$TMP_REPO"
 test ! -e .aw
 
-claude --bare --permission-mode acceptEdits -p '/aw-set-harness-goal-skill
+claude --bare --permission-mode acceptEdits -p '/set-harness-goal-skill
 在这个临时 repo 中初始化 Harness control plane。
 目标：创建最小 `.aw/goal-charter.md`、`.aw/control-state.md` 和 `.aw/repo/snapshot-status.md`。
 项目目标：验证 Claude Code 能通过项目级 skill entry 执行 Harness 冷启动。

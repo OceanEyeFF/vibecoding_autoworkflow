@@ -588,7 +588,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(payload["target_root"], str(self.claude_local_root))
         self.assertEqual(
             payload["binding_count"],
-            1,
+            19,
         )
         self.assertFalse(self.local_root.exists())
 
@@ -600,8 +600,14 @@ class AdapterDeployTest(unittest.TestCase):
 
         self.assertEqual(install_code, 0, install_stderr)
         self.assertIn("installed skill set-harness-goal-skill", install_stdout)
-        target_skill_dir = self.claude_local_root / "aw-set-harness-goal-skill"
+        target_skill_dir = self.claude_local_root / "set-harness-goal-skill"
+        protected_skill_dir = self.claude_local_root / "harness-skill"
         self.assertTrue((target_skill_dir / "SKILL.md").is_file())
+        self.assertTrue((protected_skill_dir / "SKILL.md").is_file())
+        self.assertIn(
+            "disable-model-invocation: true",
+            (protected_skill_dir / "SKILL.md").read_text(encoding="utf-8"),
+        )
         payload = self._load_json(
             target_skill_dir / "payload.json"
         )
@@ -646,8 +652,9 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("installed skill set-harness-goal-skill", claude_stdout)
 
         agents_skill_dir = self.local_root / "aw-set-harness-goal-skill"
-        claude_skill_dir = self.claude_local_root / "aw-set-harness-goal-skill"
+        claude_skill_dir = self.claude_local_root / "set-harness-goal-skill"
         self.assertTrue((self.local_root / "aw-harness-skill" / "SKILL.md").is_file())
+        self.assertTrue((self.claude_local_root / "harness-skill" / "SKILL.md").is_file())
         self.assertTrue((agents_skill_dir / "SKILL.md").is_file())
         self.assertTrue((claude_skill_dir / "SKILL.md").is_file())
         self.assertEqual(self._load_json(agents_skill_dir / "payload.json")["backend"], "agents")
@@ -664,7 +671,8 @@ class AdapterDeployTest(unittest.TestCase):
         code, stdout, stderr = self._claude_install("--claude-root", self.claude_override_root)
 
         self.assertEqual(code, 0, stderr)
-        self.assertTrue((self.claude_override_root / "aw-set-harness-goal-skill").is_dir())
+        self.assertTrue((self.claude_override_root / "set-harness-goal-skill").is_dir())
+        self.assertTrue((self.claude_override_root / "harness-skill").is_dir())
         self.assertIn(str(self.claude_override_root), stdout)
         self.assertFalse(self.claude_local_root.exists())
         self.assertFalse(self.local_root.exists())
@@ -2357,7 +2365,7 @@ class AdapterDeployTest(unittest.TestCase):
         payload = json.loads(completed.stdout)
         self.assertEqual(len(payload), 1)
         packed_files = {entry["path"] for entry in payload[0]["files"]}
-        for required_path in {
+        required_paths = {
             "package.json",
             "README.md",
             "LICENSE",
@@ -2367,8 +2375,32 @@ class AdapterDeployTest(unittest.TestCase):
             "toolchain/scripts/deploy/bin/check-root-publish.js",
             "product/harness/skills/harness-skill/SKILL.md",
             "product/harness/adapters/agents/skills/harness-skill/payload.json",
-            "product/harness/adapters/claude/skills/set-harness-goal-skill/payload.json",
-        }:
+        }
+        required_paths.update(
+            f"product/harness/adapters/claude/skills/{skill_id}/payload.json"
+            for skill_id in (
+                "close-worktrack-skill",
+                "dispatch-skills",
+                "doc-catch-up-worker-skill",
+                "gate-skill",
+                "generic-worker-skill",
+                "harness-skill",
+                "init-worktrack-skill",
+                "recover-worktrack-skill",
+                "repo-append-request-skill",
+                "repo-change-goal-skill",
+                "repo-refresh-skill",
+                "repo-status-skill",
+                "repo-whats-next-skill",
+                "review-evidence-skill",
+                "rule-check-skill",
+                "schedule-worktrack-skill",
+                "set-harness-goal-skill",
+                "test-evidence-skill",
+                "worktrack-status-skill",
+            )
+        )
+        for required_path in required_paths:
             self.assertIn(required_path, packed_files)
         self.assertFalse(any(path.startswith(".aw/") for path in packed_files))
         self.assertFalse(any(path.startswith(".agents/") for path in packed_files))
@@ -3313,7 +3345,8 @@ class AdapterDeployTest(unittest.TestCase):
 
         self.assertEqual(code, 0, stderr)
         self.assertIn("removed managed skill dir", stdout)
-        self.assertFalse((self.claude_local_root / "aw-set-harness-goal-skill").exists())
+        self.assertFalse((self.claude_local_root / "set-harness-goal-skill").exists())
+        self.assertFalse((self.claude_local_root / "harness-skill").exists())
         self.assertTrue((self.local_root / "aw-harness-skill").is_dir())
 
     def test_prune_all_keeps_foreign_and_invalid_marker_dirs(self) -> None:

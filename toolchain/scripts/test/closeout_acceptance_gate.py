@@ -44,6 +44,27 @@ EXPECTED_NPM_PACKAGE_FILES = {
     "package.json",
     "path_safety_policy.json",
 }
+CLAUDE_REQUIRED_PAYLOAD_SKILLS = (
+    "close-worktrack-skill",
+    "dispatch-skills",
+    "doc-catch-up-worker-skill",
+    "gate-skill",
+    "generic-worker-skill",
+    "harness-skill",
+    "init-worktrack-skill",
+    "recover-worktrack-skill",
+    "repo-append-request-skill",
+    "repo-change-goal-skill",
+    "repo-refresh-skill",
+    "repo-status-skill",
+    "repo-whats-next-skill",
+    "review-evidence-skill",
+    "rule-check-skill",
+    "schedule-worktrack-skill",
+    "set-harness-goal-skill",
+    "test-evidence-skill",
+    "worktrack-status-skill",
+)
 ROOT_NPM_REQUIRED_PACKAGE_FILES = {
     "package.json",
     "README.md",
@@ -55,7 +76,9 @@ ROOT_NPM_REQUIRED_PACKAGE_FILES = {
     "toolchain/scripts/deploy/bin/check-root-publish.js",
     "product/harness/skills/harness-skill/SKILL.md",
     "product/harness/adapters/agents/skills/harness-skill/payload.json",
-    "product/harness/adapters/claude/skills/set-harness-goal-skill/payload.json",
+} | {
+    f"product/harness/adapters/claude/skills/{skill_id}/payload.json"
+    for skill_id in CLAUDE_REQUIRED_PAYLOAD_SKILLS
 }
 @dataclass
 class GateStep:
@@ -851,13 +874,22 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                         target_repo
                         / ".claude"
                         / "skills"
-                        / "aw-set-harness-goal-skill"
+                        / "set-harness-goal-skill"
+                        / "SKILL.md"
+                    )
+                    claude_harness_skill = (
+                        target_repo
+                        / ".claude"
+                        / "skills"
+                        / "harness-skill"
                         / "SKILL.md"
                     )
                     if not agents_skill.is_file():
                         install_failures.append("root packaged claude install removed agents skill")
                     if not claude_skill.is_file():
                         install_failures.append("root packaged claude install did not write set-harness-goal skill")
+                    if not claude_harness_skill.is_file():
+                        install_failures.append("root packaged claude install did not write harness skill")
 
                 subchecks.append(
                     run_tarball_aw_installer(

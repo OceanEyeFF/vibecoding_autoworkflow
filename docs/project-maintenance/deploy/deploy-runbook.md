@@ -1,9 +1,9 @@
 ---
 title: "Deploy Runbook"
 status: active
-updated: 2026-04-30
+updated: 2026-05-01
 owner: aw-kernel
-last_verified: 2026-04-30
+last_verified: 2026-05-01
 ---
 # Deploy Runbook
 
@@ -26,7 +26,7 @@ last_verified: 2026-04-30
 以下场景建议先读本文：
 
 - 首次给 `agents` backend 做安装
-- 首次给 `claude` compatibility backend 安装当前受控的 `set-harness-goal-skill`
+- 首次给 `claude` backend 安装当前受控的完整 Harness skill set
 - 已有安装，但想按当前 live source 完整重装
 - 想确认 deploy 主流程现在到底只剩哪三步
 - 想确认 `verify` 还做什么、但不再属于哪条主线
@@ -42,7 +42,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 当前已实现的后端：
 
 - `agents` —— 对应 `Codex / OpenAI`
-- `claude` —— compatibility lane，当前只覆盖 `set-harness-goal-skill`
+- `claude` —— Claude Code 适配 lane，当前覆盖完整 Harness skill set
 
 当前还提供一个语义等价的本地薄包装入口，用于后续分发包装复用：
 
@@ -50,7 +50,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-`harness_deploy.py` 只包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 仍暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell 和 `aw-harness-deploy` 兼容别名；`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 调用同一 wrapper。当前 checkout 的 release-prep candidate 是 `0.4.3-rc.0`；当前 npm registry 事实是 `next=0.4.2-rc.0`、`latest=0.4.0-rc.1`；已发布的 `0.4.2-rc.0` artifact 绑定 `gitHead=bb0af57300c0ead130a5ac39349ac93dffe51949`。外部已发布 RC 试用主路径应显式使用 `aw-installer@next`。当前还没有引入 full-screen TUI framework。
+`harness_deploy.py` 只包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 仍暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell 和 `aw-harness-deploy` 兼容别名；`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 调用同一 wrapper。当前 npm registry 事实是 `next=0.4.3-rc.0`、`latest=0.4.0-rc.1`；已发布的 `0.4.3-rc.0` artifact 绑定 `gitHead=085173cd9dea63a029b9f93b9e9c0bd91f5d4662`。外部已发布 RC 试用主路径应显式使用 `aw-installer@next`。当前还没有引入 full-screen TUI framework。
 
 本地 npm-style scaffold 可用下面的 smoke 命令验证 bin 入口能打开同一 help surface：
 
@@ -119,7 +119,7 @@ CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 scaffol
 
 当前边界说明：
 
-- 当前实现 `agents`，并提供 `claude` compatibility backend 的 `set-harness-goal-skill` payload
+- 当前实现 `agents`，并提供 `claude` backend 的完整 Harness skill payload set
 - 主流程固定为：
   - `prune --all`
   - `check_paths_exist`
@@ -221,4 +221,4 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ver
 - skills / `.aw_template` 的增删改查：查看 [skill-lifecycle.md](./skill-lifecycle.md)
 - 原始来源、后端部署包、目标入口的正式规则：查看 [Deploy Mapping Spec](./deploy-mapping-spec.md)
 - package payload、source/target root 和 update trust boundary：查看 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md)
-- `claude` 当前只实现受控的 `set-harness-goal-skill` compatibility payload；不要把它写成完整 Harness skill set 分发。
+- `claude` 当前实现受控的完整 Harness skill payload set，但仍不替代 `agents` 主路径。

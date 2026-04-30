@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Public Quickstart Prompts"
 status: active
-updated: 2026-04-30
+updated: 2026-05-01
 owner: aw-kernel
-last_verified: 2026-04-30
+last_verified: 2026-05-01
 ---
 # aw-installer Public Quickstart Prompts
 
@@ -14,17 +14,18 @@ This page belongs to [Deploy Runbooks](./README.md). It uses the current distrib
 ## Control Signal
 
 - recommended_path: Codex with `agents` backend
-- claude_code_path: trial-only compatibility lane
+- claude_code_path: Claude Code adapter lane
 - direct_npx_available: true
 - direct_npx_primary_path: `aw-installer@next`
 - registry_rc_available: true
-- npm_publish_allowed: completed-for-0.4.2-rc.0-next; future publish still separately approval-gated
+- npm_publish_allowed: completed-for-0.4.3-rc.0-next; future publish still separately approval-gated
 - package_name_decided: true
 - approved_package_name: unscoped `aw-installer`
 - current_install_source: published `aw-installer@next`, local `0.4.3-rc.0` `.tgz` candidate package, or explicit source checkout
 - target_repo_writes:
   - `.agents/skills/` for Codex/agents install
-  - `.claude/skills/aw-set-harness-goal-skill/` for Claude Code cold-start helper
+  - `.claude/skills/<skill-name>/` for Claude managed adapter install
+  - `.claude/skills/aw-set-harness-goal-skill/` only for the standalone cold-start helper
   - `.aw/` only after the operator asks the runtime agent to initialize the Harness control plane
 
 ## Before You Start
@@ -37,7 +38,7 @@ Prerequisites:
 - Python is available for deploy commands outside the Node-owned subset. `aw-installer --help`, `--version`, `diagnose --backend agents --json`, and package/local-source `update --backend agents --json` dry-runs are handled by Node directly. `verify`, `install`, `update --yes`, `prune`, GitHub-source update, Claude backend commands, and unsupported diagnose/update variants still use the Python deploy wrapper/reference path. The Node-owned update dry-run preserves the existing JSON fields, including `backend`, `source_kind`, `source_ref`, `source_root`, `target_root`, `operation_sequence`, `managed_installs_to_delete`, `planned_target_paths`, `issues`, and `blocking_issues`. The current wrapper tries `py -3`, `python`, then `python3` on Windows, and `python3` then `python` on Linux/macOS. It intentionally ignores `PYTHON` and `PYTHON3` environment overrides.
 - The target repository is a git worktree you are allowed to modify.
 - You have registry access to `aw-installer`, a local `aw-installer` `.tgz` package from the maintainer, or an explicit AW source checkout path.
-- You understand that the current public trial path is RC pre-release: `aw-installer@next` currently resolves to `0.4.2-rc.0` on npm `next`, while bare `aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`. Stable release semantics still require separate approval.
+- You understand that the current public trial path is RC pre-release: `aw-installer@next` currently resolves to `0.4.3-rc.0` on npm `next`, while bare `aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`. Stable release semantics still require separate approval.
 
 Privacy rule:
 
@@ -145,7 +146,7 @@ If Codex does not recognize `$set-harness-goal-skill`, first confirm `verify --b
 
 ## Claude Code Quickstart
 
-Use this path only for the current Claude Code compatibility trial. The repository provides a bounded `adapter_deploy.py --backend claude` compatibility contract for `set-harness-goal-skill`; it is not the full `agents` mainline.
+Use this path for the current Claude Code adapter trial. The repository provides a bounded `adapter_deploy.py --backend claude` contract for the full Harness skill payload set; it is still not the `agents` mainline.
 
 Claude compatibility requires an install source that contains `product/harness/adapters/claude/skills`. Until the published selector is verified for that payload, use an explicit source checkout or maintainer-provided local `.tgz` rather than assuming every registry selector contains the Claude lane.
 
@@ -170,10 +171,10 @@ AW_HARNESS_TARGET_REPO_ROOT="$TARGET_REPO" \
 PYTHONDONTWRITEBYTECODE=1 python3 "$AW_SOURCE_REPO/toolchain/scripts/deploy/adapter_deploy.py" verify --backend claude
 ```
 
-Then open Claude Code in the target repository and paste:
+Then open Claude Code in the target repository and paste. If you installed through the managed adapter path, use `/set-harness-goal-skill`; if you used the standalone helper path above, use `/aw-set-harness-goal-skill`.
 
 ```text
-/aw-set-harness-goal-skill
+/set-harness-goal-skill
 
 Initialize AW Harness control-plane artifacts in this repository.
 
@@ -181,10 +182,10 @@ Goal:
 Use AW as the repo-side control layer for bounded AI coding work in this existing repository.
 
 Requirements:
-- Use the project-level `aw-set-harness-goal-skill` entry.
+- Use the project-level `set-harness-goal-skill` entry when installed by `adapter_deploy.py --backend claude`.
 - Create the minimal `.aw/goal-charter.md`, `.aw/control-state.md`, and `.aw/repo/snapshot-status.md` artifacts if they do not exist.
 - Preserve existing source code and docs.
-- If using `adapter_deploy.py --backend claude`, treat it as the bounded `set-harness-goal-skill` compatibility path, not full Claude backend support.
+- If using `adapter_deploy.py --backend claude`, treat it as the bounded Claude adapter lane for the full Harness payload set, not as a replacement for the `agents` mainline.
 - Do not run npm publish.
 - Prefer `aw-installer@next` for the published RC registry trial path; bare `aw-installer` still resolves to the older `latest` path.
 
@@ -195,7 +196,7 @@ After initialization, summarize:
 - the next recommended Harness route
 ```
 
-If Claude Code does not recognize `/aw-set-harness-goal-skill`, confirm the target repository contains `.claude/skills/aw-set-harness-goal-skill/SKILL.md`, then check Claude Code project trust and project-level skill loading.
+If Claude Code does not recognize `/set-harness-goal-skill`, confirm the target repository contains `.claude/skills/set-harness-goal-skill/SKILL.md`, then check Claude Code project trust and project-level skill loading. If you used the standalone helper path, check `.claude/skills/aw-set-harness-goal-skill/SKILL.md` instead.
 
 ## What To Report
 
@@ -222,6 +223,6 @@ Stop and report a blocker if:
 - dry-run `update` plans writes outside the expected target repository.
 - `verify --backend agents` fails after install.
 - Codex cannot see `set-harness-goal-skill` after a passing agents install.
-- Claude Code cannot read the project-level `aw-set-harness-goal-skill` entry.
+- Claude Code cannot read the project-level `set-harness-goal-skill` entry after managed Claude install, or `aw-set-harness-goal-skill` after standalone helper install.
 - initialization would overwrite an existing confirmed `.aw/goal-charter.md` without operator approval.
 - a report needs full command logs but the log contains private paths, tokens, credentials, or private repository identifiers; sanitize first, then attach or summarize the relevant excerpt.

@@ -1,9 +1,9 @@
 ---
 title: "Skill 生命周期维护"
 status: active
-updated: 2026-04-29
+updated: 2026-05-01
 owner: aw-kernel
-last_verified: 2026-04-29
+last_verified: 2026-05-01
 ---
 # Skill 生命周期维护
 
@@ -50,7 +50,7 @@ last_verified: 2026-04-29
 
 ## 三、当前执行边界
 
-- 当前 deploy 接口对 `agents` 生效，并对 `claude` 提供 `set-harness-goal-skill` compatibility payload
+- 当前 deploy 接口对 `agents` 生效，并对 `claude` 提供完整 Harness skill payload set
 - 主流程固定为 `prune --all -> check_paths_exist -> install --backend <backend>`
 - `install --backend <backend>` 只消费当前 live payload descriptor，并把 canonical skill copy、payload descriptor 与 runtime-generated `aw.marker` 写入当前 backend 的 resolved target root
 - `verify --backend <backend>` 只读检查 source layer、live install drift，以及 conflict / unrecognized 目录
