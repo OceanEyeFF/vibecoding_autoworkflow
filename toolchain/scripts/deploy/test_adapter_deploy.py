@@ -24,6 +24,9 @@ import adapter_deploy
 import harness_deploy
 
 
+FAKE_FAILING_PYTHON_EXIT_CODE = 97
+
+
 class AdapterDeployTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -111,6 +114,85 @@ class AdapterDeployTest(unittest.TestCase):
             "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
             "AW_HARNESS_TARGET_REPO_ROOT": str(self.fake_repo_root),
         }
+
+    def _run_aw_installer_node(
+        self,
+        *argv: object,
+        target_repo: Path | None = None,
+        env: dict[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        node_path = shutil.which("node")
+        if node_path is None:
+            self.skipTest("node is not available")
+        if target_repo is None:
+            target_repo = self.fake_repo_root
+        command_env = {
+            **os.environ,
+            "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
+            "AW_HARNESS_TARGET_REPO_ROOT": str(target_repo),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+        if env is not None:
+            command_env.update(env)
+        wrapper = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+        return subprocess.run(
+            [node_path, str(wrapper), *map(str, argv)],
+            cwd=target_repo,
+            env=command_env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def _update_json_parity_fields(self, payload: dict[str, object]) -> dict[str, object]:
+        def sorted_issues(key: str) -> list[dict[str, object]]:
+            issues = payload[key]
+            self.assertIsInstance(issues, list)
+            return sorted(
+                issues,
+                key=lambda issue: (
+                    str(issue["code"]),
+                    str(issue["path"]),
+                    str(issue["detail"]),
+                ),
+            )
+
+        return {
+            "backend": payload["backend"],
+            "source_kind": payload["source_kind"],
+            "source_ref": payload["source_ref"],
+            "source_root": payload["source_root"],
+            "target_root": payload["target_root"],
+            "operation_sequence": payload["operation_sequence"],
+            "managed_installs_to_delete": sorted(payload["managed_installs_to_delete"]),
+            "planned_target_paths": sorted(payload["planned_target_paths"]),
+            "issue_count": payload["issue_count"],
+            "issues": sorted_issues("issues"),
+            "blocking_issue_count": payload["blocking_issue_count"],
+            "blocking_issues": sorted_issues("blocking_issues"),
+        }
+
+    def _assert_node_update_json_matches_python_adapter(self) -> tuple[dict[str, object], dict[str, object]]:
+        adapter_code, adapter_stdout, adapter_stderr = self._update("--json")
+        node_completed = self._run_aw_installer_node("update", "--backend", "agents", "--json")
+
+        self.assertEqual(node_completed.returncode, adapter_code, node_completed.stderr)
+        self.assertEqual(adapter_stderr, "")
+        self.assertEqual(node_completed.stderr, "")
+        adapter_payload = json.loads(adapter_stdout)
+        node_payload = json.loads(node_completed.stdout)
+        self.assertEqual(
+            self._update_json_parity_fields(node_payload),
+            self._update_json_parity_fields(adapter_payload),
+        )
+        return node_payload, adapter_payload
 
     def _install(self, *extra_args: object) -> tuple[int, str, str]:
         return self._run_cli("install", "--backend", "agents", *extra_args)
@@ -292,7 +374,9 @@ class AdapterDeployTest(unittest.TestCase):
         for python_name in ("py", "python3", "python"):
             fake_python = fake_bin / python_name
             fake_python.write_text(
-                "#!/bin/sh\nprintf 'unexpected-python %s\\n' \"$*\" >&2\nexit 97\n",
+                "#!/bin/sh\n"
+                "printf 'unexpected-python %s\\n' \"$*\" >&2\n"
+                f"exit {FAKE_FAILING_PYTHON_EXIT_CODE}\n",
                 encoding="utf-8",
             )
             fake_python.chmod(0o755)
@@ -378,7 +462,7 @@ class AdapterDeployTest(unittest.TestCase):
                         break
                     search_pos = match_index + len(pattern)
                     if response:
-                        os.write(master_fd, response.encode("utf-8"))
+                        os.write(master_fd, response.replace("\n", "\r").encode("utf-8"))
                     step_index += 1
 
                 if process.poll() is not None:
@@ -636,6 +720,32 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(wrapper_code, 0, wrapper_stderr)
         self.assertEqual(json.loads(wrapper_stdout), json.loads(adapter_stdout))
 
+    def test_aw_installer_update_json_missing_target_matches_python_adapter(self) -> None:
+        node_payload, adapter_payload = self._assert_node_update_json_matches_python_adapter()
+
+        self.assertEqual(node_payload["blocking_issue_count"], 0)
+        self.assertEqual(adapter_payload["blocking_issue_count"], 0)
+        self.assertGreater(len(node_payload["planned_target_paths"]), 0)
+        self.assertFalse(self.local_root.exists())
+
+    def test_aw_installer_update_json_duplicate_target_dir_matches_python_adapter(self) -> None:
+        self._mutate_target_dir("dispatch-skills", "aw-harness-skill")
+
+        node_payload, adapter_payload = self._assert_node_update_json_matches_python_adapter()
+
+        self.assertEqual(node_payload["blocking_issue_count"], 1)
+        self.assertEqual(adapter_payload["blocking_issue_count"], 1)
+        self.assertEqual(node_payload["planned_target_paths"], [])
+        self.assertEqual(adapter_payload["planned_target_paths"], [])
+        self.assertEqual(
+            node_payload["blocking_issues"][0]["code"],
+            "payload-contract-invalid",
+        )
+        self.assertEqual(
+            adapter_payload["blocking_issues"][0]["code"],
+            "payload-contract-invalid",
+        )
+
     def test_cli_derives_runtime_context_from_env_after_import(self) -> None:
         target_repo = self.temp_root / "env-target"
 
@@ -798,8 +908,8 @@ class AdapterDeployTest(unittest.TestCase):
             package["awInstallerRelease"],
             {
                 "realPublishApproval": "approved",
-                "approvedVersion": "0.4.1-rc.3",
-                "approvedGitTag": "v0.4.1-rc.3",
+                "approvedVersion": "0.4.2-rc.0",
+                "approvedGitTag": "v0.4.2-rc.0",
                 "approvedChannel": "next",
             },
         )
@@ -1202,7 +1312,7 @@ class AdapterDeployTest(unittest.TestCase):
         env = {
             **os.environ,
             "AW_INSTALLER_PUBLISH_APPROVED": "1",
-            "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.1-rc.3",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.2-rc.0",
             "CI": "true",
             "npm_config_tag": "next",
         }
@@ -1547,7 +1657,7 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertEqual(completed.stdout, "aw-installer 0.4.1-rc.3\n")
+        self.assertEqual(completed.stdout, "aw-installer 0.4.2-rc.0\n")
         self.assertEqual(completed.stderr, "")
 
     def test_local_npm_installer_help_and_version_are_node_owned_without_python(self) -> None:
@@ -1571,8 +1681,8 @@ class AdapterDeployTest(unittest.TestCase):
         for safe_args, expected_stdout in (
             (("-h",), "usage: aw-installer"),
             (("--help",), "usage: aw-installer"),
-            (("-V",), "aw-installer 0.4.1-rc.3\n"),
-            (("--version",), "aw-installer 0.4.1-rc.3\n"),
+            (("-V",), "aw-installer 0.4.2-rc.0\n"),
+            (("--version",), "aw-installer 0.4.2-rc.0\n"),
         ):
             with self.subTest(args=safe_args):
                 completed = subprocess.run(
@@ -1909,15 +2019,6 @@ class AdapterDeployTest(unittest.TestCase):
                 / "scripts"
                 / "deploy"
                 / "bin"
-                / "aw-installer.js",
-                ["update", "--backend", "agents", "--json"],
-            ),
-            (
-                self.source_repo_root
-                / "toolchain"
-                / "scripts"
-                / "deploy"
-                / "bin"
                 / "aw-harness-deploy.js",
                 ["diagnose", "--backend", "agents", "--json"],
             ),
@@ -1945,6 +2046,74 @@ class AdapterDeployTest(unittest.TestCase):
                 self.assertEqual(completed.stdout, "")
                 self.assertIn("timed out after 1s", completed.stderr)
 
+    def test_aw_installer_update_agents_json_is_node_owned_without_python(self) -> None:
+        node_path = shutil.which("node")
+        if node_path is None:
+            self.skipTest("node is not available")
+        fake_bin = self._fake_failing_python_bin()
+        target_repo = self.temp_root / "node-owned-update-target"
+        target_repo.mkdir()
+        wrapper = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+        env = {
+            **os.environ,
+            "AW_HARNESS_REPO_ROOT": str(self.source_repo_root),
+            "AW_HARNESS_TARGET_REPO_ROOT": str(target_repo),
+            "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+
+        completed = subprocess.run(
+            [node_path, str(wrapper), "update", "--backend", "agents", "--json"],
+            cwd=target_repo,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertNotIn("unexpected-python", completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload["backend"], "agents")
+        self.assertEqual(payload["source_kind"], "package")
+        self.assertEqual(payload["source_ref"], "package-local")
+        self.assertEqual(payload["target_root"], str(target_repo / ".agents" / "skills"))
+        self.assertEqual(
+            payload["operation_sequence"],
+            ["prune --all", "check_paths_exist", "install", "verify"],
+        )
+        self.assertGreater(len(payload["planned_target_paths"]), 0)
+        self.assertEqual(payload["blocking_issue_count"], 0)
+
+    def test_aw_installer_update_non_node_owned_paths_fallback_to_python_subprocess(self) -> None:
+        fake_bin = self._fake_failing_python_bin()
+        target_repo = self.temp_root / "update-fallback-target"
+        target_repo.mkdir()
+        env = {
+            "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+        }
+
+        cases = [
+            ("github-json", ("update", "--backend", "agents", "--json", "--source", "github")),
+            ("apply-yes", ("update", "--backend", "agents", "--yes")),
+        ]
+
+        for label, argv in cases:
+            with self.subTest(label=label):
+                completed = self._run_aw_installer_node(*argv, target_repo=target_repo, env=env)
+
+                self.assertEqual(completed.returncode, FAKE_FAILING_PYTHON_EXIT_CODE)
+                self.assertEqual(completed.stdout, "")
+                self.assertIn("unexpected-python", completed.stderr)
+                self.assertIn("harness_deploy.py", completed.stderr)
+
     def test_local_npm_installer_tui_shows_update_plan_before_apply_confirmation(self) -> None:
         target_repo = self.temp_root / "tui-plan-target"
 
@@ -1971,6 +2140,25 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("Update cancelled.", output)
         self.assertNotIn("[agents] applying update", output)
         self.assertFalse((target_repo / ".agents" / "skills").exists())
+
+    def test_local_npm_installer_tui_diagnose_json_is_node_owned(self) -> None:
+        target_repo = self.temp_root / "tui-diagnose-target"
+        fake_bin = self._fake_failing_python_bin()
+
+        code, output = self._run_installer_tui_script(
+            [
+                ("Select an action:", "2\n"),
+                ("Press Enter to return to the installer menu", "\n"),
+                ("Select an action:", "6\n"),
+            ],
+            target_repo=target_repo,
+            env_overrides={"PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}"},
+        )
+
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("unexpected-python", output)
+        self.assertIn('"backend": "agents"', output)
+        self.assertIn('"target_root_status": "missing"', output)
 
     def test_local_npm_installer_tui_guided_flow_is_primary_menu_action(self) -> None:
         target_repo = self.temp_root / "tui-guided-target"
@@ -2203,7 +2391,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         payload = json.loads(completed.stdout)
         self.assertEqual(payload["name"], "aw-installer")
-        self.assertEqual(payload["version"], "0.4.1-rc.3")
+        self.assertEqual(payload["version"], "0.4.2-rc.0")
         packed_files = {entry["path"] for entry in payload["files"]}
         self.assertIn("package.json", packed_files)
         self.assertIn("product/harness/skills/harness-skill/SKILL.md", packed_files)
@@ -2591,7 +2779,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertNotEqual(diagnose_payload["source_root"], str(target_repo))
 
         self.assertEqual(version_completed.returncode, 0, version_completed.stderr)
-        self.assertEqual(version_completed.stdout, "aw-installer 0.4.1-rc.3\n")
+        self.assertEqual(version_completed.stdout, "aw-installer 0.4.2-rc.0\n")
         self.assertEqual(version_completed.stderr, "")
         self.assertEqual(tui_completed.returncode, 1)
         self.assertEqual(tui_completed.stdout, "")

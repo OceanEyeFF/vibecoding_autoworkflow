@@ -33,7 +33,7 @@ last_verified: 2026-04-30
 
 ## 二、source root 与 target root
 
-`aw-installer` Node bin 当前直接承接 `--help`、`--version` 与 `diagnose --backend agents --json` 的只读路径；其他 deploy modes 和不受支持的 diagnose 变体仍调用同包内的 Python wrapper。实际 source / target 解析必须保持与 `adapter_deploy.py` 的合同一致：
+`aw-installer` Node bin 当前直接承接 `--help`、`--version` 与 `diagnose --backend agents --json` 的只读路径；TUI 的 agents diagnose 展示也复用该 Node-owned JSON 路径。`update --backend agents --json` 在 package/local source dry-run 场景下也由 Node-owned 路径生成 plan JSON。该 dry-run JSON 必须继续暴露 `backend`、`source_kind`、`source_ref`、`source_root`、`target_root`、`operation_sequence`、`managed_installs_to_delete`、`planned_target_paths`、`issues` 与 `blocking_issues` 等字段。其他 deploy modes、不受支持的 diagnose / update 变体、`update --yes`、GitHub source update、Claude backend、`install`、`verify` 与 `prune` 仍调用同包内的 Python wrapper/reference path；fallback 环境只透传 deploy 所需变量，不全量继承 shell secrets。实际 source / target 解析必须保持与 `adapter_deploy.py` 的合同一致：
 
 - 未设置 `AW_HARNESS_REPO_ROOT` 时，source root 是 package 解压根或当前 checkout 中的 repo root。
 - 设置 `AW_HARNESS_REPO_ROOT` 时，source root 显式指向该 checkout，并保持旧的 repo-local 行为。
@@ -110,7 +110,7 @@ aw-installer update --backend agents --source github --github-repo OceanEyeFF/vi
 - `npm pack --dry-run --json` 的 root packlist仍只包含显式 package payload。
 - 根 `.tgz` smoke 不设置 `AW_HARNESS_REPO_ROOT`，并证明 package 内 source payload 与临时 target repo 分离。
 - `diagnose`、`verify` 仍是只读命令。
-- `update --backend agents` 默认只输出 dry-run plan。
+- `update --backend agents --json` 在 package/local source dry-run 场景下由 Node-owned 路径输出 plan，并保留既有 JSON 字段。
 - `update --backend agents --yes` 仍执行 destructive reinstall，并在写入后运行严格 `verify`。
 - `update --backend agents --source github --github-ref <ref-containing-current-payload> --json` 在 GitHub source 有效时输出 `source_kind=github`，在 GitHub source 缺少 payload source paths 时失败。
 - 文档同步 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)、[Deploy Runbook](./deploy-runbook.md) 和本页。
