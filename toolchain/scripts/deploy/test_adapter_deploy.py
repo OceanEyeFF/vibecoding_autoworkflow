@@ -462,7 +462,7 @@ class AdapterDeployTest(unittest.TestCase):
                         break
                     search_pos = match_index + len(pattern)
                     if response:
-                        os.write(master_fd, response.encode("utf-8"))
+                        os.write(master_fd, response.replace("\n", "\r").encode("utf-8"))
                     step_index += 1
 
                 if process.poll() is not None:
