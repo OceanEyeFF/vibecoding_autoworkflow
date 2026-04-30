@@ -158,6 +158,7 @@ class AdapterDeployTest(unittest.TestCase):
             "operation_sequence": payload["operation_sequence"],
             "managed_installs_to_delete": sorted(payload["managed_installs_to_delete"]),
             "planned_target_paths": sorted(payload["planned_target_paths"]),
+            "issue_count": payload["issue_count"],
             "issue_codes": sorted(issue["code"] for issue in payload["issues"]),
             "blocking_issue_count": payload["blocking_issue_count"],
             "blocking_issue_codes": sorted(issue["code"] for issue in payload["blocking_issues"]),
