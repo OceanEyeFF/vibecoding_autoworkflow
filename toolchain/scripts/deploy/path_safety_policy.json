@@ -1,0 +1,31 @@
+{
+  "exact_sensitive_target_repo_roots": [
+    "/",
+    "/bin",
+    "/boot",
+    "/etc",
+    "/lib",
+    "/lib64",
+    "/sbin",
+    "/usr"
+  ],
+  "recursive_sensitive_target_repo_roots": [
+    "/dev",
+    "/proc",
+    "/run",
+    "/sys"
+  ],
+  "home_relative_recursive_sensitive_target_repo_roots": [
+    ".aws",
+    ".config",
+    ".gnupg",
+    ".ssh"
+  ],
+  "allowed_target_repo_root_prefixes": [
+    "$cwd",
+    "$source_root",
+    "$home",
+    "/tmp",
+    "/var/tmp"
+  ]
+}

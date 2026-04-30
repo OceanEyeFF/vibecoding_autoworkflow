@@ -222,7 +222,6 @@ ENTRYPOINT_LINK_RULES = {
     "docs/project-maintenance/usage-help/README.md": [
         "docs/project-maintenance/usage-help/codex.md",
         "docs/project-maintenance/usage-help/claude.md",
-        "docs/project-maintenance/usage-help/opencode.md",
     ],
     "product/README.md": [
         "product/harness/README.md",
@@ -237,7 +236,6 @@ REQUIRED_GITIGNORE_ENTRIES = [
     ".aw/",
     ".agents/",
     ".claude/",
-    ".opencode/",
     ".autoworkflow/",
     ".spec-workflow/",
     "**/__pycache__/",

@@ -1,9 +1,9 @@
 ---
 title: "Memory Side Skill 与 Agent 模型"
 status: active
-updated: 2026-04-18
+updated: 2026-04-30
 owner: aw-kernel
-last_verified: 2026-04-18
+last_verified: 2026-04-30
 ---
 # Memory Side Skill 与 Agent 模型
 
@@ -86,7 +86,6 @@ last_verified: 2026-04-18
 
 - `.agents/skills/`
 - `.claude/skills/`
-- `.opencode/skills/`
 
 说明：
 
@@ -169,16 +168,13 @@ last_verified: 2026-04-18
 
 .claude/
   skills/
-
-.opencode/
-  skills/
 ```
 
 说明：
 
 - 这些目录只保留部署结果
-- 当前只有 `.agents/skills/` 通过 `toolchain/scripts/deploy/adapter_deploy.py` 从 `product/` destructive reinstall 到 repo-local target
-- `.claude/skills/` 与 `.opencode/skills/` 可以作为 repo-local deploy target 保留，但当前仓库没有稳定的 `claude` / `opencode` deploy adapter CLI
+- 当前 `.agents/skills/` 与受控 `.claude/skills/` compatibility payload 通过 `toolchain/scripts/deploy/adapter_deploy.py` 从 `product/` destructive reinstall 到 repo-local target
+- `.claude/skills/` 可以作为 repo-local deploy target 保留，当前仓库只提供受控 `claude` compatibility backend
 - 不应再手工维护源码
 
 ### 3. Toolchain

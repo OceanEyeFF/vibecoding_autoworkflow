@@ -14,6 +14,15 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+try:
+    from cache_scan_policy import CACHE_DIR_NAMES, CACHE_FILE_SUFFIXES, CACHE_SCAN_ROOTS
+except ModuleNotFoundError:
+    from toolchain.scripts.test.cache_scan_policy import (
+        CACHE_DIR_NAMES,
+        CACHE_FILE_SUFFIXES,
+        CACHE_SCAN_ROOTS,
+    )
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW_ID = "closeout-governance-task-list-20260402"
@@ -33,6 +42,7 @@ EXPECTED_NPM_PACKAGE_FILES = {
     "bin/aw-harness-deploy.js",
     "harness_deploy.py",
     "package.json",
+    "path_safety_policy.json",
 }
 ROOT_NPM_REQUIRED_PACKAGE_FILES = {
     "package.json",
@@ -40,17 +50,13 @@ ROOT_NPM_REQUIRED_PACKAGE_FILES = {
     "LICENSE",
     "toolchain/scripts/deploy/adapter_deploy.py",
     "toolchain/scripts/deploy/harness_deploy.py",
+    "toolchain/scripts/deploy/path_safety_policy.json",
     "toolchain/scripts/deploy/bin/aw-installer.js",
     "toolchain/scripts/deploy/bin/check-root-publish.js",
     "product/harness/skills/harness-skill/SKILL.md",
     "product/harness/adapters/agents/skills/harness-skill/payload.json",
     "product/harness/adapters/claude/skills/set-harness-goal-skill/payload.json",
 }
-CACHE_SCAN_ROOTS = ("docs", "product", "toolchain", "tools")
-CACHE_DIR_NAMES = {"__pycache__", ".pytest_cache"}
-CACHE_FILE_SUFFIXES = (".pyc", ".pyo")
-
-
 @dataclass
 class GateStep:
     gate: str
@@ -150,6 +156,8 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
             "--allowed-prefix",
             "README.md",
             "--allowed-prefix",
+            "INDEX.md",
+            "--allowed-prefix",
             "docs/README.md",
             "--allowed-prefix",
             "AGENTS.md",
@@ -171,6 +179,12 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
             "toolchain/toolchain-layering.md",
             "--allowed-prefix",
             "product/README.md",
+            "--allowed-prefix",
+            "product/harness/README.md",
+            "--allowed-prefix",
+            "toolchain/scripts/deploy/path_safety_policy.json",
+            "--allowed-prefix",
+            "toolchain/scripts/deploy/test_aw_installer.js",
             "--allowed-prefix",
             "package.json",
         ],
@@ -598,7 +612,7 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
         missing_files = sorted(ROOT_NPM_REQUIRED_PACKAGE_FILES - packed_files)
         if missing_files:
             failures.append(f"root npm package missing required files: {missing_files}")
-        for disallowed_prefix in (".aw/", ".agents/", ".autoworkflow/", ".claude/", ".opencode/"):
+        for disallowed_prefix in (".aw/", ".agents/", ".autoworkflow/", ".claude/"):
             if any(path.startswith(disallowed_prefix) for path in packed_files):
                 failures.append(f"root npm package included {disallowed_prefix} content")
         if not package_filename:
@@ -826,6 +840,48 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                     )
                 )
 
+                def validate_claude_install(
+                    install_result: dict,
+                    install_failures: list[str],
+                ) -> None:
+                    if not install_result["passed"]:
+                        return
+                    agents_skill = target_repo / ".agents" / "skills" / "aw-harness-skill" / "SKILL.md"
+                    claude_skill = (
+                        target_repo
+                        / ".claude"
+                        / "skills"
+                        / "aw-set-harness-goal-skill"
+                        / "SKILL.md"
+                    )
+                    if not agents_skill.is_file():
+                        install_failures.append("root packaged claude install removed agents skill")
+                    if not claude_skill.is_file():
+                        install_failures.append("root packaged claude install did not write set-harness-goal skill")
+
+                subchecks.append(
+                    run_tarball_aw_installer(
+                        package_file,
+                        ["install", "--backend", "claude"],
+                        cwd=target_repo,
+                        extra_env=clean_env,
+                        name="root_npm_exec_tarball_install_claude",
+                        failures=failures,
+                        validate=validate_claude_install,
+                    )
+                )
+
+                subchecks.append(
+                    run_tarball_aw_installer(
+                        package_file,
+                        ["verify", "--backend", "claude"],
+                        cwd=target_repo,
+                        extra_env=clean_env,
+                        name="root_npm_exec_tarball_verify_claude",
+                        failures=failures,
+                    )
+                )
+
                 def validate_update_apply(update_apply_result: dict, update_apply_failures: list[str]) -> None:
                     if not update_apply_result["passed"]:
                         return
@@ -920,6 +976,10 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                 ],
                 cwd=repo_root,
             ),
+        ),
+        (
+            "deploy_package_unit_tests",
+            run_command(["npm", "--prefix", "toolchain/scripts/deploy", "test", "--silent"], cwd=repo_root),
         ),
         (
             "repo_analysis_contract_check",

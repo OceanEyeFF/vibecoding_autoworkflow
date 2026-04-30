@@ -26,7 +26,6 @@ DEFAULT_ALLOWED_PREFIXES = (
     "product/harness/adapters/",
     ".agents/",
     ".claude/",
-    ".opencode/",
     "toolchain/scripts/deploy/adapter_deploy.py",
     "toolchain/scripts/deploy/aw_scaffold.py",
     "toolchain/scripts/deploy/bin/",

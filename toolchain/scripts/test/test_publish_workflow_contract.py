@@ -35,6 +35,8 @@ def test_publish_workflow_uses_npm_environment_and_registry() -> None:
     assert re.search(r"\benvironment:\s*npm\b", workflow)
     assert 'registry-url: "https://registry.npmjs.org/"' in workflow
     assert 'node-version: "24"' in workflow
+    assert "expected_npm_integrity=" in workflow
+    assert "npm view npm@11.5.1 dist.integrity" in workflow
     assert "npm install -g npm@11.5.1" in workflow
     assert "npm publish --provenance --access public --tag \"$AW_INSTALLER_RELEASE_CHANNEL\"" in workflow
 
@@ -63,9 +65,11 @@ def test_publish_workflow_runs_pre_publish_validation_gates() -> None:
         "python toolchain/scripts/test/folder_logic_check.py",
         "python toolchain/scripts/test/path_governance_check.py",
         "python toolchain/scripts/test/governance_semantic_check.py",
+        "python -m pip install --requirement .github/requirements-ci.txt",
         "python -m pytest toolchain/scripts/test",
         "python -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'",
         "npm --prefix toolchain/scripts/deploy run smoke --silent",
+        "npm --prefix toolchain/scripts/deploy test --silent",
         "npm pack --dry-run --json",
         "npm run publish:dry-run --silent",
     ]

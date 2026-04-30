@@ -18,4 +18,4 @@
 规则：
 
 - 新的 Harness executable source 应落在这里，而不是写回 `docs/harness/`
-- repo-local deploy target 仍然是 `.claude/skills/`、`.agents/skills/` 与 `.opencode/skills/`
+- repo-local deploy target 仍然是 `.claude/skills/` 与 `.agents/skills/`

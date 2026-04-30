@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Payload Provenance And Update Trust Boundary"
 status: active
-updated: 2026-04-29
+updated: 2026-04-30
 owner: aw-kernel
-last_verified: 2026-04-29
+last_verified: 2026-04-30
 ---
 # aw-installer Payload Provenance And Update Trust Boundary
 
@@ -25,7 +25,7 @@ last_verified: 2026-04-29
 - `toolchain/scripts/deploy/bin/check-root-publish.js`
 - `toolchain/scripts/deploy/README.md`
 
-这些文件是当前 `.tgz` 内可执行 deploy payload 的来源。`.aw/`、`.agents/`、`.claude/`、`.opencode/`、`.autoworkflow/` 和其他 repo-local runtime state 不属于 package payload。
+这些文件是当前 `.tgz` 内可执行 deploy payload 的来源。`.aw/`、`.agents/`、`.claude/`、`.autoworkflow/` 和其他 repo-local runtime state 不属于 package payload。
 
 `product/harness/adapters/agents/skills/` 中的 payload descriptor 是 `agents` backend 的 deploy source。`install --backend agents` 只复制 descriptor 声明的 canonical skill 内容，不从 target root 反向生成 source truth。
 
@@ -33,7 +33,7 @@ last_verified: 2026-04-29
 
 ## 二、source root 与 target root
 
-`aw-installer` Node bin 只负责调用同包内的 Python wrapper。实际 source / target 解析由 `adapter_deploy.py` 承接：
+`aw-installer` Node bin 当前直接承接 `--help`、`--version` 与 `diagnose --backend agents --json` 的只读路径；其他 deploy modes 和不受支持的 diagnose 变体仍调用同包内的 Python wrapper。实际 source / target 解析必须保持与 `adapter_deploy.py` 的合同一致：
 
 - 未设置 `AW_HARNESS_REPO_ROOT` 时，source root 是 package 解压根或当前 checkout 中的 repo root。
 - 设置 `AW_HARNESS_REPO_ROOT` 时，source root 显式指向该 checkout，并保持旧的 repo-local 行为。
@@ -68,7 +68,7 @@ last_verified: 2026-04-29
 - 根据 dist-tag、release channel 或 latest 指针自动选择新 payload。
 - 在 `update --yes` 内执行远程检查、下载、验签、升级自身 package 或替换 source root。
 - 维护 archive/history、旧版本保活、增量 patch、自动回滚或 target-to-source 反向同步。
-- 将 `.agents/`、`.claude/`、`.opencode/` 或 `.aw/` runtime state 当作 package payload 或 canonical source。
+- 将 `.agents/`、`.claude/` 或 `.aw/` runtime state 当作 package payload 或 canonical source。
 
 真实 npm 发布只改变 operator 获取 package 的方式，不改变本文定义的 payload/source/target 边界。
 

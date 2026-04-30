@@ -22,7 +22,7 @@
    - registry npx、本地 `.tgz` 与多临时 workdir smoke
    - Codex / Claude 部署后的行为测试
 5. `usage-help/`
-   只保留 `agents`、`claude`、`opencode` 的 backend 差异，不再按 `memory-side/` 或 `task-interface/` 拆子树。
+   只保留 `agents`、`claude` 的 backend 差异，不再按 `memory-side/` 或 `task-interface/` 拆子树。
 
 ## 从这里怎么进
 
@@ -38,7 +38,7 @@
 - 已有 mounts，只想更新或复验：先看 [deploy/skill-deployment-maintenance.md](./deploy/skill-deployment-maintenance.md)
 - 新增、改名、删除 skill source：先看 [deploy/skill-lifecycle.md](./deploy/skill-lifecycle.md)
 - 想运行治理检查、npx smoke 或 Codex/Claude 行为测试：先看 [testing/README.md](./testing/README.md)
-- 只想确认 `agents / claude / opencode` 差异：先看 [usage-help/README.md](./usage-help/README.md)
+- 只想确认 `agents / claude` 差异：先看 [usage-help/README.md](./usage-help/README.md)
 
 AI 默认阅读顺序以 [AGENTS.md](../../AGENTS.md) 为准。
 本页只做入口导航，不重复主线 `read_first/read_next/do_not_read_yet` 合同。

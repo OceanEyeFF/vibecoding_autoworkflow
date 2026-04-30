@@ -1,9 +1,9 @@
 ---
 title: "根目录分层"
 status: active
-updated: 2026-04-26
+updated: 2026-04-30
 owner: aw-kernel
-last_verified: 2026-04-26
+last_verified: 2026-04-30
 ---
 # 根目录分层
 
@@ -26,7 +26,7 @@ last_verified: 2026-04-26
 | Truth Layer | `docs/` | 知识与治理文档 | deploy 结果、mount/state |
 | Toolchain Layer | `toolchain/` | 脚本与评测工具 | 业务源码真相 |
 | Distribution Manifest Layer | `package.json` | npm/npx 分发包络元数据 | 业务源码真相、运行状态 |
-| Repo-local Install / Mount Layer | `.claude/` `.agents/` `.opencode/` | repo-local 安装载荷、挂载与 deploy target | 主线真相、业务源码 |
+| Repo-local Install / Mount Layer | `.claude/` `.agents/` | repo-local 安装载荷、挂载与 deploy target | 主线真相、业务源码 |
 | Repo-local State Layer | `.aw/` `.autoworkflow/` `.spec-workflow/` | 运行状态、Harness 控制面运行产物与项目级配置记忆 | 主线入口、业务源码、长期真相 |
 | Repo-local Execution Config Layer | `.codex/` | repo-local 执行配置 | 长期真相正文、运行产物 |
 | Compatibility Navigation Layer | `.nav/` | 兼容导航 | 结构定义与规则正文 |
@@ -38,11 +38,11 @@ last_verified: 2026-04-26
 
 ### 0. Repo-local deploy targets
 
-- `.agents/skills/`、`.claude/skills/`、`.opencode/skills/` 只承接 repo-local deploy 结果与 operator runtime 挂载。
+- `.agents/skills/`、`.claude/skills/` 只承接 repo-local deploy 结果与 operator runtime 挂载。
 - 这些目录必须保持 ignored；不得把其中任何内容作为 tracked 主线文件入库。
 - 这些目录不是 canonical truth，也不是业务源码根；fresh checkout 不应携带 repo-local deploy target 镜像。
 - `product/` 仍然是业务代码唯一源码根；repo-local deploy target 不应反向替代 `product/` 或 `docs/` 的定义权。
-- 需要分发或回归验证的 skill 内容必须从 `product/`、`toolchain/` 或正式文档入口承接，而不是跟踪 `.agents/`、`.claude/` 或 `.opencode/` 下的安装结果。
+- 需要分发或回归验证的 skill 内容必须从 `product/`、`toolchain/` 或正式文档入口承接，而不是跟踪 `.agents/` 或 `.claude/` 下的安装结果。
 
 ### 1. `tools/`
 

@@ -582,7 +582,6 @@ def test_check_path_governance_docs_list_gitignore_entries_accepts_complete_list
                 "`.aw/`",
                 "`.agents/`",
                 "`.claude/`",
-                "`.opencode/`",
                 "`.autoworkflow/`",
                 "`.spec-workflow/`",
                 "`**/__pycache__/`",

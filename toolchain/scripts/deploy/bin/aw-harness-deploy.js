@@ -33,7 +33,6 @@ function pythonCandidates() {
   }
   return [
     { command: "python3", args: [] },
-    { command: "python", args: [] },
   ];
 }
 

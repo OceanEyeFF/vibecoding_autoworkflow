@@ -34,7 +34,6 @@ ROOT_ALLOWED_NAMES = {
     ".claude",
     ".claudeignore",
     ".nav",
-    ".opencode",
     ".pytest_cache",
     ".spec-workflow",
 }
@@ -57,7 +56,7 @@ CODEX_TRACKED_ALLOWLIST = {
     ".codex/config.toml",
     ".codex/rules/repo.rules",
 }
-MOUNT_LAYER_PREFIXES = (".agents/", ".claude/", ".opencode/")
+MOUNT_LAYER_PREFIXES = (".agents/", ".claude/")
 RUNTIME_STATE_LAYER_PREFIXES = (".aw/",)
 CODEX_ALLOWED_ENTRIES = {"config.toml", "rules"}
 CODEX_RULES_ALLOWED_ENTRIES = {"repo.rules"}
@@ -94,7 +93,6 @@ TOOLCHAIN_BANNED_SEGMENTS = {
     ".autoworkflow",
     ".claude",
     ".nav",
-    ".opencode",
     ".pytest_cache",
     ".spec-workflow",
     "__pycache__",
@@ -173,6 +171,11 @@ def is_tracked_path(relative_path: str, tracked_paths: set[str]) -> bool:
     return relative_path in tracked_paths or any(path.startswith(prefix) for path in tracked_paths)
 
 
+def is_git_ignored_path(repo_root: Path, relative_path: str) -> bool:
+    completed = run_git(repo_root, "check-ignore", "-q", "--", relative_path)
+    return completed.returncode == 0
+
+
 def normalize_real_path(path: Path) -> str:
     raw = os.path.realpath(path)
     normalized = raw.replace("\\", "/").rstrip("/")
@@ -215,6 +218,8 @@ def check_root_allowlist(repo_root: Path, tracked_paths: set[str], report: Folde
     for entry in sorted(repo_root.iterdir(), key=lambda item: item.name):
         checked += 1
         name = entry.name
+        if not is_tracked_path(name, tracked_paths) and is_git_ignored_path(repo_root, name):
+            continue
         if name in rules.root_allowed_names or name.startswith(rules.root_allowed_prefixes):
             continue
         report.add_issue("FL001", name, "root object is not registered in the folder allowlist")

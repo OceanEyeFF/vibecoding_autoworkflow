@@ -1,6 +1,6 @@
 {
   "name": "aw-installer",
-  "version": "0.4.1-rc.2",
+  "version": "0.4.1-rc.3",
   "private": true,
   "description": "Local package scaffold for the AW Harness installer wrapper.",
   "bin": {
@@ -10,11 +10,13 @@
   "files": [
     "adapter_deploy.py",
     "harness_deploy.py",
+    "path_safety_policy.json",
     "bin/aw-installer.js",
     "bin/aw-harness-deploy.js"
   ],
   "scripts": {
     "smoke": "node bin/aw-installer.js --help",
-    "smoke:legacy": "node bin/aw-harness-deploy.js --help"
+    "smoke:legacy": "node bin/aw-harness-deploy.js --help",
+    "test": "node --test test_aw_installer.js"
   }
 }

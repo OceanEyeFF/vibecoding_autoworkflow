@@ -286,6 +286,18 @@ class AdapterDeployTest(unittest.TestCase):
         fake_python.chmod(0o755)
         return fake_bin
 
+    def _fake_failing_python_bin(self) -> Path:
+        fake_bin = self.temp_root / "fake-failing-python-bin"
+        fake_bin.mkdir()
+        for python_name in ("py", "python3", "python"):
+            fake_python = fake_bin / python_name
+            fake_python.write_text(
+                "#!/bin/sh\nprintf 'unexpected-python %s\\n' \"$*\" >&2\nexit 97\n",
+                encoding="utf-8",
+            )
+            fake_python.chmod(0o755)
+        return fake_bin
+
     def _remove_target_marker(self, skill_id: str) -> Path:
         target_dir_name = self._target_dir_for_skill(skill_id)
         marker_path = self.local_root / target_dir_name / "aw.marker"
@@ -449,6 +461,35 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(args.backend, "claude")
         self.assertIn("claude", adapter_deploy.SUPPORTED_BACKENDS)
 
+    def test_python_adapter_uses_shared_path_safety_policy(self) -> None:
+        policy = adapter_deploy.path_safety_policy()
+
+        self.assertIn("/etc", policy["exact_sensitive_target_repo_roots"])
+        self.assertIn("/proc", policy["recursive_sensitive_target_repo_roots"])
+        self.assertIn(".ssh", policy["home_relative_recursive_sensitive_target_repo_roots"])
+        self.assertIn("$source_root", policy["allowed_target_repo_root_prefixes"])
+
+    def test_adapter_deploy_import_does_not_run_static_configuration_validation(self) -> None:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                (
+                    "import sys; "
+                    f"sys.path.insert(0, {json.dumps(str(Path(adapter_deploy.__file__).parent))}); "
+                    "import adapter_deploy; "
+                    "adapter_deploy.EXPECTED_PAYLOAD_POLICIES = {}; "
+                    "print('imported')"
+                ),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stdout, "imported\n")
+
     def test_claude_default_target_root_is_claude_skills(self) -> None:
         code, stdout, stderr = self._run_cli(
             "diagnose",
@@ -508,6 +549,32 @@ class AdapterDeployTest(unittest.TestCase):
                 for path in update_payload["planned_target_paths"]
             )
         )
+
+    def test_agents_and_claude_installs_can_coexist_in_one_target_repo(self) -> None:
+        agents_code, agents_stdout, agents_stderr = self._install()
+        claude_code, claude_stdout, claude_stderr = self._claude_install()
+        agents_verify_code, agents_verify_stdout, agents_verify_stderr = self._verify()
+        claude_verify_code, claude_verify_stdout, claude_verify_stderr = self._claude_verify()
+
+        self.assertEqual(agents_code, 0, agents_stderr)
+        self.assertEqual(claude_code, 0, claude_stderr)
+        self.assertIn("installed skill harness-skill", agents_stdout)
+        self.assertIn("installed skill set-harness-goal-skill", claude_stdout)
+
+        agents_skill_dir = self.local_root / "aw-set-harness-goal-skill"
+        claude_skill_dir = self.claude_local_root / "aw-set-harness-goal-skill"
+        self.assertTrue((self.local_root / "aw-harness-skill" / "SKILL.md").is_file())
+        self.assertTrue((agents_skill_dir / "SKILL.md").is_file())
+        self.assertTrue((claude_skill_dir / "SKILL.md").is_file())
+        self.assertEqual(self._load_json(agents_skill_dir / "payload.json")["backend"], "agents")
+        self.assertEqual(self._load_json(claude_skill_dir / "payload.json")["backend"], "claude")
+        self.assertEqual(self._load_json(agents_skill_dir / "aw.marker")["backend"], "agents")
+        self.assertEqual(self._load_json(claude_skill_dir / "aw.marker")["backend"], "claude")
+
+        self.assertEqual(agents_verify_code, 0, agents_verify_stderr)
+        self.assertIn("[agents] ok", agents_verify_stdout)
+        self.assertEqual(claude_verify_code, 0, claude_verify_stderr)
+        self.assertIn("[claude] ok", claude_verify_stdout)
 
     def test_claude_root_override_is_used_without_touching_agents_root(self) -> None:
         code, stdout, stderr = self._claude_install("--claude-root", self.claude_override_root)
@@ -663,7 +730,6 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("verify", help_text)
         self.assertIn("install", help_text)
         self.assertIn("update", help_text)
-        self.assertNotIn("opencode", help_text.lower())
         self.assertEqual(stderr.getvalue(), "")
 
     def test_local_npm_package_metadata_exposes_installer_bin_and_legacy_alias(self) -> None:
@@ -703,6 +769,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("product/harness/adapters/claude/skills", package["files"])
         self.assertIn("toolchain/scripts/deploy/harness_deploy.py", package["files"])
         self.assertIn("toolchain/scripts/deploy/adapter_deploy.py", package["files"])
+        self.assertIn("toolchain/scripts/deploy/path_safety_policy.json", package["files"])
         self.assertEqual(
             package["publishConfig"],
             {
@@ -731,8 +798,8 @@ class AdapterDeployTest(unittest.TestCase):
             package["awInstallerRelease"],
             {
                 "realPublishApproval": "approved",
-                "approvedVersion": "0.4.1-rc.2",
-                "approvedGitTag": "v0.4.1-rc.2",
+                "approvedVersion": "0.4.1-rc.3",
+                "approvedGitTag": "v0.4.1-rc.3",
                 "approvedChannel": "next",
             },
         )
@@ -742,6 +809,7 @@ class AdapterDeployTest(unittest.TestCase):
             )
         )
         self.assertEqual(scaffold_package["version"], package["version"])
+        self.assertIn("path_safety_policy.json", scaffold_package["files"])
 
     def test_aw_installer_uses_async_spawn_wrapper(self) -> None:
         installer_path = (
@@ -816,6 +884,22 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(completed.stdout, "canary\n")
         self.assertEqual(completed.stderr, "")
+
+    def test_root_npm_publish_dry_run_does_not_use_shell_spawn(self) -> None:
+        script_path = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "publish-dry-run.js"
+        )
+
+        source = script_path.read_text(encoding="utf-8")
+
+        self.assertIn('const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";', source)
+        self.assertIn("shell: false", source)
+        self.assertNotIn("shell: process.platform === \"win32\"", source)
 
     def test_root_npm_publish_dry_run_rejects_unsupported_release_channel(self) -> None:
         if shutil.which("node") is None:
@@ -1118,7 +1202,7 @@ class AdapterDeployTest(unittest.TestCase):
         env = {
             **os.environ,
             "AW_INSTALLER_PUBLISH_APPROVED": "1",
-            "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.1-rc.2",
+            "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.1-rc.3",
             "CI": "true",
             "npm_config_tag": "next",
         }
@@ -1463,8 +1547,46 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertEqual(completed.stdout, "aw-installer 0.4.1-rc.2\n")
+        self.assertEqual(completed.stdout, "aw-installer 0.4.1-rc.3\n")
         self.assertEqual(completed.stderr, "")
+
+    def test_local_npm_installer_help_and_version_are_node_owned_without_python(self) -> None:
+        node_path = shutil.which("node")
+        if node_path is None:
+            self.skipTest("node is not available")
+        bin_path = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+        fake_bin = self._fake_failing_python_bin()
+        env = {
+            **os.environ,
+            "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+        }
+
+        for safe_args, expected_stdout in (
+            (("-h",), "usage: aw-installer"),
+            (("--help",), "usage: aw-installer"),
+            (("-V",), "aw-installer 0.4.1-rc.3\n"),
+            (("--version",), "aw-installer 0.4.1-rc.3\n"),
+        ):
+            with self.subTest(args=safe_args):
+                completed = subprocess.run(
+                    [node_path, str(bin_path), *safe_args],
+                    cwd=self.source_repo_root,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertIn(expected_stdout, completed.stdout)
+                self.assertEqual(completed.stderr, "")
 
     def test_local_npm_installer_bin_version_prefers_root_package_metadata(self) -> None:
         if shutil.which("node") is None:
@@ -1617,7 +1739,134 @@ class AdapterDeployTest(unittest.TestCase):
             payload = json.loads(completed.stdout)
             self.assertEqual(payload["target_root"], str(target_repo / ".agents" / "skills"))
 
-    def test_node_deploy_wrappers_fall_back_to_python_when_python3_is_missing(self) -> None:
+    def test_aw_installer_agents_diagnose_json_does_not_invoke_python(self) -> None:
+        node_path = shutil.which("node")
+        if node_path is None:
+            self.skipTest("node is not available")
+        target_repo = self.temp_root / "node-diagnose-target"
+        fake_bin = self._fake_failing_python_bin()
+        env = {
+            **os.environ,
+            "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
+            "AW_HARNESS_TARGET_REPO_ROOT": str(target_repo),
+            "PATH": str(fake_bin),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+        wrapper = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+
+        completed = subprocess.run(
+            [node_path, str(wrapper), "diagnose", "--backend", "agents", "--json"],
+            cwd=self.source_repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertNotIn("unexpected-python", completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload["backend"], "agents")
+        self.assertGreater(payload["binding_count"], 0)
+        self.assertEqual(payload["target_root"], str(target_repo / ".agents" / "skills"))
+        self.assertEqual(payload["target_root_status"], "missing")
+        self.assertFalse(payload["target_root_exists"])
+
+    def test_aw_installer_agents_diagnose_json_reports_target_payload_drift(self) -> None:
+        node_path = shutil.which("node")
+        if node_path is None:
+            self.skipTest("node is not available")
+        code, stdout, stderr = self._install()
+        self.assertEqual(code, 0, stderr)
+        target_dir_name = self._target_dir_for_skill("repo-status-skill")
+        wrapper_path = self.local_root / target_dir_name / "SKILL.md"
+        wrapper_path.write_text("# drifted target\n", encoding="utf-8")
+        fake_bin = self._fake_failing_python_bin()
+        env = {
+            **os.environ,
+            "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
+            "PATH": str(fake_bin),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+        wrapper = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+
+        completed = subprocess.run(
+            [node_path, str(wrapper), "diagnose", "--backend", "agents", "--json"],
+            cwd=self.source_repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertNotIn("unexpected-python", completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertIn("target-payload-drift", payload["issue_codes"])
+        self.assertTrue(
+            any(
+                issue["code"] == "target-payload-drift"
+                and "repo-status-skill" in issue["detail"]
+                for issue in payload["issues"]
+            )
+        )
+
+    def test_aw_installer_agents_diagnose_json_validates_legacy_skill_ids(self) -> None:
+        node_path = shutil.which("node")
+        if node_path is None:
+            self.skipTest("node is not available")
+        payload_path = self.adapter_dir / "harness-skill" / "payload.json"
+        payload = self._load_json(payload_path)
+        payload["legacy_skill_ids"] = ["harness-skill"]
+        payload_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        fake_bin = self._fake_failing_python_bin()
+        env = {
+            **os.environ,
+            "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
+            "PATH": str(fake_bin),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+        wrapper = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+
+        completed = subprocess.run(
+            [node_path, str(wrapper), "diagnose", "--backend", "agents", "--json"],
+            cwd=self.source_repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertNotIn("unexpected-python", completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertIn("payload-contract-invalid", payload["issue_codes"])
+        self.assertTrue(
+            any("legacy_skill_ids" in issue["detail"] for issue in payload["issues"])
+        )
+
+    def test_legacy_node_deploy_wrapper_does_not_try_linux_python_alias(self) -> None:
         node_path = shutil.which("node")
         if node_path is None:
             self.skipTest("node is not available")
@@ -1627,53 +1876,51 @@ class AdapterDeployTest(unittest.TestCase):
             "PATH": str(fake_bin),
             "PYTHONDONTWRITEBYTECODE": "1",
         }
-        wrappers = [
+        wrapper = (
             self.source_repo_root
             / "toolchain"
             / "scripts"
             / "deploy"
             / "bin"
-            / "aw-installer.js",
-            self.source_repo_root
-            / "toolchain"
-            / "scripts"
-            / "deploy"
-            / "bin"
-            / "aw-harness-deploy.js",
-        ]
+            / "aw-harness-deploy.js"
+        )
 
-        for wrapper in wrappers:
-            with self.subTest(wrapper=wrapper.name):
-                completed = subprocess.run(
-                    [node_path, str(wrapper), "diagnose", "--backend", "agents", "--json"],
-                    cwd=self.source_repo_root,
-                    env=env,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
+        completed = subprocess.run(
+            [node_path, str(wrapper), "diagnose", "--backend", "agents", "--json"],
+            cwd=self.source_repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
-                self.assertEqual(completed.returncode, 0, completed.stderr)
-                self.assertIn("fake-python", completed.stdout)
-                self.assertIn("harness_deploy.py diagnose --backend agents --json", completed.stdout)
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("aw-harness-deploy failed to start Python; tried python3", completed.stderr)
 
     def test_node_deploy_wrappers_time_out_stalled_python_processes(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
         fake_bin = self._fake_sleeping_python_bin()
-        wrappers = [
-            self.source_repo_root
-            / "toolchain"
-            / "scripts"
-            / "deploy"
-            / "bin"
-            / "aw-installer.js",
-            self.source_repo_root
-            / "toolchain"
-            / "scripts"
-            / "deploy"
-            / "bin"
-            / "aw-harness-deploy.js",
+        cases = [
+            (
+                self.source_repo_root
+                / "toolchain"
+                / "scripts"
+                / "deploy"
+                / "bin"
+                / "aw-installer.js",
+                ["update", "--backend", "agents", "--json"],
+            ),
+            (
+                self.source_repo_root
+                / "toolchain"
+                / "scripts"
+                / "deploy"
+                / "bin"
+                / "aw-harness-deploy.js",
+                ["diagnose", "--backend", "agents", "--json"],
+            ),
         ]
         env = {
             **os.environ,
@@ -1682,10 +1929,10 @@ class AdapterDeployTest(unittest.TestCase):
             "PYTHONDONTWRITEBYTECODE": "1",
         }
 
-        for wrapper in wrappers:
+        for wrapper, command_args in cases:
             with self.subTest(wrapper=wrapper.name):
                 completed = subprocess.run(
-                    ["node", str(wrapper), "diagnose", "--backend", "agents", "--json"],
+                    ["node", str(wrapper), *command_args],
                     cwd=self.source_repo_root,
                     env=env,
                     capture_output=True,
@@ -1897,6 +2144,7 @@ class AdapterDeployTest(unittest.TestCase):
                 "README.md",
                 "adapter_deploy.py",
                 "harness_deploy.py",
+                "path_safety_policy.json",
                 "bin/aw-installer.js",
                 "bin/aw-harness-deploy.js",
                 "package.json",
@@ -1955,7 +2203,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         payload = json.loads(completed.stdout)
         self.assertEqual(payload["name"], "aw-installer")
-        self.assertEqual(payload["version"], "0.4.1-rc.2")
+        self.assertEqual(payload["version"], "0.4.1-rc.3")
         packed_files = {entry["path"] for entry in payload["files"]}
         self.assertIn("package.json", packed_files)
         self.assertIn("product/harness/skills/harness-skill/SKILL.md", packed_files)
@@ -2343,7 +2591,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertNotEqual(diagnose_payload["source_root"], str(target_repo))
 
         self.assertEqual(version_completed.returncode, 0, version_completed.stderr)
-        self.assertEqual(version_completed.stdout, "aw-installer 0.4.1-rc.2\n")
+        self.assertEqual(version_completed.stdout, "aw-installer 0.4.1-rc.3\n")
         self.assertEqual(version_completed.stderr, "")
         self.assertEqual(tui_completed.returncode, 1)
         self.assertEqual(tui_completed.stdout, "")
@@ -2895,6 +3143,29 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertTrue(foreign_dir.is_dir())
         self.assertTrue(invalid_dir.is_dir())
 
+    def test_prune_all_refuses_directory_replaced_after_marker_read(self) -> None:
+        code, stdout, stderr = self._install()
+        self.assertEqual(code, 0, stderr)
+        target_dir = self.local_root / "aw-harness-skill"
+        original_load_marker = adapter_deploy.load_runtime_marker
+        replaced = False
+
+        def replacing_load_marker(path: Path) -> adapter_deploy.RuntimeMarker | None:
+            nonlocal replaced
+            marker = original_load_marker(path)
+            if marker is not None and path.parent == target_dir and not replaced:
+                replaced = True
+                shutil.rmtree(target_dir)
+                target_dir.symlink_to(self.temp_root, target_is_directory=True)
+            return marker
+
+        with mock.patch.object(adapter_deploy, "load_runtime_marker", replacing_load_marker):
+            code, stdout, stderr = self._prune_all()
+
+        self.assertEqual(code, 1)
+        self.assertIn("changed during pruning, refusing to remove", stderr)
+        self.assertTrue(target_dir.is_symlink())
+
     def test_prune_all_is_noop_when_target_root_is_missing(self) -> None:
         code, stdout, stderr = self._prune_all()
 
@@ -3035,6 +3306,23 @@ class AdapterDeployTest(unittest.TestCase):
             ),
             expected_fingerprint,
         )
+
+    def test_payload_descriptor_read_is_cached_within_context(self) -> None:
+        binding = self._binding("harness-skill")
+        original_read_text = Path.read_text
+        payload_reads = 0
+
+        def counting_read_text(path: Path, *args: object, **kwargs: object) -> str:
+            nonlocal payload_reads
+            if path == binding.payload_path:
+                payload_reads += 1
+            return original_read_text(path, *args, **kwargs)
+
+        with mock.patch.object(Path, "read_text", counting_read_text):
+            adapter_deploy.current_target_dirs_by_skill_id([binding], context=self.context)
+            adapter_deploy.build_install_plan(binding, self.local_root, self.context)
+
+        self.assertEqual(payload_reads, 1)
 
     def test_verify_reports_unexpected_managed_directory(self) -> None:
         code, stdout, stderr = self._install()

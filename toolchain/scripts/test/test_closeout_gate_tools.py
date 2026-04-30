@@ -21,6 +21,27 @@ def test_local_deploy_target_roots_match_supported_verify_backends() -> None:
     )
 
 
+def test_npm_pack_tarball_result_script_resolves_single_pack_result(tmp_path: Path) -> None:
+    if shutil.which("node") is None:
+        pytest.skip("node is not available")
+    pack_json = tmp_path / "pack.json"
+    pack_json.write_text(
+        json.dumps([{"filename": "aw-installer-0.0.0.tgz"}]),
+        encoding="utf-8",
+    )
+    script = Path(__file__).resolve().parent / "npm_pack_tarball_result.js"
+
+    completed = subprocess.run(
+        ["node", str(script), str(pack_json), str(tmp_path)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout == f"{tmp_path / 'aw-installer-0.0.0.tgz'}\n"
+
+
 NPM_HELP_STDOUT = (
     "usage: aw-installer [tui|<deploy-mode>] [options]\n"
     "harness_deploy.py\n"
@@ -33,7 +54,7 @@ NPM_HELP_STDOUT = (
     "prune --all --backend agents|claude\n"
     "check_paths_exist --backend agents|claude\n"
 )
-NPM_VERSION = "0.4.1-rc.2"
+NPM_VERSION = "0.4.1-rc.3"
 NPM_VERSION_STDOUT = f"aw-installer {NPM_VERSION}\n"
 
 
@@ -71,6 +92,21 @@ def successful_npm_command_result(
     extra_env: dict[str, str] | None = None,
     cwd: Path | None = None,
 ) -> dict | None:
+    def npm_exec_backend() -> str:
+        if "--backend" in command:
+            return command[command.index("--backend") + 1]
+        return "agents"
+
+    def npm_exec_target_root() -> Path:
+        repo = cwd or Path("/tmp/repo")
+        if npm_exec_backend() == "claude":
+            return repo / ".claude" / "skills"
+        return repo / ".agents" / "skills"
+
+    def npm_exec_skill_dir() -> Path:
+        skill_name = "aw-set-harness-goal-skill" if npm_exec_backend() == "claude" else "aw-harness-skill"
+        return npm_exec_target_root() / skill_name
+
     if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
         packed_paths = (
             closeout_acceptance_gate.EXPECTED_NPM_PACKAGE_FILES
@@ -132,27 +168,28 @@ def successful_npm_command_result(
             "returncode": 0,
             "stdout": json.dumps(
                 {
-                    "backend": "agents",
+                    "backend": npm_exec_backend(),
                     "binding_count": 1,
                     "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
-                    "target_root": str((cwd or Path("/tmp/repo")) / ".agents" / "skills"),
+                    "target_root": str(npm_exec_target_root()),
                 }
             ),
             "stderr": "",
             "passed": True,
         }
     if command[:2] == ["npm", "exec"] and "update" in command and command[-1] == "--yes":
-        target = (cwd or Path("/tmp/repo")) / ".agents" / "skills" / "aw-harness-skill"
+        backend = npm_exec_backend()
+        target = npm_exec_skill_dir()
         target.mkdir(parents=True, exist_ok=True)
         (target / "SKILL.md").write_text("# harness\n", encoding="utf-8")
         return {
             "command": command,
             "returncode": 0,
             "stdout": (
-                "[agents] applying update\n"
-                "installed skill harness-skill\n"
-                "[agents] ok: target root is ready\n"
-                "[agents] update complete\n"
+                f"[{backend}] applying update\n"
+                f"installed skill {target.name.removeprefix('aw-')}\n"
+                f"[{backend}] ok: target root is ready\n"
+                f"[{backend}] update complete\n"
             ),
             "stderr": "",
             "passed": True,
@@ -179,12 +216,12 @@ def successful_npm_command_result(
             "returncode": 0,
             "stdout": json.dumps(
                 {
-                    "backend": "agents",
+                    "backend": npm_exec_backend(),
                     "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
-                    "target_root": str((cwd or Path("/tmp/repo")) / ".agents" / "skills"),
+                    "target_root": str(npm_exec_target_root()),
                     "blocking_issue_count": 0,
                     "planned_target_paths": [
-                        str((cwd or Path("/tmp/repo")) / ".agents" / "skills" / "aw-harness-skill")
+                        str(npm_exec_skill_dir())
                     ],
                 }
             ),
@@ -192,21 +229,22 @@ def successful_npm_command_result(
             "passed": True,
         }
     if command[:2] == ["npm", "exec"] and "install" in command:
-        target = (cwd or Path("/tmp/repo")) / ".agents" / "skills" / "aw-harness-skill"
+        target = npm_exec_skill_dir()
         target.mkdir(parents=True, exist_ok=True)
         (target / "SKILL.md").write_text("# harness\n", encoding="utf-8")
         return {
             "command": command,
             "returncode": 0,
-            "stdout": "installed skill harness-skill\n",
+            "stdout": f"installed skill {target.name.removeprefix('aw-')}\n",
             "stderr": "",
             "passed": True,
         }
     if command[:2] == ["npm", "exec"] and "verify" in command:
+        backend = npm_exec_backend()
         return {
             "command": command,
             "returncode": 0,
-            "stdout": "[agents] ok: target root is ready\n",
+            "stdout": f"[{backend}] ok: target root is ready\n",
             "stderr": "",
             "passed": True,
         }
@@ -233,6 +271,7 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
     result = check_scope(
         [
             "AGENTS.md",
+            "INDEX.md",
             "CONTRIBUTING.md",
             ".codex/config.toml",
             ".github/workflows/ci.yml",
@@ -240,6 +279,7 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "docs/harness/README.md",
             "docs/project-maintenance/README.md",
             "product/README.md",
+            "product/harness/README.md",
             "docs/project-maintenance/governance/review-verify-handbook.md",
             "docs/project-maintenance/governance/path-governance-checks.md",
             ".autoworkflow/closeout/demo/summary.json",
@@ -254,14 +294,17 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "toolchain/scripts/deploy/bin/aw-harness-deploy.js",
             "toolchain/scripts/deploy/harness_deploy.py",
             "toolchain/scripts/deploy/package.json",
+            "toolchain/scripts/deploy/path_safety_policy.json",
             "toolchain/scripts/deploy/README.md",
             "toolchain/scripts/deploy/test_adapter_deploy.py",
+            "toolchain/scripts/deploy/test_aw_installer.js",
             "toolchain/scripts/deploy/test_aw_scaffold.py",
             "toolchain/scripts/test/scope_gate_check.py",
             "tools/scope_gate_check.py",
         ],
         (
             "AGENTS.md",
+            "INDEX.md",
             "CONTRIBUTING.md",
             ".codex/",
             ".github/",
@@ -271,6 +314,7 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "docs/project-maintenance/",
             "docs/harness/",
             "product/README.md",
+            "product/harness/README.md",
             "product/.aw_template/",
             "product/harness/skills/",
             "product/harness/adapters/",
@@ -280,8 +324,10 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "toolchain/scripts/deploy/bin/",
             "toolchain/scripts/deploy/harness_deploy.py",
             "toolchain/scripts/deploy/package.json",
+            "toolchain/scripts/deploy/path_safety_policy.json",
             "toolchain/scripts/deploy/README.md",
             "toolchain/scripts/deploy/test_adapter_deploy.py",
+            "toolchain/scripts/deploy/test_aw_installer.js",
             "toolchain/scripts/deploy/test_aw_scaffold.py",
             "toolchain/scripts/test/",
             "tools/scope_gate_check.py",
@@ -468,6 +514,7 @@ def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path
     assert "docs/project-maintenance/README.md" in command
     assert "docs/harness/" in command
     assert "product/README.md" in command
+    assert "product/harness/README.md" in command
     assert "docs/project-maintenance/foundations/root-directory-layering.md" in command
     assert "toolchain/toolchain-layering.md" in command
     assert "docs/project-maintenance/governance/review-verify-handbook.md" in command
@@ -602,15 +649,16 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
         "governance_semantic_tests",
         "agents_adapter_contract_tests",
         "deploy_regression_tests",
+        "deploy_package_unit_tests",
         "repo_analysis_contract_check",
         "npm_pack_dry_run_aw_installer",
-        "npm_tarball_smoke_aw_installer",
     ]
     assert any(command[-1] == "toolchain/scripts/test/test_folder_logic_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_path_governance_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_governance_semantic_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_agents_adapter_contract.py" for command in commands)
     assert any(command[:4] == [sys.executable, "-m", "unittest", "discover"] for command in commands)
+    assert any(command == ["npm", "--prefix", "toolchain/scripts/deploy", "test", "--silent"] for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/repo_analysis_contract_check.py" for command in commands)
     assert any(
         command == ["npm", "pack", "--dry-run", "--json"]

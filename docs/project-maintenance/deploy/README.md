@@ -16,6 +16,7 @@
 | 我想看 `aw-installer` 真实 npm 发布前需要满足什么条件 | [release-channel-contract.md](./release-channel-contract.md) | 定义 release channel、publish readiness guard、版本/tag/审批边界，并记录当前 registry 事实 |
 | 我想在 npm publish 前确认 npx/package 文件、文档和证据不会发布后补救 | [aw-installer-npx-pre-publish-check.md](./aw-installer-npx-pre-publish-check.md) | 固定 packlist、metadata、dry-run、docs freshness 和 smoke 证据检查 |
 | 我想看后续 npm 发布应采用哪种操作模型 | [aw-installer-release-operation-model.md](./aw-installer-release-operation-model.md) | 记录 GitHub Release `published` + npm Trusted Publishing 的发布模型与 repository-side workflow preflight |
+| 我想按 `develop-main -> master -> GitHub Release -> npm dist-tag` 执行一次标准发布 | [github-release-publish-standard-flow.md](./github-release-publish-standard-flow.md) | 固定 PR、release、workflow、registry verify 和 post-publish npx smoke 的端到端操作者流程 |
 | 我想给外部试用者一份可复制粘贴的 Codex / Claude Code 安装与 `.aw/` 初始化提示 | [aw-installer-public-quickstart-prompts.md](./aw-installer-public-quickstart-prompts.md) | 汇总 registry npx 主路径、Codex `agents` 主路径、Claude Code 兼容试用路径和 `.aw/` 初始化 prompt |
 | 我想准备外部试用目标清单和反馈字段 | [aw-installer-external-trial-feedback.md](./aw-installer-external-trial-feedback.md) | 定义试用反馈字段、隐私边界和下一主要矛盾判定标准 |
 | 我想看 `aw-installer` payload 从哪里来、`update` 信任边界在哪里 | [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md) | 定义 package payload、source/target root override、当前 update 边界与未来远程更新准入 |
@@ -49,7 +50,7 @@
 - `update --backend <backend>` 默认只输出 dry-run plan；`update --backend <backend> --yes` 是同一三步 destructive reinstall 加严格复验的 one-shot 包装。
 - `update` 只阻塞占用 planned / known AW target path 的 unrecognized / foreign 内容；无关用户目录由 AW deploy 保持不动。
 - 本地 `harness_deploy.py` thin wrapper、根目录 `package.json` 的 self-contained `aw-installer` package envelope、`toolchain/scripts/deploy/package.json` 的本地 scaffold、`aw-installer tui` shell、`aw-harness-deploy` 兼容别名与目标 `npx aw-installer` wrapper 必须保持 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 中定义的只读、严格复验、三步 destructive reinstall，以及 CLI + TUI 双模式语义。
-- 当前 registry 事实由 [aw-installer Release Channel Contract](./release-channel-contract.md) 承接：`next` 当前指向 `0.4.0-rc.3`，`latest` 仍指向 `0.4.0-rc.1`；当前 checkout 的 `0.4.1-rc.2` candidate 需要后续通过 develop PR 进入 GitHub master 后再发布到 `next`。
+- 当前 registry 事实由 [aw-installer Release Channel Contract](./release-channel-contract.md) 承接：`next` 当前指向 `0.4.1-rc.2`，`latest` 仍指向 `0.4.0-rc.1`；已发布的 `0.4.1-rc.2` artifact 绑定 `gitHead=7f7536a`，不得对同一 immutable npm version 重复 publish。当前本地 release-prep candidate 是 `0.4.1-rc.3`。
 - 后续真实 npm publish 还必须满足 [aw-installer Release Channel Contract](./release-channel-contract.md)；发布操作模型见 [aw-installer Release Operation Model](./aw-installer-release-operation-model.md)。npm-side Trusted Publisher 设置、未来 publish、stable/latest 语义仍需单独审批。
 - `aw-installer` 的 payload provenance 与 update trust boundary 见 [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md)；当前 `update` 只准入 package-local source 与显式 GitHub source archive，不做 channel 解析、验签、自升级或自动回滚。
 - `aw.marker` 是 runtime-generated artifact，只用于标识“这是当前 backend 受管的 live install 目录”；它不是 source truth，也不是历史接管记录。

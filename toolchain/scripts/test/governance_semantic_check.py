@@ -12,7 +12,10 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 
-from closeout_acceptance_gate import CACHE_SCAN_ROOTS
+try:
+    from cache_scan_policy import CACHE_SCAN_ROOTS
+except ModuleNotFoundError:
+    from toolchain.scripts.test.cache_scan_policy import CACHE_SCAN_ROOTS
 from path_governance_check import REQUIRED_GITIGNORE_ENTRIES, iter_relative_markdown_targets, resolve_markdown_target
 
 
@@ -67,7 +70,6 @@ OUTDATED_PLACEHOLDER_PHRASES = {
         "当前这些 workflow family 先固定在文档真相层；仓库内不再保留独立的 `product/harness/` workflow/profile source 分区。",
     ],
     "toolchain/toolchain-layering.md": [
-        "`research/` 目录当前只保留占位入口，不承载 active runner；其中 `OpenCode` 仍是 research backend 预留位",
         "`research/` 与 `evals/` 保留为预留位，只有在方案重新准入后才继续扩展。",
     ],
     "toolchain/scripts/README.md": [
