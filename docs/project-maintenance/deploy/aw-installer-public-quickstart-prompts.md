@@ -18,10 +18,10 @@ This page belongs to [Deploy Runbooks](./README.md). It uses the current distrib
 - direct_npx_available: true
 - direct_npx_primary_path: `aw-installer@next`
 - registry_rc_available: true
-- npm_publish_allowed: completed-for-0.4.1-rc.2-next; future publish still separately approval-gated
+- npm_publish_allowed: completed-for-0.4.1-rc.3-next; future publish still separately approval-gated
 - package_name_decided: true
 - approved_package_name: unscoped `aw-installer`
-- current_install_source: published `aw-installer@next`, local `0.4.1-rc.3` `.tgz` candidate package, or explicit source checkout
+- current_install_source: published `aw-installer@next`, local `0.4.2-rc.0` `.tgz` candidate package, or explicit source checkout
 - target_repo_writes:
   - `.agents/skills/` for Codex/agents install
   - `.claude/skills/aw-set-harness-goal-skill/` for Claude Code cold-start helper
@@ -37,7 +37,7 @@ Prerequisites:
 - Python is available for deploy commands outside the Node-owned subset. `aw-installer --help`, `--version`, `diagnose --backend agents --json`, and package/local-source `update --backend agents --json` dry-runs are handled by Node directly. `verify`, `install`, `update --yes`, `prune`, GitHub-source update, Claude backend commands, and unsupported diagnose/update variants still use the Python deploy wrapper/reference path. The Node-owned update dry-run preserves the existing JSON fields, including `backend`, `source_kind`, `source_ref`, `source_root`, `target_root`, `operation_sequence`, `managed_installs_to_delete`, `planned_target_paths`, `issues`, and `blocking_issues`. The current wrapper tries `py -3`, `python`, then `python3` on Windows, and `python3` then `python` on Linux/macOS. It intentionally ignores `PYTHON` and `PYTHON3` environment overrides.
 - The target repository is a git worktree you are allowed to modify.
 - You have registry access to `aw-installer`, a local `aw-installer` `.tgz` package from the maintainer, or an explicit AW source checkout path.
-- You understand that the current public trial path is RC pre-release: `aw-installer@next` currently resolves to `0.4.1-rc.2` on npm `next`, while bare `aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`. Stable release semantics still require separate approval.
+- You understand that the current public trial path is RC pre-release: `aw-installer@next` currently resolves to `0.4.1-rc.3` on npm `next`, while bare `aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`. Stable release semantics still require separate approval.
 
 Privacy rule:
 
@@ -73,7 +73,7 @@ printf 'AW_INSTALLER_PACKAGE=%s\n' "$AW_INSTALLER_PACKAGE"
 External testers who receive a `.tgz` can skip this step and set:
 
 ```bash
-AW_INSTALLER_PACKAGE="/path/to/aw-installer-0.4.1-rc.3.tgz"
+AW_INSTALLER_PACKAGE="/path/to/aw-installer-0.4.2-rc.0.tgz"
 ```
 
 The exact filename may differ. Prefer `aw-installer@next` for published RC registry npx trials and local `.tgz` when validating the current checkout or when registry access is unavailable.
