@@ -54,7 +54,7 @@ NPM_HELP_STDOUT = (
     "prune --all --backend agents|claude\n"
     "check_paths_exist --backend agents|claude\n"
 )
-NPM_VERSION = "0.4.2-rc.0"
+NPM_VERSION = "0.4.3-rc.0"
 NPM_VERSION_STDOUT = f"aw-installer {NPM_VERSION}\n"
 
 
