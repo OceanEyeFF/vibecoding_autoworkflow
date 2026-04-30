@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { createHash } = require("node:crypto");
-const { mkdirSync, mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const test = require("node:test");
@@ -34,6 +34,31 @@ test("normalizeRelativePath rejects traversal and keeps clean relative paths", (
     () => installer.normalizeRelativePath("../SKILL.md", "field", "demo-skill", "repository root"),
     /must not contain '\.\.'/,
   );
+  assert.throws(
+    () => installer.normalizeRelativePath("..\0/SKILL.md", "field", "demo-skill", "repository root"),
+    /must not contain null bytes/,
+  );
+});
+
+test("wrapper env strips common credential variables while preserving deploy controls", () => {
+  assert.deepEqual(
+    installer.buildWrapperEnv({
+      ANTHROPIC_API_KEY: "secret",
+      AW_HARNESS_REPO_ROOT: "/repo",
+      GITHUB_TOKEN: "secret",
+      HOME: "/home/demo",
+      PATH: "/bin",
+      PYTHONDONTWRITEBYTECODE: "0",
+      HTTPS_PROXY: "http://proxy",
+    }),
+    {
+      AW_HARNESS_REPO_ROOT: "/repo",
+      HOME: "/home/demo",
+      PATH: "/bin",
+      PYTHONDONTWRITEBYTECODE: "0",
+      HTTPS_PROXY: "http://proxy",
+    },
+  );
 });
 
 test("payloadTargetMetadata normalizes required target metadata", () => {
@@ -55,6 +80,21 @@ test("payloadTargetMetadata normalizes required target metadata", () => {
     legacyTargetDirs: ["demo-skill"],
     legacySkillIds: ["old-demo-skill"],
   });
+});
+
+test("loadBindingPayloads rejects oversized JSON before parsing", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    const payloadPath = join(root, "payload.json");
+    writeFileSync(payloadPath, `{"data":"${"a".repeat(1_048_577)}"}`, "utf8");
+
+    assert.throws(
+      () => installer.loadBindingPayloads([{ payloadPath }]),
+      /JSON payload exceeds 1048576 byte limit/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("computePayloadFingerprint matches the Python payload contract order", () => {
@@ -362,6 +402,86 @@ test("update planning helpers expose direct issue and blocking behavior", () => 
         { code: "missing-target-root", path: targetRoot, detail: "missing" },
       ]),
       [issues[0], { code: "missing-target-root", path: targetRoot, detail: "missing" }],
+    );
+    for (const code of [
+      "missing-target-root",
+      "missing-target-entry",
+      "missing-required-payload",
+      "target-payload-drift",
+      "unexpected-managed-directory",
+    ]) {
+      assert.equal(
+        installer.isUpdateBlockingIssue({ code, path: targetRoot, detail: code }, new Set()),
+        false,
+      );
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("collectUpdateTargetEntryIssues covers non-directory, fallback children, wrong type, and foreign markers", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    const missingTargetRoot = join(root, "missing", "skills");
+    assert.deepEqual(
+      installer.collectUpdateTargetEntryIssues(missingTargetRoot, new Set(["aw-demo-skill"]), null),
+      [],
+    );
+
+    const targetRoot = join(root, ".agents", "skills");
+    const wrongTypePath = join(targetRoot, "aw-demo-skill");
+    const foreignPath = join(targetRoot, "aw-foreign-skill");
+    mkdirSync(targetRoot, { recursive: true });
+    writeFileSync(wrongTypePath, "not a directory\n", "utf8");
+    mkdirSync(foreignPath, { recursive: true });
+    writeFileSync(
+      join(foreignPath, "aw.marker"),
+      `${JSON.stringify({
+        marker_version: "aw-managed-skill-marker.v2",
+        backend: "claude",
+        skill_id: "foreign-skill",
+        payload_version: "agents-skill-payload.v1",
+        payload_fingerprint: "abc",
+      }, null, 2)}\n`,
+      "utf8",
+    );
+
+    assert.deepEqual(
+      installer.collectUpdateTargetEntryIssues(
+        targetRoot,
+        new Set(["aw-demo-skill", "aw-foreign-skill"]),
+        null,
+      ),
+      [
+        {
+          code: "wrong-target-entry-type",
+          path: wrongTypePath,
+          detail: "update target path must be a real directory before reinstall",
+        },
+        {
+          code: "foreign-managed-directory",
+          path: foreignPath,
+          detail: "update will not remove managed directory for backend claude",
+        },
+      ],
+    );
+
+    const symlinkPath = join(targetRoot, "aw-linked-skill");
+    symlinkSync(foreignPath, symlinkPath, "dir");
+    assert.deepEqual(
+      installer.collectUpdateTargetEntryIssues(
+        targetRoot,
+        new Set(["aw-linked-skill"]),
+        [symlinkPath],
+      ),
+      [
+        {
+          code: "wrong-target-entry-type",
+          path: symlinkPath,
+          detail: "update target path must be a real directory before reinstall",
+        },
+      ],
     );
   } finally {
     rmSync(root, { recursive: true, force: true });

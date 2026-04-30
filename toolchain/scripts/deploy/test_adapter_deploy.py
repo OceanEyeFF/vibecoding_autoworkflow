@@ -24,6 +24,9 @@ import adapter_deploy
 import harness_deploy
 
 
+FAKE_FAILING_PYTHON_EXIT_CODE = 97
+
+
 class AdapterDeployTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -149,6 +152,18 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
     def _update_json_parity_fields(self, payload: dict[str, object]) -> dict[str, object]:
+        def sorted_issues(key: str) -> list[dict[str, object]]:
+            issues = payload[key]
+            self.assertIsInstance(issues, list)
+            return sorted(
+                issues,
+                key=lambda issue: (
+                    str(issue["code"]),
+                    str(issue["path"]),
+                    str(issue["detail"]),
+                ),
+            )
+
         return {
             "backend": payload["backend"],
             "source_kind": payload["source_kind"],
@@ -159,9 +174,9 @@ class AdapterDeployTest(unittest.TestCase):
             "managed_installs_to_delete": sorted(payload["managed_installs_to_delete"]),
             "planned_target_paths": sorted(payload["planned_target_paths"]),
             "issue_count": payload["issue_count"],
-            "issue_codes": sorted(issue["code"] for issue in payload["issues"]),
+            "issues": sorted_issues("issues"),
             "blocking_issue_count": payload["blocking_issue_count"],
-            "blocking_issue_codes": sorted(issue["code"] for issue in payload["blocking_issues"]),
+            "blocking_issues": sorted_issues("blocking_issues"),
         }
 
     def _assert_node_update_json_matches_python_adapter(self) -> tuple[dict[str, object], dict[str, object]]:
@@ -359,7 +374,9 @@ class AdapterDeployTest(unittest.TestCase):
         for python_name in ("py", "python3", "python"):
             fake_python = fake_bin / python_name
             fake_python.write_text(
-                "#!/bin/sh\nprintf 'unexpected-python %s\\n' \"$*\" >&2\nexit 97\n",
+                "#!/bin/sh\n"
+                "printf 'unexpected-python %s\\n' \"$*\" >&2\n"
+                f"exit {FAKE_FAILING_PYTHON_EXIT_CODE}\n",
                 encoding="utf-8",
             )
             fake_python.chmod(0o755)
@@ -2092,7 +2109,7 @@ class AdapterDeployTest(unittest.TestCase):
             with self.subTest(label=label):
                 completed = self._run_aw_installer_node(*argv, target_repo=target_repo, env=env)
 
-                self.assertEqual(completed.returncode, 97)
+                self.assertEqual(completed.returncode, FAKE_FAILING_PYTHON_EXIT_CODE)
                 self.assertEqual(completed.stdout, "")
                 self.assertIn("unexpected-python", completed.stderr)
                 self.assertIn("harness_deploy.py", completed.stderr)
@@ -2123,6 +2140,25 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("Update cancelled.", output)
         self.assertNotIn("[agents] applying update", output)
         self.assertFalse((target_repo / ".agents" / "skills").exists())
+
+    def test_local_npm_installer_tui_diagnose_json_is_node_owned(self) -> None:
+        target_repo = self.temp_root / "tui-diagnose-target"
+        fake_bin = self._fake_failing_python_bin()
+
+        code, output = self._run_installer_tui_script(
+            [
+                ("Select an action:", "2\n"),
+                ("Press Enter to return to the installer menu", "\n"),
+                ("Select an action:", "6\n"),
+            ],
+            target_repo=target_repo,
+            env_overrides={"PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}"},
+        )
+
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("unexpected-python", output)
+        self.assertIn('"backend": "agents"', output)
+        self.assertIn('"target_root_status": "missing"', output)
 
     def test_local_npm_installer_tui_guided_flow_is_primary_menu_action(self) -> None:
         target_repo = self.temp_root / "tui-guided-target"

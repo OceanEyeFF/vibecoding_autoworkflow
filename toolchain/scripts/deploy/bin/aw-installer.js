@@ -17,10 +17,8 @@ const wrapperPath = join(__dirname, "..", "harness_deploy.py");
 const pathSafetyPolicyPath = join(__dirname, "..", "path_safety_policy.json");
 const defaultWrapperTimeoutMs = 300_000;
 const wrapperTimeoutMs = readWrapperTimeoutMs();
-const env = {
-  ...process.env,
-  PYTHONDONTWRITEBYTECODE: process.env.PYTHONDONTWRITEBYTECODE || "1",
-};
+const maxJsonPayloadBytes = 1_048_576;
+const env = buildWrapperEnv(process.env);
 const packageVersionFallbackMaxDepth = 20;
 const payloadDescriptor = "payload.json";
 const managedSkillMarker = "aw.marker";
@@ -32,6 +30,8 @@ const conflictIssueCodes = new Set([
   "unrecognized-target-directory",
   "wrong-target-entry-type",
 ]);
+// These states are expected to be repaired by the destructive reinstall
+// sequence. Type/safety violations still block because update must not guess.
 const updateRecoverableIssueCodes = new Set([
   "missing-target-root",
   "missing-target-entry",
@@ -40,6 +40,43 @@ const updateRecoverableIssueCodes = new Set([
   "unexpected-managed-directory",
 ]);
 let cachedPathSafetyPolicy = null;
+
+function buildWrapperEnv(sourceEnv) {
+  const passThroughNames = new Set([
+    "AW_HARNESS_REPO_ROOT",
+    "AW_HARNESS_TARGET_REPO_ROOT",
+    "AW_INSTALLER_GITHUB_REPO",
+    "ComSpec",
+    "GITHUB_REPOSITORY",
+    "HOME",
+    "LANG",
+    "LC_ALL",
+    "PATH",
+    "PATHEXT",
+    "PYTHONDONTWRITEBYTECODE",
+    "REQUESTS_CA_BUNDLE",
+    "SSL_CERT_FILE",
+    "SystemRoot",
+    "TEMP",
+    "TMP",
+    "TMPDIR",
+    "USERPROFILE",
+    "WINDIR",
+  ]);
+  const nextEnv = {};
+  for (const [key, value] of Object.entries(sourceEnv)) {
+    if (
+      passThroughNames.has(key) ||
+      key.toLowerCase() === "http_proxy" ||
+      key.toLowerCase() === "https_proxy" ||
+      key.toLowerCase() === "no_proxy"
+    ) {
+      nextEnv[key] = value;
+    }
+  }
+  nextEnv.PYTHONDONTWRITEBYTECODE = sourceEnv.PYTHONDONTWRITEBYTECODE || "1";
+  return nextEnv;
+}
 
 function readWrapperTimeoutMs() {
   const parsedTimeout = Number.parseInt(
@@ -170,7 +207,7 @@ function lstatOrNull(path) {
   try {
     return lstatSync(path);
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if (error.code === "ENOENT" || error.code === "EACCES" || error.code === "EPERM") {
       return null;
     }
     throw error;
@@ -339,10 +376,6 @@ function buildNodeAgentsContext() {
   };
 }
 
-function buildNodeDiagnoseContext() {
-  return buildNodeAgentsContext();
-}
-
 function isDirectory(path) {
   const stat = lstatOrNull(path);
   return stat !== null && !stat.isSymbolicLink() && stat.isDirectory();
@@ -353,10 +386,31 @@ function isFile(path) {
   return stat !== null && !stat.isSymbolicLink() && stat.isFile();
 }
 
+function readJsonText(path, missingMessage) {
+  let stat;
+  try {
+    stat = lstatSync(path);
+  } catch (error) {
+    if (error.code === "ENOENT" && missingMessage) {
+      throw new Error(missingMessage);
+    }
+    throw error;
+  }
+  if (!stat.isFile()) {
+    throw new Error(`JSON payload must be a real file: ${path}`);
+  }
+  if (stat.size > maxJsonPayloadBytes) {
+    throw new Error(
+      `JSON payload exceeds ${maxJsonPayloadBytes} byte limit: ${path}`,
+    );
+  }
+  return readFileSync(path, "utf8");
+}
+
 function readJsonObject(path) {
   let data;
   try {
-    data = JSON.parse(readFileSync(path, "utf8"));
+    data = JSON.parse(readJsonText(path));
   } catch (error) {
     throw new Error(`Invalid JSON in ${path}: ${error.message}`);
   }
@@ -367,15 +421,7 @@ function readJsonObject(path) {
 }
 
 function readJsonObjectWithText(path) {
-  let text;
-  try {
-    text = readFileSync(path, "utf8");
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      throw new Error(`Missing JSON file: ${path}`);
-    }
-    throw error;
-  }
+  const text = readJsonText(path, `Missing JSON file: ${path}`);
   let data;
   try {
     data = JSON.parse(text);
@@ -391,6 +437,9 @@ function readJsonObjectWithText(path) {
 function normalizeRelativePath(value, fieldName, skillId, rootDescription) {
   if (typeof value !== "string" || value.trim() === "") {
     throw new Error(`${fieldName} must be a non-empty relative path for skill ${skillId}`);
+  }
+  if (value.includes("\0")) {
+    throw new Error(`${fieldName} must not contain null bytes for skill ${skillId}: ${value}`);
   }
   const normalized = value.replace(/\\/g, "/");
   if (normalized.startsWith("/") || /^[A-Za-z]:/.test(normalized)) {
@@ -540,10 +589,18 @@ function bindingPayloadWithText(binding, loadedPayloads) {
   };
 }
 
+/**
+ * Preloads payload JSON and original text by payload path for one deploy pass.
+ */
 function loadBindingPayloads(bindings) {
   const loadedPayloads = new Map();
   for (const binding of bindings) {
-    loadedPayloads.set(binding.payloadPath, bindingPayloadWithText(binding, null));
+    try {
+      loadedPayloads.set(binding.payloadPath, bindingPayloadWithText(binding, null));
+    } catch (error) {
+      error.payloadPath = binding.payloadPath;
+      throw error;
+    }
   }
   return loadedPayloads;
 }
@@ -752,15 +809,15 @@ function loadRuntimeMarker(markerPath) {
   return marker;
 }
 
-function sourcePathForTargetRelativeFile(binding, relativeName, context, payload) {
+function sourcePathForTargetRelativeFile(binding, relativeName, context, payload, canonicalSource = null) {
   if (relativeName === payloadDescriptor) {
     return binding.payloadPath;
   }
   if (relativeName === managedSkillMarker) {
     throw new Error(`${managedSkillMarker} is runtime-generated for skill ${binding.skillId}`);
   }
-  const canonicalSource = canonicalSourceMetadata(payload, binding, context);
-  const sourcePath = canonicalSource.canonicalFiles.get(relativeName);
+  const resolvedCanonicalSource = canonicalSource || canonicalSourceMetadata(payload, binding, context);
+  const sourcePath = resolvedCanonicalSource.canonicalFiles.get(relativeName);
   if (sourcePath === undefined) {
     throw new Error(
       `payload required file ${relativeName} is not declared in payload canonical_paths for skill ${binding.skillId}`,
@@ -776,11 +833,21 @@ function computePayloadFingerprint(binding, context, payload, payloadText, metad
   const fingerprintParts = [
     `backend=${binding.backend}\nskill_id=${binding.skillId}\npayload_version=${payload.payload_version}\n`,
   ];
+  let canonicalSource = null;
   for (const relativeName of metadata.requiredPayloadFiles) {
     if (relativeName === managedSkillMarker || relativeName === payloadDescriptor) {
       continue;
     }
-    const sourcePath = sourcePathForTargetRelativeFile(binding, relativeName, context, payload);
+    if (canonicalSource === null) {
+      canonicalSource = canonicalSourceMetadata(payload, binding, context);
+    }
+    const sourcePath = sourcePathForTargetRelativeFile(
+      binding,
+      relativeName,
+      context,
+      payload,
+      canonicalSource,
+    );
     let sourceText;
     try {
       sourceText = readFileSync(sourcePath, "utf8");
@@ -820,6 +887,9 @@ function targetRootChildren(targetRoot) {
   }
 }
 
+/**
+ * Resolves each binding target metadata and rejects duplicate live target dirs.
+ */
 function collectTargetDirMetadata(bindings, loadedPayloads = null) {
   const targetDirs = new Set();
   const metadataByPayloadPath = new Map();
@@ -850,6 +920,9 @@ function knownTargetDirsFromMetadata(bindings, metadataByPayloadPath) {
   return knownTargetDirs;
 }
 
+/**
+ * Returns live and legacy target dir names that update may recognize.
+ */
 function allKnownTargetDirs(bindings, loadedPayloads = null) {
   const { metadataByPayloadPath } = collectTargetDirMetadata(bindings, loadedPayloads);
   return knownTargetDirsFromMetadata(bindings, metadataByPayloadPath);
@@ -927,6 +1000,7 @@ function verifyDeployedSkill(binding, targetRoot, context, loadedPayloads = null
       ),
     );
   }
+  let canonicalSource = null;
   for (const relativeName of metadata.requiredPayloadFiles) {
     const targetPath = join(targetSkillDir, relativeName);
     if (!pathExists(targetPath)) {
@@ -963,10 +1037,13 @@ function verifyDeployedSkill(binding, targetRoot, context, loadedPayloads = null
     }
     let sourcePath;
     try {
+      if (relativeName !== payloadDescriptor && canonicalSource === null) {
+        canonicalSource = canonicalSourceMetadata(payload, binding, context);
+      }
       sourcePath =
         relativeName === payloadDescriptor
           ? binding.payloadPath
-          : sourcePathForTargetRelativeFile(binding, relativeName, context, payload);
+          : sourcePathForTargetRelativeFile(binding, relativeName, context, payload, canonicalSource);
     } catch (error) {
       issues.push(issue("payload-contract-invalid", binding.payloadPath, error.message));
       continue;
@@ -1030,11 +1107,14 @@ function unexpectedManagedTargetDirs(targetRoot, expectedTargetDirNames, targetC
   return issues;
 }
 
+/**
+ * Verifies the agents backend using optional pre-collected bindings/payloads.
+ */
 function verifyAgentsBackend(context, options = {}) {
   const targetRoot = context.targetRoot;
   const issues = verifyTargetRoot(targetRoot);
-  const bindings = options.bindings || collectSkillBindings(context);
-  const loadedPayloads = options.loadedPayloads || null;
+  const bindings = options.bindings ?? collectSkillBindings(context);
+  const loadedPayloads = options.loadedPayloads ?? null;
   if (bindings.length === 0) {
     issues.push(
       issue(
@@ -1106,6 +1186,9 @@ function managedInstallDirs(targetRoot, targetChildren) {
   });
 }
 
+/**
+ * Finds existing target entries that update must refuse or classify before prune.
+ */
 function collectUpdateTargetEntryIssues(targetRoot, knownTargetDirNames, targetChildren) {
   if (!isDirectory(targetRoot)) {
     return [];
@@ -1155,6 +1238,9 @@ function collectUpdateTargetEntryIssues(targetRoot, knownTargetDirNames, targetC
   return issues;
 }
 
+/**
+ * Keeps the first issue for each code/path pair while preserving issue order.
+ */
 function dedupeIssues(issues) {
   const seen = new Set();
   const uniqueIssues = [];
@@ -1169,24 +1255,34 @@ function dedupeIssues(issues) {
   return uniqueIssues;
 }
 
-function buildInstallPlan(binding, targetRoot, context, loadedPayloads = null, targetMetadata = null) {
-  const loadedPayload = bindingPayloadWithText(binding, loadedPayloads);
-  const resolvedTargetMetadata = targetMetadata || payloadTargetMetadata(loadedPayload.payload, binding);
-  const payloadFingerprint = computePayloadFingerprint(
-    binding,
-    context,
-    loadedPayload.payload,
-    loadedPayload.payloadText,
-    resolvedTargetMetadata,
-  );
-  return {
+/**
+ * Builds the dry-run install plan entry for one binding.
+ */
+function buildInstallPlan(binding, targetRoot, context, loadedPayloads = null, targetMetadata = null, options = {}) {
+  const includePayloadFingerprint = options.includePayloadFingerprint !== false;
+  const resolvedTargetMetadata =
+    targetMetadata || payloadTargetMetadata(bindingPayloadObject(binding, loadedPayloads), binding);
+  const plan = {
     binding,
     targetMetadata: resolvedTargetMetadata,
     targetSkillDir: join(targetRoot, resolvedTargetMetadata.targetDir),
-    payloadFingerprint,
   };
+  if (includePayloadFingerprint) {
+    const loadedPayload = bindingPayloadWithText(binding, loadedPayloads);
+    plan.payloadFingerprint = computePayloadFingerprint(
+      binding,
+      context,
+      loadedPayload.payload,
+      loadedPayload.payloadText,
+      resolvedTargetMetadata,
+    );
+  }
+  return plan;
 }
 
+/**
+ * Classifies whether an issue should block the destructive reinstall wrapper.
+ */
 function isUpdateBlockingIssue(currentIssue, managedDeletePaths) {
   if (updateRecoverableIssueCodes.has(currentIssue.code)) {
     return false;
@@ -1197,12 +1293,23 @@ function isUpdateBlockingIssue(currentIssue, managedDeletePaths) {
   return true;
 }
 
+/**
+ * Produces the agents update dry-run JSON summary without mutating target files.
+ */
 function updatePlanSummary(context) {
   const bindings = collectSkillBindings(context);
   let loadedPayloads = null;
+  const preloadIssues = [];
   try {
     loadedPayloads = loadBindingPayloads(bindings);
   } catch (error) {
+    preloadIssues.push(
+      issue(
+        "payload-contract-invalid",
+        error.payloadPath || context.adapterSkillsDir,
+        `failed to preload payloads: ${error.message}`,
+      ),
+    );
     loadedPayloads = null;
   }
   const result = verifyAgentsBackend(context, { bindings, loadedPayloads });
@@ -1232,6 +1339,7 @@ function updatePlanSummary(context) {
           context,
           loadedPayloads,
           targetMetadata.metadataByPayloadPath.get(binding.payloadPath),
+          { includePayloadFingerprint: false },
         ),
       );
     } catch (error) {
@@ -1242,7 +1350,7 @@ function updatePlanSummary(context) {
   const targetEntryIssues = collectUpdateTargetEntryIssues(targetRoot, knownTargetDirNames, targetChildren);
   const managedInstallsToDelete = managedInstallDirs(targetRoot, targetChildren);
   const managedDeletePaths = new Set(managedInstallsToDelete);
-  const allIssues = dedupeIssues([...result.issues, ...planIssues, ...targetEntryIssues]);
+  const allIssues = dedupeIssues([...result.issues, ...planIssues, ...targetEntryIssues, ...preloadIssues]);
   const blockingIssues = allIssues.filter((currentIssue) => isUpdateBlockingIssue(currentIssue, managedDeletePaths));
 
   return {
@@ -1285,40 +1393,23 @@ function diagnosticSummary(result) {
   };
 }
 
-function parseNodeDiagnoseJsonArgs(args) {
-  if (args[0] !== "diagnose") {
-    return null;
+function sortJsonObjectKeys(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => sortJsonObjectKeys(item));
   }
-  let backend = "agents";
-  let json = false;
-  for (let index = 1; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--json") {
-      json = true;
-      continue;
-    }
-    if (arg === "--backend") {
-      if (index + 1 >= args.length) {
-        return null;
-      }
-      backend = args[index + 1];
-      index += 1;
-      continue;
-    }
-    if (arg.startsWith("--backend=")) {
-      backend = arg.slice("--backend=".length);
-      continue;
-    }
-    return null;
+  if (value === null || typeof value !== "object") {
+    return value;
   }
-  if (!json || backend !== "agents") {
-    return null;
-  }
-  return { backend };
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, sortJsonObjectKeys(value[key])]),
+  );
 }
 
-function parseNodeUpdateJsonArgs(args) {
-  if (args[0] !== "update") {
+function parseNodeJsonArgs(args, command, options = {}) {
+  const allowSource = options.allowSource === true;
+  if (args[0] !== command) {
     return null;
   }
   let backend = "agents";
@@ -1342,7 +1433,7 @@ function parseNodeUpdateJsonArgs(args) {
       backend = arg.slice("--backend=".length);
       continue;
     }
-    if (arg === "--source") {
+    if (allowSource && arg === "--source") {
       if (index + 1 >= args.length) {
         return null;
       }
@@ -1350,7 +1441,7 @@ function parseNodeUpdateJsonArgs(args) {
       index += 1;
       continue;
     }
-    if (arg.startsWith("--source=")) {
+    if (allowSource && arg.startsWith("--source=")) {
       source = arg.slice("--source=".length);
       continue;
     }
@@ -1359,37 +1450,61 @@ function parseNodeUpdateJsonArgs(args) {
   if (!json || backend !== "agents" || source !== "package") {
     return null;
   }
-  return { backend, source };
+  return allowSource ? { backend, source } : { backend };
+}
+
+function parseNodeDiagnoseJsonArgs(args) {
+  return parseNodeJsonArgs(args, "diagnose");
+}
+
+function parseNodeUpdateJsonArgs(args) {
+  return parseNodeJsonArgs(args, "update", { allowSource: true });
+}
+
+function runNodeJson(args, parser, buildSummary, exitStatus) {
+  if (parser(args) === null) {
+    return null;
+  }
+  try {
+    const summary = buildSummary(buildNodeAgentsContext());
+    console.log(JSON.stringify(sortJsonObjectKeys(summary), null, 2));
+    return exitStatus(summary);
+  } catch (error) {
+    console.error(error.message);
+    return 1;
+  }
 }
 
 function runNodeDiagnoseJson(args) {
-  if (parseNodeDiagnoseJsonArgs(args) === null) {
-    return null;
-  }
-  try {
-    const context = buildNodeDiagnoseContext();
-    const result = verifyAgentsBackend(context);
-    console.log(JSON.stringify(diagnosticSummary(result), null, 2));
-    return 0;
-  } catch (error) {
-    console.error(error.message);
-    return 1;
-  }
+  return runNodeJson(
+    args,
+    parseNodeDiagnoseJsonArgs,
+    (context) => diagnosticSummary(verifyAgentsBackend(context)),
+    () => 0,
+  );
 }
 
 function runNodeUpdateJson(args) {
-  if (parseNodeUpdateJsonArgs(args) === null) {
-    return null;
+  return runNodeJson(
+    args,
+    parseNodeUpdateJsonArgs,
+    (context) => updatePlanSummary(context),
+    (summary) => (summary.blocking_issue_count ? 1 : 0),
+  );
+}
+
+async function runNodeOwnedOrWrapper(args) {
+  const nodeDiagnoseStatus = runNodeDiagnoseJson(args);
+  if (nodeDiagnoseStatus !== null) {
+    return nodeDiagnoseStatus;
   }
-  try {
-    const context = buildNodeAgentsContext();
-    const summary = updatePlanSummary(context);
-    console.log(JSON.stringify(summary, null, 2));
-    return summary.blocking_issue_count ? 1 : 0;
-  } catch (error) {
-    console.error(error.message);
-    return 1;
+
+  const nodeUpdateStatus = runNodeUpdateJson(args);
+  if (nodeUpdateStatus !== null) {
+    return nodeUpdateStatus;
   }
+
+  return await runWrapper(args);
 }
 
 function runWrapperWithCandidate(args, candidate) {
@@ -1507,7 +1622,7 @@ async function pause(rl) {
 async function runGuidedUpdateFlow(rl) {
   console.log("\nGuided update flow");
   console.log("Step 1: Diagnose current agents install.");
-  const diagnoseStatus = await runWrapper(["diagnose", "--backend", "agents", "--json"]);
+  const diagnoseStatus = await runNodeOwnedOrWrapper(["diagnose", "--backend", "agents", "--json"]);
   if (diagnoseStatus !== 0) {
     console.log("Diagnose failed; update may not succeed as expected.");
     const proceed = (await question(
@@ -1571,7 +1686,7 @@ Backend: agents
       if (choice === "1") {
         await runGuidedUpdateFlow(rl);
       } else if (choice === "2") {
-        await runWrapper(["diagnose", "--backend", "agents", "--json"]);
+        await runNodeOwnedOrWrapper(["diagnose", "--backend", "agents", "--json"]);
         await pause(rl);
       } else if (choice === "3") {
         await runWrapper(["verify", "--backend", "agents"]);
@@ -1621,17 +1736,7 @@ async function main() {
     return runTui();
   }
 
-  const nodeDiagnoseStatus = runNodeDiagnoseJson(args);
-  if (nodeDiagnoseStatus !== null) {
-    return nodeDiagnoseStatus;
-  }
-
-  const nodeUpdateStatus = runNodeUpdateJson(args);
-  if (nodeUpdateStatus !== null) {
-    return nodeUpdateStatus;
-  }
-
-  return await runWrapper(args);
+  return await runNodeOwnedOrWrapper(args);
 }
 
 if (require.main === module) {
@@ -1647,6 +1752,7 @@ if (require.main === module) {
 
 module.exports = {
   allKnownTargetDirs,
+  buildWrapperEnv,
   buildInstallPlan,
   canonicalSourceMetadata,
   collectTargetDirMetadata,

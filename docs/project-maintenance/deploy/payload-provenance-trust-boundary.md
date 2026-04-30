@@ -33,7 +33,7 @@ last_verified: 2026-04-30
 
 ## 二、source root 与 target root
 
-`aw-installer` Node bin 当前直接承接 `--help`、`--version` 与 `diagnose --backend agents --json` 的只读路径；`update --backend agents --json` 在 package/local source dry-run 场景下也由 Node-owned 路径生成 plan JSON。该 dry-run JSON 必须继续暴露 `backend`、`source_kind`、`source_ref`、`source_root`、`target_root`、`operation_sequence`、`managed_installs_to_delete`、`planned_target_paths`、`issues` 与 `blocking_issues` 等字段。其他 deploy modes、不受支持的 diagnose / update 变体、`update --yes`、GitHub source update、Claude backend、`install`、`verify` 与 `prune` 仍调用同包内的 Python wrapper/reference path。实际 source / target 解析必须保持与 `adapter_deploy.py` 的合同一致：
+`aw-installer` Node bin 当前直接承接 `--help`、`--version` 与 `diagnose --backend agents --json` 的只读路径；TUI 的 agents diagnose 展示也复用该 Node-owned JSON 路径。`update --backend agents --json` 在 package/local source dry-run 场景下也由 Node-owned 路径生成 plan JSON。该 dry-run JSON 必须继续暴露 `backend`、`source_kind`、`source_ref`、`source_root`、`target_root`、`operation_sequence`、`managed_installs_to_delete`、`planned_target_paths`、`issues` 与 `blocking_issues` 等字段。其他 deploy modes、不受支持的 diagnose / update 变体、`update --yes`、GitHub source update、Claude backend、`install`、`verify` 与 `prune` 仍调用同包内的 Python wrapper/reference path；fallback 环境只透传 deploy 所需变量，不全量继承 shell secrets。实际 source / target 解析必须保持与 `adapter_deploy.py` 的合同一致：
 
 - 未设置 `AW_HARNESS_REPO_ROOT` 时，source root 是 package 解压根或当前 checkout 中的 repo root。
 - 设置 `AW_HARNESS_REPO_ROOT` 时，source root 显式指向该 checkout，并保持旧的 repo-local 行为。

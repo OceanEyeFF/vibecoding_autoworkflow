@@ -7,7 +7,7 @@
 - `adapter_deploy.py`：为 `agents` 提供 destructive reinstall workflow、只读 `diagnose` 和只读 `verify`，并为 `claude` 提供受控的 `set-harness-goal-skill` compatibility backend
 - `harness_deploy.py`：稳定的薄包装入口，保留 `adapter_deploy.py` 语义，供目标 `aw-installer` package / npx wrapper 复用
 - `path_safety_policy.json`：JS/Python deploy 入口共享的 target/source root 安全策略配置，避免 wrapper 与 Python reference path 漂移
-- `package.json` + `bin/aw-installer.js` + `bin/aw-harness-deploy.js`：本地 npm-style package scaffold；`aw-installer` 是主 bin，直接承接 help/version、`diagnose --backend agents --json` 与 package/local source `update --backend agents --json` dry-run，并提供带 guided update flow 的最小 `tui` shell；其他 deploy paths 仍 fallback 到 `harness_deploy.py` / Python reference，`aw-harness-deploy` 是兼容别名，不表示 package 已发布
+- `package.json` + `bin/aw-installer.js` + `bin/aw-harness-deploy.js`：本地 npm-style package scaffold；`aw-installer` 是主 bin，直接承接 help/version、`diagnose --backend agents --json` 与 package/local source `update --backend agents --json` dry-run，并提供带 guided update flow 的最小 `tui` shell；TUI diagnose 复用同一个 Node-owned agents JSON 路径；其他 deploy paths 仍 fallback 到 `harness_deploy.py` / Python reference，fallback 环境只透传 deploy 所需变量、代理和证书设置，`aw-harness-deploy` 是兼容别名，不表示 package 已发布
 - `aw_scaffold.py`：从 `product/.aw_template/` 生成 `.aw/` 运行样例，并校验模板最小结构，包括 `Engineering Node Map`、`Repo Analysis` 与 `Node Type` 协议字段
 - `product/harness/adapters/agents/skills/`：`agents` canonical-copy payload descriptor source，由 `install --backend agents` 消费
 - `product/harness/adapters/claude/skills/`：`claude` compatibility payload descriptor source，当前只覆盖 `set-harness-goal-skill`
