@@ -1,9 +1,9 @@
 ---
 title: "AutoWorkflow"
 status: active
-updated: 2026-04-30
+updated: 2026-05-01
 owner: aw-kernel
-last_verified: 2026-04-30
+last_verified: 2026-05-01
 ---
 # AutoWorkflow
 
@@ -20,7 +20,7 @@ last_verified: 2026-04-30
 
 ## 使用 `aw-installer`
 
-`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。当前 checkout 的 release-prep candidate 是 `0.4.3-rc.0`；当前 npm registry 事实是 `aw-installer@next` 指向 `0.4.2-rc.0`，`aw-installer@latest` 指向 `0.4.0-rc.1`，`latest` 不代表稳定 release approval。已发布的 `0.4.2-rc.0` registry artifact 绑定 `gitHead=bb0af57300c0ead130a5ac39349ac93dffe51949`；当前本地 candidate 若要发布，必须使用新版本 `0.4.3-rc.0`，不能复用 `0.4.2-rc.0`。复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)，release channel 与 publish 边界见 [`aw-installer Release Channel Contract`](./docs/project-maintenance/deploy/release-channel-contract.md)，npx/package smoke 见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
+`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。当前 npm registry 事实是 `aw-installer@next` 指向 `0.4.3-rc.0`，`aw-installer@latest` 指向 `0.4.0-rc.1`，`latest` 不代表稳定 release approval。已发布的 `0.4.3-rc.0` registry artifact 绑定 `gitHead=085173cd9dea63a029b9f93b9e9c0bd91f5d4662`；后续发布必须使用新的 immutable npm version。复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)，release channel 与 publish 边界见 [`aw-installer Release Channel Contract`](./docs/project-maintenance/deploy/release-channel-contract.md)，npx/package smoke 见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
 
 ```bash
 npx aw-installer@next

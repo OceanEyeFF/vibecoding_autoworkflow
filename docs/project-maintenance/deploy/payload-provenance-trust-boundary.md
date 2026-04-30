@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Payload Provenance And Update Trust Boundary"
 status: active
-updated: 2026-04-30
+updated: 2026-05-01
 owner: aw-kernel
-last_verified: 2026-04-30
+last_verified: 2026-05-01
 ---
 # aw-installer Payload Provenance And Update Trust Boundary
 
@@ -29,7 +29,7 @@ last_verified: 2026-04-30
 
 `product/harness/adapters/agents/skills/` 中的 payload descriptor 是 `agents` backend 的 deploy source。`install --backend agents` 只复制 descriptor 声明的 canonical skill 内容，不从 target root 反向生成 source truth。
 
-`product/harness/adapters/claude/skills/` 中的 payload descriptor 是 `claude` compatibility backend 的 deploy source。当前只准入 `set-harness-goal-skill`，写入 `<target_repo>/.claude/skills/aw-set-harness-goal-skill/`。
+`product/harness/adapters/claude/skills/` 中的 payload descriptor 是 `claude` backend 的 deploy source。当前准入完整 Harness skill set，写入 `<target_repo>/.claude/skills/<skill_id>/`，并把旧 `aw-<skill_id>` 目录作为 legacy managed target 处理。
 
 ## 二、source root 与 target root
 

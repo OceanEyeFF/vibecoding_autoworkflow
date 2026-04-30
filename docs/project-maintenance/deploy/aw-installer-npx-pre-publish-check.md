@@ -1,9 +1,9 @@
 ---
 title: "aw-installer npx Pre-Publish Check"
 status: active
-updated: 2026-04-29
+updated: 2026-05-01
 owner: aw-kernel
-last_verified: 2026-04-29
+last_verified: 2026-05-01
 ---
 # aw-installer npx Pre-Publish Check
 
@@ -68,7 +68,7 @@ Review the emitted file list before approval. It must include:
 - deploy wrapper scripts used by the package entrypoint.
 - `product/harness/skills/` canonical skill payload files required by agents bindings.
 - `product/harness/adapters/agents/skills/` payload descriptors.
-- `product/harness/adapters/claude/skills/` payload descriptors for the Claude compatibility lane.
+- `product/harness/adapters/claude/skills/` payload descriptors for the Claude full skill payload lane.
 - `set-harness-goal-skill` assets required for `.aw/` scaffold behavior.
 - release/deploy docs needed by the package README or operator paths.
 

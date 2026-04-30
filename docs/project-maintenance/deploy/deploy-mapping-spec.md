@@ -1,9 +1,9 @@
 ---
 title: "Deploy Mapping Spec"
 status: active
-updated: 2026-04-30
+updated: 2026-05-01
 owner: aw-kernel
-last_verified: 2026-04-30
+last_verified: 2026-05-01
 ---
 # Deploy Mapping Spec
 
@@ -104,9 +104,9 @@ last_verified: 2026-04-30
 
 - 当前 `claude` live install 仍按单个 skill 目录落在 backend target root 下
 - 当前 target root 默认为 `<target_repo>/.claude/skills`
-- 当前只准入 `set-harness-goal-skill`，target dir 为 `aw-set-harness-goal-skill`
+- 当前准入完整 Harness skill set，target dir 为 `<skill_id>`，并通过 `legacy_target_dirs` 保留旧 `aw-<skill_id>` 管理目录用于迁移清理
 - `claude` payload 使用 `claude-skill-payload.v1`，仍采用 `canonical-copy` 与 `copy-listed-canonical-paths`
-- `claude` 是 compatibility lane，不承接完整 Harness skill set 分发；扩展更多 skill 必须先更新 [Claude Adapter Source](./claude-adapter-source.md)、测试矩阵和 operator 文档
+- `claude` 是 Claude Code 适配 lane，不替代 `agents` 主路径；payload set 与 Claude frontmatter 规则见 [Claude Adapter Source](./claude-adapter-source.md)
 
 ### 6. 必需部署文件
 
