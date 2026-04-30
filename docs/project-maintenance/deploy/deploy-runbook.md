@@ -1,9 +1,9 @@
 ---
 title: "Deploy Runbook"
 status: active
-updated: 2026-04-29
+updated: 2026-04-30
 owner: aw-kernel
-last_verified: 2026-04-29
+last_verified: 2026-04-30
 ---
 # Deploy Runbook
 
@@ -50,7 +50,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-`harness_deploy.py` 只包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 仍暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell 和 `aw-harness-deploy` 兼容别名；`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 调用同一 wrapper。当前 checkout 的 RC candidate 是 `0.4.1-rc.2`；当前 npm registry 事实仍是 `next=0.4.0-rc.3`、`latest=0.4.0-rc.1`。外部已发布 RC 试用主路径应显式使用 `aw-installer@next`。当前还没有引入 full-screen TUI framework。
+`harness_deploy.py` 只包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 仍暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell 和 `aw-harness-deploy` 兼容别名；`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 调用同一 wrapper。当前 checkout 版本是 `0.4.1-rc.2`；当前 npm registry 事实是 `next=0.4.1-rc.2`、`latest=0.4.0-rc.1`。外部已发布 RC 试用主路径应显式使用 `aw-installer@next`。当前还没有引入 full-screen TUI framework。
 
 本地 npm-style scaffold 可用下面的 smoke 命令验证 bin 入口能打开同一 help surface：
 
@@ -66,7 +66,7 @@ npm pack --dry-run --json
 
 该 packlist 必须包含 `product/harness/skills`、`product/harness/adapters/agents/skills`、`product/harness/adapters/claude/skills` 与 `toolchain/scripts/deploy/` wrapper 文件，并且不得包含 `.aw/`、`.agents/`、`.claude/` 或 `.autoworkflow/`。
 
-`aw-installer` package payload provenance、source/target root 解析与 `update` trust boundary 见 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md)。默认 `update` 使用当前 package 或 checkout 中的 source payload；`0.4.0-rc.3` 允许显式 `update --source github --github-repo OWNER/REPO --github-ref REF` 从 GitHub source archive 读取本次 source root。`update` 不执行 channel 解析、自升级、验签或自动回滚。
+`aw-installer` package payload provenance、source/target root 解析与 `update` trust boundary 见 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md)。默认 `update` 使用当前 package 或 checkout 中的 source payload；`0.4.0-rc.3` 及后续版本允许显式 `update --source github --github-repo OWNER/REPO --github-ref REF` 从 GitHub source archive 读取本次 source root。`update` 不执行 channel 解析、自升级、验签或自动回滚。
 
 发布 dry-run 只验证 npm publish 包面和 registry 配置，不上传 package：
 

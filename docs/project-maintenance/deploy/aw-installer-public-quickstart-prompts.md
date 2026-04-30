@@ -18,7 +18,7 @@ This page belongs to [Deploy Runbooks](./README.md). It uses the current distrib
 - direct_npx_available: true
 - direct_npx_primary_path: `aw-installer@next`
 - registry_rc_available: true
-- npm_publish_allowed: completed-for-0.4.0-rc.3-next; 0.4.1-rc.2-candidate-not-yet-published
+- npm_publish_allowed: completed-for-0.4.1-rc.2-next; future publish still separately approval-gated
 - package_name_decided: true
 - approved_package_name: unscoped `aw-installer`
 - current_install_source: published `aw-installer@next`, local `.tgz` package, or explicit source checkout
@@ -37,7 +37,7 @@ Prerequisites:
 - Python is available for deploy commands outside the Node-owned subset. `aw-installer --help`, `--version`, and `diagnose --backend agents --json` are handled by Node directly, but `verify`, `install`, `update`, `prune`, Claude diagnose, and non-JSON diagnose variants still use the Python deploy wrapper. The current wrapper tries `py -3`, `python`, then `python3` on Windows, and `python3` then `python` on Linux/macOS. It intentionally ignores `PYTHON` and `PYTHON3` environment overrides.
 - The target repository is a git worktree you are allowed to modify.
 - You have registry access to `aw-installer`, a local `aw-installer` `.tgz` package from the maintainer, or an explicit AW source checkout path.
-- You understand that the current public trial path is RC pre-release: `aw-installer@next` currently resolves to `0.4.0-rc.3` on npm `next`, while bare `aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`. Stable release semantics still require separate approval.
+- You understand that the current public trial path is RC pre-release: `aw-installer@next` currently resolves to `0.4.1-rc.2` on npm `next`, while bare `aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`. Stable release semantics still require separate approval.
 
 Privacy rule:
 
