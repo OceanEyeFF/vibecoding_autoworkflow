@@ -1,9 +1,9 @@
 ---
 title: "AutoWorkflow"
 status: active
-updated: 2026-04-29
+updated: 2026-04-30
 owner: aw-kernel
-last_verified: 2026-04-29
+last_verified: 2026-04-30
 ---
 # AutoWorkflow
 
@@ -40,7 +40,7 @@ npx aw-installer@next install --backend agents
 
 这里的 `aw-installer@next` 是当前已发布 RC 试用选择器；裸 `npx aw-installer` 仍按 npm `latest` 解析到较旧的 rc1。当前 RC 不是稳定 release 批准，稳定版本和未来 publish 仍需单独审批。`diagnose` 和 `verify` 是只读检查；`install` 是显式写入当前 payload 的底层命令；`update` 默认只输出 dry-run plan。推荐写入路径是在确认 plan 后运行 `update --yes`，它会按 `prune --all -> check_paths_exist -> install -> verify` 写入目标仓库的 `.agents/skills`。完整入口合同见 [`Distribution Entrypoint Contract`](./docs/project-maintenance/deploy/distribution-entrypoint-contract.md)，registry npx smoke 与反馈日志见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
 
-`aw-installer` 的 Node wrapper 需要目标机器可启动 Python。`0.4.1-rc.2` 在 Windows 上按 `py -3`、`python`、`python3` 尝试，在 Linux/macOS 上按 `python3`、`python` 尝试；不依赖 `PYTHON` 或 `PYTHON3` 环境变量覆盖。论坛试用应显式使用 `aw-installer@next`，避免裸 `latest` 解析到较旧的 rc1。
+`aw-installer --help` / `--version` 由 Node wrapper 直接处理，不需要启动 Python。当前 deploy modes（例如 `diagnose`、`verify`、`install`、`update`、`prune`）仍通过 Python deploy wrapper 执行；`0.4.1-rc.2` 在 Windows 上按 `py -3`、`python`、`python3` 尝试，在 Linux/macOS 上按 `python3`、`python` 尝试，且不依赖 `PYTHON` 或 `PYTHON3` 环境变量覆盖。论坛试用应显式使用 `aw-installer@next`，避免裸 `latest` 解析到较旧的 rc1。
 
 `aw-installer update` 默认使用 package 或 checkout 中的 source payload；当前 candidate 保留显式 `--source github --github-repo OceanEyeFF/vibecoding_autoworkflow --github-ref <ref-containing-current-payload>`，从 GitHub source archive 读取本次 update 的 source root。`master` 只有在已包含当前 required payload source 时才是有效 ref。`update` 仍不做 channel 解析、自升级、验签或自动回滚。payload provenance 与 update trust boundary 见 [`Payload Provenance And Update Trust Boundary`](./docs/project-maintenance/deploy/payload-provenance-trust-boundary.md)。
 

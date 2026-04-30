@@ -286,6 +286,18 @@ class AdapterDeployTest(unittest.TestCase):
         fake_python.chmod(0o755)
         return fake_bin
 
+    def _fake_failing_python_bin(self) -> Path:
+        fake_bin = self.temp_root / "fake-failing-python-bin"
+        fake_bin.mkdir()
+        for python_name in ("py", "python3", "python"):
+            fake_python = fake_bin / python_name
+            fake_python.write_text(
+                "#!/bin/sh\nprintf 'unexpected-python %s\\n' \"$*\" >&2\nexit 97\n",
+                encoding="utf-8",
+            )
+            fake_python.chmod(0o755)
+        return fake_bin
+
     def _remove_target_marker(self, skill_id: str) -> Path:
         target_dir_name = self._target_dir_for_skill(skill_id)
         marker_path = self.local_root / target_dir_name / "aw.marker"
@@ -1491,6 +1503,44 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(completed.stdout, "aw-installer 0.4.1-rc.2\n")
         self.assertEqual(completed.stderr, "")
+
+    def test_local_npm_installer_help_and_version_are_node_owned_without_python(self) -> None:
+        node_path = shutil.which("node")
+        if node_path is None:
+            self.skipTest("node is not available")
+        bin_path = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+        fake_bin = self._fake_failing_python_bin()
+        env = {
+            **os.environ,
+            "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+        }
+
+        for safe_args, expected_stdout in (
+            (("-h",), "usage: aw-installer"),
+            (("--help",), "usage: aw-installer"),
+            (("-V",), "aw-installer 0.4.1-rc.2\n"),
+            (("--version",), "aw-installer 0.4.1-rc.2\n"),
+        ):
+            with self.subTest(args=safe_args):
+                completed = subprocess.run(
+                    [node_path, str(bin_path), *safe_args],
+                    cwd=self.source_repo_root,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertIn(expected_stdout, completed.stdout)
+                self.assertEqual(completed.stderr, "")
 
     def test_local_npm_installer_bin_version_prefers_root_package_metadata(self) -> None:
         if shutil.which("node") is None:
