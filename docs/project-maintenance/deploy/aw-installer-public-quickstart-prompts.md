@@ -34,7 +34,7 @@ Run commands from the target repository root unless a command explicitly names t
 Prerequisites:
 
 - Node.js and npm are available for the `aw-installer` package path.
-- Python is available for deploy commands. `aw-installer --help` and `--version` are handled by Node directly, but `diagnose`, `verify`, `install`, `update`, and `prune` still use the Python deploy wrapper. The current wrapper tries `py -3`, `python`, then `python3` on Windows, and `python3` then `python` on Linux/macOS. It intentionally ignores `PYTHON` and `PYTHON3` environment overrides.
+- Python is available for deploy commands outside the Node-owned subset. `aw-installer --help`, `--version`, and `diagnose --backend agents --json` are handled by Node directly, but `verify`, `install`, `update`, `prune`, Claude diagnose, and non-JSON diagnose variants still use the Python deploy wrapper. The current wrapper tries `py -3`, `python`, then `python3` on Windows, and `python3` then `python` on Linux/macOS. It intentionally ignores `PYTHON` and `PYTHON3` environment overrides.
 - The target repository is a git worktree you are allowed to modify.
 - You have registry access to `aw-installer`, a local `aw-installer` `.tgz` package from the maintainer, or an explicit AW source checkout path.
 - You understand that the current public trial path is RC pre-release: `aw-installer@next` currently resolves to `0.4.0-rc.3` on npm `next`, while bare `aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`. Stable release semantics still require separate approval.

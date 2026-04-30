@@ -1693,7 +1693,134 @@ class AdapterDeployTest(unittest.TestCase):
             payload = json.loads(completed.stdout)
             self.assertEqual(payload["target_root"], str(target_repo / ".agents" / "skills"))
 
-    def test_node_deploy_wrappers_fall_back_to_python_when_python3_is_missing(self) -> None:
+    def test_aw_installer_agents_diagnose_json_does_not_invoke_python(self) -> None:
+        node_path = shutil.which("node")
+        if node_path is None:
+            self.skipTest("node is not available")
+        target_repo = self.temp_root / "node-diagnose-target"
+        fake_bin = self._fake_failing_python_bin()
+        env = {
+            **os.environ,
+            "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
+            "AW_HARNESS_TARGET_REPO_ROOT": str(target_repo),
+            "PATH": str(fake_bin),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+        wrapper = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+
+        completed = subprocess.run(
+            [node_path, str(wrapper), "diagnose", "--backend", "agents", "--json"],
+            cwd=self.source_repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertNotIn("unexpected-python", completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload["backend"], "agents")
+        self.assertGreater(payload["binding_count"], 0)
+        self.assertEqual(payload["target_root"], str(target_repo / ".agents" / "skills"))
+        self.assertEqual(payload["target_root_status"], "missing")
+        self.assertFalse(payload["target_root_exists"])
+
+    def test_aw_installer_agents_diagnose_json_reports_target_payload_drift(self) -> None:
+        node_path = shutil.which("node")
+        if node_path is None:
+            self.skipTest("node is not available")
+        code, stdout, stderr = self._install()
+        self.assertEqual(code, 0, stderr)
+        target_dir_name = self._target_dir_for_skill("repo-status-skill")
+        wrapper_path = self.local_root / target_dir_name / "SKILL.md"
+        wrapper_path.write_text("# drifted target\n", encoding="utf-8")
+        fake_bin = self._fake_failing_python_bin()
+        env = {
+            **os.environ,
+            "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
+            "PATH": str(fake_bin),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+        wrapper = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+
+        completed = subprocess.run(
+            [node_path, str(wrapper), "diagnose", "--backend", "agents", "--json"],
+            cwd=self.source_repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertNotIn("unexpected-python", completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertIn("target-payload-drift", payload["issue_codes"])
+        self.assertTrue(
+            any(
+                issue["code"] == "target-payload-drift"
+                and "repo-status-skill" in issue["detail"]
+                for issue in payload["issues"]
+            )
+        )
+
+    def test_aw_installer_agents_diagnose_json_validates_legacy_skill_ids(self) -> None:
+        node_path = shutil.which("node")
+        if node_path is None:
+            self.skipTest("node is not available")
+        payload_path = self.adapter_dir / "harness-skill" / "payload.json"
+        payload = self._load_json(payload_path)
+        payload["legacy_skill_ids"] = ["harness-skill"]
+        payload_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        fake_bin = self._fake_failing_python_bin()
+        env = {
+            **os.environ,
+            "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
+            "PATH": str(fake_bin),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+        wrapper = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+
+        completed = subprocess.run(
+            [node_path, str(wrapper), "diagnose", "--backend", "agents", "--json"],
+            cwd=self.source_repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertNotIn("unexpected-python", completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertIn("payload-contract-invalid", payload["issue_codes"])
+        self.assertTrue(
+            any("legacy_skill_ids" in issue["detail"] for issue in payload["issues"])
+        )
+
+    def test_legacy_node_deploy_wrapper_falls_back_to_python_when_python3_is_missing(self) -> None:
         node_path = shutil.which("node")
         if node_path is None:
             self.skipTest("node is not available")
@@ -1703,53 +1830,51 @@ class AdapterDeployTest(unittest.TestCase):
             "PATH": str(fake_bin),
             "PYTHONDONTWRITEBYTECODE": "1",
         }
-        wrappers = [
+        wrapper = (
             self.source_repo_root
             / "toolchain"
             / "scripts"
             / "deploy"
             / "bin"
-            / "aw-installer.js",
-            self.source_repo_root
-            / "toolchain"
-            / "scripts"
-            / "deploy"
-            / "bin"
-            / "aw-harness-deploy.js",
-        ]
+            / "aw-harness-deploy.js"
+        )
 
-        for wrapper in wrappers:
-            with self.subTest(wrapper=wrapper.name):
-                completed = subprocess.run(
-                    [node_path, str(wrapper), "diagnose", "--backend", "agents", "--json"],
-                    cwd=self.source_repo_root,
-                    env=env,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
+        completed = subprocess.run(
+            [node_path, str(wrapper), "diagnose", "--backend", "agents", "--json"],
+            cwd=self.source_repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
-                self.assertEqual(completed.returncode, 0, completed.stderr)
-                self.assertIn("fake-python", completed.stdout)
-                self.assertIn("harness_deploy.py diagnose --backend agents --json", completed.stdout)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("fake-python", completed.stdout)
+        self.assertIn("harness_deploy.py diagnose --backend agents --json", completed.stdout)
 
     def test_node_deploy_wrappers_time_out_stalled_python_processes(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
         fake_bin = self._fake_sleeping_python_bin()
-        wrappers = [
-            self.source_repo_root
-            / "toolchain"
-            / "scripts"
-            / "deploy"
-            / "bin"
-            / "aw-installer.js",
-            self.source_repo_root
-            / "toolchain"
-            / "scripts"
-            / "deploy"
-            / "bin"
-            / "aw-harness-deploy.js",
+        cases = [
+            (
+                self.source_repo_root
+                / "toolchain"
+                / "scripts"
+                / "deploy"
+                / "bin"
+                / "aw-installer.js",
+                ["update", "--backend", "agents", "--json"],
+            ),
+            (
+                self.source_repo_root
+                / "toolchain"
+                / "scripts"
+                / "deploy"
+                / "bin"
+                / "aw-harness-deploy.js",
+                ["diagnose", "--backend", "agents", "--json"],
+            ),
         ]
         env = {
             **os.environ,
@@ -1758,10 +1883,10 @@ class AdapterDeployTest(unittest.TestCase):
             "PYTHONDONTWRITEBYTECODE": "1",
         }
 
-        for wrapper in wrappers:
+        for wrapper, command_args in cases:
             with self.subTest(wrapper=wrapper.name):
                 completed = subprocess.run(
-                    ["node", str(wrapper), "diagnose", "--backend", "agents", "--json"],
+                    ["node", str(wrapper), *command_args],
                     cwd=self.source_repo_root,
                     env=env,
                     capture_output=True,
