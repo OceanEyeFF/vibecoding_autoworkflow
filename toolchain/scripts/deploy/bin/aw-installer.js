@@ -3,8 +3,12 @@
 
 const { spawn } = require("node:child_process");
 const {
+  closeSync,
+  constants,
   existsSync,
+  fstatSync,
   lstatSync,
+  openSync,
   readFileSync,
   readdirSync,
   realpathSync,
@@ -25,13 +29,17 @@ const managedSkillMarker = "aw.marker";
 const managedSkillMarkerVersion = "aw-managed-skill-marker.v2";
 const expectedPayloadVersion = "agents-skill-payload.v1";
 const unrecognizedIssueCodes = new Set(["unrecognized-target-directory"]);
+// Diagnose treats these as conflict signals for operator visibility. Update
+// may still recover selected conflicts when prune --all can remove them safely.
 const conflictIssueCodes = new Set([
   "unexpected-managed-directory",
   "unrecognized-target-directory",
   "wrong-target-entry-type",
 ]);
 // These states are expected to be repaired by the destructive reinstall
-// sequence. Type/safety violations still block because update must not guess.
+// sequence. unexpected-managed-directory is also a diagnose conflict, but
+// update can recover it because the recognized marker lets prune --all own it.
+// Type/safety violations still block because update must not guess.
 const updateRecoverableIssueCodes = new Set([
   "missing-target-root",
   "missing-target-entry",
@@ -55,6 +63,7 @@ function buildWrapperEnv(sourceEnv) {
     "PATHEXT",
     "PYTHONDONTWRITEBYTECODE",
     "REQUESTS_CA_BUNDLE",
+    "SSL_CERT_DIR",
     "SSL_CERT_FILE",
     "SystemRoot",
     "TEMP",
@@ -283,18 +292,22 @@ function recursiveSensitiveTargetRepoRoots() {
   return roots.map((path) => resolveExistingOrLexical(path));
 }
 
-function validateTargetRepoRoot(path, sourceRoot) {
-  const resolved = resolveExistingOrLexical(path);
+function validateNotSensitiveRepoRoot(resolved, subject, action) {
   for (const sensitiveRoot of exactSensitiveTargetRepoRoots()) {
     if (resolved === sensitiveRoot) {
-      throw new Error(`Target repo root is protected and cannot be managed: ${resolved}`);
+      throw new Error(`${subject} is protected and cannot be ${action}: ${resolved}`);
     }
   }
   for (const sensitiveRoot of recursiveSensitiveTargetRepoRoots()) {
     if (resolved === sensitiveRoot || pathIsRelativeTo(resolved, sensitiveRoot)) {
-      throw new Error(`Target repo root is protected and cannot be managed: ${resolved}`);
+      throw new Error(`${subject} is protected and cannot be ${action}: ${resolved}`);
     }
   }
+}
+
+function validateTargetRepoRoot(path, sourceRoot) {
+  const resolved = resolveExistingOrLexical(path);
+  validateNotSensitiveRepoRoot(resolved, "Target repo root", "managed");
 
   const tokens = {
     $cwd: process.cwd(),
@@ -316,16 +329,7 @@ function validateTargetRepoRoot(path, sourceRoot) {
 
 function validateSourceRepoRoot(path) {
   const resolved = resolveExistingOrLexical(path);
-  for (const sensitiveRoot of exactSensitiveTargetRepoRoots()) {
-    if (resolved === sensitiveRoot) {
-      throw new Error(`Source repo root is protected and cannot be used: ${resolved}`);
-    }
-  }
-  for (const sensitiveRoot of recursiveSensitiveTargetRepoRoots()) {
-    if (resolved === sensitiveRoot || pathIsRelativeTo(resolved, sensitiveRoot)) {
-      throw new Error(`Source repo root is protected and cannot be used: ${resolved}`);
-    }
-  }
+  validateNotSensitiveRepoRoot(resolved, "Source repo root", "used");
 
   const requiredPaths = [
     join(resolved, "product", "harness", "adapters", "agents", "skills"),
@@ -384,6 +388,32 @@ function isDirectory(path) {
 function isFile(path) {
   const stat = lstatOrNull(path);
   return stat !== null && !stat.isSymbolicLink() && stat.isFile();
+}
+
+function readRegularFileText(path) {
+  const noFollowFlag = constants.O_NOFOLLOW || 0;
+  let fd = null;
+  try {
+    fd = openSync(path, constants.O_RDONLY | noFollowFlag);
+    const stat = fstatSync(fd);
+    if (!stat.isFile()) {
+      const error = new Error(`Path is not a regular file: ${path}`);
+      error.code = "ENOTREG";
+      throw error;
+    }
+    return readFileSync(fd, "utf8");
+  } catch (error) {
+    if (error.code === "ELOOP") {
+      const regularFileError = new Error(`Path is not a regular file: ${path}`);
+      regularFileError.code = "ENOTREG";
+      throw regularFileError;
+    }
+    throw error;
+  } finally {
+    if (fd !== null) {
+      closeSync(fd);
+    }
+  }
 }
 
 function readJsonText(path, missingMessage) {
@@ -589,6 +619,14 @@ function bindingPayloadWithText(binding, loadedPayloads) {
   };
 }
 
+class PayloadLoadError extends Error {
+  constructor(binding, cause) {
+    super(cause.message, { cause });
+    this.name = "PayloadLoadError";
+    this.payloadPath = binding.payloadPath;
+  }
+}
+
 /**
  * Preloads payload JSON and original text by payload path for one deploy pass.
  */
@@ -598,8 +636,7 @@ function loadBindingPayloads(bindings) {
     try {
       loadedPayloads.set(binding.payloadPath, bindingPayloadWithText(binding, null));
     } catch (error) {
-      error.payloadPath = binding.payloadPath;
-      throw error;
+      throw new PayloadLoadError(binding, error);
     }
   }
   return loadedPayloads;
@@ -921,29 +958,38 @@ function knownTargetDirsFromMetadata(bindings, metadataByPayloadPath) {
 }
 
 /**
- * Returns live and legacy target dir names that update may recognize.
+ * Collects live and legacy target dir names that update may recognize.
  */
-function allKnownTargetDirs(bindings, loadedPayloads = null) {
+function collectAllKnownTargetDirs(bindings, loadedPayloads = null) {
   const { metadataByPayloadPath } = collectTargetDirMetadata(bindings, loadedPayloads);
   return knownTargetDirsFromMetadata(bindings, metadataByPayloadPath);
 }
 
-function verifyDeployedSkill(binding, targetRoot, context, loadedPayloads = null) {
-  let payload;
-  let payloadText;
-  let metadata;
-  let payloadFingerprint;
+function loadDeployedSkillState(binding, targetRoot, context, loadedPayloads) {
   try {
     const loadedPayload = bindingPayloadWithText(binding, loadedPayloads);
-    payload = loadedPayload.payload;
-    payloadText = loadedPayload.payloadText;
-    metadata = payloadTargetMetadata(payload, binding);
-    payloadFingerprint = computePayloadFingerprint(binding, context, payload, payloadText, metadata);
+    const payload = loadedPayload.payload;
+    const metadata = payloadTargetMetadata(payload, binding);
+    return {
+      payload,
+      metadata,
+      payloadFingerprint: computePayloadFingerprint(
+        binding,
+        context,
+        payload,
+        loadedPayload.payloadText,
+        metadata,
+      ),
+      targetSkillDir: join(targetRoot, metadata.targetDir),
+    };
   } catch (error) {
-    return [issue("payload-contract-invalid", binding.payloadPath, error.message)];
+    return {
+      issues: [issue("payload-contract-invalid", binding.payloadPath, error.message)],
+    };
   }
+}
 
-  const targetSkillDir = join(targetRoot, metadata.targetDir);
+function verifyDeployedSkillDirectory(binding, targetSkillDir) {
   if (!pathExists(targetSkillDir)) {
     return [
       issue(
@@ -962,24 +1008,32 @@ function verifyDeployedSkill(binding, targetRoot, context, loadedPayloads = null
       ),
     ];
   }
+  return [];
+}
+
+function verifyDeployedMarker(binding, targetSkillDir, payload, payloadFingerprint) {
   const marker = loadRuntimeMarker(join(targetSkillDir, managedSkillMarker));
   if (marker === null) {
-    return [
-      issue(
-        "unrecognized-target-directory",
-        targetSkillDir,
-        `existing deployed directory has no recognized ${managedSkillMarker}`,
-      ),
-    ];
+    return {
+      fatalIssues: [
+        issue(
+          "unrecognized-target-directory",
+          targetSkillDir,
+          `existing deployed directory has no recognized ${managedSkillMarker}`,
+        ),
+      ],
+    };
   }
   if (marker.backend !== "agents" || marker.skill_id !== binding.skillId || marker.payload_version !== payload.payload_version) {
-    return [
-      issue(
-        "unrecognized-target-directory",
-        targetSkillDir,
-        `recognized ${managedSkillMarker} does not match current backend/skill/payload_version`,
-      ),
-    ];
+    return {
+      fatalIssues: [
+        issue(
+          "unrecognized-target-directory",
+          targetSkillDir,
+          `recognized ${managedSkillMarker} does not match current backend/skill/payload_version`,
+        ),
+      ],
+    };
   }
 
   const issues = [];
@@ -1000,6 +1054,37 @@ function verifyDeployedSkill(binding, targetRoot, context, loadedPayloads = null
       ),
     );
   }
+  return {
+    expectedMarker,
+    issues,
+    markerMatchesSource,
+  };
+}
+
+function targetPayloadReadIssue(error, targetPath, relativeName, binding) {
+  if (error.code === "ENOENT") {
+    return issue(
+      "missing-required-payload",
+      targetPath,
+      `missing deployed payload file ${relativeName} for skill ${binding.skillId}`,
+    );
+  }
+  if (error.code === "ENOTREG" || error.code === "EISDIR") {
+    return issue(
+      "wrong-target-entry-type",
+      targetPath,
+      `deployed payload file ${relativeName} must be a real file for skill ${binding.skillId}`,
+    );
+  }
+  return issue(
+    "target-payload-drift",
+    targetPath,
+    `could not read deployed payload file ${relativeName} for skill ${binding.skillId}: ${error.message}`,
+  );
+}
+
+function verifyDeployedPayloadFiles(binding, targetSkillDir, context, payload, metadata, markerState) {
+  const issues = [];
   let canonicalSource = null;
   for (const relativeName of metadata.requiredPayloadFiles) {
     const targetPath = join(targetSkillDir, relativeName);
@@ -1024,7 +1109,14 @@ function verifyDeployedSkill(binding, targetRoot, context, loadedPayloads = null
       continue;
     }
     if (relativeName === managedSkillMarker) {
-      if (markerMatchesSource && readFileSync(targetPath, "utf8") !== runtimeMarkerText(expectedMarker)) {
+      let markerText;
+      try {
+        markerText = readRegularFileText(targetPath);
+      } catch (error) {
+        issues.push(targetPayloadReadIssue(error, targetPath, relativeName, binding));
+        continue;
+      }
+      if (markerState.markerMatchesSource && markerText !== runtimeMarkerText(markerState.expectedMarker)) {
         issues.push(
           issue(
             "target-payload-drift",
@@ -1048,7 +1140,21 @@ function verifyDeployedSkill(binding, targetRoot, context, loadedPayloads = null
       issues.push(issue("payload-contract-invalid", binding.payloadPath, error.message));
       continue;
     }
-    if (readFileSync(sourcePath, "utf8") !== readFileSync(targetPath, "utf8")) {
+    let sourceText;
+    let targetText;
+    try {
+      sourceText = readFileSync(sourcePath, "utf8");
+    } catch (error) {
+      issues.push(issue("payload-contract-invalid", binding.payloadPath, error.message));
+      continue;
+    }
+    try {
+      targetText = readRegularFileText(targetPath);
+    } catch (error) {
+      issues.push(targetPayloadReadIssue(error, targetPath, relativeName, binding));
+      continue;
+    }
+    if (sourceText !== targetText) {
       issues.push(
         issue(
           "target-payload-drift",
@@ -1058,25 +1164,65 @@ function verifyDeployedSkill(binding, targetRoot, context, loadedPayloads = null
       );
     }
   }
+  return issues;
+}
+
+function verifyDeployedTargetEntry(binding, targetSkillDir, metadata) {
   const targetEntry = join(targetSkillDir, metadata.targetEntryName);
   if (!pathExists(targetEntry)) {
-    issues.push(
+    return [
       issue(
         "missing-target-entry",
         targetEntry,
         `missing target entry ${metadata.targetEntryName} for skill ${binding.skillId}`,
       ),
-    );
-  } else if (!isFile(targetEntry)) {
-    issues.push(
+    ];
+  }
+  if (!isFile(targetEntry)) {
+    return [
       issue(
         "wrong-target-entry-type",
         targetEntry,
         `target entry ${metadata.targetEntryName} must be a real file for skill ${binding.skillId}`,
       ),
-    );
+    ];
   }
-  return issues;
+  return [];
+}
+
+function verifyDeployedSkill(binding, targetRoot, context, loadedPayloads = null) {
+  const state = loadDeployedSkillState(binding, targetRoot, context, loadedPayloads);
+  if (state.issues) {
+    return state.issues;
+  }
+
+  const directoryIssues = verifyDeployedSkillDirectory(binding, state.targetSkillDir);
+  if (directoryIssues.length > 0) {
+    return directoryIssues;
+  }
+
+  const markerState = verifyDeployedMarker(
+    binding,
+    state.targetSkillDir,
+    state.payload,
+    state.payloadFingerprint,
+  );
+  if (markerState.fatalIssues) {
+    return markerState.fatalIssues;
+  }
+
+  return [
+    ...markerState.issues,
+    ...verifyDeployedPayloadFiles(
+      binding,
+      state.targetSkillDir,
+      context,
+      state.payload,
+      state.metadata,
+      markerState,
+    ),
+    ...verifyDeployedTargetEntry(binding, state.targetSkillDir, state.metadata),
+  ];
 }
 
 function unexpectedManagedTargetDirs(targetRoot, expectedTargetDirNames, targetChildren) {
@@ -1258,7 +1404,9 @@ function dedupeIssues(issues) {
 /**
  * Builds the dry-run install plan entry for one binding.
  */
-function buildInstallPlan(binding, targetRoot, context, loadedPayloads = null, targetMetadata = null, options = {}) {
+function buildInstallPlan(binding, targetRoot, context, options = {}) {
+  const loadedPayloads = options.loadedPayloads ?? null;
+  const targetMetadata = options.targetMetadata ?? null;
   const includePayloadFingerprint = options.includePayloadFingerprint !== false;
   const resolvedTargetMetadata =
     targetMetadata || payloadTargetMetadata(bindingPayloadObject(binding, loadedPayloads), binding);
@@ -1333,14 +1481,11 @@ function updatePlanSummary(context) {
       const targetMetadata = collectTargetDirMetadata(bindings, loadedPayloads);
       knownTargetDirNames = knownTargetDirsFromMetadata(bindings, targetMetadata.metadataByPayloadPath);
       plans = bindings.map((binding) =>
-        buildInstallPlan(
-          binding,
-          targetRoot,
-          context,
+        buildInstallPlan(binding, targetRoot, context, {
           loadedPayloads,
-          targetMetadata.metadataByPayloadPath.get(binding.payloadPath),
-          { includePayloadFingerprint: false },
-        ),
+          targetMetadata: targetMetadata.metadataByPayloadPath.get(binding.payloadPath),
+          includePayloadFingerprint: false,
+        }),
       );
     } catch (error) {
       planIssues.push(issue("payload-contract-invalid", context.adapterSkillsDir, error.message));
@@ -1751,14 +1896,16 @@ if (require.main === module) {
 }
 
 module.exports = {
-  allKnownTargetDirs,
+  buildNodeAgentsContext,
   buildWrapperEnv,
   buildInstallPlan,
   canonicalSourceMetadata,
+  collectAllKnownTargetDirs,
   collectTargetDirMetadata,
   collectUpdateTargetEntryIssues,
   computePayloadFingerprint,
   dedupeIssues,
+  diagnosticSummary,
   exactSensitiveTargetRepoRoots,
   expectedTargetDirs,
   isUpdateBlockingIssue,

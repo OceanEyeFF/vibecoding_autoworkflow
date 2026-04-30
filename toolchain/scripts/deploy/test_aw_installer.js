@@ -16,6 +16,37 @@ test("pythonCandidates avoids the usually-missing Linux python alias", () => {
   }
 });
 
+test("node-owned summary and context helpers are exported for unit coverage", () => {
+  assert.equal(typeof installer.buildNodeAgentsContext, "function");
+  assert.equal(typeof installer.diagnosticSummary, "function");
+  assert.deepEqual(
+    installer.diagnosticSummary({
+      sourceRoot: "/source",
+      targetRoot: "/missing-target",
+      issues: [],
+      bindings: [],
+      targetChildren: null,
+    }),
+    {
+      backend: "agents",
+      source_root: "/source",
+      target_root: "/missing-target",
+      target_root_status: "missing",
+      target_root_exists: false,
+      binding_count: 0,
+      managed_install_count: 0,
+      managed_installs: [],
+      issue_count: 0,
+      issue_codes: [],
+      issues: [],
+      unrecognized_count: 0,
+      unrecognized: [],
+      conflict_count: 0,
+      conflicts: [],
+    },
+  );
+});
+
 test("path safety policy is loaded from the shared deploy JSON", () => {
   const policy = installer.pathSafetyPolicy();
 
@@ -50,6 +81,7 @@ test("wrapper env strips common credential variables while preserving deploy con
       PATH: "/bin",
       PYTHONDONTWRITEBYTECODE: "0",
       HTTPS_PROXY: "http://proxy",
+      SSL_CERT_DIR: "/etc/ssl/certs",
     }),
     {
       AW_HARNESS_REPO_ROOT: "/repo",
@@ -57,6 +89,7 @@ test("wrapper env strips common credential variables while preserving deploy con
       PATH: "/bin",
       PYTHONDONTWRITEBYTECODE: "0",
       HTTPS_PROXY: "http://proxy",
+      SSL_CERT_DIR: "/etc/ssl/certs",
     },
   );
 });
@@ -211,7 +244,7 @@ test("target dir helpers share duplicate checks and keep legacy dirs only in kno
     ];
 
     assert.deepEqual([...installer.expectedTargetDirs(bindings)].sort(), ["aw-alpha", "aw-beta"]);
-    assert.deepEqual([...installer.allKnownTargetDirs(bindings)].sort(), [
+    assert.deepEqual([...installer.collectAllKnownTargetDirs(bindings)].sort(), [
       "alpha",
       "aw-alpha",
       "aw-beta",
@@ -232,7 +265,7 @@ test("target dir helpers share duplicate checks and keep legacy dirs only in kno
       /Multiple skills map to the same target_dir for backend agents: aw-alpha/,
     );
     assert.throws(
-      () => installer.allKnownTargetDirs(bindings),
+      () => installer.collectAllKnownTargetDirs(bindings),
       /Multiple skills map to the same target_dir for backend agents: aw-alpha/,
     );
   } finally {
@@ -275,12 +308,7 @@ test("buildInstallPlan can reuse cached payload text instead of rereading payloa
     const loadedPayloads = new Map([[payloadPath, { payload, payloadText }]]);
     writeFileSync(payloadPath, "{ invalid json", "utf8");
 
-    const plan = installer.buildInstallPlan(
-      binding,
-      targetRoot,
-      { sourceRoot: root },
-      loadedPayloads,
-    );
+    const plan = installer.buildInstallPlan(binding, targetRoot, { sourceRoot: root }, { loadedPayloads });
 
     assert.equal(plan.targetSkillDir, join(targetRoot, "aw-demo-skill"));
     assert.equal(
