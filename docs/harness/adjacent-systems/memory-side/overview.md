@@ -83,7 +83,7 @@ Knowledge Base
 
 因此：
 
-- `Claude`、`Codex`、`OpenCode`、`OpenClaw` 都只能读取仓库内同一套静态文档
+- `Claude`、`Codex` 等后端都只能读取仓库内同一套静态文档
 - 不允许某个后端在自己的 Skill / Agent / Prompt 中私自维护项目主线真相
 - 后端差异只应体现在“怎么读取和维护文档”，不应体现在“真相是什么”
 

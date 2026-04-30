@@ -74,7 +74,7 @@ Review the emitted file list before approval. It must include:
 
 It must not include:
 
-- `.aw/`, `.agents/`, `.claude/`, `.opencode/`, `.autoworkflow/`, `.spec-workflow/`, or `.nav/` runtime state.
+- `.aw/`, `.agents/`, `.claude/`, `.autoworkflow/`, `.spec-workflow/`, or `.nav/` runtime state.
 - Python caches, pytest caches, `.pyc`, `.pyo`, npm debug logs, temporary evidence directories, or private target repo artifacts.
 - one-off review evidence or old release approval packages that are not current operator truth.
 

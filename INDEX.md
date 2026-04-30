@@ -1,9 +1,9 @@
 ---
 title: "根目录索引"
 status: active
-updated: 2026-04-24
+updated: 2026-04-30
 owner: aw-kernel
-last_verified: 2026-04-24
+last_verified: 2026-04-30
 ---
 # 根目录索引
 
@@ -39,15 +39,15 @@ last_verified: 2026-04-24
 - `product/`：业务代码唯一源码根
 - `docs/`：文档真相与知识主线
 - `toolchain/`：脚本、部署、测试、评测工具
-- `.agents/`、`.claude/`、`.opencode/`：repo-local mount / deploy target
+- `.agents/`、`.claude/`：repo-local mount / deploy target
 - `.autoworkflow/`、`.spec-workflow/`：repo-local state / config
 - `.nav/`：compatibility navigation
+- `tools/`：compatibility shim，真实实现仍归 `toolchain/scripts/test/`
 
 ## 默认先不要读
 
 - `.agents/`
 - `.claude/`
-- `.opencode/`
 - `.autoworkflow/`
 - `.spec-workflow/`
 - `.nav/`

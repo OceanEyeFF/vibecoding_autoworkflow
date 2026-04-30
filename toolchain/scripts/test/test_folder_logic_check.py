@@ -123,6 +123,21 @@ def test_root_unknown_directory_fails(tmp_path: Path) -> None:
     assert "scratch" in issue_paths(report)
 
 
+def test_local_ignored_root_directory_does_not_define_repo_structure(tmp_path: Path) -> None:
+    repo_root = create_valid_repo(tmp_path)
+    (repo_root / "local-tool-cache").mkdir()
+    exclude_path = repo_root / ".git/info/exclude"
+    exclude_path.write_text(
+        f"{exclude_path.read_text(encoding='utf-8')}local-tool-cache/\n",
+        encoding="utf-8",
+    )
+
+    report = run_checks(repo_root)
+
+    assert "FL001" not in issue_codes(report)
+    assert "local-tool-cache" not in issue_paths(report)
+
+
 def test_tools_must_be_declared_as_compat_shim(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
     rules = FolderRules(root_allowed_names=set(FolderRules().root_allowed_names) - {"tools"})

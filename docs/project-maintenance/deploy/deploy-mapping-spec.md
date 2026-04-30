@@ -1,9 +1,9 @@
 ---
 title: "Deploy Mapping Spec"
 status: active
-updated: 2026-04-29
+updated: 2026-04-30
 owner: aw-kernel
-last_verified: 2026-04-29
+last_verified: 2026-04-30
 ---
 # Deploy Mapping Spec
 
@@ -34,7 +34,7 @@ last_verified: 2026-04-29
 - 旧 `local/global` deploy mode
 - `.aw_template/` 生成 `.aw/` 目录结构与管理文档的实现细节
 - payload contract / template tooling / deploy 阶段的具体实现
-- `claude` / `opencode` 等后端的后续细节
+- `claude` 等后端的后续细节
 
 ## 二、术语与链路
 

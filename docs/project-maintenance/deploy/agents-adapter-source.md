@@ -28,7 +28,7 @@ last_verified: 2026-04-28
 
 - deploy target 的实现细节
 - `adapter_deploy.py` 的内部状态机
-- `claude` / `opencode` backend 的 payload source
+- `claude` backend 的 payload source
 - 非 `agents` backend 的 adapter 扩展
 
 ## 二、目录落点

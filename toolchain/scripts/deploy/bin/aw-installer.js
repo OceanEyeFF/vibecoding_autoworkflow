@@ -14,6 +14,7 @@ const { createHash } = require("node:crypto");
 const readline = require("node:readline");
 
 const wrapperPath = join(__dirname, "..", "harness_deploy.py");
+const pathSafetyPolicyPath = join(__dirname, "..", "path_safety_policy.json");
 const defaultWrapperTimeoutMs = 300_000;
 const wrapperTimeoutMs = readWrapperTimeoutMs();
 const env = {
@@ -31,6 +32,7 @@ const conflictIssueCodes = new Set([
   "unrecognized-target-directory",
   "wrong-target-entry-type",
 ]);
+let cachedPathSafetyPolicy = null;
 
 function readWrapperTimeoutMs() {
   const parsedTimeout = Number.parseInt(
@@ -53,7 +55,6 @@ function pythonCandidates() {
   }
   return [
     { command: "python3", args: [] },
-    { command: "python", args: [] },
   ];
 }
 
@@ -203,17 +204,37 @@ function pathIsRelativeTo(path, parent) {
   return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
 }
 
+function pathSafetyPolicy() {
+  if (cachedPathSafetyPolicy !== null) {
+    return cachedPathSafetyPolicy;
+  }
+  cachedPathSafetyPolicy = readJsonObject(pathSafetyPolicyPath);
+  return cachedPathSafetyPolicy;
+}
+
+function pathSafetyPolicyStringList(fieldName) {
+  const value = pathSafetyPolicy()[fieldName];
+  if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
+    throw new Error(`path safety policy field must be a string array: ${fieldName}`);
+  }
+  return value;
+}
+
 function exactSensitiveTargetRepoRoots() {
-  return ["/", "/bin", "/boot", "/etc", "/lib", "/lib64", "/sbin", "/usr"].map((path) =>
+  return pathSafetyPolicyStringList("exact_sensitive_target_repo_roots").map((path) =>
     resolveExistingOrLexical(path),
   );
 }
 
 function recursiveSensitiveTargetRepoRoots() {
   const home = process.env.HOME || "";
-  const roots = ["/dev", "/proc", "/run", "/sys"];
+  const roots = [...pathSafetyPolicyStringList("recursive_sensitive_target_repo_roots")];
   if (home) {
-    roots.push(join(home, ".aws"), join(home, ".config"), join(home, ".gnupg"), join(home, ".ssh"));
+    roots.push(
+      ...pathSafetyPolicyStringList("home_relative_recursive_sensitive_target_repo_roots").map(
+        (path) => join(home, path),
+      ),
+    );
   }
   return roots.map((path) => resolveExistingOrLexical(path));
 }
@@ -231,13 +252,13 @@ function validateTargetRepoRoot(path, sourceRoot) {
     }
   }
 
-  const allowedPrefixes = [
-    process.cwd(),
-    sourceRoot,
-    process.env.HOME || "",
-    "/tmp",
-    "/var/tmp",
-  ]
+  const tokens = {
+    $cwd: process.cwd(),
+    $source_root: sourceRoot,
+    $home: process.env.HOME || "",
+  };
+  const allowedPrefixes = pathSafetyPolicyStringList("allowed_target_repo_root_prefixes")
+    .map((entry) => tokens[entry] || entry)
     .filter(Boolean)
     .map((candidate) => resolveExistingOrLexical(candidate));
   const uniqueAllowedPrefixes = [...new Set(allowedPrefixes)];
@@ -1321,11 +1342,29 @@ async function main() {
   return await runWrapper(args);
 }
 
-main()
-  .then((status) => {
-    process.exit(status);
-  })
-  .catch((error) => {
-    console.error(`aw-installer failed: ${error.message}`);
-    process.exit(1);
-  });
+if (require.main === module) {
+  main()
+    .then((status) => {
+      process.exit(status);
+    })
+    .catch((error) => {
+      console.error(`aw-installer failed: ${error.message}`);
+      process.exit(1);
+    });
+}
+
+module.exports = {
+  canonicalSourceMetadata,
+  computePayloadFingerprint,
+  exactSensitiveTargetRepoRoots,
+  loadRuntimeMarker,
+  normalizeRelativePath,
+  parseNodeDiagnoseJsonArgs,
+  pathSafetyPolicy,
+  payloadTargetMetadata,
+  pythonCandidates,
+  recursiveSensitiveTargetRepoRoots,
+  resolveExistingOrLexical,
+  validateSourceRepoRoot,
+  validateTargetRepoRoot,
+};

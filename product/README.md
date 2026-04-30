@@ -16,8 +16,8 @@
 
 规则：
 
-- 业务源码只改这里，不直接改 `.claude/`、`.agents/` 或 `.opencode/`
-- `.claude/`、`.agents/` 与 `.opencode/` 只作为 repo-local deploy target
+- 业务源码只改这里，不直接改 `.claude/` 或 `.agents/`
+- `.claude/` 与 `.agents/` 只作为 repo-local deploy target
 - 本地或全局部署统一走 `toolchain/scripts/deploy/adapter_deploy.py`
 - 新的 Harness ontology 仍落在 `docs/harness/`
 - 新的 Harness executable source 应进入 `product/harness/`

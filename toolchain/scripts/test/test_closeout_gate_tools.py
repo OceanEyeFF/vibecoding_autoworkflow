@@ -21,6 +21,27 @@ def test_local_deploy_target_roots_match_supported_verify_backends() -> None:
     )
 
 
+def test_npm_pack_tarball_result_script_resolves_single_pack_result(tmp_path: Path) -> None:
+    if shutil.which("node") is None:
+        pytest.skip("node is not available")
+    pack_json = tmp_path / "pack.json"
+    pack_json.write_text(
+        json.dumps([{"filename": "aw-installer-0.0.0.tgz"}]),
+        encoding="utf-8",
+    )
+    script = Path(__file__).resolve().parent / "npm_pack_tarball_result.js"
+
+    completed = subprocess.run(
+        ["node", str(script), str(pack_json), str(tmp_path)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout == f"{tmp_path / 'aw-installer-0.0.0.tgz'}\n"
+
+
 NPM_HELP_STDOUT = (
     "usage: aw-installer [tui|<deploy-mode>] [options]\n"
     "harness_deploy.py\n"
@@ -250,6 +271,7 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
     result = check_scope(
         [
             "AGENTS.md",
+            "INDEX.md",
             "CONTRIBUTING.md",
             ".codex/config.toml",
             ".github/workflows/ci.yml",
@@ -257,6 +279,7 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "docs/harness/README.md",
             "docs/project-maintenance/README.md",
             "product/README.md",
+            "product/harness/README.md",
             "docs/project-maintenance/governance/review-verify-handbook.md",
             "docs/project-maintenance/governance/path-governance-checks.md",
             ".autoworkflow/closeout/demo/summary.json",
@@ -271,14 +294,17 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "toolchain/scripts/deploy/bin/aw-harness-deploy.js",
             "toolchain/scripts/deploy/harness_deploy.py",
             "toolchain/scripts/deploy/package.json",
+            "toolchain/scripts/deploy/path_safety_policy.json",
             "toolchain/scripts/deploy/README.md",
             "toolchain/scripts/deploy/test_adapter_deploy.py",
+            "toolchain/scripts/deploy/test_aw_installer.js",
             "toolchain/scripts/deploy/test_aw_scaffold.py",
             "toolchain/scripts/test/scope_gate_check.py",
             "tools/scope_gate_check.py",
         ],
         (
             "AGENTS.md",
+            "INDEX.md",
             "CONTRIBUTING.md",
             ".codex/",
             ".github/",
@@ -288,6 +314,7 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "docs/project-maintenance/",
             "docs/harness/",
             "product/README.md",
+            "product/harness/README.md",
             "product/.aw_template/",
             "product/harness/skills/",
             "product/harness/adapters/",
@@ -297,8 +324,10 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "toolchain/scripts/deploy/bin/",
             "toolchain/scripts/deploy/harness_deploy.py",
             "toolchain/scripts/deploy/package.json",
+            "toolchain/scripts/deploy/path_safety_policy.json",
             "toolchain/scripts/deploy/README.md",
             "toolchain/scripts/deploy/test_adapter_deploy.py",
+            "toolchain/scripts/deploy/test_aw_installer.js",
             "toolchain/scripts/deploy/test_aw_scaffold.py",
             "toolchain/scripts/test/",
             "tools/scope_gate_check.py",
@@ -485,6 +514,7 @@ def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path
     assert "docs/project-maintenance/README.md" in command
     assert "docs/harness/" in command
     assert "product/README.md" in command
+    assert "product/harness/README.md" in command
     assert "docs/project-maintenance/foundations/root-directory-layering.md" in command
     assert "toolchain/toolchain-layering.md" in command
     assert "docs/project-maintenance/governance/review-verify-handbook.md" in command
@@ -619,15 +649,16 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
         "governance_semantic_tests",
         "agents_adapter_contract_tests",
         "deploy_regression_tests",
+        "deploy_package_unit_tests",
         "repo_analysis_contract_check",
         "npm_pack_dry_run_aw_installer",
-        "npm_tarball_smoke_aw_installer",
     ]
     assert any(command[-1] == "toolchain/scripts/test/test_folder_logic_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_path_governance_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_governance_semantic_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_agents_adapter_contract.py" for command in commands)
     assert any(command[:4] == [sys.executable, "-m", "unittest", "discover"] for command in commands)
+    assert any(command == ["npm", "--prefix", "toolchain/scripts/deploy", "test", "--silent"] for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/repo_analysis_contract_check.py" for command in commands)
     assert any(
         command == ["npm", "pack", "--dry-run", "--json"]

@@ -117,10 +117,6 @@ mkdir -p "$target_repo"
 
 CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 scaffold smoke、本地 scaffold pack/tarball smoke、根 package pack dry-run、根 package publish dry-run，以及无 `AW_HARNESS_REPO_ROOT` 的根 `.tgz` help / version / TUI non-interactive guard / diagnose / update dry-run / install / verify / update apply smoke。该 CI 覆盖验证 package envelope 和 publish preflight，不代表 npm release channel 已发布；真实 release 还必须通过 release-channel guard。
 
-暂不实现：
-
-- `opencode`
-
 当前边界说明：
 
 - 当前实现 `agents`，并提供 `claude` compatibility backend 的 `set-harness-goal-skill` payload
@@ -225,4 +221,4 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ver
 - skills / `.aw_template` 的增删改查：查看 [skill-lifecycle.md](./skill-lifecycle.md)
 - 原始来源、后端部署包、目标入口的正式规则：查看 [Deploy Mapping Spec](./deploy-mapping-spec.md)
 - package payload、source/target root 和 update trust boundary：查看 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md)
-- `claude` 当前只实现受控的 `set-harness-goal-skill` compatibility payload；不要把它写成完整 Harness skill set 分发。`opencode` 当前仍不在部署接口中实现。
+- `claude` 当前只实现受控的 `set-harness-goal-skill` compatibility payload；不要把它写成完整 Harness skill set 分发。

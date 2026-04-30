@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import filecmp
 import hashlib
 import json
 import os
@@ -16,6 +17,7 @@ import urllib.parse
 import urllib.request
 import zipfile
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Callable, Iterator, Mapping, Sequence
 
@@ -30,6 +32,7 @@ GITHUB_SHA_REF_PATTERN = re.compile(r"^[0-9a-fA-F]{40}$")
 SHA256_HEX_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
 DEFAULT_GITHUB_REPO = "OceanEyeFF/vibecoding_autoworkflow"
 SUPPORTED_BACKENDS = ("agents", "claude")
+PATH_SAFETY_POLICY_PATH = Path(__file__).with_name("path_safety_policy.json")
 
 
 def path_is_relative_to(path: Path, parent: Path) -> bool:
@@ -47,40 +50,52 @@ def relative_posix_path(path: Path, parent: Path) -> str:
         return path.as_posix()
 
 
+@lru_cache(maxsize=1)
+def path_safety_policy() -> dict[str, Any]:
+    try:
+        text = PATH_SAFETY_POLICY_PATH.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise DeployError(f"Missing path safety policy: {PATH_SAFETY_POLICY_PATH}") from exc
+    return parse_json_object(text, PATH_SAFETY_POLICY_PATH)
+
+
+def path_safety_policy_string_list(field_name: str) -> list[str]:
+    value = path_safety_policy().get(field_name)
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise DeployError(f"path safety policy field must be a string array: {field_name}")
+    return value
+
+
 def exact_sensitive_target_repo_roots() -> tuple[Path, ...]:
-    roots = [
-        Path("/"),
-        Path("/bin"),
-        Path("/boot"),
-        Path("/etc"),
-        Path("/lib"),
-        Path("/lib64"),
-        Path("/sbin"),
-        Path("/usr"),
-    ]
+    roots = [Path(root) for root in path_safety_policy_string_list("exact_sensitive_target_repo_roots")]
     return tuple(root.resolve() for root in roots)
 
 
 def recursive_sensitive_target_repo_roots() -> tuple[Path, ...]:
     roots = [
-        Path("/dev"),
-        Path("/proc"),
-        Path("/run"),
-        Path("/sys"),
+        Path(root)
+        for root in path_safety_policy_string_list("recursive_sensitive_target_repo_roots")
     ]
     home = Path.home().expanduser()
-    roots.extend(home / name for name in (".aws", ".config", ".gnupg", ".ssh"))
+    roots.extend(
+        home / name
+        for name in path_safety_policy_string_list(
+            "home_relative_recursive_sensitive_target_repo_roots"
+        )
+    )
     return tuple(root.resolve() for root in roots)
 
 
 def allowed_target_repo_root_prefixes(source_root: Path) -> tuple[Path, ...]:
-    candidates = [
-        Path.cwd(),
-        source_root,
-        Path.home(),
-        Path("/tmp"),
-        Path("/var/tmp"),
-    ]
+    token_values = {
+        "$cwd": Path.cwd(),
+        "$source_root": source_root,
+        "$home": Path.home(),
+    }
+    candidates: list[Path] = []
+    for entry in path_safety_policy_string_list("allowed_target_repo_root_prefixes"):
+        candidate = token_values.get(entry, Path(entry))
+        candidates.append(candidate)
     return tuple(dict.fromkeys(candidate.expanduser().resolve() for candidate in candidates))
 
 
@@ -169,6 +184,11 @@ class DeployContext:
         compare=False,
         repr=False,
     )
+    payload_text_cache: dict[Path, tuple[dict[str, Any], str]] = field(
+        default_factory=dict,
+        compare=False,
+        repr=False,
+    )
 
 
 def build_deploy_context(
@@ -244,15 +264,16 @@ def validate_supported_backend_map(name: str, mapping: Mapping[str, object]) -> 
     if configured != supported:
         missing = ", ".join(sorted(supported - configured)) or "none"
         extra = ", ".join(sorted(configured - supported)) or "none"
-        raise RuntimeError(
+        raise DeployError(
             f"{name} must define exactly SUPPORTED_BACKENDS; missing: {missing}; extra: {extra}"
         )
 
 
-validate_supported_backend_map("EXPECTED_PAYLOAD_POLICIES", EXPECTED_PAYLOAD_POLICIES)
-validate_supported_backend_map("EXPECTED_REFERENCE_DISTRIBUTION", EXPECTED_REFERENCE_DISTRIBUTION)
-validate_supported_backend_map("EXPECTED_PAYLOAD_VERSIONS", EXPECTED_PAYLOAD_VERSIONS)
-validate_supported_backend_map("BACKEND_TARGET_ROOT_ARGS", BACKEND_TARGET_ROOT_ARGS)
+def validate_static_deploy_configuration() -> None:
+    validate_supported_backend_map("EXPECTED_PAYLOAD_POLICIES", EXPECTED_PAYLOAD_POLICIES)
+    validate_supported_backend_map("EXPECTED_REFERENCE_DISTRIBUTION", EXPECTED_REFERENCE_DISTRIBUTION)
+    validate_supported_backend_map("EXPECTED_PAYLOAD_VERSIONS", EXPECTED_PAYLOAD_VERSIONS)
+    validate_supported_backend_map("BACKEND_TARGET_ROOT_ARGS", BACKEND_TARGET_ROOT_ARGS)
 
 PAYLOAD_DESCRIPTOR = "payload.json"
 MANAGED_SKILL_MARKER = "aw.marker"
@@ -775,8 +796,19 @@ def load_json_file(path: Path) -> dict[str, Any]:
     return load_json_text_file(path)[0]
 
 
-def load_binding_payload_with_text(binding: SkillBinding) -> tuple[dict[str, Any], str]:
-    return load_json_text_file(binding.payload_path)
+def load_binding_payload_with_text(
+    binding: SkillBinding,
+    context: DeployContext | None = None,
+) -> tuple[dict[str, Any], str]:
+    if context is None:
+        return load_json_text_file(binding.payload_path)
+
+    cached = context.payload_text_cache.get(binding.payload_path)
+    if cached is not None:
+        return cached
+    loaded = load_json_text_file(binding.payload_path)
+    context.payload_text_cache[binding.payload_path] = loaded
+    return loaded
 
 
 def string_list(value: object) -> list[str] | None:
@@ -947,15 +979,21 @@ def payload_target_metadata(payload: dict[str, Any], binding: SkillBinding) -> P
     )
 
 
-def load_binding_target_metadata(binding: SkillBinding) -> PayloadTargetMetadata:
-    return payload_target_metadata(load_json_file(binding.payload_path), binding)
+def load_binding_target_metadata(
+    binding: SkillBinding,
+    context: DeployContext | None = None,
+) -> PayloadTargetMetadata:
+    return payload_target_metadata(load_binding_payload(binding, context=context), binding)
 
 
-def current_target_dirs_by_skill_id(bindings: list[SkillBinding]) -> dict[str, str]:
+def current_target_dirs_by_skill_id(
+    bindings: list[SkillBinding],
+    context: DeployContext | None = None,
+) -> dict[str, str]:
     target_dirs: set[str] = set()
     target_dirs_by_skill_id: dict[str, str] = {}
     for binding in bindings:
-        target_dir = load_binding_target_metadata(binding).target_dir
+        target_dir = load_binding_target_metadata(binding, context=context).target_dir
         if target_dir in target_dirs:
             raise DeployError(
                 f"Multiple skills map to the same target_dir for backend {binding.backend}: {target_dir}"
@@ -965,17 +1003,23 @@ def current_target_dirs_by_skill_id(bindings: list[SkillBinding]) -> dict[str, s
     return target_dirs_by_skill_id
 
 
-def expected_target_dirs(bindings: list[SkillBinding]) -> set[str]:
-    return set(current_target_dirs_by_skill_id(bindings).values())
+def expected_target_dirs(
+    bindings: list[SkillBinding],
+    context: DeployContext | None = None,
+) -> set[str]:
+    return set(current_target_dirs_by_skill_id(bindings, context=context).values())
 
 
-def all_known_target_dirs(bindings: list[SkillBinding]) -> set[str]:
+def all_known_target_dirs(
+    bindings: list[SkillBinding],
+    context: DeployContext | None = None,
+) -> set[str]:
     """Return all target directory names known to belong to current bindings,
     including both current target_dirs and legacy_target_dirs."""
     target_dirs: set[str] = set()
     known: set[str] = set()
     for binding in bindings:
-        metadata = load_binding_target_metadata(binding)
+        metadata = load_binding_target_metadata(binding, context=context)
         if metadata.target_dir in target_dirs:
             raise DeployError(
                 f"Multiple skills map to the same target_dir for backend {binding.backend}: "
@@ -991,8 +1035,11 @@ def managed_skill_marker_path(target_skill_dir: Path) -> Path:
     return target_skill_dir / MANAGED_SKILL_MARKER
 
 
-def load_binding_payload(binding: SkillBinding) -> dict[str, Any]:
-    return load_json_file(binding.payload_path)
+def load_binding_payload(
+    binding: SkillBinding,
+    context: DeployContext | None = None,
+) -> dict[str, Any]:
+    return load_binding_payload_with_text(binding, context=context)[0]
 
 
 def payload_version_from_descriptor(payload: dict[str, Any], *, binding: SkillBinding) -> str:
@@ -1070,7 +1117,7 @@ def canonical_source_files_by_target_relative_path(
     payload: dict[str, Any] | None = None,
 ) -> dict[str, Path]:
     if payload is None:
-        payload = load_binding_payload(binding)
+        payload = load_binding_payload(binding, context=context)
     return payload_canonical_source_metadata(
         payload,
         binding,
@@ -1157,7 +1204,7 @@ def compute_payload_fingerprint(
     payload_text: str | None = None,
 ) -> str:
     if payload is None:
-        payload, loaded_payload_text = load_binding_payload_with_text(binding)
+        payload, loaded_payload_text = load_binding_payload_with_text(binding, context=context)
         if payload_text is None:
             payload_text = loaded_payload_text
 
@@ -1292,7 +1339,7 @@ def build_install_plan(
     target_root: Path,
     context: DeployContext,
 ) -> InstallPlan:
-    payload, payload_text = load_binding_payload_with_text(binding)
+    payload, payload_text = load_binding_payload_with_text(binding, context=context)
     target_metadata = payload_target_metadata(payload, binding)
     payload_version = payload_version_from_descriptor(payload, binding=binding)
     return InstallPlan(
@@ -1598,7 +1645,7 @@ def install_backend_payloads(backend: str, args: argparse.Namespace, context: De
     target_root = target_root_for(backend, args, context)
     ensure_target_root_ready_for_action(backend, target_root, action="install")
 
-    current_target_dirs_by_skill_id(bindings)
+    current_target_dirs_by_skill_id(bindings, context=context)
     plans = [build_install_plan(binding, target_root, context) for binding in bindings]
     conflicts = collect_path_conflicts(plans)
     conflicts.extend(collect_legacy_path_conflicts(plans, target_root))
@@ -1624,7 +1671,7 @@ def install_backend_payloads(backend: str, args: argparse.Namespace, context: De
         binding = plan.binding
         target_metadata = plan.target_metadata
         target_skill_dir = plan.target_skill_dir
-        payload = load_binding_payload(binding)
+        payload = load_binding_payload(binding, context=context)
         target_skill_dir.mkdir(parents=True, exist_ok=False)
         for relative_name in target_metadata.required_payload_files:
             target_path = target_skill_dir / relative_name
@@ -1665,7 +1712,7 @@ def check_backend_target_paths(
     target_root = target_root_for(backend, args, context)
     ensure_target_root_ready_for_action(backend, target_root, action="check target paths")
 
-    current_target_dirs_by_skill_id(bindings)
+    current_target_dirs_by_skill_id(bindings, context=context)
     plans = [build_install_plan(binding, target_root, context) for binding in bindings]
     conflicts = collect_path_conflicts(plans)
     conflicts.extend(collect_legacy_path_conflicts(plans, target_root))
@@ -1742,7 +1789,7 @@ def verify_deployed_skill(
             )
         ]
 
-    skill_payload = load_binding_payload(binding)
+    skill_payload = load_binding_payload(binding, context=context)
     expected_marker = build_runtime_marker(
         plan.binding.backend,
         plan.binding.skill_id,
@@ -1806,7 +1853,7 @@ def verify_deployed_skill(
             context,
             payload=skill_payload,
         )
-        if source_path.read_text(encoding="utf-8") != target_path.read_text(encoding="utf-8"):
+        if not filecmp.cmp(source_path, target_path, shallow=False):
             issues.append(
                 VerifyIssue(
                     code="target-payload-drift",
@@ -1911,7 +1958,7 @@ def verify_backend(backend: str, args: argparse.Namespace, context: DeployContex
     expected_target_dir_names: set[str] = set()
     if not issues:
         try:
-            expected_target_dir_names = expected_target_dirs(bindings)
+            expected_target_dir_names = expected_target_dirs(bindings, context=context)
         except DeployError as exc:
             issues.append(
                 VerifyIssue(
@@ -1969,12 +2016,28 @@ def prune_all_managed_target_dirs(
 
     removed_count = 0
     for child in iter_target_root_children(target_root, "managed install pruning"):
+        try:
+            child_stat = child.stat(follow_symlinks=False)
+        except FileNotFoundError:
+            continue
         if child.is_symlink() or not child.is_dir():
             continue
 
         marker = load_runtime_marker(managed_skill_marker_path(child))
         if marker is None or marker.backend != backend:
             continue
+
+        try:
+            current_stat = child.stat(follow_symlinks=False)
+        except FileNotFoundError:
+            continue
+        if (
+            current_stat.st_dev != child_stat.st_dev
+            or current_stat.st_ino != child_stat.st_ino
+            or child.is_symlink()
+            or not child.is_dir()
+        ):
+            raise DeployError(f"Managed skill dir changed during pruning, refusing to remove: {child}")
 
         try:
             shutil.rmtree(child)
@@ -2195,7 +2258,7 @@ def update_plan_summary(
         )
     else:
         try:
-            known_target_dir_names = all_known_target_dirs(bindings)
+            known_target_dir_names = all_known_target_dirs(bindings, context=context)
             plans = [build_install_plan(binding, target_root, context) for binding in bindings]
         except DeployError as exc:
             plan_issues.append(
@@ -2375,6 +2438,7 @@ def main(
     description: str | None = None,
 ) -> int:
     try:
+        validate_static_deploy_configuration()
         args = parse_args(argv, prog=prog, description=description)
         with source_root_for_args(args) as (source_root_override, source_kind, source_ref):
             context = deploy_context_from_env(

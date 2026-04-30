@@ -40,7 +40,7 @@ npx aw-installer@next install --backend agents
 
 这里的 `aw-installer@next` 是当前已发布 RC 试用选择器；裸 `npx aw-installer` 仍按 npm `latest` 解析到较旧的 rc1。当前 RC 不是稳定 release 批准，稳定版本和未来 publish 仍需单独审批。`diagnose` 和 `verify` 是只读检查；`install` 是显式写入当前 payload 的底层命令；`update` 默认只输出 dry-run plan。推荐写入路径是在确认 plan 后运行 `update --yes`，它会按 `prune --all -> check_paths_exist -> install -> verify` 写入目标仓库的 `.agents/skills`。完整入口合同见 [`Distribution Entrypoint Contract`](./docs/project-maintenance/deploy/distribution-entrypoint-contract.md)，registry npx smoke 与反馈日志见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
 
-`aw-installer --help` / `--version` 由 Node wrapper 直接处理，不需要启动 Python；`aw-installer diagnose --backend agents --json` 当前也有 Node-owned 只读路径。其他 deploy modes（例如 `verify`、`install`、`update`、`prune`，以及未列入 Node-owned 子集的 diagnose 变体）仍通过 Python deploy wrapper 执行；`0.4.1-rc.3` 在 Windows 上按 `py -3`、`python`、`python3` 尝试，在 Linux/macOS 上按 `python3`、`python` 尝试，且不依赖 `PYTHON` 或 `PYTHON3` 环境变量覆盖。论坛试用应显式使用 `aw-installer@next`，避免裸 `latest` 解析到较旧的 rc1。
+`aw-installer --help` / `--version` 由 Node wrapper 直接处理，不需要启动 Python；`aw-installer diagnose --backend agents --json` 当前也有 Node-owned 只读路径。其他 deploy modes（例如 `verify`、`install`、`update`、`prune`，以及未列入 Node-owned 子集的 diagnose 变体）仍通过 Python deploy wrapper 执行；`0.4.1-rc.3` 在 Windows 上按 `py -3`、`python`、`python3` 尝试，在 Linux/macOS 上只尝试 `python3`，且不依赖 `PYTHON` 或 `PYTHON3` 环境变量覆盖。论坛试用应显式使用 `aw-installer@next`，避免裸 `latest` 解析到较旧的 rc1。
 
 `aw-installer update` 默认使用 package 或 checkout 中的 source payload；当前 candidate 保留显式 `--source github --github-repo OceanEyeFF/vibecoding_autoworkflow --github-ref <ref-containing-current-payload>`，从 GitHub source archive 读取本次 update 的 source root。`master` 只有在已包含当前 required payload source 时才是有效 ref。`update` 仍不做 channel 解析、自升级、验签或自动回滚。payload provenance 与 update trust boundary 见 [`Payload Provenance And Update Trust Boundary`](./docs/project-maintenance/deploy/payload-provenance-trust-boundary.md)。
 
@@ -129,7 +129,7 @@ AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package 
 
 这三块之外：
 
-- `.agents/`、`.claude/`、`.opencode/` 是 repo-local deploy target
+- `.agents/`、`.claude/` 是 repo-local deploy target
 - `.autoworkflow/`、`.spec-workflow/` 是 repo-local state / config
 - `.nav/` 只是 compatibility navigation，不是结构定义层
 
@@ -241,7 +241,7 @@ Writeback & Cleanup
 
 ## 当前提醒
 
-- `.agents/`、`.claude/`、`.opencode/` 只是 deploy target，不是源码层或真相层
+- `.agents/`、`.claude/` 只是 deploy target，不是源码层或真相层
 - `.autoworkflow/`、`.spec-workflow/` 只是 repo-local state / config，不是默认阅读主线
 - `.nav/` 只是 compatibility navigation，不是结构定义层
 - 某个后端的 prompt / wrapper 不能替代跨后端共享 truth

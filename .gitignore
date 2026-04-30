@@ -7,7 +7,6 @@
 # Repo-local install/mount targets remain ignored by default.
 .agents/
 .claude/
-.opencode/
 
 # Official documentation mirror (auto-fetched, do not commit)
 Claude_Official_Docs/

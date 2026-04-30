@@ -8,7 +8,7 @@
 - 当前仓库以 AI coding 的 repo-side contract layer 形态承接这个目标。
 - `docs/` 负责 truth boundary，`product/` 负责 canonical skills 与 adapters，`toolchain/` 负责部署、评测与治理脚本。
 - `Harness` 现在是一级认知与文档域；`memory-side` 与 `task-interface` 作为 Harness 的 adjacent systems 存在，而不是 Harness 本体。
-- `.agents/`、`.claude/`、`.opencode/` 只是 deploy target，不是源码层。
+- `.agents/`、`.claude/` 只是 deploy target，不是源码层。
 - 如果一个新目录说不清 owner 和层级，不要直接加到根目录。
 
 ## Read First
@@ -39,7 +39,6 @@
 - `do_not_read_yet`：
   - `.agents/`
   - `.claude/`
-  - `.opencode/`
   - `.autoworkflow/`
   - `.spec-workflow/`
   - `.nav/`
@@ -104,7 +103,7 @@
 - 项目维护与治理正文写到 `docs/project-maintenance/`。
 - Harness doctrine、workflow family 与 adjacent-system 合同写到 `docs/harness/`。
 - template / checklist 只在它们能稳定承接执行时才保留。
-- 不要把项目真相写进 `.agents/`、`.claude/`、`.opencode/`、`.nav/`。
+- 不要把项目真相写进 `.agents/`、`.claude/`、`.nav/`。
 
 ## Current Warnings
 

@@ -14,7 +14,7 @@ from harness_scope_gate import (
 
 
 INCLUDE_PREFIXES = ["product/", "docs/", "toolchain/"]
-EXCLUDE_PREFIXES = [".agents/", ".autoworkflow/", ".claude/", ".opencode/", ".spec-workflow/"]
+EXCLUDE_PREFIXES = [".agents/", ".autoworkflow/", ".claude/", ".spec-workflow/"]
 SCRIPT_PATH = Path(__file__).resolve().with_name("harness_scope_gate.py")
 
 
@@ -33,7 +33,6 @@ def write_harness(path: Path, *, task_source_ref: str = "pending") -> None:
             "      - .agents/\n"
             "      - .autoworkflow/\n"
             "      - .claude/\n"
-            "      - .opencode/\n"
             "      - .spec-workflow/\n"
             "runtime:\n"
             f"  task_source_ref: {task_source_ref}\n"

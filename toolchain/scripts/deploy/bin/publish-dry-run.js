@@ -24,13 +24,14 @@ function main() {
     return 1;
   }
 
+  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
   const completed = spawnSync(
-    "npm",
+    npmCommand,
     ["publish", "--dry-run", "--json", "--tag", releaseChannel],
     {
       cwd: process.cwd(),
       env: process.env,
-      shell: process.platform === "win32",
+      shell: false,
       stdio: "inherit",
     },
   );

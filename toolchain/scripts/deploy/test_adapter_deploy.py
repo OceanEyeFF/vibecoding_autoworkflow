@@ -461,6 +461,35 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(args.backend, "claude")
         self.assertIn("claude", adapter_deploy.SUPPORTED_BACKENDS)
 
+    def test_python_adapter_uses_shared_path_safety_policy(self) -> None:
+        policy = adapter_deploy.path_safety_policy()
+
+        self.assertIn("/etc", policy["exact_sensitive_target_repo_roots"])
+        self.assertIn("/proc", policy["recursive_sensitive_target_repo_roots"])
+        self.assertIn(".ssh", policy["home_relative_recursive_sensitive_target_repo_roots"])
+        self.assertIn("$source_root", policy["allowed_target_repo_root_prefixes"])
+
+    def test_adapter_deploy_import_does_not_run_static_configuration_validation(self) -> None:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                (
+                    "import sys; "
+                    f"sys.path.insert(0, {json.dumps(str(Path(adapter_deploy.__file__).parent))}); "
+                    "import adapter_deploy; "
+                    "adapter_deploy.EXPECTED_PAYLOAD_POLICIES = {}; "
+                    "print('imported')"
+                ),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stdout, "imported\n")
+
     def test_claude_default_target_root_is_claude_skills(self) -> None:
         code, stdout, stderr = self._run_cli(
             "diagnose",
@@ -701,7 +730,6 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("verify", help_text)
         self.assertIn("install", help_text)
         self.assertIn("update", help_text)
-        self.assertNotIn("opencode", help_text.lower())
         self.assertEqual(stderr.getvalue(), "")
 
     def test_local_npm_package_metadata_exposes_installer_bin_and_legacy_alias(self) -> None:
@@ -741,6 +769,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("product/harness/adapters/claude/skills", package["files"])
         self.assertIn("toolchain/scripts/deploy/harness_deploy.py", package["files"])
         self.assertIn("toolchain/scripts/deploy/adapter_deploy.py", package["files"])
+        self.assertIn("toolchain/scripts/deploy/path_safety_policy.json", package["files"])
         self.assertEqual(
             package["publishConfig"],
             {
@@ -780,6 +809,7 @@ class AdapterDeployTest(unittest.TestCase):
             )
         )
         self.assertEqual(scaffold_package["version"], package["version"])
+        self.assertIn("path_safety_policy.json", scaffold_package["files"])
 
     def test_aw_installer_uses_async_spawn_wrapper(self) -> None:
         installer_path = (
@@ -854,6 +884,22 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(completed.stdout, "canary\n")
         self.assertEqual(completed.stderr, "")
+
+    def test_root_npm_publish_dry_run_does_not_use_shell_spawn(self) -> None:
+        script_path = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "publish-dry-run.js"
+        )
+
+        source = script_path.read_text(encoding="utf-8")
+
+        self.assertIn('const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";', source)
+        self.assertIn("shell: false", source)
+        self.assertNotIn("shell: process.platform === \"win32\"", source)
 
     def test_root_npm_publish_dry_run_rejects_unsupported_release_channel(self) -> None:
         if shutil.which("node") is None:
@@ -1820,7 +1866,7 @@ class AdapterDeployTest(unittest.TestCase):
             any("legacy_skill_ids" in issue["detail"] for issue in payload["issues"])
         )
 
-    def test_legacy_node_deploy_wrapper_falls_back_to_python_when_python3_is_missing(self) -> None:
+    def test_legacy_node_deploy_wrapper_does_not_try_linux_python_alias(self) -> None:
         node_path = shutil.which("node")
         if node_path is None:
             self.skipTest("node is not available")
@@ -1848,9 +1894,9 @@ class AdapterDeployTest(unittest.TestCase):
             check=False,
         )
 
-        self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertIn("fake-python", completed.stdout)
-        self.assertIn("harness_deploy.py diagnose --backend agents --json", completed.stdout)
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("aw-harness-deploy failed to start Python; tried python3", completed.stderr)
 
     def test_node_deploy_wrappers_time_out_stalled_python_processes(self) -> None:
         if shutil.which("node") is None:
@@ -2098,6 +2144,7 @@ class AdapterDeployTest(unittest.TestCase):
                 "README.md",
                 "adapter_deploy.py",
                 "harness_deploy.py",
+                "path_safety_policy.json",
                 "bin/aw-installer.js",
                 "bin/aw-harness-deploy.js",
                 "package.json",
@@ -3096,6 +3143,29 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertTrue(foreign_dir.is_dir())
         self.assertTrue(invalid_dir.is_dir())
 
+    def test_prune_all_refuses_directory_replaced_after_marker_read(self) -> None:
+        code, stdout, stderr = self._install()
+        self.assertEqual(code, 0, stderr)
+        target_dir = self.local_root / "aw-harness-skill"
+        original_load_marker = adapter_deploy.load_runtime_marker
+        replaced = False
+
+        def replacing_load_marker(path: Path) -> adapter_deploy.RuntimeMarker | None:
+            nonlocal replaced
+            marker = original_load_marker(path)
+            if marker is not None and path.parent == target_dir and not replaced:
+                replaced = True
+                shutil.rmtree(target_dir)
+                target_dir.symlink_to(self.temp_root, target_is_directory=True)
+            return marker
+
+        with mock.patch.object(adapter_deploy, "load_runtime_marker", replacing_load_marker):
+            code, stdout, stderr = self._prune_all()
+
+        self.assertEqual(code, 1)
+        self.assertIn("changed during pruning, refusing to remove", stderr)
+        self.assertTrue(target_dir.is_symlink())
+
     def test_prune_all_is_noop_when_target_root_is_missing(self) -> None:
         code, stdout, stderr = self._prune_all()
 
@@ -3236,6 +3306,23 @@ class AdapterDeployTest(unittest.TestCase):
             ),
             expected_fingerprint,
         )
+
+    def test_payload_descriptor_read_is_cached_within_context(self) -> None:
+        binding = self._binding("harness-skill")
+        original_read_text = Path.read_text
+        payload_reads = 0
+
+        def counting_read_text(path: Path, *args: object, **kwargs: object) -> str:
+            nonlocal payload_reads
+            if path == binding.payload_path:
+                payload_reads += 1
+            return original_read_text(path, *args, **kwargs)
+
+        with mock.patch.object(Path, "read_text", counting_read_text):
+            adapter_deploy.current_target_dirs_by_skill_id([binding], context=self.context)
+            adapter_deploy.build_install_plan(binding, self.local_root, self.context)
+
+        self.assertEqual(payload_reads, 1)
 
     def test_verify_reports_unexpected_managed_directory(self) -> None:
         code, stdout, stderr = self._install()
