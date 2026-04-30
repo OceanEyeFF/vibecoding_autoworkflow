@@ -117,3 +117,21 @@ test("parseNodeDiagnoseJsonArgs only accepts agents JSON diagnose", () => {
   assert.equal(installer.parseNodeDiagnoseJsonArgs(["diagnose", "--backend", "claude", "--json"]), null);
   assert.equal(installer.parseNodeDiagnoseJsonArgs(["verify", "--backend", "agents", "--json"]), null);
 });
+
+test("parseNodeUpdateJsonArgs only accepts agents package JSON update dry-runs", () => {
+  assert.deepEqual(
+    installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--json"]),
+    { backend: "agents", source: "package" },
+  );
+  assert.deepEqual(
+    installer.parseNodeUpdateJsonArgs(["update", "--json", "--backend=agents", "--source=package"]),
+    { backend: "agents", source: "package" },
+  );
+
+  assert.equal(
+    installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--json", "--source", "github"]),
+    null,
+  );
+  assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--yes"]), null);
+  assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "claude", "--json"]), null);
+});

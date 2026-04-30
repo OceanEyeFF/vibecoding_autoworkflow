@@ -112,6 +112,72 @@ class AdapterDeployTest(unittest.TestCase):
             "AW_HARNESS_TARGET_REPO_ROOT": str(self.fake_repo_root),
         }
 
+    def _run_aw_installer_node(
+        self,
+        *argv: object,
+        target_repo: Path | None = None,
+        env: dict[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        node_path = shutil.which("node")
+        if node_path is None:
+            self.skipTest("node is not available")
+        if target_repo is None:
+            target_repo = self.fake_repo_root
+        command_env = {
+            **os.environ,
+            "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
+            "AW_HARNESS_TARGET_REPO_ROOT": str(target_repo),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+        if env is not None:
+            command_env.update(env)
+        wrapper = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+        return subprocess.run(
+            [node_path, str(wrapper), *map(str, argv)],
+            cwd=target_repo,
+            env=command_env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def _update_json_parity_fields(self, payload: dict[str, object]) -> dict[str, object]:
+        return {
+            "backend": payload["backend"],
+            "source_kind": payload["source_kind"],
+            "source_ref": payload["source_ref"],
+            "source_root": payload["source_root"],
+            "target_root": payload["target_root"],
+            "operation_sequence": payload["operation_sequence"],
+            "managed_installs_to_delete": sorted(payload["managed_installs_to_delete"]),
+            "planned_target_paths": sorted(payload["planned_target_paths"]),
+            "issue_codes": sorted(issue["code"] for issue in payload["issues"]),
+            "blocking_issue_count": payload["blocking_issue_count"],
+            "blocking_issue_codes": sorted(issue["code"] for issue in payload["blocking_issues"]),
+        }
+
+    def _assert_node_update_json_matches_python_adapter(self) -> tuple[dict[str, object], dict[str, object]]:
+        adapter_code, adapter_stdout, adapter_stderr = self._update("--json")
+        node_completed = self._run_aw_installer_node("update", "--backend", "agents", "--json")
+
+        self.assertEqual(node_completed.returncode, adapter_code, node_completed.stderr)
+        self.assertEqual(adapter_stderr, "")
+        self.assertEqual(node_completed.stderr, "")
+        adapter_payload = json.loads(adapter_stdout)
+        node_payload = json.loads(node_completed.stdout)
+        self.assertEqual(
+            self._update_json_parity_fields(node_payload),
+            self._update_json_parity_fields(adapter_payload),
+        )
+        return node_payload, adapter_payload
+
     def _install(self, *extra_args: object) -> tuple[int, str, str]:
         return self._run_cli("install", "--backend", "agents", *extra_args)
 
@@ -635,6 +701,32 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(adapter_code, 0, adapter_stderr)
         self.assertEqual(wrapper_code, 0, wrapper_stderr)
         self.assertEqual(json.loads(wrapper_stdout), json.loads(adapter_stdout))
+
+    def test_aw_installer_update_json_missing_target_matches_python_adapter(self) -> None:
+        node_payload, adapter_payload = self._assert_node_update_json_matches_python_adapter()
+
+        self.assertEqual(node_payload["blocking_issue_count"], 0)
+        self.assertEqual(adapter_payload["blocking_issue_count"], 0)
+        self.assertGreater(len(node_payload["planned_target_paths"]), 0)
+        self.assertFalse(self.local_root.exists())
+
+    def test_aw_installer_update_json_duplicate_target_dir_matches_python_adapter(self) -> None:
+        self._mutate_target_dir("dispatch-skills", "aw-harness-skill")
+
+        node_payload, adapter_payload = self._assert_node_update_json_matches_python_adapter()
+
+        self.assertEqual(node_payload["blocking_issue_count"], 1)
+        self.assertEqual(adapter_payload["blocking_issue_count"], 1)
+        self.assertEqual(node_payload["planned_target_paths"], [])
+        self.assertEqual(adapter_payload["planned_target_paths"], [])
+        self.assertEqual(
+            node_payload["blocking_issues"][0]["code"],
+            "payload-contract-invalid",
+        )
+        self.assertEqual(
+            adapter_payload["blocking_issues"][0]["code"],
+            "payload-contract-invalid",
+        )
 
     def test_cli_derives_runtime_context_from_env_after_import(self) -> None:
         target_repo = self.temp_root / "env-target"
@@ -1909,15 +2001,6 @@ class AdapterDeployTest(unittest.TestCase):
                 / "scripts"
                 / "deploy"
                 / "bin"
-                / "aw-installer.js",
-                ["update", "--backend", "agents", "--json"],
-            ),
-            (
-                self.source_repo_root
-                / "toolchain"
-                / "scripts"
-                / "deploy"
-                / "bin"
                 / "aw-harness-deploy.js",
                 ["diagnose", "--backend", "agents", "--json"],
             ),
@@ -1944,6 +2027,74 @@ class AdapterDeployTest(unittest.TestCase):
                 self.assertEqual(completed.returncode, 1)
                 self.assertEqual(completed.stdout, "")
                 self.assertIn("timed out after 1s", completed.stderr)
+
+    def test_aw_installer_update_agents_json_is_node_owned_without_python(self) -> None:
+        node_path = shutil.which("node")
+        if node_path is None:
+            self.skipTest("node is not available")
+        fake_bin = self._fake_failing_python_bin()
+        target_repo = self.temp_root / "node-owned-update-target"
+        target_repo.mkdir()
+        wrapper = (
+            self.source_repo_root
+            / "toolchain"
+            / "scripts"
+            / "deploy"
+            / "bin"
+            / "aw-installer.js"
+        )
+        env = {
+            **os.environ,
+            "AW_HARNESS_REPO_ROOT": str(self.source_repo_root),
+            "AW_HARNESS_TARGET_REPO_ROOT": str(target_repo),
+            "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+
+        completed = subprocess.run(
+            [node_path, str(wrapper), "update", "--backend", "agents", "--json"],
+            cwd=target_repo,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertNotIn("unexpected-python", completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload["backend"], "agents")
+        self.assertEqual(payload["source_kind"], "package")
+        self.assertEqual(payload["source_ref"], "package-local")
+        self.assertEqual(payload["target_root"], str(target_repo / ".agents" / "skills"))
+        self.assertEqual(
+            payload["operation_sequence"],
+            ["prune --all", "check_paths_exist", "install", "verify"],
+        )
+        self.assertGreater(len(payload["planned_target_paths"]), 0)
+        self.assertEqual(payload["blocking_issue_count"], 0)
+
+    def test_aw_installer_update_non_node_owned_paths_fallback_to_python_subprocess(self) -> None:
+        fake_bin = self._fake_failing_python_bin()
+        target_repo = self.temp_root / "update-fallback-target"
+        target_repo.mkdir()
+        env = {
+            "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+        }
+
+        cases = [
+            ("github-json", ("update", "--backend", "agents", "--json", "--source", "github")),
+            ("apply-yes", ("update", "--backend", "agents", "--yes")),
+        ]
+
+        for label, argv in cases:
+            with self.subTest(label=label):
+                completed = self._run_aw_installer_node(*argv, target_repo=target_repo, env=env)
+
+                self.assertEqual(completed.returncode, 97)
+                self.assertEqual(completed.stdout, "")
+                self.assertIn("unexpected-python", completed.stderr)
+                self.assertIn("harness_deploy.py", completed.stderr)
 
     def test_local_npm_installer_tui_shows_update_plan_before_apply_confirmation(self) -> None:
         target_repo = self.temp_root / "tui-plan-target"
