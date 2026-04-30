@@ -341,6 +341,10 @@ Backend: agents
 async function main() {
   const args = process.argv.slice(2);
 
+  // P0-035 first slice: only distribution-local safe commands are Node-owned.
+  // Deploy modes, including diagnose/update JSON, remain on the Python reference
+  // path until their adapter_deploy.py parity contract can be migrated without
+  // duplicating the verify/update target scan semantics here.
   if (args.length === 0) {
     if (process.stdin.isTTY && process.stdout.isTTY) {
       return runTui();
