@@ -135,3 +135,205 @@ test("parseNodeUpdateJsonArgs only accepts agents package JSON update dry-runs",
   assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--yes"]), null);
   assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "claude", "--json"]), null);
 });
+
+test("target dir helpers share duplicate checks and keep legacy dirs only in known set", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    const alphaDir = join(root, "alpha");
+    const betaDir = join(root, "beta");
+    mkdirSync(alphaDir, { recursive: true });
+    mkdirSync(betaDir, { recursive: true });
+    const alphaPayloadPath = join(alphaDir, "payload.json");
+    const betaPayloadPath = join(betaDir, "payload.json");
+    writeFileSync(
+      alphaPayloadPath,
+      JSON.stringify({
+        target_dir: "aw-alpha",
+        target_entry_name: "SKILL.md",
+        required_payload_files: ["SKILL.md", "payload.json", "aw.marker"],
+        legacy_target_dirs: ["alpha"],
+      }),
+      "utf8",
+    );
+    writeFileSync(
+      betaPayloadPath,
+      JSON.stringify({
+        target_dir: "aw-beta",
+        target_entry_name: "SKILL.md",
+        required_payload_files: ["SKILL.md", "payload.json", "aw.marker"],
+        legacy_target_dirs: ["beta"],
+      }),
+      "utf8",
+    );
+    const bindings = [
+      { backend: "agents", skillId: "alpha", payloadPath: alphaPayloadPath },
+      { backend: "agents", skillId: "beta", payloadPath: betaPayloadPath },
+    ];
+
+    assert.deepEqual([...installer.expectedTargetDirs(bindings)].sort(), ["aw-alpha", "aw-beta"]);
+    assert.deepEqual([...installer.allKnownTargetDirs(bindings)].sort(), [
+      "alpha",
+      "aw-alpha",
+      "aw-beta",
+      "beta",
+    ]);
+
+    writeFileSync(
+      betaPayloadPath,
+      JSON.stringify({
+        target_dir: "aw-alpha",
+        target_entry_name: "SKILL.md",
+        required_payload_files: ["SKILL.md", "payload.json", "aw.marker"],
+      }),
+      "utf8",
+    );
+    assert.throws(
+      () => installer.expectedTargetDirs(bindings),
+      /Multiple skills map to the same target_dir for backend agents: aw-alpha/,
+    );
+    assert.throws(
+      () => installer.allKnownTargetDirs(bindings),
+      /Multiple skills map to the same target_dir for backend agents: aw-alpha/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("buildInstallPlan can reuse cached payload text instead of rereading payload.json", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    const canonicalDir = join(root, "product", "harness", "skills", "demo-skill");
+    const payloadDir = join(root, "product", "harness", "adapters", "agents", "skills", "demo-skill");
+    const targetRoot = join(root, ".agents", "skills");
+    mkdirSync(canonicalDir, { recursive: true });
+    mkdirSync(payloadDir, { recursive: true });
+    mkdirSync(targetRoot, { recursive: true });
+    const skillText = "# Demo\n";
+    const payload = {
+      payload_version: "agents-skill-payload.v1",
+      backend: "agents",
+      skill_id: "demo-skill",
+      target_dir: "aw-demo-skill",
+      target_entry_name: "SKILL.md",
+      required_payload_files: ["SKILL.md", "payload.json", "aw.marker"],
+      canonical_dir: "product/harness/skills/demo-skill",
+      canonical_paths: ["product/harness/skills/demo-skill/SKILL.md"],
+      payload_policy: "canonical-copy",
+      reference_distribution: "copy-listed-canonical-paths",
+    };
+    const payloadText = `${JSON.stringify(payload, null, 2)}\n`;
+    const payloadPath = join(payloadDir, "payload.json");
+    writeFileSync(join(canonicalDir, "SKILL.md"), skillText, "utf8");
+    writeFileSync(payloadPath, payloadText, "utf8");
+    const binding = {
+      backend: "agents",
+      skillId: "demo-skill",
+      payloadDir,
+      payloadPath,
+    };
+    const loadedPayloads = new Map([[payloadPath, { payload, payloadText }]]);
+    writeFileSync(payloadPath, "{ invalid json", "utf8");
+
+    const plan = installer.buildInstallPlan(
+      binding,
+      targetRoot,
+      { sourceRoot: root },
+      loadedPayloads,
+    );
+
+    assert.equal(plan.targetSkillDir, join(targetRoot, "aw-demo-skill"));
+    assert.equal(
+      plan.payloadFingerprint,
+      createHash("sha256")
+        .update(
+          [
+            "backend=agents\nskill_id=demo-skill\npayload_version=agents-skill-payload.v1\n",
+            `file:SKILL.md\n${skillText}\n`,
+            `file:payload.json\n${payloadText}\n`,
+          ].join(""),
+          "utf8",
+        )
+        .digest("hex"),
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("update planning helpers expose direct issue and blocking behavior", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    const targetRoot = join(root, ".agents", "skills");
+    const targetDir = join(targetRoot, "aw-demo-skill");
+    mkdirSync(targetDir, { recursive: true });
+
+    const issues = installer.collectUpdateTargetEntryIssues(
+      targetRoot,
+      new Set(["aw-demo-skill"]),
+      [targetDir],
+    );
+
+    assert.deepEqual(issues, [
+      {
+        code: "unrecognized-target-directory",
+        path: targetDir,
+        detail: "update will not remove target directories without a recognized marker",
+      },
+    ]);
+    assert.equal(installer.isUpdateBlockingIssue(issues[0], new Set()), true);
+    assert.equal(installer.isUpdateBlockingIssue(issues[0], new Set([targetDir])), false);
+    assert.deepEqual(
+      installer.dedupeIssues([
+        issues[0],
+        { ...issues[0], detail: "duplicate detail" },
+        { code: "missing-target-root", path: targetRoot, detail: "missing" },
+      ]),
+      [issues[0], { code: "missing-target-root", path: targetRoot, detail: "missing" }],
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("updatePlanSummary reports a nonblocking dry-run plan for missing target root", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    const canonicalDir = join(root, "product", "harness", "skills", "demo-skill");
+    const payloadDir = join(root, "product", "harness", "adapters", "agents", "skills", "demo-skill");
+    const targetRoot = join(root, ".agents", "skills");
+    mkdirSync(canonicalDir, { recursive: true });
+    mkdirSync(payloadDir, { recursive: true });
+    const payload = {
+      payload_version: "agents-skill-payload.v1",
+      backend: "agents",
+      skill_id: "demo-skill",
+      target_dir: "aw-demo-skill",
+      target_entry_name: "SKILL.md",
+      required_payload_files: ["SKILL.md", "payload.json", "aw.marker"],
+      canonical_dir: "product/harness/skills/demo-skill",
+      canonical_paths: ["product/harness/skills/demo-skill/SKILL.md"],
+      payload_policy: "canonical-copy",
+      reference_distribution: "copy-listed-canonical-paths",
+    };
+    writeFileSync(join(canonicalDir, "SKILL.md"), "# Demo\n", "utf8");
+    writeFileSync(join(payloadDir, "payload.json"), `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+
+    const summary = installer.updatePlanSummary({
+      sourceKind: "package",
+      sourceRef: "package-local",
+      sourceRoot: root,
+      targetRoot,
+      adapterSkillsDir: join(root, "product", "harness", "adapters", "agents", "skills"),
+    });
+
+    assert.equal(summary.backend, "agents");
+    assert.deepEqual(summary.operation_sequence, ["prune --all", "check_paths_exist", "install", "verify"]);
+    assert.deepEqual(summary.planned_target_paths, [join(targetRoot, "aw-demo-skill")]);
+    assert.equal(summary.issue_count, 1);
+    assert.equal(summary.issues[0].code, "missing-target-root");
+    assert.equal(summary.blocking_issue_count, 0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

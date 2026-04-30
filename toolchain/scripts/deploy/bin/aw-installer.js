@@ -513,6 +513,41 @@ function collectSkillBindings(context) {
     }));
 }
 
+function cachedBindingPayload(binding, loadedPayloads) {
+  if (loadedPayloads === null || loadedPayloads === undefined) {
+    return null;
+  }
+  return loadedPayloads.get(binding.payloadPath) || null;
+}
+
+function bindingPayloadObject(binding, loadedPayloads) {
+  const cachedPayload = cachedBindingPayload(binding, loadedPayloads);
+  if (cachedPayload !== null) {
+    return cachedPayload.payload;
+  }
+  return readJsonObject(binding.payloadPath);
+}
+
+function bindingPayloadWithText(binding, loadedPayloads) {
+  const cachedPayload = cachedBindingPayload(binding, loadedPayloads);
+  if (cachedPayload !== null) {
+    return cachedPayload;
+  }
+  const loadedPayload = readJsonObjectWithText(binding.payloadPath);
+  return {
+    payload: loadedPayload.data,
+    payloadText: loadedPayload.text,
+  };
+}
+
+function loadBindingPayloads(bindings) {
+  const loadedPayloads = new Map();
+  for (const binding of bindings) {
+    loadedPayloads.set(binding.payloadPath, bindingPayloadWithText(binding, null));
+  }
+  return loadedPayloads;
+}
+
 function issue(code, path, detail) {
   return { code, path, detail };
 }
@@ -575,7 +610,7 @@ function canonicalSourceMetadata(payload, binding, context) {
   return { canonicalDir, includedPaths, canonicalFiles };
 }
 
-function verifySourceBinding(binding, context) {
+function verifySourceBinding(binding, context, loadedPayloads = null) {
   const issues = [];
   if (!isDirectory(binding.payloadDir)) {
     return [
@@ -589,7 +624,7 @@ function verifySourceBinding(binding, context) {
 
   let payload;
   try {
-    payload = readJsonObject(binding.payloadPath);
+    payload = bindingPayloadObject(binding, loadedPayloads);
   } catch (error) {
     return [issue("payload-contract-invalid", binding.payloadPath, error.message)];
   }
@@ -785,33 +820,39 @@ function targetRootChildren(targetRoot) {
   }
 }
 
-function expectedTargetDirs(bindings) {
+function collectTargetDirMetadata(bindings, loadedPayloads = null) {
   const targetDirs = new Set();
+  const metadataByPayloadPath = new Map();
   for (const binding of bindings) {
-    const metadata = payloadTargetMetadata(readJsonObject(binding.payloadPath), binding);
+    const metadata = payloadTargetMetadata(bindingPayloadObject(binding, loadedPayloads), binding);
     if (targetDirs.has(metadata.targetDir)) {
       throw new Error(`Multiple skills map to the same target_dir for backend agents: ${metadata.targetDir}`);
     }
     targetDirs.add(metadata.targetDir);
+    metadataByPayloadPath.set(binding.payloadPath, metadata);
   }
-  return targetDirs;
+  return { targetDirs, metadataByPayloadPath };
 }
 
-function allKnownTargetDirs(bindings) {
-  const targetDirs = new Set();
+function expectedTargetDirs(bindings, loadedPayloads = null) {
+  return collectTargetDirMetadata(bindings, loadedPayloads).targetDirs;
+}
+
+function knownTargetDirsFromMetadata(bindings, metadataByPayloadPath) {
   const knownTargetDirs = new Set();
   for (const binding of bindings) {
-    const metadata = payloadTargetMetadata(readJsonObject(binding.payloadPath), binding);
-    if (targetDirs.has(metadata.targetDir)) {
-      throw new Error(`Multiple skills map to the same target_dir for backend agents: ${metadata.targetDir}`);
-    }
-    targetDirs.add(metadata.targetDir);
+    const metadata = metadataByPayloadPath.get(binding.payloadPath);
     knownTargetDirs.add(metadata.targetDir);
     for (const legacyTargetDir of metadata.legacyTargetDirs) {
       knownTargetDirs.add(legacyTargetDir);
     }
   }
   return knownTargetDirs;
+}
+
+function allKnownTargetDirs(bindings, loadedPayloads = null) {
+  const { metadataByPayloadPath } = collectTargetDirMetadata(bindings, loadedPayloads);
+  return knownTargetDirsFromMetadata(bindings, metadataByPayloadPath);
 }
 
 function verifyDeployedSkill(binding, targetRoot, context) {
@@ -989,10 +1030,11 @@ function unexpectedManagedTargetDirs(targetRoot, expectedTargetDirNames, targetC
   return issues;
 }
 
-function verifyAgentsBackend(context) {
+function verifyAgentsBackend(context, options = {}) {
   const targetRoot = context.targetRoot;
   const issues = verifyTargetRoot(targetRoot);
-  const bindings = collectSkillBindings(context);
+  const bindings = options.bindings || collectSkillBindings(context);
+  const loadedPayloads = options.loadedPayloads || null;
   if (bindings.length === 0) {
     issues.push(
       issue(
@@ -1003,14 +1045,14 @@ function verifyAgentsBackend(context) {
     );
   } else {
     for (const binding of bindings) {
-      issues.push(...verifySourceBinding(binding, context));
+      issues.push(...verifySourceBinding(binding, context, loadedPayloads));
     }
   }
 
   let expectedTargetDirNames = new Set();
   if (issues.length === 0) {
     try {
-      expectedTargetDirNames = expectedTargetDirs(bindings);
+      expectedTargetDirNames = expectedTargetDirs(bindings, loadedPayloads);
     } catch (error) {
       issues.push(issue("payload-contract-invalid", context.adapterSkillsDir, error.message));
     }
@@ -1127,20 +1169,20 @@ function dedupeIssues(issues) {
   return uniqueIssues;
 }
 
-function buildInstallPlan(binding, targetRoot, context) {
-  const loadedPayload = readJsonObjectWithText(binding.payloadPath);
-  const targetMetadata = payloadTargetMetadata(loadedPayload.data, binding);
+function buildInstallPlan(binding, targetRoot, context, loadedPayloads = null, targetMetadata = null) {
+  const loadedPayload = bindingPayloadWithText(binding, loadedPayloads);
+  const resolvedTargetMetadata = targetMetadata || payloadTargetMetadata(loadedPayload.payload, binding);
   const payloadFingerprint = computePayloadFingerprint(
     binding,
     context,
-    loadedPayload.data,
-    loadedPayload.text,
-    targetMetadata,
+    loadedPayload.payload,
+    loadedPayload.payloadText,
+    resolvedTargetMetadata,
   );
   return {
     binding,
-    targetMetadata,
-    targetSkillDir: join(targetRoot, targetMetadata.targetDir),
+    targetMetadata: resolvedTargetMetadata,
+    targetSkillDir: join(targetRoot, resolvedTargetMetadata.targetDir),
     payloadFingerprint,
   };
 }
@@ -1156,9 +1198,15 @@ function isUpdateBlockingIssue(currentIssue, managedDeletePaths) {
 }
 
 function updatePlanSummary(context) {
-  const result = verifyAgentsBackend(context);
+  const bindings = collectSkillBindings(context);
+  let loadedPayloads = null;
+  try {
+    loadedPayloads = loadBindingPayloads(bindings);
+  } catch (error) {
+    loadedPayloads = null;
+  }
+  const result = verifyAgentsBackend(context, { bindings, loadedPayloads });
   const targetRoot = result.targetRoot;
-  const bindings = result.bindings;
   const targetChildren =
     result.targetChildren === null && isDirectory(targetRoot) ? targetRootChildren(targetRoot) : result.targetChildren;
 
@@ -1175,8 +1223,17 @@ function updatePlanSummary(context) {
     );
   } else {
     try {
-      knownTargetDirNames = allKnownTargetDirs(bindings);
-      plans = bindings.map((binding) => buildInstallPlan(binding, targetRoot, context));
+      const targetMetadata = collectTargetDirMetadata(bindings, loadedPayloads);
+      knownTargetDirNames = knownTargetDirsFromMetadata(bindings, targetMetadata.metadataByPayloadPath);
+      plans = bindings.map((binding) =>
+        buildInstallPlan(
+          binding,
+          targetRoot,
+          context,
+          loadedPayloads,
+          targetMetadata.metadataByPayloadPath.get(binding.payloadPath),
+        ),
+      );
     } catch (error) {
       planIssues.push(issue("payload-contract-invalid", context.adapterSkillsDir, error.message));
     }
@@ -1589,9 +1646,17 @@ if (require.main === module) {
 }
 
 module.exports = {
+  allKnownTargetDirs,
+  buildInstallPlan,
   canonicalSourceMetadata,
+  collectTargetDirMetadata,
+  collectUpdateTargetEntryIssues,
   computePayloadFingerprint,
+  dedupeIssues,
   exactSensitiveTargetRepoRoots,
+  expectedTargetDirs,
+  isUpdateBlockingIssue,
+  loadBindingPayloads,
   loadRuntimeMarker,
   normalizeRelativePath,
   parseNodeDiagnoseJsonArgs,
@@ -1601,6 +1666,8 @@ module.exports = {
   pythonCandidates,
   recursiveSensitiveTargetRepoRoots,
   resolveExistingOrLexical,
+  updatePlanSummary,
   validateSourceRepoRoot,
   validateTargetRepoRoot,
+  verifyAgentsBackend,
 };
