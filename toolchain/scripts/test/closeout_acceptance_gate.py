@@ -962,6 +962,14 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
             run_command([python, "-m", "pytest", "toolchain/scripts/test/test_agents_adapter_contract.py"], cwd=repo_root),
         ),
         (
+            "aw_installer_cli_tests",
+            run_command([python, "-m", "pytest", "toolchain/scripts/test/aw_installer_cli"], cwd=repo_root),
+        ),
+        (
+            "aw_installer_tui_tests",
+            run_command([python, "-m", "pytest", "toolchain/scripts/test/aw_installer_tui"], cwd=repo_root),
+        ),
+        (
             "deploy_regression_tests",
             run_command(
                 [

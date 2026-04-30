@@ -641,13 +641,15 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
     commands = [command for command, _, _ in calls]
 
     assert result["passed"] is True
-    assert [item["name"] for item in result["subchecks"][:10]] == [
+    assert [item["name"] for item in result["subchecks"][:12]] == [
         "root_package_version_metadata",
         "gate_tool_tests",
         "folder_logic_tests",
         "path_governance_tests",
         "governance_semantic_tests",
         "agents_adapter_contract_tests",
+        "aw_installer_cli_tests",
+        "aw_installer_tui_tests",
         "deploy_regression_tests",
         "deploy_package_unit_tests",
         "repo_analysis_contract_check",
@@ -657,6 +659,8 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
     assert any(command[-1] == "toolchain/scripts/test/test_path_governance_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_governance_semantic_check.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/test_agents_adapter_contract.py" for command in commands)
+    assert any(command[-1] == "toolchain/scripts/test/aw_installer_cli" for command in commands)
+    assert any(command[-1] == "toolchain/scripts/test/aw_installer_tui" for command in commands)
     assert any(command[:4] == [sys.executable, "-m", "unittest", "discover"] for command in commands)
     assert any(command == ["npm", "--prefix", "toolchain/scripts/deploy", "test", "--silent"] for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/repo_analysis_contract_check.py" for command in commands)
