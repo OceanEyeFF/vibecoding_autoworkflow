@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Payload Provenance And Update Trust Boundary"
 status: active
-updated: 2026-04-29
+updated: 2026-04-30
 owner: aw-kernel
-last_verified: 2026-04-29
+last_verified: 2026-04-30
 ---
 # aw-installer Payload Provenance And Update Trust Boundary
 
@@ -33,7 +33,7 @@ last_verified: 2026-04-29
 
 ## 二、source root 与 target root
 
-`aw-installer` Node bin 只负责调用同包内的 Python wrapper。实际 source / target 解析由 `adapter_deploy.py` 承接：
+`aw-installer` Node bin 当前直接承接 `--help`、`--version` 与 `diagnose --backend agents --json` 的只读路径；其他 deploy modes 和不受支持的 diagnose 变体仍调用同包内的 Python wrapper。实际 source / target 解析必须保持与 `adapter_deploy.py` 的合同一致：
 
 - 未设置 `AW_HARNESS_REPO_ROOT` 时，source root 是 package 解压根或当前 checkout 中的 repo root。
 - 设置 `AW_HARNESS_REPO_ROOT` 时，source root 显式指向该 checkout，并保持旧的 repo-local 行为。
