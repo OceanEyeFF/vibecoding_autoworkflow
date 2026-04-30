@@ -261,6 +261,78 @@ test("buildInstallPlan can reuse cached payload text instead of rereading payloa
   }
 });
 
+test("verifyAgentsBackend passes cached payload text into deployed skill verification", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    const canonicalDir = join(root, "product", "harness", "skills", "demo-skill");
+    const payloadDir = join(root, "product", "harness", "adapters", "agents", "skills", "demo-skill");
+    const targetRoot = join(root, ".agents", "skills");
+    const targetSkillDir = join(targetRoot, "aw-demo-skill");
+    mkdirSync(canonicalDir, { recursive: true });
+    mkdirSync(payloadDir, { recursive: true });
+    mkdirSync(targetSkillDir, { recursive: true });
+    const skillText = "# Demo\n";
+    const payload = {
+      payload_version: "agents-skill-payload.v1",
+      backend: "agents",
+      skill_id: "demo-skill",
+      target_dir: "aw-demo-skill",
+      target_entry_name: "SKILL.md",
+      required_payload_files: ["SKILL.md", "payload.json", "aw.marker"],
+      canonical_dir: "product/harness/skills/demo-skill",
+      canonical_paths: ["product/harness/skills/demo-skill/SKILL.md"],
+      payload_policy: "canonical-copy",
+      reference_distribution: "copy-listed-canonical-paths",
+    };
+    const payloadText = `${JSON.stringify(payload, null, 2)}\n`;
+    const payloadPath = join(payloadDir, "payload.json");
+    writeFileSync(join(canonicalDir, "SKILL.md"), skillText, "utf8");
+    writeFileSync(payloadPath, payloadText, "utf8");
+    writeFileSync(join(targetSkillDir, "SKILL.md"), skillText, "utf8");
+    writeFileSync(join(targetSkillDir, "payload.json"), payloadText, "utf8");
+    const binding = {
+      backend: "agents",
+      skillId: "demo-skill",
+      payloadDir,
+      payloadPath,
+    };
+    const metadata = installer.payloadTargetMetadata(payload, binding);
+    const payloadFingerprint = installer.computePayloadFingerprint(
+      binding,
+      { sourceRoot: root },
+      payload,
+      payloadText,
+      metadata,
+    );
+    const marker = {
+      marker_version: "aw-managed-skill-marker.v2",
+      backend: "agents",
+      skill_id: "demo-skill",
+      payload_version: "agents-skill-payload.v1",
+      payload_fingerprint: payloadFingerprint,
+    };
+    writeFileSync(join(targetSkillDir, "aw.marker"), `${JSON.stringify(marker, null, 2)}\n`, "utf8");
+
+    const loadedPayloads = new Map([[payloadPath, { payload, payloadText }]]);
+    writeFileSync(payloadPath, "{ invalid json", "utf8");
+
+    const result = installer.verifyAgentsBackend(
+      {
+        sourceRoot: root,
+        targetRoot,
+        adapterSkillsDir: join(root, "product", "harness", "adapters", "agents", "skills"),
+      },
+      { bindings: [binding], loadedPayloads },
+    );
+
+    const issueCodes = result.issues.map((currentIssue) => currentIssue.code);
+    assert.equal(issueCodes.includes("payload-contract-invalid"), false);
+    assert.deepEqual(issueCodes, ["target-payload-drift"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("update planning helpers expose direct issue and blocking behavior", () => {
   const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
   try {

@@ -855,15 +855,15 @@ function allKnownTargetDirs(bindings, loadedPayloads = null) {
   return knownTargetDirsFromMetadata(bindings, metadataByPayloadPath);
 }
 
-function verifyDeployedSkill(binding, targetRoot, context) {
+function verifyDeployedSkill(binding, targetRoot, context, loadedPayloads = null) {
   let payload;
   let payloadText;
   let metadata;
   let payloadFingerprint;
   try {
-    const loadedPayload = readJsonObjectWithText(binding.payloadPath);
-    payload = loadedPayload.data;
-    payloadText = loadedPayload.text;
+    const loadedPayload = bindingPayloadWithText(binding, loadedPayloads);
+    payload = loadedPayload.payload;
+    payloadText = loadedPayload.payloadText;
     metadata = payloadTargetMetadata(payload, binding);
     payloadFingerprint = computePayloadFingerprint(binding, context, payload, payloadText, metadata);
   } catch (error) {
@@ -1062,7 +1062,7 @@ function verifyAgentsBackend(context, options = {}) {
   if (issues.length === 0 && isDirectory(targetRoot)) {
     children = targetRootChildren(targetRoot);
     for (const binding of bindings) {
-      issues.push(...verifyDeployedSkill(binding, targetRoot, context));
+      issues.push(...verifyDeployedSkill(binding, targetRoot, context, loadedPayloads));
     }
     issues.push(...unexpectedManagedTargetDirs(targetRoot, expectedTargetDirNames, children));
   }
@@ -1670,4 +1670,5 @@ module.exports = {
   validateSourceRepoRoot,
   validateTargetRepoRoot,
   verifyAgentsBackend,
+  verifyDeployedSkill,
 };
