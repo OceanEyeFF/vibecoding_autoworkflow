@@ -20,7 +20,7 @@ last_verified: 2026-04-30
 
 ## 使用 `aw-installer`
 
-`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。当前 checkout 版本是 `0.4.1-rc.2`；当前 npm registry 事实是 `aw-installer@next` 指向 `0.4.1-rc.2`，`aw-installer@latest` 指向 `0.4.0-rc.1`，`latest` 不代表稳定 release approval。复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)，release channel 与 publish 边界见 [`aw-installer Release Channel Contract`](./docs/project-maintenance/deploy/release-channel-contract.md)，npx/package smoke 见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
+`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。当前 npm registry 事实是 `aw-installer@next` 指向 `0.4.1-rc.2`，`aw-installer@latest` 指向 `0.4.0-rc.1`，`latest` 不代表稳定 release approval。已发布的 `0.4.1-rc.2` registry artifact 绑定 `gitHead=7f7536a`；当前本地 checkout 已在该版本号之后继续前进，后续若要发布本地新变化，必须先升新版本，不能复用 `0.4.1-rc.2`。复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)，release channel 与 publish 边界见 [`aw-installer Release Channel Contract`](./docs/project-maintenance/deploy/release-channel-contract.md)，npx/package smoke 见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
 
 ```bash
 npx aw-installer@next

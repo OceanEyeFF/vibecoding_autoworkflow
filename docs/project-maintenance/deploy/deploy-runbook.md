@@ -50,7 +50,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-`harness_deploy.py` 只包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 仍暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell 和 `aw-harness-deploy` 兼容别名；`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 调用同一 wrapper。当前 checkout 版本是 `0.4.1-rc.2`；当前 npm registry 事实是 `next=0.4.1-rc.2`、`latest=0.4.0-rc.1`。外部已发布 RC 试用主路径应显式使用 `aw-installer@next`。当前还没有引入 full-screen TUI framework。
+`harness_deploy.py` 只包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 仍暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell 和 `aw-harness-deploy` 兼容别名；`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 调用同一 wrapper。当前 npm registry 事实是 `next=0.4.1-rc.2`、`latest=0.4.0-rc.1`；已发布的 `0.4.1-rc.2` artifact 绑定 `gitHead=7f7536a`。外部已发布 RC 试用主路径应显式使用 `aw-installer@next`。当前本地 checkout 若包含该 gitHead 之后的新变化，后续发布必须先升新版本。当前还没有引入 full-screen TUI framework。
 
 本地 npm-style scaffold 可用下面的 smoke 命令验证 bin 入口能打开同一 help surface：
 
