@@ -32,6 +32,13 @@ const conflictIssueCodes = new Set([
   "unrecognized-target-directory",
   "wrong-target-entry-type",
 ]);
+const updateRecoverableIssueCodes = new Set([
+  "missing-target-root",
+  "missing-target-entry",
+  "missing-required-payload",
+  "target-payload-drift",
+  "unexpected-managed-directory",
+]);
 let cachedPathSafetyPolicy = null;
 
 function readWrapperTimeoutMs() {
@@ -318,16 +325,22 @@ function resolveTargetRepoRoot(sourceRoot, sourceRootFromEnv) {
   return validateTargetRepoRoot(process.cwd(), sourceRoot);
 }
 
-function buildNodeDiagnoseContext() {
+function buildNodeAgentsContext() {
   const sourceRootFromEnv = Boolean(process.env.AW_HARNESS_REPO_ROOT);
   const sourceRoot = resolveSourceRoot();
   const targetRepoRoot = resolveTargetRepoRoot(sourceRoot, sourceRootFromEnv);
   return {
+    sourceKind: "package",
+    sourceRef: "package-local",
     sourceRoot,
     targetRepoRoot,
     targetRoot: join(targetRepoRoot, ".agents", "skills"),
     adapterSkillsDir: join(sourceRoot, "product", "harness", "adapters", "agents", "skills"),
   };
+}
+
+function buildNodeDiagnoseContext() {
+  return buildNodeAgentsContext();
 }
 
 function isDirectory(path) {
@@ -784,6 +797,23 @@ function expectedTargetDirs(bindings) {
   return targetDirs;
 }
 
+function allKnownTargetDirs(bindings) {
+  const targetDirs = new Set();
+  const knownTargetDirs = new Set();
+  for (const binding of bindings) {
+    const metadata = payloadTargetMetadata(readJsonObject(binding.payloadPath), binding);
+    if (targetDirs.has(metadata.targetDir)) {
+      throw new Error(`Multiple skills map to the same target_dir for backend agents: ${metadata.targetDir}`);
+    }
+    targetDirs.add(metadata.targetDir);
+    knownTargetDirs.add(metadata.targetDir);
+    for (const legacyTargetDir of metadata.legacyTargetDirs) {
+      knownTargetDirs.add(legacyTargetDir);
+    }
+  }
+  return knownTargetDirs;
+}
+
 function verifyDeployedSkill(binding, targetRoot, context) {
   let payload;
   let payloadText;
@@ -1034,6 +1064,146 @@ function managedInstallDirs(targetRoot, targetChildren) {
   });
 }
 
+function collectUpdateTargetEntryIssues(targetRoot, knownTargetDirNames, targetChildren) {
+  if (!isDirectory(targetRoot)) {
+    return [];
+  }
+  const children = targetChildren === null ? targetRootChildren(targetRoot) : targetChildren;
+  const issues = [];
+  for (const child of children) {
+    const childName = child.split(/[\\/]/).at(-1);
+    if (!knownTargetDirNames.has(childName)) {
+      continue;
+    }
+
+    const stat = lstatOrNull(child);
+    if (stat === null || stat.isSymbolicLink() || !stat.isDirectory()) {
+      issues.push(
+        issue(
+          "wrong-target-entry-type",
+          child,
+          "update target path must be a real directory before reinstall",
+        ),
+      );
+      continue;
+    }
+
+    const marker = loadRuntimeMarker(join(child, managedSkillMarker));
+    if (marker === null) {
+      issues.push(
+        issue(
+          "unrecognized-target-directory",
+          child,
+          "update will not remove target directories without a recognized marker",
+        ),
+      );
+      continue;
+    }
+
+    if (marker.backend !== "agents") {
+      issues.push(
+        issue(
+          "foreign-managed-directory",
+          child,
+          `update will not remove managed directory for backend ${marker.backend}`,
+        ),
+      );
+    }
+  }
+  return issues;
+}
+
+function dedupeIssues(issues) {
+  const seen = new Set();
+  const uniqueIssues = [];
+  for (const currentIssue of issues) {
+    const key = `${currentIssue.code}\0${currentIssue.path}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    uniqueIssues.push(currentIssue);
+  }
+  return uniqueIssues;
+}
+
+function buildInstallPlan(binding, targetRoot, context) {
+  const loadedPayload = readJsonObjectWithText(binding.payloadPath);
+  const targetMetadata = payloadTargetMetadata(loadedPayload.data, binding);
+  const payloadFingerprint = computePayloadFingerprint(
+    binding,
+    context,
+    loadedPayload.data,
+    loadedPayload.text,
+    targetMetadata,
+  );
+  return {
+    binding,
+    targetMetadata,
+    targetSkillDir: join(targetRoot, targetMetadata.targetDir),
+    payloadFingerprint,
+  };
+}
+
+function isUpdateBlockingIssue(currentIssue, managedDeletePaths) {
+  if (updateRecoverableIssueCodes.has(currentIssue.code)) {
+    return false;
+  }
+  if (currentIssue.code === "unrecognized-target-directory" && managedDeletePaths.has(currentIssue.path)) {
+    return false;
+  }
+  return true;
+}
+
+function updatePlanSummary(context) {
+  const result = verifyAgentsBackend(context);
+  const targetRoot = result.targetRoot;
+  const bindings = result.bindings;
+  const targetChildren =
+    result.targetChildren === null && isDirectory(targetRoot) ? targetRootChildren(targetRoot) : result.targetChildren;
+
+  const planIssues = [];
+  let plans = [];
+  let knownTargetDirNames = new Set();
+  if (bindings.length === 0) {
+    planIssues.push(
+      issue(
+        "missing-backend-payload-source",
+        context.adapterSkillsDir,
+        "No payload bindings found for backend agents.",
+      ),
+    );
+  } else {
+    try {
+      knownTargetDirNames = allKnownTargetDirs(bindings);
+      plans = bindings.map((binding) => buildInstallPlan(binding, targetRoot, context));
+    } catch (error) {
+      planIssues.push(issue("payload-contract-invalid", context.adapterSkillsDir, error.message));
+    }
+  }
+
+  const targetEntryIssues = collectUpdateTargetEntryIssues(targetRoot, knownTargetDirNames, targetChildren);
+  const managedInstallsToDelete = managedInstallDirs(targetRoot, targetChildren);
+  const managedDeletePaths = new Set(managedInstallsToDelete);
+  const allIssues = dedupeIssues([...result.issues, ...planIssues, ...targetEntryIssues]);
+  const blockingIssues = allIssues.filter((currentIssue) => isUpdateBlockingIssue(currentIssue, managedDeletePaths));
+
+  return {
+    backend: "agents",
+    source_kind: context.sourceKind,
+    source_ref: context.sourceRef,
+    source_root: context.sourceRoot,
+    target_root: targetRoot,
+    operation_sequence: ["prune --all", "check_paths_exist", "install", "verify"],
+    managed_installs_to_delete: managedInstallsToDelete,
+    planned_target_paths: plans.map((plan) => plan.targetSkillDir),
+    issue_count: allIssues.length,
+    issues: allIssues,
+    blocking_issue_count: blockingIssues.length,
+    blocking_issues: blockingIssues,
+  };
+}
+
 function diagnosticSummary(result) {
   const managedDirs = managedInstallDirs(result.targetRoot, result.targetChildren);
   const issueCodes = [...new Set(result.issues.map((currentIssue) => currentIssue.code))].sort();
@@ -1090,6 +1260,51 @@ function parseNodeDiagnoseJsonArgs(args) {
   return { backend };
 }
 
+function parseNodeUpdateJsonArgs(args) {
+  if (args[0] !== "update") {
+    return null;
+  }
+  let backend = "agents";
+  let json = false;
+  let source = "package";
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--json") {
+      json = true;
+      continue;
+    }
+    if (arg === "--backend") {
+      if (index + 1 >= args.length) {
+        return null;
+      }
+      backend = args[index + 1];
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--backend=")) {
+      backend = arg.slice("--backend=".length);
+      continue;
+    }
+    if (arg === "--source") {
+      if (index + 1 >= args.length) {
+        return null;
+      }
+      source = args[index + 1];
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--source=")) {
+      source = arg.slice("--source=".length);
+      continue;
+    }
+    return null;
+  }
+  if (!json || backend !== "agents" || source !== "package") {
+    return null;
+  }
+  return { backend, source };
+}
+
 function runNodeDiagnoseJson(args) {
   if (parseNodeDiagnoseJsonArgs(args) === null) {
     return null;
@@ -1099,6 +1314,21 @@ function runNodeDiagnoseJson(args) {
     const result = verifyAgentsBackend(context);
     console.log(JSON.stringify(diagnosticSummary(result), null, 2));
     return 0;
+  } catch (error) {
+    console.error(error.message);
+    return 1;
+  }
+}
+
+function runNodeUpdateJson(args) {
+  if (parseNodeUpdateJsonArgs(args) === null) {
+    return null;
+  }
+  try {
+    const context = buildNodeAgentsContext();
+    const summary = updatePlanSummary(context);
+    console.log(JSON.stringify(summary, null, 2));
+    return summary.blocking_issue_count ? 1 : 0;
   } catch (error) {
     console.error(error.message);
     return 1;
@@ -1309,8 +1539,8 @@ Backend: agents
 async function main() {
   const args = process.argv.slice(2);
 
-  // P0-035 second slice: agents diagnose JSON is Node-owned and read-only.
-  // Other deploy modes and unsupported diagnose variants stay on the Python
+  // P0-035 slices: selected agents JSON dry-run paths are Node-owned and
+  // read-only. Other deploy modes and unsupported variants stay on the Python
   // reference path until their adapter_deploy.py contracts are migrated.
   if (args.length === 0) {
     if (process.stdin.isTTY && process.stdout.isTTY) {
@@ -1339,6 +1569,11 @@ async function main() {
     return nodeDiagnoseStatus;
   }
 
+  const nodeUpdateStatus = runNodeUpdateJson(args);
+  if (nodeUpdateStatus !== null) {
+    return nodeUpdateStatus;
+  }
+
   return await runWrapper(args);
 }
 
@@ -1360,6 +1595,7 @@ module.exports = {
   loadRuntimeMarker,
   normalizeRelativePath,
   parseNodeDiagnoseJsonArgs,
+  parseNodeUpdateJsonArgs,
   pathSafetyPolicy,
   payloadTargetMetadata,
   pythonCandidates,
