@@ -20,7 +20,7 @@ last_verified: 2026-04-30
 
 ## 使用 `aw-installer`
 
-`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。当前 npm registry 事实是 `aw-installer@next` 指向 `0.4.1-rc.2`，`aw-installer@latest` 指向 `0.4.0-rc.1`，`latest` 不代表稳定 release approval。已发布的 `0.4.1-rc.2` registry artifact 绑定 `gitHead=7f7536a`；当前本地 checkout 已在该版本号之后继续前进，后续若要发布本地新变化，必须先升新版本，不能复用 `0.4.1-rc.2`。复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)，release channel 与 publish 边界见 [`aw-installer Release Channel Contract`](./docs/project-maintenance/deploy/release-channel-contract.md)，npx/package smoke 见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
+`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。当前 checkout 的 release-prep candidate 是 `0.4.1-rc.3`；当前 npm registry 事实仍是 `aw-installer@next` 指向 `0.4.1-rc.2`，`aw-installer@latest` 指向 `0.4.0-rc.1`，`latest` 不代表稳定 release approval。已发布的 `0.4.1-rc.2` registry artifact 绑定 `gitHead=7f7536a`；当前本地 candidate 若要发布，必须使用新版本 `0.4.1-rc.3`，不能复用 `0.4.1-rc.2`。复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)，release channel 与 publish 边界见 [`aw-installer Release Channel Contract`](./docs/project-maintenance/deploy/release-channel-contract.md)，npx/package smoke 见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
 
 ```bash
 npx aw-installer@next
@@ -40,7 +40,7 @@ npx aw-installer@next install --backend agents
 
 这里的 `aw-installer@next` 是当前已发布 RC 试用选择器；裸 `npx aw-installer` 仍按 npm `latest` 解析到较旧的 rc1。当前 RC 不是稳定 release 批准，稳定版本和未来 publish 仍需单独审批。`diagnose` 和 `verify` 是只读检查；`install` 是显式写入当前 payload 的底层命令；`update` 默认只输出 dry-run plan。推荐写入路径是在确认 plan 后运行 `update --yes`，它会按 `prune --all -> check_paths_exist -> install -> verify` 写入目标仓库的 `.agents/skills`。完整入口合同见 [`Distribution Entrypoint Contract`](./docs/project-maintenance/deploy/distribution-entrypoint-contract.md)，registry npx smoke 与反馈日志见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
 
-`aw-installer --help` / `--version` 由 Node wrapper 直接处理，不需要启动 Python；`aw-installer diagnose --backend agents --json` 当前也有 Node-owned 只读路径。其他 deploy modes（例如 `verify`、`install`、`update`、`prune`，以及未列入 Node-owned 子集的 diagnose 变体）仍通过 Python deploy wrapper 执行；`0.4.1-rc.2` 在 Windows 上按 `py -3`、`python`、`python3` 尝试，在 Linux/macOS 上按 `python3`、`python` 尝试，且不依赖 `PYTHON` 或 `PYTHON3` 环境变量覆盖。论坛试用应显式使用 `aw-installer@next`，避免裸 `latest` 解析到较旧的 rc1。
+`aw-installer --help` / `--version` 由 Node wrapper 直接处理，不需要启动 Python；`aw-installer diagnose --backend agents --json` 当前也有 Node-owned 只读路径。其他 deploy modes（例如 `verify`、`install`、`update`、`prune`，以及未列入 Node-owned 子集的 diagnose 变体）仍通过 Python deploy wrapper 执行；`0.4.1-rc.3` 在 Windows 上按 `py -3`、`python`、`python3` 尝试，在 Linux/macOS 上按 `python3`、`python` 尝试，且不依赖 `PYTHON` 或 `PYTHON3` 环境变量覆盖。论坛试用应显式使用 `aw-installer@next`，避免裸 `latest` 解析到较旧的 rc1。
 
 `aw-installer update` 默认使用 package 或 checkout 中的 source payload；当前 candidate 保留显式 `--source github --github-repo OceanEyeFF/vibecoding_autoworkflow --github-ref <ref-containing-current-payload>`，从 GitHub source archive 读取本次 update 的 source root。`master` 只有在已包含当前 required payload source 时才是有效 ref。`update` 仍不做 channel 解析、自升级、验签或自动回滚。payload provenance 与 update trust boundary 见 [`Payload Provenance And Update Trust Boundary`](./docs/project-maintenance/deploy/payload-provenance-trust-boundary.md)。
 

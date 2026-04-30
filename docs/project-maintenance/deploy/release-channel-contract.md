@@ -13,8 +13,8 @@ last_verified: 2026-04-30
 
 ## 当前状态
 
-- 根目录 `package.json` 是 self-contained `aw-installer` package envelope；`aw-installer` 是已批准的 unscoped public package identity。`aw-installer@0.4.0-rc.1` 已发布到 npm `latest`，`aw-installer@0.4.1-rc.2` 已发布到 npm `next`。
-- `0.4.0-rc.1` 是首个已发布 `0.4.x` RC checkpoint；`P0-019` 已跨过该版本的真实 publish 审批边界。`0.4.1-rc.2` 是当前 `next` RC artifact，绑定 `v0.4.1-rc.2`、remote tag `v0.4.1-rc.2` 和 npm `gitHead=7f7536a`。当前本地 checkout 已包含该 gitHead 之后的新变化；后续 publish 必须使用新的 immutable npm version，并仍同时满足本文的环境、tag、dist-tag、CI、package metadata approval lock、GitHub source readiness 与 registry 准入条件。
+- 根目录 `package.json` 是 self-contained `aw-installer` package envelope；`aw-installer` 是已批准的 unscoped public package identity。`aw-installer@0.4.0-rc.1` 已发布到 npm `latest`，`aw-installer@0.4.1-rc.2` 已发布到 npm `next`；当前 checkout 的 release-prep candidate 是 `0.4.1-rc.3`。
+- `0.4.0-rc.1` 是首个已发布 `0.4.x` RC checkpoint；`P0-019` 已跨过该版本的真实 publish 审批边界。`0.4.1-rc.2` 是当前已发布 `next` RC artifact，绑定 `v0.4.1-rc.2`、remote tag `v0.4.1-rc.2` 和 npm `gitHead=7f7536a`。当前本地 checkout 已准备 `0.4.1-rc.3`，用于承接该 gitHead 之后的新变化；后续 publish 必须使用新的 immutable npm version，并仍同时满足本文的环境、tag、dist-tag、CI、package metadata approval lock、GitHub source readiness 与 registry 准入条件。
 - `npm pack --dry-run --json`、`npm run publish:dry-run --silent` 和根 `.tgz` smoke 只证明包面和运行入口，不等于发布授权。
 - `npm run publish:dry-run --silent` runs `toolchain/scripts/deploy/bin/publish-dry-run.js`, which defaults to `next` for the current RC lane but honors `AW_INSTALLER_RELEASE_CHANNEL` or `npm_config_tag` so release workflows rehearse the same channel they would publish. The dry-run wrapper rejects any channel outside `latest`, `next`, or `canary` before invoking npm.
 - `prepublishOnly` guard 位于 `toolchain/scripts/deploy/bin/check-root-publish.js`，负责在真实 publish 前执行机器准入检查。
@@ -81,24 +81,24 @@ Use dry-run before real publish approval and execution:
 npm run publish:dry-run --silent
 ```
 
-Real publish requires a separate approval boundary, an explicit tracked metadata-lock change, and explicit release metadata. The current `0.4.1-rc.2` metadata lock is:
+Real publish requires a separate approval boundary, an explicit tracked metadata-lock change, and explicit release metadata. The current `0.4.1-rc.3` release-prep metadata lock is:
 
 ```json
 {
   "realPublishApproval": "approved",
-  "approvedVersion": "0.4.1-rc.2",
-  "approvedGitTag": "v0.4.1-rc.2",
+  "approvedVersion": "0.4.1-rc.3",
+  "approvedGitTag": "v0.4.1-rc.3",
   "approvedChannel": "next"
 }
 ```
 
-The historical `0.4.1-rc.2` command shape for the already published next RC was:
+The `0.4.1-rc.3` command shape, after final approval and source readiness are proven, is:
 
 ```text
 CI=true
 AW_INSTALLER_PUBLISH_APPROVED=1
-AW_INSTALLER_RELEASE_GIT_TAG=v0.4.1-rc.2
+AW_INSTALLER_RELEASE_GIT_TAG=v0.4.1-rc.3
 npm publish --tag next
 ```
 
-Do not run that command again for `0.4.1-rc.2`; npm package versions are immutable and the registry already has this version on `next`. Future RC publish work must select a new version and refresh the approval lock before publish. Treat `latest` as the older rc1 selector, not as stable-release approval.
+Do not run the historical publish command again for `0.4.1-rc.2`; npm package versions are immutable and the registry already has that version on `next`. Treat `latest` as the older rc1 selector, not as stable-release approval.
