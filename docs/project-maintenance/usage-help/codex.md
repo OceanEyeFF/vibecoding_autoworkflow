@@ -1,9 +1,9 @@
 ---
 title: "Codex Usage Help"
 status: active
-updated: 2026-04-28
+updated: 2026-05-01
 owner: aw-kernel
-last_verified: 2026-04-28
+last_verified: 2026-05-01
 ---
 # Codex Usage Help
 
@@ -79,3 +79,4 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ver
 - 如果你就在当前仓库下部署到默认 repo-local target，可以省略 `--agents-root`
 - 不要把 `--agents-root` 指向与目标 repo 无关的敏感目录；外部试用优先使用默认 repo-local `.agents/skills/`
 - 外部试用反馈优先使用 [trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)。如果通过 [npx Command Test Execution](../testing/npx-command-test-execution.md) 复现，请附上脱敏后的 `aw-installer-npx-run.log` 摘要；不要在长期文档中记录私有仓库标识、token 或完整敏感日志
+- 本地 `aw-installer check_paths_exist --backend agents` 与 `aw-installer verify --backend agents` 已是 package/local source 的 Node-owned 只读路径；可用于验证 wrapper 层不经 Python fallback 的 target path conflict scan 和 strict target verification。`aw-installer install --backend agents` 也已在 package/local source clean-target 场景下由 Node-owned 路径写入，即 target root 不存在或为空目录时不经 Python fallback。`aw-installer prune --all --backend agents` 已在 package/local source 场景下由 Node-owned 路径删除 current-backend managed installs，并保留 foreign、unrecognized、invalid-marker 和用户内容。`aw-installer update --backend agents --yes` 已在 package/local source 场景下由 Node-owned 路径组合 `prune --all -> check_paths_exist -> install -> verify`，保留 dry-run plan、blocking preflight、post-apply strict verify 和 recovery hint 语义。non-clean target `install` 子命令、GitHub-source update、Claude backend 与 unsupported variants 仍按通用 deploy 文档的 Python/reference 边界处理。
