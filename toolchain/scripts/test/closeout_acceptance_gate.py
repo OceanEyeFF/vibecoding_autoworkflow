@@ -44,27 +44,18 @@ EXPECTED_NPM_PACKAGE_FILES = {
     "package.json",
     "path_safety_policy.json",
 }
-CLAUDE_REQUIRED_PAYLOAD_SKILLS = (
-    "close-worktrack-skill",
-    "dispatch-skills",
-    "doc-catch-up-worker-skill",
-    "gate-skill",
-    "generic-worker-skill",
-    "harness-skill",
-    "init-worktrack-skill",
-    "recover-worktrack-skill",
-    "repo-append-request-skill",
-    "repo-change-goal-skill",
-    "repo-refresh-skill",
-    "repo-status-skill",
-    "repo-whats-next-skill",
-    "review-evidence-skill",
-    "rule-check-skill",
-    "schedule-worktrack-skill",
-    "set-harness-goal-skill",
-    "test-evidence-skill",
-    "worktrack-status-skill",
-)
+
+
+def claude_required_payload_skills(repo_root: Path = REPO_ROOT) -> tuple[str, ...]:
+    skills_root = repo_root / "product" / "harness" / "adapters" / "claude" / "skills"
+    if not skills_root.is_dir():
+        return ()
+    return tuple(
+        sorted(path.parent.name for path in skills_root.glob(f"*/payload.json") if path.is_file())
+    )
+
+
+CLAUDE_REQUIRED_PAYLOAD_SKILLS = claude_required_payload_skills()
 ROOT_NPM_REQUIRED_PACKAGE_FILES = {
     "package.json",
     "README.md",

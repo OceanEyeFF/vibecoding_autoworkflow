@@ -24,5 +24,8 @@
   ],
   "legacy_target_dirs": [
     "aw-repo-whats-next-skill"
-  ]
+  ],
+  "claude_frontmatter": {
+    "disable-model-invocation": true
+  }
 }

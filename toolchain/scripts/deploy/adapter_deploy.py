@@ -11,6 +11,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import sys
 import tempfile
 import urllib.parse
@@ -30,9 +31,12 @@ GITHUB_REPO_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 GITHUB_REF_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$")
 GITHUB_SHA_REF_PATTERN = re.compile(r"^[0-9a-fA-F]{40}$")
 SHA256_HEX_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
+FRONTMATTER_KEY_PATTERN = re.compile(r"^([A-Za-z0-9_-]+)\s*:")
 DEFAULT_GITHUB_REPO = "OceanEyeFF/vibecoding_autoworkflow"
 SUPPORTED_BACKENDS = ("agents", "claude")
 PATH_SAFETY_POLICY_PATH = Path(__file__).with_name("path_safety_policy.json")
+DEPLOYED_FILE_MODE = 0o644
+DEPLOYED_DIR_MODE = 0o755
 
 
 def path_is_relative_to(path: Path, parent: Path) -> bool:
@@ -377,6 +381,15 @@ class PathConflict:
     detail: str
 
 
+@dataclass(frozen=True)
+class DirectoryIdentity:
+    """Stable identity for a real directory checked across install operations."""
+
+    path: Path
+    st_dev: int
+    st_ino: int
+
+
 def add_backend_args(subparser: argparse.ArgumentParser) -> None:
     subparser.add_argument(
         "--backend",
@@ -525,6 +538,9 @@ def normalize_safe_relative_path(
     empty_error: str,
     invalid_segment_error: Callable[[str], str],
 ) -> str:
+    if "\0" in value:
+        raise DeployError(f"Path contains unsupported null byte: {value!r}")
+
     windows_path = PureWindowsPath(value)
     if (
         PurePosixPath(value).is_absolute()
@@ -682,29 +698,58 @@ def target_root_for(backend: str, args: argparse.Namespace, context: DeployConte
         raise DeployError(f"Unsupported backend target root resolution: {backend}") from exc
 
 
-def ensure_install_target_root(path: Path) -> None:
-    if path.is_symlink():
+def target_root_identity(path: Path) -> DirectoryIdentity:
+    try:
+        path_stat = path.stat(follow_symlinks=False)
+    except FileNotFoundError as exc:
+        raise DeployError(f"Target root does not exist: {path}") from exc
+
+    if stat.S_ISLNK(path_stat.st_mode):
         if path.exists():
             raise DeployError(f"Target root must be a real directory, not a symlink: {path}")
         raise DeployError(f"Target root is a broken symlink: {path}")
+    if not stat.S_ISDIR(path_stat.st_mode):
+        raise DeployError(f"Target root exists but is not a directory: {path}")
+    return DirectoryIdentity(path=path, st_dev=path_stat.st_dev, st_ino=path_stat.st_ino)
 
-    if path.exists():
-        if not path.is_dir():
-            raise DeployError(f"Target root exists but is not a directory: {path}")
+
+def assert_directory_identity_current(identity: DirectoryIdentity, *, action: str) -> None:
+    try:
+        current_stat = identity.path.stat(follow_symlinks=False)
+    except FileNotFoundError as exc:
+        raise DeployError(
+            f"Target root changed during {action}, refusing to continue: {identity.path}"
+        ) from exc
+    if (
+        current_stat.st_dev != identity.st_dev
+        or current_stat.st_ino != identity.st_ino
+        or stat.S_ISLNK(current_stat.st_mode)
+        or not stat.S_ISDIR(current_stat.st_mode)
+    ):
+        raise DeployError(
+            f"Target root changed during {action}, refusing to continue: {identity.path}"
+        )
+
+
+def ensure_install_target_root(path: Path) -> DirectoryIdentity:
+    if path.exists() or path.is_symlink():
+        identity = target_root_identity(path)
         print(f"ready target root {path}")
-        return
+        return identity
 
     try:
-        path.mkdir(parents=True, exist_ok=True)
-    except FileExistsError as exc:
-        raise DeployError(f"Target root exists but is not a directory: {path}") from exc
+        path.parent.mkdir(parents=True, exist_ok=True)
+        os.mkdir(path, DEPLOYED_DIR_MODE)
+    except FileExistsError:
+        identity = target_root_identity(path)
+        print(f"ready target root {path}")
+        return identity
     except OSError as exc:
         raise DeployError(f"Target root could not be created: {path}: {exc}") from exc
-    if path.is_symlink():
-        raise DeployError(f"Target root must be a real directory, not a symlink: {path}")
-    if not path.is_dir():
-        raise DeployError(f"Target root exists but is not a directory: {path}")
+
+    identity = target_root_identity(path)
     print(f"created target root {path}")
+    return identity
 
 
 def verify_target_root(backend: str, target_root: Path) -> list[VerifyIssue]:
@@ -1178,6 +1223,11 @@ def render_frontmatter_value(value: bool) -> str:
     return "true" if value else "false"
 
 
+def frontmatter_key(line: str) -> str:
+    match = FRONTMATTER_KEY_PATTERN.match(line)
+    return match.group(1) if match else ""
+
+
 def apply_markdown_frontmatter_overrides(source_text: str, overrides: dict[str, bool]) -> str:
     if not overrides:
         return source_text
@@ -1195,7 +1245,7 @@ def apply_markdown_frontmatter_overrides(source_text: str, overrides: dict[str, 
             seen_keys: set[str] = set()
             updated_frontmatter: list[str] = []
             for line in frontmatter_lines:
-                key = line.split(":", 1)[0].strip() if ":" in line else ""
+                key = frontmatter_key(line)
                 if key in overrides:
                     updated_frontmatter.append(f"{key}: {render_frontmatter_value(overrides[key])}\n")
                     seen_keys.add(key)
@@ -1208,6 +1258,19 @@ def apply_markdown_frontmatter_overrides(source_text: str, overrides: dict[str, 
 
     override_lines = [f"{key}: {render_frontmatter_value(value)}\n" for key, value in overrides.items()]
     return "".join(["---\n", *override_lines, "---\n", source_text])
+
+
+def target_frontmatter_overrides(
+    binding: SkillBinding,
+    relative_name: str,
+    target_metadata: PayloadTargetMetadata,
+    payload: dict[str, Any],
+) -> dict[str, bool]:
+    if relative_name != target_metadata.target_entry_name:
+        return {}
+    if binding.backend == "claude":
+        return claude_frontmatter_overrides(payload, binding)
+    return {}
 
 
 def expected_target_file_text(
@@ -1225,11 +1288,9 @@ def expected_target_file_text(
     )
     source_text = source_path.read_text(encoding="utf-8")
     target_metadata = payload_target_metadata(payload, binding)
-    if binding.backend == "claude" and relative_name == target_metadata.target_entry_name:
-        return apply_markdown_frontmatter_overrides(
-            source_text,
-            claude_frontmatter_overrides(payload, binding),
-        )
+    overrides = target_frontmatter_overrides(binding, relative_name, target_metadata, payload)
+    if overrides:
+        return apply_markdown_frontmatter_overrides(source_text, overrides)
     return source_text
 
 
@@ -1321,6 +1382,10 @@ def compute_payload_fingerprint(
     if cached_fingerprint is not None:
         return cached_fingerprint
 
+    hasher = hashlib.sha256()
+    for fingerprint_part in fingerprint_parts:
+        hasher.update(fingerprint_part.encode("utf-8"))
+
     for relative_name, source_path, _source_stat in source_files:
         try:
             source_text = source_path.read_text(encoding="utf-8")
@@ -1328,10 +1393,14 @@ def compute_payload_fingerprint(
             raise DeployError(
                 f"Missing payload source file while computing fingerprint: {exc.filename}"
             ) from exc
-        fingerprint_parts.append(f"file:{relative_name}\n{source_text}\n")
+        hasher.update(f"file:{relative_name}\n".encode("utf-8"))
+        hasher.update(source_text.encode("utf-8"))
+        hasher.update(b"\n")
 
-    fingerprint_parts.append(f"file:{PAYLOAD_DESCRIPTOR}\n{payload_text}\n")
-    fingerprint = hashlib.sha256("".join(fingerprint_parts).encode("utf-8")).hexdigest()
+    hasher.update(f"file:{PAYLOAD_DESCRIPTOR}\n".encode("utf-8"))
+    hasher.update(payload_text.encode("utf-8"))
+    hasher.update(b"\n")
+    fingerprint = hasher.hexdigest()
     context.payload_fingerprint_cache[cache_key] = fingerprint
     return fingerprint
 
@@ -1718,6 +1787,16 @@ def ensure_target_root_ready_for_action(
     raise DeployError(f"Cannot {action} because target root is not ready:\n{details}")
 
 
+def write_deployed_text_file(path: Path, text: str) -> None:
+    path.write_text(text, encoding="utf-8")
+    path.chmod(DEPLOYED_FILE_MODE)
+
+
+def copy_deployed_file(source_path: Path, target_path: Path) -> None:
+    shutil.copyfile(source_path, target_path)
+    target_path.chmod(DEPLOYED_FILE_MODE)
+
+
 def install_backend_payloads(backend: str, args: argparse.Namespace, context: DeployContext) -> None:
     bindings = collect_validated_bindings(
         backend,
@@ -1737,16 +1816,24 @@ def install_backend_payloads(backend: str, args: argparse.Namespace, context: De
             f"{format_path_conflicts(conflicts)}"
         )
 
-    ensure_install_target_root(target_root)
+    target_root_identity_snapshot = ensure_install_target_root(target_root)
     for plan in plans:
         binding = plan.binding
         for legacy_dir_name in plan.target_metadata.legacy_target_dirs:
+            assert_directory_identity_current(
+                target_root_identity_snapshot,
+                action="install legacy cleanup",
+            )
             legacy_path = target_root / legacy_dir_name
             if not legacy_path.exists():
                 continue
             marker = load_runtime_marker(managed_skill_marker_path(legacy_path))
             if marker is not None and marker.backend == binding.backend:
                 if marker.skill_id == binding.skill_id or marker.skill_id in plan.target_metadata.legacy_skill_ids:
+                    assert_directory_identity_current(
+                        target_root_identity_snapshot,
+                        action="install legacy cleanup",
+                    )
                     shutil.rmtree(legacy_path)
                     print(f"removed legacy skill dir {binding.skill_id} -> {legacy_path}")
     for plan in plans:
@@ -1754,12 +1841,19 @@ def install_backend_payloads(backend: str, args: argparse.Namespace, context: De
         target_metadata = plan.target_metadata
         target_skill_dir = plan.target_skill_dir
         payload = load_binding_payload(binding, context=context)
+        assert_directory_identity_current(target_root_identity_snapshot, action="install")
         target_skill_dir.mkdir(parents=True, exist_ok=False)
+        assert_directory_identity_current(target_root_identity_snapshot, action="install")
+        target_skill_dir.chmod(DEPLOYED_DIR_MODE)
         for relative_name in target_metadata.required_payload_files:
             target_path = target_skill_dir / relative_name
+            assert_directory_identity_current(target_root_identity_snapshot, action="install")
             target_path.parent.mkdir(parents=True, exist_ok=True)
+            target_path.parent.chmod(DEPLOYED_DIR_MODE)
+            assert_directory_identity_current(target_root_identity_snapshot, action="install")
             if relative_name == MANAGED_SKILL_MARKER:
-                target_path.write_text(
+                write_deployed_text_file(
+                    target_path,
                     runtime_marker_text(
                         build_runtime_marker(
                             binding.backend,
@@ -1768,7 +1862,6 @@ def install_backend_payloads(backend: str, args: argparse.Namespace, context: De
                             plan.payload_fingerprint,
                         )
                     ),
-                    encoding="utf-8",
                 )
                 continue
             source_path = source_path_for_target_relative_file(
@@ -1777,18 +1870,18 @@ def install_backend_payloads(backend: str, args: argparse.Namespace, context: De
                 context,
                 payload=payload,
             )
-            if binding.backend == "claude" and relative_name == target_metadata.target_entry_name:
-                target_path.write_text(
+            if target_frontmatter_overrides(binding, relative_name, target_metadata, payload):
+                write_deployed_text_file(
+                    target_path,
                     expected_target_file_text(
                         binding,
                         relative_name,
                         context,
                         payload=payload,
                     ),
-                    encoding="utf-8",
                 )
             else:
-                shutil.copy2(source_path, target_path)
+                copy_deployed_file(source_path, target_path)
         print(f"installed skill {binding.skill_id} -> {target_skill_dir}")
 
 
@@ -1946,7 +2039,7 @@ def verify_deployed_skill(
             context,
             payload=skill_payload,
         )
-        if binding.backend == "claude" and relative_name == target_metadata.target_entry_name:
+        if target_frontmatter_overrides(binding, relative_name, target_metadata, skill_payload):
             target_matches_source = target_path.read_text(encoding="utf-8") == expected_target_file_text(
                 binding,
                 relative_name,
@@ -2101,16 +2194,7 @@ def prune_all_managed_target_dirs(
     context: DeployContext,
 ) -> None:
     target_root = target_root_for(backend, args, context)
-    target_root_issues = [
-        issue
-        for issue in verify_target_root(backend, target_root)
-        if issue.code != "missing-target-root"
-    ]
-    if target_root_issues:
-        details = "\n".join(
-            f"  - {issue.code}: {issue.path} ({issue.detail})" for issue in target_root_issues
-        )
-        raise DeployError(f"Cannot prune managed installs because target root is not ready:\n{details}")
+    ensure_target_root_ready_for_action(backend, target_root, action="prune managed installs")
 
     if not target_root.exists():
         print(f"no managed skill dirs found at {target_root}")

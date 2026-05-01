@@ -117,7 +117,7 @@ Skills that should be protected by default:
 - `test-evidence-skill`
 - `worktrack-status-skill`
 
-`repo-status-skill` and `repo-whats-next-skill` are read/decision oriented, but they still participate in control routing. The implementation task should make a deliberate metadata decision for them rather than inheriting the agents backend convention.
+`repo-status-skill` and `repo-whats-next-skill` are read/decision oriented, but they still participate in control routing. The verified implementation keeps the Claude full skill set conservative by applying `disable-model-invocation: true` to every Claude payload, including those two skills.
 
 ## Backend Metadata And Marker Treatment
 
@@ -137,6 +137,13 @@ Implementation should preserve the current managed-install safety model:
 - marker files identify current backend ownership and payload fingerprint
 - verify detects missing files, drift, conflicts, unrecognized content, and foreign markers
 - prune removes only recognized current-backend managed installs
+
+`legacy_target_dirs` and `legacy_skill_ids` have separate migration meanings:
+
+- `legacy_target_dirs` names old on-disk directories that may be removed when they carry a recognizable current-backend managed marker.
+- `legacy_skill_ids` names old marker skill ids that should still be considered the same managed install during cleanup. It is only needed when a skill was renamed, so most payload descriptors intentionally omit it.
+
+The Agents and Claude backends currently migrate in opposite directory-name directions. Agents payloads preserve the older no-prefix directory as legacy while installing into `aw-<skill-name>`; Claude payloads preserve the older `aw-<skill-name>` directory as legacy while installing into `<skill-name>`. Both directions use the same marker rule: only managed directories for the current backend are eligible for cleanup.
 
 ## Verification Matrix
 

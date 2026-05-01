@@ -7,9 +7,6 @@
     "product/harness/skills/repo-status-skill/SKILL.md"
   ],
   "target_dir": "repo-status-skill",
-  "legacy_target_dirs": [
-    "aw-repo-status-skill"
-  ],
   "target_entry_name": "SKILL.md",
   "payload_policy": "canonical-copy",
   "supported_target_scopes": [
@@ -20,5 +17,11 @@
     "SKILL.md",
     "payload.json",
     "aw.marker"
-  ]
+  ],
+  "legacy_target_dirs": [
+    "aw-repo-status-skill"
+  ],
+  "claude_frontmatter": {
+    "disable-model-invocation": true
+  }
 }

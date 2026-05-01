@@ -8,6 +8,7 @@ import json
 import os
 import select
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
@@ -35,8 +36,8 @@ class AdapterDeployTest(unittest.TestCase):
         self.fake_repo_root = self.temp_root / "repo"
         self.local_root = self.fake_repo_root / ".agents" / "skills"
         self.claude_local_root = self.fake_repo_root / ".claude" / "skills"
-        self.override_root = self.temp_root / "custom-root" / "skills"
-        self.claude_override_root = self.temp_root / "custom-claude-root" / "skills"
+        self.override_root = self.fake_repo_root / "custom-root" / "skills"
+        self.claude_override_root = self.fake_repo_root / "custom-claude-root" / "skills"
         self.npm_state_root = self.temp_root / "npm-state"
         self.npm_state_root.mkdir(parents=True)
         (self.npm_state_root / "cache").mkdir()
@@ -428,7 +429,7 @@ class AdapterDeployTest(unittest.TestCase):
         try:
             process = subprocess.Popen(
                 ["node", str(bin_path), "tui"],
-                cwd=self.source_repo_root,
+                cwd=target_repo,
                 env=env,
                 stdin=slave_fd,
                 stdout=slave_fd,
@@ -539,6 +540,16 @@ class AdapterDeployTest(unittest.TestCase):
                 self._runtime_marker_text(skill_id),
             )
 
+    def test_install_normalizes_deployed_file_permissions(self) -> None:
+        source_skill = self.fake_repo_root / "product" / "harness" / "skills" / "harness-skill" / "SKILL.md"
+        source_skill.chmod(0o666)
+
+        code, _stdout, stderr = self._install()
+
+        self.assertEqual(code, 0, stderr)
+        target_skill = self.local_root / "aw-harness-skill" / "SKILL.md"
+        self.assertEqual(stat.S_IMODE(target_skill.stat().st_mode), 0o644)
+
     def test_backend_choices_include_claude(self) -> None:
         args = adapter_deploy.parse_args(["diagnose", "--backend", "claude"])
 
@@ -552,6 +563,8 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("/proc", policy["recursive_sensitive_target_repo_roots"])
         self.assertIn(".ssh", policy["home_relative_recursive_sensitive_target_repo_roots"])
         self.assertIn("$source_root", policy["allowed_target_repo_root_prefixes"])
+        self.assertNotIn("/tmp", policy["allowed_target_repo_root_prefixes"])
+        self.assertNotIn("/var/tmp", policy["allowed_target_repo_root_prefixes"])
 
     def test_adapter_deploy_import_does_not_run_static_configuration_validation(self) -> None:
         completed = subprocess.run(
@@ -639,6 +652,25 @@ class AdapterDeployTest(unittest.TestCase):
                 for path in update_payload["planned_target_paths"]
             )
         )
+
+    def test_claude_status_skills_are_protected_from_auto_invocation(self) -> None:
+        install_code, _install_stdout, install_stderr = self._claude_install()
+
+        self.assertEqual(install_code, 0, install_stderr)
+        for skill_id in ("repo-status-skill", "repo-whats-next-skill"):
+            skill_text = (self.claude_local_root / skill_id / "SKILL.md").read_text(encoding="utf-8")
+            self.assertIn("disable-model-invocation: true", skill_text)
+
+    def test_frontmatter_override_preserves_non_overridden_colon_values(self) -> None:
+        source = "---\ndescription: Check: verify deployment\n---\n# demo\n"
+
+        rendered = adapter_deploy.apply_markdown_frontmatter_overrides(
+            source,
+            {"disable-model-invocation": True},
+        )
+
+        self.assertIn("description: Check: verify deployment\n", rendered)
+        self.assertIn("disable-model-invocation: true\n", rendered)
 
     def test_agents_and_claude_installs_can_coexist_in_one_target_repo(self) -> None:
         agents_code, agents_stdout, agents_stderr = self._install()
@@ -755,7 +787,7 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
     def test_cli_derives_runtime_context_from_env_after_import(self) -> None:
-        target_repo = self.temp_root / "env-target"
+        target_repo = self.fake_repo_root / "env-target"
 
         code, stdout, stderr = self._run_cli(
             "diagnose",
@@ -813,6 +845,14 @@ class AdapterDeployTest(unittest.TestCase):
             adapter_deploy.normalize_relative_repo_path(
                 "C:/payload",
                 field_name="repo_path",
+                skill_id="demo-skill",
+            )
+
+    def test_normalize_relative_path_rejects_null_byte(self) -> None:
+        with self.assertRaisesRegex(adapter_deploy.DeployError, "null byte"):
+            adapter_deploy.normalize_relative_target_path(
+                "safe\0payload",
+                field_name="target_dir",
                 skill_id="demo-skill",
             )
 
@@ -1819,7 +1859,7 @@ class AdapterDeployTest(unittest.TestCase):
     def test_node_deploy_wrappers_ignore_python_env_overrides(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
-        target_repo = self.temp_root / "python-env-target"
+        target_repo = self.fake_repo_root / "python-env-target"
         env = {
             **os.environ,
             "AW_HARNESS_REPO_ROOT": str(self.fake_repo_root),
@@ -1861,7 +1901,7 @@ class AdapterDeployTest(unittest.TestCase):
         node_path = shutil.which("node")
         if node_path is None:
             self.skipTest("node is not available")
-        target_repo = self.temp_root / "node-diagnose-target"
+        target_repo = self.fake_repo_root / "node-diagnose-target"
         fake_bin = self._fake_failing_python_bin()
         env = {
             **os.environ,
@@ -2233,7 +2273,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertFalse((target_repo / ".agents" / "skills").exists())
 
     def test_target_root_scans_raise_deploy_error_for_iterdir_failures(self) -> None:
-        target_root = self.temp_root / "scan-failure-target"
+        target_root = self.fake_repo_root / "scan-failure-target"
         target_root.mkdir()
         prune_args = adapter_deploy.parse_args(
             ["prune", "--backend", "agents", "--agents-root", str(target_root)]
@@ -2378,26 +2418,16 @@ class AdapterDeployTest(unittest.TestCase):
         }
         required_paths.update(
             f"product/harness/adapters/claude/skills/{skill_id}/payload.json"
-            for skill_id in (
-                "close-worktrack-skill",
-                "dispatch-skills",
-                "doc-catch-up-worker-skill",
-                "gate-skill",
-                "generic-worker-skill",
-                "harness-skill",
-                "init-worktrack-skill",
-                "recover-worktrack-skill",
-                "repo-append-request-skill",
-                "repo-change-goal-skill",
-                "repo-refresh-skill",
-                "repo-status-skill",
-                "repo-whats-next-skill",
-                "review-evidence-skill",
-                "rule-check-skill",
-                "schedule-worktrack-skill",
-                "set-harness-goal-skill",
-                "test-evidence-skill",
-                "worktrack-status-skill",
+            for skill_id in sorted(
+                path.parent.name
+                for path in (
+                    self.source_repo_root
+                    / "product"
+                    / "harness"
+                    / "adapters"
+                    / "claude"
+                    / "skills"
+                ).glob("*/payload.json")
             )
         )
         for required_path in required_paths:
@@ -2533,7 +2563,7 @@ class AdapterDeployTest(unittest.TestCase):
 
     def test_adapter_cli_rejects_source_root_override_without_payload_source(self) -> None:
         source_root = self.temp_root / "not-a-harness-checkout"
-        target_repo = self.temp_root / "target-repo"
+        target_repo = source_root / "target-repo"
         source_root.mkdir()
         (target_repo / ".agents" / "skills").mkdir(parents=True)
         script_path = self.source_repo_root / "toolchain" / "scripts" / "deploy" / "adapter_deploy.py"
@@ -2882,11 +2912,14 @@ class AdapterDeployTest(unittest.TestCase):
     def test_update_json_can_use_github_source_archive(self) -> None:
         archive_bytes = self._fake_github_archive_bytes()
         archive_sha256 = hashlib.sha256(archive_bytes).hexdigest()
-        with mock.patch.object(
-            adapter_deploy.urllib.request,
-            "urlopen",
-            return_value=self._fake_urlopen_response(archive_bytes),
-        ) as urlopen:
+        with (
+            mock.patch.object(
+                adapter_deploy.urllib.request,
+                "urlopen",
+                return_value=self._fake_urlopen_response(archive_bytes),
+            ) as urlopen,
+            mock.patch.object(Path, "cwd", return_value=self.fake_repo_root),
+        ):
             code, stdout, stderr = self._update(
                 "--json",
                 "--source",
@@ -2941,11 +2974,14 @@ class AdapterDeployTest(unittest.TestCase):
 
     def test_update_json_github_source_default_repo_can_use_environment(self) -> None:
         archive_bytes = self._fake_github_archive_bytes()
-        with mock.patch.object(
-            adapter_deploy.urllib.request,
-            "urlopen",
-            return_value=self._fake_urlopen_response(archive_bytes),
-        ) as urlopen:
+        with (
+            mock.patch.object(
+                adapter_deploy.urllib.request,
+                "urlopen",
+                return_value=self._fake_urlopen_response(archive_bytes),
+            ) as urlopen,
+            mock.patch.object(Path, "cwd", return_value=self.fake_repo_root),
+        ):
             code, stdout, stderr = self._run_cli(
                 "update",
                 "--backend",
@@ -3387,6 +3423,29 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("changed during pruning, refusing to remove", stderr)
         self.assertTrue(target_dir.is_symlink())
 
+    def test_install_refuses_target_root_replaced_during_write(self) -> None:
+        original_mkdir = Path.mkdir
+        replacement_target = self.temp_root / "replacement-target"
+        replacement_target.mkdir()
+        backup_root = self.temp_root / "original-target-root"
+        replaced = False
+
+        def replacing_mkdir(path: Path, *args: object, **kwargs: object) -> None:
+            nonlocal replaced
+            original_mkdir(path, *args, **kwargs)
+            if path.parent == self.local_root and not replaced:
+                replaced = True
+                self.local_root.rename(backup_root)
+                self.local_root.symlink_to(replacement_target, target_is_directory=True)
+
+        with mock.patch.object(Path, "mkdir", replacing_mkdir):
+            code, stdout, stderr = self._install()
+
+        self.assertEqual(code, 1)
+        self.assertIn("Target root changed during install", stderr)
+        self.assertTrue(self.local_root.is_symlink())
+        self.assertFalse(any(replacement_target.iterdir()))
+
     def test_prune_all_is_noop_when_target_root_is_missing(self) -> None:
         code, stdout, stderr = self._prune_all()
 
@@ -3719,6 +3778,25 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(code, 1, stderr)
         self.assertIn("wrong-target-root-type", stdout)
         self.assertIn("must be a real directory, not a symlink", stdout)
+
+    def test_install_refuses_target_root_symlink_created_during_root_creation(self) -> None:
+        original_os_mkdir = os.mkdir
+        redirected_root = self.temp_root / "redirected-agents-skills"
+        redirected_root.mkdir()
+
+        def racing_mkdir(path: object, mode: int = 0o777, *args: object, **kwargs: object) -> None:
+            if Path(path) == self.local_root:
+                self.local_root.symlink_to(redirected_root, target_is_directory=True)
+                raise FileExistsError(str(path))
+            original_os_mkdir(path, mode, *args, **kwargs)
+
+        with mock.patch.object(os, "mkdir", racing_mkdir):
+            code, stdout, stderr = self._install()
+
+        self.assertEqual(code, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("must be a real directory, not a symlink", stderr)
+        self.assertFalse(any(redirected_root.iterdir()))
 
 
 if __name__ == "__main__":

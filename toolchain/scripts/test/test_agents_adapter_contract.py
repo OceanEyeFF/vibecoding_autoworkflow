@@ -215,6 +215,7 @@ class AgentsAdapterContractTest(unittest.TestCase):
                 ],
                 check=False,
                 capture_output=True,
+                cwd=temp_dir,
                 text=True,
             )
 
@@ -250,6 +251,7 @@ class AgentsAdapterContractTest(unittest.TestCase):
                 ],
                 check=False,
                 capture_output=True,
+                cwd=temp_dir,
                 text=True,
             )
 

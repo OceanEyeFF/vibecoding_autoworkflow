@@ -21,6 +21,20 @@ def test_local_deploy_target_roots_match_supported_verify_backends() -> None:
     )
 
 
+def test_claude_required_payload_skills_are_discovered_from_payload_descriptors() -> None:
+    skills_root = (
+        closeout_acceptance_gate.REPO_ROOT
+        / "product"
+        / "harness"
+        / "adapters"
+        / "claude"
+        / "skills"
+    )
+    expected = tuple(sorted(path.parent.name for path in skills_root.glob("*/payload.json")))
+
+    assert closeout_acceptance_gate.CLAUDE_REQUIRED_PAYLOAD_SKILLS == expected
+
+
 def test_npm_pack_tarball_result_script_resolves_single_pack_result(tmp_path: Path) -> None:
     if shutil.which("node") is None:
         pytest.skip("node is not available")
@@ -42,6 +56,14 @@ def test_npm_pack_tarball_result_script_resolves_single_pack_result(tmp_path: Pa
     assert completed.stdout == f"{tmp_path / 'aw-installer-0.0.0.tgz'}\n"
 
 
+def test_successful_npm_command_result_fails_unknown_npm_commands() -> None:
+    result = successful_npm_command_result(["npm", "exec", "--", "aw-installer", "unknown"])
+
+    assert result is not None
+    assert result["passed"] is False
+    assert "unrecognized npm command" in result["stderr"]
+
+
 NPM_HELP_STDOUT = (
     "usage: aw-installer [tui|<deploy-mode>] [options]\n"
     "harness_deploy.py\n"
@@ -54,29 +76,11 @@ NPM_HELP_STDOUT = (
     "prune --all --backend agents|claude\n"
     "check_paths_exist --backend agents|claude\n"
 )
-NPM_VERSION = "0.4.3-rc.1"
+NPM_VERSION = json.loads((closeout_acceptance_gate.REPO_ROOT / "package.json").read_text(encoding="utf-8"))[
+    "version"
+]
 NPM_VERSION_STDOUT = f"aw-installer {NPM_VERSION}\n"
-CLAUDE_SKILL_DIR_NAMES = (
-    "close-worktrack-skill",
-    "dispatch-skills",
-    "doc-catch-up-worker-skill",
-    "gate-skill",
-    "generic-worker-skill",
-    "harness-skill",
-    "init-worktrack-skill",
-    "recover-worktrack-skill",
-    "repo-append-request-skill",
-    "repo-change-goal-skill",
-    "repo-refresh-skill",
-    "repo-status-skill",
-    "repo-whats-next-skill",
-    "review-evidence-skill",
-    "rule-check-skill",
-    "schedule-worktrack-skill",
-    "set-harness-goal-skill",
-    "test-evidence-skill",
-    "worktrack-status-skill",
-)
+CLAUDE_SKILL_DIR_NAMES = closeout_acceptance_gate.CLAUDE_REQUIRED_PAYLOAD_SKILLS
 
 
 def write_root_package_json(repo_root: Path, version: str = NPM_VERSION) -> None:
@@ -157,6 +161,17 @@ def successful_npm_command_result(
                     ],
                 }
             ),
+            "stderr": "",
+            "passed": True,
+        }
+    if command in (
+        ["npm", "--prefix", "toolchain/scripts/deploy", "test", "--silent"],
+        ["npm", "--prefix", "toolchain/scripts/deploy", "run", "smoke", "--silent"],
+    ):
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
             "stderr": "",
             "passed": True,
         }
@@ -278,13 +293,21 @@ def successful_npm_command_result(
             "stderr": "",
             "passed": True,
         }
-    if command[:2] == ["npm", "exec"]:
+    if command[:2] == ["npm", "exec"] and "--help" in command:
         return {
             "command": command,
             "returncode": 0,
             "stdout": NPM_HELP_STDOUT,
             "stderr": "",
             "passed": True,
+        }
+    if command[:1] == ["npm"]:
+        return {
+            "command": command,
+            "returncode": 1,
+            "stdout": "",
+            "stderr": f"unrecognized npm command in closeout gate test mock: {command}",
+            "passed": False,
         }
     return None
 
