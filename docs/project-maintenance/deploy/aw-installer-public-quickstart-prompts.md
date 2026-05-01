@@ -18,10 +18,10 @@ This page belongs to [Deploy Runbooks](./README.md). It uses the current distrib
 - direct_npx_available: true
 - direct_npx_primary_path: `aw-installer@next`
 - registry_rc_available: true
-- npm_publish_allowed: completed-for-0.4.3-rc.0-next; future publish still separately approval-gated
+- npm_publish_allowed: completed-for-0.4.3-rc.0-next; 0.4.3-rc.1 publish still separately approval-gated
 - package_name_decided: true
 - approved_package_name: unscoped `aw-installer`
-- current_install_source: published `aw-installer@next`, local `0.4.3-rc.0` `.tgz` candidate package, or explicit source checkout
+- current_install_source: published `aw-installer@next`, local `0.4.3-rc.1` `.tgz` candidate package, or explicit source checkout
 - target_repo_writes:
   - `.agents/skills/` for Codex/agents install
   - `.claude/skills/<skill-name>/` for Claude managed adapter install
@@ -74,7 +74,7 @@ printf 'AW_INSTALLER_PACKAGE=%s\n' "$AW_INSTALLER_PACKAGE"
 External testers who receive a `.tgz` can skip this step and set:
 
 ```bash
-AW_INSTALLER_PACKAGE="/path/to/aw-installer-0.4.3-rc.0.tgz"
+AW_INSTALLER_PACKAGE="/path/to/aw-installer-0.4.3-rc.1.tgz"
 ```
 
 The exact filename may differ. Prefer `aw-installer@next` for published RC registry npx trials and local `.tgz` when validating the current checkout or when registry access is unavailable.
