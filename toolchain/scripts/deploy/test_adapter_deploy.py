@@ -979,7 +979,11 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn('const { spawn } = require("node:child_process");', installer_source)
         self.assertNotIn("spawnSync", installer_source)
         self.assertIn("AbortController", installer_source)
-        self.assertIn('await runWrapper(["update", "--backend", "agents", "--yes"])', installer_source)
+        self.assertIn('await runWrapper(["update", "--backend", "agents"])', installer_source)
+        self.assertIn(
+            'await runNodeOwnedOrWrapper(["update", "--backend", "agents", "--yes"])',
+            installer_source,
+        )
 
     def test_root_npm_publish_guard_can_be_imported_without_running_checks(self) -> None:
         if shutil.which("node") is None:
@@ -2150,7 +2154,9 @@ class AdapterDeployTest(unittest.TestCase):
 
         cases = [
             ("github-json", ("update", "--backend", "agents", "--json", "--source", "github")),
-            ("apply-yes", ("update", "--backend", "agents", "--yes")),
+            ("github-apply-yes", ("update", "--backend", "agents", "--yes", "--source", "github")),
+            ("json-apply-combo", ("update", "--backend", "agents", "--json", "--yes")),
+            ("claude-apply-yes", ("update", "--backend", "claude", "--yes")),
         ]
 
         for label, argv in cases:

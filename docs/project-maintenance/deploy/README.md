@@ -23,6 +23,7 @@
 | 我想看 `agents` canonical-copy payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | 定义 `product/harness/adapters/agents/skills/` 的 payload descriptor 结构，以及 target 如何复制 canonical skill 内容 |
 | 我想看 `claude` payload source 怎么组织 | [claude-adapter-source.md](./claude-adapter-source.md) | 定义 `product/harness/adapters/claude/skills/` 的 full skill payload descriptors、`.claude/skills` target 和 Claude frontmatter 边界 |
 | 我想看 Claude full skill distribution 下一阶段设计 | [claude-full-skill-distribution-design.md](./claude-full-skill-distribution-design.md) | P0-036 设计切片，定义完整 Claude payload set、target 命名、side-effecting skill 保护和验证矩阵 |
+| 我想判断 Python deploy 面是否可以被 Node-owned deploy surface 替换 | [deploy-script-governance-inventory.md](./deploy-script-governance-inventory.md) | P0-038 inventory/design，盘点 Python deploy implementation、tests、wrappers、docs references，并给出 remove / retain / split-later 分类 |
 | 我想初始化 `.aw/` 样例并校验 `.aw_template` 最小结构 | [template-tooling-mvp.md](./template-tooling-mvp.md) | B2 的最小工作面，只做 `.aw_template -> .aw` 样例生成与前置校验 |
 | 我想理解 `.aw_template/` 的模板消费边界 | [template-consumption-spec.md](./template-consumption-spec.md) | 定义 `.aw_template/` 中哪些内容属于 `.aw/` 运行管理面，哪些只是待迁移模板 |
 | 我想把已有代码库接入 Harness 初始化流程 | [existing-code-adoption.md](./existing-code-adoption.md) | 定义 `.aw/repo/discovery-input.md` 作为只读事实输入，不作为 goal truth |

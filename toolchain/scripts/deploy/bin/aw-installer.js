@@ -3,15 +3,19 @@
 
 const { spawn } = require("node:child_process");
 const {
+  chmodSync,
   closeSync,
   constants,
   existsSync,
   fstatSync,
   lstatSync,
+  mkdirSync,
   openSync,
   readFileSync,
   readdirSync,
   realpathSync,
+  rmSync,
+  writeFileSync,
 } = require("node:fs");
 const { basename, dirname, isAbsolute, join, relative, resolve, sep } = require("node:path");
 const { createHash } = require("node:crypto");
@@ -28,6 +32,8 @@ const payloadDescriptor = "payload.json";
 const managedSkillMarker = "aw.marker";
 const managedSkillMarkerVersion = "aw-managed-skill-marker.v2";
 const expectedPayloadVersion = "agents-skill-payload.v1";
+const deployedFileMode = 0o644;
+const deployedDirMode = 0o755;
 const unrecognizedIssueCodes = new Set(["unrecognized-target-directory"]);
 // Diagnose treats these as conflict signals for operator visibility. Update
 // may still recover selected conflicts when prune --all can remove them safely.
@@ -366,16 +372,20 @@ function resolveTargetRepoRoot(sourceRoot, sourceRootFromEnv) {
   return validateTargetRepoRoot(process.cwd(), sourceRoot);
 }
 
-function buildNodeAgentsContext() {
+function buildNodeAgentsContext(options = {}) {
   const sourceRootFromEnv = Boolean(process.env.AW_HARNESS_REPO_ROOT);
   const sourceRoot = resolveSourceRoot();
   const targetRepoRoot = resolveTargetRepoRoot(sourceRoot, sourceRootFromEnv);
+  const targetRoot =
+    options.agentsRoot === undefined
+      ? join(targetRepoRoot, ".agents", "skills")
+      : validateTargetRepoRoot(options.agentsRoot, sourceRoot);
   return {
     sourceKind: "package",
     sourceRef: "package-local",
     sourceRoot,
     targetRepoRoot,
-    targetRoot: join(targetRepoRoot, ".agents", "skills"),
+    targetRoot,
     adapterSkillsDir: join(sourceRoot, "product", "harness", "adapters", "agents", "skills"),
   };
 }
@@ -914,14 +924,83 @@ function runtimeMarkerText(marker) {
   )}\n`;
 }
 
-function targetRootChildren(targetRoot) {
+function buildRuntimeMarker(backend, skillId, payloadVersion, payloadFingerprint) {
+  return {
+    marker_version: managedSkillMarkerVersion,
+    backend,
+    skill_id: skillId,
+    payload_version: payloadVersion,
+    payload_fingerprint: payloadFingerprint,
+  };
+}
+
+function targetRootChildren(targetRoot, action = "verify target root") {
   try {
     return readdirSync(targetRoot, { withFileTypes: true })
       .map((entry) => join(targetRoot, entry.name))
       .sort();
   } catch (error) {
-    throw new Error(`Failed to scan verify target root at ${targetRoot}: ${error.message}`);
+    throw new Error(`Failed to scan ${action} at ${targetRoot}: ${error.message}`);
   }
+}
+
+function targetRootIdentity(path) {
+  let stat;
+  try {
+    stat = lstatSync(path);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error(`Target root does not exist: ${path}`);
+    }
+    throw error;
+  }
+  if (stat.isSymbolicLink()) {
+    if (existsSync(path)) {
+      throw new Error(`Target root must be a real directory, not a symlink: ${path}`);
+    }
+    throw new Error(`Target root is a broken symlink: ${path}`);
+  }
+  if (!stat.isDirectory()) {
+    throw new Error(`Target root exists but is not a directory: ${path}`);
+  }
+  return { path, dev: stat.dev, ino: stat.ino };
+}
+
+function assertDirectoryIdentityCurrent(identity, action) {
+  let stat;
+  try {
+    stat = lstatSync(identity.path);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error(`Target root changed during ${action}, refusing to continue: ${identity.path}`);
+    }
+    throw error;
+  }
+  if (stat.dev !== identity.dev || stat.ino !== identity.ino || stat.isSymbolicLink() || !stat.isDirectory()) {
+    throw new Error(`Target root changed during ${action}, refusing to continue: ${identity.path}`);
+  }
+}
+
+function ensureInstallTargetRoot(path) {
+  if (pathExists(path) || lstatOrNull(path)?.isSymbolicLink()) {
+    const identity = targetRootIdentity(path);
+    console.log(`ready target root ${path}`);
+    return identity;
+  }
+  try {
+    mkdirSync(dirname(path), { recursive: true, mode: deployedDirMode });
+    mkdirSync(path, { mode: deployedDirMode });
+  } catch (error) {
+    if (error.code === "EEXIST") {
+      const identity = targetRootIdentity(path);
+      console.log(`ready target root ${path}`);
+      return identity;
+    }
+    throw new Error(`Target root could not be created: ${path}: ${error.message}`);
+  }
+  const identity = targetRootIdentity(path);
+  console.log(`created target root ${path}`);
+  return identity;
 }
 
 /**
@@ -1332,6 +1411,71 @@ function managedInstallDirs(targetRoot, targetChildren) {
   });
 }
 
+function targetRootReadyIssuesForAction(targetRoot) {
+  return verifyTargetRoot(targetRoot).filter((currentIssue) => currentIssue.code !== "missing-target-root");
+}
+
+function childDirectoryIdentity(path) {
+  const stat = lstatOrNull(path);
+  if (stat === null || stat.isSymbolicLink() || !stat.isDirectory()) {
+    return null;
+  }
+  return { path, dev: stat.dev, ino: stat.ino };
+}
+
+function assertManagedDirectoryIdentityCurrent(identity) {
+  const stat = lstatOrNull(identity.path);
+  if (stat === null) {
+    return false;
+  }
+  if (stat.dev !== identity.dev || stat.ino !== identity.ino || stat.isSymbolicLink() || !stat.isDirectory()) {
+    throw new Error(`Managed skill dir changed during pruning, refusing to remove: ${identity.path}`);
+  }
+  return true;
+}
+
+function pruneBackendManagedInstalls(context) {
+  const targetRootIssues = targetRootReadyIssuesForAction(context.targetRoot);
+  if (targetRootIssues.length > 0) {
+    throw new Error(targetRootReadyFailureMessage("prune managed installs", targetRootIssues));
+  }
+
+  if (!pathExists(context.targetRoot)) {
+    console.log(`no managed skill dirs found at ${context.targetRoot}`);
+    return 0;
+  }
+
+  let removedCount = 0;
+  for (const child of targetRootChildren(context.targetRoot, "managed install pruning")) {
+    const identity = childDirectoryIdentity(child);
+    if (identity === null) {
+      continue;
+    }
+
+    const marker = loadRuntimeMarker(join(child, managedSkillMarker));
+    if (marker === null || marker.backend !== "agents") {
+      continue;
+    }
+
+    if (!assertManagedDirectoryIdentityCurrent(identity)) {
+      continue;
+    }
+
+    try {
+      rmSync(child, { recursive: true });
+    } catch (error) {
+      throw new Error(`Failed to remove managed skill dir ${child}: ${error.message}`);
+    }
+    removedCount += 1;
+    console.log(`removed managed skill dir ${child}`);
+  }
+
+  if (removedCount === 0) {
+    console.log(`no managed skill dirs found at ${context.targetRoot}`);
+  }
+  return removedCount;
+}
+
 /**
  * Finds existing target entries that update must refuse or classify before prune.
  */
@@ -1382,6 +1526,245 @@ function collectUpdateTargetEntryIssues(targetRoot, knownTargetDirNames, targetC
     }
   }
   return issues;
+}
+
+function pathExistsOrIsSymlink(path) {
+  return lstatOrNull(path) !== null;
+}
+
+function describeExistingTargetPath(path) {
+  const stat = lstatOrNull(path);
+  if (stat === null) {
+    return "existing target path already exists";
+  }
+  if (stat.isSymbolicLink()) {
+    return existsSync(path)
+      ? "existing target path is a symlink"
+      : "existing target path is a broken symlink";
+  }
+  if (stat.isDirectory()) {
+    return "existing target path is a directory";
+  }
+  if (stat.isFile()) {
+    return "existing target path is a file";
+  }
+  return "existing target path already exists";
+}
+
+function pathConflict(skillId, path, detail) {
+  return { skillId, path, detail };
+}
+
+function collectPathConflicts(plans) {
+  const conflicts = [];
+  for (const plan of plans) {
+    if (!pathExistsOrIsSymlink(plan.targetSkillDir)) {
+      continue;
+    }
+    conflicts.push(
+      pathConflict(
+        plan.binding.skillId,
+        plan.targetSkillDir,
+        describeExistingTargetPath(plan.targetSkillDir),
+      ),
+    );
+  }
+  return conflicts;
+}
+
+function collectLegacyPathConflicts(plans, targetRoot) {
+  const conflicts = [];
+  for (const plan of plans) {
+    for (const legacyDirName of plan.targetMetadata.legacyTargetDirs) {
+      const legacyPath = join(targetRoot, legacyDirName);
+      if (!pathExists(legacyPath)) {
+        continue;
+      }
+      const marker = loadRuntimeMarker(join(legacyPath, managedSkillMarker));
+      if (
+        marker !== null &&
+        marker.backend === plan.binding.backend &&
+        (marker.skill_id === plan.binding.skillId ||
+          plan.targetMetadata.legacySkillIds.includes(marker.skill_id))
+      ) {
+        continue;
+      }
+      conflicts.push(
+        pathConflict(
+          plan.binding.skillId,
+          legacyPath,
+          `legacy directory ${legacyDirName} is occupied by unmanaged content`,
+        ),
+      );
+    }
+  }
+  return conflicts;
+}
+
+function formatPathConflicts(conflicts) {
+  return [
+    "target path conflicts:",
+    ...conflicts.map((conflict) => `- ${conflict.skillId}: ${conflict.path} (${conflict.detail})`),
+  ].join("\n");
+}
+
+function sourceValidationFailureMessage(action, issues) {
+  const details = issues
+    .map((currentIssue) => `  - ${currentIssue.code}: ${currentIssue.path} (${currentIssue.detail})`)
+    .join("\n");
+  return `Cannot ${action} because source validation failed:\n${details}`;
+}
+
+function targetRootReadyFailureMessage(action, issues) {
+  const details = issues
+    .map((currentIssue) => `  - ${currentIssue.code}: ${currentIssue.path} (${currentIssue.detail})`)
+    .join("\n");
+  return `Cannot ${action} because target root is not ready:\n${details}`;
+}
+
+function collectValidatedBindingsForAction(context, action) {
+  const bindings = collectSkillBindings(context);
+  if (bindings.length === 0) {
+    throw new Error("No payload bindings found for backend agents.");
+  }
+
+  const validationIssues = [];
+  for (const binding of bindings) {
+    validationIssues.push(...verifySourceBinding(binding, context));
+  }
+  if (validationIssues.length > 0) {
+    throw new Error(sourceValidationFailureMessage(action, validationIssues));
+  }
+  const loadedPayloads = loadBindingPayloads(bindings);
+  return { bindings, loadedPayloads };
+}
+
+function collectValidatedBindingsForCheckPaths(context) {
+  return collectValidatedBindingsForAction(context, "check target paths");
+}
+
+function checkPathsExistSummary(context) {
+  const { bindings, loadedPayloads } = collectValidatedBindingsForCheckPaths(context);
+  const targetRootIssues = verifyTargetRoot(context.targetRoot).filter(
+    (currentIssue) => currentIssue.code !== "missing-target-root",
+  );
+  if (targetRootIssues.length > 0) {
+    throw new Error(targetRootReadyFailureMessage("check target paths", targetRootIssues));
+  }
+
+  const targetMetadata = collectTargetDirMetadata(bindings, loadedPayloads);
+  const plans = bindings.map((binding) =>
+    buildInstallPlan(binding, context.targetRoot, context, {
+      loadedPayloads,
+      targetMetadata: targetMetadata.metadataByPayloadPath.get(binding.payloadPath),
+    }),
+  );
+  const conflicts = [
+    ...collectPathConflicts(plans),
+    ...collectLegacyPathConflicts(plans, context.targetRoot),
+  ];
+  return {
+    backend: "agents",
+    targetRoot: context.targetRoot,
+    plannedTargetPaths: plans.map((plan) => plan.targetSkillDir),
+    conflicts,
+  };
+}
+
+function targetRootIsCleanForNodeInstall(targetRoot) {
+  const stat = lstatOrNull(targetRoot);
+  if (stat === null) {
+    return true;
+  }
+  if (!stat.isDirectory() || stat.isSymbolicLink()) {
+    return true;
+  }
+  return targetRootChildren(targetRoot).length === 0;
+}
+
+function writeDeployedTextFile(path, text) {
+  writeFileSync(path, text, "utf8");
+  chmodSync(path, deployedFileMode);
+}
+
+function sourceTextForTargetRelativeFile(binding, relativeName, context, payload, loadedPayload, canonicalSource) {
+  if (relativeName === payloadDescriptor) {
+    return loadedPayload.payloadText;
+  }
+  const sourcePath = sourcePathForTargetRelativeFile(binding, relativeName, context, payload, canonicalSource);
+  return readFileSync(sourcePath, "utf8");
+}
+
+function installBackendPayloads(context) {
+  const { bindings, loadedPayloads } = collectValidatedBindingsForAction(context, "install");
+  const targetRootIssues = verifyTargetRoot(context.targetRoot).filter(
+    (currentIssue) => currentIssue.code !== "missing-target-root",
+  );
+  if (targetRootIssues.length > 0) {
+    throw new Error(targetRootReadyFailureMessage("install", targetRootIssues));
+  }
+
+  const targetMetadata = collectTargetDirMetadata(bindings, loadedPayloads);
+  const plans = bindings.map((binding) =>
+    buildInstallPlan(binding, context.targetRoot, context, {
+      loadedPayloads,
+      targetMetadata: targetMetadata.metadataByPayloadPath.get(binding.payloadPath),
+    }),
+  );
+  const conflicts = [
+    ...collectPathConflicts(plans),
+    ...collectLegacyPathConflicts(plans, context.targetRoot),
+  ];
+  if (conflicts.length > 0) {
+    throw new Error(
+      `[agents] install blocked by ${conflicts.length} existing target path(s)\n\n${formatPathConflicts(conflicts)}`,
+    );
+  }
+
+  const targetRootIdentitySnapshot = ensureInstallTargetRoot(context.targetRoot);
+  for (const plan of plans) {
+    const binding = plan.binding;
+    const loadedPayload = bindingPayloadWithText(binding, loadedPayloads);
+    const payload = loadedPayload.payload;
+    const targetSkillDir = plan.targetSkillDir;
+    const targetMetadataForPlan = plan.targetMetadata;
+    let canonicalSource = null;
+
+    assertDirectoryIdentityCurrent(targetRootIdentitySnapshot, "install");
+    mkdirSync(targetSkillDir, { mode: deployedDirMode });
+    assertDirectoryIdentityCurrent(targetRootIdentitySnapshot, "install");
+    chmodSync(targetSkillDir, deployedDirMode);
+
+    for (const relativeName of targetMetadataForPlan.requiredPayloadFiles) {
+      const targetPath = join(targetSkillDir, relativeName);
+      assertDirectoryIdentityCurrent(targetRootIdentitySnapshot, "install");
+      mkdirSync(dirname(targetPath), { recursive: true, mode: deployedDirMode });
+      chmodSync(dirname(targetPath), deployedDirMode);
+      assertDirectoryIdentityCurrent(targetRootIdentitySnapshot, "install");
+      if (relativeName === managedSkillMarker) {
+        writeDeployedTextFile(
+          targetPath,
+          runtimeMarkerText(
+            buildRuntimeMarker(
+              binding.backend,
+              binding.skillId,
+              payload.payload_version,
+              plan.payloadFingerprint,
+            ),
+          ),
+        );
+        continue;
+      }
+      if (relativeName !== payloadDescriptor && canonicalSource === null) {
+        canonicalSource = canonicalSourceMetadata(payload, binding, context);
+      }
+      writeDeployedTextFile(
+        targetPath,
+        sourceTextForTargetRelativeFile(binding, relativeName, context, payload, loadedPayload, canonicalSource),
+      );
+    }
+    console.log(`installed skill ${binding.skillId} -> ${targetSkillDir}`);
+  }
 }
 
 /**
@@ -1606,6 +1989,124 @@ function parseNodeUpdateJsonArgs(args) {
   return parseNodeJsonArgs(args, "update", { allowSource: true });
 }
 
+function parseNodeUpdateYesArgs(args) {
+  if (args[0] !== "update") {
+    return null;
+  }
+  let backend = "agents";
+  let source = "package";
+  let yes = false;
+  let agentsRoot;
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--yes") {
+      yes = true;
+      continue;
+    }
+    if (arg === "--backend") {
+      if (index + 1 >= args.length) {
+        return null;
+      }
+      backend = args[index + 1];
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--backend=")) {
+      backend = arg.slice("--backend=".length);
+      continue;
+    }
+    if (arg === "--source") {
+      if (index + 1 >= args.length) {
+        return null;
+      }
+      source = args[index + 1];
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--source=")) {
+      source = arg.slice("--source=".length);
+      continue;
+    }
+    if (arg === "--agents-root") {
+      if (index + 1 >= args.length) {
+        return null;
+      }
+      agentsRoot = args[index + 1];
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--agents-root=")) {
+      agentsRoot = arg.slice("--agents-root=".length);
+      continue;
+    }
+    if (arg === "--claude-root") {
+      if (index + 1 >= args.length) {
+        return null;
+      }
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--claude-root=")) {
+      continue;
+    }
+    return null;
+  }
+  if (!yes || backend !== "agents" || source !== "package") {
+    return null;
+  }
+  return { backend, source, yes, agentsRoot };
+}
+
+function parseNodeCheckPathsExistArgs(args) {
+  if (args[0] !== "check_paths_exist") {
+    return null;
+  }
+  let backend = "agents";
+  let agentsRoot;
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--backend") {
+      if (index + 1 >= args.length) {
+        return null;
+      }
+      backend = args[index + 1];
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--backend=")) {
+      backend = arg.slice("--backend=".length);
+      continue;
+    }
+    if (arg === "--agents-root") {
+      if (index + 1 >= args.length) {
+        return null;
+      }
+      agentsRoot = args[index + 1];
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--agents-root=")) {
+      agentsRoot = arg.slice("--agents-root=".length);
+      continue;
+    }
+    if (arg === "--claude-root") {
+      if (index + 1 >= args.length) {
+        return null;
+      }
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--claude-root=")) {
+      continue;
+    }
+    return null;
+  }
+  if (backend !== "agents") {
+    return null;
+  }
+  return { backend, agentsRoot };
+}
+
 function runNodeJson(args, parser, buildSummary, exitStatus) {
   if (parser(args) === null) {
     return null;
@@ -1638,6 +2139,227 @@ function runNodeUpdateJson(args) {
   );
 }
 
+function printUpdatePlan(summary) {
+  console.log(`[${summary.backend}] update plan for ${summary.target_root}`);
+  console.log(`sequence: ${summary.operation_sequence.join(" -> ")}`);
+  console.log(`managed installs to delete: ${summary.managed_installs_to_delete.length}`);
+  for (const currentPath of summary.managed_installs_to_delete) {
+    console.log(`  - ${currentPath}`);
+  }
+  console.log(`target paths to write: ${summary.planned_target_paths.length}`);
+  for (const currentPath of summary.planned_target_paths) {
+    console.log(`  - ${currentPath}`);
+  }
+  console.log(`blocking preflight issues: ${summary.blocking_issue_count}`);
+  for (const currentIssue of summary.blocking_issues) {
+    console.log(`  - ${currentIssue.code}: ${currentIssue.path} (${currentIssue.detail})`);
+  }
+}
+
+function updateFailureRecoveryHint(context) {
+  return (
+    `[agents] recovery: the update may be partially applied at ${context.targetRoot}. ` +
+    "After fixing the reported error, run diagnose and then rerun " +
+    "`aw-installer update --backend agents --yes`."
+  );
+}
+
+function checkBackendTargetPaths(context) {
+  const summary = checkPathsExistSummary(context);
+  if (summary.conflicts.length > 0) {
+    throw new Error(
+      `[agents] found ${summary.conflicts.length} conflicting target path(s)\n\n${formatPathConflicts(summary.conflicts)}`,
+    );
+  }
+  console.log(`[agents] ok: no conflicting target paths at ${summary.targetRoot}`);
+}
+
+function runNodeUpdateYes(args) {
+  const parsed = parseNodeUpdateYesArgs(args);
+  if (parsed === null) {
+    return null;
+  }
+  try {
+    const context = buildNodeAgentsContext(parsed);
+    const summary = updatePlanSummary(context);
+    printUpdatePlan(summary);
+    if (summary.blocking_issue_count > 0) {
+      throw new Error(`[agents] update blocked by ${summary.blocking_issue_count} preflight issue(s)`);
+    }
+
+    console.log("[agents] applying update");
+    let result = null;
+    try {
+      pruneBackendManagedInstalls(context);
+      checkBackendTargetPaths(context);
+      installBackendPayloads(context);
+      result = verifyAgentsBackend(context);
+      if (result.issues.length > 0) {
+        printVerifyResult(result);
+        throw new Error(`[agents] update failed strict verify with ${result.issues.length} issue(s)`);
+      }
+    } catch (error) {
+      throw new Error(`${error.message}\n${updateFailureRecoveryHint(context)}`);
+    }
+    printVerifyResult(result);
+    console.log("[agents] update complete");
+    return 0;
+  } catch (error) {
+    console.error(`error: ${error.message}`);
+    return 1;
+  }
+}
+
+function runNodeCheckPathsExist(args) {
+  const parsed = parseNodeCheckPathsExistArgs(args);
+  if (parsed === null) {
+    return null;
+  }
+  try {
+    const summary = checkPathsExistSummary(buildNodeAgentsContext(parsed));
+    if (summary.conflicts.length > 0) {
+      console.error(
+        `error: [agents] found ${summary.conflicts.length} conflicting target path(s)\n\n${formatPathConflicts(summary.conflicts)}`,
+      );
+      return 1;
+    }
+    console.log(`[agents] ok: no conflicting target paths at ${summary.targetRoot}`);
+    return 0;
+  } catch (error) {
+    console.error(`error: ${error.message}`);
+    return 1;
+  }
+}
+
+function parseNodeVerifyArgs(args) {
+  if (args[0] !== "verify") {
+    return null;
+  }
+  return parseNodeCheckPathsExistArgs(["check_paths_exist", ...args.slice(1)]);
+}
+
+function parseNodeInstallArgs(args) {
+  if (args[0] !== "install") {
+    return null;
+  }
+  return parseNodeCheckPathsExistArgs(["check_paths_exist", ...args.slice(1)]);
+}
+
+function parseNodePruneArgs(args) {
+  if (args[0] !== "prune") {
+    return null;
+  }
+  let hasAll = false;
+  let backend = "agents";
+  let agentsRoot;
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--all") {
+      hasAll = true;
+      continue;
+    }
+    if (arg === "--backend") {
+      if (index + 1 >= args.length) {
+        return null;
+      }
+      backend = args[index + 1];
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--backend=")) {
+      backend = arg.slice("--backend=".length);
+      continue;
+    }
+    if (arg === "--agents-root") {
+      if (index + 1 >= args.length) {
+        return null;
+      }
+      agentsRoot = args[index + 1];
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--agents-root=")) {
+      agentsRoot = arg.slice("--agents-root=".length);
+      continue;
+    }
+    if (arg === "--claude-root") {
+      if (index + 1 >= args.length) {
+        return null;
+      }
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--claude-root=")) {
+      continue;
+    }
+    return null;
+  }
+  if (!hasAll || backend !== "agents") {
+    return null;
+  }
+  return { backend, agentsRoot };
+}
+
+function printVerifyResult(result) {
+  if (result.issues.length === 0) {
+    console.log(`[${result.backend}] ok: target root is ready at ${result.targetRoot}`);
+    return;
+  }
+  console.log(
+    `[${result.backend}] drift: ${result.issues.length} issue(s) in target root at ${result.targetRoot}`,
+  );
+  for (const currentIssue of result.issues) {
+    console.log(`  - ${currentIssue.code}: ${currentIssue.path} (${currentIssue.detail})`);
+  }
+}
+
+function runNodeVerify(args) {
+  const parsed = parseNodeVerifyArgs(args);
+  if (parsed === null) {
+    return null;
+  }
+  try {
+    const result = verifyAgentsBackend(buildNodeAgentsContext(parsed));
+    printVerifyResult(result);
+    return result.issues.length > 0 ? 1 : 0;
+  } catch (error) {
+    console.error(`error: ${error.message}`);
+    return 1;
+  }
+}
+
+function runNodeInstall(args) {
+  const parsed = parseNodeInstallArgs(args);
+  if (parsed === null) {
+    return null;
+  }
+  try {
+    const context = buildNodeAgentsContext(parsed);
+    if (!targetRootIsCleanForNodeInstall(context.targetRoot)) {
+      return null;
+    }
+    installBackendPayloads(context);
+    return 0;
+  } catch (error) {
+    console.error(`error: ${error.message}`);
+    return 1;
+  }
+}
+
+function runNodePrune(args) {
+  const parsed = parseNodePruneArgs(args);
+  if (parsed === null) {
+    return null;
+  }
+  try {
+    pruneBackendManagedInstalls(buildNodeAgentsContext(parsed));
+    return 0;
+  } catch (error) {
+    console.error(`error: ${error.message}`);
+    return 1;
+  }
+}
+
 async function runNodeOwnedOrWrapper(args) {
   const nodeDiagnoseStatus = runNodeDiagnoseJson(args);
   if (nodeDiagnoseStatus !== null) {
@@ -1647,6 +2369,31 @@ async function runNodeOwnedOrWrapper(args) {
   const nodeUpdateStatus = runNodeUpdateJson(args);
   if (nodeUpdateStatus !== null) {
     return nodeUpdateStatus;
+  }
+
+  const nodeUpdateYesStatus = runNodeUpdateYes(args);
+  if (nodeUpdateYesStatus !== null) {
+    return nodeUpdateYesStatus;
+  }
+
+  const nodeCheckPathsExistStatus = runNodeCheckPathsExist(args);
+  if (nodeCheckPathsExistStatus !== null) {
+    return nodeCheckPathsExistStatus;
+  }
+
+  const nodeVerifyStatus = runNodeVerify(args);
+  if (nodeVerifyStatus !== null) {
+    return nodeVerifyStatus;
+  }
+
+  const nodeInstallStatus = runNodeInstall(args);
+  if (nodeInstallStatus !== null) {
+    return nodeInstallStatus;
+  }
+
+  const nodePruneStatus = runNodePrune(args);
+  if (nodePruneStatus !== null) {
+    return nodePruneStatus;
   }
 
   return await runWrapper(args);
@@ -1795,7 +2542,7 @@ async function runGuidedUpdateFlow(rl) {
   )).trim();
   if (confirmation === "yes") {
     console.log("\nStep 4: Applying update and running strict verify.");
-    await runWrapper(["update", "--backend", "agents", "--yes"]);
+    await runNodeOwnedOrWrapper(["update", "--backend", "agents", "--yes"]);
   } else {
     console.log("Update cancelled.");
   }
@@ -1899,23 +2646,39 @@ module.exports = {
   buildNodeAgentsContext,
   buildWrapperEnv,
   buildInstallPlan,
+  buildRuntimeMarker,
   canonicalSourceMetadata,
+  assertManagedDirectoryIdentityCurrent,
+  childDirectoryIdentity,
   collectAllKnownTargetDirs,
+  collectLegacyPathConflicts,
+  collectPathConflicts,
   collectTargetDirMetadata,
   collectUpdateTargetEntryIssues,
   computePayloadFingerprint,
   dedupeIssues,
+  describeExistingTargetPath,
   diagnosticSummary,
   exactSensitiveTargetRepoRoots,
   expectedTargetDirs,
+  checkPathsExistSummary,
+  installBackendPayloads,
   isUpdateBlockingIssue,
   loadBindingPayloads,
   loadRuntimeMarker,
   normalizeRelativePath,
+  parseNodeCheckPathsExistArgs,
   parseNodeDiagnoseJsonArgs,
+  parseNodeInstallArgs,
+  parseNodePruneArgs,
   parseNodeUpdateJsonArgs,
+  parseNodeUpdateYesArgs,
+  parseNodeVerifyArgs,
   pathSafetyPolicy,
   payloadTargetMetadata,
+  printVerifyResult,
+  printUpdatePlan,
+  pruneBackendManagedInstalls,
   pythonCandidates,
   recursiveSensitiveTargetRepoRoots,
   resolveExistingOrLexical,
