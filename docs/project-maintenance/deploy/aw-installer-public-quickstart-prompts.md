@@ -18,12 +18,12 @@ This page belongs to [Deploy Runbooks](./README.md). It uses the current distrib
 - direct_npx_available: true
 - direct_npx_primary_path: `aw-installer@next`
 - registry_rc_available: true
-- npm_publish_allowed: completed-for-0.4.3-rc.1-next; 0.4.3-rc.2 publish still separately approval-gated
+- npm_publish_allowed: completed-for-0.4.3-rc.2-next; future publish still separately approval-gated
 - package_name_decided: true
 - approved_package_name: unscoped `aw-installer`
 - current_install_source:
-  - published_registry: `aw-installer@next` currently resolving to `0.4.3-rc.1`
-  - local_candidate: local `0.4.3-rc.2` `.tgz` candidate package
+  - published_registry: `aw-installer@next` currently resolving to `0.4.3-rc.2`
+  - local_package: local `0.4.3-rc.2` `.tgz` package when validating the current checkout without registry access
   - source_checkout: explicit AW source checkout
 - target_repo_writes:
   - `.agents/skills/` for Codex/agents install
@@ -38,11 +38,11 @@ Run commands from the target repository root unless a command explicitly names t
 Prerequisites:
 
 - Node.js and npm are available for the `aw-installer` package path.
-- Python is available for deploy commands delegated to the selected package's reference path. The published `aw-installer@next` selector currently resolves to the older `0.4.3-rc.1` artifact, so public registry trials must not assume every current local Node-owned path is already published.
-- When validating the current checkout, explicit source checkout, or maintainer-provided local `0.4.3-rc.2` candidate `.tgz`, `aw-installer --help`, `--version`, `diagnose --backend agents --json`, package/local-source `update --backend agents --json` dry-runs, package/local-source `check_paths_exist --backend agents`, package/local-source `verify --backend agents`, package/local-source clean-target `install --backend agents`, package/local-source `prune --all --backend agents`, and package/local-source `update --backend agents --yes` are handled by Node directly. Clean-target install means the resolved target root is missing or exists as an empty directory. Node-owned prune only removes recognized current-backend managed install directories and retains foreign, unrecognized, invalid-marker and user content. Node-owned `update --yes` composes `prune --all -> check_paths_exist -> install -> verify` with blocking preflight, strict post-apply verify and recovery hint semantics. Non-clean target install as a standalone subcommand, GitHub-source update, Claude backend commands, and unsupported diagnose/update/check_paths_exist/verify/install/prune variants still use the Python deploy wrapper/reference path. The Node-owned update dry-run preserves the existing JSON fields, including `backend`, `source_kind`, `source_ref`, `source_root`, `target_root`, `operation_sequence`, `managed_installs_to_delete`, `planned_target_paths`, `issues`, and `blocking_issues`. The current wrapper tries `py -3`, `python`, then `python3` on Windows, and only `python3` on Linux/macOS for fallback paths. It intentionally ignores `PYTHON` and `PYTHON3` environment overrides.
+- Python is available for deploy commands delegated to the selected package's reference path. The published `aw-installer@next` selector currently resolves to the `0.4.3-rc.2` artifact, so public registry trials can use the current Node-owned package/local agents paths described below.
+- When validating `aw-installer@next`, the current checkout, explicit source checkout, or maintainer-provided local `0.4.3-rc.2` `.tgz`, `aw-installer --help`, `--version`, `diagnose --backend agents --json`, package/local-source `update --backend agents --json` dry-runs, package/local-source `check_paths_exist --backend agents`, package/local-source `verify --backend agents`, package/local-source clean-target `install --backend agents`, package/local-source `prune --all --backend agents`, and package/local-source `update --backend agents --yes` are handled by Node directly. Clean-target install means the resolved target root is missing or exists as an empty directory. Node-owned prune only removes recognized current-backend managed install directories and retains foreign, unrecognized, invalid-marker and user content. Node-owned `update --yes` composes `prune --all -> check_paths_exist -> install -> verify` with blocking preflight, strict post-apply verify and recovery hint semantics. Non-clean target install as a standalone subcommand, GitHub-source update, Claude backend commands, and unsupported diagnose/update/check_paths_exist/verify/install/prune variants still use the Python deploy wrapper/reference path. The Node-owned update dry-run preserves the existing JSON fields, including `backend`, `source_kind`, `source_ref`, `source_root`, `target_root`, `operation_sequence`, `managed_installs_to_delete`, `planned_target_paths`, `issues`, and `blocking_issues`. The current wrapper tries `py -3`, `python`, then `python3` on Windows, and only `python3` on Linux/macOS for fallback paths. It intentionally ignores `PYTHON` and `PYTHON3` environment overrides.
 - The target repository is a git worktree you are allowed to modify.
 - You have registry access to `aw-installer`, a local `aw-installer` `.tgz` package from the maintainer, or an explicit AW source checkout path.
-- You understand that the current public trial path is RC pre-release: `aw-installer@next` currently resolves to `0.4.3-rc.1` on npm `next`, while bare `aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`. Stable release semantics still require separate approval.
+- You understand that the current public trial path is RC pre-release: `aw-installer@next` currently resolves to `0.4.3-rc.2` on npm `next`, while bare `aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`. Stable release semantics still require separate approval.
 
 Privacy rule:
 
