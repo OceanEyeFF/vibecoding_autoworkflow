@@ -1151,6 +1151,88 @@ def source_path_for_target_relative_file(
         ) from exc
 
 
+def claude_frontmatter_overrides(payload: dict[str, Any], binding: SkillBinding) -> dict[str, bool]:
+    raw_overrides = payload.get("claude_frontmatter")
+    if raw_overrides is None:
+        return {}
+    if not isinstance(raw_overrides, dict):
+        raise DeployError(
+            f"payload claude_frontmatter must be an object for skill {binding.skill_id}"
+        )
+
+    overrides: dict[str, bool] = {}
+    for key, value in raw_overrides.items():
+        if not isinstance(key, str) or not key:
+            raise DeployError(
+                f"payload claude_frontmatter keys must be non-empty strings for skill {binding.skill_id}"
+            )
+        if not isinstance(value, bool):
+            raise DeployError(
+                f"payload claude_frontmatter values must be booleans for skill {binding.skill_id}"
+            )
+        overrides[key] = value
+    return overrides
+
+
+def render_frontmatter_value(value: bool) -> str:
+    return "true" if value else "false"
+
+
+def apply_markdown_frontmatter_overrides(source_text: str, overrides: dict[str, bool]) -> str:
+    if not overrides:
+        return source_text
+
+    lines = source_text.splitlines(keepends=True)
+    if lines and lines[0].strip() == "---":
+        closing_index: int | None = None
+        for index in range(1, len(lines)):
+            if lines[index].strip() == "---":
+                closing_index = index
+                break
+        if closing_index is not None:
+            frontmatter_lines = lines[1:closing_index]
+            body_lines = lines[closing_index:]
+            seen_keys: set[str] = set()
+            updated_frontmatter: list[str] = []
+            for line in frontmatter_lines:
+                key = line.split(":", 1)[0].strip() if ":" in line else ""
+                if key in overrides:
+                    updated_frontmatter.append(f"{key}: {render_frontmatter_value(overrides[key])}\n")
+                    seen_keys.add(key)
+                else:
+                    updated_frontmatter.append(line)
+            for key, value in overrides.items():
+                if key not in seen_keys:
+                    updated_frontmatter.append(f"{key}: {render_frontmatter_value(value)}\n")
+            return "".join([lines[0], *updated_frontmatter, *body_lines])
+
+    override_lines = [f"{key}: {render_frontmatter_value(value)}\n" for key, value in overrides.items()]
+    return "".join(["---\n", *override_lines, "---\n", source_text])
+
+
+def expected_target_file_text(
+    binding: SkillBinding,
+    relative_name: str,
+    context: DeployContext,
+    *,
+    payload: dict[str, Any],
+) -> str:
+    source_path = source_path_for_target_relative_file(
+        binding,
+        relative_name,
+        context,
+        payload=payload,
+    )
+    source_text = source_path.read_text(encoding="utf-8")
+    target_metadata = payload_target_metadata(payload, binding)
+    if binding.backend == "claude" and relative_name == target_metadata.target_entry_name:
+        return apply_markdown_frontmatter_overrides(
+            source_text,
+            claude_frontmatter_overrides(payload, binding),
+        )
+    return source_text
+
+
 def collect_payload_fingerprint_source_files(
     binding: SkillBinding,
     context: DeployContext,
@@ -1695,7 +1777,18 @@ def install_backend_payloads(backend: str, args: argparse.Namespace, context: De
                 context,
                 payload=payload,
             )
-            shutil.copy2(source_path, target_path)
+            if binding.backend == "claude" and relative_name == target_metadata.target_entry_name:
+                target_path.write_text(
+                    expected_target_file_text(
+                        binding,
+                        relative_name,
+                        context,
+                        payload=payload,
+                    ),
+                    encoding="utf-8",
+                )
+            else:
+                shutil.copy2(source_path, target_path)
         print(f"installed skill {binding.skill_id} -> {target_skill_dir}")
 
 
@@ -1853,7 +1946,16 @@ def verify_deployed_skill(
             context,
             payload=skill_payload,
         )
-        if not filecmp.cmp(source_path, target_path, shallow=False):
+        if binding.backend == "claude" and relative_name == target_metadata.target_entry_name:
+            target_matches_source = target_path.read_text(encoding="utf-8") == expected_target_file_text(
+                binding,
+                relative_name,
+                context,
+                payload=skill_payload,
+            )
+        else:
+            target_matches_source = filecmp.cmp(source_path, target_path, shallow=False)
+        if not target_matches_source:
             issues.append(
                 VerifyIssue(
                     code="target-payload-drift",

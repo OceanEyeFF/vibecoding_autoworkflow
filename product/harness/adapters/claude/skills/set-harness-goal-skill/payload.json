@@ -20,7 +20,7 @@
     "product/harness/skills/set-harness-goal-skill/assets/worktrack/gate-evidence.md",
     "product/harness/skills/set-harness-goal-skill/assets/worktrack/plan-task-queue.md"
   ],
-  "target_dir": "aw-set-harness-goal-skill",
+  "target_dir": "set-harness-goal-skill",
   "target_entry_name": "SKILL.md",
   "payload_policy": "canonical-copy",
   "supported_target_scopes": [
@@ -47,6 +47,9 @@
     "aw.marker"
   ],
   "legacy_target_dirs": [
-    "set-harness-goal-skill"
-  ]
+    "aw-set-harness-goal-skill"
+  ],
+  "claude_frontmatter": {
+    "disable-model-invocation": true
+  }
 }
