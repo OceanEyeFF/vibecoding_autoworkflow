@@ -50,7 +50,9 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-`harness_deploy.py` 只包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 仍暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell 和 `aw-harness-deploy` 兼容别名；`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 调用同一 wrapper。当前 npm registry 事实是 `next=0.4.3-rc.0`、`latest=0.4.0-rc.1`；已发布的 `0.4.3-rc.0` artifact 绑定 `gitHead=085173cd9dea63a029b9f93b9e9c0bd91f5d4662`。外部已发布 RC 试用主路径应显式使用 `aw-installer@next`。当前还没有引入 full-screen TUI framework。
+`harness_deploy.py` 只包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 仍暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell 和 `aw-harness-deploy` 兼容别名；`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 调用同一 wrapper。当前 npm registry 事实是 `next=0.4.3-rc.1`、`latest=0.4.0-rc.1`；已发布的 `0.4.3-rc.1` artifact 绑定 `gitHead=4510f5fd4710723e03e129701c2fdebece65e9cc`。外部已发布 RC 试用主路径应显式使用 `aw-installer@next`。当前还没有引入 full-screen TUI framework。
+
+本地 `aw-installer` 当前已直接承接 `agents` package/local source 的只读 `check_paths_exist --backend agents` preflight、`verify --backend agents` strict verification、target root 缺失或为空目录时的 clean-target `install --backend agents`、`prune --all --backend agents`，以及 `update --backend agents --yes` composition。这些 Node-owned 路径不调用 Python fallback；其中 `check_paths_exist` 与 `verify` 不创建 target root、不写 payload、不删除 target 文件，clean-target `install` 只在 source validation、target readiness 与 path conflict preflight 通过后写入 payload 和 marker，`prune --all` 只删除带可识别 current-backend marker 的 managed install 目录并保留 foreign、unrecognized、invalid-marker 和用户内容，`update --yes` 先打印 dry-run 等价 plan，再按 `prune --all -> check_paths_exist -> install -> verify` 串行执行，blocking preflight 不 apply，apply 失败打印 recovery hint。Python `adapter_deploy.py check_paths_exist` / `verify` / `install` / `prune` / `update` 仍保留为 reference path，non-clean target install 子命令、GitHub-source update、Claude backend 和其他未迁移 deploy mode 仍走 Python wrapper。
 
 本地 npm-style scaffold 可用下面的 smoke 命令验证 bin 入口能打开同一 help surface：
 
@@ -148,6 +150,18 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py pru
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents
 ```
+
+如需验证当前 Node-owned `agents` preflight 和 package/local apply path，可运行：
+
+```bash
+node toolchain/scripts/deploy/bin/aw-installer.js prune --all --backend agents
+node toolchain/scripts/deploy/bin/aw-installer.js check_paths_exist --backend agents
+node toolchain/scripts/deploy/bin/aw-installer.js verify --backend agents
+node toolchain/scripts/deploy/bin/aw-installer.js install --backend agents
+node toolchain/scripts/deploy/bin/aw-installer.js update --backend agents --yes
+```
+
+其中 `prune --all --backend agents` 的 Node-owned 边界只覆盖 package/local source 的 `agents` backend，且只删除可识别 current-backend managed installs；`install --backend agents` 的 Node-owned 边界只覆盖 package/local source 的 clean-target 场景：target root 不存在或已经存在但为空。已有内容的 target root 可通过 Node-owned `update --backend agents --yes` 走 destructive reinstall composition；standalone non-clean `install` 仍由 Python/reference 路径处理。
 
 如果当前 backend 需要显式 root override，例如 `agents` 通过 `--agents-root` 指到非默认 target root，或 `claude` 通过 `--claude-root` 指到非默认 target root，就在这三条命令上附加对应参数。参数来源见 [Codex Usage Help](../usage-help/codex.md) 和 [Claude Usage Help](../usage-help/claude.md)。
 
