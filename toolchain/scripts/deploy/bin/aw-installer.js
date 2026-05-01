@@ -34,6 +34,17 @@ const managedSkillMarkerVersion = "aw-managed-skill-marker.v2";
 const expectedPayloadVersion = "agents-skill-payload.v1";
 const deployedFileMode = 0o644;
 const deployedDirMode = 0o755;
+const agentsBackend = "agents";
+const packageSource = "package";
+const cliFlags = Object.freeze({
+  all: "--all",
+  agentsRoot: "--agents-root",
+  backend: "--backend",
+  claudeRoot: "--claude-root",
+  json: "--json",
+  source: "--source",
+  yes: "--yes",
+});
 const unrecognizedIssueCodes = new Set(["unrecognized-target-directory"]);
 // Diagnose treats these as conflict signals for operator visibility. Update
 // may still recover selected conflicts when prune --all can remove them safely.
@@ -381,7 +392,7 @@ function buildNodeAgentsContext(options = {}) {
       ? join(targetRepoRoot, ".agents", "skills")
       : validateTargetRepoRoot(options.agentsRoot, sourceRoot);
   return {
-    sourceKind: "package",
+    sourceKind: packageSource,
     sourceRef: "package-local",
     sourceRoot,
     targetRepoRoot,
@@ -1340,6 +1351,7 @@ function verifyAgentsBackend(context, options = {}) {
   const issues = verifyTargetRoot(targetRoot);
   const bindings = options.bindings ?? collectSkillBindings(context);
   const loadedPayloads = options.loadedPayloads ?? null;
+  const collectTargetChildrenOnIssue = options.collectTargetChildrenOnIssue === true;
   if (bindings.length === 0) {
     issues.push(
       issue(
@@ -1364,8 +1376,10 @@ function verifyAgentsBackend(context, options = {}) {
   }
 
   let children = null;
-  if (issues.length === 0 && isDirectory(targetRoot)) {
+  if ((issues.length === 0 || collectTargetChildrenOnIssue) && isDirectory(targetRoot)) {
     children = targetRootChildren(targetRoot);
+  }
+  if (issues.length === 0 && children !== null) {
     for (const binding of bindings) {
       issues.push(...verifyDeployedSkill(binding, targetRoot, context, loadedPayloads));
     }
@@ -1843,10 +1857,13 @@ function updatePlanSummary(context) {
     );
     loadedPayloads = null;
   }
-  const result = verifyAgentsBackend(context, { bindings, loadedPayloads });
+  const result = verifyAgentsBackend(context, {
+    bindings,
+    loadedPayloads,
+    collectTargetChildrenOnIssue: true,
+  });
   const targetRoot = result.targetRoot;
-  const targetChildren =
-    result.targetChildren === null && isDirectory(targetRoot) ? targetRootChildren(targetRoot) : result.targetChildren;
+  const targetChildren = result.targetChildren;
 
   const planIssues = [];
   let plans = [];
@@ -1935,47 +1952,117 @@ function sortJsonObjectKeys(value) {
   );
 }
 
+function readOptionValue(args, index) {
+  if (index + 1 >= args.length) {
+    return null;
+  }
+  return args[index + 1];
+}
+
+function readEqualsOption(arg, flag) {
+  const prefix = `${flag}=`;
+  return arg.startsWith(prefix) ? arg.slice(prefix.length) : null;
+}
+
+function parseNodeBackendRootArgs(args, command) {
+  if (args[0] !== command) {
+    return null;
+  }
+  let backend = agentsBackend;
+  let agentsRoot;
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === cliFlags.backend) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      backend = value;
+      index += 1;
+      continue;
+    }
+    const backendValue = readEqualsOption(arg, cliFlags.backend);
+    if (backendValue !== null) {
+      backend = backendValue;
+      continue;
+    }
+    if (arg === cliFlags.agentsRoot) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      agentsRoot = value;
+      index += 1;
+      continue;
+    }
+    const agentsRootValue = readEqualsOption(arg, cliFlags.agentsRoot);
+    if (agentsRootValue !== null) {
+      agentsRoot = agentsRootValue;
+      continue;
+    }
+    if (arg === cliFlags.claudeRoot) {
+      if (readOptionValue(args, index) === null) {
+        return null;
+      }
+      index += 1;
+      continue;
+    }
+    if (readEqualsOption(arg, cliFlags.claudeRoot) !== null) {
+      continue;
+    }
+    return null;
+  }
+  if (backend !== agentsBackend) {
+    return null;
+  }
+  return { backend, agentsRoot };
+}
+
 function parseNodeJsonArgs(args, command, options = {}) {
   const allowSource = options.allowSource === true;
   if (args[0] !== command) {
     return null;
   }
-  let backend = "agents";
+  let backend = agentsBackend;
   let json = false;
-  let source = "package";
+  let source = packageSource;
   for (let index = 1; index < args.length; index += 1) {
     const arg = args[index];
-    if (arg === "--json") {
+    if (arg === cliFlags.json) {
       json = true;
       continue;
     }
-    if (arg === "--backend") {
-      if (index + 1 >= args.length) {
+    if (arg === cliFlags.backend) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
         return null;
       }
-      backend = args[index + 1];
+      backend = value;
       index += 1;
       continue;
     }
-    if (arg.startsWith("--backend=")) {
-      backend = arg.slice("--backend=".length);
+    const backendValue = readEqualsOption(arg, cliFlags.backend);
+    if (backendValue !== null) {
+      backend = backendValue;
       continue;
     }
-    if (allowSource && arg === "--source") {
-      if (index + 1 >= args.length) {
+    if (allowSource && arg === cliFlags.source) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
         return null;
       }
-      source = args[index + 1];
+      source = value;
       index += 1;
       continue;
     }
-    if (allowSource && arg.startsWith("--source=")) {
-      source = arg.slice("--source=".length);
+    const sourceValue = allowSource ? readEqualsOption(arg, cliFlags.source) : null;
+    if (sourceValue !== null) {
+      source = sourceValue;
       continue;
     }
     return null;
   }
-  if (!json || backend !== "agents" || source !== "package") {
+  if (!json || backend !== agentsBackend || source !== packageSource) {
     return null;
   }
   return allowSource ? { backend, source } : { backend };
@@ -1993,118 +2080,78 @@ function parseNodeUpdateYesArgs(args) {
   if (args[0] !== "update") {
     return null;
   }
-  let backend = "agents";
-  let source = "package";
+  let backend = agentsBackend;
+  let source = packageSource;
   let yes = false;
   let agentsRoot;
   for (let index = 1; index < args.length; index += 1) {
     const arg = args[index];
-    if (arg === "--yes") {
+    if (arg === cliFlags.yes) {
       yes = true;
       continue;
     }
-    if (arg === "--backend") {
-      if (index + 1 >= args.length) {
+    if (arg === cliFlags.backend) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
         return null;
       }
-      backend = args[index + 1];
+      backend = value;
       index += 1;
       continue;
     }
-    if (arg.startsWith("--backend=")) {
-      backend = arg.slice("--backend=".length);
+    const backendValue = readEqualsOption(arg, cliFlags.backend);
+    if (backendValue !== null) {
+      backend = backendValue;
       continue;
     }
-    if (arg === "--source") {
-      if (index + 1 >= args.length) {
+    if (arg === cliFlags.source) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
         return null;
       }
-      source = args[index + 1];
+      source = value;
       index += 1;
       continue;
     }
-    if (arg.startsWith("--source=")) {
-      source = arg.slice("--source=".length);
+    const sourceValue = readEqualsOption(arg, cliFlags.source);
+    if (sourceValue !== null) {
+      source = sourceValue;
       continue;
     }
-    if (arg === "--agents-root") {
-      if (index + 1 >= args.length) {
+    if (arg === cliFlags.agentsRoot) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
         return null;
       }
-      agentsRoot = args[index + 1];
+      agentsRoot = value;
       index += 1;
       continue;
     }
-    if (arg.startsWith("--agents-root=")) {
-      agentsRoot = arg.slice("--agents-root=".length);
+    const agentsRootValue = readEqualsOption(arg, cliFlags.agentsRoot);
+    if (agentsRootValue !== null) {
+      agentsRoot = agentsRootValue;
       continue;
     }
-    if (arg === "--claude-root") {
-      if (index + 1 >= args.length) {
+    if (arg === cliFlags.claudeRoot) {
+      if (readOptionValue(args, index) === null) {
         return null;
       }
       index += 1;
       continue;
     }
-    if (arg.startsWith("--claude-root=")) {
+    if (readEqualsOption(arg, cliFlags.claudeRoot) !== null) {
       continue;
     }
     return null;
   }
-  if (!yes || backend !== "agents" || source !== "package") {
+  if (!yes || backend !== agentsBackend || source !== packageSource) {
     return null;
   }
   return { backend, source, yes, agentsRoot };
 }
 
 function parseNodeCheckPathsExistArgs(args) {
-  if (args[0] !== "check_paths_exist") {
-    return null;
-  }
-  let backend = "agents";
-  let agentsRoot;
-  for (let index = 1; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--backend") {
-      if (index + 1 >= args.length) {
-        return null;
-      }
-      backend = args[index + 1];
-      index += 1;
-      continue;
-    }
-    if (arg.startsWith("--backend=")) {
-      backend = arg.slice("--backend=".length);
-      continue;
-    }
-    if (arg === "--agents-root") {
-      if (index + 1 >= args.length) {
-        return null;
-      }
-      agentsRoot = args[index + 1];
-      index += 1;
-      continue;
-    }
-    if (arg.startsWith("--agents-root=")) {
-      agentsRoot = arg.slice("--agents-root=".length);
-      continue;
-    }
-    if (arg === "--claude-root") {
-      if (index + 1 >= args.length) {
-        return null;
-      }
-      index += 1;
-      continue;
-    }
-    if (arg.startsWith("--claude-root=")) {
-      continue;
-    }
-    return null;
-  }
-  if (backend !== "agents") {
-    return null;
-  }
-  return { backend, agentsRoot };
+  return parseNodeBackendRootArgs(args, "check_paths_exist");
 }
 
 function runNodeJson(args, parser, buildSummary, exitStatus) {
@@ -2232,17 +2279,11 @@ function runNodeCheckPathsExist(args) {
 }
 
 function parseNodeVerifyArgs(args) {
-  if (args[0] !== "verify") {
-    return null;
-  }
-  return parseNodeCheckPathsExistArgs(["check_paths_exist", ...args.slice(1)]);
+  return parseNodeBackendRootArgs(args, "verify");
 }
 
 function parseNodeInstallArgs(args) {
-  if (args[0] !== "install") {
-    return null;
-  }
-  return parseNodeCheckPathsExistArgs(["check_paths_exist", ...args.slice(1)]);
+  return parseNodeBackendRootArgs(args, "install");
 }
 
 function parseNodePruneArgs(args) {
@@ -2250,51 +2291,55 @@ function parseNodePruneArgs(args) {
     return null;
   }
   let hasAll = false;
-  let backend = "agents";
+  let backend = agentsBackend;
   let agentsRoot;
   for (let index = 1; index < args.length; index += 1) {
     const arg = args[index];
-    if (arg === "--all") {
+    if (arg === cliFlags.all) {
       hasAll = true;
       continue;
     }
-    if (arg === "--backend") {
-      if (index + 1 >= args.length) {
+    if (arg === cliFlags.backend) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
         return null;
       }
-      backend = args[index + 1];
+      backend = value;
       index += 1;
       continue;
     }
-    if (arg.startsWith("--backend=")) {
-      backend = arg.slice("--backend=".length);
+    const backendValue = readEqualsOption(arg, cliFlags.backend);
+    if (backendValue !== null) {
+      backend = backendValue;
       continue;
     }
-    if (arg === "--agents-root") {
-      if (index + 1 >= args.length) {
+    if (arg === cliFlags.agentsRoot) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
         return null;
       }
-      agentsRoot = args[index + 1];
+      agentsRoot = value;
       index += 1;
       continue;
     }
-    if (arg.startsWith("--agents-root=")) {
-      agentsRoot = arg.slice("--agents-root=".length);
+    const agentsRootValue = readEqualsOption(arg, cliFlags.agentsRoot);
+    if (agentsRootValue !== null) {
+      agentsRoot = agentsRootValue;
       continue;
     }
-    if (arg === "--claude-root") {
-      if (index + 1 >= args.length) {
+    if (arg === cliFlags.claudeRoot) {
+      if (readOptionValue(args, index) === null) {
         return null;
       }
       index += 1;
       continue;
     }
-    if (arg.startsWith("--claude-root=")) {
+    if (readEqualsOption(arg, cliFlags.claudeRoot) !== null) {
       continue;
     }
     return null;
   }
-  if (!hasAll || backend !== "agents") {
+  if (!hasAll || backend !== agentsBackend) {
     return null;
   }
   return { backend, agentsRoot };
@@ -2529,6 +2574,8 @@ async function runGuidedUpdateFlow(rl) {
   }
 
   console.log("\nStep 2: Review update dry-run plan.");
+  // Human-readable dry-run output is still Python/reference-owned; only JSON dry-run
+  // and explicit package-local apply are Node-owned.
   const dryRunStatus = await runWrapper(["update", "--backend", "agents"]);
   if (dryRunStatus !== 0) {
     console.log("Update plan failed; not applying.");
@@ -2581,9 +2628,13 @@ Backend: agents
         await runNodeOwnedOrWrapper(["diagnose", "--backend", "agents", "--json"]);
         await pause(rl);
       } else if (choice === "3") {
+        // Keep the TUI's human-readable verify output on the reference path
+        // until that non-JSON command is explicitly migrated.
         await runWrapper(["verify", "--backend", "agents"]);
         await pause(rl);
       } else if (choice === "4") {
+        // Keep the TUI's human-readable dry-run output on the reference path
+        // until that non-JSON command is explicitly migrated.
         await runWrapper(["update", "--backend", "agents"]);
         await pause(rl);
       } else if (choice === "5") {

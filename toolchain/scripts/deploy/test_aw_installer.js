@@ -202,6 +202,10 @@ function runAwInstaller(root, args, fakeBin = null) {
   });
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function runPythonInstall(root, args) {
   return spawnSync(
     "python3",
@@ -1354,8 +1358,8 @@ test("aw-installer install agents writes a clean target without Python and verif
     const completed = runNodeInstall(root, ["--backend=agents", `--agents-root=${targetRoot}`], fakeBin);
 
     assert.equal(completed.status, 0, completed.stderr);
-    assert.match(completed.stdout, new RegExp(`created target root ${targetRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
-    assert.match(completed.stdout, new RegExp(`installed skill demo-skill -> ${targetSkillDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+    assert.match(completed.stdout, new RegExp(`created target root ${escapeRegExp(targetRoot)}`));
+    assert.match(completed.stdout, new RegExp(`installed skill demo-skill -> ${escapeRegExp(targetSkillDir)}`));
     assert.equal(completed.stderr.includes("unexpected-python"), false);
     assert.equal(existsSync(targetSkillDir), true);
     assert.equal(lstatSync(targetSkillDir).mode & 0o777, 0o755);
@@ -1387,8 +1391,8 @@ test("aw-installer install agents writes an existing empty target without Python
     const completed = runNodeInstall(root, ["--backend=agents", `--agents-root=${targetRoot}`], fakeBin);
 
     assert.equal(completed.status, 0, completed.stderr);
-    assert.match(completed.stdout, new RegExp(`ready target root ${targetRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
-    assert.match(completed.stdout, new RegExp(`installed skill demo-skill -> ${targetSkillDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+    assert.match(completed.stdout, new RegExp(`ready target root ${escapeRegExp(targetRoot)}`));
+    assert.match(completed.stdout, new RegExp(`installed skill demo-skill -> ${escapeRegExp(targetSkillDir)}`));
     assert.equal(completed.stderr.includes("unexpected-python"), false);
     assert.equal(existsSync(join(targetSkillDir, "SKILL.md")), true);
     assert.deepEqual(
@@ -1552,8 +1556,8 @@ test("aw-installer prune agents removes only same-backend managed dirs without P
     const completed = runNodePrune(root, ["--all", "--backend=agents", `--agents-root=${targetRoot}`], fakeBin);
 
     assert.equal(completed.status, 0, completed.stderr);
-    assert.match(completed.stdout, new RegExp(`removed managed skill dir ${installed.targetSkillDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
-    assert.match(completed.stdout, new RegExp(`removed managed skill dir ${staleDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+    assert.match(completed.stdout, new RegExp(`removed managed skill dir ${escapeRegExp(installed.targetSkillDir)}`));
+    assert.match(completed.stdout, new RegExp(`removed managed skill dir ${escapeRegExp(staleDir)}`));
     assert.equal(completed.stderr.includes("unexpected-python"), false);
     assert.equal(existsSync(installed.targetSkillDir), false);
     assert.equal(existsSync(staleDir), false);
@@ -1582,7 +1586,7 @@ test("aw-installer prune agents handles missing and invalid target roots without
       missingFakeBin,
     );
     assert.equal(missing.status, 0, missing.stderr);
-    assert.match(missing.stdout, new RegExp(`no managed skill dirs found at ${missingTargetRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+    assert.match(missing.stdout, new RegExp(`no managed skill dirs found at ${escapeRegExp(missingTargetRoot)}`));
     assert.equal(missing.stderr.includes("unexpected-python"), false);
 
     seedMinimalAgentsSource(wrongTypeRoot, "demo-skill");
@@ -1912,7 +1916,7 @@ test("aw-installer update agents yes refreshes drifted and stale managed install
 
     assert.equal(completed.status, 0, completed.stderr);
     assert.equal(completed.stderr.includes("unexpected-python"), false);
-    assert.match(completed.stdout, new RegExp(`removed managed skill dir ${installed.targetSkillDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+    assert.match(completed.stdout, new RegExp(`removed managed skill dir ${escapeRegExp(installed.targetSkillDir)}`));
     assert.equal(readFileSync(targetSkillPath, "utf8"), "# demo-skill\n\n# updated source\n");
     const verify = runNodeVerify(root, ["--backend=agents"], fakeBin);
     assert.equal(verify.status, 0, verify.stderr);
