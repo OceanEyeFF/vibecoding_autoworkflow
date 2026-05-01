@@ -1,13 +1,13 @@
 ---
 title: "Claude Repo-local Usage Help"
 status: active
-updated: 2026-04-29
+updated: 2026-05-01
 owner: aw-kernel
-last_verified: 2026-04-29
+last_verified: 2026-05-01
 ---
 # Claude Repo-local Usage Help
 
-> 目的：只保留 `claude` backend 的 runtime 侧差异，回答 “常见 skill root 在哪、最小 smoke verify 怎么做、当前仓库支持边界是什么”。当前仓库的 `adapter_deploy.py` 已提供受控的 `--backend claude` compatibility lane。
+> 目的：只保留 `claude` backend 的 runtime 侧差异，回答 “常见 skill root 在哪、最小 smoke verify 怎么做、当前仓库支持边界是什么”。当前仓库的 `adapter_deploy.py` 已提供受控的 `--backend claude` full skill payload lane。
 
 先读通用 deploy 文档，再读本页：
 
@@ -26,14 +26,14 @@ last_verified: 2026-04-29
 
 说明：
 
-- 这里描述的是 Claude 侧常见 runtime 路径和当前受控 `adapter_deploy.py --backend claude` compatibility lane
-- 当前仓库的 `claude` backend 只准入 `set-harness-goal-skill` payload；不要把它理解为完整 Harness skill set 的 Claude 分发
+- 这里描述的是 Claude 侧常见 runtime 路径和当前受控 `adapter_deploy.py --backend claude` payload lane
+- 当前仓库的 `claude` backend 准入完整 Harness skill set；target dirs 使用 `.claude/skills/<skill-name>/`，旧 `aw-<skill-name>` 目录只作为 legacy managed cleanup 入口
 - `set-harness-goal-skill/scripts/deploy_aw.py` 的 `--claude-root` 仍属于本文第五节的冷启动 helper 例外，和 adapter CLI 的受管 payload install 是两条入口
 - 完整 smoke / 冷启动步骤见 [Claude Post-Deploy Behavior Tests](../testing/claude-post-deploy-behavior-tests.md)
 
 ## 二、最小 trial smoke verify 口径
 
-`claude` 当前是 compatibility trial lane，不是 `agents` 外部试用主路径。当前 adapter CLI 可安装受管的 `aw-set-harness-goal-skill`，也可继续使用第五节的冷启动 helper。完整 Codex/Claude trial prompt 入口仍以 [aw-installer Public Quickstart Prompts](../deploy/aw-installer-public-quickstart-prompts.md) 为准。
+`claude` 当前是 Claude Code 适配 lane，不是 `agents` 外部试用主路径。当前 adapter CLI 可安装完整受管 Harness skill set，也可继续使用第五节的冷启动 helper。完整 Codex/Claude trial prompt 入口仍以 [aw-installer Public Quickstart Prompts](../deploy/aw-installer-public-quickstart-prompts.md) 为准。
 
 建议做法：
 
@@ -49,14 +49,14 @@ last_verified: 2026-04-29
 
 ## 三、和其他 backend 的区别
 
-- `claude` 仅承接受控的 `set-harness-goal-skill` compatibility payload 与 runtime skill entry 可读性 trial smoke；`agents` 当前承接完整 deploy verify 与 Codex Harness manual run，不再承接 skills mock / contract smoke
+- `claude` 承接受控的完整 Harness skill payload 与 runtime skill entry 可读性 trial smoke；`agents` 当前仍是 deploy verify 与 Codex Harness manual run 主路径
 - `claude` 的常见 user-home runtime 路径是 `~/.claude/skills`，不依赖 `CODEX_HOME` 或 XDG 推导
 - 当前仓库提供 `claude` backend 的受控 deploy adapter CLI；如果未来扩展到完整 skill set，必须以新的 worktrack 更新本页、deploy 文档和验证矩阵
 - Claude Code 试用反馈仍走 [aw-installer External Trial Feedback Contract](../deploy/aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)，并标明它是 compatibility trial lane
 
 ## 四、当前限制
 
-- 不要把 `adapter_deploy.py --backend claude` 写成完整 Claude Code 后端支持；当前只覆盖 `set-harness-goal-skill`
+- 不要把 `adapter_deploy.py --backend claude` 写成 `agents` 主路径替代品；它是 Claude Code skill payload 适配 lane
 - 这页只承接 Claude 的 runtime 路径、受控 compatibility payload 与 smoke verify 差异
 
 ## 五、当前受控例外
@@ -76,5 +76,5 @@ PYTHONDONTWRITEBYTECODE=1 python3 scripts/deploy_aw.py generate --deploy-path "$
 - 目标 skill 目录 `aw-set-harness-goal-skill/` 本身不能是 symlink
 - 目标 skill 目录内部已有的 symlink 文件或子目录会被拒绝，避免 copy install 写出该 skill 目录
 - 如果目标 skill 目录本身不是 symlink，但经允许的 root symlink / mount 解析后就是当前运行的 skill 包，安装视为 already installed 并 no-op
-- 这只覆盖 `set-harness-goal-skill` 的冷启动 helper 场景；adapter CLI 的 `--backend claude` 是另一条受管 payload install 路径，也只覆盖同一个 skill
+- 这只覆盖 `set-harness-goal-skill` 的冷启动 helper 场景；adapter CLI 的 `--backend claude` 是另一条受管 payload install 路径，并覆盖完整 Harness skill set
 - 临时 repo 中的 operator-facing 测试步骤见 [Claude Post-Deploy Behavior Tests](../testing/claude-post-deploy-behavior-tests.md)

@@ -24,8 +24,6 @@
   "allowed_target_repo_root_prefixes": [
     "$cwd",
     "$source_root",
-    "$home",
-    "/tmp",
-    "/var/tmp"
+    "$home"
   ]
 }

@@ -21,6 +21,20 @@ def test_local_deploy_target_roots_match_supported_verify_backends() -> None:
     )
 
 
+def test_claude_required_payload_skills_are_discovered_from_payload_descriptors() -> None:
+    skills_root = (
+        closeout_acceptance_gate.REPO_ROOT
+        / "product"
+        / "harness"
+        / "adapters"
+        / "claude"
+        / "skills"
+    )
+    expected = tuple(sorted(path.parent.name for path in skills_root.glob("*/payload.json")))
+
+    assert closeout_acceptance_gate.CLAUDE_REQUIRED_PAYLOAD_SKILLS == expected
+
+
 def test_npm_pack_tarball_result_script_resolves_single_pack_result(tmp_path: Path) -> None:
     if shutil.which("node") is None:
         pytest.skip("node is not available")
@@ -42,6 +56,14 @@ def test_npm_pack_tarball_result_script_resolves_single_pack_result(tmp_path: Pa
     assert completed.stdout == f"{tmp_path / 'aw-installer-0.0.0.tgz'}\n"
 
 
+def test_successful_npm_command_result_fails_unknown_npm_commands() -> None:
+    result = successful_npm_command_result(["npm", "exec", "--", "aw-installer", "unknown"])
+
+    assert result is not None
+    assert result["passed"] is False
+    assert "unrecognized npm command" in result["stderr"]
+
+
 NPM_HELP_STDOUT = (
     "usage: aw-installer [tui|<deploy-mode>] [options]\n"
     "harness_deploy.py\n"
@@ -54,8 +76,11 @@ NPM_HELP_STDOUT = (
     "prune --all --backend agents|claude\n"
     "check_paths_exist --backend agents|claude\n"
 )
-NPM_VERSION = "0.4.3-rc.0"
+NPM_VERSION = json.loads((closeout_acceptance_gate.REPO_ROOT / "package.json").read_text(encoding="utf-8"))[
+    "version"
+]
 NPM_VERSION_STDOUT = f"aw-installer {NPM_VERSION}\n"
+CLAUDE_SKILL_DIR_NAMES = closeout_acceptance_gate.CLAUDE_REQUIRED_PAYLOAD_SKILLS
 
 
 def write_root_package_json(repo_root: Path, version: str = NPM_VERSION) -> None:
@@ -103,9 +128,10 @@ def successful_npm_command_result(
             return repo / ".claude" / "skills"
         return repo / ".agents" / "skills"
 
-    def npm_exec_skill_dir() -> Path:
-        skill_name = "aw-set-harness-goal-skill" if npm_exec_backend() == "claude" else "aw-harness-skill"
-        return npm_exec_target_root() / skill_name
+    def npm_exec_skill_dirs() -> list[Path]:
+        if npm_exec_backend() == "claude":
+            return [npm_exec_target_root() / skill_name for skill_name in CLAUDE_SKILL_DIR_NAMES]
+        return [npm_exec_target_root() / "aw-harness-skill"]
 
     if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
         packed_paths = (
@@ -135,6 +161,17 @@ def successful_npm_command_result(
                     ],
                 }
             ),
+            "stderr": "",
+            "passed": True,
+        }
+    if command in (
+        ["npm", "--prefix", "toolchain/scripts/deploy", "test", "--silent"],
+        ["npm", "--prefix", "toolchain/scripts/deploy", "run", "smoke", "--silent"],
+    ):
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": "",
             "stderr": "",
             "passed": True,
         }
@@ -169,7 +206,7 @@ def successful_npm_command_result(
             "stdout": json.dumps(
                 {
                     "backend": npm_exec_backend(),
-                    "binding_count": 1,
+                    "binding_count": len(npm_exec_skill_dirs()),
                     "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
                     "target_root": str(npm_exec_target_root()),
                 }
@@ -179,17 +216,18 @@ def successful_npm_command_result(
         }
     if command[:2] == ["npm", "exec"] and "update" in command and command[-1] == "--yes":
         backend = npm_exec_backend()
-        target = npm_exec_skill_dir()
-        target.mkdir(parents=True, exist_ok=True)
-        (target / "SKILL.md").write_text("# harness\n", encoding="utf-8")
+        targets = npm_exec_skill_dirs()
+        for target in targets:
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "SKILL.md").write_text("# harness\n", encoding="utf-8")
         return {
             "command": command,
             "returncode": 0,
             "stdout": (
                 f"[{backend}] applying update\n"
-                f"installed skill {target.name.removeprefix('aw-')}\n"
-                f"[{backend}] ok: target root is ready\n"
-                f"[{backend}] update complete\n"
+                + "".join(f"installed skill {target.name.removeprefix('aw-')}\n" for target in targets)
+                + f"[{backend}] ok: target root is ready\n"
+                + f"[{backend}] update complete\n"
             ),
             "stderr": "",
             "passed": True,
@@ -220,22 +258,21 @@ def successful_npm_command_result(
                     "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
                     "target_root": str(npm_exec_target_root()),
                     "blocking_issue_count": 0,
-                    "planned_target_paths": [
-                        str(npm_exec_skill_dir())
-                    ],
+                    "planned_target_paths": [str(target) for target in npm_exec_skill_dirs()],
                 }
             ),
             "stderr": "",
             "passed": True,
         }
     if command[:2] == ["npm", "exec"] and "install" in command:
-        target = npm_exec_skill_dir()
-        target.mkdir(parents=True, exist_ok=True)
-        (target / "SKILL.md").write_text("# harness\n", encoding="utf-8")
+        targets = npm_exec_skill_dirs()
+        for target in targets:
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "SKILL.md").write_text("# harness\n", encoding="utf-8")
         return {
             "command": command,
             "returncode": 0,
-            "stdout": f"installed skill {target.name.removeprefix('aw-')}\n",
+            "stdout": "".join(f"installed skill {target.name.removeprefix('aw-')}\n" for target in targets),
             "stderr": "",
             "passed": True,
         }
@@ -256,13 +293,21 @@ def successful_npm_command_result(
             "stderr": "",
             "passed": True,
         }
-    if command[:2] == ["npm", "exec"]:
+    if command[:2] == ["npm", "exec"] and "--help" in command:
         return {
             "command": command,
             "returncode": 0,
             "stdout": NPM_HELP_STDOUT,
             "stderr": "",
             "passed": True,
+        }
+    if command[:1] == ["npm"]:
+        return {
+            "command": command,
+            "returncode": 1,
+            "stdout": "",
+            "stderr": f"unrecognized npm command in closeout gate test mock: {command}",
+            "passed": False,
         }
     return None
 

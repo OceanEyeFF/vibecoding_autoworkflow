@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Payload Provenance And Update Trust Boundary"
 status: active
-updated: 2026-04-30
+updated: 2026-05-01
 owner: aw-kernel
-last_verified: 2026-04-30
+last_verified: 2026-05-01
 ---
 # aw-installer Payload Provenance And Update Trust Boundary
 
@@ -29,7 +29,7 @@ last_verified: 2026-04-30
 
 `product/harness/adapters/agents/skills/` 中的 payload descriptor 是 `agents` backend 的 deploy source。`install --backend agents` 只复制 descriptor 声明的 canonical skill 内容，不从 target root 反向生成 source truth。
 
-`product/harness/adapters/claude/skills/` 中的 payload descriptor 是 `claude` compatibility backend 的 deploy source。当前只准入 `set-harness-goal-skill`，写入 `<target_repo>/.claude/skills/aw-set-harness-goal-skill/`。
+`product/harness/adapters/claude/skills/` 中的 payload descriptor 是 `claude` backend 的 deploy source。当前准入完整 Harness skill set，写入 `<target_repo>/.claude/skills/<skill_id>/`，并把旧 `aw-<skill_id>` 目录作为 legacy managed target 处理。
 
 ## 二、source root 与 target root
 
@@ -42,6 +42,8 @@ last_verified: 2026-04-30
 - `--agents-root` 只覆盖当前命令的 `agents` target root，不改变 source root。
 - `--claude-root` 只覆盖当前命令的 `claude` target root，不改变 source root。
 - `update --source github --github-repo OWNER/REPO --github-ref REF` 会把 GitHub source archive 解压到一次性临时目录，并只在本次 `update` 中把它作为 source root；target repo root 仍按 `AW_HARNESS_TARGET_REPO_ROOT` 或当前工作目录解析。未显式传 `--github-repo` 时，默认仓库依次来自 `AW_INSTALLER_GITHUB_REPO`、`GITHUB_REPOSITORY`，最后才回退到上游 `OceanEyeFF/vibecoding_autoworkflow`。
+
+目标根安全策略只允许当前工作目录、显式 source root 与用户 home 下的 target repo root。共享临时目录 `/tmp` 与 `/var/tmp` 不再作为独立允许前缀；临时 smoke 仍应先进入隔离 target repo，再从该目录运行 installer。
 
 因此，pre-release `.tgz` 试用路径的可信边界是：payload 来自 `.tgz`，写入目标是 operator 当前所在项目的 `.agents/skills`。这也是 root `.tgz` smoke 必须清空 `AW_HARNESS_REPO_ROOT` 并在临时 target repo 中执行的原因。
 

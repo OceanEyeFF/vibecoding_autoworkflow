@@ -34,7 +34,7 @@ EXPECTED_AGENTS_SKILLS = {
     "worktrack-status-skill",
 }
 EXPECTED_CLAUDE_SKILLS = {
-    "set-harness-goal-skill",
+    *EXPECTED_AGENTS_SKILLS,
 }
 
 
@@ -128,7 +128,8 @@ class AgentsAdapterContractTest(unittest.TestCase):
             self.assertEqual(payload["skill_id"], skill_id)
             self.assertEqual(payload["canonical_dir"], f"product/harness/skills/{skill_id}")
             self.assertEqual(payload["canonical_paths"], [f"{canonical_dir}/{path}" for path in included_paths])
-            self.assertEqual(payload["target_dir"], f"aw-{skill_id}")
+            self.assertEqual(payload["target_dir"], skill_id)
+            self.assertEqual(payload["legacy_target_dirs"], [f"aw-{skill_id}"])
             self.assertEqual(payload["target_entry_name"], "SKILL.md")
             self.assertEqual(payload["payload_policy"], "canonical-copy")
             self.assertEqual(payload["supported_target_scopes"], ["local"])
@@ -214,6 +215,7 @@ class AgentsAdapterContractTest(unittest.TestCase):
                 ],
                 check=False,
                 capture_output=True,
+                cwd=temp_dir,
                 text=True,
             )
 
@@ -249,6 +251,7 @@ class AgentsAdapterContractTest(unittest.TestCase):
                 ],
                 check=False,
                 capture_output=True,
+                cwd=temp_dir,
                 text=True,
             )
 
