@@ -84,6 +84,88 @@ function seedInstalledAgentsSkill(root, skillId = "demo-skill", options = {}) {
   };
 }
 
+function seedMinimalClaudeSource(root, skillId = "demo-skill", options = {}) {
+  const canonicalDir = join(root, "product", "harness", "skills", skillId);
+  const payloadDir = join(root, "product", "harness", "adapters", "claude", "skills", skillId);
+  mkdirSync(canonicalDir, { recursive: true });
+  mkdirSync(payloadDir, { recursive: true });
+  mkdirSync(join(root, "product", "harness", "adapters", "agents", "skills"), { recursive: true });
+  const targetDir = options.targetDir || skillId;
+  const payload = {
+    payload_version: "claude-skill-payload.v1",
+    backend: "claude",
+    skill_id: skillId,
+    target_dir: targetDir,
+    target_entry_name: "SKILL.md",
+    required_payload_files: ["SKILL.md", "payload.json", "aw.marker"],
+    canonical_dir: `product/harness/skills/${skillId}`,
+    canonical_paths: [`product/harness/skills/${skillId}/SKILL.md`],
+    payload_policy: "canonical-copy",
+    reference_distribution: "copy-listed-canonical-paths",
+    legacy_target_dirs: options.legacyTargetDirs || [`aw-${skillId}`],
+  };
+  if (options.claudeFrontmatter !== undefined) {
+    payload.claude_frontmatter = options.claudeFrontmatter;
+  }
+  const payloadPath = join(payloadDir, "payload.json");
+  const skillText = options.skillText || `---\ndescription: ${skillId}\n---\n# ${skillId}\n`;
+  writeFileSync(join(canonicalDir, "SKILL.md"), skillText, "utf8");
+  writeFileSync(payloadPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  return {
+    binding: {
+      backend: "claude",
+      skillId,
+      payloadDir,
+      payloadPath,
+    },
+    canonicalDir,
+    payload,
+    payloadDir,
+    skillText,
+    targetDir,
+  };
+}
+
+function seedInstalledClaudeSkill(root, skillId = "demo-skill", options = {}) {
+  const seeded = seedMinimalClaudeSource(root, skillId, {
+    claudeFrontmatter: { "disable-model-invocation": true },
+    ...options,
+  });
+  const targetRoot = options.targetRoot || join(root, ".claude", "skills");
+  const targetSkillDir = join(targetRoot, seeded.targetDir);
+  mkdirSync(targetSkillDir, { recursive: true });
+  const payloadText = `${JSON.stringify(seeded.payload, null, 2)}\n`;
+  const skillText = seeded.skillText.replace(
+    "\n---\n",
+    "\ndisable-model-invocation: true\n---\n",
+  );
+  writeFileSync(join(targetSkillDir, "SKILL.md"), skillText, "utf8");
+  writeFileSync(join(targetSkillDir, "payload.json"), payloadText, "utf8");
+  const metadata = installer.payloadTargetMetadata(seeded.payload, seeded.binding);
+  const payloadFingerprint = installer.computePayloadFingerprint(
+    seeded.binding,
+    { sourceRoot: root },
+    seeded.payload,
+    payloadText,
+    metadata,
+  );
+  const marker = {
+    marker_version: "aw-managed-skill-marker.v2",
+    backend: "claude",
+    skill_id: skillId,
+    payload_version: "claude-skill-payload.v1",
+    payload_fingerprint: payloadFingerprint,
+  };
+  writeFileSync(join(targetSkillDir, "aw.marker"), `${JSON.stringify(marker, null, 2)}\n`, "utf8");
+  return {
+    ...seeded,
+    marker,
+    payloadText,
+    targetRoot,
+    targetSkillDir,
+  };
+}
+
 function fakePythonBin(root) {
   const fakeBin = join(root, "fake-python-bin");
   mkdirSync(fakeBin);
@@ -431,7 +513,7 @@ test("computePayloadFingerprint matches the Python payload contract order", () =
   }
 });
 
-test("parseNodeDiagnoseJsonArgs only accepts agents JSON diagnose", () => {
+test("parseNodeDiagnoseJsonArgs accepts agents and claude JSON diagnose", () => {
   assert.deepEqual(
     installer.parseNodeDiagnoseJsonArgs(["diagnose", "--backend", "agents", "--json"]),
     { backend: "agents", agentsRoot: undefined },
@@ -445,11 +527,14 @@ test("parseNodeDiagnoseJsonArgs only accepts agents JSON diagnose", () => {
     ]),
     { backend: "agents", agentsRoot: "/tmp/agents-skills" },
   );
-  assert.equal(installer.parseNodeDiagnoseJsonArgs(["diagnose", "--backend", "claude", "--json"]), null);
+  assert.deepEqual(
+    installer.parseNodeDiagnoseJsonArgs(["diagnose", "--backend", "claude", "--json", "--claude-root", "/tmp/claude-skills"]),
+    { backend: "claude", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+  );
   assert.equal(installer.parseNodeDiagnoseJsonArgs(["verify", "--backend", "agents", "--json"]), null);
 });
 
-test("parseNodeDiagnoseArgs accepts only agents human diagnose forms", () => {
+test("parseNodeDiagnoseArgs accepts agents and claude human diagnose forms", () => {
   assert.deepEqual(
     installer.parseNodeDiagnoseArgs(["diagnose", "--backend", "agents"]),
     { backend: "agents", agentsRoot: undefined },
@@ -459,10 +544,13 @@ test("parseNodeDiagnoseArgs accepts only agents human diagnose forms", () => {
     { backend: "agents", agentsRoot: "/tmp/agents-skills" },
   );
   assert.equal(installer.parseNodeDiagnoseArgs(["diagnose", "--backend", "agents", "--json"]), null);
-  assert.equal(installer.parseNodeDiagnoseArgs(["diagnose", "--backend", "claude"]), null);
+  assert.deepEqual(
+    installer.parseNodeDiagnoseArgs(["diagnose", "--backend", "claude", "--claude-root=/tmp/claude-skills"]),
+    { backend: "claude", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+  );
 });
 
-test("parseNodeUpdateJsonArgs only accepts agents package JSON update dry-runs", () => {
+test("parseNodeUpdateJsonArgs accepts agents and claude package JSON update dry-runs", () => {
   assert.deepEqual(
     installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--json"]),
     { backend: "agents", source: "package", agentsRoot: undefined },
@@ -487,10 +575,13 @@ test("parseNodeUpdateJsonArgs only accepts agents package JSON update dry-runs",
     null,
   );
   assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--yes"]), null);
-  assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "claude", "--json"]), null);
+  assert.deepEqual(
+    installer.parseNodeUpdateJsonArgs(["update", "--backend", "claude", "--json", "--claude-root", "/tmp/claude-skills"]),
+    { backend: "claude", source: "package", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+  );
 });
 
-test("parseNodeUpdateDryRunArgs only accepts agents package human-readable update dry-runs", () => {
+test("parseNodeUpdateDryRunArgs accepts agents and claude package human-readable update dry-runs", () => {
   assert.deepEqual(
     installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents"]),
     { backend: "agents", source: "package", agentsRoot: undefined },
@@ -511,7 +602,10 @@ test("parseNodeUpdateDryRunArgs only accepts agents package human-readable updat
   );
   assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents", "--json"]), null);
   assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents", "--yes"]), null);
-  assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "claude"]), null);
+  assert.deepEqual(
+    installer.parseNodeUpdateDryRunArgs(["update", "--backend", "claude", "--claude-root=/tmp/claude-skills"]),
+    { backend: "claude", source: "package", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+  );
 });
 
 test("parseNodeUpdateYesArgs only accepts agents package update apply forms", () => {
@@ -591,7 +685,7 @@ test("unsupported agents package variants are classified before Python fallback"
   );
 });
 
-test("parseNodeCheckPathsExistArgs accepts agents backend and target override forms", () => {
+test("parseNodeCheckPathsExistArgs accepts agents and claude backend target override forms", () => {
   assert.deepEqual(
     installer.parseNodeCheckPathsExistArgs(["check_paths_exist", "--backend", "agents"]),
     { backend: "agents", agentsRoot: undefined },
@@ -615,11 +709,14 @@ test("parseNodeCheckPathsExistArgs accepts agents backend and target override fo
     { backend: "agents", agentsRoot: "/tmp/agents-skills" },
   );
 
-  assert.equal(installer.parseNodeCheckPathsExistArgs(["check_paths_exist", "--backend", "claude"]), null);
+  assert.deepEqual(
+    installer.parseNodeCheckPathsExistArgs(["check_paths_exist", "--backend", "claude", "--claude-root", "/tmp/claude-skills"]),
+    { backend: "claude", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+  );
   assert.equal(installer.parseNodeCheckPathsExistArgs(["check_paths_exist", "--source", "github"]), null);
 });
 
-test("parseNodeVerifyArgs accepts only agents package-local verify forms", () => {
+test("parseNodeVerifyArgs accepts agents and claude package-local verify forms", () => {
   assert.deepEqual(
     installer.parseNodeVerifyArgs(["verify", "--backend", "agents"]),
     { backend: "agents", agentsRoot: undefined },
@@ -628,7 +725,10 @@ test("parseNodeVerifyArgs accepts only agents package-local verify forms", () =>
     installer.parseNodeVerifyArgs(["verify", "--backend=agents", "--agents-root=/tmp/agents-skills"]),
     { backend: "agents", agentsRoot: "/tmp/agents-skills" },
   );
-  assert.equal(installer.parseNodeVerifyArgs(["verify", "--backend", "claude"]), null);
+  assert.deepEqual(
+    installer.parseNodeVerifyArgs(["verify", "--backend", "claude", "--claude-root=/tmp/claude-skills"]),
+    { backend: "claude", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+  );
   assert.equal(installer.parseNodeVerifyArgs(["verify", "--source", "github"]), null);
   assert.equal(installer.parseNodeVerifyArgs(["diagnose", "--backend", "agents"]), null);
 });
@@ -1116,6 +1216,83 @@ test("aw-installer diagnose agents human and json agents-root are node-owned wit
     assert.equal(payload.backend, "agents");
     assert.equal(payload.target_root, agentsRoot);
     assert.equal(payload.target_root_status, "missing");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer claude read-only lifecycle paths are node-owned without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalClaudeSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const claudeRoot = join(root, "custom-claude", "skills");
+
+    const human = runAwInstaller(root, ["diagnose", "--backend=claude", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(human.status, 0, human.stderr);
+    assert.equal(
+      human.stdout,
+      `[claude] diagnose: 1 issue(s), 0 managed install(s) at ${claudeRoot}\n` +
+        "issue codes: missing-target-root\n",
+    );
+    assert.equal(human.stderr.includes("unexpected-python"), false);
+
+    const json = runAwInstaller(root, ["diagnose", "--backend=claude", "--json", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(json.status, 0, json.stderr);
+    assert.equal(json.stderr.includes("unexpected-python"), false);
+    const diagnosePayload = JSON.parse(json.stdout);
+    assert.equal(diagnosePayload.backend, "claude");
+    assert.equal(diagnosePayload.target_root, claudeRoot);
+    assert.equal(diagnosePayload.target_root_status, "missing");
+
+    const check = runNodeCheckPathsExist(root, ["--backend=claude", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(check.status, 0, check.stderr);
+    assert.equal(check.stdout, `[claude] ok: no conflicting target paths at ${claudeRoot}\n`);
+    assert.equal(check.stderr.includes("unexpected-python"), false);
+
+    const updateJson = runNodeUpdate(root, ["--backend=claude", "--json", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(updateJson.status, 0, updateJson.stderr);
+    assert.equal(updateJson.stderr.includes("unexpected-python"), false);
+    const updatePayload = JSON.parse(updateJson.stdout);
+    assert.equal(updatePayload.backend, "claude");
+    assert.equal(updatePayload.target_root, claudeRoot);
+    assert.equal(updatePayload.blocking_issue_count, 0);
+
+    const updateHuman = runNodeUpdate(root, ["--backend=claude", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(updateHuman.status, 0, updateHuman.stderr);
+    assert.match(updateHuman.stdout, /^\[claude\] update plan for /);
+    assert.match(updateHuman.stdout, /\[claude\] dry-run only; pass --yes to apply update/);
+    assert.equal(updateHuman.stderr.includes("unexpected-python"), false);
+    assert.equal(existsSync(claudeRoot), false);
+
+    const blockedClaudeRoot = join(root, "blocked-claude-root");
+    writeFileSync(blockedClaudeRoot, "not a directory\n", "utf8");
+    const blockedUpdate = runNodeUpdate(root, ["--backend=claude", `--claude-root=${blockedClaudeRoot}`], fakeBin);
+    assert.equal(blockedUpdate.status, 1);
+    assert.match(blockedUpdate.stderr, /\[claude\] update blocked by 1 preflight issue\(s\)/);
+    assert.equal(blockedUpdate.stderr.includes("unexpected-python"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer verify claude honors frontmatter transform parity without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    const installed = seedInstalledClaudeSkill(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+
+    const success = runNodeVerify(root, ["--backend=claude", `--claude-root=${installed.targetRoot}`], fakeBin);
+    assert.equal(success.status, 0, success.stderr);
+    assert.equal(success.stdout, `[claude] ok: target root is ready at ${installed.targetRoot}\n`);
+    assert.equal(success.stderr.includes("unexpected-python"), false);
+
+    writeFileSync(join(installed.targetSkillDir, "SKILL.md"), "# drifted\n", "utf8");
+    const drift = runNodeVerify(root, ["--backend=claude", `--claude-root=${installed.targetRoot}`], fakeBin);
+    assert.equal(drift.status, 1);
+    assert.match(drift.stdout, /^\[claude\] drift: 1 issue\(s\) in target root/);
+    assert.match(drift.stdout, /target-payload-drift/);
+    assert.equal(drift.stderr.includes("unexpected-python"), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
