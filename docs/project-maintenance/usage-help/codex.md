@@ -1,9 +1,9 @@
 ---
 title: "Codex Usage Help"
 status: active
-updated: 2026-05-01
+updated: 2026-05-02
 owner: aw-kernel
-last_verified: 2026-05-01
+last_verified: 2026-05-02
 ---
 # Codex Usage Help
 
@@ -37,20 +37,22 @@ last_verified: 2026-05-01
 
 `agents` 的最小 deploy 验证是 destructive reinstall 主流程加只读 `verify`。这只证明 payload source、target root 与 live install 对齐，不证明 Harness runtime 行为。
 
-推荐顺序：
+当前 `aw-installer` package/local agents 路径已直接承接主流程和严格复验：
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
+aw-installer diagnose --backend agents --json
+aw-installer update --backend agents --json
+aw-installer update --backend agents --yes
+aw-installer verify --backend agents
 ```
+
+`update --yes` 会按 `prune --all -> check_paths_exist -> install -> verify` 执行同一 destructive reinstall composition。`diagnose --json` 和 `update --json` 是只读观察路径；已有工作内容的目标仓库应先看这两步，再显式执行 `update --yes`。维护者需要和 Python reference 对比或调试 fallback 时，仍可直接运行 `adapter_deploy.py` 的 `prune / check_paths_exist / install / verify` 子命令。
 
 如需观察真实 Harness 行为，使用 [Codex Post-Deploy Behavior Tests](../testing/codex-post-deploy-behavior-tests.md)。该 runbook 在临时 repo 中准备隔离 `.agents/skills/`，用无交互 `codex exec` 真实调用 `harness-skill`，观察空 repo 冷启动、`.aw/` 初始化、scope 切换与真实任务推进。
 
 判断边界：
 
-- `adapter_deploy.py verify --backend agents` 是 deploy target 对齐证明。
+- `aw-installer verify --backend agents` 是当前 package/local agents deploy target 对齐证明；`adapter_deploy.py verify --backend agents` 保留为 Python reference/fallback 对齐证明。
 - `codex-post-deploy-behavior-tests.md` 是当前 operator-facing 的 Harness runtime 观察入口。
 - skills mock / contract smoke 不再作为当前主线验证入口；后续 skill 行为调整由已准入测量资产或真实运行观察承接。
 
@@ -63,20 +65,20 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ver
 
 ## 四、命令差异
 
-`agents` backend 的主要差异只有 target root 参数：
+`agents` backend 的主要差异只有 target root 参数。当前推荐的 Node-owned package/local 路径如下：
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents --agents-root "$PWD/.agents/skills"
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents --agents-root "$PWD/.agents/skills"
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents --agents-root "$PWD/.agents/skills"
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents --agents-root "$PWD/.agents/skills"
+aw-installer diagnose --backend agents --json --agents-root "$PWD/.agents/skills"
+aw-installer update --backend agents --json --agents-root "$PWD/.agents/skills"
+aw-installer update --backend agents --yes --agents-root "$PWD/.agents/skills"
+aw-installer verify --backend agents --agents-root "$PWD/.agents/skills"
 ```
 
 当前语义：
 
-- 前三条构成主流程
+- `update --backend agents --yes` 构成 destructive reinstall 主流程
 - 最后一条是只读复验
 - 如果你就在当前仓库下部署到默认 repo-local target，可以省略 `--agents-root`
 - 不要把 `--agents-root` 指向与目标 repo 无关的敏感目录；外部试用优先使用默认 repo-local `.agents/skills/`
 - 外部试用反馈优先使用 [trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)。如果通过 [npx Command Test Execution](../testing/npx-command-test-execution.md) 复现，请附上脱敏后的 `aw-installer-npx-run.log` 摘要；不要在长期文档中记录私有仓库标识、token 或完整敏感日志
-- 本地 `aw-installer check_paths_exist --backend agents` 与 `aw-installer verify --backend agents` 已是 package/local source 的 Node-owned 只读路径；可用于验证 wrapper 层不经 Python fallback 的 target path conflict scan 和 strict target verification。`aw-installer install --backend agents` 也已在 package/local source clean-target 场景下由 Node-owned 路径写入，即 target root 不存在或为空目录时不经 Python fallback。`aw-installer prune --all --backend agents` 已在 package/local source 场景下由 Node-owned 路径删除 current-backend managed installs，并保留 foreign、unrecognized、invalid-marker 和用户内容。`aw-installer update --backend agents --yes` 已在 package/local source 场景下由 Node-owned 路径组合 `prune --all -> check_paths_exist -> install -> verify`，保留 dry-run plan、blocking preflight、post-apply strict verify 和 recovery hint 语义。non-clean target `install` 子命令、GitHub-source update、Claude backend 与 unsupported variants 仍按通用 deploy 文档的 Python/reference 边界处理。
+- 本地 `aw-installer diagnose --backend agents --json`、`update --backend agents --json`、`check_paths_exist --backend agents`、`verify --backend agents`、clean-target `install --backend agents`、`prune --all --backend agents` 与 `update --backend agents --yes` 已是 package/local source 的 Node-owned 路径；TUI agents diagnose 和 verify 也复用对应 Node-owned 路径。TUI 的 human-readable update dry-run 仍保留在 Python/reference 路径。non-clean target `install` 子命令、GitHub-source update、Claude backend 与 unsupported variants 仍按通用 deploy 文档的 Python/reference 边界处理；这不是 Python 删除信号。
