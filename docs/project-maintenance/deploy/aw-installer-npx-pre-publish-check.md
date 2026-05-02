@@ -130,7 +130,7 @@ Minimum evidence:
 - help/version/TUI guard succeed or fail as expected.
 - `diagnose --backend agents --json` and `update --backend agents --json` run before mutation.
 - `install --backend agents`, `verify --backend agents`, and `update --backend agents --yes` pass.
-- The local package smoke proves the package-local agents path. When the candidate includes Claude backend support, run `diagnose --backend claude --json` and `update --backend claude --json` as separate focused checks until the smoke runner covers them directly.
+- The local package smoke proves the package-local agents path. Current closeout gate root tarball smoke also covers Claude `install`, `verify`, and `update --yes` in a temporary target repo. When preparing a public registry release candidate that highlights Claude backend support, still run `diagnose --backend claude --json` and `update --backend claude --json` as focused read-only checks unless the release-specific smoke package already records those JSON checks.
 - When the release includes GitHub source update capability, run `update --backend agents --source github --github-ref <ref-containing-current-payload> --json` as a separate focused check. `master` is valid only after it contains the current required payload source.
 - final diagnose reports managed installs equal to the selected candidate `binding_count`, with 0 conflicts and 0 unrecognized entries.
 - source root resolves to the package payload, not the source checkout or target repository.
