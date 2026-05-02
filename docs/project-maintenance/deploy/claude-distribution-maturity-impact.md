@@ -1,9 +1,9 @@
 ---
 title: "Claude Distribution Maturity Impact"
 status: active
-updated: 2026-05-02
+updated: 2026-05-03
 owner: aw-kernel
-last_verified: 2026-05-02
+last_verified: 2026-05-03
 ---
 # Claude Distribution Maturity Impact
 
@@ -74,7 +74,7 @@ deploy 文档需要避免以下过期口径：
 
 Python adapter 目前是 Claude maturity 的 reference owner；当前 checkout/local package 的 Node-owned `aw-installer` 是 package/local runtime owner。TUI 仍应按独立 feature/config worktrack 处理：
 
-- CLI: 当前 package/local `claude` lifecycle 走 Node-owned path；GitHub-source human dry-run/apply 和未迁移 deploy behavior 仍可保留 Python reference/fallback。
+- CLI: 当前 package/local `claude` lifecycle 走 Node-owned path；显式 `agents` GitHub-source update JSON/human/apply 也走 Node-owned path；未迁移 deploy behavior 仍可保留 Python reference/fallback。
 - TUI: 明确 Claude 是否出现在 guided flow 中，以及文案是否会暗示 release/stable 支持。
 - fallback: 保留 Python reference/fallback 时，operator-facing 语义不能把 fallback 写成未实现。
 

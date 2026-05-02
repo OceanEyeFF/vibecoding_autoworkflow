@@ -2147,7 +2147,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertGreater(len(payload["planned_target_paths"]), 0)
         self.assertEqual(payload["blocking_issue_count"], 0)
 
-    def test_aw_installer_update_non_node_owned_paths_fallback_to_python_subprocess(self) -> None:
+    def test_aw_installer_non_node_owned_paths_fallback_to_python_subprocess(self) -> None:
         fake_bin = self._fake_failing_python_bin()
         target_repo = self.temp_root / "update-fallback-target"
         target_repo.mkdir()
@@ -2156,7 +2156,7 @@ class AdapterDeployTest(unittest.TestCase):
         }
 
         cases = [
-            ("github-apply-yes", ("update", "--backend", "agents", "--yes", "--source", "github")),
+            ("github-install", ("install", "--backend", "agents", "--source", "github")),
         ]
 
         for label, argv in cases:
