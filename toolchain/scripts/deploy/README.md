@@ -4,13 +4,13 @@
 
 当前主线：
 
-- `adapter_deploy.py`：为 `agents` 提供 destructive reinstall workflow、只读 `diagnose` 和只读 `verify`，并为 `claude` 提供受控的 `set-harness-goal-skill` compatibility backend
+- `adapter_deploy.py`：保留 Python reference/fallback CLI 语义，为 `agents` 提供 destructive reinstall workflow、只读 `diagnose` 和只读 `verify`，并为 `claude` 提供受控的完整 Harness skill payload compatibility backend
 - `harness_deploy.py`：稳定的薄包装入口，保留 `adapter_deploy.py` 语义，供目标 `aw-installer` package / npx wrapper 复用
 - `path_safety_policy.json`：JS/Python deploy 入口共享的 target/source root 安全策略配置，避免 wrapper 与 Python reference path 漂移
-- `package.json` + `bin/aw-installer.js` + `bin/aw-harness-deploy.js`：本地 npm-style package scaffold；`aw-installer` 是主 bin，直接承接 help/version、`diagnose --backend agents --json` 与 package/local source `update --backend agents --json` dry-run，并提供带 guided update flow 的最小 `tui` shell；TUI diagnose 复用同一个 Node-owned agents JSON 路径；其他 deploy paths 仍 fallback 到 `harness_deploy.py` / Python reference，fallback 环境只透传 deploy 所需变量、代理和证书设置，`aw-harness-deploy` 是兼容别名，不表示 package 已发布
+- `package.json` + `bin/aw-installer.js` + `bin/aw-harness-deploy.js`：本地 npm-style package scaffold；`aw-installer` 是主 bin，直接承接 help/version、`diagnose --backend agents --json`、package/local source `update --backend agents --json` dry-run、`check_paths_exist --backend agents`、`verify --backend agents`、clean-target `install --backend agents`、`prune --all --backend agents` 与 package/local `update --backend agents --yes` composition，并提供带 guided update flow 的最小 `tui` shell；TUI agents diagnose 和 verify 复用对应 Node-owned 路径；其他 deploy paths 仍 fallback 到 `harness_deploy.py` / Python reference，fallback 环境只透传 deploy 所需变量、代理和证书设置，`aw-harness-deploy` 是兼容别名，不表示 package 已发布
 - `aw_scaffold.py`：从 `product/.aw_template/` 生成 `.aw/` 运行样例，并校验模板最小结构，包括 `Engineering Node Map`、`Repo Analysis` 与 `Node Type` 协议字段
 - `product/harness/adapters/agents/skills/`：`agents` canonical-copy payload descriptor source，由 `install --backend agents` 消费
-- `product/harness/adapters/claude/skills/`：`claude` compatibility payload descriptor source，当前只覆盖 `set-harness-goal-skill`
+- `product/harness/adapters/claude/skills/`：`claude` compatibility payload descriptor source，当前承接受控的完整 Harness skill payload set
 
 最小维护流：
 
@@ -31,16 +31,16 @@
 - `prune --all` 只删除带可识别、且属于当前 backend 的受管 `aw.marker` 目录
 - `check_paths_exist` 基于当前 source 声明的 live bindings 全量列出冲突路径；命令失败时不允许有业务写入
 - `install --backend agents` 只写当前 source 声明的 live payload；若存在重复 `target_dir`、路径冲突或其他 source 非法情形，必须在写入前失败
-- `diagnose` 由 `adapter_deploy.py diagnose --json` 提供，用于输出 backend、target root、受管安装数量、issue code 与 unrecognized / conflict 摘要；发现 issue 时仍返回 0
-- `verify` 由 `adapter_deploy.py verify` 提供，用于检查 source 合法性、target root 状态、live install 对齐，以及 conflict / unrecognized 情形
+- `diagnose` 用于输出 backend、target root、受管安装数量、issue code 与 unrecognized / conflict 摘要；发现 issue 时仍返回 0。`agents` package/local JSON path 当前由 Node-owned wrapper 直接承接，其他支持边界仍可回退到 Python reference
+- `verify` 用于检查 source 合法性、target root 状态、live install 对齐，以及 conflict / unrecognized 情形。`agents` package/local path 当前由 Node-owned wrapper 直接承接，TUI agents verify action 也复用该路径
 - `harness_deploy.py` 当前只作为 Python fallback/reference 的薄包装入口存在；根目录 `package.json` 是 self-contained `aw-installer` package envelope，本地 package scaffold 仍暴露 `aw-installer` bin，但不表示 npm release channel 已发布
 - 目标分发入口是 `npx aw-installer`，并应支持 CLI + TUI 双模式；当前提供 root package envelope、CLI surface 和最小 `tui` shell，TUI guided update flow 只能作为同一 deploy 合同上的交互式引导层
-- `update --backend agents --json` 在 package/local source dry-run 场景下由 Node-owned 路径输出 plan，并保留 `backend`、`source_kind`、`source_ref`、`source_root`、`target_root`、`operation_sequence`、`managed_installs_to_delete`、`planned_target_paths`、`issues` 与 `blocking_issues` 等字段；`update --backend agents --yes` 仍走 Python reference path，包装同一三步 destructive reinstall，并在写入后运行严格 `verify`
+- `update --backend agents --json` 在 package/local source dry-run 场景下由 Node-owned 路径输出 plan，并保留 `backend`、`source_kind`、`source_ref`、`source_root`、`target_root`、`operation_sequence`、`managed_installs_to_delete`、`planned_target_paths`、`issues` 与 `blocking_issues` 等字段；`update --backend agents --yes` 在 package/local source 场景下也由 Node-owned 路径执行同一 `prune --all -> check_paths_exist -> install -> verify` composition，并保留 blocking preflight、failure short-circuit、strict post-apply verify 和 recovery hint 语义
 - `npm --prefix toolchain/scripts/deploy run smoke --silent` 只验证本地 package scaffold 的 bin 能打开当前 help，不发布或安装 package；`aw-installer --version` 是同一 Node wrapper 上的非交互 package metadata probe
 - 如需检查目标 package envelope，在仓库根目录运行 `npm pack --dry-run --json`；本地 scaffold packlist 仍在 `toolchain/scripts/deploy/` 目录内运行；根 `.tgz` smoke 应在临时 target repo 中覆盖 help/version/TUI non-interactive guard/diagnose/update dry-run/install/verify/update apply
 - 如需检查发布前包面，在仓库根目录运行 `npm run publish:dry-run --silent`；这只验证 npmjs publish dry-run，不上传 package；root package 的 `prepublishOnly` guard 会拒绝不满足 release-channel 准入的真实 publish，包括 local version、缺少 CI/审批信号、channel 与 dist-tag 不匹配或缺少匹配 git tag
 - 从根 package `.tgz` 执行非 help 命令时，不设置 `AW_HARNESS_REPO_ROOT` 即可从 package 内读取 source payload，并把当前工作目录作为 target repo root；`AW_HARNESS_REPO_ROOT` 仍保留为 source checkout override，`AW_HARNESS_TARGET_REPO_ROOT` 可显式覆盖 target repo root。当前 `update` 只使用该 package 或 checkout source payload，不做远程 fetch、channel 解析、自升级、验签或自动回滚；完整边界见 `docs/project-maintenance/deploy/payload-provenance-trust-boundary.md`
-- 当前接口实现 `agents` 主路径，并提供受限 `claude` compatibility backend；不要把 `claude` 写成完整 Harness skill set 分发
+- 当前接口实现 `agents` 主路径，并提供受控的完整 Harness skill set `claude` compatibility backend；不要把 `claude` 写成阻塞 `agents` 主线的稳定/默认分发路径
 - 不再承接 `local/global` deploy modes、`prune --outdated`、archive/history、增量修复或旧版本保活
 - Claude skills 分发当前仍是慢车道兼容项，不阻塞 `aw-installer` 主线
 
