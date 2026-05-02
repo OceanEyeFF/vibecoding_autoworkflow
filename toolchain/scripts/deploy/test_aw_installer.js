@@ -276,6 +276,9 @@ function seedMinimalClaudeSource(root, skillId = "demo-skill", options = {}) {
   if (options.claudeFrontmatter !== undefined) {
     payload.claude_frontmatter = options.claudeFrontmatter;
   }
+  if (options.legacySkillIds !== undefined) {
+    payload.legacy_skill_ids = options.legacySkillIds;
+  }
   const payloadPath = join(payloadDir, "payload.json");
   const skillText = options.skillText || `---\ndescription: ${skillId}\n---\n# ${skillId}\n`;
   writeFileSync(join(canonicalDir, "SKILL.md"), skillText, "utf8");
@@ -828,7 +831,7 @@ test("parseNodeUpdateDryRunArgs accepts agents and claude package human-readable
   );
 });
 
-test("parseNodeUpdateYesArgs only accepts agents package update apply forms", () => {
+test("parseNodeUpdateYesArgs accepts agents and claude package update apply forms", () => {
   assert.deepEqual(
     installer.parseNodeUpdateYesArgs(["update", "--backend", "agents", "--yes"]),
     { backend: "agents", source: "package", yes: true, agentsRoot: undefined },
@@ -849,7 +852,16 @@ test("parseNodeUpdateYesArgs only accepts agents package update apply forms", ()
     null,
   );
   assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "agents", "--json", "--yes"]), null);
-  assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "claude", "--yes"]), null);
+  assert.deepEqual(
+    installer.parseNodeUpdateYesArgs(["update", "--backend", "claude", "--yes", "--claude-root", "/tmp/claude-skills"]),
+    {
+      backend: "claude",
+      source: "package",
+      yes: true,
+      agentsRoot: undefined,
+      claudeRoot: "/tmp/claude-skills",
+    },
+  );
   assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "agents"]), null);
 });
 
@@ -953,7 +965,7 @@ test("parseNodeVerifyArgs accepts agents and claude package-local verify forms",
   assert.equal(installer.parseNodeVerifyArgs(["diagnose", "--backend", "agents"]), null);
 });
 
-test("parseNodeInstallArgs accepts only agents package-local install forms", () => {
+test("parseNodeInstallArgs accepts agents and claude package-local install forms", () => {
   assert.deepEqual(
     installer.parseNodeInstallArgs(["install", "--backend", "agents"]),
     { backend: "agents", agentsRoot: undefined },
@@ -962,12 +974,15 @@ test("parseNodeInstallArgs accepts only agents package-local install forms", () 
     installer.parseNodeInstallArgs(["install", "--backend=agents", "--agents-root=/tmp/agents-skills"]),
     { backend: "agents", agentsRoot: "/tmp/agents-skills" },
   );
-  assert.equal(installer.parseNodeInstallArgs(["install", "--backend", "claude"]), null);
+  assert.deepEqual(
+    installer.parseNodeInstallArgs(["install", "--backend", "claude", "--claude-root=/tmp/claude-skills"]),
+    { backend: "claude", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+  );
   assert.equal(installer.parseNodeInstallArgs(["install", "--source", "github"]), null);
   assert.equal(installer.parseNodeInstallArgs(["verify", "--backend", "agents"]), null);
 });
 
-test("parseNodePruneArgs accepts only agents package-local prune all forms", () => {
+test("parseNodePruneArgs accepts agents and claude package-local prune all forms", () => {
   assert.deepEqual(
     installer.parseNodePruneArgs(["prune", "--all", "--backend", "agents"]),
     { backend: "agents", agentsRoot: undefined },
@@ -976,8 +991,11 @@ test("parseNodePruneArgs accepts only agents package-local prune all forms", () 
     installer.parseNodePruneArgs(["prune", "--backend=agents", "--agents-root=/tmp/agents-skills", "--all"]),
     { backend: "agents", agentsRoot: "/tmp/agents-skills" },
   );
+  assert.deepEqual(
+    installer.parseNodePruneArgs(["prune", "--all", "--backend", "claude", "--claude-root", "/tmp/claude-skills"]),
+    { backend: "claude", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+  );
   assert.equal(installer.parseNodePruneArgs(["prune", "--backend", "agents"]), null);
-  assert.equal(installer.parseNodePruneArgs(["prune", "--all", "--backend", "claude"]), null);
   assert.equal(installer.parseNodePruneArgs(["prune", "--all", "--source", "github"]), null);
   assert.equal(installer.parseNodePruneArgs(["install", "--backend", "agents"]), null);
 });
@@ -1513,6 +1531,156 @@ test("aw-installer verify claude honors frontmatter transform parity without Pyt
     assert.match(drift.stdout, /^\[claude\] drift: 1 issue\(s\) in target root/);
     assert.match(drift.stdout, /target-payload-drift/);
     assert.equal(drift.stderr.includes("unexpected-python"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer claude mutating lifecycle paths are node-owned without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalClaudeSource(root, "demo-skill", {
+      claudeFrontmatter: { "disable-model-invocation": true },
+    });
+    const fakeBin = fakePythonBin(root);
+    const claudeRoot = join(root, "custom-claude", "skills");
+    const targetSkillDir = join(claudeRoot, "demo-skill");
+
+    const install = runNodeInstall(root, ["--backend=claude", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(install.status, 0, install.stderr);
+    assert.equal(install.stderr.includes("unexpected-python"), false);
+    assert.match(install.stdout, new RegExp(`installed skill demo-skill -> ${escapeRegExp(targetSkillDir)}`));
+    assert.equal(existsSync(join(root, ".agents", "skills")), false);
+    assert.equal(readFileSync(join(targetSkillDir, "SKILL.md"), "utf8").includes("disable-model-invocation: true"), true);
+
+    const update = runNodeUpdate(root, ["--backend=claude", "--yes", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(update.status, 0, update.stderr);
+    assert.equal(update.stderr.includes("unexpected-python"), false);
+    assert.match(update.stdout, /\[claude\] update plan for /);
+    assert.match(update.stdout, /\[claude\] applying update/);
+    assert.match(update.stdout, /\[claude\] update complete/);
+
+    const verify = runNodeVerify(root, ["--backend=claude", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(verify.status, 0, verify.stderr);
+
+    const prune = runNodePrune(root, ["--all", "--backend=claude", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(prune.status, 0, prune.stderr);
+    assert.equal(prune.stderr.includes("unexpected-python"), false);
+    assert.match(prune.stdout, new RegExp(`removed managed skill dir ${escapeRegExp(targetSkillDir)}`));
+    assert.equal(existsSync(targetSkillDir), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer install removes same-backend managed legacy directories without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalClaudeSource(root, "demo-skill", {
+      legacyTargetDirs: ["aw-demo-skill"],
+      legacySkillIds: ["old-demo-skill"],
+    });
+    const fakeBin = fakePythonBin(root);
+    const claudeRoot = join(root, ".claude", "skills");
+    const legacyDir = join(claudeRoot, "aw-demo-skill");
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(join(legacyDir, "SKILL.md"), "# legacy\n", "utf8");
+    writeFileSync(
+      join(legacyDir, "aw.marker"),
+      `${JSON.stringify({
+        marker_version: "aw-managed-skill-marker.v2",
+        backend: "claude",
+        skill_id: "old-demo-skill",
+        payload_version: "claude-skill-payload.v1",
+        payload_fingerprint: "old-fingerprint",
+      }, null, 2)}\n`,
+      "utf8",
+    );
+
+    const completed = runNodeInstall(root, ["--backend=claude"], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+    assert.match(completed.stdout, new RegExp(`removed legacy skill dir demo-skill -> ${escapeRegExp(legacyDir)}`));
+    assert.equal(existsSync(legacyDir), false);
+    assert.equal(existsSync(join(claudeRoot, "demo-skill", "aw.marker")), true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer install blocks legacy symlink markers without Python", () => {
+  if (process.platform === "win32") {
+    return;
+  }
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalClaudeSource(root, "demo-skill", {
+      legacyTargetDirs: ["aw-demo-skill"],
+    });
+    const fakeBin = fakePythonBin(root);
+    const claudeRoot = join(root, ".claude", "skills");
+    const actualDir = join(root, "actual-managed-legacy");
+    const legacyDir = join(claudeRoot, "aw-demo-skill");
+    mkdirSync(actualDir, { recursive: true });
+    mkdirSync(claudeRoot, { recursive: true });
+    writeFileSync(join(actualDir, "SKILL.md"), "# legacy\n", "utf8");
+    writeFileSync(
+      join(actualDir, "aw.marker"),
+      `${JSON.stringify({
+        marker_version: "aw-managed-skill-marker.v2",
+        backend: "claude",
+        skill_id: "demo-skill",
+        payload_version: "claude-skill-payload.v1",
+        payload_fingerprint: "old-fingerprint",
+      }, null, 2)}\n`,
+      "utf8",
+    );
+    symlinkSync(actualDir, legacyDir, "dir");
+
+    const completed = runNodeInstall(root, ["--backend=claude"], fakeBin);
+
+    assert.equal(completed.status, 1);
+    assert.match(completed.stderr, /legacy directory aw-demo-skill is occupied by unmanaged content/);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+    assert.equal(existsSync(actualDir), true);
+    assert.equal(existsSync(join(claudeRoot, "demo-skill")), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer agents install removes same-backend managed legacy directories without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(root, "demo-skill", {
+      legacyTargetDirs: ["demo-skill"],
+      legacySkillIds: ["old-demo-skill"],
+    });
+    const fakeBin = fakePythonBin(root);
+    const agentsRoot = join(root, ".agents", "skills");
+    const legacyDir = join(agentsRoot, "demo-skill");
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(join(legacyDir, "SKILL.md"), "# legacy\n", "utf8");
+    writeFileSync(
+      join(legacyDir, "aw.marker"),
+      `${JSON.stringify({
+        marker_version: "aw-managed-skill-marker.v2",
+        backend: "agents",
+        skill_id: "old-demo-skill",
+        payload_version: "agents-skill-payload.v1",
+        payload_fingerprint: "old-fingerprint",
+      }, null, 2)}\n`,
+      "utf8",
+    );
+
+    const completed = runNodeInstall(root, ["--backend=agents"], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+    assert.match(completed.stdout, new RegExp(`removed legacy skill dir demo-skill -> ${escapeRegExp(legacyDir)}`));
+    assert.equal(existsSync(legacyDir), false);
+    assert.equal(existsSync(join(agentsRoot, "aw-demo-skill", "aw.marker")), true);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -2332,11 +2500,8 @@ test("aw-installer leaves out-of-scope install and mutating commands on Python r
     seedMinimalAgentsSource(root, "demo-skill");
     const fakeBin = fakePythonBin(root);
     const commands = [
-      ["install", "--backend", "claude"],
       ["install", "--backend", "agents", "--source", "github"],
-      ["prune", "--all", "--backend", "claude"],
       ["update", "--backend", "agents", "--yes", "--source", "github"],
-      ["update", "--backend", "claude", "--yes"],
     ];
 
     for (const args of commands) {
@@ -2823,6 +2988,40 @@ test("aw-installer update agents yes prints recovery hint after apply failure", 
     const targetRoot = join(root, ".agents", "skills");
     if (existsSync(targetRoot)) {
       chmodSync(targetRoot, 0o755);
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer update claude recovery hint preserves claude-root override after apply failure", () => {
+  if (process.platform === "win32") {
+    return;
+  }
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalClaudeSource(root, "demo-skill");
+    const claudeRoot = join(root, "custom-claude", "skills");
+    const fakeBin = fakePythonBin(root);
+    const install = runNodeInstall(root, ["--backend=claude", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(install.status, 0, install.stderr);
+    chmodSync(claudeRoot, 0o555);
+
+    const completed = runNodeUpdate(root, ["--backend=claude", "--yes", `--claude-root=${claudeRoot}`], fakeBin);
+
+    assert.equal(completed.status, 1);
+    assert.match(completed.stdout, /blocking preflight issues: 0/);
+    assert.match(completed.stdout, /\[claude\] applying update/);
+    assert.match(completed.stderr, /Failed to remove managed skill dir/);
+    assert.match(completed.stderr, /recovery: the update may be partially applied/);
+    assert.match(
+      completed.stderr,
+      new RegExp(`aw-installer update --backend claude --yes --claude-root ${escapeRegExp(JSON.stringify(claudeRoot))}`),
+    );
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
+    const claudeRoot = join(root, "custom-claude", "skills");
+    if (existsSync(claudeRoot)) {
+      chmodSync(claudeRoot, 0o755);
     }
     rmSync(root, { recursive: true, force: true });
   }
