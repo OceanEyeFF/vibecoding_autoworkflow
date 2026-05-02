@@ -138,9 +138,14 @@ for target_name in target-alpha target-beta; do
     AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer install --backend agents
     AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer verify --backend agents
     AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer update --backend agents --yes
+    AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer install --backend claude
+    AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer verify --backend claude
+    AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer update --backend claude --yes
   )
 done
 ```
+
+The Claude commands exercise the package payload through the compatibility lane in temporary target repos. They do not change the current boundary that Claude backend execution uses the Python wrapper/reference path rather than the Node-owned `agents` implementation.
 
 ## What The Registry Runner Does
 
