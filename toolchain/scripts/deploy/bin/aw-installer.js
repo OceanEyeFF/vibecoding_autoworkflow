@@ -31,11 +31,15 @@ const packageVersionFallbackMaxDepth = 20;
 const payloadDescriptor = "payload.json";
 const managedSkillMarker = "aw.marker";
 const managedSkillMarkerVersion = "aw-managed-skill-marker.v2";
-const expectedPayloadVersion = "agents-skill-payload.v1";
 const deployedFileMode = 0o644;
 const deployedDirMode = 0o755;
 const agentsBackend = "agents";
+const claudeBackend = "claude";
 const packageSource = "package";
+const expectedPayloadVersions = Object.freeze({
+  [agentsBackend]: "agents-skill-payload.v1",
+  [claudeBackend]: "claude-skill-payload.v1",
+});
 const cliFlags = Object.freeze({
   all: "--all",
   agentsRoot: "--agents-root",
@@ -383,22 +387,42 @@ function resolveTargetRepoRoot(sourceRoot, sourceRootFromEnv) {
   return validateTargetRepoRoot(process.cwd(), sourceRoot);
 }
 
-function buildNodeAgentsContext(options = {}) {
+function targetRootForBackend(backend, targetRepoRoot, options = {}) {
+  if (backend === claudeBackend) {
+    return options.claudeRoot === undefined
+      ? join(targetRepoRoot, ".claude", "skills")
+      : validateTargetRepoRoot(options.claudeRoot, options.sourceRoot);
+  }
+  return options.agentsRoot === undefined
+    ? join(targetRepoRoot, ".agents", "skills")
+    : validateTargetRepoRoot(options.agentsRoot, options.sourceRoot);
+}
+
+function buildNodeBackendContext(options = {}) {
+  const backend = options.backend || agentsBackend;
+  if (!Object.prototype.hasOwnProperty.call(expectedPayloadVersions, backend)) {
+    throw new Error(`Unsupported backend for Node-owned path: ${backend}`);
+  }
   const sourceRootFromEnv = Boolean(process.env.AW_HARNESS_REPO_ROOT);
   const sourceRoot = resolveSourceRoot();
   const targetRepoRoot = resolveTargetRepoRoot(sourceRoot, sourceRootFromEnv);
-  const targetRoot =
-    options.agentsRoot === undefined
-      ? join(targetRepoRoot, ".agents", "skills")
-      : validateTargetRepoRoot(options.agentsRoot, sourceRoot);
+  const targetRoot = targetRootForBackend(backend, targetRepoRoot, {
+    ...options,
+    sourceRoot,
+  });
   return {
+    backend,
     sourceKind: packageSource,
     sourceRef: "package-local",
     sourceRoot,
     targetRepoRoot,
     targetRoot,
-    adapterSkillsDir: join(sourceRoot, "product", "harness", "adapters", "agents", "skills"),
+    adapterSkillsDir: join(sourceRoot, "product", "harness", "adapters", backend, "skills"),
   };
+}
+
+function buildNodeAgentsContext(options = {}) {
+  return buildNodeBackendContext({ ...options, backend: agentsBackend });
 }
 
 function isDirectory(path) {
@@ -598,6 +622,7 @@ function payloadTargetMetadata(payload, binding) {
 }
 
 function collectSkillBindings(context) {
+  const backend = context.backend || agentsBackend;
   if (!isDirectory(context.adapterSkillsDir)) {
     return [];
   }
@@ -606,7 +631,7 @@ function collectSkillBindings(context) {
     .map((entry) => entry.name)
     .sort()
     .map((skillId) => ({
-      backend: "agents",
+      backend,
       skillId,
       payloadDir: join(context.adapterSkillsDir, skillId),
       payloadPath: join(context.adapterSkillsDir, skillId, payloadDescriptor),
@@ -667,10 +692,10 @@ function issue(code, path, detail) {
   return { code, path, detail };
 }
 
-function verifyTargetRoot(targetRoot) {
+function verifyTargetRoot(targetRoot, backend = agentsBackend) {
   const stat = lstatOrNull(targetRoot);
   if (stat === null) {
-    return [issue("missing-target-root", targetRoot, "agents target root does not exist")];
+    return [issue("missing-target-root", targetRoot, `${backend} target root does not exist`)];
   }
   if (stat.isSymbolicLink()) {
     if (existsSync(targetRoot)) {
@@ -727,6 +752,7 @@ function canonicalSourceMetadata(payload, binding, context) {
 
 function verifySourceBinding(binding, context, loadedPayloads = null) {
   const issues = [];
+  const backend = context.backend || agentsBackend;
   if (!isDirectory(binding.payloadDir)) {
     return [
       issue(
@@ -777,17 +803,24 @@ function verifySourceBinding(binding, context, loadedPayloads = null) {
     }
   }
 
+  const expectedPayloadVersion = expectedPayloadVersions[backend];
   if (payload.payload_version !== expectedPayloadVersion) {
     issues.push(
       issue(
         "payload-contract-invalid",
         binding.payloadPath,
-        `payload payload_version must be ${expectedPayloadVersion} for backend agents skill ${binding.skillId}`,
+        `payload payload_version must be ${expectedPayloadVersion} for backend ${backend} skill ${binding.skillId}`,
       ),
     );
   }
-  if (payload.backend !== "agents") {
-    issues.push(issue("payload-contract-invalid", binding.payloadPath, `payload backend must be agents for skill ${binding.skillId}`));
+  if (payload.backend !== backend) {
+    issues.push(
+      issue(
+        "payload-contract-invalid",
+        binding.payloadPath,
+        `payload backend must be ${backend} for skill ${binding.skillId}`,
+      ),
+    );
   }
   if (payload.skill_id !== binding.skillId) {
     issues.push(issue("payload-contract-invalid", binding.payloadPath, `payload skill_id must be ${binding.skillId}`));
@@ -818,7 +851,7 @@ function verifySourceBinding(binding, context, loadedPayloads = null) {
       issue(
         "payload-policy-mismatch",
         binding.payloadPath,
-        `payload_policy must be canonical-copy for backend agents skill ${binding.skillId}`,
+        `payload_policy must be canonical-copy for backend ${backend} skill ${binding.skillId}`,
       ),
     );
   }
@@ -827,7 +860,7 @@ function verifySourceBinding(binding, context, loadedPayloads = null) {
       issue(
         "reference-policy-mismatch",
         binding.payloadPath,
-        `reference_distribution must be copy-listed-canonical-paths for backend agents skill ${binding.skillId}`,
+        `reference_distribution must be copy-listed-canonical-paths for backend ${backend} skill ${binding.skillId}`,
       ),
     );
   }
@@ -882,6 +915,93 @@ function sourcePathForTargetRelativeFile(binding, relativeName, context, payload
     );
   }
   return sourcePath;
+}
+
+function claudeFrontmatterOverrides(payload, binding) {
+  if (payload.claude_frontmatter === undefined) {
+    return {};
+  }
+  if (payload.claude_frontmatter === null || Array.isArray(payload.claude_frontmatter) || typeof payload.claude_frontmatter !== "object") {
+    throw new Error(`payload claude_frontmatter must be an object for skill ${binding.skillId}`);
+  }
+  const overrides = {};
+  for (const [key, value] of Object.entries(payload.claude_frontmatter)) {
+    if (key === "") {
+      throw new Error(`payload claude_frontmatter keys must be non-empty strings for skill ${binding.skillId}`);
+    }
+    if (typeof value !== "boolean") {
+      throw new Error(`payload claude_frontmatter values must be booleans for skill ${binding.skillId}`);
+    }
+    overrides[key] = value;
+  }
+  return overrides;
+}
+
+function renderFrontmatterValue(value) {
+  return value ? "true" : "false";
+}
+
+function frontmatterKey(line) {
+  const match = /^([A-Za-z0-9_-]+)\s*:/.exec(line);
+  return match === null ? "" : match[1];
+}
+
+function applyMarkdownFrontmatterOverrides(sourceText, overrides) {
+  const entries = Object.entries(overrides);
+  if (entries.length === 0) {
+    return sourceText;
+  }
+
+  const lines = sourceText.match(/[^\n]*\n|[^\n]+$/g) || [];
+  if (lines.length > 0 && lines[0].trim() === "---") {
+    let closingIndex = -1;
+    for (let index = 1; index < lines.length; index += 1) {
+      if (lines[index].trim() === "---") {
+        closingIndex = index;
+        break;
+      }
+    }
+    if (closingIndex !== -1) {
+      const seenKeys = new Set();
+      const updatedFrontmatter = [];
+      for (const line of lines.slice(1, closingIndex)) {
+        const key = frontmatterKey(line);
+        if (Object.prototype.hasOwnProperty.call(overrides, key)) {
+          updatedFrontmatter.push(`${key}: ${renderFrontmatterValue(overrides[key])}\n`);
+          seenKeys.add(key);
+        } else {
+          updatedFrontmatter.push(line);
+        }
+      }
+      for (const [key, value] of entries) {
+        if (!seenKeys.has(key)) {
+          updatedFrontmatter.push(`${key}: ${renderFrontmatterValue(value)}\n`);
+        }
+      }
+      return [lines[0], ...updatedFrontmatter, ...lines.slice(closingIndex)].join("");
+    }
+  }
+
+  return [
+    "---\n",
+    ...entries.map(([key, value]) => `${key}: ${renderFrontmatterValue(value)}\n`),
+    "---\n",
+    sourceText,
+  ].join("");
+}
+
+function targetFrontmatterOverrides(binding, relativeName, metadata, payload) {
+  if (relativeName !== metadata.targetEntryName || binding.backend !== claudeBackend) {
+    return {};
+  }
+  return claudeFrontmatterOverrides(payload, binding);
+}
+
+function expectedTargetFileText(binding, relativeName, context, payload, sourcePath) {
+  const sourceText = readFileSync(sourcePath, "utf8");
+  const metadata = payloadTargetMetadata(payload, binding);
+  const overrides = targetFrontmatterOverrides(binding, relativeName, metadata, payload);
+  return applyMarkdownFrontmatterOverrides(sourceText, overrides);
 }
 
 function computePayloadFingerprint(binding, context, payload, payloadText, metadata) {
@@ -1023,7 +1143,7 @@ function collectTargetDirMetadata(bindings, loadedPayloads = null) {
   for (const binding of bindings) {
     const metadata = payloadTargetMetadata(bindingPayloadObject(binding, loadedPayloads), binding);
     if (targetDirs.has(metadata.targetDir)) {
-      throw new Error(`Multiple skills map to the same target_dir for backend agents: ${metadata.targetDir}`);
+      throw new Error(`Multiple skills map to the same target_dir for backend ${binding.backend}: ${metadata.targetDir}`);
     }
     targetDirs.add(metadata.targetDir);
     metadataByPayloadPath.set(binding.payloadPath, metadata);
@@ -1114,7 +1234,7 @@ function verifyDeployedMarker(binding, targetSkillDir, payload, payloadFingerpri
       ],
     };
   }
-  if (marker.backend !== "agents" || marker.skill_id !== binding.skillId || marker.payload_version !== payload.payload_version) {
+  if (marker.backend !== binding.backend || marker.skill_id !== binding.skillId || marker.payload_version !== payload.payload_version) {
     return {
       fatalIssues: [
         issue(
@@ -1233,7 +1353,7 @@ function verifyDeployedPayloadFiles(binding, targetSkillDir, context, payload, m
     let sourceText;
     let targetText;
     try {
-      sourceText = readFileSync(sourcePath, "utf8");
+      sourceText = expectedTargetFileText(binding, relativeName, context, payload, sourcePath);
     } catch (error) {
       issues.push(issue("payload-contract-invalid", binding.payloadPath, error.message));
       continue;
@@ -1315,7 +1435,7 @@ function verifyDeployedSkill(binding, targetRoot, context, loadedPayloads = null
   ];
 }
 
-function unexpectedManagedTargetDirs(targetRoot, expectedTargetDirNames, targetChildren) {
+function unexpectedManagedTargetDirs(targetRoot, expectedTargetDirNames, targetChildren, backend = agentsBackend) {
   if (!isDirectory(targetRoot)) {
     return [];
   }
@@ -1329,7 +1449,7 @@ function unexpectedManagedTargetDirs(targetRoot, expectedTargetDirNames, targetC
       continue;
     }
     const marker = loadRuntimeMarker(join(child, managedSkillMarker));
-    if (marker === null || marker.backend !== "agents") {
+    if (marker === null || marker.backend !== backend) {
       continue;
     }
     issues.push(
@@ -1346,9 +1466,10 @@ function unexpectedManagedTargetDirs(targetRoot, expectedTargetDirNames, targetC
 /**
  * Verifies the agents backend using optional pre-collected bindings/payloads.
  */
-function verifyAgentsBackend(context, options = {}) {
+function verifyBackend(context, options = {}) {
+  const backend = context.backend || agentsBackend;
   const targetRoot = context.targetRoot;
-  const issues = verifyTargetRoot(targetRoot);
+  const issues = verifyTargetRoot(targetRoot, backend);
   const bindings = options.bindings ?? collectSkillBindings(context);
   const loadedPayloads = options.loadedPayloads ?? null;
   const collectTargetChildrenOnIssue = options.collectTargetChildrenOnIssue === true;
@@ -1357,7 +1478,7 @@ function verifyAgentsBackend(context, options = {}) {
       issue(
         "missing-backend-payload-source",
         context.adapterSkillsDir,
-        "No payload bindings found for backend agents.",
+        `No payload bindings found for backend ${backend}.`,
       ),
     );
   } else {
@@ -1383,17 +1504,21 @@ function verifyAgentsBackend(context, options = {}) {
     for (const binding of bindings) {
       issues.push(...verifyDeployedSkill(binding, targetRoot, context, loadedPayloads));
     }
-    issues.push(...unexpectedManagedTargetDirs(targetRoot, expectedTargetDirNames, children));
+    issues.push(...unexpectedManagedTargetDirs(targetRoot, expectedTargetDirNames, children, backend));
   }
 
   return {
-    backend: "agents",
+    backend,
     sourceRoot: context.sourceRoot,
     targetRoot,
     issues,
     bindings,
     targetChildren: children,
   };
+}
+
+function verifyAgentsBackend(context, options = {}) {
+  return verifyBackend(context, options);
 }
 
 function targetRootStatus(path) {
@@ -1410,7 +1535,7 @@ function targetRootStatus(path) {
   return "wrong-type";
 }
 
-function managedInstallDirs(targetRoot, targetChildren) {
+function managedInstallDirs(targetRoot, targetChildren, backend = agentsBackend) {
   if (!isDirectory(targetRoot)) {
     return [];
   }
@@ -1421,12 +1546,12 @@ function managedInstallDirs(targetRoot, targetChildren) {
       return false;
     }
     const marker = loadRuntimeMarker(join(child, managedSkillMarker));
-    return marker !== null && marker.backend === "agents";
+    return marker !== null && marker.backend === backend;
   });
 }
 
-function targetRootReadyIssuesForAction(targetRoot) {
-  return verifyTargetRoot(targetRoot).filter((currentIssue) => currentIssue.code !== "missing-target-root");
+function targetRootReadyIssuesForAction(targetRoot, backend = agentsBackend) {
+  return verifyTargetRoot(targetRoot, backend).filter((currentIssue) => currentIssue.code !== "missing-target-root");
 }
 
 function childDirectoryIdentity(path) {
@@ -1449,7 +1574,7 @@ function assertManagedDirectoryIdentityCurrent(identity) {
 }
 
 function pruneBackendManagedInstalls(context) {
-  const targetRootIssues = targetRootReadyIssuesForAction(context.targetRoot);
+  const targetRootIssues = targetRootReadyIssuesForAction(context.targetRoot, context.backend);
   if (targetRootIssues.length > 0) {
     throw new Error(targetRootReadyFailureMessage("prune managed installs", targetRootIssues));
   }
@@ -1467,7 +1592,7 @@ function pruneBackendManagedInstalls(context) {
     }
 
     const marker = loadRuntimeMarker(join(child, managedSkillMarker));
-    if (marker === null || marker.backend !== "agents") {
+    if (marker === null || marker.backend !== context.backend) {
       continue;
     }
 
@@ -1493,7 +1618,7 @@ function pruneBackendManagedInstalls(context) {
 /**
  * Finds existing target entries that update must refuse or classify before prune.
  */
-function collectUpdateTargetEntryIssues(targetRoot, knownTargetDirNames, targetChildren) {
+function collectUpdateTargetEntryIssues(targetRoot, knownTargetDirNames, targetChildren, backend = agentsBackend) {
   if (!isDirectory(targetRoot)) {
     return [];
   }
@@ -1529,7 +1654,7 @@ function collectUpdateTargetEntryIssues(targetRoot, knownTargetDirNames, targetC
       continue;
     }
 
-    if (marker.backend !== "agents") {
+    if (marker.backend !== backend) {
       issues.push(
         issue(
           "foreign-managed-directory",
@@ -1637,9 +1762,10 @@ function targetRootReadyFailureMessage(action, issues) {
 }
 
 function collectValidatedBindingsForAction(context, action) {
+  const backend = context.backend || agentsBackend;
   const bindings = collectSkillBindings(context);
   if (bindings.length === 0) {
-    throw new Error("No payload bindings found for backend agents.");
+    throw new Error(`No payload bindings found for backend ${backend}.`);
   }
 
   const validationIssues = [];
@@ -1658,8 +1784,9 @@ function collectValidatedBindingsForCheckPaths(context) {
 }
 
 function checkPathsExistSummary(context) {
+  const backend = context.backend || agentsBackend;
   const { bindings, loadedPayloads } = collectValidatedBindingsForCheckPaths(context);
-  const targetRootIssues = verifyTargetRoot(context.targetRoot).filter(
+  const targetRootIssues = verifyTargetRoot(context.targetRoot, backend).filter(
     (currentIssue) => currentIssue.code !== "missing-target-root",
   );
   if (targetRootIssues.length > 0) {
@@ -1678,7 +1805,7 @@ function checkPathsExistSummary(context) {
     ...collectLegacyPathConflicts(plans, context.targetRoot),
   ];
   return {
-    backend: "agents",
+    backend,
     targetRoot: context.targetRoot,
     plannedTargetPaths: plans.map((plan) => plan.targetSkillDir),
     conflicts,
@@ -1695,12 +1822,12 @@ function sourceTextForTargetRelativeFile(binding, relativeName, context, payload
     return loadedPayload.payloadText;
   }
   const sourcePath = sourcePathForTargetRelativeFile(binding, relativeName, context, payload, canonicalSource);
-  return readFileSync(sourcePath, "utf8");
+  return expectedTargetFileText(binding, relativeName, context, payload, sourcePath);
 }
 
 function installBackendPayloads(context) {
   const { bindings, loadedPayloads } = collectValidatedBindingsForAction(context, "install");
-  const targetRootIssues = verifyTargetRoot(context.targetRoot).filter(
+  const targetRootIssues = verifyTargetRoot(context.targetRoot, context.backend).filter(
     (currentIssue) => currentIssue.code !== "missing-target-root",
   );
   if (targetRootIssues.length > 0) {
@@ -1720,7 +1847,7 @@ function installBackendPayloads(context) {
   ];
   if (conflicts.length > 0) {
     throw new Error(
-      `[agents] install blocked by ${conflicts.length} existing target path(s)\n\n${formatPathConflicts(conflicts)}`,
+      `[${context.backend}] install blocked by ${conflicts.length} existing target path(s)\n\n${formatPathConflicts(conflicts)}`,
     );
   }
 
@@ -1828,9 +1955,10 @@ function isUpdateBlockingIssue(currentIssue, managedDeletePaths) {
 }
 
 /**
- * Produces the agents update dry-run JSON summary without mutating target files.
+ * Produces an update dry-run JSON summary without mutating target files.
  */
 function updatePlanSummary(context) {
+  const backend = context.backend || agentsBackend;
   const bindings = collectSkillBindings(context);
   let loadedPayloads = null;
   const preloadIssues = [];
@@ -1846,7 +1974,7 @@ function updatePlanSummary(context) {
     );
     loadedPayloads = null;
   }
-  const result = verifyAgentsBackend(context, {
+  const result = verifyBackend(context, {
     bindings,
     loadedPayloads,
     collectTargetChildrenOnIssue: true,
@@ -1862,7 +1990,7 @@ function updatePlanSummary(context) {
       issue(
         "missing-backend-payload-source",
         context.adapterSkillsDir,
-        "No payload bindings found for backend agents.",
+        `No payload bindings found for backend ${backend}.`,
       ),
     );
   } else {
@@ -1881,14 +2009,19 @@ function updatePlanSummary(context) {
     }
   }
 
-  const targetEntryIssues = collectUpdateTargetEntryIssues(targetRoot, knownTargetDirNames, targetChildren);
-  const managedInstallsToDelete = managedInstallDirs(targetRoot, targetChildren);
+  const targetEntryIssues = collectUpdateTargetEntryIssues(
+    targetRoot,
+    knownTargetDirNames,
+    targetChildren,
+    backend,
+  );
+  const managedInstallsToDelete = managedInstallDirs(targetRoot, targetChildren, backend);
   const managedDeletePaths = new Set(managedInstallsToDelete);
   const allIssues = dedupeIssues([...result.issues, ...planIssues, ...targetEntryIssues, ...preloadIssues]);
   const blockingIssues = allIssues.filter((currentIssue) => isUpdateBlockingIssue(currentIssue, managedDeletePaths));
 
   return {
-    backend: "agents",
+    backend,
     source_kind: context.sourceKind,
     source_ref: context.sourceRef,
     source_root: context.sourceRoot,
@@ -1904,12 +2037,13 @@ function updatePlanSummary(context) {
 }
 
 function diagnosticSummary(result) {
-  const managedDirs = managedInstallDirs(result.targetRoot, result.targetChildren);
+  const backend = result.backend || agentsBackend;
+  const managedDirs = managedInstallDirs(result.targetRoot, result.targetChildren, backend);
   const issueCodes = [...new Set(result.issues.map((currentIssue) => currentIssue.code))].sort();
   const unrecognized = result.issues.filter((currentIssue) => unrecognizedIssueCodes.has(currentIssue.code));
   const conflicts = result.issues.filter((currentIssue) => conflictIssueCodes.has(currentIssue.code));
   return {
-    backend: "agents",
+    backend,
     source_root: result.sourceRoot,
     target_root: result.targetRoot,
     target_root_status: targetRootStatus(result.targetRoot),
@@ -1953,12 +2087,25 @@ function readEqualsOption(arg, flag) {
   return arg.startsWith(prefix) ? arg.slice(prefix.length) : null;
 }
 
-function parseNodeBackendRootArgs(args, command) {
+function backendAllowed(backend, allowedBackends) {
+  return allowedBackends.includes(backend);
+}
+
+function parsedBackendRoots(backend, agentsRoot, claudeRoot) {
+  return {
+    backend,
+    agentsRoot,
+    ...(backend === claudeBackend && claudeRoot !== undefined ? { claudeRoot } : {}),
+  };
+}
+
+function parseNodeBackendRootArgs(args, command, allowedBackends = [agentsBackend]) {
   if (args[0] !== command) {
     return null;
   }
   let backend = agentsBackend;
   let agentsRoot;
+  let claudeRoot;
   for (let index = 1; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === cliFlags.backend) {
@@ -1990,84 +2137,40 @@ function parseNodeBackendRootArgs(args, command) {
       continue;
     }
     if (arg === cliFlags.claudeRoot) {
-      if (readOptionValue(args, index) === null) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
         return null;
       }
+      claudeRoot = value;
       index += 1;
       continue;
     }
-    if (readEqualsOption(arg, cliFlags.claudeRoot) !== null) {
+    const claudeRootValue = readEqualsOption(arg, cliFlags.claudeRoot);
+    if (claudeRootValue !== null) {
+      claudeRoot = claudeRootValue;
       continue;
     }
     return null;
   }
-  if (backend !== agentsBackend) {
+  if (!backendAllowed(backend, allowedBackends)) {
     return null;
   }
-  return { backend, agentsRoot };
+  return parsedBackendRoots(backend, agentsRoot, claudeRoot);
 }
 
 function parseNodeDiagnoseJsonArgs(args) {
   if (args[0] !== "diagnose") {
     return null;
   }
-  let backend = agentsBackend;
-  let json = false;
-  let agentsRoot;
-  for (let index = 1; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === cliFlags.json) {
-      json = true;
-      continue;
-    }
-    if (arg === cliFlags.backend) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      backend = value;
-      index += 1;
-      continue;
-    }
-    const backendValue = readEqualsOption(arg, cliFlags.backend);
-    if (backendValue !== null) {
-      backend = backendValue;
-      continue;
-    }
-    if (arg === cliFlags.agentsRoot) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      agentsRoot = value;
-      index += 1;
-      continue;
-    }
-    const agentsRootValue = readEqualsOption(arg, cliFlags.agentsRoot);
-    if (agentsRootValue !== null) {
-      agentsRoot = agentsRootValue;
-      continue;
-    }
-    if (arg === cliFlags.claudeRoot) {
-      if (readOptionValue(args, index) === null) {
-        return null;
-      }
-      index += 1;
-      continue;
-    }
-    if (readEqualsOption(arg, cliFlags.claudeRoot) !== null) {
-      continue;
-    }
+  if (!args.includes(cliFlags.json)) {
     return null;
   }
-  if (!json || backend !== agentsBackend) {
-    return null;
-  }
-  return { backend, agentsRoot };
+  const withoutJson = args.filter((arg) => arg !== cliFlags.json);
+  return parseNodeBackendRootArgs(withoutJson, "diagnose", [agentsBackend, claudeBackend]);
 }
 
 function parseNodeDiagnoseArgs(args) {
-  return parseNodeBackendRootArgs(args, "diagnose");
+  return parseNodeBackendRootArgs(args, "diagnose", [agentsBackend, claudeBackend]);
 }
 
 function parseNodeUpdateJsonArgs(args) {
@@ -2078,6 +2181,7 @@ function parseNodeUpdateJsonArgs(args) {
   let source = packageSource;
   let json = false;
   let agentsRoot;
+  let claudeRoot;
   for (let index = 1; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === cliFlags.json) {
@@ -2127,21 +2231,25 @@ function parseNodeUpdateJsonArgs(args) {
       continue;
     }
     if (arg === cliFlags.claudeRoot) {
-      if (readOptionValue(args, index) === null) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
         return null;
       }
+      claudeRoot = value;
       index += 1;
       continue;
     }
-    if (readEqualsOption(arg, cliFlags.claudeRoot) !== null) {
+    const claudeRootValue = readEqualsOption(arg, cliFlags.claudeRoot);
+    if (claudeRootValue !== null) {
+      claudeRoot = claudeRootValue;
       continue;
     }
     return null;
   }
-  if (!json || backend !== agentsBackend || source !== packageSource) {
+  if (!json || !backendAllowed(backend, [agentsBackend, claudeBackend]) || source !== packageSource) {
     return null;
   }
-  return { backend, source, agentsRoot };
+  return { backend, source, agentsRoot, ...(claudeRoot === undefined ? {} : { claudeRoot }) };
 }
 
 function parseNodeUpdateDryRunArgs(args) {
@@ -2151,6 +2259,7 @@ function parseNodeUpdateDryRunArgs(args) {
   let backend = agentsBackend;
   let source = packageSource;
   let agentsRoot;
+  let claudeRoot;
   for (let index = 1; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === cliFlags.backend) {
@@ -2196,21 +2305,25 @@ function parseNodeUpdateDryRunArgs(args) {
       continue;
     }
     if (arg === cliFlags.claudeRoot) {
-      if (readOptionValue(args, index) === null) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
         return null;
       }
+      claudeRoot = value;
       index += 1;
       continue;
     }
-    if (readEqualsOption(arg, cliFlags.claudeRoot) !== null) {
+    const claudeRootValue = readEqualsOption(arg, cliFlags.claudeRoot);
+    if (claudeRootValue !== null) {
+      claudeRoot = claudeRootValue;
       continue;
     }
     return null;
   }
-  if (backend !== agentsBackend || source !== packageSource) {
+  if (!backendAllowed(backend, [agentsBackend, claudeBackend]) || source !== packageSource) {
     return null;
   }
-  return { backend, source, agentsRoot };
+  return { backend, source, agentsRoot, ...(claudeRoot === undefined ? {} : { claudeRoot }) };
 }
 
 function parseNodeUpdateYesArgs(args) {
@@ -2367,7 +2480,7 @@ function parseNodeUnsupportedUpdateJsonYesArgs(args) {
 }
 
 function parseNodeCheckPathsExistArgs(args) {
-  return parseNodeBackendRootArgs(args, "check_paths_exist");
+  return parseNodeBackendRootArgs(args, "check_paths_exist", [agentsBackend, claudeBackend]);
 }
 
 function runNodeJson(args, parser, buildSummary, exitStatus) {
@@ -2376,7 +2489,7 @@ function runNodeJson(args, parser, buildSummary, exitStatus) {
     return null;
   }
   try {
-    const summary = buildSummary(buildNodeAgentsContext(parsed));
+    const summary = buildSummary(buildNodeBackendContext(parsed));
     console.log(JSON.stringify(sortJsonObjectKeys(summary), null, 2));
     return exitStatus(summary);
   } catch (error) {
@@ -2389,7 +2502,7 @@ function runNodeDiagnoseJson(args) {
   return runNodeJson(
     args,
     parseNodeDiagnoseJsonArgs,
-    (context) => diagnosticSummary(verifyAgentsBackend(context)),
+    (context) => diagnosticSummary(verifyBackend(context)),
     () => 0,
   );
 }
@@ -2416,7 +2529,7 @@ function runNodeDiagnose(args) {
     return null;
   }
   try {
-    printDiagnosticSummary(diagnosticSummary(verifyAgentsBackend(buildNodeAgentsContext(parsed))));
+    printDiagnosticSummary(diagnosticSummary(verifyBackend(buildNodeBackendContext(parsed))));
     return 0;
   } catch (error) {
     console.error(`error: ${error.message}`);
@@ -2439,12 +2552,12 @@ function runNodeUpdateDryRun(args) {
     return null;
   }
   try {
-    const summary = updatePlanSummary(buildNodeAgentsContext(parsed));
+    const summary = updatePlanSummary(buildNodeBackendContext(parsed));
     printUpdatePlan(summary);
     if (summary.blocking_issue_count > 0) {
-      throw new Error(`[agents] update blocked by ${summary.blocking_issue_count} preflight issue(s)`);
+      throw new Error(`[${summary.backend}] update blocked by ${summary.blocking_issue_count} preflight issue(s)`);
     }
-    console.log("[agents] dry-run only; pass --yes to apply update");
+    console.log(`[${summary.backend}] dry-run only; pass --yes to apply update`);
     return 0;
   } catch (error) {
     console.error(`error: ${error.message}`);
@@ -2481,10 +2594,10 @@ function checkBackendTargetPaths(context) {
   const summary = checkPathsExistSummary(context);
   if (summary.conflicts.length > 0) {
     throw new Error(
-      `[agents] found ${summary.conflicts.length} conflicting target path(s)\n\n${formatPathConflicts(summary.conflicts)}`,
+      `[${context.backend}] found ${summary.conflicts.length} conflicting target path(s)\n\n${formatPathConflicts(summary.conflicts)}`,
     );
   }
-  console.log(`[agents] ok: no conflicting target paths at ${summary.targetRoot}`);
+  console.log(`[${context.backend}] ok: no conflicting target paths at ${summary.targetRoot}`);
 }
 
 function runNodeUpdateYes(args) {
@@ -2529,14 +2642,14 @@ function runNodeCheckPathsExist(args) {
     return null;
   }
   try {
-    const summary = checkPathsExistSummary(buildNodeAgentsContext(parsed));
+    const summary = checkPathsExistSummary(buildNodeBackendContext(parsed));
     if (summary.conflicts.length > 0) {
       console.error(
-        `error: [agents] found ${summary.conflicts.length} conflicting target path(s)\n\n${formatPathConflicts(summary.conflicts)}`,
+        `error: [${summary.backend}] found ${summary.conflicts.length} conflicting target path(s)\n\n${formatPathConflicts(summary.conflicts)}`,
       );
       return 1;
     }
-    console.log(`[agents] ok: no conflicting target paths at ${summary.targetRoot}`);
+    console.log(`[${summary.backend}] ok: no conflicting target paths at ${summary.targetRoot}`);
     return 0;
   } catch (error) {
     console.error(`error: ${error.message}`);
@@ -2545,7 +2658,7 @@ function runNodeCheckPathsExist(args) {
 }
 
 function parseNodeVerifyArgs(args) {
-  return parseNodeBackendRootArgs(args, "verify");
+  return parseNodeBackendRootArgs(args, "verify", [agentsBackend, claudeBackend]);
 }
 
 function parseNodeInstallArgs(args) {
@@ -2716,7 +2829,7 @@ function runNodeVerify(args) {
     return null;
   }
   try {
-    const result = verifyAgentsBackend(buildNodeAgentsContext(parsed));
+    const result = verifyBackend(buildNodeBackendContext(parsed));
     printVerifyResult(result);
     return result.issues.length > 0 ? 1 : 0;
   } catch (error) {
