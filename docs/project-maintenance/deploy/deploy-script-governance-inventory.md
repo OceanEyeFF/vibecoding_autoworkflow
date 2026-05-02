@@ -1,9 +1,9 @@
 ---
 title: "Deploy Script Governance Inventory"
 status: draft
-updated: 2026-05-01
+updated: 2026-05-02
 owner: aw-kernel
-last_verified: 2026-05-01
+last_verified: 2026-05-02
 ---
 # Deploy Script Governance Inventory
 
@@ -13,11 +13,11 @@ last_verified: 2026-05-01
 
 ## Control Signal
 
-当前结论：不要直接删除 Python deploy 面。先把必须在目标执行路径上无 Python 也安全可用的 `aw-installer` command surface 收敛到 Node-owned 实现，并用现有 Python reference 与 tests 做等价验证；只有当对应 Node path 覆盖 install、verify、diagnose、update、prune、path/marker handling、JSON、package-local、GitHub-source、agents、Claude 和 operator-error semantics 后，才允许逐项移除 Python runtime dependency。
+当前结论：迁移目标是替换 `aw-installer` 发布/runtime 执行路径上的 Python 依赖，不是清空仓库里的 Python。不要直接删除 Python deploy 面。先把必须在目标执行路径上无 Python 也安全可用的 `aw-installer` command surface 收敛到 Node-owned 实现，并用现有 Python reference 与 tests 做等价验证；只有当对应 Node path 覆盖 install、verify、diagnose、update、prune、path/marker handling、JSON、package-local、GitHub-source、agents、Claude 和 operator-error semantics 后，才允许逐项移除 Python runtime dependency。`adapter_deploy.py`、Python tests、governance scripts 和 scaffold tooling 可以在迁移期继续作为 reference / parity / governance tooling 保留；真正要从 package runtime 中退出的是 `aw-installer` fallback、`harness_deploy.py` compatibility wrapper、`aw-harness-deploy` Python alias 和 root/local package `files` 中的 runtime Python payload。
 
 已验证进度：Slice A 已把 package/local-source `aw-installer check_paths_exist --backend agents` 收敛为 Node-owned 只读路径；Slice B 已把 package/local-source `aw-installer verify --backend agents` 收敛为 Node-owned 只读路径；Slice C 已把 package/local-source clean-target `aw-installer install --backend agents` 收敛为 Node-owned 写入路径；Slice D 已把 package/local-source `aw-installer prune --all --backend agents` 收敛为 Node-owned 删除路径；Slice E 已把 package/local-source `aw-installer update --backend agents --yes` 收敛为 Node-owned composition path。五片均保留 Python reference parity 和 failing-Python sentinel 证据；Slice C 只覆盖 target root 缺失或为空目录的 clean-target install，non-clean target install 子命令仍走 Python/reference；Slice D 只删除 current-backend recognized managed installs，并保留 foreign、unrecognized、invalid-marker 和用户内容；Slice E 只组合已验证的 `prune --all -> check_paths_exist -> install -> verify`，保留 blocking preflight、failure short-circuit、post-apply strict verify 和 recovery hint。不引入远程 fetch，不碰 release metadata，不改变 package version，不扩展 GitHub-source update，也不删除 Python reference。
 
-下一步建议：不要继续静默扩大迁移范围。GitHub-source update、Claude backend、Python deploy deletion、release metadata 或 package packlist removal 都需要新的显式审批和独立 gate。
+下一步建议：把后续工作排成 runtime no-Python 迁移切片，而不是一次性删除 Python。TUI dry-run Node rendering、agents 剩余 fallback 收敛可以作为普通本地 implementation worktrack 候选；Claude backend Node-owned lifecycle 仍需要新的 route decision / approval 后才能实施。GitHub-source update 属于 remote fetch/trust boundary，package packlist removal、Python runtime file removal、release metadata 或实际发布属于 release/package boundary，都需要新的显式审批和独立 gate。
 
 停止线：
 
@@ -25,6 +25,7 @@ last_verified: 2026-05-01
 - 不继续修改 package metadata、release approval lock、tag、remote、npm dist-tag 或 GitHub Release；JS wrapper 只允许在已批准 Slice A-E 的 Node-owned parity 边界内修改。
 - 不把未实现的 Node path 写成已完成事实。
 - 不把 `aw_scaffold.py` 的 `.aw_template` scaffold 语义并入 deploy package removal scope；它是 adjacent template tooling，不是 runtime installer target path。
+- 不把仓库治理脚本、Python parity tests 或 scaffold helper 的存在视为 runtime Python 替换失败；runtime 替换只以 package/local 或 registry-style `aw-installer` 目标执行路径是否需要 Python 为准。
 
 ## Required Node-Owned Command Surface
 
@@ -157,6 +158,14 @@ Implement migration through smaller gates after this inventory is accepted:
 4. Slice D: Node-owned `prune --all` for recognized managed `agents` installs. Status: verified. This slice isolates delete behavior from install/update composition and proves missing target root no-op, wrong target root blocking, same-backend marker deletion, stale same-backend marker deletion, foreign/unrecognized/invalid-marker/user content retention and Python reference output parity.
 5. Slice E: `update --backend agents --yes` composition. Status: verified. This slice validates package/local `prune --all -> check_paths_exist -> install -> verify` orchestration, no-Python target execution, Python reference output shape, blocking preflight, recoverable target states, strict post-apply verify and recovery hints.
 
+The next runtime no-Python backlog should continue with named slices instead of broad deletion:
+
+6. Slice F: Node-owned `claude` backend local/package lifecycle. Candidate scope: package/local `diagnose --json`, `update --json`, `check_paths_exist`, `verify`, clean-target `install`, `prune --all`, and `update --backend claude --yes`, preserving full Harness skill payload, `.claude/skills/<skill_id>` target naming, legacy `aw-<skill_id>` managed cleanup recognition, Claude-specific payload version/frontmatter constraints, strict verify, and failing-Python sentinel evidence. This is an approval-gated implementation worktrack because it is a Claude backend migration; it must not promote Claude to the `agents` main path, change release channel, or remove Python runtime files.
+7. Slice G: Node-owned human-readable update dry-run rendering for package/local backends and TUI usage. Candidate scope: make TUI dry-run display reuse Node update plan data instead of Python wrapper output, without changing mutating semantics or adding release behavior.
+8. Slice H: agents remaining fallback cleanup. Candidate scope: decide and implement Node-owned or explicitly unsupported behavior for non-clean target standalone `install` and any remaining package/local unsupported variants so target users do not silently need Python for the ordinary `agents` runtime path.
+9. Slice I: GitHub-source update migration. Candidate scope: Node-owned `--source github` archive download, optional sha256 verification, safe zip extraction, source contract validation, temp cleanup, target/source separation and no auto-upgrade semantics. This crosses the remote fetch/trust boundary and needs explicit approval before implementation.
+10. Slice J: runtime Python fallback and package payload retirement. Candidate scope: remove or reimplement `aw-harness-deploy`, remove `aw-installer` Python fallback branches, drop `harness_deploy.py` / `adapter_deploy.py` from package runtime `files`, and update closeout/release smoke to prove no-Python registry/package execution. This crosses package metadata, packlist and release boundary; it requires explicit approval and release-channel gates. `adapter_deploy.py` may remain in the repository as reference after it exits the package runtime payload.
+
 Keep Python reference callable in CI and local tests for parity throughout this sequence. Do not remove fallback until all relevant Node-owned slices pass and a release-approved packlist/package boundary exists.
 
 Reuse `path_safety_policy.json`, payload descriptor parsing, fingerprint order and marker schema already covered by `test_aw_installer.js`. As slices graduate, split broad `split-later` test surfaces into:
@@ -165,11 +174,12 @@ Reuse `path_safety_policy.json`, payload descriptor parsing, fingerprint order a
 - permanent Node behavior tests for the canonical command surface
 - retained release/scaffold governance tests that are not deploy runtime migration targets
 
-Non-goals for the first slice:
+Non-goals for upcoming runtime no-Python slices unless explicitly named:
 
-- No GitHub-source migration.
-- No Claude backend migration.
-- No GitHub-source, Claude backend, Python deletion or release metadata migration before their named slices.
+- No full-repository Python deletion.
+- No Claude backend migration before Slice F approval.
+- No GitHub-source migration before Slice I approval.
+- No Python runtime payload deletion or package metadata change before Slice J approval.
 - No release package version, dist-tag, approval lock, tag, npm publish or GitHub Release change.
 - No docs rewrite except implementation-specific docs after verified behavior exists.
 
