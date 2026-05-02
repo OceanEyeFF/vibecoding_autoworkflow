@@ -435,6 +435,12 @@ function buildNodeBackendContext(options = {}) {
     sourceRoot,
     targetRepoRoot,
     targetRoot,
+    ...(backend === claudeBackend && options.claudeRoot !== undefined
+      ? { targetRootOverrideFlag: cliFlags.claudeRoot }
+      : {}),
+    ...(backend === agentsBackend && options.agentsRoot !== undefined
+      ? { targetRootOverrideFlag: cliFlags.agentsRoot }
+      : {}),
     adapterSkillsDir: join(sourceRoot, "product", "harness", "adapters", backend, "skills"),
   };
 }
@@ -1943,10 +1949,11 @@ function collectLegacyPathConflicts(plans, targetRoot) {
   for (const plan of plans) {
     for (const legacyDirName of plan.targetMetadata.legacyTargetDirs) {
       const legacyPath = join(targetRoot, legacyDirName);
-      if (!pathExists(legacyPath)) {
+      if (!pathExistsOrIsSymlink(legacyPath)) {
         continue;
       }
-      const marker = loadRuntimeMarker(join(legacyPath, managedSkillMarker));
+      const identity = childDirectoryIdentity(legacyPath);
+      const marker = identity === null ? null : loadRuntimeMarker(join(legacyPath, managedSkillMarker));
       if (
         marker !== null &&
         marker.backend === plan.binding.backend &&
@@ -2079,6 +2086,38 @@ function installBackendPayloads(context) {
   }
 
   const targetRootIdentitySnapshot = ensureInstallTargetRoot(context.targetRoot);
+  for (const plan of plans) {
+    const binding = plan.binding;
+    for (const legacyDirName of plan.targetMetadata.legacyTargetDirs) {
+      assertDirectoryIdentityCurrent(targetRootIdentitySnapshot, "install legacy cleanup");
+      const legacyPath = join(context.targetRoot, legacyDirName);
+      if (!pathExists(legacyPath)) {
+        continue;
+      }
+      const identity = childDirectoryIdentity(legacyPath);
+      if (identity === null) {
+        continue;
+      }
+      const marker = loadRuntimeMarker(join(legacyPath, managedSkillMarker));
+      if (
+        marker !== null &&
+        marker.backend === binding.backend &&
+        (marker.skill_id === binding.skillId ||
+          plan.targetMetadata.legacySkillIds.includes(marker.skill_id))
+      ) {
+        assertDirectoryIdentityCurrent(targetRootIdentitySnapshot, "install legacy cleanup");
+        if (!assertManagedDirectoryIdentityCurrent(identity)) {
+          continue;
+        }
+        try {
+          rmSync(legacyPath, { recursive: true });
+        } catch (error) {
+          throw new Error(`Failed to remove legacy skill dir ${legacyPath}: ${error.message}`);
+        }
+        console.log(`removed legacy skill dir ${binding.skillId} -> ${legacyPath}`);
+      }
+    }
+  }
   for (const plan of plans) {
     const binding = plan.binding;
     const loadedPayload = bindingPayloadWithText(binding, loadedPayloads);
@@ -2628,6 +2667,7 @@ function parseNodeUpdateYesArgs(args) {
   let source = packageSource;
   let yes = false;
   let agentsRoot;
+  let claudeRoot;
   for (let index = 1; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === cliFlags.yes) {
@@ -2677,21 +2717,25 @@ function parseNodeUpdateYesArgs(args) {
       continue;
     }
     if (arg === cliFlags.claudeRoot) {
-      if (readOptionValue(args, index) === null) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
         return null;
       }
+      claudeRoot = value;
       index += 1;
       continue;
     }
-    if (readEqualsOption(arg, cliFlags.claudeRoot) !== null) {
+    const claudeRootValue = readEqualsOption(arg, cliFlags.claudeRoot);
+    if (claudeRootValue !== null) {
+      claudeRoot = claudeRootValue;
       continue;
     }
     return null;
   }
-  if (!yes || backend !== agentsBackend || source !== packageSource) {
+  if (!yes || !backendAllowed(backend, [agentsBackend, claudeBackend]) || source !== packageSource) {
     return null;
   }
-  return { backend, source, yes, agentsRoot };
+  return { backend, source, yes, agentsRoot, ...(claudeRoot === undefined ? {} : { claudeRoot }) };
 }
 
 function parseNodeUnsupportedUpdateJsonYesArgs(args) {
@@ -2923,10 +2967,14 @@ function printUpdatePlan(summary) {
 }
 
 function updateFailureRecoveryHint(context) {
+  const rootOverride =
+    context.targetRootOverrideFlag === undefined
+      ? ""
+      : ` ${context.targetRootOverrideFlag} ${JSON.stringify(context.targetRoot)}`;
   return (
-    `[agents] recovery: the update may be partially applied at ${context.targetRoot}. ` +
+    `[${context.backend}] recovery: the update may be partially applied at ${context.targetRoot}. ` +
     "After fixing the reported error, run diagnose and then rerun " +
-    "`aw-installer update --backend agents --yes`."
+    `\`aw-installer update --backend ${context.backend} --yes${rootOverride}\`.`
   );
 }
 
@@ -2946,29 +2994,29 @@ function runNodeUpdateYes(args) {
     return null;
   }
   try {
-    const context = buildNodeAgentsContext(parsed);
+    const context = buildNodeBackendContext(parsed);
     const summary = updatePlanSummary(context);
     printUpdatePlan(summary);
     if (summary.blocking_issue_count > 0) {
-      throw new Error(`[agents] update blocked by ${summary.blocking_issue_count} preflight issue(s)`);
+      throw new Error(`[${context.backend}] update blocked by ${summary.blocking_issue_count} preflight issue(s)`);
     }
 
-    console.log("[agents] applying update");
+    console.log(`[${context.backend}] applying update`);
     let result = null;
     try {
       pruneBackendManagedInstalls(context);
       checkBackendTargetPaths(context);
       installBackendPayloads(context);
-      result = verifyAgentsBackend(context);
+      result = verifyBackend(context);
       if (result.issues.length > 0) {
         printVerifyResult(result);
-        throw new Error(`[agents] update failed strict verify with ${result.issues.length} issue(s)`);
+        throw new Error(`[${context.backend}] update failed strict verify with ${result.issues.length} issue(s)`);
       }
     } catch (error) {
       throw new Error(`${error.message}\n${updateFailureRecoveryHint(context)}`);
     }
     printVerifyResult(result);
-    console.log("[agents] update complete");
+    console.log(`[${context.backend}] update complete`);
     return 0;
   } catch (error) {
     console.error(`error: ${error.message}`);
@@ -3002,7 +3050,7 @@ function parseNodeVerifyArgs(args) {
 }
 
 function parseNodeInstallArgs(args) {
-  return parseNodeBackendRootArgs(args, "install");
+  return parseNodeBackendRootArgs(args, "install", [agentsBackend, claudeBackend]);
 }
 
 function parseNodePruneArgs(args) {
@@ -3012,6 +3060,7 @@ function parseNodePruneArgs(args) {
   let hasAll = false;
   let backend = agentsBackend;
   let agentsRoot;
+  let claudeRoot;
   for (let index = 1; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === cliFlags.all) {
@@ -3047,21 +3096,25 @@ function parseNodePruneArgs(args) {
       continue;
     }
     if (arg === cliFlags.claudeRoot) {
-      if (readOptionValue(args, index) === null) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
         return null;
       }
+      claudeRoot = value;
       index += 1;
       continue;
     }
-    if (readEqualsOption(arg, cliFlags.claudeRoot) !== null) {
+    const claudeRootValue = readEqualsOption(arg, cliFlags.claudeRoot);
+    if (claudeRootValue !== null) {
+      claudeRoot = claudeRootValue;
       continue;
     }
     return null;
   }
-  if (!hasAll || backend !== agentsBackend) {
+  if (!hasAll || !backendAllowed(backend, [agentsBackend, claudeBackend])) {
     return null;
   }
-  return { backend, agentsRoot };
+  return { backend, agentsRoot, ...(claudeRoot === undefined ? {} : { claudeRoot }) };
 }
 
 function parseNodeUnsupportedPruneMissingAllArgs(args) {
@@ -3184,7 +3237,7 @@ function runNodeInstall(args) {
     return null;
   }
   try {
-    const context = buildNodeAgentsContext(parsed);
+    const context = buildNodeBackendContext(parsed);
     installBackendPayloads(context);
     return 0;
   } catch (error) {
@@ -3199,7 +3252,7 @@ function runNodePrune(args) {
     return null;
   }
   try {
-    pruneBackendManagedInstalls(buildNodeAgentsContext(parsed));
+    pruneBackendManagedInstalls(buildNodeBackendContext(parsed));
     return 0;
   } catch (error) {
     console.error(`error: ${error.message}`);

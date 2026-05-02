@@ -2157,7 +2157,6 @@ class AdapterDeployTest(unittest.TestCase):
 
         cases = [
             ("github-apply-yes", ("update", "--backend", "agents", "--yes", "--source", "github")),
-            ("claude-apply-yes", ("update", "--backend", "claude", "--yes")),
         ]
 
         for label, argv in cases:
@@ -2168,6 +2167,53 @@ class AdapterDeployTest(unittest.TestCase):
                 self.assertEqual(completed.stdout, "")
                 self.assertIn("unexpected-python", completed.stderr)
                 self.assertIn("harness_deploy.py", completed.stderr)
+
+    def test_aw_installer_claude_mutating_lifecycle_is_node_owned_without_python(self) -> None:
+        fake_bin = self._fake_failing_python_bin()
+        env = {
+            "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+        }
+
+        install = self._run_aw_installer_node(
+            "install",
+            "--backend",
+            "claude",
+            "--claude-root",
+            self.claude_override_root,
+            env=env,
+        )
+        self.assertEqual(install.returncode, 0, install.stderr)
+        self.assertIn("installed skill harness-skill", install.stdout)
+        self.assertNotIn("unexpected-python", install.stderr)
+        self.assertTrue((self.claude_override_root / "harness-skill" / "aw.marker").is_file())
+
+        update = self._run_aw_installer_node(
+            "update",
+            "--backend",
+            "claude",
+            "--yes",
+            "--claude-root",
+            self.claude_override_root,
+            env=env,
+        )
+        self.assertEqual(update.returncode, 0, update.stderr)
+        self.assertIn("[claude] applying update", update.stdout)
+        self.assertIn("[claude] update complete", update.stdout)
+        self.assertNotIn("unexpected-python", update.stderr)
+
+        prune = self._run_aw_installer_node(
+            "prune",
+            "--backend",
+            "claude",
+            "--all",
+            "--claude-root",
+            self.claude_override_root,
+            env=env,
+        )
+        self.assertEqual(prune.returncode, 0, prune.stderr)
+        self.assertIn("removed managed skill dir", prune.stdout)
+        self.assertNotIn("unexpected-python", prune.stderr)
+        self.assertFalse((self.claude_override_root / "harness-skill").exists())
 
     def test_aw_installer_update_github_json_rejects_invalid_sha_without_python(self) -> None:
         fake_bin = self._fake_failing_python_bin()
