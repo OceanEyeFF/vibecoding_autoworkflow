@@ -50,9 +50,9 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-`harness_deploy.py` 只包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 仍暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell 和 `aw-harness-deploy` 兼容别名；`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 调用同一 wrapper。当前 npm registry 事实是 `next=0.4.3-rc.2`、`latest=0.4.0-rc.1`；已发布的 `0.4.3-rc.2` artifact 绑定 `gitHead=199af2b2d195542fd5f1621243b041a20e497686`。外部已发布 RC 试用主路径应显式使用 `aw-installer@next`。当前还没有引入 full-screen TUI framework。
+`harness_deploy.py` 只包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 仍暴露 `aw-installer` bin、`aw-installer tui` 最小交互 shell 和 `aw-harness-deploy` 兼容别名；`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 映射到同一 CLI deploy contract，其中 `agents` package/local diagnose、dry-run plan、verify 和 explicit apply 路径已由 Node 承接。当前 npm registry 事实是 `next=0.4.3-rc.2`、`latest=0.4.0-rc.1`；已发布的 `0.4.3-rc.2` artifact 绑定 `gitHead=199af2b2d195542fd5f1621243b041a20e497686`。外部已发布 RC 试用主路径应显式使用 `aw-installer@next`。当前还没有引入 full-screen TUI framework。
 
-本地 `aw-installer` 当前已直接承接 `agents` package/local source 的只读 `check_paths_exist --backend agents` preflight、`verify --backend agents` strict verification、target root 缺失或为空目录时的 clean-target `install --backend agents`、`prune --all --backend agents`，以及 `update --backend agents --yes` composition。这些 Node-owned 路径不调用 Python fallback；其中 `check_paths_exist` 与 `verify` 不创建 target root、不写 payload、不删除 target 文件，clean-target `install` 只在 source validation、target readiness 与 path conflict preflight 通过后写入 payload 和 marker，`prune --all` 只删除带可识别 current-backend marker 的 managed install 目录并保留 foreign、unrecognized、invalid-marker 和用户内容，`update --yes` 先打印 dry-run 等价 plan，再按 `prune --all -> check_paths_exist -> install -> verify` 串行执行，blocking preflight 不 apply，apply 失败打印 recovery hint。Python `adapter_deploy.py check_paths_exist` / `verify` / `install` / `prune` / `update` 仍保留为 reference path，non-clean target install 子命令、GitHub-source update、Claude backend 和其他未迁移 deploy mode 仍走 Python wrapper。
+本地 `aw-installer` 当前已直接承接 `agents` package/local source 的只读 `check_paths_exist --backend agents` preflight、`verify --backend agents` strict verification、target root 缺失或为空目录时的 clean-target `install --backend agents`、`prune --all --backend agents`、human-readable `update --backend agents` dry-run，以及 `update --backend agents --yes` composition。这些 Node-owned 路径不调用 Python fallback；其中 `check_paths_exist` 与 `verify` 不创建 target root、不写 payload、不删除 target 文件，clean-target `install` 只在 source validation、target readiness 与 path conflict preflight 通过后写入 payload 和 marker，`prune --all` 只删除带可识别 current-backend marker 的 managed install 目录并保留 foreign、unrecognized、invalid-marker 和用户内容，默认 `update` 只打印 dry-run plan 且不 apply，`update --yes` 先打印 dry-run 等价 plan，再按 `prune --all -> check_paths_exist -> install -> verify` 串行执行，blocking preflight 不 apply，apply 失败打印 recovery hint。Python `adapter_deploy.py check_paths_exist` / `verify` / `install` / `prune` / `update` 仍保留为 reference path，non-clean target install 子命令、GitHub-source update、Claude backend 和其他未迁移 deploy mode 仍走 Python wrapper。
 
 本地 npm-style scaffold 可用下面的 smoke 命令验证 bin 入口能打开同一 help surface：
 
@@ -161,6 +161,7 @@ node toolchain/scripts/deploy/bin/aw-installer.js prune --all --backend agents
 node toolchain/scripts/deploy/bin/aw-installer.js check_paths_exist --backend agents
 node toolchain/scripts/deploy/bin/aw-installer.js verify --backend agents
 node toolchain/scripts/deploy/bin/aw-installer.js install --backend agents
+node toolchain/scripts/deploy/bin/aw-installer.js update --backend agents
 node toolchain/scripts/deploy/bin/aw-installer.js update --backend agents --yes
 ```
 
@@ -171,8 +172,8 @@ node toolchain/scripts/deploy/bin/aw-installer.js update --backend agents --yes
 如果需要一个包装命令，先查看 dry-run plan，再显式 apply：
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py update --backend agents
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py update --backend agents --yes
+node toolchain/scripts/deploy/bin/aw-installer.js update --backend agents
+node toolchain/scripts/deploy/bin/aw-installer.js update --backend agents --yes
 ```
 
 `update --json` 只输出 dry-run plan，不和 `--yes` 组合使用。
