@@ -434,10 +434,32 @@ test("computePayloadFingerprint matches the Python payload contract order", () =
 test("parseNodeDiagnoseJsonArgs only accepts agents JSON diagnose", () => {
   assert.deepEqual(
     installer.parseNodeDiagnoseJsonArgs(["diagnose", "--backend", "agents", "--json"]),
-    { backend: "agents" },
+    { backend: "agents", agentsRoot: undefined },
+  );
+  assert.deepEqual(
+    installer.parseNodeDiagnoseJsonArgs([
+      "diagnose",
+      "--backend=agents",
+      "--json",
+      "--agents-root=/tmp/agents-skills",
+    ]),
+    { backend: "agents", agentsRoot: "/tmp/agents-skills" },
   );
   assert.equal(installer.parseNodeDiagnoseJsonArgs(["diagnose", "--backend", "claude", "--json"]), null);
   assert.equal(installer.parseNodeDiagnoseJsonArgs(["verify", "--backend", "agents", "--json"]), null);
+});
+
+test("parseNodeDiagnoseArgs accepts only agents human diagnose forms", () => {
+  assert.deepEqual(
+    installer.parseNodeDiagnoseArgs(["diagnose", "--backend", "agents"]),
+    { backend: "agents", agentsRoot: undefined },
+  );
+  assert.deepEqual(
+    installer.parseNodeDiagnoseArgs(["diagnose", "--backend=agents", "--agents-root=/tmp/agents-skills"]),
+    { backend: "agents", agentsRoot: "/tmp/agents-skills" },
+  );
+  assert.equal(installer.parseNodeDiagnoseArgs(["diagnose", "--backend", "agents", "--json"]), null);
+  assert.equal(installer.parseNodeDiagnoseArgs(["diagnose", "--backend", "claude"]), null);
 });
 
 test("parseNodeUpdateJsonArgs only accepts agents package JSON update dry-runs", () => {
@@ -515,6 +537,58 @@ test("parseNodeUpdateYesArgs only accepts agents package update apply forms", ()
   assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "agents", "--json", "--yes"]), null);
   assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "claude", "--yes"]), null);
   assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "agents"]), null);
+});
+
+test("unsupported agents package variants are classified before Python fallback", () => {
+  assert.deepEqual(
+    installer.parseNodeUnsupportedPruneMissingAllArgs(["prune", "--backend", "agents"]),
+    { backend: "agents", source: "package", agentsRoot: undefined },
+  );
+  assert.deepEqual(
+    installer.parseNodeUnsupportedPruneMissingAllArgs([
+      "prune",
+      "--backend=agents",
+      "--source=package",
+      "--agents-root=/tmp/agents-skills",
+    ]),
+    { backend: "agents", source: "package", agentsRoot: "/tmp/agents-skills" },
+  );
+  assert.deepEqual(
+    installer.parseNodeUnsupportedUpdateJsonYesArgs(["update", "--backend", "agents", "--json", "--yes"]),
+    { backend: "agents", source: "package", agentsRoot: undefined },
+  );
+  assert.deepEqual(
+    installer.parseNodeUnsupportedUpdateJsonYesArgs([
+      "update",
+      "--json",
+      "--yes",
+      "--backend=agents",
+      "--source=package",
+      "--agents-root=/tmp/agents-skills",
+    ]),
+    { backend: "agents", source: "package", agentsRoot: "/tmp/agents-skills" },
+  );
+
+  assert.equal(installer.parseNodeUnsupportedPruneMissingAllArgs(["prune", "--all", "--backend", "agents"]), null);
+  assert.equal(installer.parseNodeUnsupportedPruneMissingAllArgs(["prune", "--backend", "claude"]), null);
+  assert.equal(
+    installer.parseNodeUnsupportedPruneMissingAllArgs(["prune", "--backend", "agents", "--source", "github"]),
+    null,
+  );
+  assert.equal(installer.parseNodeUnsupportedUpdateJsonYesArgs(["update", "--backend", "agents", "--json"]), null);
+  assert.equal(installer.parseNodeUnsupportedUpdateJsonYesArgs(["update", "--backend", "claude", "--json", "--yes"]), null);
+  assert.equal(
+    installer.parseNodeUnsupportedUpdateJsonYesArgs([
+      "update",
+      "--backend",
+      "agents",
+      "--json",
+      "--yes",
+      "--source",
+      "github",
+    ]),
+    null,
+  );
 });
 
 test("parseNodeCheckPathsExistArgs accepts agents backend and target override forms", () => {
@@ -1019,6 +1093,34 @@ test("aw-installer check_paths_exist agents is node-owned without Python and hon
   }
 });
 
+test("aw-installer diagnose agents human and json agents-root are node-owned without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const agentsRoot = join(root, "custom-agents", "skills");
+
+    const human = runAwInstaller(root, ["diagnose", "--backend=agents", `--agents-root=${agentsRoot}`], fakeBin);
+    assert.equal(human.status, 0, human.stderr);
+    assert.equal(
+      human.stdout,
+      `[agents] diagnose: 1 issue(s), 0 managed install(s) at ${agentsRoot}\n` +
+        "issue codes: missing-target-root\n",
+    );
+    assert.equal(human.stderr.includes("unexpected-python"), false);
+
+    const json = runAwInstaller(root, ["diagnose", "--backend=agents", "--json", `--agents-root=${agentsRoot}`], fakeBin);
+    assert.equal(json.status, 0, json.stderr);
+    assert.equal(json.stderr.includes("unexpected-python"), false);
+    const payload = JSON.parse(json.stdout);
+    assert.equal(payload.backend, "agents");
+    assert.equal(payload.target_root, agentsRoot);
+    assert.equal(payload.target_root_status, "missing");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("aw-installer check_paths_exist agents reports conflicts with Python-compatible stderr", () => {
   const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
   try {
@@ -1465,22 +1567,49 @@ test("aw-installer install agents matches Python reference on clean target outpu
   }
 });
 
-test("aw-installer install agents falls back for non-clean target root without Node writes", () => {
+test("aw-installer install agents blocks non-clean target conflicts without Python or writes", () => {
   const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
   try {
     seedMinimalAgentsSource(root, "demo-skill");
     const targetRoot = join(root, ".agents", "skills");
     const targetSkillDir = join(targetRoot, "aw-demo-skill");
-    mkdirSync(join(targetRoot, "user-owned"), { recursive: true });
+    mkdirSync(targetSkillDir, { recursive: true });
+    writeFileSync(join(targetSkillDir, "user-owned.txt"), "preserve me\n", "utf8");
     const fakeBin = fakePythonBin(root);
 
     const completed = runNodeInstall(root, ["--backend=agents", `--agents-root=${targetRoot}`], fakeBin);
 
-    assert.equal(completed.status, 97);
+    assert.equal(completed.status, 1);
     assert.equal(completed.stdout, "");
-    assert.match(completed.stderr, /unexpected-python/);
-    assert.equal(existsSync(targetSkillDir), false);
-    assert.equal(existsSync(join(targetRoot, "user-owned")), true);
+    assert.match(completed.stderr, /\[agents\] install blocked by 1 existing target path\(s\)/);
+    assert.match(completed.stderr, /- demo-skill:/);
+    assert.match(completed.stderr, /existing target path is a directory/);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+    assert.equal(existsSync(join(targetSkillDir, "user-owned.txt")), true);
+    assert.equal(existsSync(join(targetSkillDir, "SKILL.md")), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer install agents allows unrelated target content without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(root, "demo-skill");
+    const targetRoot = join(root, ".agents", "skills");
+    const unrelatedDir = join(targetRoot, "user-owned");
+    const targetSkillDir = join(targetRoot, "aw-demo-skill");
+    mkdirSync(unrelatedDir, { recursive: true });
+    writeFileSync(join(unrelatedDir, "note.txt"), "preserve me\n", "utf8");
+    const fakeBin = fakePythonBin(root);
+
+    const completed = runNodeInstall(root, ["--backend=agents", `--agents-root=${targetRoot}`], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    assert.match(completed.stdout, new RegExp(`installed skill demo-skill -> ${escapeRegExp(targetSkillDir)}`));
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+    assert.equal(readFileSync(join(unrelatedDir, "note.txt"), "utf8"), "preserve me\n");
+    assert.equal(existsSync(join(targetSkillDir, "SKILL.md")), true);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -1808,10 +1937,8 @@ test("aw-installer leaves out-of-scope install and mutating commands on Python r
     const commands = [
       ["install", "--backend", "claude"],
       ["install", "--backend", "agents", "--source", "github"],
-      ["prune", "--backend", "agents"],
       ["prune", "--all", "--backend", "claude"],
       ["update", "--backend", "agents", "--yes", "--source", "github"],
-      ["update", "--backend", "agents", "--json", "--yes"],
       ["update", "--backend", "claude", "--yes"],
     ];
 
@@ -1820,6 +1947,34 @@ test("aw-installer leaves out-of-scope install and mutating commands on Python r
       assert.equal(completed.status, 97, args.join(" "));
       assert.equal(completed.stdout, "");
       assert.match(completed.stderr, /unexpected-python/, args.join(" "));
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer rejects unsupported local agents variants without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const cases = [
+      {
+        args: ["prune", "--backend", "agents"],
+        message: /prune currently requires --all/,
+      },
+      {
+        args: ["update", "--backend", "agents", "--json", "--yes"],
+        message: /update --json is only supported for dry-run plans; omit --json with --yes/,
+      },
+    ];
+
+    for (const currentCase of cases) {
+      const completed = runAwInstaller(root, currentCase.args, fakeBin);
+      assert.equal(completed.status, 1, currentCase.args.join(" "));
+      assert.equal(completed.stdout, "");
+      assert.match(completed.stderr, currentCase.message, currentCase.args.join(" "));
+      assert.equal(completed.stderr.includes("unexpected-python"), false, currentCase.args.join(" "));
     }
   } finally {
     rmSync(root, { recursive: true, force: true });

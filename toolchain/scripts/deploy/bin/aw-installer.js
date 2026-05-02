@@ -1685,17 +1685,6 @@ function checkPathsExistSummary(context) {
   };
 }
 
-function targetRootIsCleanForNodeInstall(targetRoot) {
-  const stat = lstatOrNull(targetRoot);
-  if (stat === null) {
-    return true;
-  }
-  if (!stat.isDirectory() || stat.isSymbolicLink()) {
-    return true;
-  }
-  return targetRootChildren(targetRoot).length === 0;
-}
-
 function writeDeployedTextFile(path, text) {
   writeFileSync(path, text, "utf8");
   chmodSync(path, deployedFileMode);
@@ -2018,14 +2007,13 @@ function parseNodeBackendRootArgs(args, command) {
   return { backend, agentsRoot };
 }
 
-function parseNodeJsonArgs(args, command, options = {}) {
-  const allowSource = options.allowSource === true;
-  if (args[0] !== command) {
+function parseNodeDiagnoseJsonArgs(args) {
+  if (args[0] !== "diagnose") {
     return null;
   }
   let backend = agentsBackend;
   let json = false;
-  let source = packageSource;
+  let agentsRoot;
   for (let index = 1; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === cliFlags.json) {
@@ -2046,30 +2034,40 @@ function parseNodeJsonArgs(args, command, options = {}) {
       backend = backendValue;
       continue;
     }
-    if (allowSource && arg === cliFlags.source) {
+    if (arg === cliFlags.agentsRoot) {
       const value = readOptionValue(args, index);
       if (value === null) {
         return null;
       }
-      source = value;
+      agentsRoot = value;
       index += 1;
       continue;
     }
-    const sourceValue = allowSource ? readEqualsOption(arg, cliFlags.source) : null;
-    if (sourceValue !== null) {
-      source = sourceValue;
+    const agentsRootValue = readEqualsOption(arg, cliFlags.agentsRoot);
+    if (agentsRootValue !== null) {
+      agentsRoot = agentsRootValue;
+      continue;
+    }
+    if (arg === cliFlags.claudeRoot) {
+      if (readOptionValue(args, index) === null) {
+        return null;
+      }
+      index += 1;
+      continue;
+    }
+    if (readEqualsOption(arg, cliFlags.claudeRoot) !== null) {
       continue;
     }
     return null;
   }
-  if (!json || backend !== agentsBackend || source !== packageSource) {
+  if (!json || backend !== agentsBackend) {
     return null;
   }
-  return allowSource ? { backend, source } : { backend };
+  return { backend, agentsRoot };
 }
 
-function parseNodeDiagnoseJsonArgs(args) {
-  return parseNodeJsonArgs(args, "diagnose");
+function parseNodeDiagnoseArgs(args) {
+  return parseNodeBackendRootArgs(args, "diagnose");
 }
 
 function parseNodeUpdateJsonArgs(args) {
@@ -2289,6 +2287,85 @@ function parseNodeUpdateYesArgs(args) {
   return { backend, source, yes, agentsRoot };
 }
 
+function parseNodeUnsupportedUpdateJsonYesArgs(args) {
+  if (args[0] !== "update") {
+    return null;
+  }
+  let backend = agentsBackend;
+  let source = packageSource;
+  let hasJson = false;
+  let hasYes = false;
+  let agentsRoot;
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === cliFlags.json) {
+      hasJson = true;
+      continue;
+    }
+    if (arg === cliFlags.yes) {
+      hasYes = true;
+      continue;
+    }
+    if (arg === cliFlags.backend) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      backend = value;
+      index += 1;
+      continue;
+    }
+    const backendValue = readEqualsOption(arg, cliFlags.backend);
+    if (backendValue !== null) {
+      backend = backendValue;
+      continue;
+    }
+    if (arg === cliFlags.source) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      source = value;
+      index += 1;
+      continue;
+    }
+    const sourceValue = readEqualsOption(arg, cliFlags.source);
+    if (sourceValue !== null) {
+      source = sourceValue;
+      continue;
+    }
+    if (arg === cliFlags.agentsRoot) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      agentsRoot = value;
+      index += 1;
+      continue;
+    }
+    const agentsRootValue = readEqualsOption(arg, cliFlags.agentsRoot);
+    if (agentsRootValue !== null) {
+      agentsRoot = agentsRootValue;
+      continue;
+    }
+    if (arg === cliFlags.claudeRoot) {
+      if (readOptionValue(args, index) === null) {
+        return null;
+      }
+      index += 1;
+      continue;
+    }
+    if (readEqualsOption(arg, cliFlags.claudeRoot) !== null) {
+      continue;
+    }
+    return null;
+  }
+  if (!hasJson || !hasYes || backend !== agentsBackend || source !== packageSource) {
+    return null;
+  }
+  return { backend, source, agentsRoot };
+}
+
 function parseNodeCheckPathsExistArgs(args) {
   return parseNodeBackendRootArgs(args, "check_paths_exist");
 }
@@ -2315,6 +2392,36 @@ function runNodeDiagnoseJson(args) {
     (context) => diagnosticSummary(verifyAgentsBackend(context)),
     () => 0,
   );
+}
+
+function printDiagnosticSummary(summary) {
+  console.log(
+    `[${summary.backend}] diagnose: ${summary.issue_count} issue(s), ` +
+      `${summary.managed_install_count} managed install(s) at ${summary.target_root}`,
+  );
+  if (summary.issue_codes.length > 0) {
+    console.log(`issue codes: ${summary.issue_codes.join(", ")}`);
+  }
+  if (summary.unrecognized_count > 0) {
+    console.log(`unrecognized target entries: ${summary.unrecognized_count}`);
+  }
+  if (summary.conflict_count > 0) {
+    console.log(`conflict entries: ${summary.conflict_count}`);
+  }
+}
+
+function runNodeDiagnose(args) {
+  const parsed = parseNodeDiagnoseArgs(args);
+  if (parsed === null) {
+    return null;
+  }
+  try {
+    printDiagnosticSummary(diagnosticSummary(verifyAgentsBackend(buildNodeAgentsContext(parsed))));
+    return 0;
+  } catch (error) {
+    console.error(`error: ${error.message}`);
+    return 1;
+  }
 }
 
 function runNodeUpdateJson(args) {
@@ -2504,6 +2611,92 @@ function parseNodePruneArgs(args) {
   return { backend, agentsRoot };
 }
 
+function parseNodeUnsupportedPruneMissingAllArgs(args) {
+  if (args[0] !== "prune") {
+    return null;
+  }
+  let hasAll = false;
+  let backend = agentsBackend;
+  let source = packageSource;
+  let agentsRoot;
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === cliFlags.all) {
+      hasAll = true;
+      continue;
+    }
+    if (arg === cliFlags.backend) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      backend = value;
+      index += 1;
+      continue;
+    }
+    const backendValue = readEqualsOption(arg, cliFlags.backend);
+    if (backendValue !== null) {
+      backend = backendValue;
+      continue;
+    }
+    if (arg === cliFlags.source) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      source = value;
+      index += 1;
+      continue;
+    }
+    const sourceValue = readEqualsOption(arg, cliFlags.source);
+    if (sourceValue !== null) {
+      source = sourceValue;
+      continue;
+    }
+    if (arg === cliFlags.agentsRoot) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      agentsRoot = value;
+      index += 1;
+      continue;
+    }
+    const agentsRootValue = readEqualsOption(arg, cliFlags.agentsRoot);
+    if (agentsRootValue !== null) {
+      agentsRoot = agentsRootValue;
+      continue;
+    }
+    if (arg === cliFlags.claudeRoot) {
+      if (readOptionValue(args, index) === null) {
+        return null;
+      }
+      index += 1;
+      continue;
+    }
+    if (readEqualsOption(arg, cliFlags.claudeRoot) !== null) {
+      continue;
+    }
+    return null;
+  }
+  if (hasAll || backend !== agentsBackend || source !== packageSource) {
+    return null;
+  }
+  return { backend, source, agentsRoot };
+}
+
+function runNodeUnsupportedAgentsVariant(args) {
+  if (parseNodeUnsupportedUpdateJsonYesArgs(args) !== null) {
+    console.error("error: update --json is only supported for dry-run plans; omit --json with --yes");
+    return 1;
+  }
+  if (parseNodeUnsupportedPruneMissingAllArgs(args) !== null) {
+    console.error("error: prune currently requires --all");
+    return 1;
+  }
+  return null;
+}
+
 function printVerifyResult(result) {
   if (result.issues.length === 0) {
     console.log(`[${result.backend}] ok: target root is ready at ${result.targetRoot}`);
@@ -2539,9 +2732,6 @@ function runNodeInstall(args) {
   }
   try {
     const context = buildNodeAgentsContext(parsed);
-    if (!targetRootIsCleanForNodeInstall(context.targetRoot)) {
-      return null;
-    }
     installBackendPayloads(context);
     return 0;
   } catch (error) {
@@ -2568,6 +2758,11 @@ async function runNodeOwnedOrWrapper(args) {
   const nodeDiagnoseStatus = runNodeDiagnoseJson(args);
   if (nodeDiagnoseStatus !== null) {
     return nodeDiagnoseStatus;
+  }
+
+  const nodeDiagnoseHumanStatus = runNodeDiagnose(args);
+  if (nodeDiagnoseHumanStatus !== null) {
+    return nodeDiagnoseHumanStatus;
   }
 
   const nodeUpdateStatus = runNodeUpdateJson(args);
@@ -2603,6 +2798,11 @@ async function runNodeOwnedOrWrapper(args) {
   const nodePruneStatus = runNodePrune(args);
   if (nodePruneStatus !== null) {
     return nodePruneStatus;
+  }
+
+  const unsupportedAgentsStatus = runNodeUnsupportedAgentsVariant(args);
+  if (unsupportedAgentsStatus !== null) {
+    return unsupportedAgentsStatus;
   }
 
   return await runWrapper(args);
@@ -2814,8 +3014,9 @@ async function main() {
 
   // P0-035 slices: selected agents JSON dry-run paths are Node-owned and
   // read-only; P0-049 also owns the agents package-local human-readable
-  // update dry-run. Other deploy modes and unsupported variants stay on the Python
-  // reference path until their adapter_deploy.py contracts are migrated.
+  // update dry-run. Selected local agents unsupported variants are also rejected
+  // directly so ordinary package paths do not require Python just to fail. Other
+  // deploy modes stay on the Python reference path until migrated.
   if (args.length === 0) {
     if (process.stdin.isTTY && process.stdout.isTTY) {
       return runTui();
@@ -2879,8 +3080,11 @@ module.exports = {
   normalizeRelativePath,
   parseNodeCheckPathsExistArgs,
   parseNodeDiagnoseJsonArgs,
+  parseNodeDiagnoseArgs,
   parseNodeInstallArgs,
   parseNodePruneArgs,
+  parseNodeUnsupportedPruneMissingAllArgs,
+  parseNodeUnsupportedUpdateJsonYesArgs,
   parseNodeUpdateDryRunArgs,
   parseNodeUpdateJsonArgs,
   parseNodeUpdateYesArgs,
@@ -2888,6 +3092,7 @@ module.exports = {
   pathSafetyPolicy,
   payloadTargetMetadata,
   printVerifyResult,
+  printDiagnosticSummary,
   printUpdatePlan,
   pruneBackendManagedInstalls,
   pythonCandidates,
