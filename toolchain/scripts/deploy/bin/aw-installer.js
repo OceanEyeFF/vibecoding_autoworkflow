@@ -9,15 +9,20 @@ const {
   existsSync,
   fstatSync,
   lstatSync,
+  mkdtempSync,
   mkdirSync,
   openSync,
   readFileSync,
   readdirSync,
+  renameSync,
   realpathSync,
   rmSync,
   writeFileSync,
 } = require("node:fs");
-const { basename, dirname, isAbsolute, join, relative, resolve, sep } = require("node:path");
+const https = require("node:https");
+const { tmpdir } = require("node:os");
+const { inflateRawSync } = require("node:zlib");
+const { basename, dirname, isAbsolute, join, relative, resolve, sep, win32 } = require("node:path");
 const { createHash } = require("node:crypto");
 const readline = require("node:readline");
 
@@ -36,6 +41,12 @@ const deployedDirMode = 0o755;
 const agentsBackend = "agents";
 const claudeBackend = "claude";
 const packageSource = "package";
+const githubSource = "github";
+const defaultGithubRepo = "OceanEyeFF/vibecoding_autoworkflow";
+const githubRepoPattern = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+const githubRefPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/;
+const githubShaRefPattern = /^[0-9a-fA-F]{40}$/;
+const sha256HexPattern = /^[0-9a-fA-F]{64}$/;
 const expectedPayloadVersions = Object.freeze({
   [agentsBackend]: "agents-skill-payload.v1",
   [claudeBackend]: "claude-skill-payload.v1",
@@ -45,6 +56,9 @@ const cliFlags = Object.freeze({
   agentsRoot: "--agents-root",
   backend: "--backend",
   claudeRoot: "--claude-root",
+  githubArchiveSha256: "--github-archive-sha256",
+  githubRef: "--github-ref",
+  githubRepo: "--github-repo",
   json: "--json",
   source: "--source",
   yes: "--yes",
@@ -403,8 +417,12 @@ function buildNodeBackendContext(options = {}) {
   if (!Object.prototype.hasOwnProperty.call(expectedPayloadVersions, backend)) {
     throw new Error(`Unsupported backend for Node-owned path: ${backend}`);
   }
-  const sourceRootFromEnv = Boolean(process.env.AW_HARNESS_REPO_ROOT);
-  const sourceRoot = resolveSourceRoot();
+  const sourceRootOverride = options.sourceRootOverride;
+  const sourceRootFromEnv = sourceRootOverride === undefined && Boolean(process.env.AW_HARNESS_REPO_ROOT);
+  const sourceRoot =
+    sourceRootOverride === undefined
+      ? resolveSourceRoot()
+      : validateSourceRepoRoot(sourceRootOverride);
   const targetRepoRoot = resolveTargetRepoRoot(sourceRoot, sourceRootFromEnv);
   const targetRoot = targetRootForBackend(backend, targetRepoRoot, {
     ...options,
@@ -412,8 +430,8 @@ function buildNodeBackendContext(options = {}) {
   });
   return {
     backend,
-    sourceKind: packageSource,
-    sourceRef: "package-local",
+    sourceKind: options.sourceKind || packageSource,
+    sourceRef: options.sourceRef || "package-local",
     sourceRoot,
     targetRepoRoot,
     targetRoot,
@@ -707,6 +725,215 @@ function verifyTargetRoot(targetRoot, backend = agentsBackend) {
     return [];
   }
   return [issue("wrong-target-root-type", targetRoot, "target root exists but is not a directory")];
+}
+
+function validateGithubRepo(value) {
+  if (!githubRepoPattern.test(value)) {
+    throw new Error(`GitHub repo must use OWNER/REPO with safe characters only: ${value}`);
+  }
+  return value;
+}
+
+function validateGithubRef(value) {
+  if (
+    !githubRefPattern.test(value) ||
+    value.includes("..") ||
+    value.endsWith("/") ||
+    value.endsWith(".lock")
+  ) {
+    throw new Error(`GitHub ref contains unsupported characters: ${value}`);
+  }
+  return value;
+}
+
+function validateSha256Digest(value) {
+  if (!sha256HexPattern.test(value)) {
+    throw new Error(`SHA256 digest must be 64 hexadecimal characters: ${value}`);
+  }
+  return value.toLowerCase();
+}
+
+function defaultGithubSourceRepo() {
+  return process.env.AW_INSTALLER_GITHUB_REPO || process.env.GITHUB_REPOSITORY || defaultGithubRepo;
+}
+
+function githubArchiveRefPath(ref) {
+  if (ref.startsWith("refs/")) {
+    return ref;
+  }
+  if (githubShaRefPattern.test(ref)) {
+    return ref;
+  }
+  return `refs/heads/${ref}`;
+}
+
+function githubArchiveUrl(repo, ref) {
+  const safeRepo = validateGithubRepo(repo);
+  const safeRef = validateGithubRef(ref);
+  return `https://codeload.github.com/${safeRepo}/zip/${encodeURI(githubArchiveRefPath(safeRef))}`;
+}
+
+function validateZipMemberPath(memberName) {
+  const unsafeMessage = `GitHub archive contains unsafe path: ${memberName}`;
+  if (memberName.includes("\0")) {
+    throw new Error(unsafeMessage);
+  }
+  const normalized = memberName.replace(/\\/g, "/");
+  const windowsPath = win32.parse(memberName);
+  if (normalized.startsWith("/") || isAbsolute(normalized) || windowsPath.root || /^[A-Za-z]:/.test(memberName)) {
+    throw new Error(unsafeMessage);
+  }
+  const segments = normalized.split("/").filter(Boolean);
+  if (segments.length === 0 || segments.some((segment) => segment === "." || segment === "..")) {
+    throw new Error(unsafeMessage);
+  }
+  return segments.join("/");
+}
+
+function findZipEndOfCentralDirectory(buffer) {
+  const minOffset = Math.max(0, buffer.length - 65_557);
+  for (let offset = buffer.length - 22; offset >= minOffset; offset -= 1) {
+    if (buffer.readUInt32LE(offset) === 0x06054b50) {
+      return offset;
+    }
+  }
+  throw new Error("GitHub source archive is not a supported ZIP file");
+}
+
+function zipEntries(buffer) {
+  const eocdOffset = findZipEndOfCentralDirectory(buffer);
+  const entryCount = buffer.readUInt16LE(eocdOffset + 10);
+  const centralDirOffset = buffer.readUInt32LE(eocdOffset + 16);
+  const entries = [];
+  let offset = centralDirOffset;
+  for (let index = 0; index < entryCount; index += 1) {
+    if (buffer.readUInt32LE(offset) !== 0x02014b50) {
+      throw new Error("GitHub source archive central directory is invalid");
+    }
+    const method = buffer.readUInt16LE(offset + 10);
+    const compressedSize = buffer.readUInt32LE(offset + 20);
+    const uncompressedSize = buffer.readUInt32LE(offset + 24);
+    const fileNameLength = buffer.readUInt16LE(offset + 28);
+    const extraLength = buffer.readUInt16LE(offset + 30);
+    const commentLength = buffer.readUInt16LE(offset + 32);
+    const localHeaderOffset = buffer.readUInt32LE(offset + 42);
+    if (compressedSize === 0xffffffff || uncompressedSize === 0xffffffff || localHeaderOffset === 0xffffffff) {
+      throw new Error("GitHub source archive ZIP64 entries are not supported by the Node path");
+    }
+    const name = buffer.subarray(offset + 46, offset + 46 + fileNameLength).toString("utf8");
+    entries.push({ name, method, compressedSize, localHeaderOffset });
+    offset += 46 + fileNameLength + extraLength + commentLength;
+  }
+  return entries;
+}
+
+function zipEntryData(buffer, entry) {
+  const localOffset = entry.localHeaderOffset;
+  if (buffer.readUInt32LE(localOffset) !== 0x04034b50) {
+    throw new Error(`GitHub source archive local header is invalid: ${entry.name}`);
+  }
+  const fileNameLength = buffer.readUInt16LE(localOffset + 26);
+  const extraLength = buffer.readUInt16LE(localOffset + 28);
+  const dataStart = localOffset + 30 + fileNameLength + extraLength;
+  const compressed = buffer.subarray(dataStart, dataStart + entry.compressedSize);
+  if (entry.method === 0) {
+    return compressed;
+  }
+  if (entry.method === 8) {
+    return inflateRawSync(compressed);
+  }
+  throw new Error(`GitHub source archive uses unsupported ZIP compression method ${entry.method}: ${entry.name}`);
+}
+
+function safeExtractZipBuffer(buffer, destination) {
+  mkdirSync(destination, { recursive: true });
+  if (readdirSync(destination).length > 0) {
+    throw new Error(`GitHub archive extraction destination must be empty: ${destination}`);
+  }
+  const stagingRoot = mkdtempSync(join(dirname(destination), "aw-installer-extract-"));
+  try {
+    for (const entry of zipEntries(buffer)) {
+      const relativeName = validateZipMemberPath(entry.name);
+      const targetPath = resolve(stagingRoot, relativeName);
+      if (!pathIsRelativeTo(targetPath, stagingRoot)) {
+        throw new Error(`GitHub archive contains unsafe path: ${entry.name}`);
+      }
+      if (entry.name.endsWith("/")) {
+        mkdirSync(targetPath, { recursive: true });
+        continue;
+      }
+      mkdirSync(dirname(targetPath), { recursive: true });
+      writeFileSync(targetPath, zipEntryData(buffer, entry));
+    }
+    rmSync(destination, { recursive: true, force: true });
+    renameSync(stagingRoot, destination);
+  } catch (error) {
+    rmSync(stagingRoot, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+function extractedArchiveRoot(destination) {
+  const candidates = readdirSync(destination, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => join(destination, entry.name));
+  if (candidates.length !== 1) {
+    throw new Error(
+      `Expected GitHub archive to contain one repository root, found ${candidates.length}. ` +
+        "Check --github-repo/--github-ref and ensure the downloaded archive is a GitHub source archive.",
+    );
+  }
+  return candidates[0];
+}
+
+function githubSourceRootFromArchiveBuffer(repo, ref, archiveBuffer, archiveSha256 = "") {
+  const safeRepo = validateGithubRepo(repo);
+  const safeRef = validateGithubRef(ref);
+  const expectedSha256 = archiveSha256 ? validateSha256Digest(archiveSha256) : "";
+  if (expectedSha256) {
+    const actualSha256 = createHash("sha256").update(archiveBuffer).digest("hex");
+    if (actualSha256 !== expectedSha256) {
+      throw new Error(`GitHub source archive SHA256 mismatch: expected ${expectedSha256}, got ${actualSha256}`);
+    }
+  }
+  const tempRoot = mkdtempSync(join(tmpdir(), "aw-installer-github-source-"));
+  try {
+    const extractRoot = join(tempRoot, "extract");
+    mkdirSync(extractRoot);
+    safeExtractZipBuffer(archiveBuffer, extractRoot);
+    const sourceRoot = validateSourceRepoRoot(extractedArchiveRoot(extractRoot));
+    return {
+      sourceRoot,
+      sourceKind: githubSource,
+      sourceRef: `${safeRepo}@${safeRef}`,
+      cleanup: () => rmSync(tempRoot, { recursive: true, force: true }),
+    };
+  } catch (error) {
+    rmSync(tempRoot, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+function downloadGithubArchive(repo, ref) {
+  const url = githubArchiveUrl(repo, ref);
+  return new Promise((resolvePromise, rejectPromise) => {
+    const request = https.get(url, { timeout: 60_000 }, (response) => {
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        response.resume();
+        rejectPromise(new Error(`Failed to download GitHub source archive ${repo}@${ref}: HTTP ${response.statusCode}`));
+        return;
+      }
+      const chunks = [];
+      response.on("data", (chunk) => chunks.push(chunk));
+      response.on("end", () => resolvePromise(Buffer.concat(chunks)));
+    });
+    request.on("timeout", () => {
+      request.destroy(new Error(`Failed to download GitHub source archive ${repo}@${ref}: timeout`));
+    });
+    request.on("error", (error) => {
+      rejectPromise(new Error(`Failed to download GitHub source archive ${repo}@${ref}: ${error.message}`));
+    });
+  });
 }
 
 function canonicalSourceMetadata(payload, binding, context) {
@@ -2099,6 +2326,14 @@ function parsedBackendRoots(backend, agentsRoot, claudeRoot) {
   };
 }
 
+function parsedGithubOptions(githubRepo, githubRef, githubArchiveSha256) {
+  return {
+    githubRepo: githubRepo || defaultGithubSourceRepo(),
+    githubRef: githubRef || "master",
+    ...(githubArchiveSha256 === undefined ? {} : { githubArchiveSha256 }),
+  };
+}
+
 function parseNodeBackendRootArgs(args, command, allowedBackends = [agentsBackend]) {
   if (args[0] !== command) {
     return null;
@@ -2182,6 +2417,9 @@ function parseNodeUpdateJsonArgs(args) {
   let json = false;
   let agentsRoot;
   let claudeRoot;
+  let githubRepo;
+  let githubRef;
+  let githubArchiveSha256;
   for (let index = 1; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === cliFlags.json) {
@@ -2216,6 +2454,48 @@ function parseNodeUpdateJsonArgs(args) {
       source = sourceValue;
       continue;
     }
+    if (arg === cliFlags.githubRepo) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      githubRepo = value;
+      index += 1;
+      continue;
+    }
+    const githubRepoValue = readEqualsOption(arg, cliFlags.githubRepo);
+    if (githubRepoValue !== null) {
+      githubRepo = githubRepoValue;
+      continue;
+    }
+    if (arg === cliFlags.githubRef) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      githubRef = value;
+      index += 1;
+      continue;
+    }
+    const githubRefValue = readEqualsOption(arg, cliFlags.githubRef);
+    if (githubRefValue !== null) {
+      githubRef = githubRefValue;
+      continue;
+    }
+    if (arg === cliFlags.githubArchiveSha256) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      githubArchiveSha256 = value;
+      index += 1;
+      continue;
+    }
+    const githubArchiveSha256Value = readEqualsOption(arg, cliFlags.githubArchiveSha256);
+    if (githubArchiveSha256Value !== null) {
+      githubArchiveSha256 = githubArchiveSha256Value;
+      continue;
+    }
     if (arg === cliFlags.agentsRoot) {
       const value = readOptionValue(args, index);
       if (value === null) {
@@ -2246,7 +2526,21 @@ function parseNodeUpdateJsonArgs(args) {
     }
     return null;
   }
-  if (!json || !backendAllowed(backend, [agentsBackend, claudeBackend]) || source !== packageSource) {
+  if (!json || !backendAllowed(backend, [agentsBackend, claudeBackend])) {
+    return null;
+  }
+  if (source === githubSource) {
+    if (backend !== agentsBackend) {
+      return null;
+    }
+    return {
+      backend,
+      source,
+      agentsRoot,
+      ...parsedGithubOptions(githubRepo, githubRef, githubArchiveSha256),
+    };
+  }
+  if (source !== packageSource) {
     return null;
   }
   return { backend, source, agentsRoot, ...(claudeRoot === undefined ? {} : { claudeRoot }) };
@@ -2537,13 +2831,59 @@ function runNodeDiagnose(args) {
   }
 }
 
-function runNodeUpdateJson(args) {
-  return runNodeJson(
-    args,
-    parseNodeUpdateJsonArgs,
-    (context) => updatePlanSummary(context),
-    (summary) => (summary.blocking_issue_count ? 1 : 0),
+function buildNodeGithubSourceContext(parsed, archiveBuffer) {
+  const source = githubSourceRootFromArchiveBuffer(
+    parsed.githubRepo,
+    parsed.githubRef,
+    archiveBuffer,
+    parsed.githubArchiveSha256 || "",
   );
+  try {
+    const context = buildNodeBackendContext({
+      ...parsed,
+      sourceKind: source.sourceKind,
+      sourceRef: source.sourceRef,
+      sourceRootOverride: source.sourceRoot,
+    });
+    return { context, cleanup: source.cleanup };
+  } catch (error) {
+    source.cleanup();
+    throw error;
+  }
+}
+
+async function runNodeUpdateJson(args) {
+  const parsed = parseNodeUpdateJsonArgs(args);
+  if (parsed === null) {
+    return null;
+  }
+  let githubCleanup = null;
+  try {
+    let context;
+    if (parsed.source === githubSource) {
+      validateGithubRepo(parsed.githubRepo);
+      validateGithubRef(parsed.githubRef);
+      if (parsed.githubArchiveSha256) {
+        validateSha256Digest(parsed.githubArchiveSha256);
+      }
+      const archiveBuffer = await downloadGithubArchive(parsed.githubRepo, parsed.githubRef);
+      const githubContext = buildNodeGithubSourceContext(parsed, archiveBuffer);
+      context = githubContext.context;
+      githubCleanup = githubContext.cleanup;
+    } else {
+      context = buildNodeBackendContext(parsed);
+    }
+    const summary = updatePlanSummary(context);
+    console.log(JSON.stringify(sortJsonObjectKeys(summary), null, 2));
+    return summary.blocking_issue_count ? 1 : 0;
+  } catch (error) {
+    console.error(`error: ${error.message}`);
+    return 1;
+  } finally {
+    if (githubCleanup !== null) {
+      githubCleanup();
+    }
+  }
 }
 
 function runNodeUpdateDryRun(args) {
@@ -2878,7 +3218,7 @@ async function runNodeOwnedOrWrapper(args) {
     return nodeDiagnoseHumanStatus;
   }
 
-  const nodeUpdateStatus = runNodeUpdateJson(args);
+  const nodeUpdateStatus = await runNodeUpdateJson(args);
   if (nodeUpdateStatus !== null) {
     return nodeUpdateStatus;
   }
@@ -3168,6 +3508,8 @@ if (require.main === module) {
 
 module.exports = {
   buildNodeAgentsContext,
+  buildNodeBackendContext,
+  buildNodeGithubSourceContext,
   buildWrapperEnv,
   buildInstallPlan,
   buildRuntimeMarker,
@@ -3188,6 +3530,9 @@ module.exports = {
   checkPathsExistSummary,
   installBackendPayloads,
   isUpdateBlockingIssue,
+  githubArchiveRefPath,
+  githubArchiveUrl,
+  githubSourceRootFromArchiveBuffer,
   loadBindingPayloads,
   loadRuntimeMarker,
   normalizeRelativePath,
@@ -3214,6 +3559,9 @@ module.exports = {
   updatePlanSummary,
   validateSourceRepoRoot,
   validateTargetRepoRoot,
+  validateGithubRef,
+  validateGithubRepo,
+  validateSha256Digest,
   verifyAgentsBackend,
   verifyDeployedSkill,
 };

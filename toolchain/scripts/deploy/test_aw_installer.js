@@ -1,12 +1,181 @@
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
-const { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } = require("node:fs");
+const { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
-const { join } = require("node:path");
+const { join, relative, sep } = require("node:path");
 const test = require("node:test");
+const { deflateRawSync } = require("node:zlib");
 
 const installer = require("./bin/aw-installer.js");
+
+function zipHeaderUInt16(value) {
+  const buffer = Buffer.alloc(2);
+  buffer.writeUInt16LE(value);
+  return buffer;
+}
+
+function zipHeaderUInt32(value) {
+  const buffer = Buffer.alloc(4);
+  buffer.writeUInt32LE(value);
+  return buffer;
+}
+
+function createStoredZip(entries) {
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  for (const [name, text] of entries) {
+    const nameBuffer = Buffer.from(name);
+    const dataBuffer = Buffer.from(text);
+    const local = Buffer.concat([
+      zipHeaderUInt32(0x04034b50),
+      zipHeaderUInt16(20),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt32(0),
+      zipHeaderUInt32(dataBuffer.length),
+      zipHeaderUInt32(dataBuffer.length),
+      zipHeaderUInt16(nameBuffer.length),
+      zipHeaderUInt16(0),
+      nameBuffer,
+      dataBuffer,
+    ]);
+    localParts.push(local);
+    centralParts.push(Buffer.concat([
+      zipHeaderUInt32(0x02014b50),
+      zipHeaderUInt16(20),
+      zipHeaderUInt16(20),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt32(0),
+      zipHeaderUInt32(dataBuffer.length),
+      zipHeaderUInt32(dataBuffer.length),
+      zipHeaderUInt16(nameBuffer.length),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt32(0),
+      zipHeaderUInt32(offset),
+      nameBuffer,
+    ]));
+    offset += local.length;
+  }
+  const central = Buffer.concat(centralParts);
+  const eocd = Buffer.concat([
+    zipHeaderUInt32(0x06054b50),
+    zipHeaderUInt16(0),
+    zipHeaderUInt16(0),
+    zipHeaderUInt16(entries.length),
+    zipHeaderUInt16(entries.length),
+    zipHeaderUInt32(central.length),
+    zipHeaderUInt32(offset),
+    zipHeaderUInt16(0),
+  ]);
+  return Buffer.concat([...localParts, central, eocd]);
+}
+
+function createDeflatedZip(entries) {
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  for (const [name, text] of entries) {
+    const nameBuffer = Buffer.from(name);
+    const dataBuffer = Buffer.from(text);
+    const compressedBuffer = deflateRawSync(dataBuffer);
+    const local = Buffer.concat([
+      zipHeaderUInt32(0x04034b50),
+      zipHeaderUInt16(20),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(8),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt32(0),
+      zipHeaderUInt32(compressedBuffer.length),
+      zipHeaderUInt32(dataBuffer.length),
+      zipHeaderUInt16(nameBuffer.length),
+      zipHeaderUInt16(0),
+      nameBuffer,
+      compressedBuffer,
+    ]);
+    localParts.push(local);
+    centralParts.push(Buffer.concat([
+      zipHeaderUInt32(0x02014b50),
+      zipHeaderUInt16(20),
+      zipHeaderUInt16(20),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(8),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt32(0),
+      zipHeaderUInt32(compressedBuffer.length),
+      zipHeaderUInt32(dataBuffer.length),
+      zipHeaderUInt16(nameBuffer.length),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt32(0),
+      zipHeaderUInt32(offset),
+      nameBuffer,
+    ]));
+    offset += local.length;
+  }
+  const central = Buffer.concat(centralParts);
+  const eocd = Buffer.concat([
+    zipHeaderUInt32(0x06054b50),
+    zipHeaderUInt16(0),
+    zipHeaderUInt16(0),
+    zipHeaderUInt16(entries.length),
+    zipHeaderUInt16(entries.length),
+    zipHeaderUInt32(central.length),
+    zipHeaderUInt32(offset),
+    zipHeaderUInt16(0),
+  ]);
+  return Buffer.concat([...localParts, central, eocd]);
+}
+
+function listFiles(root) {
+  const files = [];
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...listFiles(path));
+    } else if (entry.isFile()) {
+      files.push(path);
+    }
+  }
+  return files;
+}
+
+function listDirectories(root) {
+  const directories = [];
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) {
+      directories.push(path, ...listDirectories(path));
+    }
+  }
+  return directories;
+}
+
+function createGithubArchiveFromSource(root, archiveRoot = "repo-master", zipFactory = createStoredZip) {
+  return zipFactory([
+    ...listDirectories(root).map((path) => [
+      `${archiveRoot}/${relative(root, path).split(sep).join("/")}/`,
+      "",
+    ]),
+    ...listFiles(root).map((path) => [
+      `${archiveRoot}/${relative(root, path).split(sep).join("/")}`,
+      readFileSync(path, "utf8"),
+    ]),
+  ]);
+}
 
 function seedMinimalAgentsSource(root, skillId = "demo-skill", options = {}) {
   const canonicalDir = join(root, "product", "harness", "skills", skillId);
@@ -551,34 +720,85 @@ test("parseNodeDiagnoseArgs accepts agents and claude human diagnose forms", () 
 });
 
 test("parseNodeUpdateJsonArgs accepts agents and claude package JSON update dry-runs", () => {
-  assert.deepEqual(
-    installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--json"]),
-    { backend: "agents", source: "package", agentsRoot: undefined },
-  );
-  assert.deepEqual(
-    installer.parseNodeUpdateJsonArgs(["update", "--json", "--backend=agents", "--source=package"]),
-    { backend: "agents", source: "package", agentsRoot: undefined },
-  );
-  assert.deepEqual(
-    installer.parseNodeUpdateJsonArgs([
-      "update",
-      "--json",
-      "--backend=agents",
-      "--source=package",
-      "--agents-root=/tmp/agents-skills",
-    ]),
-    { backend: "agents", source: "package", agentsRoot: "/tmp/agents-skills" },
-  );
+  const originalAwRepo = process.env.AW_INSTALLER_GITHUB_REPO;
+  const originalGithubRepository = process.env.GITHUB_REPOSITORY;
+  delete process.env.AW_INSTALLER_GITHUB_REPO;
+  delete process.env.GITHUB_REPOSITORY;
+  try {
+    assert.deepEqual(
+      installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--json"]),
+      { backend: "agents", source: "package", agentsRoot: undefined },
+    );
+    assert.deepEqual(
+      installer.parseNodeUpdateJsonArgs(["update", "--json", "--backend=agents", "--source=package"]),
+      { backend: "agents", source: "package", agentsRoot: undefined },
+    );
+    assert.deepEqual(
+      installer.parseNodeUpdateJsonArgs([
+        "update",
+        "--json",
+        "--backend=agents",
+        "--source=package",
+        "--agents-root=/tmp/agents-skills",
+      ]),
+      { backend: "agents", source: "package", agentsRoot: "/tmp/agents-skills" },
+    );
 
-  assert.equal(
-    installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--json", "--source", "github"]),
-    null,
-  );
-  assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--yes"]), null);
-  assert.deepEqual(
-    installer.parseNodeUpdateJsonArgs(["update", "--backend", "claude", "--json", "--claude-root", "/tmp/claude-skills"]),
-    { backend: "claude", source: "package", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
-  );
+    assert.deepEqual(
+      installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--json", "--source", "github"]),
+      {
+        backend: "agents",
+        source: "github",
+        agentsRoot: undefined,
+        githubRepo: "OceanEyeFF/vibecoding_autoworkflow",
+        githubRef: "master",
+      },
+    );
+    assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--yes"]), null);
+    assert.deepEqual(
+      installer.parseNodeUpdateJsonArgs(["update", "--backend", "claude", "--json", "--claude-root", "/tmp/claude-skills"]),
+      { backend: "claude", source: "package", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+    );
+    assert.deepEqual(
+      installer.parseNodeUpdateJsonArgs([
+        "update",
+        "--backend",
+        "agents",
+        "--json",
+        "--source",
+        "github",
+        "--github-repo",
+        "Owner/repo",
+        "--github-ref",
+        "main",
+        "--github-archive-sha256",
+        "a".repeat(64),
+      ]),
+      {
+        backend: "agents",
+        source: "github",
+        agentsRoot: undefined,
+        githubRepo: "Owner/repo",
+        githubRef: "main",
+        githubArchiveSha256: "a".repeat(64),
+      },
+    );
+    assert.equal(
+      installer.parseNodeUpdateJsonArgs(["update", "--backend", "claude", "--json", "--source", "github"]),
+      null,
+    );
+  } finally {
+    if (originalAwRepo === undefined) {
+      delete process.env.AW_INSTALLER_GITHUB_REPO;
+    } else {
+      process.env.AW_INSTALLER_GITHUB_REPO = originalAwRepo;
+    }
+    if (originalGithubRepository === undefined) {
+      delete process.env.GITHUB_REPOSITORY;
+    } else {
+      process.env.GITHUB_REPOSITORY = originalGithubRepository;
+    }
+  }
 });
 
 test("parseNodeUpdateDryRunArgs accepts agents and claude package human-readable update dry-runs", () => {
@@ -2195,6 +2415,182 @@ test("updatePlanSummary reports a nonblocking dry-run plan for missing target ro
     assert.equal(summary.issue_count, 1);
     assert.equal(summary.issues[0].code, "missing-target-root");
     assert.equal(summary.blocking_issue_count, 0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("github source archive context feeds update JSON planning with target/source separation", () => {
+  const sourceRoot = mkdtempSync(join(tmpdir(), "aw-installer-source-"));
+  const targetRepo = mkdtempSync(join(tmpdir(), "aw-installer-target-"));
+  const originalCwd = process.cwd();
+  let cleanup = null;
+  try {
+    seedMinimalAgentsSource(sourceRoot, "demo-skill");
+    const archiveBuffer = createGithubArchiveFromSource(sourceRoot);
+    process.chdir(targetRepo);
+    const githubContext = installer.buildNodeGithubSourceContext(
+      {
+        backend: "agents",
+        source: "github",
+        githubRepo: "Owner/repo",
+        githubRef: "main",
+      },
+      archiveBuffer,
+    );
+    cleanup = githubContext.cleanup;
+    const summary = installer.updatePlanSummary(githubContext.context);
+    const extractedSourceRoot = githubContext.context.sourceRoot;
+
+    assert.equal(summary.backend, "agents");
+    assert.equal(summary.source_kind, "github");
+    assert.equal(summary.source_ref, "Owner/repo@main");
+    assert.equal(summary.source_root, extractedSourceRoot);
+    assert.equal(summary.target_root, join(targetRepo, ".agents", "skills"));
+    assert.equal(summary.blocking_issue_count, 0);
+    assert.deepEqual(summary.planned_target_paths, [join(targetRepo, ".agents", "skills", "aw-demo-skill")]);
+    assert.notEqual(summary.source_root, targetRepo);
+    assert.equal(existsSync(extractedSourceRoot), true);
+    cleanup();
+    cleanup = null;
+    assert.equal(existsSync(extractedSourceRoot), false);
+  } finally {
+    process.chdir(originalCwd);
+    if (cleanup !== null) {
+      cleanup();
+    }
+    rmSync(sourceRoot, { recursive: true, force: true });
+    rmSync(targetRepo, { recursive: true, force: true });
+  }
+});
+
+test("github source context cleans extracted temp dir when target context fails", () => {
+  const originalCwd = process.cwd();
+  const originalTmpdir = process.env.TMPDIR;
+  const tempBase = mkdtempSync(join(tmpdir(), "aw-installer-tmpdir-"));
+  const sourceRoot = join(tempBase, "source");
+  const targetRepo = join(tempBase, "target");
+  try {
+    mkdirSync(sourceRoot, { recursive: true });
+    mkdirSync(targetRepo, { recursive: true });
+    seedMinimalAgentsSource(sourceRoot, "demo-skill");
+    const archiveBuffer = createGithubArchiveFromSource(sourceRoot);
+    process.env.TMPDIR = tempBase;
+    process.chdir(targetRepo);
+
+    assert.throws(
+      () => installer.buildNodeGithubSourceContext(
+        {
+          backend: "agents",
+          source: "github",
+          githubRepo: "Owner/repo",
+          githubRef: "main",
+          agentsRoot: join(tempBase, "outside-target", ".agents", "skills"),
+        },
+        archiveBuffer,
+      ),
+      /outside allowed paths/,
+    );
+    assert.deepEqual(
+      readdirSync(tempBase).filter((entry) => entry.startsWith("aw-installer-github-source-")),
+      [],
+    );
+  } finally {
+    process.chdir(originalCwd);
+    if (originalTmpdir === undefined) {
+      delete process.env.TMPDIR;
+    } else {
+      process.env.TMPDIR = originalTmpdir;
+    }
+    rmSync(tempBase, { recursive: true, force: true });
+  }
+});
+
+test("github source archive validation rejects unsafe members and sha mismatch", () => {
+  const sourceRoot = mkdtempSync(join(tmpdir(), "aw-installer-source-"));
+  let cleanup = null;
+  try {
+    seedMinimalAgentsSource(sourceRoot, "demo-skill");
+    const archiveBuffer = createGithubArchiveFromSource(sourceRoot);
+    const deflatedContext = installer.buildNodeGithubSourceContext(
+      {
+        backend: "agents",
+        source: "github",
+        githubRepo: "Owner/repo",
+        githubRef: "main",
+      },
+      createGithubArchiveFromSource(sourceRoot, "repo-master", createDeflatedZip),
+    );
+    cleanup = deflatedContext.cleanup;
+    assert.equal(existsSync(join(deflatedContext.context.sourceRoot, "product", "harness", "skills")), true);
+    assert.equal(installer.githubArchiveRefPath("master"), "refs/heads/master");
+    assert.equal(
+      installer.githubArchiveRefPath("0123456789abcdef0123456789abcdef01234567"),
+      "0123456789abcdef0123456789abcdef01234567",
+    );
+    assert.equal(
+      installer.githubArchiveUrl("Owner/repo", "master"),
+      "https://codeload.github.com/Owner/repo/zip/refs/heads/master",
+    );
+    assert.throws(
+      () => installer.githubSourceRootFromArchiveBuffer("Owner/repo", "main", archiveBuffer, "0".repeat(64)),
+      /GitHub source archive SHA256 mismatch/,
+    );
+    assert.throws(
+      () => installer.githubSourceRootFromArchiveBuffer(
+        "Owner/repo",
+        "main",
+        createStoredZip([["repo-master/../evil.txt", "bad"]]),
+      ),
+      /GitHub archive contains unsafe path/,
+    );
+    assert.throws(
+      () => installer.githubSourceRootFromArchiveBuffer(
+        "Owner/repo",
+        "main",
+        createStoredZip([["C:/repo-master/evil.txt", "bad"]]),
+      ),
+      /GitHub archive contains unsafe path/,
+    );
+  } finally {
+    if (cleanup !== null) {
+      cleanup();
+    }
+    rmSync(sourceRoot, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer github source json rejects invalid local inputs without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    for (const [extraArgs, expectedError] of [
+      [
+        ["--github-repo=not-a-repo", "--github-ref=main"],
+        /GitHub repo must use OWNER\/REPO/,
+      ],
+      [
+        ["--github-repo=Owner/repo", "--github-ref=bad..ref"],
+        /GitHub ref contains unsupported characters/,
+      ],
+      [
+        ["--github-repo=Owner/repo", "--github-ref=main", "--github-archive-sha256=not-a-sha"],
+        /SHA256 digest must be 64 hexadecimal characters/,
+      ],
+    ]) {
+      const completed = runNodeUpdate(
+        root,
+        ["--backend=agents", "--json", "--source=github", ...extraArgs],
+        fakeBin,
+      );
+
+      assert.equal(completed.status, 1);
+      assert.equal(completed.stdout, "");
+      assert.match(completed.stderr, expectedError);
+      assert.equal(completed.stderr.includes("unexpected-python"), false);
+      assert.equal(completed.stderr.includes("harness_deploy.py"), false);
+    }
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
