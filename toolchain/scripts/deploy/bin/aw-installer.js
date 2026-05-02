@@ -2628,9 +2628,7 @@ Backend: agents
         await runNodeOwnedOrWrapper(["diagnose", "--backend", "agents", "--json"]);
         await pause(rl);
       } else if (choice === "3") {
-        // Keep the TUI's human-readable verify output on the reference path
-        // until that non-JSON command is explicitly migrated.
-        await runWrapper(["verify", "--backend", "agents"]);
+        await runNodeOwnedOrWrapper(["verify", "--backend", "agents"]);
         await pause(rl);
       } else if (choice === "4") {
         // Keep the TUI's human-readable dry-run output on the reference path

@@ -1,9 +1,9 @@
 ---
 title: "Deploy Runbook"
 status: active
-updated: 2026-05-01
+updated: 2026-05-02
 owner: aw-kernel
-last_verified: 2026-05-01
+last_verified: 2026-05-02
 ---
 # Deploy Runbook
 
@@ -129,7 +129,7 @@ CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 scaffol
 - `diagnose --backend <backend> --json` 是只读结构化诊断命令，发现问题时仍以 0 退出，用于给 operator 或外层自动化读取当前 deploy 状态
 - `verify --backend <backend>` 是只读辅助命令，不属于安装主线
 - 本地 `harness_deploy.py` wrapper、当前 `aw-installer` scaffold、`aw-harness-deploy` 兼容别名和目标 `npx aw-installer` wrapper 必须保持这些语义；包装层合同见 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)
-- `aw-installer` 的目标形态是 CLI + TUI 双模式：CLI 是脚本化合同，当前 `tui` shell 是同一 deploy 合同上的交互式引导层，guided update flow 先展示 `diagnose` 和 dry-run plan，再要求显式 `yes` 后调用 `update --yes`；它不能绕过只读 `diagnose / verify`、显式三步 reinstall 或 `update --yes` 确认边界
+- `aw-installer` 的目标形态是 CLI + TUI 双模式：CLI 是脚本化合同，当前 `tui` shell 是同一 deploy 合同上的交互式引导层，agents diagnose / verify actions 复用对应 Node-owned 只读路径，guided update flow 先展示 `diagnose` 和 dry-run plan，再要求显式 `yes` 后调用 `update --yes`；它不能绕过只读 `diagnose / verify`、显式三步 reinstall 或 `update --yes` 确认边界
 - `update` 是三步 destructive reinstall 的 one-shot 包装；默认只输出 dry-run plan，只有显式传入 `--yes` 才会执行 `prune --all -> check_paths_exist -> install -> verify`
 - `update` 只把 planned / known AW target path 上的 unrecognized / foreign 内容作为阻塞项；target root 下无关用户目录不阻止 dry-run 或 apply
 - `update` 的 payload provenance 与 trust boundary 见 [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md)；当前只准入 package-local source 与显式 GitHub source archive，channel-based 远程更新能力不属于当前实现
