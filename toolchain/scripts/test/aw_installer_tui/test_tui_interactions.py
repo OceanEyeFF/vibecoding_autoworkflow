@@ -177,6 +177,7 @@ def test_tui_verify_menu_action_returns_to_menu_after_strict_verify(
     repo_root: Path,
     tmp_path: Path,
 ) -> None:
+    fake_bin = fake_failing_python_bin(tmp_path)
     code, output = run_tui_script(
         repo_root,
         tmp_path / "verify-target",
@@ -185,9 +186,11 @@ def test_tui_verify_menu_action_returns_to_menu_after_strict_verify(
             ("Press Enter to return to the installer menu", "\n"),
             ("Select an action:", "6\n"),
         ],
+        env_overrides={"PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}"},
     )
 
     assert code == 0, output
+    assert "unexpected-python" not in output
     assert "[agents] drift" in output
     assert "missing-target-root" in output
     assert output.count("Select an action:") >= 2
