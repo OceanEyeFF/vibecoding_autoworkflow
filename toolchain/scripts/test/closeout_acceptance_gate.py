@@ -905,6 +905,56 @@ def run_test_gate(repo_root: Path, python: str) -> dict:
                     )
                 )
 
+                def validate_claude_update_apply(
+                    update_apply_result: dict,
+                    update_apply_failures: list[str],
+                ) -> None:
+                    if not update_apply_result["passed"]:
+                        return
+                    agents_skill = target_repo / ".agents" / "skills" / "aw-harness-skill" / "SKILL.md"
+                    claude_skill = (
+                        target_repo
+                        / ".claude"
+                        / "skills"
+                        / "set-harness-goal-skill"
+                        / "SKILL.md"
+                    )
+                    claude_harness_skill = (
+                        target_repo
+                        / ".claude"
+                        / "skills"
+                        / "harness-skill"
+                        / "SKILL.md"
+                    )
+                    if not agents_skill.is_file():
+                        update_apply_failures.append("root packaged claude update removed agents skill")
+                    if not claude_skill.is_file():
+                        update_apply_failures.append(
+                            "root packaged claude update left set-harness-goal skill missing"
+                        )
+                    if not claude_harness_skill.is_file():
+                        update_apply_failures.append(
+                            "root packaged claude update left harness skill missing"
+                        )
+                    if "[claude] ok" not in update_apply_result["stdout"]:
+                        update_apply_failures.append("root packaged claude update apply did not run verify")
+                    if "[claude] update complete" not in update_apply_result["stdout"]:
+                        update_apply_failures.append(
+                            "root packaged claude update apply did not complete"
+                        )
+
+                subchecks.append(
+                    run_tarball_aw_installer(
+                        package_file,
+                        ["update", "--backend", "claude", "--yes"],
+                        cwd=target_repo,
+                        extra_env=clean_env,
+                        name="root_npm_exec_tarball_update_apply_claude",
+                        failures=failures,
+                        validate=validate_claude_update_apply,
+                    )
+                )
+
                 def validate_update_apply(update_apply_result: dict, update_apply_failures: list[str]) -> None:
                     if not update_apply_result["passed"]:
                         return

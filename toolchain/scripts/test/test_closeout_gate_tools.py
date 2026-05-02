@@ -684,8 +684,15 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
 
     result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
     commands = [command for command, _, _ in calls]
+    root_tarball_smoke = next(
+        item for item in result["subchecks"] if item["name"] == "root_npm_tarball_smoke_aw_installer"
+    )
 
     assert result["passed"] is True
+    assert any(
+        item["name"] == "root_npm_exec_tarball_update_apply_claude"
+        for item in root_tarball_smoke["subchecks"]
+    )
     assert [item["name"] for item in result["subchecks"][:12]] == [
         "root_package_version_metadata",
         "gate_tool_tests",
@@ -730,6 +737,12 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
         command[:2] == ["npm", "exec"]
         and "update" in command
         and extra_env == {"AW_HARNESS_REPO_ROOT": str(tmp_path)}
+        for command, _, extra_env in calls
+    )
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and command[-4:] == ["update", "--backend", "claude", "--yes"]
+        and extra_env == {"AW_HARNESS_REPO_ROOT": "", "AW_HARNESS_TARGET_REPO_ROOT": ""}
         for command, _, extra_env in calls
     )
     deploy_verify_commands = [
