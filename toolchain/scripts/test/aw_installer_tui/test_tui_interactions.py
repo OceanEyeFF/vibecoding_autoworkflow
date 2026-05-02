@@ -197,6 +197,7 @@ def test_tui_verify_menu_action_returns_to_menu_after_strict_verify(
 
 
 def test_tui_update_dry_run_menu_action(repo_root: Path, tmp_path: Path) -> None:
+    fake_bin = fake_failing_python_bin(tmp_path)
     code, output = run_tui_script(
         repo_root,
         tmp_path / "dry-run-target",
@@ -205,9 +206,11 @@ def test_tui_update_dry_run_menu_action(repo_root: Path, tmp_path: Path) -> None
             ("Press Enter to return to the installer menu", "\n"),
             ("Select an action:", "6\n"),
         ],
+        env_overrides={"PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}"},
     )
 
     assert code == 0, output
+    assert "unexpected-python" not in output
     assert "[agents] update plan" in output
     assert "dry-run only; pass --yes to apply update" in output
     assert not (tmp_path / "dry-run-target" / ".agents" / "skills").exists()
@@ -215,6 +218,7 @@ def test_tui_update_dry_run_menu_action(repo_root: Path, tmp_path: Path) -> None
 
 def test_tui_guided_update_cancel_does_not_install(repo_root: Path, tmp_path: Path) -> None:
     target_repo = tmp_path / "guided-cancel-target"
+    fake_bin = fake_failing_python_bin(tmp_path)
     code, output = run_tui_script(
         repo_root,
         target_repo,
@@ -224,9 +228,11 @@ def test_tui_guided_update_cancel_does_not_install(repo_root: Path, tmp_path: Pa
             ("Update cancelled.", "\n"),
             ("Select an action:", "6\n"),
         ],
+        env_overrides={"PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}"},
     )
 
     assert code == 0, output
+    assert "unexpected-python" not in output
     assert "Guided update flow" in output
     assert "Step 1: Diagnose current agents install." in output
     assert "Step 2: Review update dry-run plan." in output

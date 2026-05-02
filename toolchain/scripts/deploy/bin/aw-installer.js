@@ -2073,7 +2073,146 @@ function parseNodeDiagnoseJsonArgs(args) {
 }
 
 function parseNodeUpdateJsonArgs(args) {
-  return parseNodeJsonArgs(args, "update", { allowSource: true });
+  if (args[0] !== "update") {
+    return null;
+  }
+  let backend = agentsBackend;
+  let source = packageSource;
+  let json = false;
+  let agentsRoot;
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === cliFlags.json) {
+      json = true;
+      continue;
+    }
+    if (arg === cliFlags.backend) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      backend = value;
+      index += 1;
+      continue;
+    }
+    const backendValue = readEqualsOption(arg, cliFlags.backend);
+    if (backendValue !== null) {
+      backend = backendValue;
+      continue;
+    }
+    if (arg === cliFlags.source) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      source = value;
+      index += 1;
+      continue;
+    }
+    const sourceValue = readEqualsOption(arg, cliFlags.source);
+    if (sourceValue !== null) {
+      source = sourceValue;
+      continue;
+    }
+    if (arg === cliFlags.agentsRoot) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      agentsRoot = value;
+      index += 1;
+      continue;
+    }
+    const agentsRootValue = readEqualsOption(arg, cliFlags.agentsRoot);
+    if (agentsRootValue !== null) {
+      agentsRoot = agentsRootValue;
+      continue;
+    }
+    if (arg === cliFlags.claudeRoot) {
+      if (readOptionValue(args, index) === null) {
+        return null;
+      }
+      index += 1;
+      continue;
+    }
+    if (readEqualsOption(arg, cliFlags.claudeRoot) !== null) {
+      continue;
+    }
+    return null;
+  }
+  if (!json || backend !== agentsBackend || source !== packageSource) {
+    return null;
+  }
+  return { backend, source, agentsRoot };
+}
+
+function parseNodeUpdateDryRunArgs(args) {
+  if (args[0] !== "update") {
+    return null;
+  }
+  let backend = agentsBackend;
+  let source = packageSource;
+  let agentsRoot;
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === cliFlags.backend) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      backend = value;
+      index += 1;
+      continue;
+    }
+    const backendValue = readEqualsOption(arg, cliFlags.backend);
+    if (backendValue !== null) {
+      backend = backendValue;
+      continue;
+    }
+    if (arg === cliFlags.source) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      source = value;
+      index += 1;
+      continue;
+    }
+    const sourceValue = readEqualsOption(arg, cliFlags.source);
+    if (sourceValue !== null) {
+      source = sourceValue;
+      continue;
+    }
+    if (arg === cliFlags.agentsRoot) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      agentsRoot = value;
+      index += 1;
+      continue;
+    }
+    const agentsRootValue = readEqualsOption(arg, cliFlags.agentsRoot);
+    if (agentsRootValue !== null) {
+      agentsRoot = agentsRootValue;
+      continue;
+    }
+    if (arg === cliFlags.claudeRoot) {
+      if (readOptionValue(args, index) === null) {
+        return null;
+      }
+      index += 1;
+      continue;
+    }
+    if (readEqualsOption(arg, cliFlags.claudeRoot) !== null) {
+      continue;
+    }
+    return null;
+  }
+  if (backend !== agentsBackend || source !== packageSource) {
+    return null;
+  }
+  return { backend, source, agentsRoot };
 }
 
 function parseNodeUpdateYesArgs(args) {
@@ -2155,11 +2294,12 @@ function parseNodeCheckPathsExistArgs(args) {
 }
 
 function runNodeJson(args, parser, buildSummary, exitStatus) {
-  if (parser(args) === null) {
+  const parsed = parser(args);
+  if (parsed === null) {
     return null;
   }
   try {
-    const summary = buildSummary(buildNodeAgentsContext());
+    const summary = buildSummary(buildNodeAgentsContext(parsed));
     console.log(JSON.stringify(sortJsonObjectKeys(summary), null, 2));
     return exitStatus(summary);
   } catch (error) {
@@ -2184,6 +2324,25 @@ function runNodeUpdateJson(args) {
     (context) => updatePlanSummary(context),
     (summary) => (summary.blocking_issue_count ? 1 : 0),
   );
+}
+
+function runNodeUpdateDryRun(args) {
+  const parsed = parseNodeUpdateDryRunArgs(args);
+  if (parsed === null) {
+    return null;
+  }
+  try {
+    const summary = updatePlanSummary(buildNodeAgentsContext(parsed));
+    printUpdatePlan(summary);
+    if (summary.blocking_issue_count > 0) {
+      throw new Error(`[agents] update blocked by ${summary.blocking_issue_count} preflight issue(s)`);
+    }
+    console.log("[agents] dry-run only; pass --yes to apply update");
+    return 0;
+  } catch (error) {
+    console.error(`error: ${error.message}`);
+    return 1;
+  }
 }
 
 function printUpdatePlan(summary) {
@@ -2416,6 +2575,11 @@ async function runNodeOwnedOrWrapper(args) {
     return nodeUpdateStatus;
   }
 
+  const nodeUpdateDryRunStatus = runNodeUpdateDryRun(args);
+  if (nodeUpdateDryRunStatus !== null) {
+    return nodeUpdateDryRunStatus;
+  }
+
   const nodeUpdateYesStatus = runNodeUpdateYes(args);
   if (nodeUpdateYesStatus !== null) {
     return nodeUpdateYesStatus;
@@ -2574,9 +2738,7 @@ async function runGuidedUpdateFlow(rl) {
   }
 
   console.log("\nStep 2: Review update dry-run plan.");
-  // Human-readable dry-run output is still Python/reference-owned; only JSON dry-run
-  // and explicit package-local apply are Node-owned.
-  const dryRunStatus = await runWrapper(["update", "--backend", "agents"]);
+  const dryRunStatus = await runNodeOwnedOrWrapper(["update", "--backend", "agents"]);
   if (dryRunStatus !== 0) {
     console.log("Update plan failed; not applying.");
     await pause(rl);
@@ -2631,9 +2793,7 @@ Backend: agents
         await runNodeOwnedOrWrapper(["verify", "--backend", "agents"]);
         await pause(rl);
       } else if (choice === "4") {
-        // Keep the TUI's human-readable dry-run output on the reference path
-        // until that non-JSON command is explicitly migrated.
-        await runWrapper(["update", "--backend", "agents"]);
+        await runNodeOwnedOrWrapper(["update", "--backend", "agents"]);
         await pause(rl);
       } else if (choice === "5") {
         printHelp();
@@ -2653,7 +2813,8 @@ async function main() {
   const args = process.argv.slice(2);
 
   // P0-035 slices: selected agents JSON dry-run paths are Node-owned and
-  // read-only. Other deploy modes and unsupported variants stay on the Python
+  // read-only; P0-049 also owns the agents package-local human-readable
+  // update dry-run. Other deploy modes and unsupported variants stay on the Python
   // reference path until their adapter_deploy.py contracts are migrated.
   if (args.length === 0) {
     if (process.stdin.isTTY && process.stdout.isTTY) {
@@ -2720,6 +2881,7 @@ module.exports = {
   parseNodeDiagnoseJsonArgs,
   parseNodeInstallArgs,
   parseNodePruneArgs,
+  parseNodeUpdateDryRunArgs,
   parseNodeUpdateJsonArgs,
   parseNodeUpdateYesArgs,
   parseNodeVerifyArgs,

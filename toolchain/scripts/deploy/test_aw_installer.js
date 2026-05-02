@@ -443,11 +443,21 @@ test("parseNodeDiagnoseJsonArgs only accepts agents JSON diagnose", () => {
 test("parseNodeUpdateJsonArgs only accepts agents package JSON update dry-runs", () => {
   assert.deepEqual(
     installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--json"]),
-    { backend: "agents", source: "package" },
+    { backend: "agents", source: "package", agentsRoot: undefined },
   );
   assert.deepEqual(
     installer.parseNodeUpdateJsonArgs(["update", "--json", "--backend=agents", "--source=package"]),
-    { backend: "agents", source: "package" },
+    { backend: "agents", source: "package", agentsRoot: undefined },
+  );
+  assert.deepEqual(
+    installer.parseNodeUpdateJsonArgs([
+      "update",
+      "--json",
+      "--backend=agents",
+      "--source=package",
+      "--agents-root=/tmp/agents-skills",
+    ]),
+    { backend: "agents", source: "package", agentsRoot: "/tmp/agents-skills" },
   );
 
   assert.equal(
@@ -456,6 +466,30 @@ test("parseNodeUpdateJsonArgs only accepts agents package JSON update dry-runs",
   );
   assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--yes"]), null);
   assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "claude", "--json"]), null);
+});
+
+test("parseNodeUpdateDryRunArgs only accepts agents package human-readable update dry-runs", () => {
+  assert.deepEqual(
+    installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents"]),
+    { backend: "agents", source: "package", agentsRoot: undefined },
+  );
+  assert.deepEqual(
+    installer.parseNodeUpdateDryRunArgs([
+      "update",
+      "--backend=agents",
+      "--source=package",
+      "--agents-root=/tmp/agents-skills",
+    ]),
+    { backend: "agents", source: "package", agentsRoot: "/tmp/agents-skills" },
+  );
+
+  assert.equal(
+    installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents", "--source", "github"]),
+    null,
+  );
+  assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents", "--json"]), null);
+  assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents", "--yes"]), null);
+  assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "claude"]), null);
 });
 
 test("parseNodeUpdateYesArgs only accepts agents package update apply forms", () => {
@@ -1831,6 +1865,91 @@ test("updatePlanSummary reports a nonblocking dry-run plan for missing target ro
     assert.equal(summary.blocking_issue_count, 0);
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer update agents human-readable dry-run is node-owned without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(root, "demo-skill");
+    const targetRoot = join(root, "custom-agents-skills");
+    const fakeBin = fakePythonBin(root);
+
+    const completed = runNodeUpdate(root, ["--backend=agents", `--agents-root=${targetRoot}`], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+    assert.match(completed.stdout, new RegExp(`\\[agents\\] update plan for ${escapeRegExp(targetRoot)}`));
+    assert.match(completed.stdout, /sequence: prune --all -> check_paths_exist -> install -> verify/);
+    assert.match(completed.stdout, /target paths to write: 1/);
+    assert.match(completed.stdout, /blocking preflight issues: 0/);
+    assert.match(completed.stdout, /\[agents\] dry-run only; pass --yes to apply update/);
+    assert.equal(completed.stdout.includes("[agents] applying update"), false);
+    assert.equal(existsSync(targetRoot), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer update agents human-readable dry-run matches Python reference output shape", () => {
+  const nodeRoot = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  const pythonRoot = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(nodeRoot, "demo-skill");
+    seedMinimalAgentsSource(pythonRoot, "demo-skill");
+    const nodeResult = runNodeUpdate(nodeRoot, ["--backend=agents"]);
+    const pythonResult = runPythonUpdate(pythonRoot, ["--backend=agents"]);
+    const normalizeNodeRoot = (value) => value.replaceAll(nodeRoot, "<ROOT>");
+    const normalizePythonRoot = (value) => value.replaceAll(pythonRoot, "<ROOT>");
+
+    assert.equal(nodeResult.status, pythonResult.status);
+    assert.equal(normalizeNodeRoot(nodeResult.stdout), normalizePythonRoot(pythonResult.stdout));
+    assert.equal(normalizeNodeRoot(nodeResult.stderr), normalizePythonRoot(pythonResult.stderr));
+    assert.equal(existsSync(join(nodeRoot, ".agents", "skills")), false);
+    assert.equal(existsSync(join(pythonRoot, ".agents", "skills")), false);
+  } finally {
+    rmSync(nodeRoot, { recursive: true, force: true });
+    rmSync(pythonRoot, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer update agents human-readable dry-run reports blocking preflight without applying", () => {
+  const nodeRoot = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  const pythonRoot = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(nodeRoot, "demo-skill");
+    seedMinimalAgentsSource(nodeRoot, "other-skill");
+    seedMinimalAgentsSource(pythonRoot, "demo-skill");
+    seedMinimalAgentsSource(pythonRoot, "other-skill");
+    const nodeTargetRoot = join(nodeRoot, ".agents", "skills");
+    const pythonTargetRoot = join(pythonRoot, ".agents", "skills");
+    const nodeUnmanagedDir = join(nodeTargetRoot, "aw-demo-skill");
+    const pythonUnmanagedDir = join(pythonTargetRoot, "aw-demo-skill");
+    mkdirSync(nodeUnmanagedDir, { recursive: true });
+    mkdirSync(pythonUnmanagedDir, { recursive: true });
+    writeFileSync(join(nodeUnmanagedDir, "SKILL.md"), "# unmanaged\n", "utf8");
+    writeFileSync(join(pythonUnmanagedDir, "SKILL.md"), "# unmanaged\n", "utf8");
+    const fakeBin = fakePythonBin(nodeRoot);
+
+    const nodeResult = runNodeUpdate(nodeRoot, ["--backend=agents"], fakeBin);
+    const pythonResult = runPythonUpdate(pythonRoot, ["--backend=agents"]);
+    const normalizeNodeRoot = (value) => value.replaceAll(nodeRoot, "<ROOT>");
+    const normalizePythonRoot = (value) => value.replaceAll(pythonRoot, "<ROOT>");
+
+    assert.equal(nodeResult.status, pythonResult.status);
+    assert.equal(normalizeNodeRoot(nodeResult.stdout), normalizePythonRoot(pythonResult.stdout));
+    assert.equal(normalizeNodeRoot(nodeResult.stderr), normalizePythonRoot(pythonResult.stderr));
+    assert.match(nodeResult.stdout, /blocking preflight issues: 1/);
+    assert.match(nodeResult.stdout, /unrecognized-target-directory/);
+    assert.equal(nodeResult.stdout.includes("[agents] dry-run only; pass --yes to apply update"), false);
+    assert.equal(nodeResult.stdout.includes("[agents] applying update"), false);
+    assert.equal(nodeResult.stdout.includes("installed skill"), false);
+    assert.equal(nodeResult.stderr.includes("unexpected-python"), false);
+    assert.equal(existsSync(nodeUnmanagedDir), true);
+    assert.equal(existsSync(join(nodeTargetRoot, "aw-other-skill")), false);
+  } finally {
+    rmSync(nodeRoot, { recursive: true, force: true });
+    rmSync(pythonRoot, { recursive: true, force: true });
   }
 });
 
