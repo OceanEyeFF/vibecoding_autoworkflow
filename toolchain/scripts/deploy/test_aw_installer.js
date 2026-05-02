@@ -1,7 +1,9 @@
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
+const { EventEmitter } = require("node:events");
 const { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } = require("node:fs");
+const https = require("node:https");
 const { tmpdir } = require("node:os");
 const { join, relative, sep } = require("node:path");
 const test = require("node:test");
@@ -177,6 +179,61 @@ function createGithubArchiveFromSource(root, archiveRoot = "repo-master", zipFac
   ]);
 }
 
+function captureConsoleLog(callback) {
+  const originalLog = console.log;
+  const lines = [];
+  console.log = (...args) => {
+    lines.push(`${args.join(" ")}\n`);
+  };
+  let result;
+  try {
+    result = callback();
+  } catch (error) {
+    console.log = originalLog;
+    throw error;
+  }
+  if (result !== null && typeof result === "object" && typeof result.then === "function") {
+    return result.then(
+      (resolved) => {
+        console.log = originalLog;
+        return { result: resolved, stdout: lines.join("") };
+      },
+      (error) => {
+        console.log = originalLog;
+        throw error;
+      },
+    );
+  }
+  console.log = originalLog;
+  return { result, stdout: lines.join("") };
+}
+
+async function withMockedGithubArchive(archiveBuffer, callback) {
+  const originalGet = https.get;
+  const requests = [];
+  https.get = (url, options, handler) => {
+    requests.push({ url, options });
+    const request = new EventEmitter();
+    request.destroy = (error) => {
+      request.emit("error", error);
+    };
+    process.nextTick(() => {
+      const response = new EventEmitter();
+      response.statusCode = 200;
+      response.resume = () => {};
+      handler(response);
+      response.emit("data", archiveBuffer);
+      response.emit("end");
+    });
+    return request;
+  };
+  try {
+    return await callback(requests);
+  } finally {
+    https.get = originalGet;
+  }
+}
+
 function seedMinimalAgentsSource(root, skillId = "demo-skill", options = {}) {
   const canonicalDir = join(root, "product", "harness", "skills", skillId);
   const payloadDir = join(root, "product", "harness", "adapters", "agents", "skills", skillId);
@@ -203,7 +260,7 @@ function seedMinimalAgentsSource(root, skillId = "demo-skill", options = {}) {
     payload.legacy_skill_ids = options.legacySkillIds;
   }
   const payloadPath = join(payloadDir, "payload.json");
-  writeFileSync(join(canonicalDir, "SKILL.md"), `# ${skillId}\n`, "utf8");
+  writeFileSync(join(canonicalDir, "SKILL.md"), options.skillText || `# ${skillId}\n`, "utf8");
   writeFileSync(payloadPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
   return {
     binding: {
@@ -804,7 +861,7 @@ test("parseNodeUpdateJsonArgs accepts agents and claude package JSON update dry-
   }
 });
 
-test("parseNodeUpdateDryRunArgs accepts agents and claude package human-readable update dry-runs", () => {
+test("parseNodeUpdateDryRunArgs accepts package and agents github human-readable update dry-runs", () => {
   assert.deepEqual(
     installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents"]),
     { backend: "agents", source: "package", agentsRoot: undefined },
@@ -819,10 +876,27 @@ test("parseNodeUpdateDryRunArgs accepts agents and claude package human-readable
     { backend: "agents", source: "package", agentsRoot: "/tmp/agents-skills" },
   );
 
-  assert.equal(
-    installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents", "--source", "github"]),
-    null,
+  assert.deepEqual(
+    installer.parseNodeUpdateDryRunArgs([
+      "update",
+      "--backend",
+      "agents",
+      "--source",
+      "github",
+      "--github-repo=Owner/repo",
+      "--github-ref=main",
+      `--github-archive-sha256=${"1".repeat(64)}`,
+    ]),
+    {
+      backend: "agents",
+      source: "github",
+      agentsRoot: undefined,
+      githubRepo: "Owner/repo",
+      githubRef: "main",
+      githubArchiveSha256: "1".repeat(64),
+    },
   );
+  assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "claude", "--source", "github"]), null);
   assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents", "--json"]), null);
   assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents", "--yes"]), null);
   assert.deepEqual(
@@ -831,7 +905,7 @@ test("parseNodeUpdateDryRunArgs accepts agents and claude package human-readable
   );
 });
 
-test("parseNodeUpdateYesArgs accepts agents and claude package update apply forms", () => {
+test("parseNodeUpdateYesArgs accepts package and agents github update apply forms", () => {
   assert.deepEqual(
     installer.parseNodeUpdateYesArgs(["update", "--backend", "agents", "--yes"]),
     { backend: "agents", source: "package", yes: true, agentsRoot: undefined },
@@ -847,10 +921,29 @@ test("parseNodeUpdateYesArgs accepts agents and claude package update apply form
     { backend: "agents", source: "package", yes: true, agentsRoot: "/tmp/agents-skills" },
   );
 
-  assert.equal(
-    installer.parseNodeUpdateYesArgs(["update", "--backend", "agents", "--yes", "--source", "github"]),
-    null,
+  assert.deepEqual(
+    installer.parseNodeUpdateYesArgs([
+      "update",
+      "--backend",
+      "agents",
+      "--yes",
+      "--source",
+      "github",
+      "--github-repo",
+      "Owner/repo",
+      "--github-ref",
+      "main",
+    ]),
+    {
+      backend: "agents",
+      source: "github",
+      yes: true,
+      agentsRoot: undefined,
+      githubRepo: "Owner/repo",
+      githubRef: "main",
+    },
   );
+  assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "claude", "--yes", "--source", "github"]), null);
   assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "agents", "--json", "--yes"]), null);
   assert.deepEqual(
     installer.parseNodeUpdateYesArgs(["update", "--backend", "claude", "--yes", "--claude-root", "/tmp/claude-skills"]),
@@ -894,6 +987,21 @@ test("unsupported agents package variants are classified before Python fallback"
     ]),
     { backend: "agents", source: "package", agentsRoot: "/tmp/agents-skills" },
   );
+  assert.deepEqual(
+    installer.parseNodeUnsupportedUpdateJsonYesArgs([
+      "update",
+      "--backend",
+      "agents",
+      "--json",
+      "--yes",
+      "--source",
+      "github",
+      "--github-repo=Owner/repo",
+      "--github-ref=main",
+      `--github-archive-sha256=${"a".repeat(64)}`,
+    ]),
+    { backend: "agents", source: "github", agentsRoot: undefined },
+  );
 
   assert.equal(installer.parseNodeUnsupportedPruneMissingAllArgs(["prune", "--all", "--backend", "agents"]), null);
   assert.equal(installer.parseNodeUnsupportedPruneMissingAllArgs(["prune", "--backend", "claude"]), null);
@@ -903,18 +1011,6 @@ test("unsupported agents package variants are classified before Python fallback"
   );
   assert.equal(installer.parseNodeUnsupportedUpdateJsonYesArgs(["update", "--backend", "agents", "--json"]), null);
   assert.equal(installer.parseNodeUnsupportedUpdateJsonYesArgs(["update", "--backend", "claude", "--json", "--yes"]), null);
-  assert.equal(
-    installer.parseNodeUnsupportedUpdateJsonYesArgs([
-      "update",
-      "--backend",
-      "agents",
-      "--json",
-      "--yes",
-      "--source",
-      "github",
-    ]),
-    null,
-  );
 });
 
 test("parseNodeCheckPathsExistArgs accepts agents and claude backend target override forms", () => {
@@ -2501,7 +2597,6 @@ test("aw-installer leaves out-of-scope install and mutating commands on Python r
     const fakeBin = fakePythonBin(root);
     const commands = [
       ["install", "--backend", "agents", "--source", "github"],
-      ["update", "--backend", "agents", "--yes", "--source", "github"],
     ];
 
     for (const args of commands) {
@@ -2527,6 +2622,22 @@ test("aw-installer rejects unsupported local agents variants without Python", ()
       },
       {
         args: ["update", "--backend", "agents", "--json", "--yes"],
+        message: /update --json is only supported for dry-run plans; omit --json with --yes/,
+      },
+      {
+        args: [
+          "update",
+          "--backend",
+          "agents",
+          "--json",
+          "--yes",
+          "--source",
+          "github",
+          "--github-repo",
+          "Owner/repo",
+          "--github-ref",
+          "main",
+        ],
         message: /update --json is only supported for dry-run plans; omit --json with --yes/,
       },
     ];
@@ -2629,6 +2740,138 @@ test("github source archive context feeds update JSON planning with target/sourc
   }
 });
 
+test("aw-installer github source human-readable dry-run is node-owned with mocked archive", async () => {
+  const sourceRoot = mkdtempSync(join(tmpdir(), "aw-installer-source-"));
+  const targetRepo = mkdtempSync(join(tmpdir(), "aw-installer-target-"));
+  const originalCwd = process.cwd();
+  try {
+    seedMinimalAgentsSource(sourceRoot, "demo-skill", {
+      skillText: "# demo-skill\n\n# from github source\n",
+    });
+    const archiveBuffer = createGithubArchiveFromSource(sourceRoot);
+    process.chdir(targetRepo);
+
+    const { result, stdout } = await captureConsoleLog(() => withMockedGithubArchive(archiveBuffer, async (requests) => {
+      const status = await installer.runNodeOwnedOrWrapper([
+        "update",
+        "--backend=agents",
+        "--source=github",
+        "--github-repo=Owner/repo",
+        "--github-ref=main",
+      ]);
+      assert.deepEqual(
+        requests.map((request) => request.url),
+        ["https://codeload.github.com/Owner/repo/zip/refs/heads/main"],
+      );
+      return status;
+    }));
+
+    assert.equal(result, 0);
+    assert.match(stdout, new RegExp(`\\[agents\\] update plan for ${escapeRegExp(join(targetRepo, ".agents", "skills"))}`));
+    assert.match(stdout, /sequence: prune --all -> check_paths_exist -> install -> verify/);
+    assert.match(stdout, /target paths to write: 1/);
+    assert.match(stdout, /blocking preflight issues: 0/);
+    assert.match(stdout, /\[agents\] dry-run only; pass --yes to apply update/);
+    assert.equal(stdout.includes("[agents] applying update"), false);
+    assert.equal(existsSync(join(targetRepo, ".agents", "skills")), false);
+  } finally {
+    process.chdir(originalCwd);
+    rmSync(sourceRoot, { recursive: true, force: true });
+    rmSync(targetRepo, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer github source yes applies update through Node-owned composition with mocked archive", async () => {
+  const sourceRoot = mkdtempSync(join(tmpdir(), "aw-installer-source-"));
+  const targetRepo = mkdtempSync(join(tmpdir(), "aw-installer-target-"));
+  const originalCwd = process.cwd();
+  try {
+    seedMinimalAgentsSource(sourceRoot, "demo-skill", {
+      skillText: "# demo-skill\n\n# from github source\n",
+    });
+    const archiveBuffer = createGithubArchiveFromSource(sourceRoot);
+    process.chdir(targetRepo);
+
+    const { result, stdout } = await captureConsoleLog(() => withMockedGithubArchive(archiveBuffer, async (requests) => {
+      const status = await installer.runNodeOwnedOrWrapper([
+        "update",
+        "--backend=agents",
+        "--source=github",
+        "--github-repo=Owner/repo",
+        "--github-ref=main",
+        "--yes",
+      ]);
+      assert.deepEqual(
+        requests.map((request) => request.url),
+        ["https://codeload.github.com/Owner/repo/zip/refs/heads/main"],
+      );
+      return status;
+    }));
+
+    const targetRoot = join(targetRepo, ".agents", "skills");
+    assert.equal(result, 0);
+    assert.match(stdout, new RegExp(`\\[agents\\] update plan for ${escapeRegExp(targetRoot)}`));
+    assert.match(stdout, /\[agents\] applying update/);
+    assert.match(stdout, /\[agents\] update complete/);
+    assert.equal(
+      readFileSync(join(targetRoot, "aw-demo-skill", "SKILL.md"), "utf8"),
+      "# demo-skill\n\n# from github source\n",
+    );
+  } finally {
+    process.chdir(originalCwd);
+    rmSync(sourceRoot, { recursive: true, force: true });
+    rmSync(targetRepo, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer github source recovery hint preserves source arguments after apply failure", () => {
+  if (process.platform === "win32") {
+    return;
+  }
+  const sourceRoot = mkdtempSync(join(tmpdir(), "aw-installer-source-"));
+  const targetRepo = mkdtempSync(join(tmpdir(), "aw-installer-target-"));
+  const originalCwd = process.cwd();
+  let cleanup = null;
+  try {
+    seedMinimalAgentsSource(sourceRoot, "demo-skill");
+    const installed = seedInstalledAgentsSkill(targetRepo, "demo-skill");
+    const archiveBuffer = createGithubArchiveFromSource(sourceRoot);
+    const archiveSha256 = createHash("sha256").update(archiveBuffer).digest("hex");
+    process.chdir(targetRepo);
+    const githubContext = installer.buildNodeGithubSourceContext(
+      {
+        backend: "agents",
+        source: "github",
+        githubRepo: "Owner/repo",
+        githubRef: "main",
+        githubArchiveSha256: archiveSha256,
+      },
+      archiveBuffer,
+    );
+    cleanup = githubContext.cleanup;
+    chmodSync(installed.targetRoot, 0o555);
+
+    assert.throws(
+      () => captureConsoleLog(() => installer.applyUpdateContext(githubContext.context)),
+      new RegExp(
+        `aw-installer update --backend agents --source github --github-repo "Owner/repo" ` +
+          `--github-ref "main" --github-archive-sha256 "${archiveSha256}" --yes`,
+      ),
+    );
+  } finally {
+    process.chdir(originalCwd);
+    const targetRoot = join(targetRepo, ".agents", "skills");
+    if (existsSync(targetRoot)) {
+      chmodSync(targetRoot, 0o755);
+    }
+    if (cleanup !== null) {
+      cleanup();
+    }
+    rmSync(sourceRoot, { recursive: true, force: true });
+    rmSync(targetRepo, { recursive: true, force: true });
+  }
+});
+
 test("github source context cleans extracted temp dir when target context fails", () => {
   const originalCwd = process.cwd();
   const originalTmpdir = process.env.TMPDIR;
@@ -2702,6 +2945,10 @@ test("github source archive validation rejects unsafe members and sha mismatch",
       /GitHub source archive SHA256 mismatch/,
     );
     assert.throws(
+      () => installer.githubSourceRootFromArchiveBuffer("Owner/repo", "main", archiveBuffer, ""),
+      /SHA256 digest must be 64 hexadecimal characters/,
+    );
+    assert.throws(
       () => installer.githubSourceRootFromArchiveBuffer(
         "Owner/repo",
         "main",
@@ -2725,36 +2972,42 @@ test("github source archive validation rejects unsafe members and sha mismatch",
   }
 });
 
-test("aw-installer github source json rejects invalid local inputs without Python", () => {
+test("aw-installer github source update paths reject invalid local inputs without Python", () => {
   const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
   try {
     seedMinimalAgentsSource(root, "demo-skill");
     const fakeBin = fakePythonBin(root);
-    for (const [extraArgs, expectedError] of [
-      [
-        ["--github-repo=not-a-repo", "--github-ref=main"],
-        /GitHub repo must use OWNER\/REPO/,
-      ],
-      [
-        ["--github-repo=Owner/repo", "--github-ref=bad..ref"],
-        /GitHub ref contains unsupported characters/,
-      ],
+    const invalidCases = [
+      [["--github-repo=not-a-repo", "--github-ref=main"], /GitHub repo must use OWNER\/REPO/],
+      [["--github-repo=Owner/repo", "--github-ref=bad..ref"], /GitHub ref contains unsupported characters/],
       [
         ["--github-repo=Owner/repo", "--github-ref=main", "--github-archive-sha256=not-a-sha"],
         /SHA256 digest must be 64 hexadecimal characters/,
       ],
-    ]) {
-      const completed = runNodeUpdate(
-        root,
-        ["--backend=agents", "--json", "--source=github", ...extraArgs],
-        fakeBin,
-      );
+      [
+        ["--github-repo=Owner/repo", "--github-ref=main", "--github-archive-sha256="],
+        /SHA256 digest must be 64 hexadecimal characters/,
+      ],
+    ];
+    const modes = [
+      ["--json"],
+      [],
+      ["--yes"],
+    ];
+    for (const modeArgs of modes) {
+      for (const [extraArgs, expectedError] of invalidCases) {
+        const completed = runNodeUpdate(
+          root,
+          ["--backend=agents", ...modeArgs, "--source=github", ...extraArgs],
+          fakeBin,
+        );
 
-      assert.equal(completed.status, 1);
-      assert.equal(completed.stdout, "");
-      assert.match(completed.stderr, expectedError);
-      assert.equal(completed.stderr.includes("unexpected-python"), false);
-      assert.equal(completed.stderr.includes("harness_deploy.py"), false);
+        assert.equal(completed.status, 1);
+        assert.equal(completed.stdout, "");
+        assert.match(completed.stderr, expectedError);
+        assert.equal(completed.stderr.includes("unexpected-python"), false);
+        assert.equal(completed.stderr.includes("harness_deploy.py"), false);
+      }
     }
   } finally {
     rmSync(root, { recursive: true, force: true });

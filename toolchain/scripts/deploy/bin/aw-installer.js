@@ -892,11 +892,11 @@ function extractedArchiveRoot(destination) {
   return candidates[0];
 }
 
-function githubSourceRootFromArchiveBuffer(repo, ref, archiveBuffer, archiveSha256 = "") {
+function githubSourceRootFromArchiveBuffer(repo, ref, archiveBuffer, archiveSha256 = undefined) {
   const safeRepo = validateGithubRepo(repo);
   const safeRef = validateGithubRef(ref);
-  const expectedSha256 = archiveSha256 ? validateSha256Digest(archiveSha256) : "";
-  if (expectedSha256) {
+  if (archiveSha256 !== undefined) {
+    const expectedSha256 = validateSha256Digest(archiveSha256);
     const actualSha256 = createHash("sha256").update(archiveBuffer).digest("hex");
     if (actualSha256 !== expectedSha256) {
       throw new Error(`GitHub source archive SHA256 mismatch: expected ${expectedSha256}, got ${actualSha256}`);
@@ -2367,8 +2367,8 @@ function parsedBackendRoots(backend, agentsRoot, claudeRoot) {
 
 function parsedGithubOptions(githubRepo, githubRef, githubArchiveSha256) {
   return {
-    githubRepo: githubRepo || defaultGithubSourceRepo(),
-    githubRef: githubRef || "master",
+    githubRepo: githubRepo === undefined ? defaultGithubSourceRepo() : githubRepo,
+    githubRef: githubRef === undefined ? "master" : githubRef,
     ...(githubArchiveSha256 === undefined ? {} : { githubArchiveSha256 }),
   };
 }
@@ -2593,6 +2593,9 @@ function parseNodeUpdateDryRunArgs(args) {
   let source = packageSource;
   let agentsRoot;
   let claudeRoot;
+  let githubRepo;
+  let githubRef;
+  let githubArchiveSha256;
   for (let index = 1; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === cliFlags.backend) {
@@ -2621,6 +2624,48 @@ function parseNodeUpdateDryRunArgs(args) {
     const sourceValue = readEqualsOption(arg, cliFlags.source);
     if (sourceValue !== null) {
       source = sourceValue;
+      continue;
+    }
+    if (arg === cliFlags.githubRepo) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      githubRepo = value;
+      index += 1;
+      continue;
+    }
+    const githubRepoValue = readEqualsOption(arg, cliFlags.githubRepo);
+    if (githubRepoValue !== null) {
+      githubRepo = githubRepoValue;
+      continue;
+    }
+    if (arg === cliFlags.githubRef) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      githubRef = value;
+      index += 1;
+      continue;
+    }
+    const githubRefValue = readEqualsOption(arg, cliFlags.githubRef);
+    if (githubRefValue !== null) {
+      githubRef = githubRefValue;
+      continue;
+    }
+    if (arg === cliFlags.githubArchiveSha256) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      githubArchiveSha256 = value;
+      index += 1;
+      continue;
+    }
+    const githubArchiveSha256Value = readEqualsOption(arg, cliFlags.githubArchiveSha256);
+    if (githubArchiveSha256Value !== null) {
+      githubArchiveSha256 = githubArchiveSha256Value;
       continue;
     }
     if (arg === cliFlags.agentsRoot) {
@@ -2653,7 +2698,21 @@ function parseNodeUpdateDryRunArgs(args) {
     }
     return null;
   }
-  if (!backendAllowed(backend, [agentsBackend, claudeBackend]) || source !== packageSource) {
+  if (!backendAllowed(backend, [agentsBackend, claudeBackend])) {
+    return null;
+  }
+  if (source === githubSource) {
+    if (backend !== agentsBackend) {
+      return null;
+    }
+    return {
+      backend,
+      source,
+      agentsRoot,
+      ...parsedGithubOptions(githubRepo, githubRef, githubArchiveSha256),
+    };
+  }
+  if (source !== packageSource) {
     return null;
   }
   return { backend, source, agentsRoot, ...(claudeRoot === undefined ? {} : { claudeRoot }) };
@@ -2668,6 +2727,9 @@ function parseNodeUpdateYesArgs(args) {
   let yes = false;
   let agentsRoot;
   let claudeRoot;
+  let githubRepo;
+  let githubRef;
+  let githubArchiveSha256;
   for (let index = 1; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === cliFlags.yes) {
@@ -2702,6 +2764,48 @@ function parseNodeUpdateYesArgs(args) {
       source = sourceValue;
       continue;
     }
+    if (arg === cliFlags.githubRepo) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      githubRepo = value;
+      index += 1;
+      continue;
+    }
+    const githubRepoValue = readEqualsOption(arg, cliFlags.githubRepo);
+    if (githubRepoValue !== null) {
+      githubRepo = githubRepoValue;
+      continue;
+    }
+    if (arg === cliFlags.githubRef) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      githubRef = value;
+      index += 1;
+      continue;
+    }
+    const githubRefValue = readEqualsOption(arg, cliFlags.githubRef);
+    if (githubRefValue !== null) {
+      githubRef = githubRefValue;
+      continue;
+    }
+    if (arg === cliFlags.githubArchiveSha256) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      githubArchiveSha256 = value;
+      index += 1;
+      continue;
+    }
+    const githubArchiveSha256Value = readEqualsOption(arg, cliFlags.githubArchiveSha256);
+    if (githubArchiveSha256Value !== null) {
+      githubArchiveSha256 = githubArchiveSha256Value;
+      continue;
+    }
     if (arg === cliFlags.agentsRoot) {
       const value = readOptionValue(args, index);
       if (value === null) {
@@ -2732,7 +2836,22 @@ function parseNodeUpdateYesArgs(args) {
     }
     return null;
   }
-  if (!yes || !backendAllowed(backend, [agentsBackend, claudeBackend]) || source !== packageSource) {
+  if (!yes || !backendAllowed(backend, [agentsBackend, claudeBackend])) {
+    return null;
+  }
+  if (source === githubSource) {
+    if (backend !== agentsBackend) {
+      return null;
+    }
+    return {
+      backend,
+      source,
+      yes,
+      agentsRoot,
+      ...parsedGithubOptions(githubRepo, githubRef, githubArchiveSha256),
+    };
+  }
+  if (source !== packageSource) {
     return null;
   }
   return { backend, source, yes, agentsRoot, ...(claudeRoot === undefined ? {} : { claudeRoot }) };
@@ -2785,6 +2904,20 @@ function parseNodeUnsupportedUpdateJsonYesArgs(args) {
       source = sourceValue;
       continue;
     }
+    if (arg === cliFlags.githubRepo || arg === cliFlags.githubRef || arg === cliFlags.githubArchiveSha256) {
+      if (readOptionValue(args, index) === null) {
+        return null;
+      }
+      index += 1;
+      continue;
+    }
+    if (
+      readEqualsOption(arg, cliFlags.githubRepo) !== null ||
+      readEqualsOption(arg, cliFlags.githubRef) !== null ||
+      readEqualsOption(arg, cliFlags.githubArchiveSha256) !== null
+    ) {
+      continue;
+    }
     if (arg === cliFlags.agentsRoot) {
       const value = readOptionValue(args, index);
       if (value === null) {
@@ -2811,7 +2944,7 @@ function parseNodeUnsupportedUpdateJsonYesArgs(args) {
     }
     return null;
   }
-  if (!hasJson || !hasYes || backend !== agentsBackend || source !== packageSource) {
+  if (!hasJson || !hasYes || backend !== agentsBackend || !backendAllowed(source, [packageSource, githubSource])) {
     return null;
   }
   return { backend, source, agentsRoot };
@@ -2880,7 +3013,7 @@ function buildNodeGithubSourceContext(parsed, archiveBuffer) {
     parsed.githubRepo,
     parsed.githubRef,
     archiveBuffer,
-    parsed.githubArchiveSha256 || "",
+    parsed.githubArchiveSha256,
   );
   try {
     const context = buildNodeBackendContext({
@@ -2889,10 +3022,57 @@ function buildNodeGithubSourceContext(parsed, archiveBuffer) {
       sourceRef: source.sourceRef,
       sourceRootOverride: source.sourceRoot,
     });
-    return { context, cleanup: source.cleanup };
+    return {
+      context: {
+        ...context,
+        updateSourceRecoveryArgs: githubSourceRecoveryArgs(parsed),
+      },
+      cleanup: source.cleanup,
+    };
   } catch (error) {
     source.cleanup();
     throw error;
+  }
+}
+
+function githubSourceRecoveryArgs(parsed) {
+  const args = [
+    `${cliFlags.source} ${githubSource}`,
+    `${cliFlags.githubRepo} ${JSON.stringify(parsed.githubRepo)}`,
+    `${cliFlags.githubRef} ${JSON.stringify(parsed.githubRef)}`,
+  ];
+  if (parsed.githubArchiveSha256 !== undefined) {
+    args.push(`${cliFlags.githubArchiveSha256} ${JSON.stringify(parsed.githubArchiveSha256)}`);
+  }
+  return args.join(" ");
+}
+
+function validateParsedGithubSource(parsed) {
+  validateGithubRepo(parsed.githubRepo);
+  validateGithubRef(parsed.githubRef);
+  if (parsed.githubArchiveSha256 !== undefined) {
+    validateSha256Digest(parsed.githubArchiveSha256);
+  }
+}
+
+async function withNodeUpdateContext(parsed, callback) {
+  let githubCleanup = null;
+  try {
+    let context;
+    if (parsed.source === githubSource) {
+      validateParsedGithubSource(parsed);
+      const archiveBuffer = await downloadGithubArchive(parsed.githubRepo, parsed.githubRef);
+      const githubContext = buildNodeGithubSourceContext(parsed, archiveBuffer);
+      context = githubContext.context;
+      githubCleanup = githubContext.cleanup;
+    } else {
+      context = buildNodeBackendContext(parsed);
+    }
+    return await callback(context);
+  } finally {
+    if (githubCleanup !== null) {
+      githubCleanup();
+    }
   }
 }
 
@@ -2901,52 +3081,62 @@ async function runNodeUpdateJson(args) {
   if (parsed === null) {
     return null;
   }
-  let githubCleanup = null;
   try {
-    let context;
-    if (parsed.source === githubSource) {
-      validateGithubRepo(parsed.githubRepo);
-      validateGithubRef(parsed.githubRef);
-      if (parsed.githubArchiveSha256) {
-        validateSha256Digest(parsed.githubArchiveSha256);
-      }
-      const archiveBuffer = await downloadGithubArchive(parsed.githubRepo, parsed.githubRef);
-      const githubContext = buildNodeGithubSourceContext(parsed, archiveBuffer);
-      context = githubContext.context;
-      githubCleanup = githubContext.cleanup;
-    } else {
-      context = buildNodeBackendContext(parsed);
-    }
-    const summary = updatePlanSummary(context);
-    console.log(JSON.stringify(sortJsonObjectKeys(summary), null, 2));
-    return summary.blocking_issue_count ? 1 : 0;
+    return await withNodeUpdateContext(parsed, (context) => {
+      const summary = updatePlanSummary(context);
+      console.log(JSON.stringify(sortJsonObjectKeys(summary), null, 2));
+      return summary.blocking_issue_count ? 1 : 0;
+    });
   } catch (error) {
     console.error(`error: ${error.message}`);
     return 1;
-  } finally {
-    if (githubCleanup !== null) {
-      githubCleanup();
-    }
   }
 }
 
-function runNodeUpdateDryRun(args) {
+async function runNodeUpdateDryRun(args) {
   const parsed = parseNodeUpdateDryRunArgs(args);
   if (parsed === null) {
     return null;
   }
   try {
-    const summary = updatePlanSummary(buildNodeBackendContext(parsed));
-    printUpdatePlan(summary);
-    if (summary.blocking_issue_count > 0) {
-      throw new Error(`[${summary.backend}] update blocked by ${summary.blocking_issue_count} preflight issue(s)`);
-    }
-    console.log(`[${summary.backend}] dry-run only; pass --yes to apply update`);
-    return 0;
+    return await withNodeUpdateContext(parsed, (context) => {
+      const summary = updatePlanSummary(context);
+      printUpdatePlan(summary);
+      if (summary.blocking_issue_count > 0) {
+        throw new Error(`[${summary.backend}] update blocked by ${summary.blocking_issue_count} preflight issue(s)`);
+      }
+      console.log(`[${summary.backend}] dry-run only; pass --yes to apply update`);
+      return 0;
+    });
   } catch (error) {
     console.error(`error: ${error.message}`);
     return 1;
   }
+}
+
+function applyUpdateContext(context) {
+  const summary = updatePlanSummary(context);
+  printUpdatePlan(summary);
+  if (summary.blocking_issue_count > 0) {
+    throw new Error(`[${context.backend}] update blocked by ${summary.blocking_issue_count} preflight issue(s)`);
+  }
+  console.log(`[${context.backend}] applying update`);
+  let result = null;
+  try {
+    pruneBackendManagedInstalls(context);
+    checkBackendTargetPaths(context);
+    installBackendPayloads(context);
+    result = verifyBackend(context);
+    if (result.issues.length > 0) {
+      printVerifyResult(result);
+      throw new Error(`[${context.backend}] update failed strict verify with ${result.issues.length} issue(s)`);
+    }
+  } catch (error) {
+    throw new Error(`${error.message}\n${updateFailureRecoveryHint(context)}`);
+  }
+  printVerifyResult(result);
+  console.log(`[${context.backend}] update complete`);
+  return 0;
 }
 
 function printUpdatePlan(summary) {
@@ -2967,6 +3157,10 @@ function printUpdatePlan(summary) {
 }
 
 function updateFailureRecoveryHint(context) {
+  const sourceOverride =
+    context.updateSourceRecoveryArgs === undefined
+      ? ""
+      : ` ${context.updateSourceRecoveryArgs}`;
   const rootOverride =
     context.targetRootOverrideFlag === undefined
       ? ""
@@ -2974,7 +3168,7 @@ function updateFailureRecoveryHint(context) {
   return (
     `[${context.backend}] recovery: the update may be partially applied at ${context.targetRoot}. ` +
     "After fixing the reported error, run diagnose and then rerun " +
-    `\`aw-installer update --backend ${context.backend} --yes${rootOverride}\`.`
+    `\`aw-installer update --backend ${context.backend}${sourceOverride} --yes${rootOverride}\`.`
   );
 }
 
@@ -2988,36 +3182,13 @@ function checkBackendTargetPaths(context) {
   console.log(`[${context.backend}] ok: no conflicting target paths at ${summary.targetRoot}`);
 }
 
-function runNodeUpdateYes(args) {
+async function runNodeUpdateYes(args) {
   const parsed = parseNodeUpdateYesArgs(args);
   if (parsed === null) {
     return null;
   }
   try {
-    const context = buildNodeBackendContext(parsed);
-    const summary = updatePlanSummary(context);
-    printUpdatePlan(summary);
-    if (summary.blocking_issue_count > 0) {
-      throw new Error(`[${context.backend}] update blocked by ${summary.blocking_issue_count} preflight issue(s)`);
-    }
-
-    console.log(`[${context.backend}] applying update`);
-    let result = null;
-    try {
-      pruneBackendManagedInstalls(context);
-      checkBackendTargetPaths(context);
-      installBackendPayloads(context);
-      result = verifyBackend(context);
-      if (result.issues.length > 0) {
-        printVerifyResult(result);
-        throw new Error(`[${context.backend}] update failed strict verify with ${result.issues.length} issue(s)`);
-      }
-    } catch (error) {
-      throw new Error(`${error.message}\n${updateFailureRecoveryHint(context)}`);
-    }
-    printVerifyResult(result);
-    console.log(`[${context.backend}] update complete`);
-    return 0;
+    return await withNodeUpdateContext(parsed, applyUpdateContext);
   } catch (error) {
     console.error(`error: ${error.message}`);
     return 1;
@@ -3276,12 +3447,12 @@ async function runNodeOwnedOrWrapper(args) {
     return nodeUpdateStatus;
   }
 
-  const nodeUpdateDryRunStatus = runNodeUpdateDryRun(args);
+  const nodeUpdateDryRunStatus = await runNodeUpdateDryRun(args);
   if (nodeUpdateDryRunStatus !== null) {
     return nodeUpdateDryRunStatus;
   }
 
-  const nodeUpdateYesStatus = runNodeUpdateYes(args);
+  const nodeUpdateYesStatus = await runNodeUpdateYes(args);
   if (nodeUpdateYesStatus !== null) {
     return nodeUpdateYesStatus;
   }
@@ -3580,6 +3751,7 @@ module.exports = {
   diagnosticSummary,
   exactSensitiveTargetRepoRoots,
   expectedTargetDirs,
+  applyUpdateContext,
   checkPathsExistSummary,
   installBackendPayloads,
   isUpdateBlockingIssue,
@@ -3609,6 +3781,7 @@ module.exports = {
   pythonCandidates,
   recursiveSensitiveTargetRepoRoots,
   resolveExistingOrLexical,
+  runNodeOwnedOrWrapper,
   updatePlanSummary,
   validateSourceRepoRoot,
   validateTargetRepoRoot,
