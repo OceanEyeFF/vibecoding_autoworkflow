@@ -979,7 +979,10 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn('const { spawn } = require("node:child_process");', installer_source)
         self.assertNotIn("spawnSync", installer_source)
         self.assertIn("AbortController", installer_source)
-        self.assertIn('await runWrapper(["update", "--backend", "agents"])', installer_source)
+        self.assertIn(
+            'await runNodeOwnedOrWrapper(["update", "--backend", "agents"])',
+            installer_source,
+        )
         self.assertIn(
             'await runNodeOwnedOrWrapper(["update", "--backend", "agents", "--yes"])',
             installer_source,
@@ -2155,7 +2158,6 @@ class AdapterDeployTest(unittest.TestCase):
         cases = [
             ("github-json", ("update", "--backend", "agents", "--json", "--source", "github")),
             ("github-apply-yes", ("update", "--backend", "agents", "--yes", "--source", "github")),
-            ("json-apply-combo", ("update", "--backend", "agents", "--json", "--yes")),
             ("claude-apply-yes", ("update", "--backend", "claude", "--yes")),
         ]
 
@@ -2167,6 +2169,30 @@ class AdapterDeployTest(unittest.TestCase):
                 self.assertEqual(completed.stdout, "")
                 self.assertIn("unexpected-python", completed.stderr)
                 self.assertIn("harness_deploy.py", completed.stderr)
+
+    def test_aw_installer_rejects_unsupported_agents_update_json_apply_without_python(self) -> None:
+        fake_bin = self._fake_failing_python_bin()
+        target_repo = self.temp_root / "update-node-reject-target"
+        target_repo.mkdir()
+        env = {
+            "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+        }
+
+        completed = self._run_aw_installer_node(
+            "update",
+            "--backend",
+            "agents",
+            "--json",
+            "--yes",
+            target_repo=target_repo,
+            env=env,
+        )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn("update --json is only supported for dry-run plans", completed.stderr)
+        self.assertNotIn("unexpected-python", completed.stderr)
+        self.assertNotIn("harness_deploy.py", completed.stderr)
 
     def test_local_npm_installer_tui_shows_update_plan_before_apply_confirmation(self) -> None:
         target_repo = self.temp_root / "tui-plan-target"
