@@ -145,7 +145,7 @@ for target_name in target-alpha target-beta; do
 done
 ```
 
-The Claude commands exercise the package payload through the compatibility lane in temporary target repos. They do not change the current boundary that Claude backend execution uses the Python wrapper/reference path rather than the Node-owned `agents` implementation.
+The Claude commands exercise the package payload through the compatibility lane in temporary target repos. Current checkout/local package Claude lifecycle execution is a Node-owned compatibility lane, while the root package still ships the Python fallback payload until retirement approval.
 
 ## What The Registry Runner Does
 
