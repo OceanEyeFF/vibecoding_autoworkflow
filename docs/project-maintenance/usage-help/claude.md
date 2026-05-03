@@ -1,9 +1,9 @@
 ---
 title: "Claude Repo-local Usage Help"
 status: active
-updated: 2026-05-02
+updated: 2026-05-03
 owner: aw-kernel
-last_verified: 2026-05-02
+last_verified: 2026-05-03
 ---
 # Claude Repo-local Usage Help
 
@@ -51,7 +51,7 @@ last_verified: 2026-05-02
 
 - `claude` 承接受控的完整 Harness skill payload 与 runtime skill entry 可读性 trial smoke；`agents` 当前仍是 deploy verify 与 Codex Harness manual run 主路径
 - `claude` 的常见 user-home runtime 路径是 `~/.claude/skills`，不依赖 `CODEX_HOME` 或 XDG 推导
-- 当前仓库提供 `claude` backend 的受控 deploy adapter CLI；如果未来改变完整 skill set 的 payload 边界、target 命名或验证矩阵，必须以新的 worktrack 更新本页和 deploy 文档
+- 当前仓库提供 `claude` backend 的受控 deploy adapter CLI 和 package/local `aw-installer` Node-owned lifecycle；完整 skill set 的 payload 边界、target 命名和验证矩阵变更必须以新的 worktrack 同步本页和 deploy 文档
 - Claude Code 试用反馈仍走 [aw-installer External Trial Feedback Contract](../deploy/aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)，并标明它是 compatibility trial lane
 
 ## 四、当前限制
