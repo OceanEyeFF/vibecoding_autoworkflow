@@ -177,6 +177,13 @@ function createGithubArchiveFromSource(root, archiveRoot = "repo-master", zipFac
 function captureConsoleLog(callback) {
   const originalLog = console.log;
   const lines = [];
+  let restored = false;
+  function restoreConsoleLog() {
+    if (!restored) {
+      console.log = originalLog;
+      restored = true;
+    }
+  }
   console.log = (...args) => {
     lines.push(`${args.join(" ")}\n`);
   };
@@ -184,24 +191,104 @@ function captureConsoleLog(callback) {
   try {
     result = callback();
   } catch (error) {
-    console.log = originalLog;
+    restoreConsoleLog();
     throw error;
   }
-  if (result !== null && typeof result === "object" && typeof result.then === "function") {
-    return result.then(
-      (resolved) => {
-        console.log = originalLog;
-        return { result: resolved, stdout: lines.join("") };
-      },
-      (error) => {
-        console.log = originalLog;
+  if (result !== null && typeof result === "object") {
+    let then;
+    try {
+      then = result.then;
+    } catch (error) {
+      restoreConsoleLog();
+      throw error;
+    }
+    if (typeof then === "function") {
+      try {
+        return then.call(
+          result,
+          (resolved) => {
+            restoreConsoleLog();
+            return { result: resolved, stdout: lines.join("") };
+          },
+          (error) => {
+            restoreConsoleLog();
+            throw error;
+          },
+        );
+      } catch (error) {
+        restoreConsoleLog();
         throw error;
-      },
-    );
+      }
+    }
   }
-  console.log = originalLog;
+  restoreConsoleLog();
   return { result, stdout: lines.join("") };
 }
+
+test("captureConsoleLog restores console.log for sync throw", () => {
+  const originalLog = console.log;
+
+  assert.throws(
+    () => captureConsoleLog(() => {
+      console.log("before", "throw");
+      throw new Error("sync failure");
+    }),
+    /sync failure/,
+  );
+
+  assert.equal(console.log, originalLog);
+});
+
+test("captureConsoleLog restores console.log for async resolve", async () => {
+  const originalLog = console.log;
+
+  const { result, stdout } = await captureConsoleLog(async () => {
+    console.log("async", "ok");
+    return 42;
+  });
+
+  assert.equal(result, 42);
+  assert.equal(stdout, "async ok\n");
+  assert.equal(console.log, originalLog);
+});
+
+test("captureConsoleLog restores console.log for async reject", async () => {
+  const originalLog = console.log;
+
+  await assert.rejects(
+    () => captureConsoleLog(async () => {
+      console.log("async", "reject");
+      throw new Error("async failure");
+    }),
+    /async failure/,
+  );
+
+  assert.equal(console.log, originalLog);
+});
+
+test("captureConsoleLog restores console.log for throwing thenables", () => {
+  const originalLog = console.log;
+
+  assert.throws(
+    () => captureConsoleLog(() => ({
+      get then() {
+        throw new Error("then getter failure");
+      },
+    })),
+    /then getter failure/,
+  );
+  assert.equal(console.log, originalLog);
+
+  assert.throws(
+    () => captureConsoleLog(() => ({
+      then() {
+        throw new Error("then call failure");
+      },
+    })),
+    /then call failure/,
+  );
+  assert.equal(console.log, originalLog);
+});
 
 async function withMockedGithubArchive(archiveBuffer, callback) {
   const originalGet = https.get;
