@@ -234,6 +234,53 @@ async function withMockedGithubArchive(archiveBuffer, callback) {
   }
 }
 
+async function withMockedGithubResponses(responses, callback) {
+  const originalGet = https.get;
+  const requests = [];
+  https.get = (url, options, handler) => {
+    const requestRecord = { url, options };
+    requests.push(requestRecord);
+    const request = new EventEmitter();
+    request.destroy = (error) => {
+      request.emit("error", error || new Error("request destroyed"));
+    };
+    process.nextTick(() => {
+      const responseSpec = responses[Math.min(requests.length - 1, responses.length - 1)];
+      const response = new EventEmitter();
+      response.statusCode = responseSpec.statusCode;
+      response.headers = responseSpec.headers || {};
+      response.resume = () => {};
+      response.destroyed = false;
+      response.destroy = (error) => {
+        response.destroyed = true;
+        response.emit("error", error || new Error("response destroyed"));
+      };
+      requestRecord.response = response;
+      handler(response);
+      if (responseSpec.afterHandlerError !== undefined) {
+        response.emit("error", responseSpec.afterHandlerError);
+      }
+      if (response.destroyed) {
+        return;
+      }
+      if (responseSpec.error !== undefined) {
+        response.emit("error", responseSpec.error);
+        return;
+      }
+      for (const chunk of responseSpec.chunks || []) {
+        response.emit("data", Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      response.emit("end");
+    });
+    return request;
+  };
+  try {
+    return await callback(requests);
+  } finally {
+    https.get = originalGet;
+  }
+}
+
 function seedMinimalAgentsSource(root, skillId = "demo-skill", options = {}) {
   const canonicalDir = join(root, "product", "harness", "skills", skillId);
   const payloadDir = join(root, "product", "harness", "adapters", "agents", "skills", skillId);
@@ -2822,6 +2869,83 @@ test("aw-installer github source yes applies update through Node-owned compositi
     rmSync(sourceRoot, { recursive: true, force: true });
     rmSync(targetRepo, { recursive: true, force: true });
   }
+});
+
+test("downloadGithubArchive enforces content length and streamed size limits", async () => {
+  await withMockedGithubResponses(
+    [{ statusCode: 200, headers: { "content-length": "6" }, chunks: ["tiny"] }],
+    async (requests) => {
+      await assert.rejects(
+        () => installer.downloadGithubArchive("Owner/repo", "main", {
+          maxBytes: 5,
+          maxAttempts: 3,
+          retryDelayMs: 0,
+        }),
+        /archive exceeds 5 byte limit/,
+      );
+      assert.equal(requests.length, 1);
+      assert.equal(requests[0].response.destroyed, true);
+    },
+  );
+
+  await withMockedGithubResponses(
+    [{ statusCode: 200, chunks: [Buffer.alloc(3), Buffer.alloc(3)] }],
+    async (requests) => {
+      await assert.rejects(
+        () => installer.downloadGithubArchive("Owner/repo", "main", {
+          maxBytes: 5,
+          maxAttempts: 3,
+          retryDelayMs: 0,
+        }),
+        /archive exceeds 5 byte limit/,
+      );
+      assert.equal(requests.length, 1);
+    },
+  );
+});
+
+test("downloadGithubArchive retries retryable failures and does not retry non-retryable responses", async () => {
+  await withMockedGithubResponses(
+    [
+      { statusCode: 500 },
+      { statusCode: 429 },
+      { statusCode: 200, chunks: ["ok"] },
+    ],
+    async (requests) => {
+      const archive = await installer.downloadGithubArchive("Owner/repo", "main", {
+        maxBytes: 10,
+        maxAttempts: 3,
+        retryDelayMs: 0,
+      });
+      assert.equal(archive.toString("utf8"), "ok");
+      assert.deepEqual(
+        requests.map((request) => request.url),
+        [
+          "https://codeload.github.com/Owner/repo/zip/refs/heads/main",
+          "https://codeload.github.com/Owner/repo/zip/refs/heads/main",
+          "https://codeload.github.com/Owner/repo/zip/refs/heads/main",
+        ],
+      );
+    },
+  );
+
+  await withMockedGithubResponses(
+    [
+      { statusCode: 404, afterHandlerError: new Error("late response failure") },
+      { statusCode: 200, chunks: ["should-not-run"] },
+    ],
+    async (requests) => {
+      await assert.rejects(
+        () => installer.downloadGithubArchive("Owner/repo", "main", {
+          maxBytes: 20,
+          maxAttempts: 3,
+          retryDelayMs: 0,
+        }),
+        /HTTP 404/,
+      );
+      assert.equal(requests.length, 1);
+    },
+  );
 });
 
 test("aw-installer github source recovery hint preserves source arguments after apply failure", () => {
