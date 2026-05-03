@@ -87,7 +87,8 @@ aw-installer update --backend agents --source github --github-repo OceanEyeFF/vi
 
 - `--source github` 只支持 `OWNER/REPO` + branch/ref archive，不支持任意 URL；fork 或重命名仓库应显式传 `--github-repo`，或设置 `AW_INSTALLER_GITHUB_REPO` / `GITHUB_REPOSITORY`。
 - 下载后的 archive 必须通过 Harness payload source validation：至少包含 `product/harness/skills`、`product/harness/adapters/agents/skills` 与 `product/harness/adapters/claude/skills`。
-- Node-owned GitHub archive download 必须限制 archive 响应大小，当前上限为 500 MiB；`Content-Length` 或实际流式下载超过该上限时必须失败，不能继续无界 `Buffer.concat`。timeout、408、425、429 和 5xx 等 retryable 失败最多尝试 3 次；404 等非 retryable HTTP 失败不得重试。
+- Node-owned GitHub archive download 必须限制 archive 响应大小，当前上限为 500 MiB；`Content-Length` 或实际流式下载超过该上限时必须失败，不能继续无界 `Buffer.concat`。timeout、408、425、429 和 5xx 等 retryable 失败最多尝试 3 次；404 等 non-retryable HTTP 失败不得重试。
+- Node-owned GitHub archive extraction 必须限制解压后的文件总量，当前上限为 500 MiB；ZIP central directory 声明大小、实际 inflate 输出或累计写入预算超过该上限时必须失败，不能把 GitHub source archive 解压成无界临时 source root。
 - GitHub source root 是一次性临时目录；命令结束后不得作为长期 source truth 保留。
 - target root 不得默认为 GitHub source root；默认仍是当前工作目录，或显式 `AW_HARNESS_TARGET_REPO_ROOT` / `--agents-root`。
 - `update --json` 必须暴露 `source_kind=github` 和 `source_ref=OWNER/REPO@REF`；human-readable dry-run 必须保持同一 dry-run-only plan 输出形状。
