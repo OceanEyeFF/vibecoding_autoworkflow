@@ -696,15 +696,6 @@ function assertNodeVerifyMatchesPython(root, args) {
   assert.equal(nodeWithSentinel.stderr.includes("unexpected-python"), false);
 }
 
-test("pythonCandidates avoids the usually-missing Linux python alias", () => {
-  const commands = installer.pythonCandidates().map((candidate) => candidate.command);
-  if (process.platform === "win32") {
-    assert.deepEqual(commands, ["py", "python", "python3"]);
-  } else {
-    assert.deepEqual(commands, ["python3"]);
-  }
-});
-
 test("node-owned summary and context helpers are exported for unit coverage", () => {
   assert.equal(typeof installer.buildNodeAgentsContext, "function");
   assert.equal(typeof installer.diagnosticSummary, "function");
@@ -757,29 +748,6 @@ test("normalizeRelativePath rejects traversal and keeps clean relative paths", (
   assert.throws(
     () => installer.normalizeRelativePath("..\0/SKILL.md", "field", "demo-skill", "repository root"),
     /must not contain null bytes/,
-  );
-});
-
-test("wrapper env strips common credential variables while preserving deploy controls", () => {
-  assert.deepEqual(
-    installer.buildWrapperEnv({
-      ANTHROPIC_API_KEY: "secret",
-      AW_HARNESS_REPO_ROOT: "/repo",
-      GITHUB_TOKEN: "secret",
-      HOME: "/home/demo",
-      PATH: "/bin",
-      PYTHONDONTWRITEBYTECODE: "0",
-      HTTPS_PROXY: "http://proxy",
-      SSL_CERT_DIR: "/etc/ssl/certs",
-    }),
-    {
-      AW_HARNESS_REPO_ROOT: "/repo",
-      HOME: "/home/demo",
-      PATH: "/bin",
-      PYTHONDONTWRITEBYTECODE: "0",
-      HTTPS_PROXY: "http://proxy",
-      SSL_CERT_DIR: "/etc/ssl/certs",
-    },
   );
 });
 
@@ -1168,7 +1136,7 @@ test("parseNodeUpdateArgs wrappers keep unsupported update forms rejected", () =
   assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "claude", "--yes", "--source", "github"]), null);
 });
 
-test("unsupported agents package variants are classified before Python fallback", () => {
+test("unsupported agents package variants are classified without Python", () => {
   assert.deepEqual(
     installer.parseNodeUnsupportedPruneMissingAllArgs(["prune", "--backend", "agents"]),
     { backend: "agents", source: "package", agentsRoot: undefined },
@@ -2800,7 +2768,7 @@ test("aw-installer prune agents matches Python reference output shape", () => {
   }
 });
 
-test("aw-installer leaves out-of-scope install and mutating commands on Python reference path", () => {
+test("aw-installer rejects unsupported install variants without Python", () => {
   const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
   try {
     seedMinimalAgentsSource(root, "demo-skill");
@@ -2811,9 +2779,15 @@ test("aw-installer leaves out-of-scope install and mutating commands on Python r
 
     for (const args of commands) {
       const completed = runAwInstaller(root, args, fakeBin);
-      assert.equal(completed.status, 97, args.join(" "));
+      assert.equal(completed.status, 1, args.join(" "));
       assert.equal(completed.stdout, "");
-      assert.match(completed.stderr, /unexpected-python/, args.join(" "));
+      assert.match(
+        completed.stderr,
+        /unsupported aw-installer command or options for Node-only distribution/,
+        args.join(" "),
+      );
+      assert.equal(completed.stderr.includes("unexpected-python"), false, args.join(" "));
+      assert.equal(completed.stderr.includes("harness_deploy.py"), false, args.join(" "));
     }
   } finally {
     rmSync(root, { recursive: true, force: true });

@@ -37,10 +37,7 @@ DEPLOY_VERIFY_ENTRYPOINTS = (
 )
 EXPECTED_NPM_PACKAGE_FILES = {
     "README.md",
-    "adapter_deploy.py",
     "bin/aw-installer.js",
-    "bin/aw-harness-deploy.js",
-    "harness_deploy.py",
     "package.json",
     "path_safety_policy.json",
 }
@@ -60,8 +57,6 @@ ROOT_NPM_REQUIRED_PACKAGE_FILES = {
     "package.json",
     "README.md",
     "LICENSE",
-    "toolchain/scripts/deploy/adapter_deploy.py",
-    "toolchain/scripts/deploy/harness_deploy.py",
     "toolchain/scripts/deploy/path_safety_policy.json",
     "toolchain/scripts/deploy/bin/aw-installer.js",
     "toolchain/scripts/deploy/bin/check-root-publish.js",
@@ -70,6 +65,12 @@ ROOT_NPM_REQUIRED_PACKAGE_FILES = {
 } | {
     f"product/harness/adapters/claude/skills/{skill_id}/payload.json"
     for skill_id in CLAUDE_REQUIRED_PAYLOAD_SKILLS
+}
+ROOT_NPM_FORBIDDEN_PACKAGE_FILES = {
+    "toolchain/scripts/deploy/adapter_deploy.py",
+    "toolchain/scripts/deploy/harness_deploy.py",
+    "toolchain/scripts/deploy/bin/aw-harness-deploy.js",
+    "product/harness/skills/set-harness-goal-skill/scripts/deploy_aw.py",
 }
 @dataclass
 class GateStep:
@@ -484,12 +485,24 @@ def run_tarball_aw_installer(
     return {**result, "name": name}
 
 
+def write_python_sentinel_bin(root: Path) -> Path:
+    fake_bin = root / "fake-python-bin"
+    fake_bin.mkdir()
+    sentinel_script = "#!/bin/sh\nprintf 'unexpected-python %s\\n' \"$*\" >&2\nexit 97\n"
+    for python_name in ("py", "python", "python3"):
+        python_path = fake_bin / python_name
+        python_path.write_text(sentinel_script, encoding="utf-8")
+        python_path.chmod(0o755)
+    return fake_bin
+
+
 def run_npm_package_tarball_smoke(repo_root: Path, expected_version_output: str) -> dict:
     package_root = repo_root / "toolchain" / "scripts" / "deploy"
     with tempfile.TemporaryDirectory() as package_dir:
+        package_dir_path = Path(package_dir)
         package_file, subchecks, failures = pack_npm_tarball_for_smoke(
             package_root=package_root,
-            package_dir_path=Path(package_dir),
+            package_dir_path=package_dir_path,
             package_label="deploy package",
             subcheck_name="npm_pack_tarball",
             cwd_label=package_root.relative_to(repo_root).as_posix(),
@@ -498,20 +511,25 @@ def run_npm_package_tarball_smoke(repo_root: Path, expected_version_output: str)
             missing_file_message="packed tarball was not created",
             repo_artifact_message="packed tarball was written into repo",
         )
+        target_repo = package_dir_path / "target-repo"
+        target_repo.mkdir()
+        fake_python_bin = write_python_sentinel_bin(package_dir_path)
+        no_python_env = {
+            "AW_HARNESS_REPO_ROOT": str(repo_root),
+            "AW_HARNESS_TARGET_REPO_ROOT": str(target_repo),
+            "PATH": f"{fake_python_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+        }
 
         if package_file is not None:
+            def validate_no_python(exec_result: dict, no_python_failures: list[str]) -> None:
+                if "unexpected-python" in exec_result["stderr"]:
+                    no_python_failures.append("packaged command invoked Python")
+
             def validate_help(exec_result: dict, help_failures: list[str]) -> None:
+                validate_no_python(exec_result, help_failures)
                 if not exec_result["passed"]:
                     return
-                for required_text in (
-                    "aw-installer",
-                    "harness_deploy.py",
-                    "tui",
-                    "diagnose",
-                    "verify",
-                    "install",
-                    "update",
-                ):
+                for required_text in ("aw-installer", "Node.js distribution", "tui", "diagnose", "verify", "install", "update"):
                     if required_text not in exec_result["stdout"]:
                         help_failures.append(f"tarball help omitted {required_text!r}")
 
@@ -519,7 +537,8 @@ def run_npm_package_tarball_smoke(repo_root: Path, expected_version_output: str)
                 run_tarball_aw_installer(
                     package_file,
                     ["--help"],
-                    cwd=package_root,
+                    cwd=target_repo,
+                    extra_env=no_python_env,
                     name="npm_exec_tarball",
                     failures=failures,
                     validate=validate_help,
@@ -527,6 +546,7 @@ def run_npm_package_tarball_smoke(repo_root: Path, expected_version_output: str)
             )
 
             def validate_version(version_result: dict, version_failures: list[str]) -> None:
+                validate_no_python(version_result, version_failures)
                 if version_result["passed"] and version_result["stdout"].strip() != expected_version_output:
                     version_failures.append("tarball version probe omitted package version")
 
@@ -534,14 +554,39 @@ def run_npm_package_tarball_smoke(repo_root: Path, expected_version_output: str)
                 run_tarball_aw_installer(
                     package_file,
                     ["--version"],
-                    cwd=package_root,
+                    cwd=target_repo,
+                    extra_env=no_python_env,
                     name="npm_exec_tarball_version",
                     failures=failures,
                     validate=validate_version,
                 )
             )
 
+            def validate_tui_guard(tui_result: dict, tui_failures: list[str]) -> None:
+                validate_no_python(tui_result, tui_failures)
+                tui_guard_passed = (
+                    tui_result["returncode"] == 1
+                    and "aw-installer tui requires an interactive terminal" in tui_result["stderr"]
+                    and tui_result["stdout"] == ""
+                )
+                if not tui_guard_passed:
+                    tui_failures.append("packaged tui did not enforce non-interactive guard")
+                tui_result["passed"] = tui_guard_passed
+
+            subchecks.append(
+                run_tarball_aw_installer(
+                    package_file,
+                    ["tui"],
+                    cwd=target_repo,
+                    extra_env=no_python_env,
+                    name="npm_exec_tarball_tui_noninteractive",
+                    failures=failures,
+                    validate=validate_tui_guard,
+                )
+            )
+
             def validate_diagnose(diagnose_result: dict, diagnose_failures: list[str]) -> None:
+                validate_no_python(diagnose_result, diagnose_failures)
                 if not diagnose_result["passed"]:
                     return
                 try:
@@ -553,13 +598,16 @@ def run_npm_package_tarball_smoke(repo_root: Path, expected_version_output: str)
                     diagnose_failures.append("packaged diagnose did not report agents backend")
                 if diagnose_payload.get("binding_count", 0) <= 0:
                     diagnose_failures.append("packaged diagnose did not load source bindings")
+                expected_target = str(target_repo / ".agents" / "skills")
+                if diagnose_payload.get("target_root") != expected_target:
+                    diagnose_failures.append("packaged diagnose did not use isolated target repo")
 
             subchecks.append(
                 run_tarball_aw_installer(
                     package_file,
                     ["diagnose", "--backend", "agents", "--json"],
-                    cwd=package_root,
-                    extra_env={"AW_HARNESS_REPO_ROOT": str(repo_root)},
+                    cwd=target_repo,
+                    extra_env=no_python_env,
                     name="npm_exec_tarball_diagnose",
                     failures=failures,
                     validate=validate_diagnose,
@@ -567,6 +615,7 @@ def run_npm_package_tarball_smoke(repo_root: Path, expected_version_output: str)
             )
 
             def validate_update(update_result: dict, update_failures: list[str]) -> None:
+                validate_no_python(update_result, update_failures)
                 if not update_result["passed"]:
                     return
                 try:
@@ -580,16 +629,72 @@ def run_npm_package_tarball_smoke(repo_root: Path, expected_version_output: str)
                     update_failures.append("packaged update dry-run reported blocking issues")
                 if not update_payload.get("planned_target_paths"):
                     update_failures.append("packaged update dry-run did not report target paths")
+                expected_target = str(target_repo / ".agents" / "skills")
+                if update_payload.get("target_root") != expected_target:
+                    update_failures.append("packaged update dry-run did not use isolated target repo")
 
             subchecks.append(
                 run_tarball_aw_installer(
                     package_file,
                     ["update", "--backend", "agents", "--json"],
-                    cwd=package_root,
-                    extra_env={"AW_HARNESS_REPO_ROOT": str(repo_root)},
+                    cwd=target_repo,
+                    extra_env=no_python_env,
                     name="npm_exec_tarball_update_dry_run",
                     failures=failures,
                     validate=validate_update,
+                )
+            )
+
+            def validate_install(install_result: dict, install_failures: list[str]) -> None:
+                validate_no_python(install_result, install_failures)
+                if install_result["passed"]:
+                    installed_skill = target_repo / ".agents" / "skills" / "aw-harness-skill" / "SKILL.md"
+                    if not installed_skill.is_file():
+                        install_failures.append("packaged install did not write aw-harness-skill")
+
+            subchecks.append(
+                run_tarball_aw_installer(
+                    package_file,
+                    ["install", "--backend", "agents"],
+                    cwd=target_repo,
+                    extra_env=no_python_env,
+                    name="npm_exec_tarball_install",
+                    failures=failures,
+                    validate=validate_install,
+                )
+            )
+
+            subchecks.append(
+                run_tarball_aw_installer(
+                    package_file,
+                    ["verify", "--backend", "agents"],
+                    cwd=target_repo,
+                    extra_env=no_python_env,
+                    name="npm_exec_tarball_verify",
+                    failures=failures,
+                    validate=validate_no_python,
+                )
+            )
+
+            def validate_update_apply(update_apply_result: dict, update_apply_failures: list[str]) -> None:
+                validate_no_python(update_apply_result, update_apply_failures)
+                if not update_apply_result["passed"]:
+                    return
+                updated_skill = target_repo / ".agents" / "skills" / "aw-harness-skill" / "SKILL.md"
+                if not updated_skill.is_file():
+                    update_apply_failures.append("packaged update apply did not write aw-harness-skill")
+                if "[agents] ok" not in update_apply_result["stdout"]:
+                    update_apply_failures.append("packaged update apply did not run verify")
+
+            subchecks.append(
+                run_tarball_aw_installer(
+                    package_file,
+                    ["update", "--backend", "agents", "--yes"],
+                    cwd=target_repo,
+                    extra_env=no_python_env,
+                    name="npm_exec_tarball_update_apply",
+                    failures=failures,
+                    validate=validate_update_apply,
                 )
             )
 
@@ -632,6 +737,9 @@ def run_root_npm_package_packlist(repo_root: Path) -> dict:
     missing_files = sorted(ROOT_NPM_REQUIRED_PACKAGE_FILES - packed_files)
     if missing_files:
         failures.append(f"root npm package missing required files: {missing_files}")
+    forbidden_files = sorted(ROOT_NPM_FORBIDDEN_PACKAGE_FILES & packed_files)
+    if forbidden_files:
+        failures.append(f"root npm package included forbidden files: {forbidden_files}")
     for disallowed_prefix in (".aw/", ".agents/", ".autoworkflow/", ".claude/"):
         if any(path.startswith(disallowed_prefix) for path in packed_files):
             failures.append(f"root npm package included {disallowed_prefix} content")
@@ -675,6 +783,9 @@ def run_root_npm_publish_dry_run(repo_root: Path) -> dict:
     missing_files = sorted(ROOT_NPM_REQUIRED_PACKAGE_FILES - packed_files)
     if missing_files:
         failures.append(f"root npm publish dry-run missing required files: {missing_files}")
+    forbidden_files = sorted(ROOT_NPM_FORBIDDEN_PACKAGE_FILES & packed_files)
+    if forbidden_files:
+        failures.append(f"root npm publish dry-run included forbidden files: {forbidden_files}")
     if not package_filename:
         failures.append("missing root npm publish dry-run package filename")
     else:
@@ -717,7 +828,7 @@ def run_root_npm_package_tarball_smoke(repo_root: Path, expected_version_output:
             def validate_root_help(exec_result: dict, help_failures: list[str]) -> None:
                 if not exec_result["passed"]:
                     return
-                for required_text in ("aw-installer", "harness_deploy.py", "tui", "diagnose", "update"):
+                for required_text in ("aw-installer", "Node.js distribution", "tui", "diagnose", "update"):
                     if required_text not in exec_result["stdout"]:
                         help_failures.append(f"root tarball help omitted {required_text!r}")
 

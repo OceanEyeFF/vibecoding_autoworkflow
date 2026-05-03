@@ -28,7 +28,7 @@ last_verified: 2026-05-03
 
 - 这里描述的是 Claude 侧常见 runtime 路径和当前受控 `adapter_deploy.py --backend claude` payload lane
 - 当前仓库的 `claude` backend 准入完整 Harness skill set；target dirs 使用 `.claude/skills/<skill-name>/`，旧 `aw-<skill-name>` 目录只作为 legacy managed cleanup 入口
-- `set-harness-goal-skill/scripts/deploy_aw.py` 的 `--claude-root` 仍属于本文第五节的冷启动 helper 例外，和 adapter CLI 的受管 payload install 是两条入口
+- `set-harness-goal-skill/scripts/deploy_aw.js` 的 `--claude-root` 仍属于本文第五节的冷启动 helper 例外，和 adapter CLI 的受管 payload install 是两条入口
 - 完整 smoke / 冷启动步骤见 [Claude Post-Deploy Behavior Tests](../testing/claude-post-deploy-behavior-tests.md)
 
 ## 二、最小 trial smoke verify 口径
@@ -61,11 +61,11 @@ last_verified: 2026-05-03
 
 ## 五、当前受控例外
 
-`set-harness-goal-skill` 自带的 `scripts/deploy_aw.py` 可以把该技能自身安装到目标 repo 的 Claude 项目级 skill 目录：
+`set-harness-goal-skill` 自带的 `scripts/deploy_aw.js` 可以把该技能自身安装到目标 repo 的 Claude 项目级 skill 目录：
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 scripts/deploy_aw.py install-claude-skill --deploy-path "$DEPLOY_PATH"
-PYTHONDONTWRITEBYTECODE=1 python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --install-claude-skill
+node scripts/deploy_aw.js install-claude-skill --deploy-path "$DEPLOY_PATH"
+node scripts/deploy_aw.js generate --deploy-path "$DEPLOY_PATH" --install-claude-skill
 ```
 
 边界：
