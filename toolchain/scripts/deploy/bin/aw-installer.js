@@ -75,6 +75,18 @@ const expectedPayloadVersions = Object.freeze({
   [agentsBackend]: "agents-skill-payload.v1",
   [claudeBackend]: "claude-skill-payload.v1",
 });
+const backendTargetRootConfig = Object.freeze({
+  [agentsBackend]: Object.freeze({
+    optionName: "agentsRoot",
+    overrideFlag: "--agents-root",
+    defaultSegments: [".agents", "skills"],
+  }),
+  [claudeBackend]: Object.freeze({
+    optionName: "claudeRoot",
+    overrideFlag: "--claude-root",
+    defaultSegments: [".claude", "skills"],
+  }),
+});
 const cliFlags = Object.freeze({
   all: "--all",
   agentsRoot: "--agents-root",
@@ -426,14 +438,12 @@ function resolveTargetRepoRoot(sourceRoot, sourceRootFromEnv) {
 }
 
 function targetRootForBackend(backend, targetRepoRoot, options = {}) {
-  if (backend === claudeBackend) {
-    return options.claudeRoot === undefined
-      ? join(targetRepoRoot, ".claude", "skills")
-      : validateTargetRepoRoot(options.claudeRoot, options.sourceRoot);
+  const config = backendTargetRootConfig[backend];
+  const rootOverride = options[config.optionName];
+  if (rootOverride === undefined) {
+    return join(targetRepoRoot, ...config.defaultSegments);
   }
-  return options.agentsRoot === undefined
-    ? join(targetRepoRoot, ".agents", "skills")
-    : validateTargetRepoRoot(options.agentsRoot, options.sourceRoot);
+  return validateTargetRepoRoot(rootOverride, options.sourceRoot);
 }
 
 function buildNodeBackendContext(options = {}) {
@@ -452,6 +462,11 @@ function buildNodeBackendContext(options = {}) {
     ...options,
     sourceRoot,
   });
+  const targetRootConfig = backendTargetRootConfig[backend];
+  const targetRootOverrideFlag =
+    options[targetRootConfig.optionName] === undefined
+      ? {}
+      : { targetRootOverrideFlag: targetRootConfig.overrideFlag };
   return {
     backend,
     sourceKind: options.sourceKind || packageSource,
@@ -459,12 +474,7 @@ function buildNodeBackendContext(options = {}) {
     sourceRoot,
     targetRepoRoot,
     targetRoot,
-    ...(backend === claudeBackend && options.claudeRoot !== undefined
-      ? { targetRootOverrideFlag: cliFlags.claudeRoot }
-      : {}),
-    ...(backend === agentsBackend && options.agentsRoot !== undefined
-      ? { targetRootOverrideFlag: cliFlags.agentsRoot }
-      : {}),
+    ...targetRootOverrideFlag,
     adapterSkillsDir: join(sourceRoot, "product", "harness", "adapters", backend, "skills"),
   };
 }
