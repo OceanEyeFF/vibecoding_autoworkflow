@@ -3874,11 +3874,11 @@ Backend: agents
 async function main() {
   const args = process.argv.slice(2);
 
-  // P0-035 slices: selected agents JSON dry-run paths are Node-owned and
-  // read-only; P0-049 also owns the agents package-local human-readable
-  // update dry-run. Selected local agents unsupported variants are also rejected
-  // directly so ordinary package paths do not require Python just to fail. Other
-  // deploy modes stay on the Python reference path until migrated.
+  // Current package/local agents and Claude slices cover diagnose, update,
+  // check_paths_exist, verify, install, and prune --all in Node; explicit
+  // agents GitHub-source update paths also have Node coverage. Selected
+  // unsupported agents variants are rejected in Node, while remaining reference
+  // paths still fall through to Python.
   if (args.length === 0) {
     if (process.stdin.isTTY && process.stdout.isTTY) {
       return runTui();
