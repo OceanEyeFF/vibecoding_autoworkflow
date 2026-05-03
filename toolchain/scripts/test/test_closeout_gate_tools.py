@@ -122,7 +122,12 @@ def successful_npm_command_result(
         return "agents"
 
     def npm_exec_target_root() -> Path:
-        repo = cwd or Path("/tmp/repo")
+        target_repo = (
+            extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
+            if extra_env is not None
+            else None
+        )
+        repo = Path(target_repo) if target_repo else cwd or Path("/tmp/repo")
         if npm_exec_backend() == "claude":
             return repo / ".claude" / "skills"
         return repo / ".agents" / "skills"
@@ -728,13 +733,56 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
     assert any(
         command[:2] == ["npm", "exec"]
         and "diagnose" in command
-        and extra_env == {"AW_HARNESS_REPO_ROOT": str(tmp_path)}
+        and extra_env is not None
+        and extra_env.get("AW_HARNESS_REPO_ROOT") == str(tmp_path)
+        and extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
+        and "fake-python-bin" in extra_env.get("PATH", "")
         for command, _, extra_env in calls
     )
     assert any(
         command[:2] == ["npm", "exec"]
         and "update" in command
-        and extra_env == {"AW_HARNESS_REPO_ROOT": str(tmp_path)}
+        and "--json" in command
+        and extra_env is not None
+        and extra_env.get("AW_HARNESS_REPO_ROOT") == str(tmp_path)
+        and extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
+        and "fake-python-bin" in extra_env.get("PATH", "")
+        for command, _, extra_env in calls
+    )
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and command[-1] == "tui"
+        and extra_env is not None
+        and extra_env.get("AW_HARNESS_REPO_ROOT") == str(tmp_path)
+        and extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
+        and "fake-python-bin" in extra_env.get("PATH", "")
+        for command, _, extra_env in calls
+    )
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and command[-3:] == ["install", "--backend", "agents"]
+        and extra_env is not None
+        and extra_env.get("AW_HARNESS_REPO_ROOT") == str(tmp_path)
+        and extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
+        and "fake-python-bin" in extra_env.get("PATH", "")
+        for command, _, extra_env in calls
+    )
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and command[-3:] == ["verify", "--backend", "agents"]
+        and extra_env is not None
+        and extra_env.get("AW_HARNESS_REPO_ROOT") == str(tmp_path)
+        and extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
+        and "fake-python-bin" in extra_env.get("PATH", "")
+        for command, _, extra_env in calls
+    )
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and command[-4:] == ["update", "--backend", "agents", "--yes"]
+        and extra_env is not None
+        and extra_env.get("AW_HARNESS_REPO_ROOT") == str(tmp_path)
+        and extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
+        and "fake-python-bin" in extra_env.get("PATH", "")
         for command, _, extra_env in calls
     )
     assert any(

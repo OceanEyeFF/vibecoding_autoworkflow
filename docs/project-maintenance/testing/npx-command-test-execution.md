@@ -1,9 +1,9 @@
 ---
 title: "npx Command Test Execution"
 status: active
-updated: 2026-04-29
+updated: 2026-05-04
 owner: aw-kernel
-last_verified: 2026-04-29
+last_verified: 2026-05-04
 ---
 # npx Command Test Execution
 
@@ -145,7 +145,7 @@ for target_name in target-alpha target-beta; do
 done
 ```
 
-The Claude commands exercise the package payload through the compatibility lane in temporary target repos. Current checkout/local package Claude lifecycle execution is a Node-owned compatibility lane, while the root package still ships the Python fallback payload until retirement approval.
+The Claude commands exercise the package payload through the compatibility lane in temporary target repos. Current checkout/local package Claude lifecycle execution is a Node-owned compatibility lane. The package/runtime `aw-installer` does not ship a Python fallback path; unsupported or unmatched deploy modes should fail explicitly in Node. Python deploy scripts may remain in the repository only as local reference, parity, or governance assets, not package/runtime dependencies.
 
 ## What The Registry Runner Does
 
