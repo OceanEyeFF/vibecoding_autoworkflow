@@ -784,6 +784,63 @@ test("computePayloadFingerprint matches the Python payload contract order", () =
   }
 });
 
+test("buildNodeBackendContext keeps backend target root defaults and override flags in parity", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  const originalTargetRepoRoot = process.env.AW_HARNESS_TARGET_REPO_ROOT;
+  try {
+    seedMinimalAgentsSource(root, "agents-demo");
+    seedMinimalClaudeSource(root, "claude-demo");
+    process.env.AW_HARNESS_TARGET_REPO_ROOT = root;
+
+    const agentsDefault = installer.buildNodeBackendContext({
+      backend: "agents",
+      sourceRootOverride: root,
+    });
+    assert.equal(agentsDefault.targetRoot, join(root, ".agents", "skills"));
+    assert.equal(agentsDefault.targetRootOverrideFlag, undefined);
+
+    const agentsRoot = join(root, "custom-agents-skills");
+    const agentsOverride = installer.buildNodeBackendContext({
+      backend: "agents",
+      sourceRootOverride: root,
+      agentsRoot,
+    });
+    assert.equal(agentsOverride.targetRoot, agentsRoot);
+    assert.equal(agentsOverride.targetRootOverrideFlag, "--agents-root");
+
+    const claudeDefault = installer.buildNodeBackendContext({
+      backend: "claude",
+      sourceRootOverride: root,
+    });
+    assert.equal(claudeDefault.targetRoot, join(root, ".claude", "skills"));
+    assert.equal(claudeDefault.targetRootOverrideFlag, undefined);
+
+    const claudeRoot = join(root, "custom-claude-skills");
+    const claudeOverride = installer.buildNodeBackendContext({
+      backend: "claude",
+      sourceRootOverride: root,
+      claudeRoot,
+    });
+    assert.equal(claudeOverride.targetRoot, claudeRoot);
+    assert.equal(claudeOverride.targetRootOverrideFlag, "--claude-root");
+
+    assert.throws(
+      () => installer.buildNodeBackendContext({
+        backend: "unsupported",
+        sourceRootOverride: root,
+      }),
+      /Unsupported backend for Node-owned path: unsupported/,
+    );
+  } finally {
+    if (originalTargetRepoRoot === undefined) {
+      delete process.env.AW_HARNESS_TARGET_REPO_ROOT;
+    } else {
+      process.env.AW_HARNESS_TARGET_REPO_ROOT = originalTargetRepoRoot;
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("parseNodeDiagnoseJsonArgs accepts agents and claude JSON diagnose", () => {
   assert.deepEqual(
     installer.parseNodeDiagnoseJsonArgs(["diagnose", "--backend", "agents", "--json"]),
