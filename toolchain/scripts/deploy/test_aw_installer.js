@@ -1144,6 +1144,30 @@ test("parseNodeUpdateYesArgs accepts package and agents github update apply form
   assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "agents"]), null);
 });
 
+test("parseNodeUpdateArgs wrappers keep unsupported update forms rejected", () => {
+  const missingValueCases = [
+    ["update", "--backend"],
+    ["update", "--source"],
+    ["update", "--github-repo"],
+    ["update", "--github-ref"],
+    ["update", "--github-archive-sha256"],
+    ["update", "--agents-root"],
+    ["update", "--claude-root"],
+  ];
+  for (const args of missingValueCases) {
+    assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--json", ...args.slice(1)]), null);
+    assert.equal(installer.parseNodeUpdateDryRunArgs(args), null);
+    assert.equal(installer.parseNodeUpdateYesArgs(["update", "--yes", ...args.slice(1)]), null);
+  }
+
+  assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--json", "--yes"]), null);
+  assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents", "--json", "--yes"]), null);
+  assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "agents", "--json", "--yes"]), null);
+  assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "claude", "--json", "--source", "github"]), null);
+  assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "claude", "--source", "github"]), null);
+  assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "claude", "--yes", "--source", "github"]), null);
+});
+
 test("unsupported agents package variants are classified before Python fallback", () => {
   assert.deepEqual(
     installer.parseNodeUnsupportedPruneMissingAllArgs(["prune", "--backend", "agents"]),

@@ -2568,6 +2568,162 @@ function parsedGithubOptions(githubRepo, githubRef, githubArchiveSha256) {
   };
 }
 
+function parseNodeUpdateArgs(args) {
+  if (args[0] !== "update") {
+    return null;
+  }
+  const parsed = {
+    backend: agentsBackend,
+    source: packageSource,
+    json: false,
+    yes: false,
+    agentsRoot: undefined,
+    claudeRoot: undefined,
+    githubRepo: undefined,
+    githubRef: undefined,
+    githubArchiveSha256: undefined,
+  };
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === cliFlags.json) {
+      parsed.json = true;
+      continue;
+    }
+    if (arg === cliFlags.yes) {
+      parsed.yes = true;
+      continue;
+    }
+    if (arg === cliFlags.backend) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      parsed.backend = value;
+      index += 1;
+      continue;
+    }
+    const backendValue = readEqualsOption(arg, cliFlags.backend);
+    if (backendValue !== null) {
+      parsed.backend = backendValue;
+      continue;
+    }
+    if (arg === cliFlags.source) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      parsed.source = value;
+      index += 1;
+      continue;
+    }
+    const sourceValue = readEqualsOption(arg, cliFlags.source);
+    if (sourceValue !== null) {
+      parsed.source = sourceValue;
+      continue;
+    }
+    if (arg === cliFlags.githubRepo) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      parsed.githubRepo = value;
+      index += 1;
+      continue;
+    }
+    const githubRepoValue = readEqualsOption(arg, cliFlags.githubRepo);
+    if (githubRepoValue !== null) {
+      parsed.githubRepo = githubRepoValue;
+      continue;
+    }
+    if (arg === cliFlags.githubRef) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      parsed.githubRef = value;
+      index += 1;
+      continue;
+    }
+    const githubRefValue = readEqualsOption(arg, cliFlags.githubRef);
+    if (githubRefValue !== null) {
+      parsed.githubRef = githubRefValue;
+      continue;
+    }
+    if (arg === cliFlags.githubArchiveSha256) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      parsed.githubArchiveSha256 = value;
+      index += 1;
+      continue;
+    }
+    const githubArchiveSha256Value = readEqualsOption(arg, cliFlags.githubArchiveSha256);
+    if (githubArchiveSha256Value !== null) {
+      parsed.githubArchiveSha256 = githubArchiveSha256Value;
+      continue;
+    }
+    if (arg === cliFlags.agentsRoot) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      parsed.agentsRoot = value;
+      index += 1;
+      continue;
+    }
+    const agentsRootValue = readEqualsOption(arg, cliFlags.agentsRoot);
+    if (agentsRootValue !== null) {
+      parsed.agentsRoot = agentsRootValue;
+      continue;
+    }
+    if (arg === cliFlags.claudeRoot) {
+      const value = readOptionValue(args, index);
+      if (value === null) {
+        return null;
+      }
+      parsed.claudeRoot = value;
+      index += 1;
+      continue;
+    }
+    const claudeRootValue = readEqualsOption(arg, cliFlags.claudeRoot);
+    if (claudeRootValue !== null) {
+      parsed.claudeRoot = claudeRootValue;
+      continue;
+    }
+    return null;
+  }
+  return parsed;
+}
+
+function parsedNodeUpdateResult(parsed, includeYes = false) {
+  if (!backendAllowed(parsed.backend, [agentsBackend, claudeBackend])) {
+    return null;
+  }
+  if (parsed.source === githubSource) {
+    if (parsed.backend !== agentsBackend) {
+      return null;
+    }
+    return {
+      backend: parsed.backend,
+      source: parsed.source,
+      ...(includeYes ? { yes: true } : {}),
+      agentsRoot: parsed.agentsRoot,
+      ...parsedGithubOptions(parsed.githubRepo, parsed.githubRef, parsed.githubArchiveSha256),
+    };
+  }
+  if (parsed.source !== packageSource) {
+    return null;
+  }
+  return {
+    backend: parsed.backend,
+    source: parsed.source,
+    ...(includeYes ? { yes: true } : {}),
+    agentsRoot: parsed.agentsRoot,
+    ...(parsed.claudeRoot === undefined ? {} : { claudeRoot: parsed.claudeRoot }),
+  };
+}
+
 function parseNodeBackendRootArgs(args, command, allowedBackends = [agentsBackend]) {
   if (args[0] !== command) {
     return null;
@@ -2643,413 +2799,27 @@ function parseNodeDiagnoseArgs(args) {
 }
 
 function parseNodeUpdateJsonArgs(args) {
-  if (args[0] !== "update") {
+  const parsed = parseNodeUpdateArgs(args);
+  if (parsed === null || !parsed.json || parsed.yes) {
     return null;
   }
-  let backend = agentsBackend;
-  let source = packageSource;
-  let json = false;
-  let agentsRoot;
-  let claudeRoot;
-  let githubRepo;
-  let githubRef;
-  let githubArchiveSha256;
-  for (let index = 1; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === cliFlags.json) {
-      json = true;
-      continue;
-    }
-    if (arg === cliFlags.backend) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      backend = value;
-      index += 1;
-      continue;
-    }
-    const backendValue = readEqualsOption(arg, cliFlags.backend);
-    if (backendValue !== null) {
-      backend = backendValue;
-      continue;
-    }
-    if (arg === cliFlags.source) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      source = value;
-      index += 1;
-      continue;
-    }
-    const sourceValue = readEqualsOption(arg, cliFlags.source);
-    if (sourceValue !== null) {
-      source = sourceValue;
-      continue;
-    }
-    if (arg === cliFlags.githubRepo) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      githubRepo = value;
-      index += 1;
-      continue;
-    }
-    const githubRepoValue = readEqualsOption(arg, cliFlags.githubRepo);
-    if (githubRepoValue !== null) {
-      githubRepo = githubRepoValue;
-      continue;
-    }
-    if (arg === cliFlags.githubRef) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      githubRef = value;
-      index += 1;
-      continue;
-    }
-    const githubRefValue = readEqualsOption(arg, cliFlags.githubRef);
-    if (githubRefValue !== null) {
-      githubRef = githubRefValue;
-      continue;
-    }
-    if (arg === cliFlags.githubArchiveSha256) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      githubArchiveSha256 = value;
-      index += 1;
-      continue;
-    }
-    const githubArchiveSha256Value = readEqualsOption(arg, cliFlags.githubArchiveSha256);
-    if (githubArchiveSha256Value !== null) {
-      githubArchiveSha256 = githubArchiveSha256Value;
-      continue;
-    }
-    if (arg === cliFlags.agentsRoot) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      agentsRoot = value;
-      index += 1;
-      continue;
-    }
-    const agentsRootValue = readEqualsOption(arg, cliFlags.agentsRoot);
-    if (agentsRootValue !== null) {
-      agentsRoot = agentsRootValue;
-      continue;
-    }
-    if (arg === cliFlags.claudeRoot) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      claudeRoot = value;
-      index += 1;
-      continue;
-    }
-    const claudeRootValue = readEqualsOption(arg, cliFlags.claudeRoot);
-    if (claudeRootValue !== null) {
-      claudeRoot = claudeRootValue;
-      continue;
-    }
-    return null;
-  }
-  if (!json || !backendAllowed(backend, [agentsBackend, claudeBackend])) {
-    return null;
-  }
-  if (source === githubSource) {
-    if (backend !== agentsBackend) {
-      return null;
-    }
-    return {
-      backend,
-      source,
-      agentsRoot,
-      ...parsedGithubOptions(githubRepo, githubRef, githubArchiveSha256),
-    };
-  }
-  if (source !== packageSource) {
-    return null;
-  }
-  return { backend, source, agentsRoot, ...(claudeRoot === undefined ? {} : { claudeRoot }) };
+  return parsedNodeUpdateResult(parsed);
 }
 
 function parseNodeUpdateDryRunArgs(args) {
-  if (args[0] !== "update") {
+  const parsed = parseNodeUpdateArgs(args);
+  if (parsed === null || parsed.json || parsed.yes) {
     return null;
   }
-  let backend = agentsBackend;
-  let source = packageSource;
-  let agentsRoot;
-  let claudeRoot;
-  let githubRepo;
-  let githubRef;
-  let githubArchiveSha256;
-  for (let index = 1; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === cliFlags.backend) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      backend = value;
-      index += 1;
-      continue;
-    }
-    const backendValue = readEqualsOption(arg, cliFlags.backend);
-    if (backendValue !== null) {
-      backend = backendValue;
-      continue;
-    }
-    if (arg === cliFlags.source) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      source = value;
-      index += 1;
-      continue;
-    }
-    const sourceValue = readEqualsOption(arg, cliFlags.source);
-    if (sourceValue !== null) {
-      source = sourceValue;
-      continue;
-    }
-    if (arg === cliFlags.githubRepo) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      githubRepo = value;
-      index += 1;
-      continue;
-    }
-    const githubRepoValue = readEqualsOption(arg, cliFlags.githubRepo);
-    if (githubRepoValue !== null) {
-      githubRepo = githubRepoValue;
-      continue;
-    }
-    if (arg === cliFlags.githubRef) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      githubRef = value;
-      index += 1;
-      continue;
-    }
-    const githubRefValue = readEqualsOption(arg, cliFlags.githubRef);
-    if (githubRefValue !== null) {
-      githubRef = githubRefValue;
-      continue;
-    }
-    if (arg === cliFlags.githubArchiveSha256) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      githubArchiveSha256 = value;
-      index += 1;
-      continue;
-    }
-    const githubArchiveSha256Value = readEqualsOption(arg, cliFlags.githubArchiveSha256);
-    if (githubArchiveSha256Value !== null) {
-      githubArchiveSha256 = githubArchiveSha256Value;
-      continue;
-    }
-    if (arg === cliFlags.agentsRoot) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      agentsRoot = value;
-      index += 1;
-      continue;
-    }
-    const agentsRootValue = readEqualsOption(arg, cliFlags.agentsRoot);
-    if (agentsRootValue !== null) {
-      agentsRoot = agentsRootValue;
-      continue;
-    }
-    if (arg === cliFlags.claudeRoot) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      claudeRoot = value;
-      index += 1;
-      continue;
-    }
-    const claudeRootValue = readEqualsOption(arg, cliFlags.claudeRoot);
-    if (claudeRootValue !== null) {
-      claudeRoot = claudeRootValue;
-      continue;
-    }
-    return null;
-  }
-  if (!backendAllowed(backend, [agentsBackend, claudeBackend])) {
-    return null;
-  }
-  if (source === githubSource) {
-    if (backend !== agentsBackend) {
-      return null;
-    }
-    return {
-      backend,
-      source,
-      agentsRoot,
-      ...parsedGithubOptions(githubRepo, githubRef, githubArchiveSha256),
-    };
-  }
-  if (source !== packageSource) {
-    return null;
-  }
-  return { backend, source, agentsRoot, ...(claudeRoot === undefined ? {} : { claudeRoot }) };
+  return parsedNodeUpdateResult(parsed);
 }
 
 function parseNodeUpdateYesArgs(args) {
-  if (args[0] !== "update") {
+  const parsed = parseNodeUpdateArgs(args);
+  if (parsed === null || !parsed.yes || parsed.json) {
     return null;
   }
-  let backend = agentsBackend;
-  let source = packageSource;
-  let yes = false;
-  let agentsRoot;
-  let claudeRoot;
-  let githubRepo;
-  let githubRef;
-  let githubArchiveSha256;
-  for (let index = 1; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === cliFlags.yes) {
-      yes = true;
-      continue;
-    }
-    if (arg === cliFlags.backend) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      backend = value;
-      index += 1;
-      continue;
-    }
-    const backendValue = readEqualsOption(arg, cliFlags.backend);
-    if (backendValue !== null) {
-      backend = backendValue;
-      continue;
-    }
-    if (arg === cliFlags.source) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      source = value;
-      index += 1;
-      continue;
-    }
-    const sourceValue = readEqualsOption(arg, cliFlags.source);
-    if (sourceValue !== null) {
-      source = sourceValue;
-      continue;
-    }
-    if (arg === cliFlags.githubRepo) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      githubRepo = value;
-      index += 1;
-      continue;
-    }
-    const githubRepoValue = readEqualsOption(arg, cliFlags.githubRepo);
-    if (githubRepoValue !== null) {
-      githubRepo = githubRepoValue;
-      continue;
-    }
-    if (arg === cliFlags.githubRef) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      githubRef = value;
-      index += 1;
-      continue;
-    }
-    const githubRefValue = readEqualsOption(arg, cliFlags.githubRef);
-    if (githubRefValue !== null) {
-      githubRef = githubRefValue;
-      continue;
-    }
-    if (arg === cliFlags.githubArchiveSha256) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      githubArchiveSha256 = value;
-      index += 1;
-      continue;
-    }
-    const githubArchiveSha256Value = readEqualsOption(arg, cliFlags.githubArchiveSha256);
-    if (githubArchiveSha256Value !== null) {
-      githubArchiveSha256 = githubArchiveSha256Value;
-      continue;
-    }
-    if (arg === cliFlags.agentsRoot) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      agentsRoot = value;
-      index += 1;
-      continue;
-    }
-    const agentsRootValue = readEqualsOption(arg, cliFlags.agentsRoot);
-    if (agentsRootValue !== null) {
-      agentsRoot = agentsRootValue;
-      continue;
-    }
-    if (arg === cliFlags.claudeRoot) {
-      const value = readOptionValue(args, index);
-      if (value === null) {
-        return null;
-      }
-      claudeRoot = value;
-      index += 1;
-      continue;
-    }
-    const claudeRootValue = readEqualsOption(arg, cliFlags.claudeRoot);
-    if (claudeRootValue !== null) {
-      claudeRoot = claudeRootValue;
-      continue;
-    }
-    return null;
-  }
-  if (!yes || !backendAllowed(backend, [agentsBackend, claudeBackend])) {
-    return null;
-  }
-  if (source === githubSource) {
-    if (backend !== agentsBackend) {
-      return null;
-    }
-    return {
-      backend,
-      source,
-      yes,
-      agentsRoot,
-      ...parsedGithubOptions(githubRepo, githubRef, githubArchiveSha256),
-    };
-  }
-  if (source !== packageSource) {
-    return null;
-  }
-  return { backend, source, yes, agentsRoot, ...(claudeRoot === undefined ? {} : { claudeRoot }) };
+  return parsedNodeUpdateResult(parsed, true);
 }
 
 function parseNodeUnsupportedUpdateJsonYesArgs(args) {
