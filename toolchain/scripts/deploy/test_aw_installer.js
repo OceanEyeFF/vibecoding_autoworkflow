@@ -86,10 +86,12 @@ function createDeflatedZip(entries) {
   const localParts = [];
   const centralParts = [];
   let offset = 0;
-  for (const [name, text] of entries) {
+  for (const [name, text, options = {}] of entries) {
     const nameBuffer = Buffer.from(name);
     const dataBuffer = Buffer.from(text);
     const compressedBuffer = deflateRawSync(dataBuffer);
+    const declaredCompressedSize = options.compressedSize ?? compressedBuffer.length;
+    const declaredUncompressedSize = options.uncompressedSize ?? dataBuffer.length;
     const local = Buffer.concat([
       zipHeaderUInt32(0x04034b50),
       zipHeaderUInt16(20),
@@ -98,8 +100,8 @@ function createDeflatedZip(entries) {
       zipHeaderUInt16(0),
       zipHeaderUInt16(0),
       zipHeaderUInt32(0),
-      zipHeaderUInt32(compressedBuffer.length),
-      zipHeaderUInt32(dataBuffer.length),
+      zipHeaderUInt32(declaredCompressedSize),
+      zipHeaderUInt32(declaredUncompressedSize),
       zipHeaderUInt16(nameBuffer.length),
       zipHeaderUInt16(0),
       nameBuffer,
@@ -115,8 +117,8 @@ function createDeflatedZip(entries) {
       zipHeaderUInt16(0),
       zipHeaderUInt16(0),
       zipHeaderUInt32(0),
-      zipHeaderUInt32(compressedBuffer.length),
-      zipHeaderUInt32(dataBuffer.length),
+      zipHeaderUInt32(declaredCompressedSize),
+      zipHeaderUInt32(declaredUncompressedSize),
       zipHeaderUInt16(nameBuffer.length),
       zipHeaderUInt16(0),
       zipHeaderUInt16(0),
@@ -3087,6 +3089,57 @@ test("github source archive validation rejects unsafe members and sha mismatch",
         createStoredZip([["C:/repo-master/evil.txt", "bad"]]),
       ),
       /GitHub archive contains unsafe path/,
+    );
+  } finally {
+    if (cleanup !== null) {
+      cleanup();
+    }
+    rmSync(sourceRoot, { recursive: true, force: true });
+  }
+});
+
+test("github source archive extraction enforces uncompressed size limits", () => {
+  const sourceRoot = mkdtempSync(join(tmpdir(), "aw-installer-source-"));
+  let cleanup = null;
+  try {
+    seedMinimalAgentsSource(sourceRoot, "demo-skill");
+    const validArchive = createGithubArchiveFromSource(sourceRoot, "repo-master", createDeflatedZip);
+    cleanup = installer.githubSourceRootFromArchiveBuffer(
+      "Owner/repo",
+      "main",
+      validArchive,
+      undefined,
+      { maxUncompressedBytes: 1024 * 1024 },
+    ).cleanup;
+    assert.throws(
+      () => installer.githubSourceRootFromArchiveBuffer(
+        "Owner/repo",
+        "main",
+        validArchive,
+        undefined,
+        { maxUncompressedBytes: 16 },
+      ),
+      /GitHub source archive uncompressed size exceeds 16 byte limit/,
+    );
+    assert.throws(
+      () => installer.githubSourceRootFromArchiveBuffer(
+        "Owner/repo",
+        "main",
+        createDeflatedZip([["repo-master/payload.txt", "small", { uncompressedSize: 17 }]]),
+        undefined,
+        { maxUncompressedBytes: 16 },
+      ),
+      /GitHub source archive uncompressed size exceeds 16 byte limit/,
+    );
+    assert.throws(
+      () => installer.githubSourceRootFromArchiveBuffer(
+        "Owner/repo",
+        "main",
+        createDeflatedZip([["repo-master/payload.txt", "x".repeat(32), { uncompressedSize: 1 }]]),
+        undefined,
+        { maxUncompressedBytes: 1024 },
+      ),
+      /GitHub source archive entry size mismatch/,
     );
   } finally {
     if (cleanup !== null) {

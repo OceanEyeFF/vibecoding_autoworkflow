@@ -48,7 +48,29 @@ const githubRefPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/;
 const githubShaRefPattern = /^[0-9a-fA-F]{40}$/;
 const sha256HexPattern = /^[0-9a-fA-F]{64}$/;
 const githubArchiveMaxBytes = 500 * 1024 * 1024;
+const githubArchiveMaxUncompressedBytes = 500 * 1024 * 1024;
 const githubArchiveMaxAttempts = 3;
+// ZIP32 APPNOTE field signatures and offsets used by the minimal GitHub source archive reader.
+const zipEndOfCentralDirectorySignature = 0x06054b50;
+const zipCentralDirectoryHeaderSignature = 0x02014b50;
+const zipLocalFileHeaderSignature = 0x04034b50;
+const zip64FieldSentinel = 0xffffffff;
+const zipEocdMinBytes = 22;
+const zipEocdMaxCommentBytes = 0xffff;
+const zipEocdSearchWindowBytes = zipEocdMinBytes + zipEocdMaxCommentBytes;
+const zipEocdEntryCountOffset = 10;
+const zipEocdCentralDirectoryOffset = 16;
+const zipCentralDirectoryHeaderBytes = 46;
+const zipCentralDirectoryMethodOffset = 10;
+const zipCentralDirectoryCompressedSizeOffset = 20;
+const zipCentralDirectoryUncompressedSizeOffset = 24;
+const zipCentralDirectoryFileNameLengthOffset = 28;
+const zipCentralDirectoryExtraLengthOffset = 30;
+const zipCentralDirectoryCommentLengthOffset = 32;
+const zipCentralDirectoryLocalHeaderOffset = 42;
+const zipLocalFileHeaderBytes = 30;
+const zipLocalFileNameLengthOffset = 26;
+const zipLocalExtraLengthOffset = 28;
 const expectedPayloadVersions = Object.freeze({
   [agentsBackend]: "agents-skill-payload.v1",
   [claudeBackend]: "claude-skill-payload.v1",
@@ -799,9 +821,9 @@ function validateZipMemberPath(memberName) {
 }
 
 function findZipEndOfCentralDirectory(buffer) {
-  const minOffset = Math.max(0, buffer.length - 65_557);
-  for (let offset = buffer.length - 22; offset >= minOffset; offset -= 1) {
-    if (buffer.readUInt32LE(offset) === 0x06054b50) {
+  const minOffset = Math.max(0, buffer.length - zipEocdSearchWindowBytes);
+  for (let offset = buffer.length - zipEocdMinBytes; offset >= minOffset; offset -= 1) {
+    if (buffer.readUInt32LE(offset) === zipEndOfCentralDirectorySignature) {
       return offset;
     }
   }
@@ -810,56 +832,103 @@ function findZipEndOfCentralDirectory(buffer) {
 
 function zipEntries(buffer) {
   const eocdOffset = findZipEndOfCentralDirectory(buffer);
-  const entryCount = buffer.readUInt16LE(eocdOffset + 10);
-  const centralDirOffset = buffer.readUInt32LE(eocdOffset + 16);
+  const entryCount = buffer.readUInt16LE(eocdOffset + zipEocdEntryCountOffset);
+  const centralDirOffset = buffer.readUInt32LE(eocdOffset + zipEocdCentralDirectoryOffset);
   const entries = [];
   let offset = centralDirOffset;
   for (let index = 0; index < entryCount; index += 1) {
-    if (buffer.readUInt32LE(offset) !== 0x02014b50) {
+    if (offset + zipCentralDirectoryHeaderBytes > buffer.length) {
       throw new Error("GitHub source archive central directory is invalid");
     }
-    const method = buffer.readUInt16LE(offset + 10);
-    const compressedSize = buffer.readUInt32LE(offset + 20);
-    const uncompressedSize = buffer.readUInt32LE(offset + 24);
-    const fileNameLength = buffer.readUInt16LE(offset + 28);
-    const extraLength = buffer.readUInt16LE(offset + 30);
-    const commentLength = buffer.readUInt16LE(offset + 32);
-    const localHeaderOffset = buffer.readUInt32LE(offset + 42);
-    if (compressedSize === 0xffffffff || uncompressedSize === 0xffffffff || localHeaderOffset === 0xffffffff) {
+    if (buffer.readUInt32LE(offset) !== zipCentralDirectoryHeaderSignature) {
+      throw new Error("GitHub source archive central directory is invalid");
+    }
+    const method = buffer.readUInt16LE(offset + zipCentralDirectoryMethodOffset);
+    const compressedSize = buffer.readUInt32LE(offset + zipCentralDirectoryCompressedSizeOffset);
+    const uncompressedSize = buffer.readUInt32LE(offset + zipCentralDirectoryUncompressedSizeOffset);
+    const fileNameLength = buffer.readUInt16LE(offset + zipCentralDirectoryFileNameLengthOffset);
+    const extraLength = buffer.readUInt16LE(offset + zipCentralDirectoryExtraLengthOffset);
+    const commentLength = buffer.readUInt16LE(offset + zipCentralDirectoryCommentLengthOffset);
+    const localHeaderOffset = buffer.readUInt32LE(offset + zipCentralDirectoryLocalHeaderOffset);
+    if (
+      compressedSize === zip64FieldSentinel ||
+      uncompressedSize === zip64FieldSentinel ||
+      localHeaderOffset === zip64FieldSentinel
+    ) {
       throw new Error("GitHub source archive ZIP64 entries are not supported by the Node path");
     }
-    const name = buffer.subarray(offset + 46, offset + 46 + fileNameLength).toString("utf8");
-    entries.push({ name, method, compressedSize, localHeaderOffset });
-    offset += 46 + fileNameLength + extraLength + commentLength;
+    const nameStart = offset + zipCentralDirectoryHeaderBytes;
+    const nameEnd = nameStart + fileNameLength;
+    const nextOffset = nameEnd + extraLength + commentLength;
+    if (nextOffset > buffer.length) {
+      throw new Error("GitHub source archive central directory is invalid");
+    }
+    const name = buffer.subarray(nameStart, nameEnd).toString("utf8");
+    entries.push({ name, method, compressedSize, uncompressedSize, localHeaderOffset });
+    offset = nextOffset;
   }
   return entries;
 }
 
-function zipEntryData(buffer, entry) {
-  const localOffset = entry.localHeaderOffset;
-  if (buffer.readUInt32LE(localOffset) !== 0x04034b50) {
-    throw new Error(`GitHub source archive local header is invalid: ${entry.name}`);
-  }
-  const fileNameLength = buffer.readUInt16LE(localOffset + 26);
-  const extraLength = buffer.readUInt16LE(localOffset + 28);
-  const dataStart = localOffset + 30 + fileNameLength + extraLength;
-  const compressed = buffer.subarray(dataStart, dataStart + entry.compressedSize);
-  if (entry.method === 0) {
-    return compressed;
-  }
-  if (entry.method === 8) {
-    return inflateRawSync(compressed);
-  }
-  throw new Error(`GitHub source archive uses unsupported ZIP compression method ${entry.method}: ${entry.name}`);
+function githubArchiveUncompressedLimitError(maxBytes, entryName = undefined) {
+  const suffix = entryName === undefined ? "" : `: ${entryName}`;
+  return new Error(`GitHub source archive uncompressed size exceeds ${maxBytes} byte limit${suffix}`);
 }
 
-function safeExtractZipBuffer(buffer, destination) {
+function zipEntryData(buffer, entry, options = {}) {
+  const maxUncompressedBytes = options.maxUncompressedBytes;
+  const localOffset = entry.localHeaderOffset;
+  if (localOffset + zipLocalFileHeaderBytes > buffer.length) {
+    throw new Error(`GitHub source archive local header is invalid: ${entry.name}`);
+  }
+  if (buffer.readUInt32LE(localOffset) !== zipLocalFileHeaderSignature) {
+    throw new Error(`GitHub source archive local header is invalid: ${entry.name}`);
+  }
+  const fileNameLength = buffer.readUInt16LE(localOffset + zipLocalFileNameLengthOffset);
+  const extraLength = buffer.readUInt16LE(localOffset + zipLocalExtraLengthOffset);
+  const dataStart = localOffset + zipLocalFileHeaderBytes + fileNameLength + extraLength;
+  const dataEnd = dataStart + entry.compressedSize;
+  if (dataEnd > buffer.length) {
+    throw new Error(`GitHub source archive entry data is invalid: ${entry.name}`);
+  }
+  const compressed = buffer.subarray(dataStart, dataStart + entry.compressedSize);
+  let data;
+  if (entry.method === 0) {
+    data = compressed;
+  } else if (entry.method === 8) {
+    try {
+      data = inflateRawSync(
+        compressed,
+        maxUncompressedBytes === undefined ? undefined : { maxOutputLength: maxUncompressedBytes + 1 },
+      );
+    } catch (error) {
+      if (maxUncompressedBytes !== undefined) {
+        throw githubArchiveUncompressedLimitError(maxUncompressedBytes, entry.name);
+      }
+      throw error;
+    }
+  } else {
+    throw new Error(`GitHub source archive uses unsupported ZIP compression method ${entry.method}: ${entry.name}`);
+  }
+  if (maxUncompressedBytes !== undefined && data.length > maxUncompressedBytes) {
+    throw githubArchiveUncompressedLimitError(maxUncompressedBytes, entry.name);
+  }
+  if (data.length !== entry.uncompressedSize) {
+    throw new Error(`GitHub source archive entry size mismatch: ${entry.name}`);
+  }
+  return data;
+}
+
+function safeExtractZipBuffer(buffer, destination, options = {}) {
+  const maxUncompressedBytes =
+    options.maxUncompressedBytes === undefined ? githubArchiveMaxUncompressedBytes : options.maxUncompressedBytes;
   mkdirSync(destination, { recursive: true });
   if (readdirSync(destination).length > 0) {
     throw new Error(`GitHub archive extraction destination must be empty: ${destination}`);
   }
   const stagingRoot = mkdtempSync(join(dirname(destination), "aw-installer-extract-"));
   try {
+    let extractedBytes = 0;
     for (const entry of zipEntries(buffer)) {
       const relativeName = validateZipMemberPath(entry.name);
       const targetPath = resolve(stagingRoot, relativeName);
@@ -870,8 +939,17 @@ function safeExtractZipBuffer(buffer, destination) {
         mkdirSync(targetPath, { recursive: true });
         continue;
       }
+      const remainingBytes = maxUncompressedBytes - extractedBytes;
+      if (entry.uncompressedSize > remainingBytes) {
+        throw githubArchiveUncompressedLimitError(maxUncompressedBytes, entry.name);
+      }
       mkdirSync(dirname(targetPath), { recursive: true });
-      writeFileSync(targetPath, zipEntryData(buffer, entry));
+      const data = zipEntryData(buffer, entry, { maxUncompressedBytes: remainingBytes });
+      extractedBytes += data.length;
+      if (extractedBytes > maxUncompressedBytes) {
+        throw githubArchiveUncompressedLimitError(maxUncompressedBytes, entry.name);
+      }
+      writeFileSync(targetPath, data);
     }
     rmSync(destination, { recursive: true, force: true });
     renameSync(stagingRoot, destination);
@@ -894,7 +972,7 @@ function extractedArchiveRoot(destination) {
   return candidates[0];
 }
 
-function githubSourceRootFromArchiveBuffer(repo, ref, archiveBuffer, archiveSha256 = undefined) {
+function githubSourceRootFromArchiveBuffer(repo, ref, archiveBuffer, archiveSha256 = undefined, options = {}) {
   const safeRepo = validateGithubRepo(repo);
   const safeRef = validateGithubRef(ref);
   if (archiveSha256 !== undefined) {
@@ -908,7 +986,9 @@ function githubSourceRootFromArchiveBuffer(repo, ref, archiveBuffer, archiveSha2
   try {
     const extractRoot = join(tempRoot, "extract");
     mkdirSync(extractRoot);
-    safeExtractZipBuffer(archiveBuffer, extractRoot);
+    safeExtractZipBuffer(archiveBuffer, extractRoot, {
+      maxUncompressedBytes: options.maxUncompressedBytes,
+    });
     const sourceRoot = validateSourceRepoRoot(extractedArchiveRoot(extractRoot));
     return {
       sourceRoot,
