@@ -144,37 +144,30 @@ function createDeflatedZip(entries) {
   return Buffer.concat([...localParts, central, eocd]);
 }
 
-function listFiles(root) {
+function collectFixtureTree(root) {
+  const directories = [];
   const files = [];
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     const path = join(root, entry.name);
     if (entry.isDirectory()) {
-      files.push(...listFiles(path));
+      const childTree = collectFixtureTree(path);
+      directories.push(path, ...childTree.directories);
+      files.push(...childTree.files);
     } else if (entry.isFile()) {
       files.push(path);
     }
   }
-  return files;
-}
-
-function listDirectories(root) {
-  const directories = [];
-  for (const entry of readdirSync(root, { withFileTypes: true })) {
-    const path = join(root, entry.name);
-    if (entry.isDirectory()) {
-      directories.push(path, ...listDirectories(path));
-    }
-  }
-  return directories;
+  return { directories, files };
 }
 
 function createGithubArchiveFromSource(root, archiveRoot = "repo-master", zipFactory = createStoredZip) {
+  const { directories, files } = collectFixtureTree(root);
   return zipFactory([
-    ...listDirectories(root).map((path) => [
+    ...directories.map((path) => [
       `${archiveRoot}/${relative(root, path).split(sep).join("/")}/`,
       "",
     ]),
-    ...listFiles(root).map((path) => [
+    ...files.map((path) => [
       `${archiveRoot}/${relative(root, path).split(sep).join("/")}`,
       readFileSync(path, "utf8"),
     ]),
