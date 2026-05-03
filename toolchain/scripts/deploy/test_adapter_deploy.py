@@ -2168,7 +2168,7 @@ class AdapterDeployTest(unittest.TestCase):
                 self.assertIn("unexpected-python", completed.stderr)
                 self.assertIn("harness_deploy.py", completed.stderr)
 
-    def test_aw_installer_claude_mutating_lifecycle_is_node_owned_without_python(self) -> None:
+    def test_aw_installer_claude_install_is_node_owned_without_python(self) -> None:
         fake_bin = self._fake_failing_python_bin()
         env = {
             "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
@@ -2187,6 +2187,12 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertNotIn("unexpected-python", install.stderr)
         self.assertTrue((self.claude_override_root / "harness-skill" / "aw.marker").is_file())
 
+    def test_aw_installer_claude_update_apply_is_node_owned_without_python(self) -> None:
+        fake_bin = self._fake_failing_python_bin()
+        env = {
+            "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+        }
+
         update = self._run_aw_installer_node(
             "update",
             "--backend",
@@ -2200,6 +2206,24 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("[claude] applying update", update.stdout)
         self.assertIn("[claude] update complete", update.stdout)
         self.assertNotIn("unexpected-python", update.stderr)
+        self.assertTrue((self.claude_override_root / "harness-skill" / "aw.marker").is_file())
+
+    def test_aw_installer_claude_prune_is_node_owned_without_python(self) -> None:
+        fake_bin = self._fake_failing_python_bin()
+        env = {
+            "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+        }
+
+        install = self._run_aw_installer_node(
+            "install",
+            "--backend",
+            "claude",
+            "--claude-root",
+            self.claude_override_root,
+            env=env,
+        )
+        self.assertEqual(install.returncode, 0, install.stderr)
+        self.assertNotIn("unexpected-python", install.stderr)
 
         prune = self._run_aw_installer_node(
             "prune",

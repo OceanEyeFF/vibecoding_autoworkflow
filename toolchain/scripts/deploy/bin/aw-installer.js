@@ -47,6 +47,8 @@ const githubRepoPattern = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const githubRefPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/;
 const githubShaRefPattern = /^[0-9a-fA-F]{40}$/;
 const sha256HexPattern = /^[0-9a-fA-F]{64}$/;
+const githubArchiveMaxBytes = 500 * 1024 * 1024;
+const githubArchiveMaxAttempts = 3;
 const expectedPayloadVersions = Object.freeze({
   [agentsBackend]: "agents-skill-payload.v1",
   [claudeBackend]: "claude-skill-payload.v1",
@@ -920,26 +922,129 @@ function githubSourceRootFromArchiveBuffer(repo, ref, archiveBuffer, archiveSha2
   }
 }
 
-function downloadGithubArchive(repo, ref) {
+function githubArchiveDownloadError(repo, ref, message, retryable = false) {
+  const error = new Error(`Failed to download GitHub source archive ${repo}@${ref}: ${message}`);
+  error.retryable = retryable;
+  return error;
+}
+
+function githubArchiveStatusIsRetryable(statusCode) {
+  return statusCode === 408 || statusCode === 425 || statusCode === 429 || statusCode >= 500;
+}
+
+function sleep(ms) {
+  if (ms <= 0) {
+    return Promise.resolve();
+  }
+  return new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
+}
+
+function downloadGithubArchiveAttempt(repo, ref, options) {
   const url = githubArchiveUrl(repo, ref);
   return new Promise((resolvePromise, rejectPromise) => {
-    const request = https.get(url, { timeout: 60_000 }, (response) => {
+    let settled = false;
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      rejectPromise(error);
+    };
+    const request = https.get(url, { timeout: options.timeoutMs }, (response) => {
+      response.on("error", (error) => {
+        if (error && error.retryable !== undefined && error.message.startsWith("Failed to download GitHub source archive ")) {
+          fail(error);
+          return;
+        }
+        fail(githubArchiveDownloadError(repo, ref, error.message, true));
+      });
       if (response.statusCode < 200 || response.statusCode >= 300) {
         response.resume();
-        rejectPromise(new Error(`Failed to download GitHub source archive ${repo}@${ref}: HTTP ${response.statusCode}`));
+        fail(githubArchiveDownloadError(
+          repo,
+          ref,
+          `HTTP ${response.statusCode}`,
+          githubArchiveStatusIsRetryable(response.statusCode),
+        ));
+        return;
+      }
+      const contentLength = Number(response.headers && response.headers["content-length"]);
+      if (Number.isFinite(contentLength) && contentLength > options.maxBytes) {
+        const error = githubArchiveDownloadError(repo, ref, `archive exceeds ${options.maxBytes} byte limit`);
+        fail(error);
+        if (typeof response.destroy === "function") {
+          response.destroy(error);
+        } else {
+          request.destroy(error);
+        }
         return;
       }
       const chunks = [];
-      response.on("data", (chunk) => chunks.push(chunk));
-      response.on("end", () => resolvePromise(Buffer.concat(chunks)));
+      let downloadedBytes = 0;
+      response.on("data", (chunk) => {
+        if (settled) {
+          return;
+        }
+        downloadedBytes += chunk.length;
+        if (downloadedBytes > options.maxBytes) {
+          const error = githubArchiveDownloadError(repo, ref, `archive exceeds ${options.maxBytes} byte limit`);
+          fail(error);
+          if (typeof response.destroy === "function") {
+            response.destroy(error);
+          } else {
+            request.destroy(error);
+          }
+          return;
+        }
+        chunks.push(chunk);
+      });
+      response.on("end", () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        resolvePromise(Buffer.concat(chunks, downloadedBytes));
+      });
     });
     request.on("timeout", () => {
-      request.destroy(new Error(`Failed to download GitHub source archive ${repo}@${ref}: timeout`));
+      request.destroy(githubArchiveDownloadError(repo, ref, "timeout", true));
     });
     request.on("error", (error) => {
-      rejectPromise(new Error(`Failed to download GitHub source archive ${repo}@${ref}: ${error.message}`));
+      if (error && error.retryable !== undefined && error.message.startsWith("Failed to download GitHub source archive ")) {
+        fail(error);
+        return;
+      }
+      fail(githubArchiveDownloadError(repo, ref, error.message, Boolean(error.retryable)));
     });
   });
+}
+
+async function downloadGithubArchive(repo, ref, options = {}) {
+  const safeRepo = validateGithubRepo(repo);
+  const safeRef = validateGithubRef(ref);
+  const maxBytes = options.maxBytes === undefined ? githubArchiveMaxBytes : options.maxBytes;
+  const maxAttempts = options.maxAttempts === undefined ? githubArchiveMaxAttempts : options.maxAttempts;
+  const retryDelayMs = options.retryDelayMs === undefined ? 250 : options.retryDelayMs;
+  const timeoutMs = options.timeoutMs === undefined ? 60_000 : options.timeoutMs;
+  if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) {
+    throw new Error("GitHub archive maxBytes must be a positive safe integer");
+  }
+  if (!Number.isSafeInteger(maxAttempts) || maxAttempts <= 0) {
+    throw new Error("GitHub archive maxAttempts must be a positive safe integer");
+  }
+  let lastError = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await downloadGithubArchiveAttempt(safeRepo, safeRef, { maxBytes, timeoutMs });
+    } catch (error) {
+      lastError = error;
+      if (!error.retryable || attempt === maxAttempts) {
+        throw error;
+      }
+      await sleep(retryDelayMs * 2 ** (attempt - 1));
+    }
+  }
+  throw lastError;
 }
 
 function canonicalSourceMetadata(payload, binding, context) {
@@ -3749,6 +3854,7 @@ module.exports = {
   dedupeIssues,
   describeExistingTargetPath,
   diagnosticSummary,
+  downloadGithubArchive,
   exactSensitiveTargetRepoRoots,
   expectedTargetDirs,
   applyUpdateContext,
