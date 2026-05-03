@@ -37,10 +37,7 @@ DEPLOY_VERIFY_ENTRYPOINTS = (
 )
 EXPECTED_NPM_PACKAGE_FILES = {
     "README.md",
-    "adapter_deploy.py",
     "bin/aw-installer.js",
-    "bin/aw-harness-deploy.js",
-    "harness_deploy.py",
     "package.json",
     "path_safety_policy.json",
 }
@@ -60,8 +57,6 @@ ROOT_NPM_REQUIRED_PACKAGE_FILES = {
     "package.json",
     "README.md",
     "LICENSE",
-    "toolchain/scripts/deploy/adapter_deploy.py",
-    "toolchain/scripts/deploy/harness_deploy.py",
     "toolchain/scripts/deploy/path_safety_policy.json",
     "toolchain/scripts/deploy/bin/aw-installer.js",
     "toolchain/scripts/deploy/bin/check-root-publish.js",
@@ -70,6 +65,12 @@ ROOT_NPM_REQUIRED_PACKAGE_FILES = {
 } | {
     f"product/harness/adapters/claude/skills/{skill_id}/payload.json"
     for skill_id in CLAUDE_REQUIRED_PAYLOAD_SKILLS
+}
+ROOT_NPM_FORBIDDEN_PACKAGE_FILES = {
+    "toolchain/scripts/deploy/adapter_deploy.py",
+    "toolchain/scripts/deploy/harness_deploy.py",
+    "toolchain/scripts/deploy/bin/aw-harness-deploy.js",
+    "product/harness/skills/set-harness-goal-skill/scripts/deploy_aw.py",
 }
 @dataclass
 class GateStep:
@@ -503,15 +504,7 @@ def run_npm_package_tarball_smoke(repo_root: Path, expected_version_output: str)
             def validate_help(exec_result: dict, help_failures: list[str]) -> None:
                 if not exec_result["passed"]:
                     return
-                for required_text in (
-                    "aw-installer",
-                    "harness_deploy.py",
-                    "tui",
-                    "diagnose",
-                    "verify",
-                    "install",
-                    "update",
-                ):
+                for required_text in ("aw-installer", "Node.js distribution", "tui", "diagnose", "verify", "install", "update"):
                     if required_text not in exec_result["stdout"]:
                         help_failures.append(f"tarball help omitted {required_text!r}")
 
@@ -632,6 +625,9 @@ def run_root_npm_package_packlist(repo_root: Path) -> dict:
     missing_files = sorted(ROOT_NPM_REQUIRED_PACKAGE_FILES - packed_files)
     if missing_files:
         failures.append(f"root npm package missing required files: {missing_files}")
+    forbidden_files = sorted(ROOT_NPM_FORBIDDEN_PACKAGE_FILES & packed_files)
+    if forbidden_files:
+        failures.append(f"root npm package included forbidden files: {forbidden_files}")
     for disallowed_prefix in (".aw/", ".agents/", ".autoworkflow/", ".claude/"):
         if any(path.startswith(disallowed_prefix) for path in packed_files):
             failures.append(f"root npm package included {disallowed_prefix} content")
@@ -675,6 +671,9 @@ def run_root_npm_publish_dry_run(repo_root: Path) -> dict:
     missing_files = sorted(ROOT_NPM_REQUIRED_PACKAGE_FILES - packed_files)
     if missing_files:
         failures.append(f"root npm publish dry-run missing required files: {missing_files}")
+    forbidden_files = sorted(ROOT_NPM_FORBIDDEN_PACKAGE_FILES & packed_files)
+    if forbidden_files:
+        failures.append(f"root npm publish dry-run included forbidden files: {forbidden_files}")
     if not package_filename:
         failures.append("missing root npm publish dry-run package filename")
     else:
@@ -717,7 +716,7 @@ def run_root_npm_package_tarball_smoke(repo_root: Path, expected_version_output:
             def validate_root_help(exec_result: dict, help_failures: list[str]) -> None:
                 if not exec_result["passed"]:
                     return
-                for required_text in ("aw-installer", "harness_deploy.py", "tui", "diagnose", "update"):
+                for required_text in ("aw-installer", "Node.js distribution", "tui", "diagnose", "update"):
                     if required_text not in exec_result["stdout"]:
                         help_failures.append(f"root tarball help omitted {required_text!r}")
 

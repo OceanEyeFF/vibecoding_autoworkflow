@@ -66,8 +66,7 @@ def test_successful_npm_command_result_fails_unknown_npm_commands() -> None:
 
 NPM_HELP_STDOUT = (
     "usage: aw-installer [tui|<deploy-mode>] [options]\n"
-    "harness_deploy.py\n"
-    "adapter_deploy.py\n"
+    "Node.js distribution\n"
     "tui\n"
     "diagnose --backend agents|claude\n"
     "verify --backend agents|claude\n"
@@ -336,7 +335,6 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "toolchain/scripts/deploy/adapter_deploy.py",
             "toolchain/scripts/deploy/aw_scaffold.py",
             "toolchain/scripts/deploy/bin/aw-installer.js",
-            "toolchain/scripts/deploy/bin/aw-harness-deploy.js",
             "toolchain/scripts/deploy/harness_deploy.py",
             "toolchain/scripts/deploy/package.json",
             "toolchain/scripts/deploy/path_safety_policy.json",
@@ -882,6 +880,29 @@ def test_run_test_gate_fails_on_unexpected_npm_packlist(monkeypatch, tmp_path) -
     )
     assert pack_result["passed"] is False
     assert "unexpected npm package files" in pack_result["stderr"]
+
+
+def test_root_npm_package_packlist_rejects_forbidden_python_payload(monkeypatch, tmp_path) -> None:
+    write_root_package_json(tmp_path)
+    packed_paths = set(closeout_acceptance_gate.ROOT_NPM_REQUIRED_PACKAGE_FILES)
+    packed_paths.add("product/harness/skills/set-harness-goal-skill/scripts/deploy_aw.py")
+
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
+        assert command == ["npm", "pack", "--dry-run", "--json"]
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": npm_pack_stdout(packed_paths),
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_root_npm_package_packlist(tmp_path)
+
+    assert result["passed"] is False
+    assert "root npm package included forbidden files" in result["stderr"]
 
 
 def test_run_test_gate_fails_on_mismatched_tarball_version(monkeypatch, tmp_path) -> None:

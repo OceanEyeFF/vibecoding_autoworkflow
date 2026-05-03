@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 "use strict";
 
-const { spawn } = require("node:child_process");
 const {
   chmodSync,
   closeSync,
@@ -26,12 +25,8 @@ const { basename, dirname, isAbsolute, join, relative, resolve, sep, win32 } = r
 const { createHash } = require("node:crypto");
 const readline = require("node:readline");
 
-const wrapperPath = join(__dirname, "..", "harness_deploy.py");
 const pathSafetyPolicyPath = join(__dirname, "..", "path_safety_policy.json");
-const defaultWrapperTimeoutMs = 300_000;
-const wrapperTimeoutMs = readWrapperTimeoutMs();
 const maxJsonPayloadBytes = 1_048_576;
-const env = buildWrapperEnv(process.env);
 const packageVersionFallbackMaxDepth = 20;
 const payloadDescriptor = "payload.json";
 const managedSkillMarker = "aw.marker";
@@ -120,72 +115,6 @@ const updateRecoverableIssueCodes = new Set([
 ]);
 let cachedPathSafetyPolicy = null;
 
-function buildWrapperEnv(sourceEnv) {
-  const passThroughNames = new Set([
-    "AW_HARNESS_REPO_ROOT",
-    "AW_HARNESS_TARGET_REPO_ROOT",
-    "AW_INSTALLER_GITHUB_REPO",
-    "ComSpec",
-    "GITHUB_REPOSITORY",
-    "HOME",
-    "LANG",
-    "LC_ALL",
-    "PATH",
-    "PATHEXT",
-    "PYTHONDONTWRITEBYTECODE",
-    "REQUESTS_CA_BUNDLE",
-    "SSL_CERT_DIR",
-    "SSL_CERT_FILE",
-    "SystemRoot",
-    "TEMP",
-    "TMP",
-    "TMPDIR",
-    "USERPROFILE",
-    "WINDIR",
-  ]);
-  const nextEnv = {};
-  for (const [key, value] of Object.entries(sourceEnv)) {
-    if (
-      passThroughNames.has(key) ||
-      key.toLowerCase() === "http_proxy" ||
-      key.toLowerCase() === "https_proxy" ||
-      key.toLowerCase() === "no_proxy"
-    ) {
-      nextEnv[key] = value;
-    }
-  }
-  nextEnv.PYTHONDONTWRITEBYTECODE = sourceEnv.PYTHONDONTWRITEBYTECODE || "1";
-  return nextEnv;
-}
-
-function readWrapperTimeoutMs() {
-  const parsedTimeout = Number.parseInt(
-    process.env.AW_INSTALLER_WRAPPER_TIMEOUT_MS || `${defaultWrapperTimeoutMs}`,
-    10,
-  );
-  if (Number.isFinite(parsedTimeout) && parsedTimeout > 0) {
-    return parsedTimeout;
-  }
-  return defaultWrapperTimeoutMs;
-}
-
-function pythonCandidates() {
-  if (process.platform === "win32") {
-    return [
-      { command: "py", args: ["-3"] },
-      { command: "python", args: [] },
-      { command: "python3", args: [] },
-    ];
-  }
-  return [
-    { command: "python3", args: [] },
-  ];
-}
-
-function formatPythonCandidate(candidate) {
-  return [candidate.command, ...candidate.args].join(" ");
-}
-
 function tryReadPackageVersionAt(candidate) {
   try {
     const packageMetadata = JSON.parse(readFileSync(candidate, "utf8"));
@@ -201,9 +130,8 @@ function tryReadPackageVersionAt(candidate) {
 function printHelp() {
   console.log(`usage: aw-installer [tui|<deploy-mode>] [options]
 
-Run AW Harness installer commands through the stable distribution wrapper.
-Deploy modes delegate to harness_deploy.py and preserve adapter_deploy.py
-semantics.
+Run AW Harness installer commands through the stable Node.js distribution
+wrapper. Supported package/runtime deploy modes are handled directly by Node.
 
 commands:
   tui                         open the interactive installer shell
@@ -3447,108 +3375,10 @@ async function runNodeOwnedOrWrapper(args) {
     return unsupportedAgentsStatus;
   }
 
-  return await runWrapper(args);
-}
-
-function runWrapperWithCandidate(args, candidate) {
-  return new Promise((resolve) => {
-    const abortController = new AbortController();
-    // The child can emit both error and close; settle once and keep timeout reporting distinct.
-    let timedOut = false;
-    let settled = false;
-    const finish = (status) => {
-      if (settled) {
-        return false;
-      }
-      settled = true;
-      clearTimeout(timer);
-      resolve(status);
-      return true;
-    };
-    const timeoutSeconds = Math.ceil(wrapperTimeoutMs / 1000);
-    const timer = setTimeout(() => {
-      timedOut = true;
-      abortController.abort();
-    }, wrapperTimeoutMs);
-    if (typeof timer.unref === "function") {
-      timer.unref();
-    }
-
-    let child;
-    try {
-      child = spawn(candidate.command, [...candidate.args, wrapperPath, ...args], {
-        env,
-        signal: abortController.signal,
-        stdio: "inherit",
-      });
-    } catch (error) {
-      clearTimeout(timer);
-      if (error.code === "ENOENT") {
-        resolve({ status: 1, missing: true, error });
-        return;
-      }
-      console.error(
-        `aw-installer failed to start ${formatPythonCandidate(candidate)}: ${error.message}`,
-      );
-      resolve({ status: 1, missing: false, error });
-      return;
-    }
-
-    child.on("error", (error) => {
-      if (timedOut || error.name === "AbortError") {
-        if (finish({ status: 1, missing: false })) {
-          console.error(`aw-installer timed out after ${timeoutSeconds}s`);
-        }
-        return;
-      }
-      if (error.code === "ENOENT") {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        clearTimeout(timer);
-        resolve({ status: 1, missing: true, error });
-        return;
-      }
-      if (!finish({ status: 1, missing: false, error })) {
-        return;
-      }
-      console.error(
-        `aw-installer failed to start ${formatPythonCandidate(candidate)}: ${error.message}`,
-      );
-    });
-    child.on("close", (code, signal) => {
-      if (timedOut) {
-        if (finish({ status: 1, missing: false })) {
-          console.error(`aw-installer timed out after ${timeoutSeconds}s`);
-        }
-        return;
-      }
-      if (signal) {
-        if (!finish({ status: 1, missing: false })) {
-          return;
-        }
-        console.error(`aw-installer terminated by signal ${signal}`);
-        return;
-      }
-      finish({ status: code === null ? 1 : code, missing: false });
-    });
-  });
-}
-
-async function runWrapper(args) {
-  const missingCandidates = [];
-  for (const candidate of pythonCandidates()) {
-    const result = await runWrapperWithCandidate(args, candidate);
-    if (result.missing) {
-      missingCandidates.push(formatPythonCandidate(candidate));
-      continue;
-    }
-    return result.status;
-  }
   console.error(
-    `aw-installer failed to start Python; tried ${missingCandidates.join(", ")}`,
+    `unsupported aw-installer command or options for Node-only distribution: ${args.join(" ")}`,
   );
+  console.error("Run aw-installer --help for supported package/runtime commands.");
   return 1;
 }
 
@@ -3654,11 +3484,9 @@ Backend: agents
 async function main() {
   const args = process.argv.slice(2);
 
-  // Current package/local agents and Claude slices cover diagnose, update,
-  // check_paths_exist, verify, install, and prune --all in Node; explicit
-  // agents GitHub-source update paths also have Node coverage. Selected
-  // unsupported agents variants are rejected in Node, while remaining reference
-  // paths still fall through to Python.
+  // Package/runtime agents and Claude deploy commands are Node-owned. Python
+  // deploy sources may remain in the repository as reference/test assets, but
+  // this distribution entrypoint must not fall back to Python.
   if (args.length === 0) {
     if (process.stdin.isTTY && process.stdout.isTTY) {
       return runTui();
@@ -3699,7 +3527,6 @@ module.exports = {
   buildNodeAgentsContext,
   buildNodeBackendContext,
   buildNodeGithubSourceContext,
-  buildWrapperEnv,
   buildInstallPlan,
   buildRuntimeMarker,
   canonicalSourceMetadata,
@@ -3744,7 +3571,6 @@ module.exports = {
   printDiagnosticSummary,
   printUpdatePlan,
   pruneBackendManagedInstalls,
-  pythonCandidates,
   recursiveSensitiveTargetRepoRoots,
   resolveExistingOrLexical,
   runNodeOwnedOrWrapper,

@@ -890,7 +890,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertIn("update", help_text)
         self.assertEqual(stderr.getvalue(), "")
 
-    def test_local_npm_package_metadata_exposes_installer_bin_and_legacy_alias(self) -> None:
+    def test_local_npm_package_metadata_exposes_node_only_installer_bin(self) -> None:
         package_path = self.source_repo_root / "toolchain" / "scripts" / "deploy" / "package.json"
 
         package = json.loads(package_path.read_text(encoding="utf-8"))
@@ -901,13 +901,12 @@ class AdapterDeployTest(unittest.TestCase):
             package["bin"],
             {
                 "aw-installer": "bin/aw-installer.js",
-                "aw-harness-deploy": "bin/aw-harness-deploy.js",
             },
         )
-        self.assertIn("harness_deploy.py", package["files"])
-        self.assertIn("adapter_deploy.py", package["files"])
+        self.assertNotIn("harness_deploy.py", package["files"])
+        self.assertNotIn("adapter_deploy.py", package["files"])
         self.assertIn("bin/aw-installer.js", package["files"])
-        self.assertIn("bin/aw-harness-deploy.js", package["files"])
+        self.assertNotIn("bin/aw-harness-deploy.js", package["files"])
 
     def test_root_npm_package_metadata_exposes_self_contained_envelope(self) -> None:
         package_path = self.source_repo_root / "package.json"
@@ -919,14 +918,13 @@ class AdapterDeployTest(unittest.TestCase):
             package["bin"],
             {
                 "aw-installer": "toolchain/scripts/deploy/bin/aw-installer.js",
-                "aw-harness-deploy": "toolchain/scripts/deploy/bin/aw-harness-deploy.js",
             },
         )
         self.assertIn("product/harness/skills", package["files"])
         self.assertIn("product/harness/adapters/agents/skills", package["files"])
         self.assertIn("product/harness/adapters/claude/skills", package["files"])
-        self.assertIn("toolchain/scripts/deploy/harness_deploy.py", package["files"])
-        self.assertIn("toolchain/scripts/deploy/adapter_deploy.py", package["files"])
+        self.assertNotIn("toolchain/scripts/deploy/harness_deploy.py", package["files"])
+        self.assertNotIn("toolchain/scripts/deploy/adapter_deploy.py", package["files"])
         self.assertIn("toolchain/scripts/deploy/path_safety_policy.json", package["files"])
         self.assertEqual(
             package["publishConfig"],
@@ -969,16 +967,19 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(scaffold_package["version"], package["version"])
         self.assertIn("path_safety_policy.json", scaffold_package["files"])
 
-    def test_aw_installer_uses_async_spawn_wrapper(self) -> None:
+    def test_aw_installer_has_no_python_process_wrapper(self) -> None:
         installer_path = (
             self.source_repo_root / "toolchain" / "scripts" / "deploy" / "bin" / "aw-installer.js"
         )
 
         installer_source = installer_path.read_text(encoding="utf-8")
 
-        self.assertIn('const { spawn } = require("node:child_process");', installer_source)
+        self.assertNotIn('require("node:child_process")', installer_source)
         self.assertNotIn("spawnSync", installer_source)
-        self.assertIn("AbortController", installer_source)
+        self.assertNotIn("AbortController", installer_source)
+        self.assertNotIn("harness_deploy.py", installer_source)
+        self.assertNotIn("pythonCandidates", installer_source)
+        self.assertIn("Node-only distribution", installer_source)
         self.assertIn(
             'await runNodeOwnedOrWrapper(["update", "--backend", "agents"])',
             installer_source,
@@ -1171,7 +1172,7 @@ class AdapterDeployTest(unittest.TestCase):
                 {
                     "name": "aw-installer",
                     "version": "1.2.3",
-                    "files": ["toolchain/scripts/deploy/adapter_deploy.py"],
+                    "files": ["toolchain/scripts/deploy/path_safety_policy.json"],
                 }
             ),
             encoding="utf-8",
@@ -1181,7 +1182,7 @@ class AdapterDeployTest(unittest.TestCase):
                 {
                     "name": "aw-installer",
                     "version": "1.2.3",
-                    "files": ["adapter_deploy.py", "harness_deploy.py"],
+                    "files": ["path_safety_policy.json", "bin/aw-installer.js"],
                 }
             ),
             encoding="utf-8",
@@ -1683,7 +1684,8 @@ class AdapterDeployTest(unittest.TestCase):
         )
 
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertIn("harness_deploy.py", completed.stdout)
+        self.assertIn("Node.js distribution", completed.stdout)
+        self.assertNotIn("harness_deploy.py", completed.stdout)
         self.assertIn("diagnose", completed.stdout)
         self.assertIn("verify", completed.stdout)
         self.assertIn("install", completed.stdout)
@@ -1863,7 +1865,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.stdout, "")
         self.assertIn("requires an interactive terminal", completed.stderr)
 
-    def test_node_deploy_wrappers_ignore_python_env_overrides(self) -> None:
+    def test_aw_installer_ignores_python_env_overrides_for_node_owned_paths(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
         target_repo = self.fake_repo_root / "python-env-target"
@@ -1875,34 +1877,27 @@ class AdapterDeployTest(unittest.TestCase):
             "PYTHON3": str(self.temp_root / "missing-python3"),
             "PYTHONDONTWRITEBYTECODE": "1",
         }
-        wrappers = [
+        wrapper = (
             self.source_repo_root
             / "toolchain"
             / "scripts"
             / "deploy"
             / "bin"
-            / "aw-installer.js",
-            self.source_repo_root
-            / "toolchain"
-            / "scripts"
-            / "deploy"
-            / "bin"
-            / "aw-harness-deploy.js",
-        ]
+            / "aw-installer.js"
+        )
 
-        for wrapper in wrappers:
-            completed = subprocess.run(
-                ["node", str(wrapper), "diagnose", "--backend", "agents", "--json"],
-                cwd=self.source_repo_root,
-                env=env,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
+        completed = subprocess.run(
+            ["node", str(wrapper), "diagnose", "--backend", "agents", "--json"],
+            cwd=self.source_repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
-            self.assertEqual(completed.returncode, 0, completed.stderr)
-            payload = json.loads(completed.stdout)
-            self.assertEqual(payload["target_root"], str(target_repo / ".agents" / "skills"))
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload["target_root"], str(target_repo / ".agents" / "skills"))
 
     def test_aw_installer_agents_diagnose_json_does_not_invoke_python(self) -> None:
         node_path = shutil.which("node")
@@ -2031,76 +2026,6 @@ class AdapterDeployTest(unittest.TestCase):
             any("legacy_skill_ids" in issue["detail"] for issue in payload["issues"])
         )
 
-    def test_legacy_node_deploy_wrapper_does_not_try_linux_python_alias(self) -> None:
-        node_path = shutil.which("node")
-        if node_path is None:
-            self.skipTest("node is not available")
-        fake_bin = self._fake_python_fallback_bin()
-        env = {
-            **os.environ,
-            "PATH": str(fake_bin),
-            "PYTHONDONTWRITEBYTECODE": "1",
-        }
-        wrapper = (
-            self.source_repo_root
-            / "toolchain"
-            / "scripts"
-            / "deploy"
-            / "bin"
-            / "aw-harness-deploy.js"
-        )
-
-        completed = subprocess.run(
-            [node_path, str(wrapper), "diagnose", "--backend", "agents", "--json"],
-            cwd=self.source_repo_root,
-            env=env,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-
-        self.assertEqual(completed.returncode, 1)
-        self.assertEqual(completed.stdout, "")
-        self.assertIn("aw-harness-deploy failed to start Python; tried python3", completed.stderr)
-
-    def test_node_deploy_wrappers_time_out_stalled_python_processes(self) -> None:
-        if shutil.which("node") is None:
-            self.skipTest("node is not available")
-        fake_bin = self._fake_sleeping_python_bin()
-        cases = [
-            (
-                self.source_repo_root
-                / "toolchain"
-                / "scripts"
-                / "deploy"
-                / "bin"
-                / "aw-harness-deploy.js",
-                ["diagnose", "--backend", "agents", "--json"],
-            ),
-        ]
-        env = {
-            **os.environ,
-            "AW_INSTALLER_WRAPPER_TIMEOUT_MS": "10",
-            "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
-            "PYTHONDONTWRITEBYTECODE": "1",
-        }
-
-        for wrapper, command_args in cases:
-            with self.subTest(wrapper=wrapper.name):
-                completed = subprocess.run(
-                    ["node", str(wrapper), *command_args],
-                    cwd=self.source_repo_root,
-                    env=env,
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                    check=False,
-                )
-
-                self.assertEqual(completed.returncode, 1)
-                self.assertEqual(completed.stdout, "")
-                self.assertIn("timed out after 1s", completed.stderr)
-
     def test_aw_installer_update_agents_json_is_node_owned_without_python(self) -> None:
         node_path = shutil.which("node")
         if node_path is None:
@@ -2147,7 +2072,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertGreater(len(payload["planned_target_paths"]), 0)
         self.assertEqual(payload["blocking_issue_count"], 0)
 
-    def test_aw_installer_non_node_owned_paths_fallback_to_python_subprocess(self) -> None:
+    def test_aw_installer_non_node_owned_paths_fail_without_python_fallback(self) -> None:
         fake_bin = self._fake_failing_python_bin()
         target_repo = self.temp_root / "update-fallback-target"
         target_repo.mkdir()
@@ -2163,10 +2088,11 @@ class AdapterDeployTest(unittest.TestCase):
             with self.subTest(label=label):
                 completed = self._run_aw_installer_node(*argv, target_repo=target_repo, env=env)
 
-                self.assertEqual(completed.returncode, FAKE_FAILING_PYTHON_EXIT_CODE)
+                self.assertEqual(completed.returncode, 1)
                 self.assertEqual(completed.stdout, "")
-                self.assertIn("unexpected-python", completed.stderr)
-                self.assertIn("harness_deploy.py", completed.stderr)
+                self.assertIn("unsupported aw-installer command or options for Node-only distribution", completed.stderr)
+                self.assertNotIn("unexpected-python", completed.stderr)
+                self.assertNotIn("harness_deploy.py", completed.stderr)
 
     def test_aw_installer_claude_install_is_node_owned_without_python(self) -> None:
         fake_bin = self._fake_failing_python_bin()
@@ -2508,11 +2434,8 @@ class AdapterDeployTest(unittest.TestCase):
             packed_files,
             {
                 "README.md",
-                "adapter_deploy.py",
-                "harness_deploy.py",
                 "path_safety_policy.json",
                 "bin/aw-installer.js",
-                "bin/aw-harness-deploy.js",
                 "package.json",
             },
         )
@@ -2539,8 +2462,6 @@ class AdapterDeployTest(unittest.TestCase):
             "package.json",
             "README.md",
             "LICENSE",
-            "toolchain/scripts/deploy/adapter_deploy.py",
-            "toolchain/scripts/deploy/harness_deploy.py",
             "toolchain/scripts/deploy/bin/aw-installer.js",
             "toolchain/scripts/deploy/bin/check-root-publish.js",
             "product/harness/skills/harness-skill/SKILL.md",
@@ -2631,7 +2552,8 @@ class AdapterDeployTest(unittest.TestCase):
             )
 
         self.assertEqual(exec_completed.returncode, 0, exec_completed.stderr)
-        self.assertIn("harness_deploy.py", exec_completed.stdout)
+        self.assertIn("Node.js distribution", exec_completed.stdout)
+        self.assertNotIn("harness_deploy.py", exec_completed.stdout)
         self.assertIn("diagnose", exec_completed.stdout)
         self.assertIn("verify", exec_completed.stdout)
         self.assertIn("install", exec_completed.stdout)
