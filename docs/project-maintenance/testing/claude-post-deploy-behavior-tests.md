@@ -1,9 +1,9 @@
 ---
 title: "Claude Post-Deploy Behavior Tests"
 status: active
-updated: 2026-05-03
+updated: 2026-05-04
 owner: aw-kernel
-last_verified: 2026-05-03
+last_verified: 2026-05-04
 ---
 # Claude Post-Deploy Behavior Tests
 
@@ -71,11 +71,31 @@ TMP_ROOT="$(mktemp -d "$TMP_PARENT/harness-claude-spire-lite.XXXXXX")"
 TMP_REPO="$TMP_ROOT/repo"
 TMP_CLAUDE_ROOT="$TMP_REPO/.claude/skills"
 TMP_RUN_ROOT="$TMP_ROOT/run-artifacts"
+CLAUDE_TEST_HOME="$TMP_ROOT/claude-home"
+NPM_CONFIG_CACHE="$TMP_ROOT/npm-cache"
 
 printf 'TMP_ROOT=%s\n' "$TMP_ROOT"
 ```
 
 这里的 `TMP_ROOT` 是整个临时工作区；真正的 Git repo 根是 `"$TMP_REPO"`，而 `"$TMP_RUN_ROOT"` 用来保存 repo 外的观察产物。默认把临时根放在 `$HOME/tmp` 下，是为了满足 deploy path safety policy；不要把显式 `--claude-root` 指向不在允许前缀内的共享 `/tmp` 根。
+
+如果当前 carrier 的 `$HOME` 不可写，必须把 `TMP_PARENT` 与 `NPM_CONFIG_CACHE` 显式放到可写临时目录，例如：
+
+```bash
+TMP_PARENT=/tmp
+```
+
+本页的 `NPM_CONFIG_CACHE="$TMP_ROOT/npm-cache"` 是固定测试条件。不要让 `npx` 或 `npm exec` 回落到宿主默认 cache；否则 sandbox 下可能因为 `$HOME/.npm` 只读而失败，并把 package 行为误判为 deploy 问题。
+
+Claude Code 的 Bash tool 也会写入用户级 session state。若当前 carrier 的 `$HOME/.claude` 不可写，必须使用临时 Claude home，并只复制本机运行所需的登录状态：
+
+```bash
+mkdir -p "$CLAUDE_TEST_HOME/.claude"
+test -f "$HOME/.claude.json" && cp "$HOME/.claude.json" "$CLAUDE_TEST_HOME/.claude.json"
+test -d "$HOME/.claude" && find "$HOME/.claude" -maxdepth 1 -type f -exec cp {} "$CLAUDE_TEST_HOME/.claude/" \;
+```
+
+`CLAUDE_TEST_HOME` 只属于本次临时运行，不进入长期 evidence；整理外发日志前必须确认没有复制或泄露本机认证文件内容。
 
 ### 1. 建目录并初始化 repo
 
@@ -83,16 +103,45 @@ printf 'TMP_ROOT=%s\n' "$TMP_ROOT"
 mkdir -p "$TMP_REPO" "$TMP_RUN_ROOT"
 git init "$TMP_REPO"
 git -C "$TMP_REPO" branch -m main
+printf '.claude/\n' >> "$TMP_REPO/.git/info/exclude"
 ```
 
 这里的初始化基线是“空仓库起步”：
 
 - 每次手动观察都新建一套带随机后缀的临时工作目录，不复用旧的临时路径
 - `git init` 只是为了让 `claude --bare -p` 有标准 repo 根
+- `.claude/` 是本轮 deploy target，不是临时产品 repo 的源码；用 `.git/info/exclude` 排除它，避免 Claude 在后续 worktrack commit 中把安装 payload 当作业务变更提交
 - 不额外创建初始提交；baseline 从空仓库状态开始
 - `branch -m main` 用来让临时 repo 的默认分支名和后续 `.aw` baseline branch 保持一致
 
-### 2. 用通用 deploy 脚本准备隔离的 `.claude/skills/`
+### 2. 用当前候选包准备隔离的 `.claude/skills/`
+
+如果本轮要验证尚未发布的 Node-only candidate，优先使用本地 `.tgz` 包路径：
+
+```bash
+PACKAGE_TGZ="/path/to/aw-installer-<version>.tgz"
+```
+
+然后通过 `npx --package` 在临时 repo 中安装和验证 Claude payload：
+
+```bash
+(
+  cd "$TMP_REPO"
+  AW_HARNESS_REPO_ROOT="" \
+  AW_HARNESS_TARGET_REPO_ROOT="" \
+  NPM_CONFIG_CACHE="$NPM_CONFIG_CACHE" \
+    npx --yes --package "$PACKAGE_TGZ" -- aw-installer install --backend claude
+
+  AW_HARNESS_REPO_ROOT="" \
+  AW_HARNESS_TARGET_REPO_ROOT="" \
+  NPM_CONFIG_CACHE="$NPM_CONFIG_CACHE" \
+    npx --yes --package "$PACKAGE_TGZ" -- aw-installer verify --backend claude
+)
+```
+
+这一路径是当前本地 npx package smoke 的推荐口径：Claude payload 由 Node package 安装，Python deploy helper 不参与 package runtime。
+
+如果不是验证 package surface，而只是观察源码 checkout 的 Claude 行为，也可以用通用 deploy 脚本准备隔离的 `.claude/skills/`：
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune \
@@ -214,6 +263,11 @@ Working rule:
 - Do not stop just because one local skill round produced structured output.
 - If the runtime lacks a real delegated execution carrier, report the runtime gap explicitly.
 - Start from the current repo truth instead of assuming a preselected worktrack.
+- Keep `.aw/` artifact writeback compact: write concise control-state, gate, closeout, and snapshot facts; avoid duplicating long evidence already available in git diff, test output, or round artifacts.
+- Do not use large shell heredocs for any repo file, including source, tests, docs, or `.aw/` artifacts. Prefer `Edit`, short file writes, or smaller incremental changes; do not combine large file creation, test execution, and git operations into one shell command.
+- Keep commit messages concise. Detailed evidence belongs in the saved round artifacts and compact `.aw/` references, not in long commit bodies.
+- Round-000 must open and complete only the combat worktrack unless the repo state explicitly proves combat is already complete. Do not start cards, deck, map, or events in round-000.
+- Stop immediately after the current slice is implemented, tested, checkpointed, closed, and refreshed.
 
 Observation priority:
 - First show the real state transition and continuation logic.
@@ -231,7 +285,10 @@ Continuous-autonomy observation override:
 - Initialize or update `.aw/control-state.md` so `post_contract_autonomy: delegated-minimal`, `autonomy_scope: current-goal-only`, `max_auto_new_worktracks: 20`, `autonomy_budget_remaining: 20`, and `stop_after_autonomous_slice: yes`.
 - Keep every subsystem as its own independent worktrack. Do not merge combat logger, cards, deck, map, or events into the same worktrack.
 - After a worktrack closes, record the handback boundary, but do not set `handback_lock_active: yes` while `autonomy_budget_remaining > 0`.
+- Keep each handback and closeout artifact compact. The observation checks state transitions and repo progress, not verbose evidence prose.
+- Avoid large shell heredocs for all repo writes; long writeback or source/test heredocs are known Claude non-interactive timeout and API-error risks and should be treated as carrier behavior, not package deploy behavior.
 - If `handoff_state: awaiting-handoff` and `autonomy_budget_remaining > 0`, a later bare `继续工作` in a new independent Claude Code conversation is authorized to consume one autonomy budget unit and open the next bounded subsystem worktrack under the same goal.
+- After a worktrack closes, the next autonomous slice should prefer the next chartered subsystem. A validation-hardening or packaging-entry cleanup slice is allowed only when committed tests cannot run from repo root or another concrete blocker prevents starting the next subsystem; record that blocker as the slice rationale.
 - Once the autonomy budget reaches 0, strict handback applies again and bare `继续工作` must not unlock the boundary.
 ```
 
@@ -240,7 +297,11 @@ Continuous-autonomy observation override:
 ```bash
 (
   cd "$TMP_REPO"
+  HOME="$CLAUDE_TEST_HOME" \
+  XDG_CONFIG_HOME="$CLAUDE_TEST_HOME/.config" \
+  XDG_CACHE_HOME="$CLAUDE_TEST_HOME/.cache" \
   claude --bare \
+    --no-session-persistence \
     --permission-mode acceptEdits \
     --verbose \
     --output-format stream-json \
@@ -258,8 +319,10 @@ git -C "$TMP_REPO" log --oneline --decorate --all --max-count=5 > "$TMP_RUN_ROOT
 说明：
 
 - `--bare` 仍支持通过 `/skill-name` 解析显式安装的 project-level skills，但不会自动读取 `CLAUDE.md`；本 runbook 的上下文必须通过 prompt、repo 状态和 explicit skill payload 提供。
+- `--no-session-persistence` 配合 `CLAUDE_TEST_HOME` 使用，避免测试会话写入宿主长期 Claude state。
 - `--output-format stream-json` 保存完整事件流；不要只保留最后一句自然语言输出。
 - 如果当前环境需要更强权限隔离，可用 `--permission-mode default` 代替 `acceptEdits`，但冷启动写入 smoke 会因此停在权限确认边界，不能当作完整行为通过。
+- 如果本轮使用 `npx --package "$PACKAGE_TGZ"` 安装 payload，所有 `npx` / `npm exec` 命令都必须继承 `NPM_CONFIG_CACHE="$TMP_ROOT/npm-cache"`。
 
 ## 五、后续轮次
 
@@ -299,6 +362,13 @@ mkdir -p "$TMP_RUN_ROOT/round-001"
 Use only `harness-skill` as the top-level control entry.
 
 继续工作。
+
+Runtime constraints:
+- Keep `.aw/` artifact writeback compact.
+- Do not use large shell heredocs for any repo file, including source, tests, docs, or `.aw/` artifacts.
+- Keep commit messages concise.
+- Prefer the next chartered subsystem. Only open validation-hardening or packaging-entry cleanup first when a concrete blocker prevents validating or extending the current baseline.
+- Stop after the current legal slice reaches implementation, validation, checkpoint, closeout, and repo refresh.
 ```
 
 如果这一轮只有一条需要显式补充的新信息，可以写成：
@@ -316,7 +386,11 @@ Use only `harness-skill` as the top-level control entry.
 ```bash
 (
   cd "$TMP_REPO"
+  HOME="$CLAUDE_TEST_HOME" \
+  XDG_CONFIG_HOME="$CLAUDE_TEST_HOME/.config" \
+  XDG_CACHE_HOME="$CLAUDE_TEST_HOME/.cache" \
   claude --bare \
+    --no-session-persistence \
     --permission-mode acceptEdits \
     --verbose \
     --output-format stream-json \
@@ -346,7 +420,11 @@ printf '/harness-skill\n\nUse only `harness-skill` as the top-level control entr
 
 (
   cd "$TMP_REPO"
+  HOME="$CLAUDE_TEST_HOME" \
+  XDG_CONFIG_HOME="$CLAUDE_TEST_HOME/.config" \
+  XDG_CACHE_HOME="$CLAUDE_TEST_HOME/.cache" \
   claude --bare \
+    --no-session-persistence \
     --permission-mode acceptEdits \
     --verbose \
     --output-format stream-json \
@@ -487,9 +565,12 @@ git -C "$TMP_REPO" log --oneline --decorate --all --max-count=5 > "$TMP_RUN_ROOT
 - 明显命中 scope 切换观察点
 - 出现 runtime gap
 - Claude API/server error 导致本轮无法自然收束
+- Claude Bash tool 因宿主 `$HOME/.claude/session-env` 只读而失败；应切换到 `CLAUDE_TEST_HOME` 后重跑，不能把它归因于 package payload
+- Claude 在单轮内使用大 heredoc、长 commit body 或过量 evidence prose，导致上下文暴涨或 API/server error；应压缩写入方式与本轮 scope 后重跑
 - repo 目标已经没有有效推进
 - Claude runtime 无法识别项目级 skill entry
 - 冷启动写入越过临时 repo
+- 临时 repo 的 commit 把 `.claude/skills/` deploy payload 纳入业务 diff；应先确认 `.git/info/exclude` 已包含 `.claude/`
 - 输出声称使用了当前仓库不存在的 `claude` deploy adapter
 - `.aw/` artifact 缺失或明显不符合 Harness control-plane 结构
 
