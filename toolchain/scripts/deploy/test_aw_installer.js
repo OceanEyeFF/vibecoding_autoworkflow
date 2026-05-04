@@ -1,12 +1,367 @@
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
-const { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } = require("node:fs");
+const { EventEmitter } = require("node:events");
+const { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } = require("node:fs");
+const https = require("node:https");
 const { tmpdir } = require("node:os");
-const { join } = require("node:path");
+const { join, relative, sep } = require("node:path");
 const test = require("node:test");
+const { deflateRawSync } = require("node:zlib");
 
 const installer = require("./bin/aw-installer.js");
+
+function zipHeaderUInt16(value) {
+  const buffer = Buffer.alloc(2);
+  buffer.writeUInt16LE(value);
+  return buffer;
+}
+
+function zipHeaderUInt32(value) {
+  const buffer = Buffer.alloc(4);
+  buffer.writeUInt32LE(value);
+  return buffer;
+}
+
+function createStoredZip(entries) {
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  for (const [name, text] of entries) {
+    const nameBuffer = Buffer.from(name);
+    const dataBuffer = Buffer.from(text);
+    const local = Buffer.concat([
+      zipHeaderUInt32(0x04034b50),
+      zipHeaderUInt16(20),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt32(0),
+      zipHeaderUInt32(dataBuffer.length),
+      zipHeaderUInt32(dataBuffer.length),
+      zipHeaderUInt16(nameBuffer.length),
+      zipHeaderUInt16(0),
+      nameBuffer,
+      dataBuffer,
+    ]);
+    localParts.push(local);
+    centralParts.push(Buffer.concat([
+      zipHeaderUInt32(0x02014b50),
+      zipHeaderUInt16(20),
+      zipHeaderUInt16(20),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt32(0),
+      zipHeaderUInt32(dataBuffer.length),
+      zipHeaderUInt32(dataBuffer.length),
+      zipHeaderUInt16(nameBuffer.length),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt32(0),
+      zipHeaderUInt32(offset),
+      nameBuffer,
+    ]));
+    offset += local.length;
+  }
+  const central = Buffer.concat(centralParts);
+  const eocd = Buffer.concat([
+    zipHeaderUInt32(0x06054b50),
+    zipHeaderUInt16(0),
+    zipHeaderUInt16(0),
+    zipHeaderUInt16(entries.length),
+    zipHeaderUInt16(entries.length),
+    zipHeaderUInt32(central.length),
+    zipHeaderUInt32(offset),
+    zipHeaderUInt16(0),
+  ]);
+  return Buffer.concat([...localParts, central, eocd]);
+}
+
+function createDeflatedZip(entries) {
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  for (const [name, text, options = {}] of entries) {
+    const nameBuffer = Buffer.from(name);
+    const dataBuffer = Buffer.from(text);
+    const compressedBuffer = deflateRawSync(dataBuffer);
+    const declaredCompressedSize = options.compressedSize ?? compressedBuffer.length;
+    const declaredUncompressedSize = options.uncompressedSize ?? dataBuffer.length;
+    const local = Buffer.concat([
+      zipHeaderUInt32(0x04034b50),
+      zipHeaderUInt16(20),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(8),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt32(0),
+      zipHeaderUInt32(declaredCompressedSize),
+      zipHeaderUInt32(declaredUncompressedSize),
+      zipHeaderUInt16(nameBuffer.length),
+      zipHeaderUInt16(0),
+      nameBuffer,
+      compressedBuffer,
+    ]);
+    localParts.push(local);
+    centralParts.push(Buffer.concat([
+      zipHeaderUInt32(0x02014b50),
+      zipHeaderUInt16(20),
+      zipHeaderUInt16(20),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(8),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt32(0),
+      zipHeaderUInt32(declaredCompressedSize),
+      zipHeaderUInt32(declaredUncompressedSize),
+      zipHeaderUInt16(nameBuffer.length),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt16(0),
+      zipHeaderUInt32(0),
+      zipHeaderUInt32(offset),
+      nameBuffer,
+    ]));
+    offset += local.length;
+  }
+  const central = Buffer.concat(centralParts);
+  const eocd = Buffer.concat([
+    zipHeaderUInt32(0x06054b50),
+    zipHeaderUInt16(0),
+    zipHeaderUInt16(0),
+    zipHeaderUInt16(entries.length),
+    zipHeaderUInt16(entries.length),
+    zipHeaderUInt32(central.length),
+    zipHeaderUInt32(offset),
+    zipHeaderUInt16(0),
+  ]);
+  return Buffer.concat([...localParts, central, eocd]);
+}
+
+function collectFixtureTree(root) {
+  const directories = [];
+  const files = [];
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) {
+      const childTree = collectFixtureTree(path);
+      directories.push(path, ...childTree.directories);
+      files.push(...childTree.files);
+    } else if (entry.isFile()) {
+      files.push(path);
+    }
+  }
+  return { directories, files };
+}
+
+function createGithubArchiveFromSource(root, archiveRoot = "repo-master", zipFactory = createStoredZip) {
+  const { directories, files } = collectFixtureTree(root);
+  return zipFactory([
+    ...directories.map((path) => [
+      `${archiveRoot}/${relative(root, path).split(sep).join("/")}/`,
+      "",
+    ]),
+    ...files.map((path) => [
+      `${archiveRoot}/${relative(root, path).split(sep).join("/")}`,
+      readFileSync(path, "utf8"),
+    ]),
+  ]);
+}
+
+function captureConsoleLog(callback) {
+  const originalLog = console.log;
+  const lines = [];
+  let restored = false;
+  function restoreConsoleLog() {
+    if (!restored) {
+      console.log = originalLog;
+      restored = true;
+    }
+  }
+  console.log = (...args) => {
+    lines.push(`${args.join(" ")}\n`);
+  };
+  let result;
+  try {
+    result = callback();
+  } catch (error) {
+    restoreConsoleLog();
+    throw error;
+  }
+  if (result !== null && typeof result === "object") {
+    let then;
+    try {
+      then = result.then;
+    } catch (error) {
+      restoreConsoleLog();
+      throw error;
+    }
+    if (typeof then === "function") {
+      try {
+        return then.call(
+          result,
+          (resolved) => {
+            restoreConsoleLog();
+            return { result: resolved, stdout: lines.join("") };
+          },
+          (error) => {
+            restoreConsoleLog();
+            throw error;
+          },
+        );
+      } catch (error) {
+        restoreConsoleLog();
+        throw error;
+      }
+    }
+  }
+  restoreConsoleLog();
+  return { result, stdout: lines.join("") };
+}
+
+test("captureConsoleLog restores console.log for sync throw", () => {
+  const originalLog = console.log;
+
+  assert.throws(
+    () => captureConsoleLog(() => {
+      console.log("before", "throw");
+      throw new Error("sync failure");
+    }),
+    /sync failure/,
+  );
+
+  assert.equal(console.log, originalLog);
+});
+
+test("captureConsoleLog restores console.log for async resolve", async () => {
+  const originalLog = console.log;
+
+  const { result, stdout } = await captureConsoleLog(async () => {
+    console.log("async", "ok");
+    return 42;
+  });
+
+  assert.equal(result, 42);
+  assert.equal(stdout, "async ok\n");
+  assert.equal(console.log, originalLog);
+});
+
+test("captureConsoleLog restores console.log for async reject", async () => {
+  const originalLog = console.log;
+
+  await assert.rejects(
+    () => captureConsoleLog(async () => {
+      console.log("async", "reject");
+      throw new Error("async failure");
+    }),
+    /async failure/,
+  );
+
+  assert.equal(console.log, originalLog);
+});
+
+test("captureConsoleLog restores console.log for throwing thenables", () => {
+  const originalLog = console.log;
+
+  assert.throws(
+    () => captureConsoleLog(() => ({
+      get then() {
+        throw new Error("then getter failure");
+      },
+    })),
+    /then getter failure/,
+  );
+  assert.equal(console.log, originalLog);
+
+  assert.throws(
+    () => captureConsoleLog(() => ({
+      then() {
+        throw new Error("then call failure");
+      },
+    })),
+    /then call failure/,
+  );
+  assert.equal(console.log, originalLog);
+});
+
+async function withMockedGithubArchive(archiveBuffer, callback) {
+  const originalGet = https.get;
+  const requests = [];
+  https.get = (url, options, handler) => {
+    requests.push({ url, options });
+    const request = new EventEmitter();
+    request.destroy = (error) => {
+      request.emit("error", error);
+    };
+    process.nextTick(() => {
+      const response = new EventEmitter();
+      response.statusCode = 200;
+      response.resume = () => {};
+      handler(response);
+      response.emit("data", archiveBuffer);
+      response.emit("end");
+    });
+    return request;
+  };
+  try {
+    return await callback(requests);
+  } finally {
+    https.get = originalGet;
+  }
+}
+
+async function withMockedGithubResponses(responses, callback) {
+  const originalGet = https.get;
+  const requests = [];
+  https.get = (url, options, handler) => {
+    const requestRecord = { url, options };
+    requests.push(requestRecord);
+    const request = new EventEmitter();
+    request.destroy = (error) => {
+      request.emit("error", error || new Error("request destroyed"));
+    };
+    process.nextTick(() => {
+      const responseSpec = responses[Math.min(requests.length - 1, responses.length - 1)];
+      const response = new EventEmitter();
+      response.statusCode = responseSpec.statusCode;
+      response.headers = responseSpec.headers || {};
+      response.resume = () => {};
+      response.destroyed = false;
+      response.destroy = (error) => {
+        response.destroyed = true;
+        response.emit("error", error || new Error("response destroyed"));
+      };
+      requestRecord.response = response;
+      handler(response);
+      if (responseSpec.afterHandlerError !== undefined) {
+        response.emit("error", responseSpec.afterHandlerError);
+      }
+      if (response.destroyed) {
+        return;
+      }
+      if (responseSpec.error !== undefined) {
+        response.emit("error", responseSpec.error);
+        return;
+      }
+      for (const chunk of responseSpec.chunks || []) {
+        response.emit("data", Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      response.emit("end");
+    });
+    return request;
+  };
+  try {
+    return await callback(requests);
+  } finally {
+    https.get = originalGet;
+  }
+}
 
 function seedMinimalAgentsSource(root, skillId = "demo-skill", options = {}) {
   const canonicalDir = join(root, "product", "harness", "skills", skillId);
@@ -34,7 +389,7 @@ function seedMinimalAgentsSource(root, skillId = "demo-skill", options = {}) {
     payload.legacy_skill_ids = options.legacySkillIds;
   }
   const payloadPath = join(payloadDir, "payload.json");
-  writeFileSync(join(canonicalDir, "SKILL.md"), `# ${skillId}\n`, "utf8");
+  writeFileSync(join(canonicalDir, "SKILL.md"), options.skillText || `# ${skillId}\n`, "utf8");
   writeFileSync(payloadPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
   return {
     binding: {
@@ -72,6 +427,91 @@ function seedInstalledAgentsSkill(root, skillId = "demo-skill", options = {}) {
     backend: "agents",
     skill_id: skillId,
     payload_version: "agents-skill-payload.v1",
+    payload_fingerprint: payloadFingerprint,
+  };
+  writeFileSync(join(targetSkillDir, "aw.marker"), `${JSON.stringify(marker, null, 2)}\n`, "utf8");
+  return {
+    ...seeded,
+    marker,
+    payloadText,
+    targetRoot,
+    targetSkillDir,
+  };
+}
+
+function seedMinimalClaudeSource(root, skillId = "demo-skill", options = {}) {
+  const canonicalDir = join(root, "product", "harness", "skills", skillId);
+  const payloadDir = join(root, "product", "harness", "adapters", "claude", "skills", skillId);
+  mkdirSync(canonicalDir, { recursive: true });
+  mkdirSync(payloadDir, { recursive: true });
+  mkdirSync(join(root, "product", "harness", "adapters", "agents", "skills"), { recursive: true });
+  const targetDir = options.targetDir || skillId;
+  const payload = {
+    payload_version: "claude-skill-payload.v1",
+    backend: "claude",
+    skill_id: skillId,
+    target_dir: targetDir,
+    target_entry_name: "SKILL.md",
+    required_payload_files: ["SKILL.md", "payload.json", "aw.marker"],
+    canonical_dir: `product/harness/skills/${skillId}`,
+    canonical_paths: [`product/harness/skills/${skillId}/SKILL.md`],
+    payload_policy: "canonical-copy",
+    reference_distribution: "copy-listed-canonical-paths",
+    legacy_target_dirs: options.legacyTargetDirs || [`aw-${skillId}`],
+  };
+  if (options.claudeFrontmatter !== undefined) {
+    payload.claude_frontmatter = options.claudeFrontmatter;
+  }
+  if (options.legacySkillIds !== undefined) {
+    payload.legacy_skill_ids = options.legacySkillIds;
+  }
+  const payloadPath = join(payloadDir, "payload.json");
+  const skillText = options.skillText || `---\ndescription: ${skillId}\n---\n# ${skillId}\n`;
+  writeFileSync(join(canonicalDir, "SKILL.md"), skillText, "utf8");
+  writeFileSync(payloadPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  return {
+    binding: {
+      backend: "claude",
+      skillId,
+      payloadDir,
+      payloadPath,
+    },
+    canonicalDir,
+    payload,
+    payloadDir,
+    skillText,
+    targetDir,
+  };
+}
+
+function seedInstalledClaudeSkill(root, skillId = "demo-skill", options = {}) {
+  const seeded = seedMinimalClaudeSource(root, skillId, {
+    claudeFrontmatter: { "disable-model-invocation": true },
+    ...options,
+  });
+  const targetRoot = options.targetRoot || join(root, ".claude", "skills");
+  const targetSkillDir = join(targetRoot, seeded.targetDir);
+  mkdirSync(targetSkillDir, { recursive: true });
+  const payloadText = `${JSON.stringify(seeded.payload, null, 2)}\n`;
+  const skillText = seeded.skillText.replace(
+    "\n---\n",
+    "\ndisable-model-invocation: true\n---\n",
+  );
+  writeFileSync(join(targetSkillDir, "SKILL.md"), skillText, "utf8");
+  writeFileSync(join(targetSkillDir, "payload.json"), payloadText, "utf8");
+  const metadata = installer.payloadTargetMetadata(seeded.payload, seeded.binding);
+  const payloadFingerprint = installer.computePayloadFingerprint(
+    seeded.binding,
+    { sourceRoot: root },
+    seeded.payload,
+    payloadText,
+    metadata,
+  );
+  const marker = {
+    marker_version: "aw-managed-skill-marker.v2",
+    backend: "claude",
+    skill_id: skillId,
+    payload_version: "claude-skill-payload.v1",
     payload_fingerprint: payloadFingerprint,
   };
   writeFileSync(join(targetSkillDir, "aw.marker"), `${JSON.stringify(marker, null, 2)}\n`, "utf8");
@@ -256,15 +696,6 @@ function assertNodeVerifyMatchesPython(root, args) {
   assert.equal(nodeWithSentinel.stderr.includes("unexpected-python"), false);
 }
 
-test("pythonCandidates avoids the usually-missing Linux python alias", () => {
-  const commands = installer.pythonCandidates().map((candidate) => candidate.command);
-  if (process.platform === "win32") {
-    assert.deepEqual(commands, ["py", "python", "python3"]);
-  } else {
-    assert.deepEqual(commands, ["python3"]);
-  }
-});
-
 test("node-owned summary and context helpers are exported for unit coverage", () => {
   assert.equal(typeof installer.buildNodeAgentsContext, "function");
   assert.equal(typeof installer.diagnosticSummary, "function");
@@ -317,29 +748,6 @@ test("normalizeRelativePath rejects traversal and keeps clean relative paths", (
   assert.throws(
     () => installer.normalizeRelativePath("..\0/SKILL.md", "field", "demo-skill", "repository root"),
     /must not contain null bytes/,
-  );
-});
-
-test("wrapper env strips common credential variables while preserving deploy controls", () => {
-  assert.deepEqual(
-    installer.buildWrapperEnv({
-      ANTHROPIC_API_KEY: "secret",
-      AW_HARNESS_REPO_ROOT: "/repo",
-      GITHUB_TOKEN: "secret",
-      HOME: "/home/demo",
-      PATH: "/bin",
-      PYTHONDONTWRITEBYTECODE: "0",
-      HTTPS_PROXY: "http://proxy",
-      SSL_CERT_DIR: "/etc/ssl/certs",
-    }),
-    {
-      AW_HARNESS_REPO_ROOT: "/repo",
-      HOME: "/home/demo",
-      PATH: "/bin",
-      PYTHONDONTWRITEBYTECODE: "0",
-      HTTPS_PROXY: "http://proxy",
-      SSL_CERT_DIR: "/etc/ssl/certs",
-    },
   );
 });
 
@@ -431,34 +839,227 @@ test("computePayloadFingerprint matches the Python payload contract order", () =
   }
 });
 
-test("parseNodeDiagnoseJsonArgs only accepts agents JSON diagnose", () => {
+test("buildNodeBackendContext keeps backend target root defaults and override flags in parity", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  const originalTargetRepoRoot = process.env.AW_HARNESS_TARGET_REPO_ROOT;
+  try {
+    seedMinimalAgentsSource(root, "agents-demo");
+    seedMinimalClaudeSource(root, "claude-demo");
+    process.env.AW_HARNESS_TARGET_REPO_ROOT = root;
+
+    const agentsDefault = installer.buildNodeBackendContext({
+      backend: "agents",
+      sourceRootOverride: root,
+    });
+    assert.equal(agentsDefault.targetRoot, join(root, ".agents", "skills"));
+    assert.equal(agentsDefault.targetRootOverrideFlag, undefined);
+
+    const agentsRoot = join(root, "custom-agents-skills");
+    const agentsOverride = installer.buildNodeBackendContext({
+      backend: "agents",
+      sourceRootOverride: root,
+      agentsRoot,
+    });
+    assert.equal(agentsOverride.targetRoot, agentsRoot);
+    assert.equal(agentsOverride.targetRootOverrideFlag, "--agents-root");
+
+    const claudeDefault = installer.buildNodeBackendContext({
+      backend: "claude",
+      sourceRootOverride: root,
+    });
+    assert.equal(claudeDefault.targetRoot, join(root, ".claude", "skills"));
+    assert.equal(claudeDefault.targetRootOverrideFlag, undefined);
+
+    const claudeRoot = join(root, "custom-claude-skills");
+    const claudeOverride = installer.buildNodeBackendContext({
+      backend: "claude",
+      sourceRootOverride: root,
+      claudeRoot,
+    });
+    assert.equal(claudeOverride.targetRoot, claudeRoot);
+    assert.equal(claudeOverride.targetRootOverrideFlag, "--claude-root");
+
+    assert.throws(
+      () => installer.buildNodeBackendContext({
+        backend: "unsupported",
+        sourceRootOverride: root,
+      }),
+      /Unsupported backend for Node-owned path: unsupported/,
+    );
+  } finally {
+    if (originalTargetRepoRoot === undefined) {
+      delete process.env.AW_HARNESS_TARGET_REPO_ROOT;
+    } else {
+      process.env.AW_HARNESS_TARGET_REPO_ROOT = originalTargetRepoRoot;
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("parseNodeDiagnoseJsonArgs accepts agents and claude JSON diagnose", () => {
   assert.deepEqual(
     installer.parseNodeDiagnoseJsonArgs(["diagnose", "--backend", "agents", "--json"]),
-    { backend: "agents" },
+    { backend: "agents", agentsRoot: undefined },
   );
-  assert.equal(installer.parseNodeDiagnoseJsonArgs(["diagnose", "--backend", "claude", "--json"]), null);
+  assert.deepEqual(
+    installer.parseNodeDiagnoseJsonArgs([
+      "diagnose",
+      "--backend=agents",
+      "--json",
+      "--agents-root=/tmp/agents-skills",
+    ]),
+    { backend: "agents", agentsRoot: "/tmp/agents-skills" },
+  );
+  assert.deepEqual(
+    installer.parseNodeDiagnoseJsonArgs(["diagnose", "--backend", "claude", "--json", "--claude-root", "/tmp/claude-skills"]),
+    { backend: "claude", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+  );
   assert.equal(installer.parseNodeDiagnoseJsonArgs(["verify", "--backend", "agents", "--json"]), null);
 });
 
-test("parseNodeUpdateJsonArgs only accepts agents package JSON update dry-runs", () => {
+test("parseNodeDiagnoseArgs accepts agents and claude human diagnose forms", () => {
   assert.deepEqual(
-    installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--json"]),
-    { backend: "agents", source: "package" },
+    installer.parseNodeDiagnoseArgs(["diagnose", "--backend", "agents"]),
+    { backend: "agents", agentsRoot: undefined },
   );
   assert.deepEqual(
-    installer.parseNodeUpdateJsonArgs(["update", "--json", "--backend=agents", "--source=package"]),
-    { backend: "agents", source: "package" },
+    installer.parseNodeDiagnoseArgs(["diagnose", "--backend=agents", "--agents-root=/tmp/agents-skills"]),
+    { backend: "agents", agentsRoot: "/tmp/agents-skills" },
   );
-
-  assert.equal(
-    installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--json", "--source", "github"]),
-    null,
+  assert.equal(installer.parseNodeDiagnoseArgs(["diagnose", "--backend", "agents", "--json"]), null);
+  assert.deepEqual(
+    installer.parseNodeDiagnoseArgs(["diagnose", "--backend", "claude", "--claude-root=/tmp/claude-skills"]),
+    { backend: "claude", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
   );
-  assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--yes"]), null);
-  assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "claude", "--json"]), null);
 });
 
-test("parseNodeUpdateYesArgs only accepts agents package update apply forms", () => {
+test("parseNodeUpdateJsonArgs accepts agents and claude package JSON update dry-runs", () => {
+  const originalAwRepo = process.env.AW_INSTALLER_GITHUB_REPO;
+  const originalGithubRepository = process.env.GITHUB_REPOSITORY;
+  delete process.env.AW_INSTALLER_GITHUB_REPO;
+  delete process.env.GITHUB_REPOSITORY;
+  try {
+    assert.deepEqual(
+      installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--json"]),
+      { backend: "agents", source: "package", agentsRoot: undefined },
+    );
+    assert.deepEqual(
+      installer.parseNodeUpdateJsonArgs(["update", "--json", "--backend=agents", "--source=package"]),
+      { backend: "agents", source: "package", agentsRoot: undefined },
+    );
+    assert.deepEqual(
+      installer.parseNodeUpdateJsonArgs([
+        "update",
+        "--json",
+        "--backend=agents",
+        "--source=package",
+        "--agents-root=/tmp/agents-skills",
+      ]),
+      { backend: "agents", source: "package", agentsRoot: "/tmp/agents-skills" },
+    );
+
+    assert.deepEqual(
+      installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--json", "--source", "github"]),
+      {
+        backend: "agents",
+        source: "github",
+        agentsRoot: undefined,
+        githubRepo: "OceanEyeFF/vibecoding_autoworkflow",
+        githubRef: "master",
+      },
+    );
+    assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--yes"]), null);
+    assert.deepEqual(
+      installer.parseNodeUpdateJsonArgs(["update", "--backend", "claude", "--json", "--claude-root", "/tmp/claude-skills"]),
+      { backend: "claude", source: "package", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+    );
+    assert.deepEqual(
+      installer.parseNodeUpdateJsonArgs([
+        "update",
+        "--backend",
+        "agents",
+        "--json",
+        "--source",
+        "github",
+        "--github-repo",
+        "Owner/repo",
+        "--github-ref",
+        "main",
+        "--github-archive-sha256",
+        "a".repeat(64),
+      ]),
+      {
+        backend: "agents",
+        source: "github",
+        agentsRoot: undefined,
+        githubRepo: "Owner/repo",
+        githubRef: "main",
+        githubArchiveSha256: "a".repeat(64),
+      },
+    );
+    assert.equal(
+      installer.parseNodeUpdateJsonArgs(["update", "--backend", "claude", "--json", "--source", "github"]),
+      null,
+    );
+  } finally {
+    if (originalAwRepo === undefined) {
+      delete process.env.AW_INSTALLER_GITHUB_REPO;
+    } else {
+      process.env.AW_INSTALLER_GITHUB_REPO = originalAwRepo;
+    }
+    if (originalGithubRepository === undefined) {
+      delete process.env.GITHUB_REPOSITORY;
+    } else {
+      process.env.GITHUB_REPOSITORY = originalGithubRepository;
+    }
+  }
+});
+
+test("parseNodeUpdateDryRunArgs accepts package and agents github human-readable update dry-runs", () => {
+  assert.deepEqual(
+    installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents"]),
+    { backend: "agents", source: "package", agentsRoot: undefined },
+  );
+  assert.deepEqual(
+    installer.parseNodeUpdateDryRunArgs([
+      "update",
+      "--backend=agents",
+      "--source=package",
+      "--agents-root=/tmp/agents-skills",
+    ]),
+    { backend: "agents", source: "package", agentsRoot: "/tmp/agents-skills" },
+  );
+
+  assert.deepEqual(
+    installer.parseNodeUpdateDryRunArgs([
+      "update",
+      "--backend",
+      "agents",
+      "--source",
+      "github",
+      "--github-repo=Owner/repo",
+      "--github-ref=main",
+      `--github-archive-sha256=${"1".repeat(64)}`,
+    ]),
+    {
+      backend: "agents",
+      source: "github",
+      agentsRoot: undefined,
+      githubRepo: "Owner/repo",
+      githubRef: "main",
+      githubArchiveSha256: "1".repeat(64),
+    },
+  );
+  assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "claude", "--source", "github"]), null);
+  assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents", "--json"]), null);
+  assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents", "--yes"]), null);
+  assert.deepEqual(
+    installer.parseNodeUpdateDryRunArgs(["update", "--backend", "claude", "--claude-root=/tmp/claude-skills"]),
+    { backend: "claude", source: "package", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+  );
+});
+
+test("parseNodeUpdateYesArgs accepts package and agents github update apply forms", () => {
   assert.deepEqual(
     installer.parseNodeUpdateYesArgs(["update", "--backend", "agents", "--yes"]),
     { backend: "agents", source: "package", yes: true, agentsRoot: undefined },
@@ -474,16 +1075,123 @@ test("parseNodeUpdateYesArgs only accepts agents package update apply forms", ()
     { backend: "agents", source: "package", yes: true, agentsRoot: "/tmp/agents-skills" },
   );
 
-  assert.equal(
-    installer.parseNodeUpdateYesArgs(["update", "--backend", "agents", "--yes", "--source", "github"]),
-    null,
+  assert.deepEqual(
+    installer.parseNodeUpdateYesArgs([
+      "update",
+      "--backend",
+      "agents",
+      "--yes",
+      "--source",
+      "github",
+      "--github-repo",
+      "Owner/repo",
+      "--github-ref",
+      "main",
+    ]),
+    {
+      backend: "agents",
+      source: "github",
+      yes: true,
+      agentsRoot: undefined,
+      githubRepo: "Owner/repo",
+      githubRef: "main",
+    },
   );
+  assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "claude", "--yes", "--source", "github"]), null);
   assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "agents", "--json", "--yes"]), null);
-  assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "claude", "--yes"]), null);
+  assert.deepEqual(
+    installer.parseNodeUpdateYesArgs(["update", "--backend", "claude", "--yes", "--claude-root", "/tmp/claude-skills"]),
+    {
+      backend: "claude",
+      source: "package",
+      yes: true,
+      agentsRoot: undefined,
+      claudeRoot: "/tmp/claude-skills",
+    },
+  );
   assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "agents"]), null);
 });
 
-test("parseNodeCheckPathsExistArgs accepts agents backend and target override forms", () => {
+test("parseNodeUpdateArgs wrappers keep unsupported update forms rejected", () => {
+  const missingValueCases = [
+    ["update", "--backend"],
+    ["update", "--source"],
+    ["update", "--github-repo"],
+    ["update", "--github-ref"],
+    ["update", "--github-archive-sha256"],
+    ["update", "--agents-root"],
+    ["update", "--claude-root"],
+  ];
+  for (const args of missingValueCases) {
+    assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--json", ...args.slice(1)]), null);
+    assert.equal(installer.parseNodeUpdateDryRunArgs(args), null);
+    assert.equal(installer.parseNodeUpdateYesArgs(["update", "--yes", ...args.slice(1)]), null);
+  }
+
+  assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "agents", "--json", "--yes"]), null);
+  assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "agents", "--json", "--yes"]), null);
+  assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "agents", "--json", "--yes"]), null);
+  assert.equal(installer.parseNodeUpdateJsonArgs(["update", "--backend", "claude", "--json", "--source", "github"]), null);
+  assert.equal(installer.parseNodeUpdateDryRunArgs(["update", "--backend", "claude", "--source", "github"]), null);
+  assert.equal(installer.parseNodeUpdateYesArgs(["update", "--backend", "claude", "--yes", "--source", "github"]), null);
+});
+
+test("unsupported agents package variants are classified without Python", () => {
+  assert.deepEqual(
+    installer.parseNodeUnsupportedPruneMissingAllArgs(["prune", "--backend", "agents"]),
+    { backend: "agents", source: "package", agentsRoot: undefined },
+  );
+  assert.deepEqual(
+    installer.parseNodeUnsupportedPruneMissingAllArgs([
+      "prune",
+      "--backend=agents",
+      "--source=package",
+      "--agents-root=/tmp/agents-skills",
+    ]),
+    { backend: "agents", source: "package", agentsRoot: "/tmp/agents-skills" },
+  );
+  assert.deepEqual(
+    installer.parseNodeUnsupportedUpdateJsonYesArgs(["update", "--backend", "agents", "--json", "--yes"]),
+    { backend: "agents", source: "package", agentsRoot: undefined },
+  );
+  assert.deepEqual(
+    installer.parseNodeUnsupportedUpdateJsonYesArgs([
+      "update",
+      "--json",
+      "--yes",
+      "--backend=agents",
+      "--source=package",
+      "--agents-root=/tmp/agents-skills",
+    ]),
+    { backend: "agents", source: "package", agentsRoot: "/tmp/agents-skills" },
+  );
+  assert.deepEqual(
+    installer.parseNodeUnsupportedUpdateJsonYesArgs([
+      "update",
+      "--backend",
+      "agents",
+      "--json",
+      "--yes",
+      "--source",
+      "github",
+      "--github-repo=Owner/repo",
+      "--github-ref=main",
+      `--github-archive-sha256=${"a".repeat(64)}`,
+    ]),
+    { backend: "agents", source: "github", agentsRoot: undefined },
+  );
+
+  assert.equal(installer.parseNodeUnsupportedPruneMissingAllArgs(["prune", "--all", "--backend", "agents"]), null);
+  assert.equal(installer.parseNodeUnsupportedPruneMissingAllArgs(["prune", "--backend", "claude"]), null);
+  assert.equal(
+    installer.parseNodeUnsupportedPruneMissingAllArgs(["prune", "--backend", "agents", "--source", "github"]),
+    null,
+  );
+  assert.equal(installer.parseNodeUnsupportedUpdateJsonYesArgs(["update", "--backend", "agents", "--json"]), null);
+  assert.equal(installer.parseNodeUnsupportedUpdateJsonYesArgs(["update", "--backend", "claude", "--json", "--yes"]), null);
+});
+
+test("parseNodeCheckPathsExistArgs accepts agents and claude backend target override forms", () => {
   assert.deepEqual(
     installer.parseNodeCheckPathsExistArgs(["check_paths_exist", "--backend", "agents"]),
     { backend: "agents", agentsRoot: undefined },
@@ -507,11 +1215,14 @@ test("parseNodeCheckPathsExistArgs accepts agents backend and target override fo
     { backend: "agents", agentsRoot: "/tmp/agents-skills" },
   );
 
-  assert.equal(installer.parseNodeCheckPathsExistArgs(["check_paths_exist", "--backend", "claude"]), null);
+  assert.deepEqual(
+    installer.parseNodeCheckPathsExistArgs(["check_paths_exist", "--backend", "claude", "--claude-root", "/tmp/claude-skills"]),
+    { backend: "claude", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+  );
   assert.equal(installer.parseNodeCheckPathsExistArgs(["check_paths_exist", "--source", "github"]), null);
 });
 
-test("parseNodeVerifyArgs accepts only agents package-local verify forms", () => {
+test("parseNodeVerifyArgs accepts agents and claude package-local verify forms", () => {
   assert.deepEqual(
     installer.parseNodeVerifyArgs(["verify", "--backend", "agents"]),
     { backend: "agents", agentsRoot: undefined },
@@ -520,12 +1231,15 @@ test("parseNodeVerifyArgs accepts only agents package-local verify forms", () =>
     installer.parseNodeVerifyArgs(["verify", "--backend=agents", "--agents-root=/tmp/agents-skills"]),
     { backend: "agents", agentsRoot: "/tmp/agents-skills" },
   );
-  assert.equal(installer.parseNodeVerifyArgs(["verify", "--backend", "claude"]), null);
+  assert.deepEqual(
+    installer.parseNodeVerifyArgs(["verify", "--backend", "claude", "--claude-root=/tmp/claude-skills"]),
+    { backend: "claude", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+  );
   assert.equal(installer.parseNodeVerifyArgs(["verify", "--source", "github"]), null);
   assert.equal(installer.parseNodeVerifyArgs(["diagnose", "--backend", "agents"]), null);
 });
 
-test("parseNodeInstallArgs accepts only agents package-local install forms", () => {
+test("parseNodeInstallArgs accepts agents and claude package-local install forms", () => {
   assert.deepEqual(
     installer.parseNodeInstallArgs(["install", "--backend", "agents"]),
     { backend: "agents", agentsRoot: undefined },
@@ -534,12 +1248,15 @@ test("parseNodeInstallArgs accepts only agents package-local install forms", () 
     installer.parseNodeInstallArgs(["install", "--backend=agents", "--agents-root=/tmp/agents-skills"]),
     { backend: "agents", agentsRoot: "/tmp/agents-skills" },
   );
-  assert.equal(installer.parseNodeInstallArgs(["install", "--backend", "claude"]), null);
+  assert.deepEqual(
+    installer.parseNodeInstallArgs(["install", "--backend", "claude", "--claude-root=/tmp/claude-skills"]),
+    { backend: "claude", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+  );
   assert.equal(installer.parseNodeInstallArgs(["install", "--source", "github"]), null);
   assert.equal(installer.parseNodeInstallArgs(["verify", "--backend", "agents"]), null);
 });
 
-test("parseNodePruneArgs accepts only agents package-local prune all forms", () => {
+test("parseNodePruneArgs accepts agents and claude package-local prune all forms", () => {
   assert.deepEqual(
     installer.parseNodePruneArgs(["prune", "--all", "--backend", "agents"]),
     { backend: "agents", agentsRoot: undefined },
@@ -548,8 +1265,11 @@ test("parseNodePruneArgs accepts only agents package-local prune all forms", () 
     installer.parseNodePruneArgs(["prune", "--backend=agents", "--agents-root=/tmp/agents-skills", "--all"]),
     { backend: "agents", agentsRoot: "/tmp/agents-skills" },
   );
+  assert.deepEqual(
+    installer.parseNodePruneArgs(["prune", "--all", "--backend", "claude", "--claude-root", "/tmp/claude-skills"]),
+    { backend: "claude", agentsRoot: undefined, claudeRoot: "/tmp/claude-skills" },
+  );
   assert.equal(installer.parseNodePruneArgs(["prune", "--backend", "agents"]), null);
-  assert.equal(installer.parseNodePruneArgs(["prune", "--all", "--backend", "claude"]), null);
   assert.equal(installer.parseNodePruneArgs(["prune", "--all", "--source", "github"]), null);
   assert.equal(installer.parseNodePruneArgs(["install", "--backend", "agents"]), null);
 });
@@ -980,6 +1700,261 @@ test("aw-installer check_paths_exist agents is node-owned without Python and hon
     assert.equal(completed.stdout, `[agents] ok: no conflicting target paths at ${agentsRoot}\n`);
     assert.equal(completed.stderr.includes("unexpected-python"), false);
     assert.equal(existsSync(agentsRoot), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer diagnose agents human and json agents-root are node-owned without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const agentsRoot = join(root, "custom-agents", "skills");
+
+    const human = runAwInstaller(root, ["diagnose", "--backend=agents", `--agents-root=${agentsRoot}`], fakeBin);
+    assert.equal(human.status, 0, human.stderr);
+    assert.equal(
+      human.stdout,
+      `[agents] diagnose: 1 issue(s), 0 managed install(s) at ${agentsRoot}\n` +
+        "issue codes: missing-target-root\n",
+    );
+    assert.equal(human.stderr.includes("unexpected-python"), false);
+
+    const json = runAwInstaller(root, ["diagnose", "--backend=agents", "--json", `--agents-root=${agentsRoot}`], fakeBin);
+    assert.equal(json.status, 0, json.stderr);
+    assert.equal(json.stderr.includes("unexpected-python"), false);
+    const payload = JSON.parse(json.stdout);
+    assert.equal(payload.backend, "agents");
+    assert.equal(payload.target_root, agentsRoot);
+    assert.equal(payload.target_root_status, "missing");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer claude read-only lifecycle paths are node-owned without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalClaudeSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const claudeRoot = join(root, "custom-claude", "skills");
+
+    const human = runAwInstaller(root, ["diagnose", "--backend=claude", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(human.status, 0, human.stderr);
+    assert.equal(
+      human.stdout,
+      `[claude] diagnose: 1 issue(s), 0 managed install(s) at ${claudeRoot}\n` +
+        "issue codes: missing-target-root\n",
+    );
+    assert.equal(human.stderr.includes("unexpected-python"), false);
+
+    const json = runAwInstaller(root, ["diagnose", "--backend=claude", "--json", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(json.status, 0, json.stderr);
+    assert.equal(json.stderr.includes("unexpected-python"), false);
+    const diagnosePayload = JSON.parse(json.stdout);
+    assert.equal(diagnosePayload.backend, "claude");
+    assert.equal(diagnosePayload.target_root, claudeRoot);
+    assert.equal(diagnosePayload.target_root_status, "missing");
+
+    const check = runNodeCheckPathsExist(root, ["--backend=claude", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(check.status, 0, check.stderr);
+    assert.equal(check.stdout, `[claude] ok: no conflicting target paths at ${claudeRoot}\n`);
+    assert.equal(check.stderr.includes("unexpected-python"), false);
+
+    const updateJson = runNodeUpdate(root, ["--backend=claude", "--json", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(updateJson.status, 0, updateJson.stderr);
+    assert.equal(updateJson.stderr.includes("unexpected-python"), false);
+    const updatePayload = JSON.parse(updateJson.stdout);
+    assert.equal(updatePayload.backend, "claude");
+    assert.equal(updatePayload.target_root, claudeRoot);
+    assert.equal(updatePayload.blocking_issue_count, 0);
+
+    const updateHuman = runNodeUpdate(root, ["--backend=claude", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(updateHuman.status, 0, updateHuman.stderr);
+    assert.match(updateHuman.stdout, /^\[claude\] update plan for /);
+    assert.match(updateHuman.stdout, /\[claude\] dry-run only; pass --yes to apply update/);
+    assert.equal(updateHuman.stderr.includes("unexpected-python"), false);
+    assert.equal(existsSync(claudeRoot), false);
+
+    const blockedClaudeRoot = join(root, "blocked-claude-root");
+    writeFileSync(blockedClaudeRoot, "not a directory\n", "utf8");
+    const blockedUpdate = runNodeUpdate(root, ["--backend=claude", `--claude-root=${blockedClaudeRoot}`], fakeBin);
+    assert.equal(blockedUpdate.status, 1);
+    assert.match(blockedUpdate.stderr, /\[claude\] update blocked by 1 preflight issue\(s\)/);
+    assert.equal(blockedUpdate.stderr.includes("unexpected-python"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer verify claude honors frontmatter transform parity without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    const installed = seedInstalledClaudeSkill(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+
+    const success = runNodeVerify(root, ["--backend=claude", `--claude-root=${installed.targetRoot}`], fakeBin);
+    assert.equal(success.status, 0, success.stderr);
+    assert.equal(success.stdout, `[claude] ok: target root is ready at ${installed.targetRoot}\n`);
+    assert.equal(success.stderr.includes("unexpected-python"), false);
+
+    writeFileSync(join(installed.targetSkillDir, "SKILL.md"), "# drifted\n", "utf8");
+    const drift = runNodeVerify(root, ["--backend=claude", `--claude-root=${installed.targetRoot}`], fakeBin);
+    assert.equal(drift.status, 1);
+    assert.match(drift.stdout, /^\[claude\] drift: 1 issue\(s\) in target root/);
+    assert.match(drift.stdout, /target-payload-drift/);
+    assert.equal(drift.stderr.includes("unexpected-python"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer claude mutating lifecycle paths are node-owned without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalClaudeSource(root, "demo-skill", {
+      claudeFrontmatter: { "disable-model-invocation": true },
+    });
+    const fakeBin = fakePythonBin(root);
+    const claudeRoot = join(root, "custom-claude", "skills");
+    const targetSkillDir = join(claudeRoot, "demo-skill");
+
+    const install = runNodeInstall(root, ["--backend=claude", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(install.status, 0, install.stderr);
+    assert.equal(install.stderr.includes("unexpected-python"), false);
+    assert.match(install.stdout, new RegExp(`installed skill demo-skill -> ${escapeRegExp(targetSkillDir)}`));
+    assert.equal(existsSync(join(root, ".agents", "skills")), false);
+    assert.equal(readFileSync(join(targetSkillDir, "SKILL.md"), "utf8").includes("disable-model-invocation: true"), true);
+
+    const update = runNodeUpdate(root, ["--backend=claude", "--yes", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(update.status, 0, update.stderr);
+    assert.equal(update.stderr.includes("unexpected-python"), false);
+    assert.match(update.stdout, /\[claude\] update plan for /);
+    assert.match(update.stdout, /\[claude\] applying update/);
+    assert.match(update.stdout, /\[claude\] update complete/);
+
+    const verify = runNodeVerify(root, ["--backend=claude", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(verify.status, 0, verify.stderr);
+
+    const prune = runNodePrune(root, ["--all", "--backend=claude", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(prune.status, 0, prune.stderr);
+    assert.equal(prune.stderr.includes("unexpected-python"), false);
+    assert.match(prune.stdout, new RegExp(`removed managed skill dir ${escapeRegExp(targetSkillDir)}`));
+    assert.equal(existsSync(targetSkillDir), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer install removes same-backend managed legacy directories without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalClaudeSource(root, "demo-skill", {
+      legacyTargetDirs: ["aw-demo-skill"],
+      legacySkillIds: ["old-demo-skill"],
+    });
+    const fakeBin = fakePythonBin(root);
+    const claudeRoot = join(root, ".claude", "skills");
+    const legacyDir = join(claudeRoot, "aw-demo-skill");
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(join(legacyDir, "SKILL.md"), "# legacy\n", "utf8");
+    writeFileSync(
+      join(legacyDir, "aw.marker"),
+      `${JSON.stringify({
+        marker_version: "aw-managed-skill-marker.v2",
+        backend: "claude",
+        skill_id: "old-demo-skill",
+        payload_version: "claude-skill-payload.v1",
+        payload_fingerprint: "old-fingerprint",
+      }, null, 2)}\n`,
+      "utf8",
+    );
+
+    const completed = runNodeInstall(root, ["--backend=claude"], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+    assert.match(completed.stdout, new RegExp(`removed legacy skill dir demo-skill -> ${escapeRegExp(legacyDir)}`));
+    assert.equal(existsSync(legacyDir), false);
+    assert.equal(existsSync(join(claudeRoot, "demo-skill", "aw.marker")), true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer install blocks legacy symlink markers without Python", () => {
+  if (process.platform === "win32") {
+    return;
+  }
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalClaudeSource(root, "demo-skill", {
+      legacyTargetDirs: ["aw-demo-skill"],
+    });
+    const fakeBin = fakePythonBin(root);
+    const claudeRoot = join(root, ".claude", "skills");
+    const actualDir = join(root, "actual-managed-legacy");
+    const legacyDir = join(claudeRoot, "aw-demo-skill");
+    mkdirSync(actualDir, { recursive: true });
+    mkdirSync(claudeRoot, { recursive: true });
+    writeFileSync(join(actualDir, "SKILL.md"), "# legacy\n", "utf8");
+    writeFileSync(
+      join(actualDir, "aw.marker"),
+      `${JSON.stringify({
+        marker_version: "aw-managed-skill-marker.v2",
+        backend: "claude",
+        skill_id: "demo-skill",
+        payload_version: "claude-skill-payload.v1",
+        payload_fingerprint: "old-fingerprint",
+      }, null, 2)}\n`,
+      "utf8",
+    );
+    symlinkSync(actualDir, legacyDir, "dir");
+
+    const completed = runNodeInstall(root, ["--backend=claude"], fakeBin);
+
+    assert.equal(completed.status, 1);
+    assert.match(completed.stderr, /legacy directory aw-demo-skill is occupied by unmanaged content/);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+    assert.equal(existsSync(actualDir), true);
+    assert.equal(existsSync(join(claudeRoot, "demo-skill")), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer agents install removes same-backend managed legacy directories without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(root, "demo-skill", {
+      legacyTargetDirs: ["demo-skill"],
+      legacySkillIds: ["old-demo-skill"],
+    });
+    const fakeBin = fakePythonBin(root);
+    const agentsRoot = join(root, ".agents", "skills");
+    const legacyDir = join(agentsRoot, "demo-skill");
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(join(legacyDir, "SKILL.md"), "# legacy\n", "utf8");
+    writeFileSync(
+      join(legacyDir, "aw.marker"),
+      `${JSON.stringify({
+        marker_version: "aw-managed-skill-marker.v2",
+        backend: "agents",
+        skill_id: "old-demo-skill",
+        payload_version: "agents-skill-payload.v1",
+        payload_fingerprint: "old-fingerprint",
+      }, null, 2)}\n`,
+      "utf8",
+    );
+
+    const completed = runNodeInstall(root, ["--backend=agents"], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+    assert.match(completed.stdout, new RegExp(`removed legacy skill dir demo-skill -> ${escapeRegExp(legacyDir)}`));
+    assert.equal(existsSync(legacyDir), false);
+    assert.equal(existsSync(join(agentsRoot, "aw-demo-skill", "aw.marker")), true);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -1431,22 +2406,49 @@ test("aw-installer install agents matches Python reference on clean target outpu
   }
 });
 
-test("aw-installer install agents falls back for non-clean target root without Node writes", () => {
+test("aw-installer install agents blocks non-clean target conflicts without Python or writes", () => {
   const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
   try {
     seedMinimalAgentsSource(root, "demo-skill");
     const targetRoot = join(root, ".agents", "skills");
     const targetSkillDir = join(targetRoot, "aw-demo-skill");
-    mkdirSync(join(targetRoot, "user-owned"), { recursive: true });
+    mkdirSync(targetSkillDir, { recursive: true });
+    writeFileSync(join(targetSkillDir, "user-owned.txt"), "preserve me\n", "utf8");
     const fakeBin = fakePythonBin(root);
 
     const completed = runNodeInstall(root, ["--backend=agents", `--agents-root=${targetRoot}`], fakeBin);
 
-    assert.equal(completed.status, 97);
+    assert.equal(completed.status, 1);
     assert.equal(completed.stdout, "");
-    assert.match(completed.stderr, /unexpected-python/);
-    assert.equal(existsSync(targetSkillDir), false);
-    assert.equal(existsSync(join(targetRoot, "user-owned")), true);
+    assert.match(completed.stderr, /\[agents\] install blocked by 1 existing target path\(s\)/);
+    assert.match(completed.stderr, /- demo-skill:/);
+    assert.match(completed.stderr, /existing target path is a directory/);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+    assert.equal(existsSync(join(targetSkillDir, "user-owned.txt")), true);
+    assert.equal(existsSync(join(targetSkillDir, "SKILL.md")), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer install agents allows unrelated target content without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(root, "demo-skill");
+    const targetRoot = join(root, ".agents", "skills");
+    const unrelatedDir = join(targetRoot, "user-owned");
+    const targetSkillDir = join(targetRoot, "aw-demo-skill");
+    mkdirSync(unrelatedDir, { recursive: true });
+    writeFileSync(join(unrelatedDir, "note.txt"), "preserve me\n", "utf8");
+    const fakeBin = fakePythonBin(root);
+
+    const completed = runNodeInstall(root, ["--backend=agents", `--agents-root=${targetRoot}`], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    assert.match(completed.stdout, new RegExp(`installed skill demo-skill -> ${escapeRegExp(targetSkillDir)}`));
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+    assert.equal(readFileSync(join(unrelatedDir, "note.txt"), "utf8"), "preserve me\n");
+    assert.equal(existsSync(join(targetSkillDir, "SKILL.md")), true);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -1766,26 +2768,70 @@ test("aw-installer prune agents matches Python reference output shape", () => {
   }
 });
 
-test("aw-installer leaves out-of-scope install and mutating commands on Python reference path", () => {
+test("aw-installer rejects unsupported install variants without Python", () => {
   const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
   try {
     seedMinimalAgentsSource(root, "demo-skill");
     const fakeBin = fakePythonBin(root);
     const commands = [
-      ["install", "--backend", "claude"],
       ["install", "--backend", "agents", "--source", "github"],
-      ["prune", "--backend", "agents"],
-      ["prune", "--all", "--backend", "claude"],
-      ["update", "--backend", "agents", "--yes", "--source", "github"],
-      ["update", "--backend", "agents", "--json", "--yes"],
-      ["update", "--backend", "claude", "--yes"],
     ];
 
     for (const args of commands) {
       const completed = runAwInstaller(root, args, fakeBin);
-      assert.equal(completed.status, 97, args.join(" "));
+      assert.equal(completed.status, 1, args.join(" "));
       assert.equal(completed.stdout, "");
-      assert.match(completed.stderr, /unexpected-python/, args.join(" "));
+      assert.match(
+        completed.stderr,
+        /unsupported aw-installer command or options for Node-only distribution/,
+        args.join(" "),
+      );
+      assert.equal(completed.stderr.includes("unexpected-python"), false, args.join(" "));
+      assert.equal(completed.stderr.includes("harness_deploy.py"), false, args.join(" "));
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer rejects unsupported local agents variants without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const cases = [
+      {
+        args: ["prune", "--backend", "agents"],
+        message: /prune currently requires --all/,
+      },
+      {
+        args: ["update", "--backend", "agents", "--json", "--yes"],
+        message: /update --json is only supported for dry-run plans; omit --json with --yes/,
+      },
+      {
+        args: [
+          "update",
+          "--backend",
+          "agents",
+          "--json",
+          "--yes",
+          "--source",
+          "github",
+          "--github-repo",
+          "Owner/repo",
+          "--github-ref",
+          "main",
+        ],
+        message: /update --json is only supported for dry-run plans; omit --json with --yes/,
+      },
+    ];
+
+    for (const currentCase of cases) {
+      const completed = runAwInstaller(root, currentCase.args, fakeBin);
+      assert.equal(completed.status, 1, currentCase.args.join(" "));
+      assert.equal(completed.stdout, "");
+      assert.match(completed.stderr, currentCase.message, currentCase.args.join(" "));
+      assert.equal(completed.stderr.includes("unexpected-python"), false, currentCase.args.join(" "));
     }
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -1831,6 +2877,537 @@ test("updatePlanSummary reports a nonblocking dry-run plan for missing target ro
     assert.equal(summary.blocking_issue_count, 0);
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("github source archive context feeds update JSON planning with target/source separation", () => {
+  const sourceRoot = mkdtempSync(join(tmpdir(), "aw-installer-source-"));
+  const targetRepo = mkdtempSync(join(tmpdir(), "aw-installer-target-"));
+  const originalCwd = process.cwd();
+  let cleanup = null;
+  try {
+    seedMinimalAgentsSource(sourceRoot, "demo-skill");
+    const archiveBuffer = createGithubArchiveFromSource(sourceRoot);
+    process.chdir(targetRepo);
+    const githubContext = installer.buildNodeGithubSourceContext(
+      {
+        backend: "agents",
+        source: "github",
+        githubRepo: "Owner/repo",
+        githubRef: "main",
+      },
+      archiveBuffer,
+    );
+    cleanup = githubContext.cleanup;
+    const summary = installer.updatePlanSummary(githubContext.context);
+    const extractedSourceRoot = githubContext.context.sourceRoot;
+
+    assert.equal(summary.backend, "agents");
+    assert.equal(summary.source_kind, "github");
+    assert.equal(summary.source_ref, "Owner/repo@main");
+    assert.equal(summary.source_root, extractedSourceRoot);
+    assert.equal(summary.target_root, join(targetRepo, ".agents", "skills"));
+    assert.equal(summary.blocking_issue_count, 0);
+    assert.deepEqual(summary.planned_target_paths, [join(targetRepo, ".agents", "skills", "aw-demo-skill")]);
+    assert.notEqual(summary.source_root, targetRepo);
+    assert.equal(existsSync(extractedSourceRoot), true);
+    cleanup();
+    cleanup = null;
+    assert.equal(existsSync(extractedSourceRoot), false);
+  } finally {
+    process.chdir(originalCwd);
+    if (cleanup !== null) {
+      cleanup();
+    }
+    rmSync(sourceRoot, { recursive: true, force: true });
+    rmSync(targetRepo, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer github source human-readable dry-run is node-owned with mocked archive", async () => {
+  const sourceRoot = mkdtempSync(join(tmpdir(), "aw-installer-source-"));
+  const targetRepo = mkdtempSync(join(tmpdir(), "aw-installer-target-"));
+  const originalCwd = process.cwd();
+  try {
+    seedMinimalAgentsSource(sourceRoot, "demo-skill", {
+      skillText: "# demo-skill\n\n# from github source\n",
+    });
+    const archiveBuffer = createGithubArchiveFromSource(sourceRoot);
+    process.chdir(targetRepo);
+
+    const { result, stdout } = await captureConsoleLog(() => withMockedGithubArchive(archiveBuffer, async (requests) => {
+      const status = await installer.runNodeOwnedOrWrapper([
+        "update",
+        "--backend=agents",
+        "--source=github",
+        "--github-repo=Owner/repo",
+        "--github-ref=main",
+      ]);
+      assert.deepEqual(
+        requests.map((request) => request.url),
+        ["https://codeload.github.com/Owner/repo/zip/refs/heads/main"],
+      );
+      return status;
+    }));
+
+    assert.equal(result, 0);
+    assert.match(stdout, new RegExp(`\\[agents\\] update plan for ${escapeRegExp(join(targetRepo, ".agents", "skills"))}`));
+    assert.match(stdout, /sequence: prune --all -> check_paths_exist -> install -> verify/);
+    assert.match(stdout, /target paths to write: 1/);
+    assert.match(stdout, /blocking preflight issues: 0/);
+    assert.match(stdout, /\[agents\] dry-run only; pass --yes to apply update/);
+    assert.equal(stdout.includes("[agents] applying update"), false);
+    assert.equal(existsSync(join(targetRepo, ".agents", "skills")), false);
+  } finally {
+    process.chdir(originalCwd);
+    rmSync(sourceRoot, { recursive: true, force: true });
+    rmSync(targetRepo, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer github source yes applies update through Node-owned composition with mocked archive", async () => {
+  const sourceRoot = mkdtempSync(join(tmpdir(), "aw-installer-source-"));
+  const targetRepo = mkdtempSync(join(tmpdir(), "aw-installer-target-"));
+  const originalCwd = process.cwd();
+  try {
+    seedMinimalAgentsSource(sourceRoot, "demo-skill", {
+      skillText: "# demo-skill\n\n# from github source\n",
+    });
+    const archiveBuffer = createGithubArchiveFromSource(sourceRoot);
+    process.chdir(targetRepo);
+
+    const { result, stdout } = await captureConsoleLog(() => withMockedGithubArchive(archiveBuffer, async (requests) => {
+      const status = await installer.runNodeOwnedOrWrapper([
+        "update",
+        "--backend=agents",
+        "--source=github",
+        "--github-repo=Owner/repo",
+        "--github-ref=main",
+        "--yes",
+      ]);
+      assert.deepEqual(
+        requests.map((request) => request.url),
+        ["https://codeload.github.com/Owner/repo/zip/refs/heads/main"],
+      );
+      return status;
+    }));
+
+    const targetRoot = join(targetRepo, ".agents", "skills");
+    assert.equal(result, 0);
+    assert.match(stdout, new RegExp(`\\[agents\\] update plan for ${escapeRegExp(targetRoot)}`));
+    assert.match(stdout, /\[agents\] applying update/);
+    assert.match(stdout, /\[agents\] update complete/);
+    assert.equal(
+      readFileSync(join(targetRoot, "aw-demo-skill", "SKILL.md"), "utf8"),
+      "# demo-skill\n\n# from github source\n",
+    );
+  } finally {
+    process.chdir(originalCwd);
+    rmSync(sourceRoot, { recursive: true, force: true });
+    rmSync(targetRepo, { recursive: true, force: true });
+  }
+});
+
+test("downloadGithubArchive enforces content length and streamed size limits", async () => {
+  await withMockedGithubResponses(
+    [{ statusCode: 200, headers: { "content-length": "6" }, chunks: ["tiny"] }],
+    async (requests) => {
+      await assert.rejects(
+        () => installer.downloadGithubArchive("Owner/repo", "main", {
+          maxBytes: 5,
+          maxAttempts: 3,
+          retryDelayMs: 0,
+        }),
+        /archive exceeds 5 byte limit/,
+      );
+      assert.equal(requests.length, 1);
+      assert.equal(requests[0].response.destroyed, true);
+    },
+  );
+
+  await withMockedGithubResponses(
+    [{ statusCode: 200, chunks: [Buffer.alloc(3), Buffer.alloc(3)] }],
+    async (requests) => {
+      await assert.rejects(
+        () => installer.downloadGithubArchive("Owner/repo", "main", {
+          maxBytes: 5,
+          maxAttempts: 3,
+          retryDelayMs: 0,
+        }),
+        /archive exceeds 5 byte limit/,
+      );
+      assert.equal(requests.length, 1);
+    },
+  );
+});
+
+test("downloadGithubArchive retries retryable failures and does not retry non-retryable responses", async () => {
+  await withMockedGithubResponses(
+    [
+      { statusCode: 500 },
+      { statusCode: 429 },
+      { statusCode: 200, chunks: ["ok"] },
+    ],
+    async (requests) => {
+      const archive = await installer.downloadGithubArchive("Owner/repo", "main", {
+        maxBytes: 10,
+        maxAttempts: 3,
+        retryDelayMs: 0,
+      });
+      assert.equal(archive.toString("utf8"), "ok");
+      assert.deepEqual(
+        requests.map((request) => request.url),
+        [
+          "https://codeload.github.com/Owner/repo/zip/refs/heads/main",
+          "https://codeload.github.com/Owner/repo/zip/refs/heads/main",
+          "https://codeload.github.com/Owner/repo/zip/refs/heads/main",
+        ],
+      );
+    },
+  );
+
+  await withMockedGithubResponses(
+    [
+      { statusCode: 404, afterHandlerError: new Error("late response failure") },
+      { statusCode: 200, chunks: ["should-not-run"] },
+    ],
+    async (requests) => {
+      await assert.rejects(
+        () => installer.downloadGithubArchive("Owner/repo", "main", {
+          maxBytes: 20,
+          maxAttempts: 3,
+          retryDelayMs: 0,
+        }),
+        /HTTP 404/,
+      );
+      assert.equal(requests.length, 1);
+    },
+  );
+});
+
+test("aw-installer github source recovery hint preserves source arguments after apply failure", () => {
+  if (process.platform === "win32") {
+    return;
+  }
+  const sourceRoot = mkdtempSync(join(tmpdir(), "aw-installer-source-"));
+  const targetRepo = mkdtempSync(join(tmpdir(), "aw-installer-target-"));
+  const originalCwd = process.cwd();
+  let cleanup = null;
+  try {
+    seedMinimalAgentsSource(sourceRoot, "demo-skill");
+    const installed = seedInstalledAgentsSkill(targetRepo, "demo-skill");
+    const archiveBuffer = createGithubArchiveFromSource(sourceRoot);
+    const archiveSha256 = createHash("sha256").update(archiveBuffer).digest("hex");
+    process.chdir(targetRepo);
+    const githubContext = installer.buildNodeGithubSourceContext(
+      {
+        backend: "agents",
+        source: "github",
+        githubRepo: "Owner/repo",
+        githubRef: "main",
+        githubArchiveSha256: archiveSha256,
+      },
+      archiveBuffer,
+    );
+    cleanup = githubContext.cleanup;
+    chmodSync(installed.targetRoot, 0o555);
+
+    assert.throws(
+      () => captureConsoleLog(() => installer.applyUpdateContext(githubContext.context)),
+      new RegExp(
+        `aw-installer update --backend agents --source github --github-repo "Owner/repo" ` +
+          `--github-ref "main" --github-archive-sha256 "${archiveSha256}" --yes`,
+      ),
+    );
+  } finally {
+    process.chdir(originalCwd);
+    const targetRoot = join(targetRepo, ".agents", "skills");
+    if (existsSync(targetRoot)) {
+      chmodSync(targetRoot, 0o755);
+    }
+    if (cleanup !== null) {
+      cleanup();
+    }
+    rmSync(sourceRoot, { recursive: true, force: true });
+    rmSync(targetRepo, { recursive: true, force: true });
+  }
+});
+
+test("github source context cleans extracted temp dir when target context fails", () => {
+  const originalCwd = process.cwd();
+  const originalTmpdir = process.env.TMPDIR;
+  const tempBase = mkdtempSync(join(tmpdir(), "aw-installer-tmpdir-"));
+  const sourceRoot = join(tempBase, "source");
+  const targetRepo = join(tempBase, "target");
+  try {
+    mkdirSync(sourceRoot, { recursive: true });
+    mkdirSync(targetRepo, { recursive: true });
+    seedMinimalAgentsSource(sourceRoot, "demo-skill");
+    const archiveBuffer = createGithubArchiveFromSource(sourceRoot);
+    process.env.TMPDIR = tempBase;
+    process.chdir(targetRepo);
+
+    assert.throws(
+      () => installer.buildNodeGithubSourceContext(
+        {
+          backend: "agents",
+          source: "github",
+          githubRepo: "Owner/repo",
+          githubRef: "main",
+          agentsRoot: join(tempBase, "outside-target", ".agents", "skills"),
+        },
+        archiveBuffer,
+      ),
+      /outside allowed paths/,
+    );
+    assert.deepEqual(
+      readdirSync(tempBase).filter((entry) => entry.startsWith("aw-installer-github-source-")),
+      [],
+    );
+  } finally {
+    process.chdir(originalCwd);
+    if (originalTmpdir === undefined) {
+      delete process.env.TMPDIR;
+    } else {
+      process.env.TMPDIR = originalTmpdir;
+    }
+    rmSync(tempBase, { recursive: true, force: true });
+  }
+});
+
+test("github source archive validation rejects unsafe members and sha mismatch", () => {
+  const sourceRoot = mkdtempSync(join(tmpdir(), "aw-installer-source-"));
+  let cleanup = null;
+  try {
+    seedMinimalAgentsSource(sourceRoot, "demo-skill");
+    const archiveBuffer = createGithubArchiveFromSource(sourceRoot);
+    const deflatedContext = installer.buildNodeGithubSourceContext(
+      {
+        backend: "agents",
+        source: "github",
+        githubRepo: "Owner/repo",
+        githubRef: "main",
+      },
+      createGithubArchiveFromSource(sourceRoot, "repo-master", createDeflatedZip),
+    );
+    cleanup = deflatedContext.cleanup;
+    assert.equal(existsSync(join(deflatedContext.context.sourceRoot, "product", "harness", "skills")), true);
+    assert.equal(installer.githubArchiveRefPath("master"), "refs/heads/master");
+    assert.equal(
+      installer.githubArchiveRefPath("0123456789abcdef0123456789abcdef01234567"),
+      "0123456789abcdef0123456789abcdef01234567",
+    );
+    assert.equal(
+      installer.githubArchiveUrl("Owner/repo", "master"),
+      "https://codeload.github.com/Owner/repo/zip/refs/heads/master",
+    );
+    assert.throws(
+      () => installer.githubSourceRootFromArchiveBuffer("Owner/repo", "main", archiveBuffer, "0".repeat(64)),
+      /GitHub source archive SHA256 mismatch/,
+    );
+    assert.throws(
+      () => installer.githubSourceRootFromArchiveBuffer("Owner/repo", "main", archiveBuffer, ""),
+      /SHA256 digest must be 64 hexadecimal characters/,
+    );
+    assert.throws(
+      () => installer.githubSourceRootFromArchiveBuffer(
+        "Owner/repo",
+        "main",
+        createStoredZip([["repo-master/../evil.txt", "bad"]]),
+      ),
+      /GitHub archive contains unsafe path/,
+    );
+    assert.throws(
+      () => installer.githubSourceRootFromArchiveBuffer(
+        "Owner/repo",
+        "main",
+        createStoredZip([["C:/repo-master/evil.txt", "bad"]]),
+      ),
+      /GitHub archive contains unsafe path/,
+    );
+  } finally {
+    if (cleanup !== null) {
+      cleanup();
+    }
+    rmSync(sourceRoot, { recursive: true, force: true });
+  }
+});
+
+test("github source archive extraction enforces uncompressed size limits", () => {
+  const sourceRoot = mkdtempSync(join(tmpdir(), "aw-installer-source-"));
+  let cleanup = null;
+  try {
+    seedMinimalAgentsSource(sourceRoot, "demo-skill");
+    const validArchive = createGithubArchiveFromSource(sourceRoot, "repo-master", createDeflatedZip);
+    cleanup = installer.githubSourceRootFromArchiveBuffer(
+      "Owner/repo",
+      "main",
+      validArchive,
+      undefined,
+      { maxUncompressedBytes: 1024 * 1024 },
+    ).cleanup;
+    assert.throws(
+      () => installer.githubSourceRootFromArchiveBuffer(
+        "Owner/repo",
+        "main",
+        validArchive,
+        undefined,
+        { maxUncompressedBytes: 16 },
+      ),
+      /GitHub source archive uncompressed size exceeds 16 byte limit/,
+    );
+    assert.throws(
+      () => installer.githubSourceRootFromArchiveBuffer(
+        "Owner/repo",
+        "main",
+        createDeflatedZip([["repo-master/payload.txt", "small", { uncompressedSize: 17 }]]),
+        undefined,
+        { maxUncompressedBytes: 16 },
+      ),
+      /GitHub source archive uncompressed size exceeds 16 byte limit/,
+    );
+    assert.throws(
+      () => installer.githubSourceRootFromArchiveBuffer(
+        "Owner/repo",
+        "main",
+        createDeflatedZip([["repo-master/payload.txt", "x".repeat(32), { uncompressedSize: 1 }]]),
+        undefined,
+        { maxUncompressedBytes: 1024 },
+      ),
+      /GitHub source archive entry size mismatch/,
+    );
+  } finally {
+    if (cleanup !== null) {
+      cleanup();
+    }
+    rmSync(sourceRoot, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer github source update paths reject invalid local inputs without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const invalidCases = [
+      [["--github-repo=not-a-repo", "--github-ref=main"], /GitHub repo must use OWNER\/REPO/],
+      [["--github-repo=Owner/repo", "--github-ref=bad..ref"], /GitHub ref contains unsupported characters/],
+      [
+        ["--github-repo=Owner/repo", "--github-ref=main", "--github-archive-sha256=not-a-sha"],
+        /SHA256 digest must be 64 hexadecimal characters/,
+      ],
+      [
+        ["--github-repo=Owner/repo", "--github-ref=main", "--github-archive-sha256="],
+        /SHA256 digest must be 64 hexadecimal characters/,
+      ],
+    ];
+    const modes = [
+      ["--json"],
+      [],
+      ["--yes"],
+    ];
+    for (const modeArgs of modes) {
+      for (const [extraArgs, expectedError] of invalidCases) {
+        const completed = runNodeUpdate(
+          root,
+          ["--backend=agents", ...modeArgs, "--source=github", ...extraArgs],
+          fakeBin,
+        );
+
+        assert.equal(completed.status, 1);
+        assert.equal(completed.stdout, "");
+        assert.match(completed.stderr, expectedError);
+        assert.equal(completed.stderr.includes("unexpected-python"), false);
+        assert.equal(completed.stderr.includes("harness_deploy.py"), false);
+      }
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer update agents human-readable dry-run is node-owned without Python", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(root, "demo-skill");
+    const targetRoot = join(root, "custom-agents-skills");
+    const fakeBin = fakePythonBin(root);
+
+    const completed = runNodeUpdate(root, ["--backend=agents", `--agents-root=${targetRoot}`], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+    assert.match(completed.stdout, new RegExp(`\\[agents\\] update plan for ${escapeRegExp(targetRoot)}`));
+    assert.match(completed.stdout, /sequence: prune --all -> check_paths_exist -> install -> verify/);
+    assert.match(completed.stdout, /target paths to write: 1/);
+    assert.match(completed.stdout, /blocking preflight issues: 0/);
+    assert.match(completed.stdout, /\[agents\] dry-run only; pass --yes to apply update/);
+    assert.equal(completed.stdout.includes("[agents] applying update"), false);
+    assert.equal(existsSync(targetRoot), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer update agents human-readable dry-run matches Python reference output shape", () => {
+  const nodeRoot = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  const pythonRoot = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(nodeRoot, "demo-skill");
+    seedMinimalAgentsSource(pythonRoot, "demo-skill");
+    const nodeResult = runNodeUpdate(nodeRoot, ["--backend=agents"]);
+    const pythonResult = runPythonUpdate(pythonRoot, ["--backend=agents"]);
+    const normalizeNodeRoot = (value) => value.replaceAll(nodeRoot, "<ROOT>");
+    const normalizePythonRoot = (value) => value.replaceAll(pythonRoot, "<ROOT>");
+
+    assert.equal(nodeResult.status, pythonResult.status);
+    assert.equal(normalizeNodeRoot(nodeResult.stdout), normalizePythonRoot(pythonResult.stdout));
+    assert.equal(normalizeNodeRoot(nodeResult.stderr), normalizePythonRoot(pythonResult.stderr));
+    assert.equal(existsSync(join(nodeRoot, ".agents", "skills")), false);
+    assert.equal(existsSync(join(pythonRoot, ".agents", "skills")), false);
+  } finally {
+    rmSync(nodeRoot, { recursive: true, force: true });
+    rmSync(pythonRoot, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer update agents human-readable dry-run reports blocking preflight without applying", () => {
+  const nodeRoot = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  const pythonRoot = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalAgentsSource(nodeRoot, "demo-skill");
+    seedMinimalAgentsSource(nodeRoot, "other-skill");
+    seedMinimalAgentsSource(pythonRoot, "demo-skill");
+    seedMinimalAgentsSource(pythonRoot, "other-skill");
+    const nodeTargetRoot = join(nodeRoot, ".agents", "skills");
+    const pythonTargetRoot = join(pythonRoot, ".agents", "skills");
+    const nodeUnmanagedDir = join(nodeTargetRoot, "aw-demo-skill");
+    const pythonUnmanagedDir = join(pythonTargetRoot, "aw-demo-skill");
+    mkdirSync(nodeUnmanagedDir, { recursive: true });
+    mkdirSync(pythonUnmanagedDir, { recursive: true });
+    writeFileSync(join(nodeUnmanagedDir, "SKILL.md"), "# unmanaged\n", "utf8");
+    writeFileSync(join(pythonUnmanagedDir, "SKILL.md"), "# unmanaged\n", "utf8");
+    const fakeBin = fakePythonBin(nodeRoot);
+
+    const nodeResult = runNodeUpdate(nodeRoot, ["--backend=agents"], fakeBin);
+    const pythonResult = runPythonUpdate(pythonRoot, ["--backend=agents"]);
+    const normalizeNodeRoot = (value) => value.replaceAll(nodeRoot, "<ROOT>");
+    const normalizePythonRoot = (value) => value.replaceAll(pythonRoot, "<ROOT>");
+
+    assert.equal(nodeResult.status, pythonResult.status);
+    assert.equal(normalizeNodeRoot(nodeResult.stdout), normalizePythonRoot(pythonResult.stdout));
+    assert.equal(normalizeNodeRoot(nodeResult.stderr), normalizePythonRoot(pythonResult.stderr));
+    assert.match(nodeResult.stdout, /blocking preflight issues: 1/);
+    assert.match(nodeResult.stdout, /unrecognized-target-directory/);
+    assert.equal(nodeResult.stdout.includes("[agents] dry-run only; pass --yes to apply update"), false);
+    assert.equal(nodeResult.stdout.includes("[agents] applying update"), false);
+    assert.equal(nodeResult.stdout.includes("installed skill"), false);
+    assert.equal(nodeResult.stderr.includes("unexpected-python"), false);
+    assert.equal(existsSync(nodeUnmanagedDir), true);
+    assert.equal(existsSync(join(nodeTargetRoot, "aw-other-skill")), false);
+  } finally {
+    rmSync(nodeRoot, { recursive: true, force: true });
+    rmSync(pythonRoot, { recursive: true, force: true });
   }
 });
 
@@ -1976,6 +3553,40 @@ test("aw-installer update agents yes prints recovery hint after apply failure", 
     const targetRoot = join(root, ".agents", "skills");
     if (existsSync(targetRoot)) {
       chmodSync(targetRoot, 0o755);
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer update claude recovery hint preserves claude-root override after apply failure", () => {
+  if (process.platform === "win32") {
+    return;
+  }
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalClaudeSource(root, "demo-skill");
+    const claudeRoot = join(root, "custom-claude", "skills");
+    const fakeBin = fakePythonBin(root);
+    const install = runNodeInstall(root, ["--backend=claude", `--claude-root=${claudeRoot}`], fakeBin);
+    assert.equal(install.status, 0, install.stderr);
+    chmodSync(claudeRoot, 0o555);
+
+    const completed = runNodeUpdate(root, ["--backend=claude", "--yes", `--claude-root=${claudeRoot}`], fakeBin);
+
+    assert.equal(completed.status, 1);
+    assert.match(completed.stdout, /blocking preflight issues: 0/);
+    assert.match(completed.stdout, /\[claude\] applying update/);
+    assert.match(completed.stderr, /Failed to remove managed skill dir/);
+    assert.match(completed.stderr, /recovery: the update may be partially applied/);
+    assert.match(
+      completed.stderr,
+      new RegExp(`aw-installer update --backend claude --yes --claude-root ${escapeRegExp(JSON.stringify(claudeRoot))}`),
+    );
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
+    const claudeRoot = join(root, "custom-claude", "skills");
+    if (existsSync(claudeRoot)) {
+      chmodSync(claudeRoot, 0o755);
     }
     rmSync(root, { recursive: true, force: true });
   }

@@ -97,7 +97,7 @@ docs-only 或 governance-only 变更也要显式标出不适用的 review 面及
   - 对应的最小 pytest
   - closeout acceptance gate 当前按 `scope_gate -> spec_gate -> static_gate -> cache_gate -> test_gate -> smoke_gate` 顺序收口；其中 `cache_gate` 会扫描 `docs/`、`product/`、`toolchain/` 和 `tools/` 下的 `.pytest_cache`、`__pycache__`、`.pyc` 与 `.pyo` 运行缓存。
   - closeout `scope_gate` 允许 root `README.md`，因为它是根 `aw-installer` package envelope 的 npm README surface；也允许 `product/.aw_template/`，因为它是 `.aw/` scaffold 模板源码层。
-  - closeout `test_gate` 会运行 closeout gate、folder logic、path governance、semantic governance、agents adapter contract 回归测试、deploy regression unittest suite、deploy package Node unit tests、Repo Analysis contract check、本地 npm deploy package 与根 `aw-installer` package envelope 的 `npm pack --dry-run --json` packlist 检查、根 package publish dry-run及其 `prepublishOnly` guard、临时 `.tgz` help/version/TUI non-interactive guard/diagnose/update dry-run/install/verify/update apply tarball smoke，以及 `adapter_deploy.py` / `harness_deploy.py` 的 `agents` deploy verify。
+  - closeout `test_gate` 会运行 closeout gate、folder logic、path governance、semantic governance、agents adapter contract 回归测试、deploy regression unittest suite、deploy package Node unit tests、Repo Analysis contract check、本地 npm deploy package 与根 `aw-installer` package envelope 的 `npm pack --dry-run --json` packlist 检查、根 package publish dry-run及其 `prepublishOnly` guard、临时 `.tgz` help/version/TUI non-interactive guard/diagnose/update dry-run/install/verify/update apply tarball smoke，以及 repo-local Python reference `adapter_deploy.py` / `harness_deploy.py` 的 `agents` deploy verify。
 - deploy mapping / payload contract 变更
   - `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_agents_adapter_contract.py`
   - 如同时改了 gate 链路，再补 `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`
@@ -109,9 +109,9 @@ docs-only 或 governance-only 变更也要显式标出不适用的 review 面及
   - 在 `toolchain/scripts/deploy/` 内运行 `npm pack --dry-run --json`
   - 在仓库根目录运行 `npm pack --dry-run --json`
   - 在仓库根目录运行 `npm run publish:dry-run --silent`
-  - 从临时 `npm pack --pack-destination` 产物运行 `npm exec --package <tgz> -- aw-harness-deploy --help`
-  - 设置 `AW_HARNESS_REPO_ROOT=<repo-root>` 后，从同一个临时 `.tgz` 运行 `aw-harness-deploy diagnose --backend agents --json`
-  - 设置 `AW_HARNESS_REPO_ROOT=<repo-root>` 后，从同一个临时 `.tgz` 运行 `aw-harness-deploy update --backend agents --json`
+  - 从临时 `npm pack --pack-destination` 产物运行 `npm exec --package <tgz> -- aw-installer --help`
+  - 设置 `AW_HARNESS_REPO_ROOT=<repo-root>` 后，从同一个临时 `.tgz` 运行 `aw-installer diagnose --backend agents --json`
+  - 设置 `AW_HARNESS_REPO_ROOT=<repo-root>` 后，从同一个临时 `.tgz` 运行 `aw-installer update --backend agents --json`
   - 从根 package 临时 `.tgz` 在隔离 target repo 中运行无 `AW_HARNESS_REPO_ROOT` 的 `aw-installer diagnose --backend agents --json`、`aw-installer update --backend agents --json`、`aw-installer install --backend agents`、`aw-installer verify --backend agents` 和 `aw-installer update --backend agents --yes`；该 smoke 的验收口径是 source payload 来自 package 内，target repo root 来自当前工作目录，`AW_HARNESS_TARGET_REPO_ROOT` 与 `--agents-root` 只作为显式 target override
   - `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_governance_semantic_check.py`
   - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents`

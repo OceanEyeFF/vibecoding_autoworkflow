@@ -1,9 +1,9 @@
 ---
 title: "npx Command Test Execution"
 status: active
-updated: 2026-04-29
+updated: 2026-05-04
 owner: aw-kernel
-last_verified: 2026-04-29
+last_verified: 2026-05-04
 ---
 # npx Command Test Execution
 
@@ -138,9 +138,14 @@ for target_name in target-alpha target-beta; do
     AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer install --backend agents
     AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer verify --backend agents
     AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer update --backend agents --yes
+    AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer install --backend claude
+    AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer verify --backend claude
+    AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$package_path" -- aw-installer update --backend claude --yes
   )
 done
 ```
+
+The Claude commands exercise the package payload through the compatibility lane in temporary target repos. Current checkout/local package Claude lifecycle execution is a Node-owned compatibility lane. The package/runtime `aw-installer` does not ship a Python fallback path; unsupported or unmatched deploy modes should fail explicitly in Node. Python deploy scripts may remain in the repository only as local reference, parity, or governance assets, not package/runtime dependencies.
 
 ## What The Registry Runner Does
 

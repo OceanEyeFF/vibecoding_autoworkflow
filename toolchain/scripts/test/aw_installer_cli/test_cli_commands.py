@@ -201,7 +201,7 @@ def test_cli_claude_command_lifecycle(repo_root: Path, node_path: str, tmp_path:
     assert installed_skill.is_file()
 
 
-def test_cli_update_github_source_stays_on_python_fallback(
+def test_cli_update_github_source_json_rejects_invalid_sha_without_python(
     repo_root: Path,
     node_path: str,
     tmp_path: Path,
@@ -228,14 +228,17 @@ def test_cli_update_github_source_stays_on_python_fallback(
         "github",
         "--github-ref",
         "master",
+        "--github-archive-sha256",
+        "not-a-sha",
         "--json",
         env_overrides={"PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}"},
     )
 
-    assert completed.returncode == FAKE_FAILING_PYTHON_EXIT_CODE
+    assert completed.returncode == 1
     assert completed.stdout == ""
-    assert "unexpected-python" in completed.stderr
-    assert "harness_deploy.py" in completed.stderr
+    assert "SHA256 digest must be 64 hexadecimal characters" in completed.stderr
+    assert "unexpected-python" not in completed.stderr
+    assert "harness_deploy.py" not in completed.stderr
 
 
 def test_cli_tui_requires_interactive_terminal(repo_root: Path, node_path: str, tmp_path: Path) -> None:

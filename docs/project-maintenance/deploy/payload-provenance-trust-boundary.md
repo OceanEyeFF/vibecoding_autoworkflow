@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Payload Provenance And Update Trust Boundary"
 status: active
-updated: 2026-05-01
+updated: 2026-05-03
 owner: aw-kernel
-last_verified: 2026-05-01
+last_verified: 2026-05-03
 ---
 # aw-installer Payload Provenance And Update Trust Boundary
 
@@ -18,14 +18,11 @@ last_verified: 2026-05-01
 - `product/harness/skills`
 - `product/harness/adapters/agents/skills`
 - `product/harness/adapters/claude/skills`
-- `toolchain/scripts/deploy/adapter_deploy.py`
-- `toolchain/scripts/deploy/harness_deploy.py`
 - `toolchain/scripts/deploy/bin/aw-installer.js`
-- `toolchain/scripts/deploy/bin/aw-harness-deploy.js`
 - `toolchain/scripts/deploy/bin/check-root-publish.js`
 - `toolchain/scripts/deploy/README.md`
 
-这些文件是当前 `.tgz` 内可执行 deploy payload 的来源。`.aw/`、`.agents/`、`.claude/`、`.autoworkflow/` 和其他 repo-local runtime state 不属于 package payload。
+这些文件是当前 `.tgz` 内可执行 deploy payload 的来源。`adapter_deploy.py`、`harness_deploy.py` 与旧 `aw-harness-deploy` Python alias 不再属于 package runtime payload；它们只可作为 checkout 内 repo-local reference / parity asset 保留。`.aw/`、`.agents/`、`.claude/`、`.autoworkflow/` 和其他 repo-local runtime state 不属于 package payload。
 
 `product/harness/adapters/agents/skills/` 中的 payload descriptor 是 `agents` backend 的 deploy source。`install --backend agents` 只复制 descriptor 声明的 canonical skill 内容，不从 target root 反向生成 source truth。
 
@@ -33,7 +30,7 @@ last_verified: 2026-05-01
 
 ## 二、source root 与 target root
 
-`aw-installer` Node bin 当前直接承接 `--help`、`--version` 与 `diagnose --backend agents --json` 的只读路径；TUI 的 agents diagnose 展示也复用该 Node-owned JSON 路径。`update --backend agents --json` 在 package/local source dry-run 场景下也由 Node-owned 路径生成 plan JSON。`check_paths_exist --backend agents` 在 package/local source 场景下由 Node-owned 路径执行只读冲突扫描，并保留 Python reference 的 source validation、target root readiness、duplicate target dir、conflict reporting、exit、stdout 和 stderr 语义。`verify --backend agents` 在 package/local source 场景下由 Node-owned 路径执行 strict verification，并保留 Python reference 的 target issue classification、exit、stdout 和 stderr 语义。`install --backend agents` 在 package/local source 且 target root 缺失或为空目录的 clean-target 场景下由 Node-owned 路径执行写入；它仍必须先完成 source validation、target readiness 与 path conflict preflight，再创建 target root、写入 payload、写入 runtime marker，并保留 Python reference 的 exit、stdout、stderr 与 file/dir mode 语义。`prune --all --backend agents` 在 package/local source 场景下由 Node-owned 路径执行删除；它只删除带可识别 `aw.marker` 且 marker backend 为 `agents` 的 direct child 目录，保留 foreign、unrecognized、invalid-marker、file 和 symlink content，并保留 Python reference 的 missing-root no-op、target readiness、race guard、exit、stdout 和 stderr 语义。`update --backend agents --yes` 在 package/local source 场景下由 Node-owned 路径执行 destructive reinstall composition；它先输出同一 plan，再按 `prune --all -> check_paths_exist -> install -> verify` 串行执行，保留 blocking preflight、failure short-circuit、post-apply strict verify、recovery hint、exit、stdout 和 stderr 语义。该 dry-run JSON 必须继续暴露 `backend`、`source_kind`、`source_ref`、`source_root`、`target_root`、`operation_sequence`、`managed_installs_to_delete`、`planned_target_paths`、`issues` 与 `blocking_issues` 等字段。其他 deploy modes、不受支持的 diagnose / update / check_paths_exist / verify / install / prune 变体、non-clean target install 子命令、GitHub source update 与 Claude backend 仍调用同包内的 Python wrapper/reference path；fallback 环境只透传 deploy 所需变量，不全量继承 shell secrets。实际 source / target 解析必须保持与 `adapter_deploy.py` 的合同一致：
+`aw-installer` Node bin 当前直接承接 `--help`、`--version`、`agents` package/local lifecycle 路径，以及 `claude` package/local lifecycle 路径。`diagnose --backend agents|claude` human/JSON、`check_paths_exist --backend agents|claude`、`verify --backend agents|claude`、`update --backend agents|claude --json` 与 human-readable dry-run 在 package/local source 场景下由 Node-owned 路径执行；Claude paths 支持 `--claude-root`，并保留 `.claude/skills/<skill_id>` target naming、legacy `aw-<skill_id>` recognition、same-backend managed legacy cleanup、marker/fingerprint 与 `claude_frontmatter` target transform parity。显式 `agents` GitHub-source update（`update --backend agents --source github ...`）也由 Node-owned 路径执行 JSON/human dry-run 与 `--yes` apply，保留 repo/ref/SHA validation、GitHub codeload archive source、safe ZIP extraction、source contract validation、temp cleanup、source/target separation、既有 JSON 字段、blocking preflight、post-apply strict verify 和 source-preserving recovery hint。TUI 的 agents diagnose、verify 和 dry-run 展示也复用对应 Node-owned 路径。`install --backend agents|claude` 在 package/local source 场景下由 Node-owned 路径执行 clean-target 写入和 non-clean target path-conflict 阻断；它仍必须先完成 source validation、target readiness 与 path conflict preflight，再创建 target root、写入 payload、写入 runtime marker，并保留 Python reference 的 exit、stdout、stderr 与 file/dir mode 语义；冲突路径必须在写入前失败且不调用 Python。`prune --all --backend agents|claude` 在 package/local source 场景下由 Node-owned 路径执行删除；它只删除带可识别 `aw.marker` 且 marker backend 匹配当前 backend 的 direct child 目录，保留 foreign、unrecognized、invalid-marker、file 和 symlink content，并保留 Python reference 的 missing-root no-op、target readiness、race guard、exit、stdout 和 stderr 语义。`update --backend agents|claude --yes` 在 package/local source 场景下由 Node-owned 路径执行 destructive reinstall composition；显式 GitHub-source `agents` apply 也由 Node-owned 路径执行同一 composition；它们先输出同一 plan，再按 `prune --all -> check_paths_exist -> install -> verify` 串行执行，保留 blocking preflight、failure short-circuit、post-apply strict verify、recovery hint、exit、stdout 和 stderr 语义。dry-run JSON 必须继续暴露 `backend`、`source_kind`、`source_ref`、`source_root`、`target_root`、`operation_sequence`、`managed_installs_to_delete`、`planned_target_paths`、`issues` 与 `blocking_issues` 等字段。`prune --backend agents` 缺少 `--all` 和 `update --backend agents --json --yes` 等本地 agents 无效组合由 Node 直接失败。其他 deploy modes、不受支持的 diagnose / update / check_paths_exist / verify / install / prune 变体与未迁移 deploy behavior 不再 fallback 到 Python，而是由 Node wrapper 直接报 unsupported-command error。实际 source / target 解析必须保持与 `adapter_deploy.py` 的合同一致：
 
 - 未设置 `AW_HARNESS_REPO_ROOT` 时，source root 是 package 解压根或当前 checkout 中的 repo root。
 - 设置 `AW_HARNESS_REPO_ROOT` 时，source root 显式指向该 checkout，并保持旧的 repo-local 行为。
@@ -56,7 +53,7 @@ last_verified: 2026-05-01
 | `install --backend <backend>` | 复制当前 source 声明的 live payload | 写入 resolved target root | 必须先通过 source contract 与 target conflict 检查；不做远程 fetch |
 | `update --backend <backend>` | 读取当前 source 声明的 live payload | 只输出 dry-run plan | 不写入；暴露将删除、将写入和 blocking issue 摘要 |
 | `update --backend <backend> --yes` | 复制当前 source 声明的 live payload | 显式 destructive reinstall | 只包装 `prune --all -> check_paths_exist -> install -> verify`；不做远程 fetch、增量更新或自动回滚 |
-| `update --backend agents --source github --github-repo OWNER/REPO --github-ref REF` | 下载并验证 GitHub source archive 后读取其中的 live payload | dry-run 或显式 destructive reinstall | 只允许 GitHub archive 成为本次 source root；仍执行同一 update plan、target checks 和 post-apply verify |
+| `update --backend agents --source github --github-repo OWNER/REPO --github-ref REF` | 下载并验证 GitHub source archive 后读取其中的 live payload | dry-run 或显式 destructive reinstall | 只允许 GitHub archive 成为本次 source root；仍执行同一 update plan、target checks、blocking preflight、post-apply verify 和 source-preserving recovery hint |
 | `prune --all --backend <backend>` | 不读取新 payload | 删除当前 backend 可识别受管目录 | 只删除带可识别 `aw.marker` 且属于当前 backend 的目录 |
 | `check_paths_exist --backend <backend>` | 读取当前 source 声明的目标路径 | 只读冲突扫描 | 失败时不得写业务文件 |
 
@@ -68,7 +65,7 @@ last_verified: 2026-05-01
 
 - 从 registry、GitHub release、任意 HTTP endpoint 或非 GitHub source archive 动态获取 deploy payload。
 - 根据 dist-tag、release channel 或 latest 指针自动选择新 payload。
-- 在 `update --yes` 内执行远程检查、下载、验签、升级自身 package 或替换 source root。
+- 在未显式传 `--source github` 的 `update --yes` 内执行远程检查、下载、验签、升级自身 package 或替换 source root。
 - 维护 archive/history、旧版本保活、增量 patch、自动回滚或 target-to-source 反向同步。
 - 将 `.agents/`、`.claude/` 或 `.aw/` runtime state 当作 package payload 或 canonical source。
 
@@ -87,9 +84,12 @@ aw-installer update --backend agents --source github --github-repo OceanEyeFF/vi
 
 - `--source github` 只支持 `OWNER/REPO` + branch/ref archive，不支持任意 URL；fork 或重命名仓库应显式传 `--github-repo`，或设置 `AW_INSTALLER_GITHUB_REPO` / `GITHUB_REPOSITORY`。
 - 下载后的 archive 必须通过 Harness payload source validation：至少包含 `product/harness/skills`、`product/harness/adapters/agents/skills` 与 `product/harness/adapters/claude/skills`。
+- Node-owned GitHub archive download 必须限制 archive 响应大小，当前上限为 500 MiB；`Content-Length` 或实际流式下载超过该上限时必须失败，不能继续无界 `Buffer.concat`。timeout、408、425、429 和 5xx 等 retryable 失败最多尝试 3 次；404 等 non-retryable HTTP 失败不得重试。
+- Node-owned GitHub archive extraction 必须限制解压后的文件总量，当前上限为 500 MiB；ZIP central directory 声明大小、实际 inflate 输出或累计写入预算超过该上限时必须失败，不能把 GitHub source archive 解压成无界临时 source root。
 - GitHub source root 是一次性临时目录；命令结束后不得作为长期 source truth 保留。
 - target root 不得默认为 GitHub source root；默认仍是当前工作目录，或显式 `AW_HARNESS_TARGET_REPO_ROOT` / `--agents-root`。
-- `update --json` 必须暴露 `source_kind=github` 和 `source_ref=OWNER/REPO@REF`。
+- `update --json` 必须暴露 `source_kind=github` 和 `source_ref=OWNER/REPO@REF`；human-readable dry-run 必须保持同一 dry-run-only plan 输出形状。
+- `update --yes` 必须保持同一 destructive reinstall composition，失败恢复提示必须保留 GitHub source 参数，避免部分写入后误用 package-local source 重跑。
 - GitHub source 不改变 destructive reinstall 顺序、target conflict policy、marker policy 或 post-apply strict verify。
 - 所选 GitHub ref 必须真实包含当前 Harness payload source；`master`/default branch 只有在已经包含这些 required source paths 时才是有效 ref。如果 GitHub archive 缺少 required source paths，update 必须失败，而不是回退到 package-local source。
 
@@ -111,12 +111,12 @@ aw-installer update --backend agents --source github --github-repo OceanEyeFF/vi
 
 - `npm pack --dry-run --json` 的 root packlist仍只包含显式 package payload。
 - 根 `.tgz` smoke 不设置 `AW_HARNESS_REPO_ROOT`，并证明 package 内 source payload 与临时 target repo 分离。
-- `diagnose`、`verify` 仍是只读命令。
-- `update --backend agents --json` 在 package/local source dry-run 场景下由 Node-owned 路径输出 plan，并保留既有 JSON 字段。
-- `check_paths_exist --backend agents` 在 package/local source 场景下由 Node-owned 路径输出 Python-compatible preflight result；成功和冲突路径必须不调用 Python fallback。
-- `verify --backend agents` 在 package/local source 场景下由 Node-owned 路径输出 Python-compatible strict verification result；成功、drift 和 target issue paths 必须不调用 Python fallback。
-- `install --backend agents` 在 package/local source clean-target 场景下由 Node-owned 路径写入 payload；缺失或空 target root 成功路径必须不调用 Python fallback，non-clean target install 仍由 Python/reference 路径承接。
-- `prune --all --backend agents` 在 package/local source 场景下由 Node-owned 路径删除 current-backend managed installs；missing target root、same-backend marker deletion、foreign/unrecognized/invalid retention 和 target root readiness failures 必须不调用 Python fallback。
-- `update --backend agents --yes` 在 package/local source 场景下由 Node-owned 路径执行 destructive reinstall；必须证明 no-Python sentinel、blocking preflight、strict post-apply verify、recovery hint 和 Python reference output shape。
-- `update --backend agents --source github --github-ref <ref-containing-current-payload> --json` 在 GitHub source 有效时输出 `source_kind=github`，在 GitHub source 缺少 payload source paths 时失败。
+- `diagnose`、`verify` 仍是只读命令；`agents` package/local diagnose human/JSON 路径支持 `--agents-root` 且不调用 Python，`claude` package/local diagnose human/JSON 路径支持 `--claude-root` 且不调用 Python。
+- `update --backend agents --json`、`update --backend claude --json` 与对应 human-readable dry-run 在 package/local source 场景下由 Node-owned 路径输出 plan，并保留既有 JSON 字段和 Python-compatible human-readable 输出形状。
+- `check_paths_exist --backend agents|claude` 在 package/local source 场景下由 Node-owned 路径输出 Python-compatible preflight result；成功和冲突路径必须不调用 Python。
+- `verify --backend agents|claude` 在 package/local source 场景下由 Node-owned 路径输出 Python-compatible strict verification result；成功、drift 和 target issue paths 必须不调用 Python。
+- `install --backend agents|claude` 在 package/local source 场景下由 Node-owned 路径写入 payload或阻断冲突；缺失或空 target root 成功路径、non-clean planned-path conflict 失败路径、Claude frontmatter transform 和 same-backend managed legacy cleanup 都必须不调用 Python。
+- `prune --all --backend agents|claude` 在 package/local source 场景下由 Node-owned 路径删除 current-backend managed installs；missing target root、same-backend marker deletion、foreign/unrecognized/invalid retention 和 target root readiness failures 必须不调用 Python。
+- `update --backend agents|claude --yes` 在 package/local source 场景下由 Node-owned 路径执行 destructive reinstall；必须证明 no-Python sentinel、blocking preflight、strict post-apply verify、backend-aware recovery hint 和 Python reference output shape。
+- `update --backend agents --source github --github-ref <ref-containing-current-payload>` 在 GitHub source 有效时输出 `source_kind=github` 的 JSON plan，human-readable dry-run 不写入 target，`--yes` apply 走同一 destructive reinstall composition；GitHub source 缺少 payload source paths 时必须失败；当前 checkout/local package 的该 source 路径已由 Node-owned wrapper 承接，不调用 Python。
 - 文档同步 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)、[Deploy Runbook](./deploy-runbook.md) 和本页。
