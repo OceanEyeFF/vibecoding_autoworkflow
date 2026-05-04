@@ -1,6 +1,6 @@
 {
   "name": "aw-installer",
-  "version": "0.4.3-rc.2",
+  "version": "4.4.0-rc.0",
   "description": "Self-contained npm package envelope for the AW Harness installer.",
   "license": "MIT",
   "repository": {
@@ -35,8 +35,8 @@
   },
   "awInstallerRelease": {
     "realPublishApproval": "approved",
-    "approvedVersion": "0.4.3-rc.2",
-    "approvedGitTag": "v0.4.3-rc.2",
+    "approvedVersion": "4.4.0-rc.0",
+    "approvedGitTag": "v4.4.0-rc.0",
     "approvedChannel": "next"
   },
   "engines": {

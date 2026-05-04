@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Public Quickstart Prompts"
 status: active
-updated: 2026-05-03
+updated: 2026-05-04
 owner: aw-kernel
-last_verified: 2026-05-03
+last_verified: 2026-05-04
 ---
 # aw-installer Public Quickstart Prompts
 
@@ -18,12 +18,12 @@ This page belongs to [Deploy Runbooks](./README.md). It uses the current distrib
 - direct_npx_available: true
 - direct_npx_primary_path: `aw-installer@next`
 - registry_rc_available: true
-- npm_publish_allowed: completed-for-0.4.3-rc.2-next; future publish still separately approval-gated
+- npm_publish_allowed: completed-for-0.4.3-rc.2-next; 4.4.0-rc.0 is prepared locally and remains publish-workflow gated
 - package_name_decided: true
 - approved_package_name: unscoped `aw-installer`
 - current_install_source:
   - published_registry: `aw-installer@next` currently resolving to `0.4.3-rc.2`
-  - local_package: local `0.4.3-rc.2` `.tgz` package when validating the current checkout without registry access
+  - local_package: local `4.4.0-rc.0` `.tgz` package when validating the current checkout without registry access
   - source_checkout: explicit AW source checkout
 - target_repo_writes:
   - `.agents/skills/` for Codex/agents install
@@ -38,7 +38,7 @@ Run commands from the target repository root unless a command explicitly names t
 Prerequisites:
 
 - Node.js and npm are available for the `aw-installer` package path.
-- Python is available only for explicitly documented repo-local reference helpers. The published `aw-installer@next` selector currently resolves to the immutable `0.4.3-rc.2` artifact; it does not include checkout-only changes made after that publish.
+- Python is available only for explicitly documented repo-local reference helpers. The published `aw-installer@next` selector currently resolves to the immutable `0.4.3-rc.2` artifact; it does not include checkout-only changes made after that publish. A local `.tgz` built from this checkout reports `4.4.0-rc.0` and is release-candidate evidence, not registry evidence.
 - When validating the current checkout, an explicit source checkout, or a maintainer-provided local `.tgz` built from this checkout, `aw-installer --help`, `--version`, `agents` package/local lifecycle commands, `claude` package/local lifecycle commands, and explicit `agents` GitHub-source update JSON/human/apply are handled by Node directly. For `agents`, this includes diagnose human/JSON, package/local update dry-run human/JSON, GitHub-source update dry-run JSON/human, GitHub-source `update --yes`, check_paths_exist, verify, install, prune --all, package/local update --yes, and selected invalid variants. For `claude`, this includes diagnose human/JSON, `--claude-root`, check_paths_exist, verify, update dry-run human/JSON, install, prune --all and update --yes. Node-owned install writes only after source/target/path preflight passes; planned path conflicts fail before writes and do not invoke Python. Node-owned Claude install also preserves full Harness skill payload, `.claude/skills/<skill_id>` naming, frontmatter transform, and same-backend managed legacy cleanup. Node-owned prune only removes recognized current-backend managed install directories and retains foreign, unrecognized, invalid-marker and user content. Node-owned `update --yes` for package/local agents, package/local Claude and explicit agents GitHub-source composes `prune --all -> check_paths_exist -> install -> verify` with blocking preflight, strict post-apply verify and backend/source-aware recovery hint semantics. Published registry artifacts get these checkout-only behaviors only after a future approved release. Unsupported variants no longer fall back to the Python deploy wrapper; the Node package/runtime entrypoint fails with an explicit unsupported-command error. The Node-owned update dry-run preserves the existing JSON fields, including `backend`, `source_kind`, `source_ref`, `source_root`, `target_root`, `operation_sequence`, `managed_installs_to_delete`, `planned_target_paths`, `issues`, and `blocking_issues`, and the human-readable output remains dry-run only.
 - The target repository is a git worktree you are allowed to modify.
 - You have registry access to `aw-installer`, a local `aw-installer` `.tgz` package from the maintainer, or an explicit AW source checkout path.
@@ -78,7 +78,7 @@ printf 'AW_INSTALLER_PACKAGE=%s\n' "$AW_INSTALLER_PACKAGE"
 External testers who receive a `.tgz` can skip this step and set:
 
 ```bash
-AW_INSTALLER_PACKAGE="/path/to/aw-installer-0.4.3-rc.2.tgz"
+AW_INSTALLER_PACKAGE="/path/to/aw-installer-4.4.0-rc.0.tgz"
 ```
 
 The exact filename may differ. Prefer `aw-installer@next` for published RC registry npx trials and local `.tgz` when validating the current checkout or when registry access is unavailable.

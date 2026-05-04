@@ -20,7 +20,7 @@ last_verified: 2026-05-04
 
 ## 使用 `aw-installer`
 
-`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。当前 npm registry 事实是 `aw-installer@next` 指向 `0.4.3-rc.2`，`aw-installer@latest` 指向 `0.4.0-rc.1`，`latest` 不代表稳定 release approval。已发布的 `0.4.3-rc.2` registry artifact 绑定 `gitHead=199af2b2d195542fd5f1621243b041a20e497686`；后续 publish 必须使用新的 immutable npm version。复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)，release channel 与 publish 边界见 [`aw-installer Release Channel Contract`](./docs/project-maintenance/deploy/release-channel-contract.md)，npx/package smoke 见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
+`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。当前 npm registry 事实是 `aw-installer@next` 指向 `0.4.3-rc.2`，`aw-installer@latest` 指向 `0.4.0-rc.1`，`latest` 不代表稳定 release approval。当前 checkout 已准备 `4.4.0-rc.0` release candidate；在 GitHub Release publish workflow 成功前，registry `next` 仍不会指向该版本。已发布的 `0.4.3-rc.2` registry artifact 绑定 `gitHead=199af2b2d195542fd5f1621243b041a20e497686`；后续 publish 必须使用新的 immutable npm version。复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)，release channel 与 publish 边界见 [`aw-installer Release Channel Contract`](./docs/project-maintenance/deploy/release-channel-contract.md)，npx/package smoke 见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
 
 ```bash
 npx aw-installer@next
