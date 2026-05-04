@@ -1,9 +1,9 @@
 ---
 title: "Claude Adapter Source"
 status: active
-updated: 2026-05-01
+updated: 2026-05-02
 owner: aw-kernel
-last_verified: 2026-05-01
+last_verified: 2026-05-02
 ---
 # Claude Adapter Source
 
@@ -69,9 +69,15 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py dia
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py update --backend claude
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend claude
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend claude
+aw-installer diagnose --backend claude --json
+aw-installer update --backend claude
+aw-installer install --backend claude
+aw-installer prune --all --backend claude
+aw-installer update --backend claude --yes
+aw-installer verify --backend claude
 ```
 
-`update --backend claude --yes` 仍只是 `prune --all -> check_paths_exist -> install -> verify` 的显式 one-shot 包装。它不做 channel 解析、自升级、验签或自动回滚。
+当前 checkout/local package 的 `aw-installer` package/local Claude lifecycle 由 Node-owned path 承接，并保留 Python adapter reference parity。`update --backend claude --yes` 仍只是 `prune --all -> check_paths_exist -> install -> verify` 的显式 one-shot 包装。它不做 channel 解析、自升级、验签或自动回滚。
 
 ## 五、验证要求
 
@@ -81,6 +87,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ver
 - `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'`
 - `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend claude`
 - `node --check toolchain/scripts/deploy/bin/aw-installer.js`
+- `node --test toolchain/scripts/deploy/test_aw_installer.js`
 
 如果同时改根 package packlist，还要验证：
 

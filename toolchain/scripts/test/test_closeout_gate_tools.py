@@ -66,8 +66,7 @@ def test_successful_npm_command_result_fails_unknown_npm_commands() -> None:
 
 NPM_HELP_STDOUT = (
     "usage: aw-installer [tui|<deploy-mode>] [options]\n"
-    "harness_deploy.py\n"
-    "adapter_deploy.py\n"
+    "Node.js distribution\n"
     "tui\n"
     "diagnose --backend agents|claude\n"
     "verify --backend agents|claude\n"
@@ -123,7 +122,12 @@ def successful_npm_command_result(
         return "agents"
 
     def npm_exec_target_root() -> Path:
-        repo = cwd or Path("/tmp/repo")
+        target_repo = (
+            extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
+            if extra_env is not None
+            else None
+        )
+        repo = Path(target_repo) if target_repo else cwd or Path("/tmp/repo")
         if npm_exec_backend() == "claude":
             return repo / ".claude" / "skills"
         return repo / ".agents" / "skills"
@@ -336,7 +340,6 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "toolchain/scripts/deploy/adapter_deploy.py",
             "toolchain/scripts/deploy/aw_scaffold.py",
             "toolchain/scripts/deploy/bin/aw-installer.js",
-            "toolchain/scripts/deploy/bin/aw-harness-deploy.js",
             "toolchain/scripts/deploy/harness_deploy.py",
             "toolchain/scripts/deploy/package.json",
             "toolchain/scripts/deploy/path_safety_policy.json",
@@ -684,8 +687,15 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
 
     result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
     commands = [command for command, _, _ in calls]
+    root_tarball_smoke = next(
+        item for item in result["subchecks"] if item["name"] == "root_npm_tarball_smoke_aw_installer"
+    )
 
     assert result["passed"] is True
+    assert any(
+        item["name"] == "root_npm_exec_tarball_update_apply_claude"
+        for item in root_tarball_smoke["subchecks"]
+    )
     assert [item["name"] for item in result["subchecks"][:12]] == [
         "root_package_version_metadata",
         "gate_tool_tests",
@@ -723,13 +733,62 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
     assert any(
         command[:2] == ["npm", "exec"]
         and "diagnose" in command
-        and extra_env == {"AW_HARNESS_REPO_ROOT": str(tmp_path)}
+        and extra_env is not None
+        and extra_env.get("AW_HARNESS_REPO_ROOT") == str(tmp_path)
+        and extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
+        and "fake-python-bin" in extra_env.get("PATH", "")
         for command, _, extra_env in calls
     )
     assert any(
         command[:2] == ["npm", "exec"]
         and "update" in command
-        and extra_env == {"AW_HARNESS_REPO_ROOT": str(tmp_path)}
+        and "--json" in command
+        and extra_env is not None
+        and extra_env.get("AW_HARNESS_REPO_ROOT") == str(tmp_path)
+        and extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
+        and "fake-python-bin" in extra_env.get("PATH", "")
+        for command, _, extra_env in calls
+    )
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and command[-1] == "tui"
+        and extra_env is not None
+        and extra_env.get("AW_HARNESS_REPO_ROOT") == str(tmp_path)
+        and extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
+        and "fake-python-bin" in extra_env.get("PATH", "")
+        for command, _, extra_env in calls
+    )
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and command[-3:] == ["install", "--backend", "agents"]
+        and extra_env is not None
+        and extra_env.get("AW_HARNESS_REPO_ROOT") == str(tmp_path)
+        and extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
+        and "fake-python-bin" in extra_env.get("PATH", "")
+        for command, _, extra_env in calls
+    )
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and command[-3:] == ["verify", "--backend", "agents"]
+        and extra_env is not None
+        and extra_env.get("AW_HARNESS_REPO_ROOT") == str(tmp_path)
+        and extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
+        and "fake-python-bin" in extra_env.get("PATH", "")
+        for command, _, extra_env in calls
+    )
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and command[-4:] == ["update", "--backend", "agents", "--yes"]
+        and extra_env is not None
+        and extra_env.get("AW_HARNESS_REPO_ROOT") == str(tmp_path)
+        and extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
+        and "fake-python-bin" in extra_env.get("PATH", "")
+        for command, _, extra_env in calls
+    )
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and command[-4:] == ["update", "--backend", "claude", "--yes"]
+        and extra_env == {"AW_HARNESS_REPO_ROOT": "", "AW_HARNESS_TARGET_REPO_ROOT": ""}
         for command, _, extra_env in calls
     )
     deploy_verify_commands = [
@@ -869,6 +928,29 @@ def test_run_test_gate_fails_on_unexpected_npm_packlist(monkeypatch, tmp_path) -
     )
     assert pack_result["passed"] is False
     assert "unexpected npm package files" in pack_result["stderr"]
+
+
+def test_root_npm_package_packlist_rejects_forbidden_python_payload(monkeypatch, tmp_path) -> None:
+    write_root_package_json(tmp_path)
+    packed_paths = set(closeout_acceptance_gate.ROOT_NPM_REQUIRED_PACKAGE_FILES)
+    packed_paths.add("product/harness/skills/set-harness-goal-skill/scripts/deploy_aw.py")
+
+    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
+        assert command == ["npm", "pack", "--dry-run", "--json"]
+        return {
+            "command": command,
+            "returncode": 0,
+            "stdout": npm_pack_stdout(packed_paths),
+            "stderr": "",
+            "passed": True,
+        }
+
+    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
+
+    result = closeout_acceptance_gate.run_root_npm_package_packlist(tmp_path)
+
+    assert result["passed"] is False
+    assert "root npm package included forbidden files" in result["stderr"]
 
 
 def test_run_test_gate_fails_on_mismatched_tarball_version(monkeypatch, tmp_path) -> None:

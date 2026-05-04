@@ -1,9 +1,9 @@
 ---
 title: "Claude Repo-local Usage Help"
 status: active
-updated: 2026-05-01
+updated: 2026-05-03
 owner: aw-kernel
-last_verified: 2026-05-01
+last_verified: 2026-05-03
 ---
 # Claude Repo-local Usage Help
 
@@ -28,7 +28,7 @@ last_verified: 2026-05-01
 
 - 这里描述的是 Claude 侧常见 runtime 路径和当前受控 `adapter_deploy.py --backend claude` payload lane
 - 当前仓库的 `claude` backend 准入完整 Harness skill set；target dirs 使用 `.claude/skills/<skill-name>/`，旧 `aw-<skill-name>` 目录只作为 legacy managed cleanup 入口
-- `set-harness-goal-skill/scripts/deploy_aw.py` 的 `--claude-root` 仍属于本文第五节的冷启动 helper 例外，和 adapter CLI 的受管 payload install 是两条入口
+- `set-harness-goal-skill/scripts/deploy_aw.js` 的 `--claude-root` 仍属于本文第五节的冷启动 helper 例外，和 adapter CLI 的受管 payload install 是两条入口
 - 完整 smoke / 冷启动步骤见 [Claude Post-Deploy Behavior Tests](../testing/claude-post-deploy-behavior-tests.md)
 
 ## 二、最小 trial smoke verify 口径
@@ -51,7 +51,7 @@ last_verified: 2026-05-01
 
 - `claude` 承接受控的完整 Harness skill payload 与 runtime skill entry 可读性 trial smoke；`agents` 当前仍是 deploy verify 与 Codex Harness manual run 主路径
 - `claude` 的常见 user-home runtime 路径是 `~/.claude/skills`，不依赖 `CODEX_HOME` 或 XDG 推导
-- 当前仓库提供 `claude` backend 的受控 deploy adapter CLI；如果未来扩展到完整 skill set，必须以新的 worktrack 更新本页、deploy 文档和验证矩阵
+- 当前仓库提供 `claude` backend 的受控 deploy adapter CLI 和 package/local `aw-installer` Node-owned lifecycle；完整 skill set 的 payload 边界、target 命名和验证矩阵变更必须以新的 worktrack 同步本页和 deploy 文档
 - Claude Code 试用反馈仍走 [aw-installer External Trial Feedback Contract](../deploy/aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)，并标明它是 compatibility trial lane
 
 ## 四、当前限制
@@ -61,11 +61,11 @@ last_verified: 2026-05-01
 
 ## 五、当前受控例外
 
-`set-harness-goal-skill` 自带的 `scripts/deploy_aw.py` 可以把该技能自身安装到目标 repo 的 Claude 项目级 skill 目录：
+`set-harness-goal-skill` 自带的 `scripts/deploy_aw.js` 可以把该技能自身安装到目标 repo 的 Claude 项目级 skill 目录：
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 scripts/deploy_aw.py install-claude-skill --deploy-path "$DEPLOY_PATH"
-PYTHONDONTWRITEBYTECODE=1 python3 scripts/deploy_aw.py generate --deploy-path "$DEPLOY_PATH" --install-claude-skill
+node scripts/deploy_aw.js install-claude-skill --deploy-path "$DEPLOY_PATH"
+node scripts/deploy_aw.js generate --deploy-path "$DEPLOY_PATH" --install-claude-skill
 ```
 
 边界：

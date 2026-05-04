@@ -23,6 +23,7 @@
 | 我想看 `agents` canonical-copy payload source 怎么组织 | [agents-adapter-source.md](./agents-adapter-source.md) | 定义 `product/harness/adapters/agents/skills/` 的 payload descriptor 结构，以及 target 如何复制 canonical skill 内容 |
 | 我想看 `claude` payload source 怎么组织 | [claude-adapter-source.md](./claude-adapter-source.md) | 定义 `product/harness/adapters/claude/skills/` 的 full skill payload descriptors、`.claude/skills` target 和 Claude frontmatter 边界 |
 | 我想看 Claude full skill distribution 下一阶段设计 | [claude-full-skill-distribution-design.md](./claude-full-skill-distribution-design.md) | P0-036 设计切片，定义完整 Claude payload set、target 命名、side-effecting skill 保护和验证矩阵 |
+| 我想判断 Claude 分发是否可以按成熟工作推进 | [claude-distribution-maturity-impact.md](./claude-distribution-maturity-impact.md) | 区分已落地的 Python adapter full payload 成熟度，与后续 Node-owned CLI / TUI / registry / release 成熟度影响面 |
 | 我想判断 Python deploy 面是否可以被 Node-owned deploy surface 替换 | [deploy-script-governance-inventory.md](./deploy-script-governance-inventory.md) | P0-038 inventory/design，盘点 Python deploy implementation、tests、wrappers、docs references，并给出 remove / retain / split-later 分类 |
 | 我想初始化 `.aw/` 样例并校验 `.aw_template` 最小结构 | [template-tooling-mvp.md](./template-tooling-mvp.md) | B2 的最小工作面，只做 `.aw_template -> .aw` 样例生成与前置校验 |
 | 我想理解 `.aw_template/` 的模板消费边界 | [template-consumption-spec.md](./template-consumption-spec.md) | 定义 `.aw_template/` 中哪些内容属于 `.aw/` 运行管理面，哪些只是待迁移模板 |
@@ -51,8 +52,8 @@
 - `verify --backend <backend>` 是只读严格复验命令，用于检查 source 合法性、target root 状态、live install 对齐，以及 conflict / unrecognized 情形，发现 issue 时非零退出。
 - `update --backend <backend>` 默认只输出 dry-run plan；`update --backend <backend> --yes` 是同一三步 destructive reinstall 加严格复验的 one-shot 包装。
 - `update` 只阻塞占用 planned / known AW target path 的 unrecognized / foreign 内容；无关用户目录由 AW deploy 保持不动。
-- 本地 `harness_deploy.py` thin wrapper、根目录 `package.json` 的 self-contained `aw-installer` package envelope、`toolchain/scripts/deploy/package.json` 的本地 scaffold、`aw-installer tui` shell、`aw-harness-deploy` 兼容别名与目标 `npx aw-installer` wrapper 必须保持 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 中定义的只读、严格复验、三步 destructive reinstall，以及 CLI + TUI 双模式语义。
-- 当前 registry 事实由 [aw-installer Release Channel Contract](./release-channel-contract.md) 承接：`next` 当前指向 `0.4.3-rc.1`，`latest` 仍指向 `0.4.0-rc.1`；已发布的 `0.4.3-rc.1` artifact 绑定 `gitHead=4510f5fd4710723e03e129701c2fdebece65e9cc`，不得对同一 immutable npm version 重复 publish。
+- 根目录 `package.json` 的 self-contained `aw-installer` package envelope、`toolchain/scripts/deploy/package.json` 的本地 scaffold、`bin/aw-installer.js`、`aw-installer tui` shell 与目标 `npx aw-installer` wrapper 必须保持 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 中定义的只读、严格复验、三步 destructive reinstall，以及 CLI + TUI 双模式语义；`harness_deploy.py` 只作为 checkout 内 repo-local reference 保留，旧 `aw-harness-deploy` 兼容别名不再属于 package runtime。
+- 当前 registry 事实由 [aw-installer Release Channel Contract](./release-channel-contract.md) 承接：`next` 当前指向 `0.4.3-rc.2`，`latest` 仍指向 `0.4.0-rc.1`；已发布的 `0.4.3-rc.2` artifact 绑定 `gitHead=199af2b2d195542fd5f1621243b041a20e497686`，不得对同一 immutable npm version 重复 publish。
 - 后续真实 npm publish 还必须满足 [aw-installer Release Channel Contract](./release-channel-contract.md)；发布操作模型见 [aw-installer Release Operation Model](./aw-installer-release-operation-model.md)。npm-side Trusted Publisher 设置、未来 publish、stable/latest 语义仍需单独审批。
 - `aw-installer` 的 payload provenance 与 update trust boundary 见 [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md)；当前 `update` 只准入 package-local source 与显式 GitHub source archive，不做 channel 解析、验签、自升级或自动回滚。
 - `aw.marker` 是 runtime-generated artifact，只用于标识“这是当前 backend 受管的 live install 目录”；它不是 source truth，也不是历史接管记录。
