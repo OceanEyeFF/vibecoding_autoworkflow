@@ -1,15 +1,15 @@
 ---
 title: "npx Command Test Execution"
 status: active
-updated: 2026-05-04
+updated: 2026-05-05
 owner: aw-kernel
-last_verified: 2026-05-04
+last_verified: 2026-05-05
 ---
 # npx Command Test Execution
 
 > Purpose: verify `aw-installer` package and npx command behavior across isolated temporary targets, covering the published registry package, explicit RC selector, and local `.tgz` package smoke. This page does not authorize new npm publish, stable release semantics, external repository mutation, PRs, or issue creation.
 
-This page belongs to [Testing Runbooks](./README.md). Release channel and publish readiness rules live in [aw-installer Release Channel Contract](../deploy/release-channel-contract.md); pre-publish file/docs/evidence checks live in [aw-installer npx Pre-Publish Check](../deploy/aw-installer-npx-pre-publish-check.md); deploy entrypoint semantics live in [Distribution Entrypoint Contract](../deploy/distribution-entrypoint-contract.md).
+This page belongs to [Testing Runbooks](./README.md). Release channel rules live in [aw-installer Release Channel Governance](../governance/aw-installer-release-channel-governance.md); publish-readiness and approval rules live in [aw-installer Pre-Publish Governance](../governance/aw-installer-pre-publish-governance.md); deploy entrypoint semantics live in [Distribution Entrypoint Contract](../deploy/distribution-entrypoint-contract.md).
 
 ## Control Signal
 
@@ -113,6 +113,19 @@ The local package smoke:
 - runs help, version, non-interactive TUI guard, diagnose, update dry-run, install, verify, update apply, and final diagnose in each target.
 - checks that planned target paths and final target roots stay inside each target workdir.
 - checks that package source root does not resolve to the source checkout, target repo, or target root.
+
+## Pre-Publish Local Package Smoke
+
+Use the local package smoke as the testing-side evidence for [aw-installer Pre-Publish Governance](../governance/aw-installer-pre-publish-governance.md).
+
+Minimum release-approval expectation:
+
+- run `toolchain/scripts/test/aw_installer_multi_temp_workdir_smoke.sh --skip-remote` before asking for approval
+- run the full matrix when network access and approved remote targets are available
+- preserve evidence for `help`, `version`, non-interactive TUI guard, `diagnose --backend agents --json`, `update --backend agents --json`, `install`, `verify`, `update --yes`, and final diagnose
+- confirm source root resolves to package payload, not the source checkout or target repo
+- confirm each planned path and final target root stays inside its own temporary target workdir
+- add focused Claude or GitHub-source evidence when the candidate explicitly claims those lanes
 
 ## Two-Target Tarball Smoke
 

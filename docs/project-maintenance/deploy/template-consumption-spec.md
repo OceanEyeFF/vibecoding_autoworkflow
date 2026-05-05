@@ -1,9 +1,9 @@
 ---
 title: "Template Consumption Spec"
 status: active
-updated: 2026-04-19
+updated: 2026-05-05
 owner: aw-kernel
-last_verified: 2026-04-19
+last_verified: 2026-05-05
 ---
 # Template Consumption Spec
 
@@ -14,7 +14,7 @@ last_verified: 2026-04-19
 阅读本页前，建议先看：
 
 - [Deploy Mapping Spec](./deploy-mapping-spec.md)
-- [Skill 生命周期维护](./skill-lifecycle.md)
+- [Usage Help](../usage-help/README.md)
 - [根目录分层](../foundations/root-directory-layering.md)
 
 ## 一、范围

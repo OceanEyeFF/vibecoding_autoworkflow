@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 治理入口"
 status: active
-updated: 2026-04-30
+updated: 2026-05-05
 owner: aw-kernel
-last_verified: 2026-04-30
+last_verified: 2026-05-05
 ---
 # Review / Verify 治理入口
 
@@ -64,6 +64,7 @@ docs-only 或 governance-only 变更也要显式标出不适用的 review 面及
 
 - 如果改了 root / partition / path / hidden-layer 规则，是否同步 foundations、关键入口页和治理检查
 - 如果改了 `AGENTS.md` 或执行流程，是否同步本文
+- 如果改了 runbook、usage-help、testing guide 或 Harness 长文的承载边界，是否说明当前页属于入口页、runbook、合同页还是指导文档，并清理重复正文、旧入口和双份主线
 - 如果改了 deploy / adapter 行为，是否同步对应 `docs/project-maintenance/deploy/` runbook、maintenance 与 usage-help，并确保文档口径仍是 destructive reinstall model
 - 如果改了 `docs/harness/`、`product/harness/skills/*/` 或 `product/harness/adapters/*/skills/*/`，是否仍保持合同层与 executable layer 分工
 - 如果改了 branch / PR / baseline 规则，是否仍从 `origin/HEAD` 或 Worktrack Contract 的 `baseline_branch` 取值，而不是在技能、hook 或 runbook 中写死默认分支名；当前仓库已验证 baseline 为 `origin/HEAD -> master`
@@ -140,6 +141,10 @@ docs-only 或 governance-only 变更也要显式标出不适用的 review 面及
 - repo-local 维护动作写进 `docs/project-maintenance/`
 - 不把临时推理、未验证猜测或执行噪音写成长期真相
 - 如果需要固定输出结构，优先复用现有模板而不是新发明格式
+- 如果本轮是文档精简，收口时至少说明：
+  - 当前页保留的高价值内容是什么
+  - 删除或下沉了哪些重复内容
+  - 唯一入口和唯一合同是否仍然清晰
 
 ## 四、完成标准
 

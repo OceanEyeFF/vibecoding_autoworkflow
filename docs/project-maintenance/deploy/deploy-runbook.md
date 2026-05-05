@@ -1,152 +1,38 @@
 ---
 title: "Deploy Runbook"
 status: active
-updated: 2026-05-03
+updated: 2026-05-05
 owner: aw-kernel
-last_verified: 2026-05-03
+last_verified: 2026-05-05
 ---
 # Deploy Runbook
 
-> 目的：提供当前仓库的 deploy 快速上手指南，固定 destructive reinstall model：`prune --all -> check_paths_exist -> install --backend <backend>`。`diagnose` 与 `verify` 只保留为辅助、只读的诊断与复验命令。
+> 目的：固定当前 deploy 主流程，只管理“首次安装 / 完整重装 / destructive reinstall”的执行路径。
 
-本页属于 [Deploy Runbooks](./README.md) 系列文档。
+本页属于 [Deploy Runbooks](./README.md)。
 
-阅读本页前，建议先了解以下背景：
+## 本页管理什么
 
-- [根目录分层](../foundations/root-directory-layering.md)
-- [Toolchain 分层](../../../toolchain/toolchain-layering.md)
-- [Deploy Mapping Spec](./deploy-mapping-spec.md) —— 部署映射规范
+- 三步主流程：`prune --all -> check_paths_exist -> install --backend <backend>`
+- 什么时候应该直接重装，而不是继续猜测修补
+- 这三步各自的停止线
 
-本页只保留快速入门和主流程。维护诊断请查看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)，业务生命周期边界请查看 [skill-lifecycle.md](./skill-lifecycle.md)。
+## 本页不管理什么
 
-外部试用不要直接从本文截取 `npx aw-installer` 目标形态作为已发布事实。先使用 [aw-installer Public Quickstart Prompts](./aw-installer-public-quickstart-prompts.md) 的当前 RC 路径；反馈走 [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)；npx / package smoke 走 [npx Command Test Execution](../testing/npx-command-test-execution.md)。
+- `diagnose` / `verify` 的故障分流细节：见 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)
+- canonical source / payload / target contract：见 [deploy-mapping-spec.md](./deploy-mapping-spec.md)
+- package / CLI / TUI 包装层语义：见 [distribution-entrypoint-contract.md](./distribution-entrypoint-contract.md)
+- 发布准入、packlist、registry smoke：见 [aw-installer Pre-Publish Governance](../governance/aw-installer-pre-publish-governance.md)、[Governance](../governance/README.md)、[Testing Runbooks](../testing/README.md)
 
-## 一、什么时候看这页
+## 什么时候看这页
 
-以下场景建议先读本文：
+- 首次给某个 backend 安装当前受管 payload
+- 已有安装，但决定按当前 source 做一次完整重装
+- 你只想知道 deploy 主流程到底是哪三步
 
-- 首次给 `agents` backend 做安装
-- 首次给 `claude` backend 安装当前受控的完整 Harness skill set
-- 已有安装，但想按当前 live source 完整重装
-- 想确认 deploy 主流程现在到底只剩哪三步
-- 想确认 `verify` 还做什么、但不再属于哪条主线
+## 主流程
 
-## 二、当前实现状态
-
-统一入口脚本：
-
-```bash
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
-```
-
-当前已实现的后端：
-
-- `agents` —— 对应 `Codex / OpenAI`
-- `claude` —— Claude Code 适配 lane，当前覆盖完整 Harness skill set
-
-当前还保留一个仓库内 Python reference thin wrapper：
-
-```bash
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
-```
-
-`harness_deploy.py` 只作为 repo-local reference 包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 只暴露 `aw-installer` bin 和 `aw-installer tui` 最小交互 shell；`aw-harness-deploy` Python alias 已退出 package runtime。`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 映射到同一 CLI deploy contract，其中 `agents` package/local diagnose、dry-run plan、verify 和 explicit apply 路径已由 Node 承接，Claude package/local lifecycle 也已由 Node 承接但仍只是 Claude Code compatibility lane。当前 npm registry 事实是 `next=0.4.3-rc.2`、`latest=0.4.0-rc.1`；已发布的 `0.4.3-rc.2` artifact 绑定 `gitHead=199af2b2d195542fd5f1621243b041a20e497686`。外部已发布 RC 试用主路径应显式使用 `aw-installer@next`。当前还没有引入 full-screen TUI framework。
-
-本地 `aw-installer` 当前已直接承接 `agents` 和 `claude` package/local source 的只读 `diagnose` human/JSON、`check_paths_exist` preflight、`verify` strict verification、`install` clean-target 写入与 non-clean planned-path 冲突阻断、`prune --all`、human-readable `update` dry-run，以及 `update --yes` composition；显式 `agents` GitHub-source update 的 JSON/human dry-run 与 `--yes` apply 也由 Node-owned 路径承接。这些 Node-owned 路径不调用 Python；其中 `diagnose`、`check_paths_exist` 与 `verify` 不创建 target root、不写 payload、不删除 target 文件，`install` 只在 source validation、target readiness 与 path conflict preflight 通过后写入 payload 和 marker，non-clean target 出现 planned path conflict 时在写入前失败并保留用户内容，无关用户内容不属于 planned path conflict，Claude install 保留 `.claude/skills/<skill_id>` target naming、frontmatter transform 和 same-backend managed legacy cleanup，GitHub-source update 复用 repo/ref/SHA validation、safe ZIP extraction、source contract validation、temp cleanup 和 source/target separation，`prune --all` 只删除带可识别 current-backend marker 的 managed install 目录并保留 foreign、unrecognized、invalid-marker 和用户内容，默认 `update` 只打印 dry-run plan 且不 apply，`update --yes` 先打印 dry-run 等价 plan，再按 `prune --all -> check_paths_exist -> install -> verify` 串行执行，blocking preflight 不 apply，apply 失败打印 backend/source-aware recovery hint。`prune --backend agents` 缺少 `--all` 和 `update --backend agents --json --yes` 等本地 agents 无效组合也由 Node 直接失败。Python `adapter_deploy.py` / `harness_deploy.py` 仍保留为 repo-local reference path；unsupported package/runtime deploy modes no longer invoke Python and fail directly in Node.
-
-本地 npm-style scaffold 可用下面的 smoke 命令验证 bin 入口能打开同一 help surface：
-
-```bash
-npm --prefix toolchain/scripts/deploy run smoke --silent
-```
-
-如果要检查目标 `npx aw-installer` package envelope，在仓库根目录运行 dry-run：
-
-```bash
-npm pack --dry-run --json
-```
-
-该 packlist 必须包含 `product/harness/skills`、`product/harness/adapters/agents/skills`、`product/harness/adapters/claude/skills` 与 `toolchain/scripts/deploy/` wrapper 文件，并且不得包含 `.aw/`、`.agents/`、`.claude/` 或 `.autoworkflow/`。
-
-`aw-installer` package payload provenance、source/target root 解析与 `update` trust boundary 见 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md)。默认 `update` 使用当前 package 或 checkout 中的 source payload；`0.4.0-rc.3` 及后续版本允许显式 `update --source github --github-repo OWNER/REPO --github-ref REF` 从 GitHub source archive 读取本次 source root。`update` 不执行 channel 解析、自升级、验签或自动回滚。
-
-发布 dry-run 只验证 npm publish 包面和 registry 配置，不上传 package：
-
-```bash
-npm run publish:dry-run --silent
-```
-
-根 package 的 `publishConfig.registry` 固定为 `https://registry.npmjs.org/`，避免本机 npm mirror 配置影响目标 release channel。根 package 的 `prepublishOnly` guard 会允许这个 dry-run；真实 `npm publish` 必须满足 [aw-installer Release Channel Contract](./release-channel-contract.md) 中定义的非 local semver、release channel、npm dist-tag、CI、审批信号和 git tag 准入。未来发布仍需要单独确认 npm 凭证、release notes 和回滚/撤回计划。
-
-本地 scaffold packlist 仍在 scaffold package root 内检查：
-
-```bash
-cd toolchain/scripts/deploy
-npm pack --dry-run --json
-```
-
-该 dry-run 不应在仓库中留下 `.tgz` package artifact。
-
-更接近真实分发路径的 smoke 应从根目录把 package 打到临时目录，再从 `.tgz` 在隔离 target repo 中执行 bin：
-
-```bash
-tmpdir="$(mktemp -d)"
-trap 'rm -rf "$tmpdir"' EXIT
-npm pack --json --pack-destination "$tmpdir" > "$tmpdir/pack.json"
-package_file="$(node -e "const fs = require('node:fs'); const payload = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); console.log(payload[0].filename);" "$tmpdir/pack.json")"
-target_repo="$tmpdir/target-repo"
-mkdir -p "$target_repo"
-(
-  cd "$target_repo"
-  AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer --help
-  AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer --version
-  if AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer tui > "$tmpdir/tui.out" 2> "$tmpdir/tui.err"; then
-    echo "expected aw-installer tui to require an interactive terminal" >&2
-    exit 1
-  fi
-  test ! -s "$tmpdir/tui.out"
-  grep -F "aw-installer tui requires an interactive terminal" "$tmpdir/tui.err"
-  AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer diagnose --backend agents --json
-  AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents --json
-  AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents --source github --github-ref "<ref-containing-current-payload>" --json
-  AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer install --backend agents
-  AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer verify --backend agents
-  AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents --yes
-  AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer install --backend claude
-  AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer verify --backend claude
-  AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend claude --yes
-)
-```
-
-这里显式清空 `AW_HARNESS_REPO_ROOT` 与 `AW_HARNESS_TARGET_REPO_ROOT`，用于验证 packaged wrapper 会从 package 内读取 source payload，并把当前工作目录作为 target repo root。packaged `tui` 在非交互环境必须明确拒绝；`update --json` 只运行 dry-run JSON plan；GitHub source dry-run 证明远端 archive source root 不会把 target root 改成临时解压目录；`<ref-containing-current-payload>` 必须换成已经包含当前 required payload source 的分支、tag 或 commit。随后 `agents` 路径的 `install` 只写临时 target repo 的 `.agents/skills`，`verify` 复验该临时安装，最后 `update --yes` 覆盖同一临时 target 上的显式 package/local apply + strict verify 路径。GitHub-source `--yes` apply 也可作为独立远程-source smoke 加入 release candidate 验证，但必须保持显式 `--source github` 与具体 ref，不得被当作 channel/self-upgrade。Claude compatibility lane 的三条命令验证同一个 root package payload 能通过 Node-owned path 写入 `.claude/skills`，并在 `update --backend claude --yes` 后保持关键 skill entry 存在且严格复验通过；这只是本地临时 target smoke，不表示 Claude 已成为 `agents` 主路径或 public stable/release claim。
-
-CI 的 Governance Checks workflow 会显式设置 Node，并运行本地 scaffold smoke、本地 scaffold pack/tarball smoke、根 package pack dry-run、根 package publish dry-run，以及无 `AW_HARNESS_REPO_ROOT` 的根 `.tgz` help / version / TUI non-interactive guard / diagnose / update dry-run / install / verify / update apply smoke。当前 closeout gate 包含 `agents` apply smoke 和 Claude install / verify / update apply smoke。该 CI 覆盖验证 package envelope 和 publish preflight，不代表 npm release channel 已发布；真实 release 还必须通过 release-channel guard。
-
-当前边界说明：
-
-- 当前实现 `agents`，并提供 `claude` backend 的完整 Harness skill payload set
-- 主流程固定为：
-  - `prune --all`
-  - `check_paths_exist`
-  - `install --backend <backend>`
-- `diagnose --backend <backend> --json` 是只读结构化诊断命令，发现问题时仍以 0 退出，用于给 operator 或外层自动化读取当前 deploy 状态
-- `verify --backend <backend>` 是只读辅助命令，不属于安装主线
-- 当前 `aw-installer` scaffold 和目标 `npx aw-installer` wrapper 必须保持这些语义；包装层合同见 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)
-- `aw-installer` 的目标形态是 CLI + TUI 双模式：CLI 是脚本化合同，当前 `tui` shell 是同一 deploy 合同上的交互式引导层，agents diagnose / verify actions 复用对应 Node-owned 只读路径，guided update flow 先展示 `diagnose` 和 dry-run plan，再要求显式 `yes` 后调用 `update --yes`；它不能绕过只读 `diagnose / verify`、显式三步 reinstall 或 `update --yes` 确认边界
-- `update` 是三步 destructive reinstall 的 one-shot 包装；默认只输出 dry-run plan，只有显式传入 `--yes` 才会执行 `prune --all -> check_paths_exist -> install -> verify`
-- `update` 只把 planned / known AW target path 上的 unrecognized / foreign 内容作为阻塞项；target root 下无关用户目录不阻止 dry-run 或 apply
-- `update` 的 payload provenance 与 trust boundary 见 [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md)；当前只准入 package-local source 与显式 GitHub source archive，channel-based 远程更新能力不属于当前实现
-- 原始来源（canonical source）、后端部署包（backend payload source）、目标入口（target entry）之间的正式映射规则，见 [Deploy Mapping Spec](./deploy-mapping-spec.md)
-- `prune --all` 只删除带可识别、且属于当前 backend 的受管 `aw.marker` 目录；无 marker、不可识别 marker 或 foreign 目录一律不碰
-- `check_paths_exist` 会基于当前 source 声明的 live bindings 解析目标路径；只要任一路径已存在，就全量列出冲突并失败退出，不做任何业务写入
-- `install --backend <backend>` 只写当前 source 声明的 live payload；若 source 存在重复 `target_dir` 或目标路径冲突，必须在写入前失败
-- `aw.marker` 是 runtime-generated artifact，只表达“这是当前 backend 的受管 live install 目录”
-- 不再承接 `retired-target-dir`、`prune --outdated`、archive/history、增量修复、旧版本保活或 “确认新目录可用再删旧目录”
-- backend-specific target root 解析与 override 参数见 [Codex Usage Help](../usage-help/codex.md)
-
-## 三、三步主流程
-
-默认主流程固定为：
+repo-local 参考入口：
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents
@@ -154,89 +40,69 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py che
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents
 ```
 
-如需验证当前 Node-owned `agents` preflight 和 package/local apply path，可运行：
+如果当前 backend 需要显式 target root override，就在三条命令上附加对应参数。参数口径见 [Codex Usage Help](../usage-help/codex.md) 和 [Claude Usage Help](../usage-help/claude.md)。
 
-```bash
-node toolchain/scripts/deploy/bin/aw-installer.js prune --all --backend agents
-node toolchain/scripts/deploy/bin/aw-installer.js check_paths_exist --backend agents
-node toolchain/scripts/deploy/bin/aw-installer.js verify --backend agents
-node toolchain/scripts/deploy/bin/aw-installer.js install --backend agents
-node toolchain/scripts/deploy/bin/aw-installer.js update --backend agents
-node toolchain/scripts/deploy/bin/aw-installer.js update --backend agents --yes
-```
+package / local wrapper 必须保持同一语义，但包装层命令面由 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 管理，而不是本页。
 
-其中 `prune --all --backend agents` 的 Node-owned 边界只覆盖 package/local source 的 `agents` backend，且只删除可识别 current-backend managed installs；`install --backend agents` 的 Node-owned 边界覆盖 package/local source 的 clean-target 成功和 non-clean target planned-path 冲突阻断。已有内容的 target root 可通过 Node-owned `update --backend agents --yes` 走 destructive reinstall composition；standalone non-clean `install` 不做增量覆盖，遇到冲突会在写入前失败。
-
-如果当前 backend 需要显式 root override，例如 `agents` 通过 `--agents-root` 指到非默认 target root，或 `claude` 通过 `--claude-root` 指到非默认 target root，就在这三条命令上附加对应参数。参数来源见 [Codex Usage Help](../usage-help/codex.md) 和 [Claude Usage Help](../usage-help/claude.md)。
-
-如果需要一个包装命令，先查看 dry-run plan，再显式 apply：
-
-```bash
-node toolchain/scripts/deploy/bin/aw-installer.js update --backend agents
-node toolchain/scripts/deploy/bin/aw-installer.js update --backend agents --yes
-```
-
-`update --json` 只输出 dry-run plan，不和 `--yes` 组合使用。
+## 三步各管什么
 
 ### 1. `prune --all`
 
-- 清理当前 backend 受管的旧安装目录
-- 删除条件只有一个：目录里存在可识别、属于当前 backend 的 `aw.marker`
-- 没有 marker、marker 不可识别、或明显不是我方受管目录时，脚本不会碰它们
-- 这一步是 destructive reinstall 的显式清理阶段，不负责保留历史副本
+- 只删除当前 backend 受管、且带可识别 `aw.marker` 的目录
+- 无 marker、marker 不可识别或 foreign 目录一律不碰
+- 这是显式清场步骤，不负责保留旧版本、副本或历史目录
 
 ### 2. `check_paths_exist`
 
-- 基于当前 source 声明的 live bindings，解析即将写入的全部目标路径
-- 如果任何目标路径已经存在，命令必须一次性列出全部冲突并非零退出
-- 这一步不写任何业务文件，也不替 operator 做“可不可以覆盖”的判断
+- 基于当前 live bindings 解析目标路径
+- 只要任一路径已存在，就列出冲突并失败退出
+- 这一步不写业务文件，也不替 operator 判断“能不能覆盖”
 
 ### 3. `install --backend <backend>`
 
 - 只写当前 source 声明的 live payload
-- 这一步不承接 archive/history、增量修复或旧版本保活
-- 如果 source 中出现重复 `target_dir` 或其他 source contract 非法情形，必须在写入前失败
+- 如果 source contract 非法，例如重复 `target_dir`，必须在写入前失败
 - 如果冲突路径未清理完，也必须在写入前失败
 
-## 四、可选复验
+## 只读辅助命令
 
-如果需要先拿结构化状态摘要，执行：
+本页不把 `diagnose` / `verify` 作为主流程，但它们仍然是常用辅助命令：
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py diagnose --backend agents --json
-```
-
-`diagnose` 当前只读输出 backend、target root、受管安装数量、issue 数量、issue code，以及 unrecognized / conflict 摘要。它用于状态观察；即使发现 drift 或 root 问题，也返回 0。
-
-主流程跑完后，如需只读复验，再执行：
-
-```bash
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
 ```
 
-`verify` 当前只负责：
+- `diagnose` 只读输出状态摘要，发现 issue 时仍以 `0` 退出
+- `verify` 做严格只读复验，发现 issue 时非零退出
+- 如何根据 issue 决定恢复路径，由 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md) 管理
 
-- source 合法性
-- target root 是否存在、是否是目录、是否是坏链路
-- live install 与当前 source 的对齐状态
-- target root 下的 conflict / unrecognized 情形
+## 停止线
 
-## 五、常见恢复路径
+出现以下情况时，不要继续在本页硬做：
 
-- `check_paths_exist` 报出冲突路径：
-  - 先由 operator 手工清理这些目录或修正 source
-  - 然后从 `prune --all` 重新开始
-- `install` 在写入前失败：
-  - 先修 source contract，例如重复 `target_dir`
-  - 再从 `prune --all` 重新开始
-- `verify` 报 drift：
-  - 先确认是 source 问题、target root 问题还是 unrecognized / foreign 目录
-  - 修正后重新跑三步主流程
+- 你需要判断 drift / conflict / unrecognized 的具体含义
+- 你需要区分 source 问题、target 问题还是 live install 问题
+- 你需要发布、pack、tarball smoke 或 registry smoke
 
-## 六、下一步去哪页
+分别转到：
 
-- 根目录不一致（drift）、损坏链路、root 类型错误：查看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)
-- skills / `.aw_template` 的增删改查：查看 [skill-lifecycle.md](./skill-lifecycle.md)
-- 原始来源、后端部署包、目标入口的正式规则：查看 [Deploy Mapping Spec](./deploy-mapping-spec.md)
-- package payload、source/target root 和 update trust boundary：查看 [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md)
-- `claude` 当前实现受控的完整 Harness skill payload set，但仍不替代 `agents` 主路径。
+- [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)
+- [aw-installer Pre-Publish Governance](../governance/aw-installer-pre-publish-governance.md)
+- [Governance](../governance/README.md)
+- [npx Command Test Execution](../testing/npx-command-test-execution.md)
+
+## 常见恢复口径
+
+| 现象 | 处理口径 |
+| --- | --- |
+| `check_paths_exist` 报冲突 | 先手工清理冲突目录，再从 `prune --all` 重跑 |
+| `install` 在写入前失败 | 先修 source contract，再从 `prune --all` 重跑 |
+| 想确认重装后是否干净 | 转到 maintenance 页跑 `diagnose` 或 `verify` |
+
+## 相关文档
+
+- [Skill Deployment 维护流](./skill-deployment-maintenance.md)
+- [Deploy Mapping Spec](./deploy-mapping-spec.md)
+- [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)
+- [aw-installer Payload Provenance And Update Trust Boundary](./payload-provenance-trust-boundary.md)

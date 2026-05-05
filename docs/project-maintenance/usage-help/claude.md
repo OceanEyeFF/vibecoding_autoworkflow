@@ -1,9 +1,9 @@
 ---
 title: "Claude Repo-local Usage Help"
 status: active
-updated: 2026-05-03
+updated: 2026-05-05
 owner: aw-kernel
-last_verified: 2026-05-03
+last_verified: 2026-05-05
 ---
 # Claude Repo-local Usage Help
 
@@ -12,13 +12,34 @@ last_verified: 2026-05-03
 先读通用 deploy 文档，再读本页：
 
 - [Deploy Runbook](../deploy/deploy-runbook.md)
-- [aw-installer Public Quickstart Prompts](../deploy/aw-installer-public-quickstart-prompts.md)
-- [aw-installer External Trial Feedback Contract](../deploy/aw-installer-external-trial-feedback.md)
 - [Skill Deployment 维护流](../deploy/skill-deployment-maintenance.md)
-- [Skill 生命周期维护](../deploy/skill-lifecycle.md)
 - [Claude Post-Deploy Behavior Tests](../testing/claude-post-deploy-behavior-tests.md)
 
-## 一、Backend 标识与常见路径
+## 一、快速试用路径
+
+`claude` 当前是 Claude Code 适配 lane，不替代 `agents` 主路径。优先使用显式 source checkout 或维护者提供的本地 `.tgz`，不要假设所有 registry selector 都已经包含 Claude lane。
+
+受管 adapter 路径：
+
+```bash
+AW_HARNESS_TARGET_REPO_ROOT="$TARGET_REPO" \
+PYTHONDONTWRITEBYTECODE=1 python3 "$AW_SOURCE_REPO/toolchain/scripts/deploy/adapter_deploy.py" install --backend claude
+
+AW_HARNESS_TARGET_REPO_ROOT="$TARGET_REPO" \
+PYTHONDONTWRITEBYTECODE=1 python3 "$AW_SOURCE_REPO/toolchain/scripts/deploy/adapter_deploy.py" verify --backend claude
+```
+
+冷启动 helper 路径：
+
+```bash
+node "$AW_SOURCE_REPO/product/harness/skills/set-harness-goal-skill/scripts/deploy_aw.js" \
+  install-claude-skill \
+  --deploy-path "$TARGET_REPO"
+```
+
+然后在目标仓库里打开 Claude Code，使用 `/set-harness-goal-skill` 或 `/aw-set-harness-goal-skill` 初始化 `.aw/`。反馈仍走 [trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)。
+
+## 二、Backend 标识与常见路径
 
 - backend 名：`claude`
 - 常见 repo-local runtime root：`.claude/skills/`
@@ -31,9 +52,9 @@ last_verified: 2026-05-03
 - `set-harness-goal-skill/scripts/deploy_aw.js` 的 `--claude-root` 仍属于本文第五节的冷启动 helper 例外，和 adapter CLI 的受管 payload install 是两条入口
 - 完整 smoke / 冷启动步骤见 [Claude Post-Deploy Behavior Tests](../testing/claude-post-deploy-behavior-tests.md)
 
-## 二、最小 trial smoke verify 口径
+## 三、最小 trial smoke verify 口径
 
-`claude` 当前是 Claude Code 适配 lane，不是 `agents` 外部试用主路径。当前 adapter CLI 可安装完整受管 Harness skill set，也可继续使用第五节的冷启动 helper。完整 Codex/Claude trial prompt 入口仍以 [aw-installer Public Quickstart Prompts](../deploy/aw-installer-public-quickstart-prompts.md) 为准。
+`claude` 当前是 Claude Code 适配 lane，不是 `agents` 外部试用主路径。当前 adapter CLI 可安装完整受管 Harness skill set，也可继续使用第五节的冷启动 helper。
 
 建议做法：
 
@@ -47,19 +68,19 @@ last_verified: 2026-05-03
 - 输出仍符合固定结构
 - 这一步是 backend runtime 可读性确认，不替代 source 与 target 对齐检查
 
-## 三、和其他 backend 的区别
+## 四、和其他 backend 的区别
 
 - `claude` 承接受控的完整 Harness skill payload 与 runtime skill entry 可读性 trial smoke；`agents` 当前仍是 deploy verify 与 Codex Harness manual run 主路径
 - `claude` 的常见 user-home runtime 路径是 `~/.claude/skills`，不依赖 `CODEX_HOME` 或 XDG 推导
 - 当前仓库提供 `claude` backend 的受控 deploy adapter CLI 和 package/local `aw-installer` Node-owned lifecycle；完整 skill set 的 payload 边界、target 命名和验证矩阵变更必须以新的 worktrack 同步本页和 deploy 文档
-- Claude Code 试用反馈仍走 [aw-installer External Trial Feedback Contract](../deploy/aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)，并标明它是 compatibility trial lane
+- Claude Code 试用反馈仍走 [trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)，并标明它是 compatibility trial lane
 
-## 四、当前限制
+## 五、当前限制
 
 - 不要把 `adapter_deploy.py --backend claude` 写成 `agents` 主路径替代品；它是 Claude Code skill payload 适配 lane
 - 这页只承接 Claude 的 runtime 路径、受控 compatibility payload 与 smoke verify 差异
 
-## 五、当前受控例外
+## 六、当前受控例外
 
 `set-harness-goal-skill` 自带的 `scripts/deploy_aw.js` 可以把该技能自身安装到目标 repo 的 Claude 项目级 skill 目录：
 
@@ -78,3 +99,11 @@ node scripts/deploy_aw.js generate --deploy-path "$DEPLOY_PATH" --install-claude
 - 如果目标 skill 目录本身不是 symlink，但经允许的 root symlink / mount 解析后就是当前运行的 skill 包，安装视为 already installed 并 no-op
 - 这只覆盖 `set-harness-goal-skill` 的冷启动 helper 场景；adapter CLI 的 `--backend claude` 是另一条受管 payload install 路径，并覆盖完整 Harness skill set
 - 临时 repo 中的 operator-facing 测试步骤见 [Claude Post-Deploy Behavior Tests](../testing/claude-post-deploy-behavior-tests.md)
+
+## 七、Source 变更后的 operator 决策
+
+如果你在改 skill source 或 `.aw_template/`，当前 operator 口径和 `agents` 一样：
+
+- source of truth 始终在 `product/`，不要去改 `.claude/skills/` 里的已安装结果
+- 只是让 live install 重新对齐 source：回到 [Deploy Runbook](../deploy/deploy-runbook.md) 走三步主流程或对应受管路径
+- 如果 source 出现命名、legacy cleanup 或 payload contract 变化，先修 source contract，再重装；不要把 deploy target 当作 source 修补

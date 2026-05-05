@@ -9,7 +9,7 @@ last_verified: 2026-05-03
 
 > 目的：把 “Claude 分发已经通过 Python adapter 和当前 checkout/local package 的 Node-owned `aw-installer` 落地 full Harness skill payload” 这一当前事实，与后续 TUI / registry / release / Python 退役成熟度工作分开，避免继续使用把 Claude 写成未落地或未来化的过期表述。
 
-本页属于 [Deploy Runbooks](./README.md) 系列文档。实现细节先读 [Claude Adapter Source](./claude-adapter-source.md)；历史设计切片见 [Claude Full Skill Distribution Design](./claude-full-skill-distribution-design.md)。
+本页属于 [Deploy Runbooks](./README.md) 系列文档。实现细节先读 [`product/harness/adapters/claude/README.md`](../../../product/harness/adapters/claude/README.md)；历史设计切片见 [Claude Full Skill Distribution Design](./claude-full-skill-distribution-design.md)。
 
 ## Control Signal
 
@@ -68,7 +68,7 @@ deploy 文档需要避免以下过期口径：
 - `product/harness/skills/`
 - `toolchain/scripts/deploy/adapter_deploy.py`
 
-后续如果改变 payload set、target dir policy、frontmatter policy、legacy cleanup 或 marker 语义，必须同步更新 [Claude Adapter Source](./claude-adapter-source.md)、验证矩阵和相关 adapter 测试。
+后续如果改变 payload set、target dir policy、frontmatter policy、legacy cleanup 或 marker 语义，必须同步更新 [`product/harness/adapters/claude/README.md`](../../../product/harness/adapters/claude/README.md)、验证矩阵和相关 adapter 测试。
 
 ### Toolchain And UI
 

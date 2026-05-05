@@ -1,9 +1,9 @@
 ---
 title: "Deploy Script Governance Inventory"
 status: draft
-updated: 2026-05-03
+updated: 2026-05-05
 owner: aw-kernel
-last_verified: 2026-05-03
+last_verified: 2026-05-05
 ---
 # Deploy Script Governance Inventory
 
@@ -116,17 +116,19 @@ These docs currently mention Python deploy behavior, npx/package behavior, relea
 | `docs/project-maintenance/deploy/payload-provenance-trust-boundary.md` | Defines package-local source, target root, GitHub-source archive, trust boundary and no-auto-update limits. |
 | `docs/project-maintenance/deploy/deploy-runbook.md` | Destructive reinstall operator flow and verify/diagnose semantics. |
 | `docs/project-maintenance/deploy/deploy-mapping-spec.md` | Source/backend/target/payload/marker mapping and `install`/`verify`/`diagnose`/`prune` constraints. |
-| `docs/project-maintenance/deploy/agents-adapter-source.md` | Agents adapter source and payload descriptor expectations. |
-| `docs/project-maintenance/deploy/claude-adapter-source.md` | Claude adapter source and compatibility/full-skill payload expectations. |
+| `product/harness/adapters/agents/skills/README.md` | Agents adapter payload descriptor expectations and marker/runtime boundary. |
+| `product/harness/adapters/claude/README.md` | Claude adapter payload, frontmatter override and legacy cleanup expectations. |
 | `docs/project-maintenance/deploy/claude-full-skill-distribution-design.md` | Claude full skill distribution design and backend boundary. |
 | `docs/project-maintenance/deploy/skill-deployment-maintenance.md` | Drift, conflict, diagnostic and maintenance recovery flows. |
-| `docs/project-maintenance/deploy/skill-lifecycle.md` | Add/update/rename/remove skill lifecycle and adapter payload updates. |
-| `docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md` | External trial copy/paste commands and operator expectations. |
-| `docs/project-maintenance/deploy/aw-installer-external-trial-feedback.md` | Feedback evidence and issue reporting path for `aw-installer`. |
-| `docs/project-maintenance/deploy/aw-installer-npx-pre-publish-check.md` | Pre-publish packlist, docs, metadata, dry-run and smoke requirements. |
-| `docs/project-maintenance/deploy/release-channel-contract.md` | Version/channel/dist-tag/release approval rules. |
-| `docs/project-maintenance/deploy/aw-installer-release-operation-model.md` | Trusted Publishing/manual fallback workflow, publish guard and release metadata. |
-| `docs/project-maintenance/deploy/github-release-publish-standard-flow.md` | GitHub Release creation, publish workflow, post-publish npx smoke and release evidence. |
+| `docs/project-maintenance/usage-help/README.md` | Backend usage-help navigation, source-change operator decisions and quickstart handoff. |
+| `docs/project-maintenance/usage-help/codex.md` | Agents quickstart, target-root override and source-change operator decisions. |
+| `docs/project-maintenance/usage-help/claude.md` | Claude quickstart, target-root lane and source-change operator decisions. |
+| `docs/project-maintenance/governance/aw-installer-external-trial-governance.md` | External trial feedback fields, privacy boundary and decision criteria. |
+| `docs/project-maintenance/governance/aw-installer-pre-publish-governance.md` | Pre-publish tuple, approval lock, packlist/docs freshness and publish-readiness boundary. |
+| `docs/project-maintenance/testing/npx-command-test-execution.md` | Local `.tgz` and registry `npx` smoke execution, temporary target rules and evidence logs. |
+| `docs/project-maintenance/governance/aw-installer-release-channel-governance.md` | Version/channel/dist-tag/release approval rules. |
+| `docs/project-maintenance/governance/aw-installer-release-operation-model.md` | Trusted Publishing/manual fallback workflow, publish guard and release metadata. |
+| `docs/project-maintenance/governance/aw-installer-release-standard-flow.md` | GitHub Release creation, publish workflow, post-publish npx smoke and release evidence. |
 | `docs/project-maintenance/deploy/template-tooling-mvp.md` | `aw_scaffold.py` commands; adjacent scaffold tooling, not runtime deploy deletion. |
 | `docs/project-maintenance/deploy/template-consumption-spec.md` | Template consumption; adjacent to `.aw_template`, not package runtime install. |
 | `docs/project-maintenance/deploy/existing-code-adoption.md` | Existing project adoption flow and `.aw` initialization context. |
