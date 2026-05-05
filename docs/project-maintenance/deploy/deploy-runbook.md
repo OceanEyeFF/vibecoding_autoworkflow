@@ -1,9 +1,9 @@
 ---
 title: "Deploy Runbook"
 status: active
-updated: 2026-05-03
+updated: 2026-05-05
 owner: aw-kernel
-last_verified: 2026-05-03
+last_verified: 2026-05-05
 ---
 # Deploy Runbook
 
@@ -19,7 +19,7 @@ last_verified: 2026-05-03
 
 本页只保留快速入门和主流程。维护诊断请查看 [skill-deployment-maintenance.md](./skill-deployment-maintenance.md)，业务生命周期边界请查看 [skill-lifecycle.md](./skill-lifecycle.md)。
 
-外部试用不要直接从本文截取 `npx aw-installer` 目标形态作为已发布事实。先使用 [aw-installer Public Quickstart Prompts](./aw-installer-public-quickstart-prompts.md) 的当前 RC 路径；反馈走 [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)；npx / package smoke 走 [npx Command Test Execution](../testing/npx-command-test-execution.md)。
+外部试用不要直接从本文截取 `npx aw-installer` 目标形态作为已发布事实。先使用 [aw-installer Public Quickstart Prompts](./aw-installer-public-quickstart-prompts.md) 的当前 stable / RC 路径；反馈走 [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md)、[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)；npx / package smoke 走 [npx Command Test Execution](../testing/npx-command-test-execution.md)。
 
 ## 一、什么时候看这页
 
@@ -50,7 +50,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-`harness_deploy.py` 只作为 repo-local reference 包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 只暴露 `aw-installer` bin 和 `aw-installer tui` 最小交互 shell；`aw-harness-deploy` Python alias 已退出 package runtime。`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 映射到同一 CLI deploy contract，其中 `agents` package/local diagnose、dry-run plan、verify 和 explicit apply 路径已由 Node 承接，Claude package/local lifecycle 也已由 Node 承接但仍只是 Claude Code compatibility lane。当前 npm registry 事实是 `next=0.4.3-rc.2`、`latest=0.4.0-rc.1`；已发布的 `0.4.3-rc.2` artifact 绑定 `gitHead=199af2b2d195542fd5f1621243b041a20e497686`。外部已发布 RC 试用主路径应显式使用 `aw-installer@next`。当前还没有引入 full-screen TUI framework。
+`harness_deploy.py` 只作为 repo-local reference 包装当前 `adapter_deploy.py` 命令面。当前根目录 `package.json` 是 self-contained `aw-installer` npm 包络，本地 package scaffold 只暴露 `aw-installer` bin 和 `aw-installer tui` 最小交互 shell；`aw-harness-deploy` Python alias 已退出 package runtime。`tui` 主入口是 guided update flow，按 `diagnose -> update dry-run plan -> explicit yes -> update --yes` 映射到同一 CLI deploy contract，其中 `agents` package/local diagnose、dry-run plan、verify 和 explicit apply 路径已由 Node 承接，Claude package/local lifecycle 也已由 Node 承接但仍只是 Claude Code compatibility lane。当前 npm registry 事实是 `next=4.4.0-rc.0`、`latest=0.4.0-rc.1`；当前 checkout 已准备 `4.4.0` stable release candidate，目标 channel 为 `latest`。外部稳定试用主路径应使用裸 `aw-installer`，RC 复现才显式使用 `aw-installer@next`。当前还没有引入 full-screen TUI framework。
 
 本地 `aw-installer` 当前已直接承接 `agents` 和 `claude` package/local source 的只读 `diagnose` human/JSON、`check_paths_exist` preflight、`verify` strict verification、`install` clean-target 写入与 non-clean planned-path 冲突阻断、`prune --all`、human-readable `update` dry-run，以及 `update --yes` composition；显式 `agents` GitHub-source update 的 JSON/human dry-run 与 `--yes` apply 也由 Node-owned 路径承接。这些 Node-owned 路径不调用 Python；其中 `diagnose`、`check_paths_exist` 与 `verify` 不创建 target root、不写 payload、不删除 target 文件，`install` 只在 source validation、target readiness 与 path conflict preflight 通过后写入 payload 和 marker，non-clean target 出现 planned path conflict 时在写入前失败并保留用户内容，无关用户内容不属于 planned path conflict，Claude install 保留 `.claude/skills/<skill_id>` target naming、frontmatter transform 和 same-backend managed legacy cleanup，GitHub-source update 复用 repo/ref/SHA validation、safe ZIP extraction、source contract validation、temp cleanup 和 source/target separation，`prune --all` 只删除带可识别 current-backend marker 的 managed install 目录并保留 foreign、unrecognized、invalid-marker 和用户内容，默认 `update` 只打印 dry-run plan 且不 apply，`update --yes` 先打印 dry-run 等价 plan，再按 `prune --all -> check_paths_exist -> install -> verify` 串行执行，blocking preflight 不 apply，apply 失败打印 backend/source-aware recovery hint。`prune --backend agents` 缺少 `--all` 和 `update --backend agents --json --yes` 等本地 agents 无效组合也由 Node 直接失败。Python `adapter_deploy.py` / `harness_deploy.py` 仍保留为 repo-local reference path；unsupported package/runtime deploy modes no longer invoke Python and fail directly in Node.
 

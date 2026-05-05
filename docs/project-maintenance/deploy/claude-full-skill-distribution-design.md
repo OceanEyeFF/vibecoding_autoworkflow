@@ -1,9 +1,9 @@
 ---
 title: "Claude Full Skill Distribution Design"
 status: draft
-updated: 2026-05-01
+updated: 2026-05-05
 owner: aw-kernel
-last_verified: 2026-05-01
+last_verified: 2026-05-05
 ---
 # Claude Full Skill Distribution Design
 
@@ -174,7 +174,7 @@ General validation remains governed by the active worktrack contract:
 
 This design does not authorize a release.
 
-Any future release-prep metadata update must first verify current registry facts and choose a new immutable version. `aw-installer@0.4.3-rc.2` is already published on `next`, so this worktrack must not attempt to publish that version again.
+Any future release-prep metadata update must first verify current registry facts and choose a new immutable version. `aw-installer@0.4.3-rc.2` is already an immutable published package version, so this worktrack must not attempt to publish that version again.
 
 The following remain separately approval-gated:
 

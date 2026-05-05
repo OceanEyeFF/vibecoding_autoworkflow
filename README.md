@@ -20,39 +20,39 @@ last_verified: 2026-05-04
 
 ## 使用 `aw-installer`
 
-`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。当前 npm registry 事实是 `aw-installer@next` 指向 `0.4.3-rc.2`，`aw-installer@latest` 指向 `0.4.0-rc.1`，`latest` 不代表稳定 release approval。当前 checkout 已准备 `4.4.0-rc.0` release candidate；在 GitHub Release publish workflow 成功前，registry `next` 仍不会指向该版本。已发布的 `0.4.3-rc.2` registry artifact 绑定 `gitHead=199af2b2d195542fd5f1621243b041a20e497686`；后续 publish 必须使用新的 immutable npm version。复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)，release channel 与 publish 边界见 [`aw-installer Release Channel Contract`](./docs/project-maintenance/deploy/release-channel-contract.md)，npx/package smoke 见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
+`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。当前 npm registry 事实是 `aw-installer@next` 指向 `4.4.0-rc.0`，`aw-installer@latest` 指向 `0.4.0-rc.1`。当前 checkout 已准备 `4.4.0` stable release candidate，目标 channel 为 `latest`；在 GitHub Release publish workflow 成功后，裸 `npx aw-installer` 应解析到 `4.4.0`。复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)，release channel 与 publish 边界见 [`aw-installer Release Channel Contract`](./docs/project-maintenance/deploy/release-channel-contract.md)，npx/package smoke 见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
 
 ```bash
-npx aw-installer@next
-npx aw-installer@next tui
+npx aw-installer
+npx aw-installer tui
 ```
 
 交互式终端中，已批准 package entrypoint 可以进入最小 TUI；CI、脚本或非交互环境应使用显式 CLI：
 
 ```bash
-npx aw-installer@next --version
-npx aw-installer@next diagnose --backend agents --json
-npx aw-installer@next verify --backend agents
-npx aw-installer@next update --backend agents
-npx aw-installer@next update --backend agents --yes
-npx aw-installer@next install --backend agents
+npx aw-installer --version
+npx aw-installer diagnose --backend agents --json
+npx aw-installer verify --backend agents
+npx aw-installer update --backend agents
+npx aw-installer update --backend agents --yes
+npx aw-installer install --backend agents
 ```
 
-这里的 `aw-installer@next` 是当前已发布 RC 试用选择器；裸 `npx aw-installer` 仍按 npm `latest` 解析到较旧的 rc1。当前 RC 不是稳定 release 批准，稳定版本和未来 publish 仍需单独审批。`diagnose` 和 `verify` 是只读检查；`install` 是显式写入当前 payload 的底层命令；`update` 默认只输出 dry-run plan。推荐写入路径是在确认 plan 后运行 `update --yes`，它会按 `prune --all -> check_paths_exist -> install -> verify` 写入目标仓库的 `.agents/skills`。完整入口合同见 [`Distribution Entrypoint Contract`](./docs/project-maintenance/deploy/distribution-entrypoint-contract.md)，registry npx smoke 与反馈日志见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
+这里的裸 `aw-installer` 是稳定发布选择器；如需复现 RC 流，显式使用 `aw-installer@next`。`diagnose` 和 `verify` 是只读检查；`install` 是显式写入当前 payload 的底层命令；`update` 默认只输出 dry-run plan。推荐写入路径是在确认 plan 后运行 `update --yes`，它会按 `prune --all -> check_paths_exist -> install -> verify` 写入目标仓库的 `.agents/skills`。完整入口合同见 [`Distribution Entrypoint Contract`](./docs/project-maintenance/deploy/distribution-entrypoint-contract.md)，registry npx smoke 与反馈日志见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
 
-`aw-installer --help` / `--version` 由 Node wrapper 直接处理，不需要启动 Python；当前 Node-owned 覆盖包括 agents package/local-source `diagnose`、`update` dry-run、`check_paths_exist`、`verify`、clean-target `install`、non-clean planned-path conflict blocking、`prune --all`、`update --yes`，Claude package/local-source `diagnose`、`check_paths_exist`、`verify`、`update` dry-run、`install`、`prune --all`、`update --yes`，以及显式 agents GitHub-source `update` 的 JSON、human 与 `--yes` 路径。`update --backend agents --json` 仍保留 dry-run JSON 字段，包括 `backend`、`source_kind`、`source_ref`、`source_root`、`target_root`、`operation_sequence`、`managed_installs_to_delete`、`planned_target_paths`、`issues` 与 `blocking_issues`。package/runtime `aw-installer` 不再 fallback 到 Python；unsupported / unmatched deploy modes 必须在 Node runtime 中显式失败，而不是转交 Python deploy wrapper。Python deploy scripts 可继续作为 repo-local reference、parity 或 governance assets 留在源码树中，但不属于 package/runtime dependencies。论坛试用应显式使用 `aw-installer@next`，避免裸 `latest` 解析到较旧的 rc1。
+`aw-installer --help` / `--version` 由 Node wrapper 直接处理，不需要启动 Python；当前 Node-owned 覆盖包括 agents package/local-source `diagnose`、`update` dry-run、`check_paths_exist`、`verify`、clean-target `install`、non-clean planned-path conflict blocking、`prune --all`、`update --yes`，Claude package/local-source `diagnose`、`check_paths_exist`、`verify`、`update` dry-run、`install`、`prune --all`、`update --yes`，以及显式 agents GitHub-source `update` 的 JSON、human 与 `--yes` 路径。`update --backend agents --json` 仍保留 dry-run JSON 字段，包括 `backend`、`source_kind`、`source_ref`、`source_root`、`target_root`、`operation_sequence`、`managed_installs_to_delete`、`planned_target_paths`、`issues` 与 `blocking_issues`。package/runtime `aw-installer` 不再 fallback 到 Python；unsupported / unmatched deploy modes 必须在 Node runtime 中显式失败，而不是转交 Python deploy wrapper。Python deploy scripts 可继续作为 repo-local reference、parity 或 governance assets 留在源码树中，但不属于 package/runtime dependencies。
 
 `aw-installer update` 默认使用 package 或 checkout 中的 source payload；当前 package/source 合同保留显式 `--source github --github-repo OceanEyeFF/vibecoding_autoworkflow --github-ref <ref-containing-current-payload>`，从 GitHub source archive 读取本次 update 的 source root。`master` 只有在已包含当前 required payload source 时才是有效 ref。`update` 仍不做 channel 解析、自升级、验签或自动回滚。payload provenance 与 update trust boundary 见 [`Payload Provenance And Update Trust Boundary`](./docs/project-maintenance/deploy/payload-provenance-trust-boundary.md)。
 
 ### 外部试用路径：目标仓库里运行
 
-当前 RC 试用路径是在目标项目根目录显式运行 `aw-installer@next`：
+稳定安装路径是在目标项目根目录运行裸 `aw-installer`：
 
 ```bash
-npx aw-installer@next diagnose --backend agents --json
-npx aw-installer@next update --backend agents
-npx aw-installer@next update --backend agents --yes
-npx aw-installer@next verify --backend agents
+npx aw-installer diagnose --backend agents --json
+npx aw-installer update --backend agents
+npx aw-installer update --backend agents --yes
+npx aw-installer verify --backend agents
 ```
 
 维护者验证当前 checkout 时仍可使用本地 `.tgz` 或明确 checkout source。完整复制粘贴流程见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)。
@@ -66,10 +66,10 @@ mkdir target-project
 cd target-project
 git init
 
-npx aw-installer@next diagnose --backend agents --json
-npx aw-installer@next update --backend agents
-npx aw-installer@next update --backend agents --yes
-npx aw-installer@next verify --backend agents
+npx aw-installer diagnose --backend agents --json
+npx aw-installer update --backend agents
+npx aw-installer update --backend agents --yes
+npx aw-installer verify --backend agents
 ```
 
 这一步只安装 AW skill payload 到目标项目的 `.agents/skills/`。之后在 Codex 中运行 `$set-harness-goal-skill`，再创建 `.aw/` 控制面；不要把 `.aw/` 初始化和 skill payload 安装混成同一个隐式写入步骤。
@@ -79,15 +79,15 @@ npx aw-installer@next verify --backend agents
 如果目标仓库已经有代码、文档或进行中的工作，先用只读命令看计划，再由目标 owner 批准写入：
 
 ```bash
-npx aw-installer@next diagnose --backend agents --json
-npx aw-installer@next update --backend agents
+npx aw-installer diagnose --backend agents --json
+npx aw-installer update --backend agents
 ```
 
 确认 dry-run 只会写入目标仓库的 `.agents/skills/aw-*` 受管目录后，再运行：
 
 ```bash
-npx aw-installer@next update --backend agents --yes
-npx aw-installer@next verify --backend agents
+npx aw-installer update --backend agents --yes
+npx aw-installer verify --backend agents
 ```
 
 随后让 Codex 初始化 `.aw/` 时，应要求它保留现有源码和文档，把已有仓库事实当作 discovery input，而不是覆盖已确认的项目真相。若目标仓库已经有 `.aw/`，必须先检查现有 control state；未经 operator 确认，不要覆盖 `.aw/goal-charter.md`。
