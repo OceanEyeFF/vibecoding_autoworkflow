@@ -1,227 +1,105 @@
 ---
-title: "Context Routing 分流规则"
+title: "Context Routing 规则"
 status: active
-updated: 2026-04-14
+updated: 2026-05-05
 owner: aw-kernel
-last_verified: 2026-04-14
+last_verified: 2026-05-05
 ---
-# Context Routing 分流规则
+# Context Routing 规则
 
-> 目的：把 `Context Routing` 从抽象原则落实成实际的任务分流规则，回答“不同任务开始前应读取什么、按什么顺序读、哪些先不要读”。
+> 目的：规定任务开始前如何生成最小 `Route Card`。职责定义见 [context-routing.md](./context-routing.md)，输出格式见 [formats/context-routing-output-format.md](./formats/context-routing-output-format.md)。
 
-## 一、路由对象
+## 一、输入
 
-`Context Routing` 的直接产物是一个 `Route Card`。
+生成 `Route Card` 只使用：
 
-它只包含三类内容：
+- 用户当前任务
+- 当前 repo 入口与治理规则
+- 可用知识入口
+- 与任务直接相关的代码、测试或脚本入口
+- 已知禁读、限读或停止扩读规则
 
-- 当前任务先读什么
-- 当前任务后读什么
-- 当前任务先不要读什么
+不基于猜测补全文档，不把 routing 写成执行计划。
 
-它不是知识本体，也不是执行计划。
+## 二、统一步骤
 
-## 二、输入
+1. 判断任务类型。
+2. 选择最小 `read_first`。
+3. 必要时补 `read_next`。
+4. 标出 `code_entrypoints`。
+5. 标出 `do_not_read_yet`。
+6. 标出 `stop_reading_when`。
+7. 如一开始就需要验证，列 `validation_entrypoints`。
 
-生成 `Route Card` 时，只使用下面几类输入：
+## 三、任务类型
 
-- 任务类型
-- 优先使用 `Task Contract` 中已定稿的目标和范围；若尚无 Contract，再使用当前目标和范围
-- `Knowledge Base` 中可用的入口文档
-- 与目标直接相关的代码入口
+| 类型 | 默认 read_first | 默认 code_entrypoints |
+| --- | --- | --- |
+| `feature` | `docs/README.md`、相关模块 README、约束/设计入口 | 目标模块、相邻测试 |
+| `bugfix` | 失败测试/日志入口、相关模块 README、治理约束 | 报错路径、相邻恢复路径、回归测试 |
+| `refactor` | 分层边界、模块 owner、相关设计约束 | 被改模块、调用方、测试 |
+| `docs` | 最近入口页、承接层正文、相关治理规则 | 通常为空；涉及脚本时列最小脚本入口 |
+| `investigation` | 总入口、相关模块入口、已知 evidence | 只列调查所需入口，不扩成全仓扫描 |
 
-## 三、统一分流步骤
+## 四、默认阅读顺序
 
-1. 先读取 `Task Contract` 或当前任务目标，判断任务属于哪一类。
-2. 根据任务类型确定默认文档入口层级。
-3. 再补充最小代码入口，不扩大到全仓库。
-4. 明确当前不应读取的资料。
-5. 给出停止继续扩读的条件。
+1. 根入口或当前模块入口。
+2. 与任务直接相关的承接层正文。
+3. 最近的治理/边界规则。
+4. 最小代码或测试入口。
+5. 停止扩读并开始执行或回报缺口。
 
-## 四、任务类型与默认分流
+如果已经拿到足够入口，不继续扩读历史记录、归档、deploy target 或 repo-local state。
 
-### 1. Feature
-
-适用：
-
-- 新功能
-- 新接口
-- 新页面
-- 新流程
-
-默认先读：
-
-- `Core Truth` 中的项目总览、相关模块、接口约束、规则文档
-- `Operational Truth` 中与当前任务直接相关的 active task、风险、近期变更
-
-默认再读：
-
-- 相关模块代码入口
-- 已存在的相邻实现
-- 相关测试或验证入口
+## 五、禁读与限读
 
 默认先不读：
 
-- 无关模块
-- 大量历史讨论
-- `Archive`
+- `.agents/`
+- `.claude/`
+- `.autoworkflow/`
+- `.spec-workflow/`
+- `.nav/`
+- 无关 archive / historical evidence
+- 无关 deploy target
 
-### 2. Bugfix
+只有任务明确需要 runtime target、兼容导航或历史 evidence 时才进入这些区域，并在 `Route Card` 里说明原因。
 
-适用：
+## 六、停止条件
 
-- 缺陷修复
-- 回归修复
-- 异常排查后的小范围修复
+停止 routing 的条件：
 
-默认先读：
+- 已确认任务承接层。
+- 已拿到执行所需最小文档入口。
+- 已拿到最小代码或测试入口。
+- 继续扩读只会重复背景。
+- 关键事实缺失，需要用户或上游 artifact 补充。
 
-- 当前问题描述
-- `Operational Truth` 中的 active task、已知风险、近期变更
-- 相关模块说明和接口约束
+## 七、Route Card 最小要求
 
-默认再读：
-
-- 报错点附近代码
-- 直接调用链
-- 失败测试、复现脚本、日志入口
-
-默认先不读：
-
-- 宽泛设计讨论
-- 与当前故障无关的旧方案
-- `Archive`
-
-### 3. Refactor
-
-适用：
-
-- 模块整理
-- 结构重组
-- 命名和边界调整
-- 去重和收敛
-
-默认先读：
-
-- 相关模块边界文档
-- 接口和依赖约束
-- 验证要求
-
-默认再读：
-
-- 主要调用点
-- 受影响测试
-- 变更面最大的几个文件
-
-默认先不读：
-
-- 与当前结构调整无关的想法记录
-- 历史方案比较
-- `Archive`
-
-### 4. Knowledge / Docs
-
-适用：
-
-- 文档建设
-- 文档治理
-- 入口重构
-- 记忆维护
-
-默认先读：
-
-- 文档总览
-- 文档状态字段
-- 当前主线入口
-- 相关分层规则
-
-默认再读：
-
-- 与文档对应的少量代码入口
-- 最近变更记录
-
-默认先不读：
-
-- 大规模代码细节
-- 与本轮文档目标无关的测试代码
-- `Archive`
-
-### 5. Investigation
-
-适用：
-
-- 方案调研
-- 根因分析
-- 设计前探索
-- 不确定边界的分析任务
-
-默认先读：
-
-- `Core Truth` 的最小主线入口
-- 与问题最相关的 `Operational Truth`
-
-默认再读：
-
-- 少量相关代码入口
-- 必要时读取 `Exploratory Records`
-
-默认先不读：
-
-- 无边界地扩读 `Exploratory Records`
-- `Archive`
-
-限制：
-
-- 只有在主线文档不足以支持判断时，才扩大到探索记录
-
-## 五、默认阅读顺序
-
-无论任务类型如何，默认顺序都应尽量保持一致：
-
-1. 先读任务目标和范围
-2. 再读 `Core Truth`
-3. 再读和当前任务直接相关的 `Operational Truth`
-4. 再读最小代码入口
-5. 只有在必要时才读 `Exploratory Records`
-6. 默认不读 `Archive`
-
-## 六、禁读与限读规则
-
-- 不默认全仓扫描
-- 不因为文档存在就全部塞给执行端
-- 不把 `ideas / discussions / thinking` 直接当执行基线
-- 不把 `Archive` 当当前真相
-- 当已经拿到足够入口时，停止继续扩读
-
-## 七、停止条件
-
-出现下面情况之一，就不应继续扩大读取范围：
-
-- 已经能定位当前任务的目标模块
-- 已经拿到当前任务的主要约束
-- 已经有足够代码入口开始执行
-- 新读取材料只是在重复背景，而没有增加决策价值
-
-## 八、Route Card 最小要求
-
-每张 `Route Card` 至少包含：
+`Route Card` 至少包含：
 
 - `task_type`
-- `goal`
 - `read_first`
 - `read_next`
-- `code_entry`
+- `code_entrypoints`
 - `do_not_read_yet`
 - `stop_reading_when`
+- `validation_entrypoints`
+- `routing_notes`
 
-固定格式见：
+## 八、判断标准
 
+规则清楚时，应满足：
+
+- 同类任务得到相近入口。
+- 入口足够执行，但不复制知识库。
+- 禁读范围明确。
+- 停止扩读条件明确。
+- 输出能直接被执行层消费。
+
+## 九、相关文档
+
+- [Context Routing](./context-routing.md)
 - [Context Routing 输出格式](./formats/context-routing-output-format.md)
-
-## 九、判断标准
-
-如果下面几句话成立，说明分流规则是有效的：
-
-- 同类任务会得到相近的阅读入口
-- 执行端不会因为上下文过大而失焦
-- 探索资料不会默认挤进执行主线
+- [Memory Side 总览](./overview.md)

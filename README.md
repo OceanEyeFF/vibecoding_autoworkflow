@@ -20,7 +20,7 @@ last_verified: 2026-05-04
 
 ## 使用 `aw-installer`
 
-`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。当前 npm registry 事实是 `aw-installer@next` 指向 `0.4.3-rc.2`，`aw-installer@latest` 指向 `0.4.0-rc.1`，`latest` 不代表稳定 release approval。当前 checkout 已准备 `4.4.0-rc.0` release candidate；在 GitHub Release publish workflow 成功前，registry `next` 仍不会指向该版本。已发布的 `0.4.3-rc.2` registry artifact 绑定 `gitHead=199af2b2d195542fd5f1621243b041a20e497686`；后续 publish 必须使用新的 immutable npm version。复制粘贴入口见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)，release channel 与 publish 边界见 [`aw-installer Release Channel Contract`](./docs/project-maintenance/deploy/release-channel-contract.md)，npx/package smoke 见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
+`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。当前 npm registry 事实是 `aw-installer@next` 指向 `0.4.3-rc.2`，`aw-installer@latest` 指向 `0.4.0-rc.1`，`latest` 不代表稳定 release approval。当前 checkout 已准备 `4.4.0-rc.0` release candidate；在 GitHub Release publish workflow 成功前，registry `next` 仍不会指向该版本。已发布的 `0.4.3-rc.2` registry artifact 绑定 `gitHead=199af2b2d195542fd5f1621243b041a20e497686`；后续 publish 必须使用新的 immutable npm version。复制粘贴入口见 [`Codex Usage Help`](./docs/project-maintenance/usage-help/codex.md) 和 [`Claude Usage Help`](./docs/project-maintenance/usage-help/claude.md)，release channel 与 publish 边界见 [`aw-installer Release Channel Governance`](./docs/project-maintenance/governance/aw-installer-release-channel-governance.md)，npx/package smoke 见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
 
 ```bash
 npx aw-installer@next
@@ -55,7 +55,7 @@ npx aw-installer@next update --backend agents --yes
 npx aw-installer@next verify --backend agents
 ```
 
-维护者验证当前 checkout 时仍可使用本地 `.tgz` 或明确 checkout source。完整复制粘贴流程见 [`aw-installer Public Quickstart Prompts`](./docs/project-maintenance/deploy/aw-installer-public-quickstart-prompts.md)。
+维护者验证当前 checkout 时仍可使用本地 `.tgz` 或明确 checkout source。复制粘贴流程见 [`Codex Usage Help`](./docs/project-maintenance/usage-help/codex.md) 和 [`Claude Usage Help`](./docs/project-maintenance/usage-help/claude.md)。
 
 ### 干净目录初始化
 
@@ -92,7 +92,7 @@ npx aw-installer@next verify --backend agents
 
 随后让 Codex 初始化 `.aw/` 时，应要求它保留现有源码和文档，把已有仓库事实当作 discovery input，而不是覆盖已确认的项目真相。若目标仓库已经有 `.aw/`，必须先检查现有 control state；未经 operator 确认，不要覆盖 `.aw/goal-charter.md`。
 
-外部试用反馈请走 [`aw-installer External Trial Feedback Contract`](./docs/project-maintenance/deploy/aw-installer-external-trial-feedback.md)、[`trial feedback issue template`](./.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [`bug/blocker issue template`](./.github/ISSUE_TEMPLATE/aw-installer-bug.yml)；registry npx、本地 `.tgz` 和多临时目录 smoke 路径见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)，registry npx smoke 会生成每个目标的 `aw-installer-npx-run.log`。
+外部试用反馈请走 [`aw-installer External Trial Governance`](./docs/project-maintenance/governance/aw-installer-external-trial-governance.md)、[`trial feedback issue template`](./.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [`bug/blocker issue template`](./.github/ISSUE_TEMPLATE/aw-installer-bug.yml)；registry npx、本地 `.tgz` 和多临时目录 smoke 路径见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)，registry npx smoke 会生成每个目标的 `aw-installer-npx-run.log`。
 
 也可以从当前 checkout 打一个本地 `.tgz`，再在目标项目根目录用同一 package 入口试跑：
 
