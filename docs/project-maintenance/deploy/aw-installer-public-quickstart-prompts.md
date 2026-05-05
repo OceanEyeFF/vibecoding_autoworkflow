@@ -1,13 +1,13 @@
 ---
 title: "aw-installer Public Quickstart Prompts"
 status: active
-updated: 2026-05-04
+updated: 2026-05-05
 owner: aw-kernel
-last_verified: 2026-05-04
+last_verified: 2026-05-05
 ---
 # aw-installer Public Quickstart Prompts
 
-> Purpose: give external testers one copy-paste path for installing AW artifacts into a target repository and initializing `.aw/` through Codex or Claude Code. The current published RC registry trial path is `aw-installer@next`; bare `aw-installer` still resolves through npm `latest`.
+> Purpose: give external testers one copy-paste path for installing AW artifacts into a target repository and initializing `.aw/` through Codex or Claude Code. The stable registry path is bare `aw-installer`; the RC stream remains available through `aw-installer@next`.
 
 This page belongs to [Deploy Runbooks](./README.md). It uses the current distribution boundary from [aw-installer Release Channel Contract](./release-channel-contract.md) and the feedback fields from [aw-installer External Trial Feedback Contract](./aw-installer-external-trial-feedback.md).
 
@@ -16,14 +16,14 @@ This page belongs to [Deploy Runbooks](./README.md). It uses the current distrib
 - recommended_path: Codex with `agents` backend
 - claude_code_path: Claude Code adapter lane
 - direct_npx_available: true
-- direct_npx_primary_path: `aw-installer@next`
+- direct_npx_primary_path: `aw-installer`
 - registry_rc_available: true
-- npm_publish_allowed: completed-for-0.4.3-rc.2-next; 4.4.0-rc.0 is prepared locally and remains publish-workflow gated
+- npm_publish_allowed: completed-for-4.4.0-rc.0-next; 4.4.0 stable is prepared locally and remains publish-workflow gated
 - package_name_decided: true
 - approved_package_name: unscoped `aw-installer`
 - current_install_source:
-  - published_registry: `aw-installer@next` currently resolving to `0.4.3-rc.2`
-  - local_package: local `4.4.0-rc.0` `.tgz` package when validating the current checkout without registry access
+  - published_registry: `aw-installer@next` currently resolving to `4.4.0-rc.0`; bare `aw-installer` resolves to stable `4.4.0` after the stable publish workflow succeeds
+  - local_package: local `4.4.0` `.tgz` package when validating the current checkout without registry access
   - source_checkout: explicit AW source checkout
 - target_repo_writes:
   - `.agents/skills/` for Codex/agents install
@@ -38,29 +38,29 @@ Run commands from the target repository root unless a command explicitly names t
 Prerequisites:
 
 - Node.js and npm are available for the `aw-installer` package path.
-- Python is available only for explicitly documented repo-local reference helpers. The published `aw-installer@next` selector currently resolves to the immutable `0.4.3-rc.2` artifact; it does not include checkout-only changes made after that publish. A local `.tgz` built from this checkout reports `4.4.0-rc.0` and is release-candidate evidence, not registry evidence.
+- Python is available only for explicitly documented repo-local reference helpers. The published `aw-installer@next` selector currently resolves to the immutable `4.4.0-rc.0` artifact. A local `.tgz` built from this checkout reports `4.4.0` and is stable release-candidate evidence until the `latest` publish workflow succeeds.
 - When validating the current checkout, an explicit source checkout, or a maintainer-provided local `.tgz` built from this checkout, `aw-installer --help`, `--version`, `agents` package/local lifecycle commands, `claude` package/local lifecycle commands, and explicit `agents` GitHub-source update JSON/human/apply are handled by Node directly. For `agents`, this includes diagnose human/JSON, package/local update dry-run human/JSON, GitHub-source update dry-run JSON/human, GitHub-source `update --yes`, check_paths_exist, verify, install, prune --all, package/local update --yes, and selected invalid variants. For `claude`, this includes diagnose human/JSON, `--claude-root`, check_paths_exist, verify, update dry-run human/JSON, install, prune --all and update --yes. Node-owned install writes only after source/target/path preflight passes; planned path conflicts fail before writes and do not invoke Python. Node-owned Claude install also preserves full Harness skill payload, `.claude/skills/<skill_id>` naming, frontmatter transform, and same-backend managed legacy cleanup. Node-owned prune only removes recognized current-backend managed install directories and retains foreign, unrecognized, invalid-marker and user content. Node-owned `update --yes` for package/local agents, package/local Claude and explicit agents GitHub-source composes `prune --all -> check_paths_exist -> install -> verify` with blocking preflight, strict post-apply verify and backend/source-aware recovery hint semantics. Published registry artifacts get these checkout-only behaviors only after a future approved release. Unsupported variants no longer fall back to the Python deploy wrapper; the Node package/runtime entrypoint fails with an explicit unsupported-command error. The Node-owned update dry-run preserves the existing JSON fields, including `backend`, `source_kind`, `source_ref`, `source_root`, `target_root`, `operation_sequence`, `managed_installs_to_delete`, `planned_target_paths`, `issues`, and `blocking_issues`, and the human-readable output remains dry-run only.
 - The target repository is a git worktree you are allowed to modify.
 - You have registry access to `aw-installer`, a local `aw-installer` `.tgz` package from the maintainer, or an explicit AW source checkout path.
-- You understand that the current public trial path is RC pre-release: `aw-installer@next` currently resolves to `0.4.3-rc.2` on npm `next`, while bare `aw-installer` still follows npm `latest` and resolves to `0.4.0-rc.1`. Stable release semantics still require separate approval.
+- You understand that `aw-installer@next` remains the RC stream and currently resolves to `4.4.0-rc.0`; bare `aw-installer` is the stable stream and resolves to `4.4.0` after the stable release workflow succeeds.
 
 Privacy rule:
 
 - Do not paste private repository names, tokens, credentials, customer names, or full logs into long-term reports.
 - Use sanitized aliases when submitting feedback.
 
-## Current RC Install Source
+## Current Install Source
 
-Use the published RC registry package directly for the public trial path:
-
-```bash
-AW_INSTALLER_PACKAGE="aw-installer@next"
-```
-
-Use bare `aw-installer` only when explicitly reproducing the older `latest` path:
+Use the stable registry package directly for the public path after stable publish:
 
 ```bash
 AW_INSTALLER_PACKAGE="aw-installer"
+```
+
+Use `aw-installer@next` only when explicitly reproducing the RC stream:
+
+```bash
+AW_INSTALLER_PACKAGE="aw-installer@next"
 ```
 
 Maintainers can still create a local `.tgz` from the AW source checkout:
@@ -78,10 +78,10 @@ printf 'AW_INSTALLER_PACKAGE=%s\n' "$AW_INSTALLER_PACKAGE"
 External testers who receive a `.tgz` can skip this step and set:
 
 ```bash
-AW_INSTALLER_PACKAGE="/path/to/aw-installer-4.4.0-rc.0.tgz"
+AW_INSTALLER_PACKAGE="/path/to/aw-installer-4.4.0.tgz"
 ```
 
-The exact filename may differ. Prefer `aw-installer@next` for published RC registry npx trials and local `.tgz` when validating the current checkout or when registry access is unavailable.
+The exact filename may differ. Prefer bare `aw-installer` for stable registry npx trials, `aw-installer@next` for RC-stream reproduction, and local `.tgz` when validating the current checkout or when registry access is unavailable.
 
 ## Codex Quickstart
 
@@ -90,7 +90,7 @@ Use this path for the main Codex-first trial. It installs the `agents` backend p
 From the target repository root on Linux or macOS bash:
 
 ```bash
-AW_INSTALLER_PACKAGE="aw-installer@next"
+AW_INSTALLER_PACKAGE="aw-installer"
 
 AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npx --yes --package "$AW_INSTALLER_PACKAGE" -- aw-installer diagnose --backend agents --json
 AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npx --yes --package "$AW_INSTALLER_PACKAGE" -- aw-installer update --backend agents
@@ -99,7 +99,7 @@ AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npx --yes --package "$AW_
 From the target repository root on Windows PowerShell:
 
 ```powershell
-$env:AW_INSTALLER_PACKAGE = "aw-installer@next"
+$env:AW_INSTALLER_PACKAGE = "aw-installer"
 $env:AW_HARNESS_REPO_ROOT = ""
 $env:AW_HARNESS_TARGET_REPO_ROOT = ""
 
@@ -137,7 +137,7 @@ Requirements:
 - Treat existing repository facts as discovery input, not as a replacement for the confirmed goal.
 - If the repository already has `.aw/`, inspect the current control state and avoid overwriting confirmed truth without asking.
 - Do not run npm publish.
-- Prefer `aw-installer@next` for the published RC registry trial path; bare `aw-installer` still resolves to the older `latest` path.
+- Prefer bare `aw-installer` for the stable registry path; use `aw-installer@next` only when intentionally reproducing the RC stream.
 
 After initialization, summarize:
 - which `.aw/` files were created or reused
@@ -191,7 +191,7 @@ Requirements:
 - Preserve existing source code and docs.
 - If using `adapter_deploy.py --backend claude`, treat it as the bounded Claude adapter lane for the full Harness payload set, not as a replacement for the `agents` mainline.
 - Do not run npm publish.
-- Prefer `aw-installer@next` for the published RC registry trial path; bare `aw-installer` still resolves to the older `latest` path.
+- Prefer bare `aw-installer` for the stable registry path; use `aw-installer@next` only when intentionally reproducing the RC stream.
 
 After initialization, summarize:
 - which `.aw/` files were created or reused

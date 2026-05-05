@@ -1,13 +1,13 @@
 ---
 title: "Distribution Entrypoint Contract"
 status: active
-updated: 2026-05-03
+updated: 2026-05-05
 owner: aw-kernel
-last_verified: 2026-05-03
+last_verified: 2026-05-05
 ---
 # Distribution Entrypoint Contract
 
-> 目的：为 reusable install/update/verify/diagnose 分发入口固定最小合同。目标分发形态是 Node/npm/npx 上的 `aw-installer`，当前 RC 试用入口收敛到 `aw-installer@next`；本文定义该包装层必须保持的语义，并记录当前 RC registry 入口边界。
+> 目的：为 reusable install/update/verify/diagnose 分发入口固定最小合同。目标分发形态是 Node/npm/npx 上的 `aw-installer`；stable 入口使用裸 `aw-installer`，RC 流使用 `aw-installer@next`；本文定义该包装层必须保持的语义，并记录当前 registry 入口边界。
 
 本页属于 [Deploy Runbooks](./README.md) 系列。仓库内 Python reference 入口仍可用于 parity / regression：
 
@@ -21,7 +21,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/harness_deploy.py
 ```
 
-当前根目录 `package.json` 是 `aw-installer` 的 npm/npx 分发包络。它从根目录打包 `product/harness/skills`、`product/harness/adapters/agents/skills`、`product/harness/adapters/claude/skills` 与 Node-owned `toolchain/scripts/deploy/` runtime，使 `.tgz` 或 registry package 中的 source payload 可以脱离源码 checkout 被读取；`adapter_deploy.py` 和 `harness_deploy.py` 不再属于 package runtime payload。当前 npm registry 事实是 `next=0.4.3-rc.2`、`latest=0.4.0-rc.1`；已发布的 `0.4.3-rc.2` artifact 绑定 `gitHead=199af2b2d195542fd5f1621243b041a20e497686`，后续 publish 必须使用新的 immutable npm version。
+当前根目录 `package.json` 是 `aw-installer` 的 npm/npx 分发包络。它从根目录打包 `product/harness/skills`、`product/harness/adapters/agents/skills`、`product/harness/adapters/claude/skills` 与 Node-owned `toolchain/scripts/deploy/` runtime，使 `.tgz` 或 registry package 中的 source payload 可以脱离源码 checkout 被读取；`adapter_deploy.py` 和 `harness_deploy.py` 不再属于 package runtime payload。当前 npm registry 事实是 `next=4.4.0-rc.0`、`latest=0.4.0-rc.1`；当前 checkout 已准备 `4.4.0` stable release candidate，目标 channel 为 `latest`；后续 publish 必须使用新的 immutable npm version。
 
 `toolchain/scripts/deploy/package.json` 和 `bin/aw-installer.js` 保留为本地 npm-style scaffold。`aw-installer` 是唯一 package runtime bin；`aw-harness-deploy` Python alias 已退出 package runtime。`aw-installer --help` / `--version` 由 Node wrapper 直接处理；package/local `agents` lifecycle 当前由 Node-owned 路径承接，覆盖 diagnose human/JSON、update dry-run human/JSON、check_paths_exist、verify、clean-target install、non-clean target install 冲突阻断、prune --all、update --yes composition，以及 selected invalid-variant failures。package/local `claude` lifecycle 当前也由 Node-owned 路径承接，覆盖 diagnose human/JSON、`--claude-root`、check_paths_exist、verify、update dry-run human/JSON、install、prune --all 和 update --yes composition；Claude mutating paths 保留 `.claude/skills/<skill_id>` target naming、完整 Harness skill payload、legacy `aw-<skill_id>` managed cleanup、frontmatter transform、strict verify 与 recovery hint 语义。显式 `agents` GitHub-source update（`update --backend agents --source github ...`）当前由 Node-owned 路径承接 JSON/human dry-run 与 `--yes` apply，覆盖 repo/ref/SHA validation、codeload archive URL 构造、500 MiB archive download cap、500 MiB uncompressed extraction cap、retryable download failure 最多 3 次尝试、safe ZIP extraction、source contract validation、temp cleanup、source/target separation、blocking preflight、post-apply strict verify 与 source-preserving recovery hint。TUI 的 agents diagnose、verify 和 dry-run 展示必须复用对应 Node-owned 路径。Node-owned update JSON 必须保留 `backend`、`source_kind`、`source_ref`、`source_root`、`target_root`、`operation_sequence`、`managed_installs_to_delete`、`planned_target_paths`、`issues` 与 `blocking_issues` 等字段，并比较完整 issue 对象而不是只比较 code。其他 deploy modes、不受支持的 diagnose / update / check_paths_exist / verify / install / prune 变体与未迁移 deploy behavior 不再 fallback 到 Python，而是由 Node wrapper 直接报 unsupported-command error。Python deploy files may remain in the repository as reference/test assets, but they are no longer package runtime dependencies.
 
@@ -43,7 +43,7 @@ CI 必须显式设置 Node 后运行本地 package smoke、本地 scaffold pack 
 
 - 分发包装层可以改变 operator 如何启动命令，但不能改变 deploy 语义。
 - CLI 是稳定的脚本化合同；TUI 是同一合同上的交互式操作层。
-- `npx aw-installer@next` 是当前 RC 用户入口；裸 `npx aw-installer` 仍解析到 `latest=0.4.0-rc.1`。`aw-harness-deploy` 不再属于 package runtime bin surface。
+- 裸 `npx aw-installer` 是 stable 用户入口；当前 release candidate 发布成功后应解析到 `latest=4.4.0`。`npx aw-installer@next` 保留为 RC 流入口，当前解析到 `4.4.0-rc.0`。`aw-harness-deploy` 不再属于 package runtime bin surface。
 - 当前 `agents` backend 的 source / target / payload / marker 合同仍以 [Deploy Mapping Spec](./deploy-mapping-spec.md) 为准。
 - 当前 `claude` backend 作为 Claude Code 适配 lane 准入完整 Harness skill set；边界见 [Claude Adapter Source](./claude-adapter-source.md)。
 - 当前 destructive reinstall 主流程仍以 [Deploy Runbook](./deploy-runbook.md) 为准。
@@ -77,25 +77,25 @@ aw-installer <mode> --backend claude
 
 `aw-harness-deploy` compatibility alias is retired from package runtime.
 
-目标 Node/npm/npx 用户入口。Package identity 已批准为 unscoped `aw-installer`；当前 registry 主试用入口是 `aw-installer@next` selector：
+目标 Node/npm/npx 用户入口。Package identity 已批准为 unscoped `aw-installer`；stable registry 主入口是裸 `aw-installer` selector：
 
 ```bash
-npx aw-installer@next
-npx aw-installer@next tui
-npx aw-installer@next --version
-npx aw-installer@next diagnose --backend agents --json
-npx aw-installer@next verify --backend agents
-npx aw-installer@next install --backend agents
-npx aw-installer@next update --backend agents
-npx aw-installer@next update --backend agents --yes
-npx aw-installer@next update --backend agents --source github --github-ref <ref-containing-current-payload>
-npx aw-installer@next diagnose --backend claude --json
-npx aw-installer@next update --backend claude
-npx aw-installer@next install --backend claude
-npx aw-installer@next verify --backend claude
+npx aw-installer
+npx aw-installer tui
+npx aw-installer --version
+npx aw-installer diagnose --backend agents --json
+npx aw-installer verify --backend agents
+npx aw-installer install --backend agents
+npx aw-installer update --backend agents
+npx aw-installer update --backend agents --yes
+npx aw-installer update --backend agents --source github --github-ref <ref-containing-current-payload>
+npx aw-installer diagnose --backend claude --json
+npx aw-installer update --backend claude
+npx aw-installer install --backend claude
+npx aw-installer verify --backend claude
 ```
 
-Bare `npx aw-installer` currently resolves to the older rc1 package because npm exposes it through `latest`; do not use that as current RC or stable-release evidence. `npx aw-installer@next ...` remains the explicit published RC pin and currently resolves to `0.4.3-rc.2`. Checkout evidence can still use a local `.tgz` or source checkout when validating unmerged local changes. `npx aw-installer@next` 在交互式终端中可以进入 TUI；`npx aw-installer@next tui` 显式启动当前最小交互 shell。脚本和 CI 必须使用显式 CLI subcommand。非交互环境不得隐式启动 TUI，也不得要求方向键、全屏渲染或人工输入才能完成 CLI subcommand。
+在 `4.4.0` stable publish workflow 成功前，bare `npx aw-installer` 仍可能解析到旧的 `latest=0.4.0-rc.1`，不能作为当前 stable evidence；publish 成功后必须复验它解析到 `4.4.0`。`npx aw-installer@next ...` 保留为 explicit RC stream pin，当前解析到 `4.4.0-rc.0`。Checkout evidence 可以使用本地 `.tgz` 或 source checkout 验证未合并本地变更。`npx aw-installer` 在交互式终端中可以进入 TUI；`npx aw-installer tui` 显式启动当前最小交互 shell。脚本和 CI 必须使用显式 CLI subcommand。非交互环境不得隐式启动 TUI，也不得要求方向键、全屏渲染或人工输入才能完成 CLI subcommand。
 
 所有入口都必须投影到同一组 mode：
 
