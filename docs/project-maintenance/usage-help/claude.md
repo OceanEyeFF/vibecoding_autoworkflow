@@ -1,9 +1,9 @@
 ---
 title: "Claude Repo-local Usage Help"
 status: active
-updated: 2026-05-05
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-05-05
+last_verified: 2026-05-06
 ---
 # Claude Repo-local Usage Help
 
@@ -17,7 +17,7 @@ last_verified: 2026-05-05
 
 ## 一、快速试用路径
 
-`claude` 当前是 Claude Code 适配 lane，不替代 `agents` 主路径。优先使用显式 source checkout 或维护者提供的本地 `.tgz`，不要假设所有 registry selector 都已经包含 Claude lane。
+`claude` 当前是 Claude Code compatibility lane，不替代 `agents` 主路径。当前 checkout/local package 的 `aw-installer --backend claude` 已承接完整 Harness skill payload 的 package/local lifecycle；不要把这写成 registry stable/latest、TUI 一等入口或默认 backend 已成熟。
 
 受管 adapter 路径：
 
@@ -49,6 +49,7 @@ node "$AW_SOURCE_REPO/product/harness/skills/set-harness-goal-skill/scripts/depl
 
 - 这里描述的是 Claude 侧常见 runtime 路径和当前受控 `adapter_deploy.py --backend claude` payload lane
 - 当前仓库的 `claude` backend 准入完整 Harness skill set；target dirs 使用 `.claude/skills/<skill-name>/`，旧 `aw-<skill-name>` 目录只作为 legacy managed cleanup 入口
+- 不要再把 Claude full skill distribution 写成 startup-only、未落地或等待未来实现；当前限制只在 registry / release / default backend / TUI 一等入口等成熟度层面
 - `set-harness-goal-skill/scripts/deploy_aw.js` 的 `--claude-root` 仍属于本文第五节的冷启动 helper 例外，和 adapter CLI 的受管 payload install 是两条入口
 - 完整 smoke / 冷启动步骤见 [Claude Post-Deploy Behavior Tests](../testing/claude-post-deploy-behavior-tests.md)
 
@@ -78,6 +79,7 @@ node "$AW_SOURCE_REPO/product/harness/skills/set-harness-goal-skill/scripts/depl
 ## 五、当前限制
 
 - 不要把 `adapter_deploy.py --backend claude` 写成 `agents` 主路径替代品；它是 Claude Code skill payload 适配 lane
+- 不要把 Claude compatibility lane 的成熟度写成 npm stable/latest、GitHub Release、dist-tag、registry public smoke 或 release approval 已完成
 - 这页只承接 Claude 的 runtime 路径、受控 compatibility payload 与 smoke verify 差异
 
 ## 六、当前受控例外
