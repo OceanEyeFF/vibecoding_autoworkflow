@@ -12,7 +12,7 @@
 
 `docs/harness/` 继续承接 Harness doctrine 与运行协议真相层。
 `product/harness/` 只承接 Harness executable source。
-`memory-side` 与 `task-interface` 当前只保留在 `docs/harness/adjacent-systems/` 的合同层，不再保留 repo 内独立源码根。
+`memory-side`、`task-interface` 与 `docs/harness/adjacent-systems/` 已退役，不再保留 repo 内独立源码根或合同层。
 
 规则：
 

@@ -137,46 +137,19 @@ AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package 
 
 ## 当前仓库如何承接这些目标
 
-### 1. Memory Side
+### 1. Harness 文档真相
 
-负责项目长期记忆和任务上下文治理，支撑任务收束前后的信息边界管理。当前固定为三个组件：
+[`docs/harness/`](./docs/harness/README.md) 负责承接 Harness 的 doctrine、scope、artifact、catalog 与 workflow family。
 
-- `Knowledge Base`
-- `Context Routing`
-- `Writeback & Cleanup`
+当前已退役 `memory-side`、`task-interface` 和 `docs/harness/adjacent-systems/` 独立文档域。已批准输入会被收束进 Harness artifact，尤其是 [`Worktrack Contract`](./docs/harness/artifact/worktrack/contract.md) 与 [`Plan / Task Queue`](./docs/harness/artifact/worktrack/plan-task-queue.md)。
 
-对应合同入口：
+### 2. Harness 可执行源码
 
-- [`docs/harness/adjacent-systems/memory-side/overview.md`](./docs/harness/adjacent-systems/memory-side/overview.md)
-- [`docs/harness/adjacent-systems/memory-side/skill-agent-model.md`](./docs/harness/adjacent-systems/memory-side/skill-agent-model.md)
+[`product/harness/`](./product/harness/README.md) 负责承接 canonical skills 与 adapters。这里是可执行实现层，不承接 ontology 正文。
 
-当前仓库状态：
+### 3. 项目维护与治理
 
-- `Memory Side` 目前只保留在 `docs/harness/adjacent-systems/memory-side/` 的合同层
-- repo 内不再保留独立的 `product/memory-side/` 源码树
-
-### 2. Task Interface
-
-负责把讨论压缩成一份正式执行基线，核心对象是 `Task Contract`。
-
-对应合同入口：
-
-- [`docs/harness/adjacent-systems/task-interface/task-contract.md`](./docs/harness/adjacent-systems/task-interface/task-contract.md)
-
-当前仓库状态：
-
-- `Task Interface` 目前只保留在 `docs/harness/adjacent-systems/task-interface/` 的合同层
-- repo 内不再保留独立的 `product/task-interface/` 源码树
-
-### 3. Harness Doctrine
-
-负责承接 Harness 的 doctrine、scope、artifact、workflow family 与 adjacent-system 定义。
-
-对应文档入口：
-
-- [`docs/harness/`](./docs/harness/README.md)
-
-当前这部分以文档真相层为主，不再对应仓库内单独的 harness skill/source 分区。
+[`docs/project-maintenance/`](./docs/project-maintenance/README.md) 负责 repo-local 维护、治理、deploy、testing 和 usage help。阅读路由由 [`AGENTS.md`](./AGENTS.md) 承接；writeback 和 review/verify 由 [`review-verify-handbook.md`](./docs/project-maintenance/governance/review-verify-handbook.md) 承接。
 
 ## 典型工作链路
 
@@ -185,21 +158,21 @@ AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package 
 ```text
 目标 / 需求
   ↓
-Task Contract
+Worktrack Contract
   ↓
-Context Routing
+Plan / Task Queue
   ↓
 AI 执行
   ↓
-Writeback & Cleanup
+Review / Verify / Writeback
   ↓
 验证与回灌
 ```
 
 含义是：
 
-- 先把讨论收束成正式边界
-- 再限制 AI 的阅读入口
+- 先把已批准输入收束成正式工作追踪边界
+- 再把工作追踪约定展开成可调度队列
 - 执行完成后只把已验证结果写回真相层
 - backend-specific prompt 和 deploy wrapper 不能反过来定义主线真相
 
@@ -217,7 +190,7 @@ Writeback & Cleanup
 3. [`docs/project-maintenance/foundations/root-directory-layering.md`](./docs/project-maintenance/foundations/root-directory-layering.md)
 4. [`AGENTS.md`](./AGENTS.md)
 5. 按任务进入：
-   - Harness 主线与 adjacent-system 合同：[`docs/harness/README.md`](./docs/harness/README.md)
+   - Harness 主线与 artifact 合同：[`docs/harness/README.md`](./docs/harness/README.md)
    - 业务源码：[`product/README.md`](./product/README.md)
    - 工具层：[`toolchain/README.md`](./toolchain/README.md)
 
@@ -226,8 +199,8 @@ Writeback & Cleanup
 - 想快速按任务定位入口：看 [`INDEX.md`](./INDEX.md)
 - 想理解文档真相层：看 [`docs/README.md`](./docs/README.md)
 - 想理解 `Harness 平台` 的承接结构：看 [`product/README.md`](./product/README.md)
-- 想理解 `Task Contract`：看 [`docs/harness/adjacent-systems/task-interface/task-contract.md`](./docs/harness/adjacent-systems/task-interface/task-contract.md)
-- 想理解 `Memory Side`：看 [`docs/harness/adjacent-systems/memory-side/README.md`](./docs/harness/adjacent-systems/memory-side/README.md)
+- 想理解执行前边界：看 [`Worktrack Contract`](./docs/harness/artifact/worktrack/contract.md)
+- 想理解任务队列：看 [`Plan / Task Queue`](./docs/harness/artifact/worktrack/plan-task-queue.md)
 - 想部署或跑治理检查：看 [`toolchain/README.md`](./toolchain/README.md)
 - 想看 repo-local 使用帮助：看 [`docs/project-maintenance/usage-help/README.md`](./docs/project-maintenance/usage-help/README.md)
 

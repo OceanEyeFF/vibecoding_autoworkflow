@@ -22,7 +22,7 @@ Harness 关注的不是"把任务做完"本身，而是：
 ### 它不是什么
 
 - 不是直接执行编码的主体
-- 不是 `Task Contract` 的上游真相层
+- 不是已批准输入或工作追踪合同的替代物
 - 不是某个 backend 的 repo-local runtime wrapper
 - 不是把一组 skill 顺序串起来的 open-loop 流程图
 - 不是可以在常规控制里随意改写目标的任务管理器

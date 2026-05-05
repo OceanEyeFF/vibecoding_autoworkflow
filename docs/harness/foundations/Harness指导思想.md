@@ -29,7 +29,7 @@ Harness 关注的核心问题不是“谁写代码”，而是：
 Harness 不是：
 
 - 直接执行编码的主体
-- `Task Contract` 的上游真相层
+- 已批准输入或工作追踪合同的替代物
 - 某个 backend 的 repo-local runtime wrapper
 - 把一组 skill 顺序串起来的 open-loop 流程图
 - 在常规控制里随意改写目标的任务管理器
@@ -132,17 +132,13 @@ RepoScope.Observe
 
 `PR` 不是闭环终点。完整 closeout 必须覆盖 `merge -> refresh repo snapshot -> cleanup -> return RepoScope`，否则 repo 慢变量不会被真实更新。
 
-## 九、与相邻系统的边界
+## 九、已批准输入与写回边界
 
-- `Task Contract` 位于 `discussion -> execution` 之间，负责收束任务执行基线。Harness 可以消费它，但不能把它改写成 Harness 本体。
-- `Memory Side` 负责长期记忆、上下文路由与回写清理。它是 Harness adjacent system，不是 Harness 控制器。
-- repo-local runtime 状态属于 `.aw/` 等 state layer，不替代 `docs/`、`product/` 或 `toolchain/` 中的正式真相。
+用户讨论、append request、repo goal 或恢复路径不能直接变成执行计划；它们必须先被收束进 Harness artifact，尤其是 [Worktrack Contract](../artifact/worktrack/contract.md) 与 [Plan / Task Queue](../artifact/worktrack/plan-task-queue.md)。
 
-相关边界见：
+阅读路由由 [AGENTS.md](../../../AGENTS.md) 的 Route Contract 承接；写回边界由 [Review / Verify 治理入口](../../project-maintenance/governance/review-verify-handbook.md) 承接。已退役的 `memory-side`、`task-interface` 与 `adjacent-systems` 不再作为独立 truth layer。
 
-- [Task Contract 基线](../adjacent-systems/task-interface/task-contract.md)
-- [Memory Side 层级边界](../adjacent-systems/memory-side/layer-boundary.md)
-- [Memory Side 总览](../adjacent-systems/memory-side/overview.md)
+repo-local runtime 状态属于 `.aw/` 等 state layer，不替代 `docs/`、`product/` 或 `toolchain/` 中的正式真相。
 
 ## 十、判断标准
 

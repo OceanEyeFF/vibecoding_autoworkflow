@@ -6,14 +6,14 @@
 
 - 本项目的核心目标，是构建一个 `Codex-first` 的 AI coding harness 平台，并将其作为 repo-side contract layer 分发到多个项目中使用。
 - 当前仓库以 AI coding 的 repo-side contract layer 形态承接这个目标。
-- `Harness` 现在是一级文档域，负责 repo 演进控制面的 doctrine、artifact、governance 与 workflow family。
-- `memory-side` 与 `task-interface` 作为 Harness 的 adjacent systems 进入 `docs/harness/adjacent-systems/`，而不是继续被当作 Harness 本体。
+- `Harness` 现在是一级文档域，负责 repo 演进控制面的 doctrine、artifact、catalog 与 workflow family。
+- 已退役的 `memory-side`、`task-interface` 和 adjacent-system 文档域不再作为独立 truth layer；相关执行边界由 `AGENTS.md`、`docs/harness/artifact/` 与 `docs/project-maintenance/governance/` 承接。
 - 具体的 canonical skills 与 adapters 在 `product/`，部署、评测和治理脚本在 `toolchain/`。
 
 ## 当前结构
 
 - [project-maintenance/README.md](./project-maintenance/README.md)：项目维护、治理、deploy 与 backend usage
-- [harness/README.md](./harness/README.md)：Harness 主线 doctrine、scope、artifact、workflow families 与 adjacent systems
+- [harness/README.md](./harness/README.md)：Harness 主线 doctrine、scope、artifact、catalog 与 workflow families
 
 ## 阅读顺序
 
@@ -23,7 +23,7 @@
 ## 文档治理规则
 
 - `project-maintenance/` 不冒充能力合同层
-- `harness/` 承接 Harness-first 主线，不把 `memory-side`、`task-interface` 写成 Harness 本体
+- `harness/` 承接 Harness-first 主线，不恢复已退役的 adjacent-system 文档域
 - `docs/` 不长期承载 `suspended` / scratch 文档；需要共享保留的暂停文档应转为 `superseded`，非共享草稿应移出 `docs/`
 - `docs/` 下除 `README.md` 之外的正文文档，都应保持 `title / status / updated / owner / last_verified` frontmatter
 - 新增正文文档后，至少更新最近的 `README.md` 入口，不留下孤儿文档
@@ -33,4 +33,4 @@
 
 - 先读 `project-maintenance/` 与 `harness/` 的入口，确认当前任务是维护问题、Harness doctrine 问题，还是 adjacent system 合同问题
 - 需要 repo-local workflow 步骤时进入 `project-maintenance/`
-- 需要 Harness doctrine、artifact、workflow family 或 adjacent system 合同时进入 `harness/`
+- 需要 Harness doctrine、artifact、catalog 或 workflow family 时进入 `harness/`

@@ -26,8 +26,8 @@ last_verified: 2026-04-30
 | 理解项目目标、承接结构和根目录分层 | [`README.md`](./README.md) |
 | 看文档真相层与阅读顺序 | [`docs/README.md`](./docs/README.md) |
 | 看 Harness 主线与分层合同 | [`docs/harness/README.md`](./docs/harness/README.md) |
-| 改 `Memory Side` 主线文档 | [`docs/harness/adjacent-systems/memory-side/README.md`](./docs/harness/adjacent-systems/memory-side/README.md) |
-| 改 `Task Interface` 主线文档 | [`docs/harness/adjacent-systems/task-interface/README.md`](./docs/harness/adjacent-systems/task-interface/README.md) |
+| 改执行前工作追踪边界 | [`docs/harness/artifact/worktrack/contract.md`](./docs/harness/artifact/worktrack/contract.md) |
+| 改阅读路由或写回规则 | [`AGENTS.md`](./AGENTS.md) / [`review-verify-handbook.md`](./docs/project-maintenance/governance/review-verify-handbook.md) |
 | 改业务源码 | [`product/README.md`](./product/README.md) |
 | 改工具脚本、部署或评测 | [`toolchain/README.md`](./toolchain/README.md) |
 | 看 repo-local runbook | [`docs/project-maintenance/README.md`](./docs/project-maintenance/README.md) |

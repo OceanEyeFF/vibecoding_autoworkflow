@@ -22,9 +22,9 @@ from path_governance_check import REQUIRED_GITIGNORE_ENTRIES, iter_relative_mark
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FOUNDATIONS_DIR = "docs/project-maintenance/foundations"
 REQUIRED_TEMPLATE_PATHS = [
-    "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md",
-    "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md",
-    "docs/harness/adjacent-systems/task-interface/task-contract.md",
+    "docs/harness/artifact/worktrack/contract.md",
+    "docs/harness/artifact/worktrack/plan-task-queue.md",
+    "docs/harness/artifact/worktrack/gate-evidence.md",
 ]
 REQUIRED_HANDOFF_LINKS = {
     "product/README.md": [
@@ -35,7 +35,7 @@ REQUIRED_HANDOFF_LINKS = {
     ],
     "docs/harness/README.md": [
         "docs/harness/foundations/README.md",
-        "docs/harness/adjacent-systems/README.md",
+        "docs/harness/artifact/README.md",
         "docs/harness/workflow-families/README.md",
         "product/harness/README.md",
     ],
@@ -44,19 +44,10 @@ REQUIRED_HANDOFF_LINKS = {
         "product/harness/skills/README.md",
         "product/harness/adapters/README.md",
     ],
-    "docs/harness/adjacent-systems/task-interface/README.md": [
-        "docs/harness/adjacent-systems/task-interface/task-contract.md",
-    ],
-    "docs/harness/adjacent-systems/memory-side/README.md": [
-        "docs/harness/adjacent-systems/memory-side/overview.md",
-        "docs/harness/adjacent-systems/memory-side/layer-boundary.md",
-        "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
-    ],
-    "docs/harness/adjacent-systems/memory-side/context-routing.md": [
-        "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md",
-    ],
-    "docs/harness/adjacent-systems/memory-side/writeback-cleanup.md": [
-        "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md",
+    "docs/harness/artifact/worktrack/README.md": [
+        "docs/harness/artifact/worktrack/contract.md",
+        "docs/harness/artifact/worktrack/plan-task-queue.md",
+        "docs/harness/artifact/worktrack/gate-evidence.md",
     ],
 }
 FOUNDATIONS_AUTHORITY_STEMS = [

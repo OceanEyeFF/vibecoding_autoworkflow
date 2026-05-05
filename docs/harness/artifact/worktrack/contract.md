@@ -9,6 +9,22 @@ last_verified: 2026-04-27
 
 定义单个 `Worktrack` 的局部状态转移合同。
 
+## 上游输入
+
+`Worktrack Contract` 是当前仓库的执行前边界对象。用户讨论、已批准需求、append request、repo goal、恢复路径或人工授权不能直接变成执行计划；它们必须先被收束进本合同，再展开为 `Plan / Task Queue`。
+
+收束时至少明确：
+
+- 已批准目标
+- 工作范围
+- 非目标
+- 验收标准
+- 约束条件
+- 风险与依赖
+- 验证要求
+
+未确认事实应作为风险、阻塞或待审批项暴露，不应被猜测补全。
+
 最少应包含：
 
 - `Node Type`（从 Goal Charter 的 Engineering Node Map 绑定）

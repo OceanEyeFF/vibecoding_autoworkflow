@@ -118,4 +118,3 @@ last_verified: 2026-04-30
 
 - [AGENTS.md](../../../AGENTS.md)
 - [Toolchain 分层](../../../toolchain/toolchain-layering.md)
-- [Memory Side 层级边界](../../harness/adjacent-systems/memory-side/layer-boundary.md)

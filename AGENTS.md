@@ -7,7 +7,7 @@
 - 本项目的核心目标，是构建一个 `Codex-first` 的 AI coding harness 平台，并将其作为 repo-side contract layer 分发到多个项目中使用。
 - 当前仓库以 AI coding 的 repo-side contract layer 形态承接这个目标。
 - `docs/` 负责 truth boundary，`product/` 负责 canonical skills 与 adapters，`toolchain/` 负责部署、评测与治理脚本。
-- `Harness` 现在是一级认知与文档域；`memory-side` 与 `task-interface` 作为 Harness 的 adjacent systems 存在，而不是 Harness 本体。
+- `Harness` 现在是一级认知与文档域；已批准输入、执行边界、路由和写回规则由 `AGENTS.md`、`docs/harness/artifact/` 与 `docs/project-maintenance/governance/` 承接，不再保留独立 adjacent-system 文档域。
 - `.agents/`、`.claude/` 只是 deploy target，不是源码层。
 - 如果一个新目录说不清 owner 和层级，不要直接加到根目录。
 
@@ -21,10 +21,10 @@
 6. `toolchain/toolchain-layering.md`
 7. `docs/harness/README.md`
 8. `docs/harness/foundations/Harness指导思想.md`
-9. `docs/harness/adjacent-systems/task-interface/task-contract.md`
-10. `docs/harness/adjacent-systems/memory-side/layer-boundary.md`
-11. `docs/harness/adjacent-systems/memory-side/overview.md`
-12. `docs/harness/adjacent-systems/memory-side/skill-agent-model.md`
+9. `docs/harness/foundations/Harness运行协议.md`
+10. `docs/harness/artifact/worktrack/contract.md`
+11. `docs/harness/artifact/worktrack/plan-task-queue.md`
+12. `docs/harness/artifact/worktrack/gate-evidence.md`
 
 ## Route Contract
 
@@ -32,9 +32,6 @@
   - `docs/harness/foundations/README.md`
   - `docs/harness/scope/README.md`
   - `docs/harness/artifact/README.md`
-  - `docs/harness/adjacent-systems/memory-side/overview.md`
-  - `docs/harness/adjacent-systems/memory-side/skill-agent-model.md`
-  - `docs/harness/adjacent-systems/task-interface/task-contract.md`
   - 按任务进入 `product/`、`docs/` 或 `toolchain/` 的局部入口页
 - `do_not_read_yet`：
   - `.agents/`
@@ -60,7 +57,7 @@
 - 根目录分层、一级子目录、hidden/state/mount 层或 `.nav/` 规则变化时，必须同步更新 foundations 文档和对应治理检查。
 - `AGENTS.md`、review/verify 流程或退出标准变化时，必须同步更新 `docs/project-maintenance/governance/review-verify-handbook.md`。
 - deployment / adapter 行为变化时，必须同步更新相关 `docs/project-maintenance/deploy/` 文档和 verify 命令说明。
-- Harness doctrine、workflow family、adjacent-system 合同或 canonical skill 入口路径变化时，必须同步更新 `docs/harness/`、`product/*/skills/` 入口与对应治理检查。
+- Harness doctrine、workflow family、artifact 合同或 canonical skill 入口路径变化时，必须同步更新 `docs/harness/`、`product/*/skills/` 入口与对应治理检查。
 - 只有已验证结果才可以回写为长期真相；未验证的结论不要写进知识层。
 
 ## Root Rules
@@ -81,7 +78,7 @@
 - 不在 `docs/` 长期使用 `status: suspended`。共享保留内容转 `superseded`，非共享草稿移出 `docs/`。
 - 研究结论准入后必须升格到承接层：
   - 项目维护规则、governance、deploy、usage-help 写 `docs/project-maintenance/`
-  - Harness doctrine、workflow family、artifact 与 adjacent-system 合同写 `docs/harness/`
+  - Harness doctrine、workflow family 与 artifact 合同写 `docs/harness/`
   - 实现合同落 `product/` 或 `toolchain/`
 - 新增或接管文档作用域时，必须同步更新最近入口页并清理旧入口，避免双份主线。
 
@@ -101,7 +98,7 @@
 ## Writeback
 
 - 项目维护与治理正文写到 `docs/project-maintenance/`。
-- Harness doctrine、workflow family 与 adjacent-system 合同写到 `docs/harness/`。
+- Harness doctrine、workflow family 与 artifact 合同写到 `docs/harness/`。
 - template / checklist 只在它们能稳定承接执行时才保留。
 - 不要把项目真相写进 `.agents/`、`.claude/`、`.nav/`。
 
@@ -109,7 +106,7 @@
 
 - `.nav/` 现在只保留 `@docs` 与 `@skills` 两个有效兼容入口。
 - `tools/` 只是 compatibility shim，真逻辑仍应落在 `toolchain/scripts/test/`。
-- `product/memory-side/` 与 `product/task-interface/` 当前不再保留源码树；相关语义只以 `docs/harness/adjacent-systems/` 为准。
+- `docs/harness/adjacent-systems/`、`product/memory-side/` 与 `product/task-interface/` 已退役；相关执行边界由 `docs/harness/artifact/`、`AGENTS.md` 和 review/writeback 治理承接。
 
 ## Canonical References
 
@@ -119,7 +116,7 @@
 - `docs/project-maintenance/foundations/README.md`
 - `docs/project-maintenance/foundations/root-directory-layering.md`
 - `docs/harness/foundations/Harness指导思想.md`
-- `docs/harness/adjacent-systems/task-interface/task-contract.md`
-- `docs/harness/adjacent-systems/memory-side/layer-boundary.md`
-- `docs/harness/adjacent-systems/memory-side/overview.md`
-- `docs/harness/adjacent-systems/memory-side/skill-agent-model.md`
+- `docs/harness/foundations/Harness运行协议.md`
+- `docs/harness/artifact/worktrack/contract.md`
+- `docs/harness/artifact/worktrack/plan-task-queue.md`
+- `docs/harness/artifact/worktrack/gate-evidence.md`
