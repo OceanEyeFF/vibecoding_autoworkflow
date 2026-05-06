@@ -19,6 +19,7 @@ from governance_semantic_check import (
     check_path_governance_docs_list_gitignore_entries,
     check_repo_python_commands_are_bytecode_free,
     check_repo_whats_next_overview_fallback_contract,
+    check_retired_entrypoint_references,
     check_review_evidence_four_lane_contract,
     check_review_verify_docs_list_closeout_steps,
     check_root_tool_shims_disable_bytecode,
@@ -50,18 +51,12 @@ def test_check_required_handoffs_flags_missing_link(tmp_path: Path) -> None:
     )
     write_doc(tmp_path / "docs/harness/README.md", "")
     write_doc(tmp_path / "docs/harness/foundations/README.md", "")
-    write_doc(tmp_path / "docs/harness/adjacent-systems/README.md", "")
+    write_doc(tmp_path / "docs/harness/artifact/README.md", "")
+    write_doc(tmp_path / "docs/harness/artifact/worktrack/README.md", "")
+    write_doc(tmp_path / "docs/harness/artifact/worktrack/contract.md", "")
+    write_doc(tmp_path / "docs/harness/artifact/worktrack/plan-task-queue.md", "")
+    write_doc(tmp_path / "docs/harness/artifact/worktrack/gate-evidence.md", "")
     write_doc(tmp_path / "docs/harness/workflow-families/README.md", "")
-    write_doc(tmp_path / "docs/harness/adjacent-systems/task-interface/README.md", "")
-    write_doc(tmp_path / "docs/harness/adjacent-systems/task-interface/task-contract.md", "")
-    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/README.md", "")
-    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/overview.md", "")
-    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/layer-boundary.md", "")
-    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/skill-agent-model.md", "")
-    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/context-routing.md", "")
-    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/writeback-cleanup.md", "")
-    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md", "")
-    write_doc(tmp_path / "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md", "")
     write_doc(tmp_path / "toolchain/scripts/README.md", "# scripts\n")
 
     report = SemanticReport()
@@ -93,6 +88,32 @@ def test_check_outdated_placeholder_phrases_flags_stale_text(tmp_path: Path) -> 
     check_outdated_placeholder_phrases(tmp_path, report)
 
     assert any("toolchain/scripts/README.md" in item for item in report.failures)
+
+
+def test_check_retired_entrypoint_references_flags_retired_paths(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "AGENTS.md",
+        "旧入口：`docs/harness/adjacent-systems/memory-side/overview.md`\n",
+    )
+    write_doc(tmp_path / "docs/README.md", "current\n")
+    write_doc(tmp_path / "docs/harness/README.md", "current\n")
+    write_doc(tmp_path / "docs/project-maintenance/governance/path-governance-checks.md", "current\n")
+
+    report = SemanticReport()
+    check_retired_entrypoint_references(tmp_path, report)
+
+    assert any("AGENTS.md" in item for item in report.failures)
+
+
+def test_check_retired_entrypoint_references_accepts_current_sources(tmp_path: Path) -> None:
+    write_doc(tmp_path / "AGENTS.md", "current\n")
+    write_doc(tmp_path / "docs/README.md", "current\n")
+    write_doc(tmp_path / "docs/harness/README.md", "current\n")
+
+    report = SemanticReport()
+    check_retired_entrypoint_references(tmp_path, report)
+
+    assert report.failures == []
 
 
 def test_check_append_request_contract_terms_flags_drift(tmp_path: Path) -> None:

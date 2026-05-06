@@ -1,43 +1,36 @@
 ---
 title: "Codex Usage Help"
 status: active
-updated: 2026-05-02
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-05-02
+last_verified: 2026-05-06
 ---
 # Codex Usage Help
 
-> 目的：只保留 `agents` backend 的特有差异，回答 “Codex target root 怎么解析、root 参数怎么传、按新三步主流程时有什么 backend 特有注意事项、真实 Harness manual run 怎么进入”。
+> 目的：只保留 `agents` backend 的 target root 解析、参数传递、三步主流程注意事项与 Harness manual run 入口。先读通用 deploy 文档，再读本页。
 
-先读通用 deploy 文档，再读本页：
+## 一、快速试用路径
 
-- [Deploy Runbook](../deploy/deploy-runbook.md)
-- [aw-installer Public Quickstart Prompts](../deploy/aw-installer-public-quickstart-prompts.md)
-- [aw-installer External Trial Feedback Contract](../deploy/aw-installer-external-trial-feedback.md)
-- [npx Command Test Execution](../testing/npx-command-test-execution.md)
-- [Skill Deployment 维护流](../deploy/skill-deployment-maintenance.md)
-- [Skill 生命周期维护](../deploy/skill-lifecycle.md)
+public/near-public 主路径仍是 `agents`，推荐 `aw-installer@next`：
 
-## 一、Backend 标识与 target root
+```bash
+AW_INSTALLER_PACKAGE="aw-installer@next"
+AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npx --yes --package "$AW_INSTALLER_PACKAGE" -- aw-installer diagnose --backend agents --json
+AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npx --yes --package "$AW_INSTALLER_PACKAGE" -- aw-installer update --backend agents --yes
+AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npx --yes --package "$AW_INSTALLER_PACKAGE" -- aw-installer verify --backend agents
+```
 
-- backend 名：`agents`
-- 默认 target root：`.agents/skills/`
-- 显式覆盖参数：`--agents-root`
+然后在目标仓库用 Codex `set-harness-goal-skill` 初始化 `.aw/`。
 
-说明：
+## 二、Backend 标识与 target root
 
-- 如果没有 `--agents-root`，当前命令默认落到 repo-local `.agents/skills/`
-- 如果你要把 target root 指到别处，再显式传 repo-local 或 disposable 路径，例如 `--agents-root "$PWD/.agents/skills"`
-- `--agents-root` 只能指向目标 repo 内受控 `.agents/skills` 目录或专用临时 skills 目录；不要指向 home 目录、`.ssh`、shell 配置目录、系统配置目录或其他敏感可写路径
-- 外部试用优先从目标仓库根目录运行 pre-release `.tgz` 命令，并显式清空 `AW_HARNESS_REPO_ROOT` 与 `AW_HARNESS_TARGET_REPO_ROOT`；这样 source payload 来自 package，target repo root 来自当前工作目录
-- 已有工作内容的目标仓库必须先看 `diagnose` 和 dry-run `update`，确认 planned paths 只落在目标仓库 `.agents/skills/aw-*` 受管目录后，再执行 `update --yes`
-- deploy 主流程统一写在 [Deploy Runbook](../deploy/deploy-runbook.md)；本页只补 backend-specific 差异
+backend 名 `agents`，默认 target root `.agents/skills/`，覆盖参数 `--agents-root`（只能指向受控 `.agents/skills` 或临时技能目录，不指向敏感路径）。外部试用优先从目标仓库根目录清空环境变量运行；有工作内容的目标仓库先 `diagnose`/dry-run 再 `update --yes`。
 
-## 二、Deploy verify 与真实 Harness 观察
+## 三、Deploy verify 与真实 Harness 观察
 
-`agents` 的最小 deploy 验证是 destructive reinstall 主流程加只读 `verify`。这只证明 payload source、target root 与 live install 对齐，不证明 Harness runtime 行为。
+`agents` 的最小 deploy 验证是 destructive reinstall 主流程加只读 `verify`，证明 payload source、target root 与 live install 对齐，不证明 Harness runtime 行为。
 
-当前 `aw-installer` package/local agents 路径已直接承接主流程和严格复验：
+当前 Node-owned package/local 路径：
 
 ```bash
 aw-installer diagnose --backend agents --json
@@ -46,26 +39,25 @@ aw-installer update --backend agents --yes
 aw-installer verify --backend agents
 ```
 
-`update --yes` 会按 `prune --all -> check_paths_exist -> install -> verify` 执行同一 destructive reinstall composition。`diagnose --json` 和 `update --json` 是只读观察路径；已有工作内容的目标仓库应先看这两步，再显式执行 `update --yes`。维护者需要和 Python reference 对比或调试 fallback 时，仍可直接运行 `adapter_deploy.py` 的 `prune / check_paths_exist / install / verify` 子命令。
+`update --yes` 按 `prune --all -> check_paths_exist -> install -> verify` 执行。`diagnose --json` 和 `update --json` 是只读路径；已有内容的 target 应先看这两步再 `update --yes`。
 
-如需观察真实 Harness 行为，使用 [Codex Post-Deploy Behavior Tests](../testing/codex-post-deploy-behavior-tests.md)。该 runbook 在临时 repo 中准备隔离 `.agents/skills/`，用无交互 `codex exec` 真实调用 `harness-skill`，观察空 repo 冷启动、`.aw/` 初始化、scope 切换与真实任务推进。
+需观察真实 Harness 行为时使用 [Codex Post-Deploy Behavior Tests](../testing/codex-post-deploy-behavior-tests.md)，在临时 repo 隔离 `.agents/skills/`，用无交互 `codex exec` 调用 `harness-skill`。
 
 判断边界：
+- `aw-installer verify --backend agents` 是 package/local deploy target 对齐证明
+- `codex-post-deploy-behavior-tests.md` 是 operator-facing 的 Harness runtime 观察入口
+- skills mock/contract smoke 不再作为当前主线验证入口
 
-- `aw-installer verify --backend agents` 是当前 package/local agents deploy target 对齐证明；`adapter_deploy.py verify --backend agents` 保留为 Python reference/fallback 对齐证明。
-- `codex-post-deploy-behavior-tests.md` 是当前 operator-facing 的 Harness runtime 观察入口。
-- skills mock / contract smoke 不再作为当前主线验证入口；后续 skill 行为调整由已准入测量资产或真实运行观察承接。
-
-## 三、和其他 backend 的区别
+## 四、和其他 backend 的区别
 
 - `agents` 默认使用 repo-local `.agents/skills/`
-- 如需改 root，再显式传 `--agents-root`
-- `agents` 继续使用和其他 backend 同一套 destructive reinstall 模型，不需要额外的 `agents` 专属 build 步骤
-- backend 名仍是 `agents`；本轮不并入 `agents -> codex` 命名迁移
+- 如需改 root 显式传 `--agents-root`
+- 使用和其他 backend 同一套 destructive reinstall 模型
+- backend 名仍是 `agents`，本轮不并入 `agents -> codex` 命名迁移
 
-## 四、命令差异
+## 五、命令差异
 
-`agents` backend 的主要差异只有 target root 参数。当前推荐的 Node-owned package/local 路径如下：
+主要差异只有 target root 参数：
 
 ```bash
 aw-installer diagnose --backend agents --json --agents-root "$PWD/.agents/skills"
@@ -74,11 +66,10 @@ aw-installer update --backend agents --yes --agents-root "$PWD/.agents/skills"
 aw-installer verify --backend agents --agents-root "$PWD/.agents/skills"
 ```
 
-当前语义：
+`update --backend agents --yes` 构成 destructive reinstall 主流程；部署到默认 repo-local target 时可省略 `--agents-root`；不要把 `--agents-root` 指向敏感目录。外部试用反馈优先使用 [trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)。本地 `diagnose`/`update`/`check_paths_exist`/`verify`/`install`/`prune` 已是 Node-owned 路径；selected GitHub-source update 与 selected Claude package/local lifecycle 也由 Node-owned `aw-installer` 路径承接。unsupported variants 在 Node 层失败，不 fallback 到 Python；Python deploy scripts 仅作 repo-local reference/parity/governance tooling。
 
-- `update --backend agents --yes` 构成 destructive reinstall 主流程
-- 最后一条是只读复验
-- 如果你就在当前仓库下部署到默认 repo-local target，可以省略 `--agents-root`
-- 不要把 `--agents-root` 指向与目标 repo 无关的敏感目录；外部试用优先使用默认 repo-local `.agents/skills/`
-- 外部试用反馈优先使用 [trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)。如果通过 [npx Command Test Execution](../testing/npx-command-test-execution.md) 复现，请附上脱敏后的 `aw-installer-npx-run.log` 摘要；不要在长期文档中记录私有仓库标识、token 或完整敏感日志
-- 本地 `aw-installer diagnose --backend agents --json`、`update --backend agents --json`、human-readable `update --backend agents`、`check_paths_exist --backend agents`、`verify --backend agents`、clean-target `install --backend agents`、`prune --all --backend agents` 与 `update --backend agents --yes` 已是 package/local source 的 Node-owned 路径；TUI agents diagnose、verify 和 update dry-run 展示也复用对应 Node-owned 路径。non-clean target `install` 子命令、GitHub-source update、Claude backend 与 unsupported variants 仍按通用 deploy 文档的 Python/reference 边界处理；这不是 Python 删除信号。
+## 六、Source 变更后的 operator 决策
+
+- source of truth 始终在 `product/`，不改 `.agents/skills/` 已安装结果
+- 重新对齐 source 回 [Deploy Runbook](../deploy/deploy-runbook.md) 走三步主流程
+- source 出现重复 `target_dir`、改名、移除或 target naming 变化时先修 source contract 再重装

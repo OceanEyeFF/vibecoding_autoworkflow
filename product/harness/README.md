@@ -13,7 +13,7 @@
 
 - [../../docs/harness/README.md](../../docs/harness/README.md) 继续承接 doctrine、scope、artifact、governance 与 workflow truth
 - `product/harness/` 只先建立干净骨架
-- `memory-side` 与 `task-interface` 继续作为 Harness adjacent systems 保留文档合同层
+- 已退役的 `memory-side`、`task-interface` 和 adjacent-system 文档域不在 `product/` 下恢复源码根
 
 规则：
 

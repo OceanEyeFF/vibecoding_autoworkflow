@@ -22,9 +22,9 @@ from path_governance_check import REQUIRED_GITIGNORE_ENTRIES, iter_relative_mark
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FOUNDATIONS_DIR = "docs/project-maintenance/foundations"
 REQUIRED_TEMPLATE_PATHS = [
-    "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md",
-    "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md",
-    "docs/harness/adjacent-systems/task-interface/task-contract.md",
+    "docs/harness/artifact/worktrack/contract.md",
+    "docs/harness/artifact/worktrack/plan-task-queue.md",
+    "docs/harness/artifact/worktrack/gate-evidence.md",
 ]
 REQUIRED_HANDOFF_LINKS = {
     "product/README.md": [
@@ -35,7 +35,7 @@ REQUIRED_HANDOFF_LINKS = {
     ],
     "docs/harness/README.md": [
         "docs/harness/foundations/README.md",
-        "docs/harness/adjacent-systems/README.md",
+        "docs/harness/artifact/README.md",
         "docs/harness/workflow-families/README.md",
         "product/harness/README.md",
     ],
@@ -44,19 +44,10 @@ REQUIRED_HANDOFF_LINKS = {
         "product/harness/skills/README.md",
         "product/harness/adapters/README.md",
     ],
-    "docs/harness/adjacent-systems/task-interface/README.md": [
-        "docs/harness/adjacent-systems/task-interface/task-contract.md",
-    ],
-    "docs/harness/adjacent-systems/memory-side/README.md": [
-        "docs/harness/adjacent-systems/memory-side/overview.md",
-        "docs/harness/adjacent-systems/memory-side/layer-boundary.md",
-        "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
-    ],
-    "docs/harness/adjacent-systems/memory-side/context-routing.md": [
-        "docs/harness/adjacent-systems/memory-side/formats/context-routing-output-format.md",
-    ],
-    "docs/harness/adjacent-systems/memory-side/writeback-cleanup.md": [
-        "docs/harness/adjacent-systems/memory-side/formats/writeback-cleanup-output-format.md",
+    "docs/harness/artifact/worktrack/README.md": [
+        "docs/harness/artifact/worktrack/contract.md",
+        "docs/harness/artifact/worktrack/plan-task-queue.md",
+        "docs/harness/artifact/worktrack/gate-evidence.md",
     ],
 }
 FOUNDATIONS_AUTHORITY_STEMS = [
@@ -74,6 +65,33 @@ OUTDATED_PLACEHOLDER_PHRASES = {
     ],
     "toolchain/scripts/README.md": [
         "`research/`：预留给后续准入的最小研究脚本",
+    ],
+}
+RETIRED_ENTRYPOINT_REFERENCES = {
+    "AGENTS.md": [
+        "docs/harness/adjacent-systems/memory-side/",
+        "docs/harness/adjacent-systems/memory-side/layer-boundary.md",
+        "docs/harness/adjacent-systems/memory-side/overview.md",
+        "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
+        "docs/harness/adjacent-systems/task-interface/",
+        "product/memory-side/README.md",
+        "product/memory-side/skills/",
+        "product/task-interface/README.md",
+        "product/task-interface/skills/",
+    ],
+    "docs/README.md": [
+        "docs/harness/adjacent-systems/memory-side/",
+        "docs/harness/adjacent-systems/memory-side/layer-boundary.md",
+        "docs/harness/adjacent-systems/memory-side/overview.md",
+        "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
+        "docs/harness/adjacent-systems/task-interface/",
+    ],
+    "docs/harness/README.md": [
+        "docs/harness/adjacent-systems/memory-side/",
+        "docs/harness/adjacent-systems/memory-side/layer-boundary.md",
+        "docs/harness/adjacent-systems/memory-side/overview.md",
+        "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
+        "docs/harness/adjacent-systems/task-interface/",
     ],
 }
 CANONICAL_SKILL_GLOBS = [
@@ -323,6 +341,23 @@ def check_outdated_placeholder_phrases(repo_root: Path, report: SemanticReport) 
                 report.add_failure(f"outdated placeholder wording still present in {relative_path}")
     report.add_info(f"checked {checked} outdated placeholder phrases")
 
+
+def check_retired_entrypoint_references(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    for relative_path, retired_references in RETIRED_ENTRYPOINT_REFERENCES.items():
+        path = repo_root / relative_path
+        if not path.exists():
+            report.add_failure(f"missing retired entrypoint scan source: {relative_path}")
+            continue
+        text = path.read_text(encoding="utf-8")
+        for retired_reference in retired_references:
+            checked += 1
+            if retired_reference in text:
+                report.add_failure(
+                    "retired entrypoint reference still present: "
+                    f"{relative_path} -> {retired_reference}"
+                )
+    report.add_info(f"checked {checked} retired entrypoint references")
 
 
 def iter_adapter_skill_files(repo_root: Path) -> list[Path]:
@@ -655,6 +690,7 @@ def main() -> int:
     check_required_handoffs(repo_root, report)
     check_foundations_authority_shadows(repo_root, report)
     check_outdated_placeholder_phrases(repo_root, report)
+    check_retired_entrypoint_references(repo_root, report)
     check_canonical_skill_packages_are_minimal(repo_root, report)
     check_adapter_wrappers_are_thin(repo_root, report)
     check_append_request_contract_terms(repo_root, report)

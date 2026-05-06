@@ -9,8 +9,8 @@
 
 ## Current Control Level
 
-- repo_scope:
-- worktrack_scope:
+- repo_scope: active
+- worktrack_scope: closed
 
 ## Active Worktrack
 
@@ -58,7 +58,11 @@
 
 ## Baseline Traceability
 
+> `latest_observed_checkpoint` 与 `last_doc_catch_up_checkpoint` 是 git hash 幂等性锚点，用于避免对同一代码基线重复执行 repo-refresh 和 doc-catch-up。空值表示锚点尚未建立，首次观察必须完整刷新；harness-skill 启动时通过 git rev-parse HEAD 对比这两个字段决定是否跳过重复刷新。
+
 - last_verified_checkpoint:
+- latest_observed_checkpoint:
+- last_doc_catch_up_checkpoint:
 - checkpoint_type:
 - checkpoint_ref:
 - verified_at:

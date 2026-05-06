@@ -10,12 +10,7 @@ last_verified: 2026-04-27
 
 `docs/harness/catalog/` 承接 `Codex` 语境下的 Harness skill catalog。
 
-这里不再额外维护一层 `Function -> Skill` 的转译目录，而是直接回答：
-
-- 当前 Harness 在 `Codex` 中需要哪些 skills
-- 这些 skills 分别服务于哪个控制层级
-- 哪些已有 canonical executable source
-- 哪些仍只是 catalog 目标位
+这里不再维护 Function -> Skill 转译目录，而是直接回答 Harness 在 Codex 中需要哪些 skills、它们服务于哪个控制层级、哪些已有 canonical executable source、哪些仍只是 catalog 目标位。
 
 当前入口：
 
