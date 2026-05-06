@@ -23,23 +23,7 @@ function zipHeaderUInt32(value) {
   return buffer;
 }
 
-const testCrc32Table = Uint32Array.from({ length: 256 }, (_, index) => {
-  let value = index;
-  for (let bit = 0; bit < 8; bit += 1) {
-    value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
-  }
-  return value >>> 0;
-});
-
-function testCrc32(buffer) {
-  let checksum = 0xffffffff;
-  for (const byte of buffer) {
-    checksum = testCrc32Table[(checksum ^ byte) & 0xff] ^ (checksum >>> 8);
-  }
-  return (checksum ^ 0xffffffff) >>> 0;
-}
-
-assert.equal(testCrc32(Buffer.from("123456789", "ascii")), 0xcbf43926);
+assert.equal(installer.crc32(Buffer.from("123456789", "ascii")), 0xcbf43926);
 
 function createStoredZip(entries) {
   const localParts = [];
@@ -48,7 +32,7 @@ function createStoredZip(entries) {
   for (const [name, text, options = {}] of entries) {
     const nameBuffer = Buffer.from(name);
     const dataBuffer = Buffer.from(text);
-    const crc32 = options.crc32 ?? testCrc32(dataBuffer);
+    const crc32 = options.crc32 ?? installer.crc32(dataBuffer);
     const local = Buffer.concat([
       zipHeaderUInt32(0x04034b50),
       zipHeaderUInt16(20),
@@ -109,7 +93,7 @@ function createDeflatedZip(entries) {
     const nameBuffer = Buffer.from(name);
     const dataBuffer = Buffer.from(text);
     const compressedBuffer = deflateRawSync(dataBuffer);
-    const crc32 = options.crc32 ?? testCrc32(dataBuffer);
+    const crc32 = options.crc32 ?? installer.crc32(dataBuffer);
     const declaredCompressedSize = options.compressedSize ?? compressedBuffer.length;
     const declaredUncompressedSize = options.uncompressedSize ?? dataBuffer.length;
     const local = Buffer.concat([

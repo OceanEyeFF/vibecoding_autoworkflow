@@ -78,6 +78,13 @@ def test_node_deploy_aw_generates_existing_code_adoption_profile(tmp_path: Path)
     )
     assert "adoption_mode: existing-code-adoption" in discovery
     assert "baseline_branch: main" in discovery
+    control_state = (tmp_path / ".aw" / "control-state.md").read_text(
+        encoding="utf-8"
+    )
+    assert "- repo_scope: active" in control_state
+    assert "- worktrack_scope: closed" in control_state
+    assert "- latest_observed_checkpoint:" in control_state
+    assert "- last_doc_catch_up_checkpoint:" in control_state
 
 
 def test_node_deploy_aw_blocks_unverified_baseline_before_writes(tmp_path: Path) -> None:

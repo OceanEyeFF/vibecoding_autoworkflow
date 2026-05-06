@@ -67,7 +67,33 @@ OUTDATED_PLACEHOLDER_PHRASES = {
         "`research/`：预留给后续准入的最小研究脚本",
     ],
 }
-RETIRED_ENTRYPOINT_REFERENCES: dict[str, list[str]] = {}
+RETIRED_ENTRYPOINT_REFERENCES = {
+    "AGENTS.md": [
+        "docs/harness/adjacent-systems/memory-side/",
+        "docs/harness/adjacent-systems/memory-side/layer-boundary.md",
+        "docs/harness/adjacent-systems/memory-side/overview.md",
+        "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
+        "docs/harness/adjacent-systems/task-interface/",
+        "product/memory-side/README.md",
+        "product/memory-side/skills/",
+        "product/task-interface/README.md",
+        "product/task-interface/skills/",
+    ],
+    "docs/README.md": [
+        "docs/harness/adjacent-systems/memory-side/",
+        "docs/harness/adjacent-systems/memory-side/layer-boundary.md",
+        "docs/harness/adjacent-systems/memory-side/overview.md",
+        "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
+        "docs/harness/adjacent-systems/task-interface/",
+    ],
+    "docs/harness/README.md": [
+        "docs/harness/adjacent-systems/memory-side/",
+        "docs/harness/adjacent-systems/memory-side/layer-boundary.md",
+        "docs/harness/adjacent-systems/memory-side/overview.md",
+        "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
+        "docs/harness/adjacent-systems/task-interface/",
+    ],
+}
 CANONICAL_SKILL_GLOBS = [
     "product/*/skills/*/SKILL.md",
 ]

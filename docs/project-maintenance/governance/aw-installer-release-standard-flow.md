@@ -7,9 +7,9 @@ last_verified: 2026-05-06
 ---
 # aw-installer Release Standard Flow
 
-> Purpose: define the operator-facing sequence for moving an approved release candidate through merge PR, GitHub Release, publish workflow, and post-publish verification.
+> 目的：定义已批准 release candidate 经过 merge PR、GitHub Release、publish workflow 与 post-publish verification 的 operator-facing 顺序。
 
-This page belongs to [Governance](./README.md).
+本页属于 [Governance](./README.md)。
 
 Manages branch/merge sequence, GitHub Release creation, publish workflow observation and post-publish verification; does not manage pre-publish readiness (see Pre-Publish Governance), channel policy (see Release Channel Governance) or carrier model (see Release Operation Model).
 
@@ -97,7 +97,7 @@ For RC releases on `next`, verify that `next` moved and `latest` stayed unchange
 
 ## 7. Sync Version Facts
 
-After registry verification and before final release handback, invoke `doc-catch-up-worker-skill` in `version fact sync` mode.
+After registry verification and before final release handback, invoke [doc-catch-up-worker-skill](../../../product/harness/skills/doc-catch-up-worker-skill/SKILL.md) in `version fact sync` mode.
 
 The handoff must include:
 

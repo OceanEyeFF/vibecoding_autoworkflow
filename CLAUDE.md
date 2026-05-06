@@ -4,7 +4,7 @@
 
 ## 项目定位
 
-本项目的核心目标是构建一个 `Codex-first` 的 AI coding harness 平台，并将其作为 repo-side contract layer 分发到多个项目中使用。
+本项目的核心目标是构建一个 `Codex-first` 的 AI coding harness 平台，并将其作为 repo-side contract layer 分发到多个项目中使用。这里的 `Codex-first` 指平台目标、默认验证路径和首要分发对象；Claude Code 是兼容执行入口，应遵循同一 repo-side contract layer，而不是重新定义 Harness 真相。
 
 - `docs/` = truth boundary（文档真相层）
 - `product/` = canonical skills 与 adapters（业务源码根）

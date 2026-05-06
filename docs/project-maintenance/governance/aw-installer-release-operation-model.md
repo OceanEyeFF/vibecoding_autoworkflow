@@ -1,15 +1,15 @@
 ---
 title: "aw-installer Release Operation Model"
 status: active
-updated: 2026-05-05
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-05-05
+last_verified: 2026-05-06
 ---
 # aw-installer Release Operation Model
 
-> Purpose: record the selected publish operating model: GitHub Release `published` plus npm Trusted Publishing.
+> 目的：记录已选发布操作模型：GitHub Release `published` 事件加 npm Trusted Publishing。
 
-This page belongs to [Governance](./README.md).
+本页属于 [Governance](./README.md)。
 
 - decision_status: repository-workflow-preflight-implemented
 - selected_operation_model: GitHub Release `published` trigger + npm Trusted Publishing via GitHub Actions OIDC

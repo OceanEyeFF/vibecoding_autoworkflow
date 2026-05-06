@@ -139,7 +139,7 @@ canonical executable source：
 
 ### 5. repo-refresh-skill
 
-职责：在 worktrack closeout 后刷新 repo 慢变量状态，把已验证结果回收到 repo 级正式对象，只处理 repo 级 writeback 不处理 .aw/worktrack/* 维护。
+职责：在 worktrack closeout 后刷新 repo 慢变量状态，把已验证结果回收到 repo 级正式对象，只处理 repo 级 writeback 不处理 .aw/worktrack/* 维护。刷新成功后必须把当前 HEAD 写回 `Harness Control State` 的 `Baseline Traceability.latest_observed_checkpoint`，并同步 `checkpoint_ref` / `verified_at` 等观测锚点；首次刷新或字段为空时不得把空值解释为可跳过刷新。
 
 主要依赖：
 
@@ -147,6 +147,12 @@ canonical executable source：
 - `Repo Snapshot / Status`
 - `Gate Evidence`
 - `Harness Control State`
+
+checkpoint writeback:
+
+- `latest_observed_checkpoint`: repo-refresh 成功后的 git HEAD；空值表示从未建立该幂等锚点，必须执行完整状态估计和刷新
+- `checkpoint_ref`: 与该 HEAD 对应的 branch/ref 描述
+- `verified_at`: 本次刷新验证日期
 
 canonical executable source：
 
