@@ -31,7 +31,7 @@ Before approval, confirm:
 | release body marker | includes `aw-installer-publish-approved: v<package.version>` |
 | approval lock | `approvedVersion`, `approvedGitTag`, and `approvedChannel` match |
 
-RC lanes 必须用 `aw-installer@next`，不用裸 `aw-installer`。
+stable lanes 使用默认 `aw-installer` selector；RC lanes 必须用 `aw-installer@next`，不用裸 `aw-installer`。
 
 ## 2. Packlist And Docs Freshness
 
