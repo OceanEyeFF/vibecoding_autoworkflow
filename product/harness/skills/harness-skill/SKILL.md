@@ -446,10 +446,7 @@ Close/Refresh 完成 → 状态更新阶段
 
 **硬约束**：
 
-- 不得在 git hash 未变化时静默跳过首次刷新；首次启动时 `latest_observed_checkpoint` 缺失，必须执行完整状态估计
 - git hash 对比仅作为"跳过重复刷新"的条件，不得作为"跳过首次验证"的借口
-- 如果 `latest_observed_checkpoint` 记录的 hash 在当前 git history 中不可达（如曾被 `git reset`），应标记 `baseline_gap_risk: high` 并强制重新刷新
-- hash 存储必须在刷新/追平成功完成后进行，不得在刷新前或刷新失败时写入
 - `doc-catch-up` 的 hash 对比只能跳过"代码未变且文档未变"的重复追平；如果本轮明确修改了文档，即使 hash 未变也必须触发文档追平检查
 
 ---
@@ -549,36 +546,21 @@ Close/Refresh 完成 → 状态更新阶段
 
 ## 十五、硬约束
 
-- **不要把 Harness 当成直接写代码的执行者。**
-- **不要把 Function 算子隐含在技能名称后面。** 必须在控制面上显性化 `Observe → Decide → Dispatch → Verify → Judge → Recover → Close → ChangeGoal` 的控制语义。
-- **不要把 `Harness` 自己定义具体代码仓库动作、任务列表内容或执行任务。** 这些由下游技能的算子实现负责。
-- **SubAgent 使用必须是可开关参数，而不是硬编码行为。** 控制态字段 `subagent_dispatch_mode` 与工作追踪约定字段 `runtime_dispatch_mode` 支持 `auto` / `delegated` / `current-carrier`；控制态字段 `subagent_dispatch_mode_override_scope` 默认是 `worktrack-contract-primary`，只有显式 `global-override` 才是全局覆盖；默认 `auto` 才表示在宿主运行时支持真实 SubAgent 委派且权限边界允许时优先委派。
-- **除非 `Harness Control State` 明确授予 `约定后自动性：最小委派`，否则不要开启约定后自动工作追踪。**
-- **不要用自动继续推进去重定义代码仓库目标、扩大范围，或消耗超出许可额度的自动工作追踪预算。**
-- **不要无限串接自动切片；一旦某个自动切片收束，就在 `要求自动切片后停止` 时重新交接。**
-- **一旦 `稳定交接` 达成，保持运行时在 `等待交接` 状态，直到观测到显式解锁信号。**
-- **不要把一次裸 `重试`、一句裸 `继续工作`，或没有实质变化的重复文字摘要视为解锁信号。**
-- **当 `交接锁激活：真` 时，不要重新进入任何控制回路阶段，直到解锁信号出现。**
-- **不要跨越未经批准的权限边界切换 `RepoScope` 与 `WorktrackScope`。**
-- **只有当当前路由已经把这次切换标记为可继续，且没有任何正式停止条件要求审批时，范围切换才可以在没有新的程序员交接的情况下继续。**
-- **在当前工作项尚未从活动 `Plan/Task Queue` 中选出之前，不要从 `WorktrackScope` 发起分派。**
-- **当下游结果已经暴露了显式路由、阻塞项与审批字段时，不要从文字推断继续推进。**
-- **当 `建议下一路由` 已存在时，不要把 `建议下一动作` 当成标准路由字段。**
-- **不要因为某个下一步看起来很明显，就直接变更控制状态；先暴露请求中的状态迁移。**
-- **不要把"某个本地技能轮次返回了结构化输出"本身当成停止条件。**
-- **除非宿主运行时真的把执行委派给了一个独立载体，否则不要声称已经分派了 `SubAgent`。**
-- **如果没有使用 SubAgent，必须把原因写成 `runtime fallback`、`permission blocked` 或 `dispatch package unsafe` 等明确阻断，而不是默默退化。**
-- **不要把 `证据`、`判定结果` 与 `下一动作` 混成一段模糊叙述。**
-- **不要把代码仓库本地挂载结果当成真相来源。**
-- **除非当前轮次确实依赖相邻系统，否则不要扩展进去。**
-- **不要把 `Control State` 当成业务真相的容器。** 业务真相应分别保存在 `Repo` 与 `Worktrack` 的正式文档里。
-- **不要跳过 Evidence 直接做 Gate 裁决。** 二者必须分开。
-- **不要把三个正交校验面（implementation/validation/policy）压缩成一个笼统判定。**
-- **不要把 `PR 已发出` 当成闭环终点。** 完整的 closeout 是 `merge → refresh repo snapshot → cleanup → return RepoScope`。
-- **不要在缺少文档追平检查时结束涉及版本、release、deploy 或 VCS baseline 的 Harness 轮次。** 如果当前轮次发现 Harness 管理外的更新，或提示词没有按工作流规范提供版本事实，也必须至少记录 freshness risk，并把 `doc-catch-up-worker-skill` 作为后续动作或当前收口动作。
-- **不要在 Worktrack Close 后跳过 `repo-refresh-skill` 直接回到 RepoScope 观察。** Repo 慢变量必须通过 `repo-refresh-skill` 从已验证证据刷新；不得假设 repo snapshot 在 merge 后自动更新。
-- **不要在使用 git hash 幂等性守卫时跳过首次刷新。** `latest_observed_checkpoint` 缺失时不等于基线未变化；首次启动必须执行完整状态估计。
-- **不要把 git hash 一致当成跳过所有验证的许可证。** hash 一致只能跳过"重复刷新"和"重复文档追平"，不得跳过首次验证或 Gate 裁决。
+- **Harness 输出只能是控制决策结构体**（Scope/Function/Route/Verdict/Evidence 引用）；代码块和直接执行指令禁止出现在 Harness 输出中。
+- **Function 算子必须在控制面上显性化**为 `Observe → Decide → Dispatch → Verify → Judge → Recover → Close → ChangeGoal` 的控制语义；禁止仅通过技能名称隐式传达当前算子。
+- **Harness 仅负责选择算子、绑定技能和裁决 Gate**；具体代码仓库动作、任务列表内容和执行任务的细节由下游技能的算子实现负责。
+- **SubAgent 使用必须是可开关参数，而不是硬编码行为。** 控制态字段 `subagent_dispatch_mode` 与工作追踪约定字段 `runtime_dispatch_mode` 支持 `auto` / `delegated` / `current-carrier`；控制态字段 `subagent_dispatch_mode_override_scope` 默认是 `worktrack-contract-primary`，只有显式 `global-override` 才是全局覆盖；默认 `auto` 才表示在宿主运行时支持真实 SubAgent 委派且权限边界允许时优先委派。未委派时必须将原因记录为 `runtime fallback`、`permission blocked` 或 `dispatch package unsafe`。
+- **约定后自动工作追踪仅当 `Harness Control State` 明确授予 `约定后自动性：最小委派` 时才可开启**；否则必须保持手动交接模式。
+- **自动继续推进的边界严格等于当前 `Worktrack Contract` 的 scope**；超出 scope 的改动、目标重定义或预算超支必须触发审批门控。
+- **自动切片仅可在当前切片未收束时串接**；一旦切片收束且 `要求自动切片后停止` 为真，必须停止执行并重新交接。
+- **稳定交接达成后，运行时唯一合法状态是 `等待交接`**；仅当观测到显式解锁信号时方可退出此状态。
+- **解锁信号必须是程序员显式发出的新指令或实质性新信息**；裸 `重试`、裸 `继续工作` 或重复文字摘要不构成解锁信号。
+- **交接锁激活时，所有控制回路阶段的进入必须被阻断**；仅当有效解锁信号出现后控制回路方可恢复。
+- **技能轮次返回结构化输出是正常控制回路产物**；停止条件仅由 [十一、正式停止条件] 定义的六种正式条件触发。
+- **Evidence、Verdict 和 NextAction 必须在输出中分节独立呈现**；每节仅包含对应类型的内容，禁止将三者合并为一段叙述。
+- **相邻系统的引用仅当本轮证据确实消费了其输出时才可包含**；否则 `adjacent_system_referenced` 必须为 `false`。
+- **Control State 仅保存控制面位置信息**（Scope/Function/Route）；业务真相必须保存在 `Repo` 与 `Worktrack` 的正式文档中，禁止写入 Control State。
+- **git hash 一致仅授权跳过重复刷新和重复文档追平**；首次验证和 Gate 裁决在任何情况下都不可跳过。
 
 ---
 
