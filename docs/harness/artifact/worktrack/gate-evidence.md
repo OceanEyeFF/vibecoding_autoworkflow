@@ -1,21 +1,10 @@
 ---
 title: "Gate Evidence"
 status: active
-updated: 2026-04-28
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-04-28
+last_verified: 2026-05-06
 ---
 # Gate Evidence
 
-为状态转移裁决提供证据，而不是只记录口头结论。
-
-最少应包含：
-
-- review / validation / policy 三类证据面
-- review 证据面下的四路 SubAgent 覆盖状态：`static-semantic-review`（静态语义解释）、`test-review`（测试 review）、`project-security-review`（security review）、`complexity-performance-review`（代码复杂度和性能 review）
-- 无法真实并行委派四路 review SubAgent 时的 fallback 原因
-- 每条证据面的 freshness 或缺失状态
-- 每条证据面的残余风险与上游约束信号
-- gate intake readiness
-- gate verdict
-- 后续动作
+为状态转移裁决提供证据。最少应包含 review/validation/policy 三类证据面；review 下四路 SubAgent 并行覆盖状态（static-semantic-review、test-review、project-security-review、complexity-performance-review）；四路含义分别是静态语义解释、测试 review、security review、代码复杂度和性能 review；无法委派四路时记录 fallback 原因；每条证据面的 freshness/缺失状态、残余风险与上游约束信号；gate intake readiness、verdict 和后续动作。

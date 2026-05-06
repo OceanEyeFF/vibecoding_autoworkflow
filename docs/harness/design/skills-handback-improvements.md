@@ -8,7 +8,7 @@ last_verified: 2026-04-24
 
 # Skills 层 Handback 改进方案
 
-> 目的：解决 WorktrackScope → RepoScope handback 时基线固化缺失、artifact 输出膨胀、Goal 层缺少工程节点类型规划三类问题。
+> 目的：解决 WorktrackScope → RepoScope handback 时的三类问题——基线固化缺失、artifact 输出膨胀、Goal 层缺少工程节点类型规划。
 
 ---
 
@@ -402,47 +402,32 @@ last_verified: 2026-04-24
 
 ## 五、实施顺序建议
 
-按"独立可落地、联动效果最好"的原则，建议以下实施顺序：
-
 ### Phase 1: 模板层（可独立落地，不依赖 skill 逻辑）
 
-1. P1-3: `control-state.md` 模板增加 Baseline Traceability
-2. P1-4: `snapshot-status.md` 模板增加 checkpoint 字段
-3. P2-5 ~ P2-7: worktrack artifact 模板引入双层结构
-4. P3-1: `goal-charter.md` 模板增加 Engineering Node Map
-5. P3-3: `contract.md` 模板增加 Node Type
-6. P1-5 / P1-6 / P3-7 / P3-8: artifact 定义文档同步
+1. P1-3: control-state.md 模板增加 Baseline Traceability
+2. P1-4: snapshot-status.md 模板增加 checkpoint 字段
+3. P2-5~P2-7: worktrack artifact 模板引入双层结构
+4. P3-1: goal-charter.md 模板增加 Engineering Node Map
+5. P3-3: contract.md 模板增加 Node Type
+6. P1-5/P1-6/P3-7/P3-8: artifact 定义文档同步
 
-→ **Phase 1 完成后，新部署的 `.aw/` 目录已包含改进后的模板骨架。**
+→ 新部署的 .aw/ 目录已包含改进后的模板骨架。
 
 ### Phase 2: Skill 层（依赖模板层完成）
 
-7. P1-1: `close-worktrack-skill` 增加基线固化阶段
-8. P1-2: `repo-refresh-skill` 增加基线验收
-9. P3-2: `set-harness-goal-skill` 增加工程节点分析
-10. P3-4: `init-worktrack-skill` 增加节点类型绑定
-11. P3-5: `gate-skill` 增加类型化判定
-12. P3-6: `close-worktrack-skill` 基线固化与类型联动
-13. P2-1: `harness-skill` 增加全局 artifact budget
-14. P2-2 ~ P2-4: 各 skill 增加输出预算约束
+7. P1-1: close-worktrack-skill 增加基线固化阶段
+8. P1-2: repo-refresh-skill 增加基线验收
+9. P3-2: set-harness-goal-skill 增加工程节点分析
+10. P3-4: init-worktrack-skill 增加节点类型绑定
+11. P3-5: gate-skill 增加类型化判定
+12. P3-6: close-worktrack-skill 基线固化与类型联动
+13. P2-1: harness-skill 增加全局 artifact budget
+14. P2-2~P2-4: 各 skill 增加输出预算约束
 
-→ **Phase 2 完成后，运行时行为按新规范执行。**
+→ 运行时行为按新规范执行。
 
 ---
 
 ## 六、联动效果
 
-三个问题独立修复后的联动效果：
-
-```
-P3 (Goal 工程节点类型)
-    ├─→ worktrack contract 中的 baseline_form 明确 → P1 基线固化有据可依
-    ├─→ gate 判定标准类型化 → P2 减少"通用最大集"输出
-    └─→ closeout 策略差异化 → P1 不同节点类型用不同固化方式
-
-P1 (基线固化机制)
-    └─→ checkpoint_ref 写入 control-state → P2 后续 skill 可引用而非平铺重复
-
-P2 (输出预算)
-    └─→ 引用格式标准化 → P1 基线信息跨 artifact 传递更轻量
-```
+P3（工程节点类型）→ worktrack contract baseline_form 明确使 P1 有据可依、gate 判定类型化减少 P2 通用最大集输出、closeout 策略差异化；P1（基线固化）→ checkpoint_ref 写入 control-state 使 P2 后续 skill 可引用而非平铺；P2（输出预算）→ 引用格式标准化使 P1 基线信息跨 artifact 传递更轻量。

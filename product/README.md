@@ -12,13 +12,13 @@
 
 `docs/harness/` 继续承接 Harness doctrine 与运行协议真相层。
 `product/harness/` 只承接 Harness executable source。
-`memory-side` 与 `task-interface` 当前只保留在 `docs/harness/adjacent-systems/` 的合同层，不再保留 repo 内独立源码根。
+`memory-side`、`task-interface` 与 `docs/harness/adjacent-systems/` 已退役，不再保留 repo 内独立源码根或合同层。
 
 规则：
 
 - 业务源码只改这里，不直接改 `.claude/` 或 `.agents/`
 - `.claude/` 与 `.agents/` 只作为 repo-local deploy target
-- 本地或全局部署统一走 `toolchain/scripts/deploy/adapter_deploy.py`
+- package/local operator 部署主路径走 `aw-installer`；`toolchain/scripts/deploy/adapter_deploy.py` 只作为 repo-local reference/parity/governance tooling 保留
 - 新的 Harness ontology 仍落在 `docs/harness/`
 - 新的 Harness executable source 应进入 `product/harness/`
 - `.aw_template/` 只承接 `.aw/` scaffold templates，不是第四个源码根，也不是 artifact 模板的长期 owner

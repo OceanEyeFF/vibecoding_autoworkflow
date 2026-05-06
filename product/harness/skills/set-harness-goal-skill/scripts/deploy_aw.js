@@ -38,10 +38,6 @@ function templateSpec(spec) {
   };
 }
 
-function copyAssetSpec(spec) {
-  return spec;
-}
-
 const TEMPLATE_SPECS = {
   "control-state": templateSpec({
     templateId: "control-state",
@@ -78,6 +74,8 @@ const TEMPLATE_SPECS = {
       "Approval Boundary": ["needs_programmer_approval", "reason"],
       "Baseline Traceability": [
         "last_verified_checkpoint",
+        "latest_observed_checkpoint",
+        "last_doc_catch_up_checkpoint",
         "checkpoint_type",
         "checkpoint_ref",
         "verified_at",
@@ -413,26 +411,26 @@ const TEMPLATE_SPECS = {
 };
 
 const STATIC_ASSET_SPECS = {
-  "template-readme": copyAssetSpec({
+  "template-readme": {
     assetId: "template-readme",
     sourceRelpath: "assets/template/README.md",
     outputRelpath: "template/README.md",
-  }),
-  "goal-charter-template": copyAssetSpec({
+  },
+  "goal-charter-template": {
     assetId: "goal-charter-template",
     sourceRelpath: "assets/template/goal-charter.template.md",
     outputRelpath: "template/goal-charter.template.md",
-  }),
-  "repo-readme": copyAssetSpec({
+  },
+  "repo-readme": {
     assetId: "repo-readme",
     sourceRelpath: "assets/repo/README.md",
     outputRelpath: "repo/README.md",
-  }),
-  "worktrack-readme": copyAssetSpec({
+  },
+  "worktrack-readme": {
     assetId: "worktrack-readme",
     sourceRelpath: "assets/worktrack/README.md",
     outputRelpath: "worktrack/README.md",
-  }),
+  },
 };
 
 const PROFILE_TEMPLATES = {
@@ -811,8 +809,8 @@ function resolveKeyedValue(key, selectedTemplateIds, args) {
     status: placeholder("status"),
     current_phase: placeholder("current_phase"),
     gate_round: placeholder("gate_round"),
-    repo_scope: placeholder("repo_scope"),
-    worktrack_scope: placeholder("worktrack_scope"),
+    repo_scope: "active",
+    worktrack_scope: "closed",
     needs_programmer_approval: placeholder("needs_programmer_approval"),
     reason: placeholder("reason"),
     why: placeholder("why"),

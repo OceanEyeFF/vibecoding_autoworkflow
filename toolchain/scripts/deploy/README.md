@@ -8,7 +8,7 @@
 - `harness_deploy.py`：保留为 repo-local Python reference thin wrapper，不再由 `aw-installer` package runtime 调用
 - `path_safety_policy.json`：JS/Python deploy 入口共享的 target/source root 安全策略配置，避免 wrapper 与 Python reference path 漂移
 - `package.json` + `bin/aw-installer.js`：本地 npm-style package scaffold；`aw-installer` 是唯一 package runtime bin，直接承接 help/version、`agents` package/local 的 diagnose、update dry-run、check_paths_exist、verify、install、prune --all、update --yes composition 与 selected invalid-variant failures；当前 checkout/local package 还直接承接 `claude` package/local 的 diagnose human/JSON、update dry-run human/JSON、check_paths_exist、verify、install、prune --all、update --yes，并支持 `--claude-root`；`agents` 的显式 GitHub-source update JSON/human dry-run 与 `--yes` apply（`update --backend agents --source github ...`）也由 Node-owned 路径承接。package/runtime 不再暴露 `aw-harness-deploy` Python alias，也不再 fallback 到 `harness_deploy.py`; unsupported deploy modes fail in Node with an explicit unsupported-command error
-- `aw_scaffold.py`：从 `product/.aw_template/` 生成 `.aw/` 运行样例，并校验模板最小结构，包括 `Engineering Node Map`、`Repo Analysis` 与 `Node Type` 协议字段
+- `aw_scaffold.py`：legacy scaffold helper，从 `product/.aw_template/` 生成 `.aw/` 运行样例，并校验模板最小结构，包括 `Engineering Node Map`、`Repo Analysis` 与 `Node Type` 协议字段；它不是 package runtime install path，也不是 artifact truth owner
 - `product/harness/adapters/agents/skills/`：`agents` canonical-copy payload descriptor source，由 `install --backend agents` 消费
 - `product/harness/adapters/claude/skills/`：`claude` compatibility payload descriptor source，当前承接受控的完整 Harness skill payload set
 
@@ -22,9 +22,14 @@
 
 `.aw_template` legacy scaffold profile 相关最小流：
 
-1. 先跑 `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal`
-2. 再跑 `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/aw_scaffold.py generate --profile first-wave-minimal --output-root /tmp/demo-aw`
-3. 如需覆盖已有样例，再显式加 `--force`
+1. 先跑 `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/aw_scaffold.py list` 查看 profile / template id。
+2. 再跑 `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/aw_scaffold.py validate --profile first-wave-minimal` 做源模板最小结构检查。
+3. 再跑 `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/aw_scaffold.py generate --profile first-wave-minimal --output-root /tmp/demo-aw` 生成样例。
+4. 如需覆盖已有样例，再显式加 `--force`。
+
+`first-wave-minimal` 是 legacy profile，只生成 `control-state.md`、`goal-charter.md`、`repo/analysis.md`、`repo/snapshot-status.md`、`worktrack/contract.md` 和 `worktrack/plan-task-queue.md`。`worktrack/gate-evidence.md` 可通过单独 template 生成。
+
+生成结果会写入 provenance frontmatter 与非空 placeholder；`control-state.md` 链接字段在同一轮生成目标存在时写相对路径，否则保留 placeholder。`validate` 只检查模板存在、H1、必需 section 和必需 keyed field，不替代 `docs/harness/artifact/` 的 canonical artifact contract。
 
 额外说明：
 

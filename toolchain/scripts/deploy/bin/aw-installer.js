@@ -16,6 +16,7 @@ const {
   renameSync,
   realpathSync,
   rmSync,
+  statSync,
   writeFileSync,
 } = require("node:fs");
 const https = require("node:https");
@@ -57,6 +58,7 @@ const zipEocdEntryCountOffset = 10;
 const zipEocdCentralDirectoryOffset = 16;
 const zipCentralDirectoryHeaderBytes = 46;
 const zipCentralDirectoryMethodOffset = 10;
+const zipCentralDirectoryCrc32Offset = 16;
 const zipCentralDirectoryCompressedSizeOffset = 20;
 const zipCentralDirectoryUncompressedSizeOffset = 24;
 const zipCentralDirectoryFileNameLengthOffset = 28;
@@ -114,6 +116,22 @@ const updateRecoverableIssueCodes = new Set([
   "unexpected-managed-directory",
 ]);
 let cachedPathSafetyPolicy = null;
+
+const crc32Table = Uint32Array.from({ length: 256 }, (_, index) => {
+  let value = index;
+  for (let bit = 0; bit < 8; bit += 1) {
+    value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+  }
+  return value >>> 0;
+});
+
+function crc32(buffer) {
+  let checksum = 0xffffffff;
+  for (const byte of buffer) {
+    checksum = crc32Table[(checksum ^ byte) & 0xff] ^ (checksum >>> 8);
+  }
+  return (checksum ^ 0xffffffff) >>> 0;
+}
 
 function tryReadPackageVersionAt(candidate) {
   try {
@@ -782,6 +800,7 @@ function zipEntries(buffer) {
       throw new Error("GitHub source archive central directory is invalid");
     }
     const method = buffer.readUInt16LE(offset + zipCentralDirectoryMethodOffset);
+    const crc32Value = buffer.readUInt32LE(offset + zipCentralDirectoryCrc32Offset);
     const compressedSize = buffer.readUInt32LE(offset + zipCentralDirectoryCompressedSizeOffset);
     const uncompressedSize = buffer.readUInt32LE(offset + zipCentralDirectoryUncompressedSizeOffset);
     const fileNameLength = buffer.readUInt16LE(offset + zipCentralDirectoryFileNameLengthOffset);
@@ -802,7 +821,7 @@ function zipEntries(buffer) {
       throw new Error("GitHub source archive central directory is invalid");
     }
     const name = buffer.subarray(nameStart, nameEnd).toString("utf8");
-    entries.push({ name, method, compressedSize, uncompressedSize, localHeaderOffset });
+    entries.push({ name, method, crc32: crc32Value, compressedSize, uncompressedSize, localHeaderOffset });
     offset = nextOffset;
   }
   return entries;
@@ -853,6 +872,9 @@ function zipEntryData(buffer, entry, options = {}) {
   }
   if (data.length !== entry.uncompressedSize) {
     throw new Error(`GitHub source archive entry size mismatch: ${entry.name}`);
+  }
+  if (crc32(data) !== entry.crc32) {
+    throw new Error(`GitHub source archive entry CRC32 mismatch: ${entry.name}`);
   }
   return data;
 }
@@ -2171,7 +2193,9 @@ function checkPathsExistSummary(context) {
 
 function writeDeployedTextFile(path, text) {
   writeFileSync(path, text, "utf8");
-  chmodSync(path, deployedFileMode);
+  if ((statSync(path).mode & 0o777) !== deployedFileMode) {
+    chmodSync(path, deployedFileMode);
+  }
 }
 
 function sourceTextForTargetRelativeFile(binding, relativeName, context, payload, loadedPayload, canonicalSource) {
@@ -3324,7 +3348,7 @@ function runNodePrune(args) {
   }
 }
 
-async function runNodeOwnedOrWrapper(args) {
+async function runNodeOwned(args) {
   const nodeDiagnoseStatus = runNodeDiagnoseJson(args);
   if (nodeDiagnoseStatus !== null) {
     return nodeDiagnoseStatus;
@@ -3395,7 +3419,7 @@ async function pause(rl) {
 async function runGuidedUpdateFlow(rl) {
   console.log("\nGuided update flow");
   console.log("Step 1: Diagnose current agents install.");
-  const diagnoseStatus = await runNodeOwnedOrWrapper(["diagnose", "--backend", "agents", "--json"]);
+  const diagnoseStatus = await runNodeOwned(["diagnose", "--backend", "agents", "--json"]);
   if (diagnoseStatus !== 0) {
     console.log("Diagnose failed; update may not succeed as expected.");
     const proceed = (await question(
@@ -3410,7 +3434,7 @@ async function runGuidedUpdateFlow(rl) {
   }
 
   console.log("\nStep 2: Review update dry-run plan.");
-  const dryRunStatus = await runNodeOwnedOrWrapper(["update", "--backend", "agents"]);
+  const dryRunStatus = await runNodeOwned(["update", "--backend", "agents"]);
   if (dryRunStatus !== 0) {
     console.log("Update plan failed; not applying.");
     await pause(rl);
@@ -3423,7 +3447,7 @@ async function runGuidedUpdateFlow(rl) {
   )).trim();
   if (confirmation === "yes") {
     console.log("\nStep 4: Applying update and running strict verify.");
-    await runNodeOwnedOrWrapper(["update", "--backend", "agents", "--yes"]);
+    await runNodeOwned(["update", "--backend", "agents", "--yes"]);
   } else {
     console.log("Update cancelled.");
   }
@@ -3459,13 +3483,13 @@ Backend: agents
       if (choice === "1") {
         await runGuidedUpdateFlow(rl);
       } else if (choice === "2") {
-        await runNodeOwnedOrWrapper(["diagnose", "--backend", "agents", "--json"]);
+        await runNodeOwned(["diagnose", "--backend", "agents", "--json"]);
         await pause(rl);
       } else if (choice === "3") {
-        await runNodeOwnedOrWrapper(["verify", "--backend", "agents"]);
+        await runNodeOwned(["verify", "--backend", "agents"]);
         await pause(rl);
       } else if (choice === "4") {
-        await runNodeOwnedOrWrapper(["update", "--backend", "agents"]);
+        await runNodeOwned(["update", "--backend", "agents"]);
         await pause(rl);
       } else if (choice === "5") {
         printHelp();
@@ -3509,7 +3533,7 @@ async function main() {
     return runTui();
   }
 
-  return await runNodeOwnedOrWrapper(args);
+  return await runNodeOwned(args);
 }
 
 if (require.main === module) {
@@ -3538,6 +3562,7 @@ module.exports = {
   collectTargetDirMetadata,
   collectUpdateTargetEntryIssues,
   computePayloadFingerprint,
+  crc32,
   dedupeIssues,
   describeExistingTargetPath,
   diagnosticSummary,
@@ -3573,7 +3598,7 @@ module.exports = {
   pruneBackendManagedInstalls,
   recursiveSensitiveTargetRepoRoots,
   resolveExistingOrLexical,
-  runNodeOwnedOrWrapper,
+  runNodeOwned,
   updatePlanSummary,
   validateSourceRepoRoot,
   validateTargetRepoRoot,

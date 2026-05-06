@@ -40,7 +40,7 @@ def create_valid_repo(tmp_path: Path) -> Path:
     repo_root = tmp_path
     git(repo_root, "init")
 
-    for root_file in ("README.md", "INDEX.md", "GUIDE.md", "ROADMAP.md", "AGENTS.md", "LICENSE", ".gitignore", ".claudeignore"):
+    for root_file in ("README.md", "INDEX.md", "AGENTS.md", "CLAUDE.md", "LICENSE", ".gitignore", ".claudeignore"):
         write_file(repo_root / root_file, root_file)
 
     for path in (
@@ -86,11 +86,10 @@ def create_valid_repo(tmp_path: Path) -> Path:
         repo_root,
         "add",
         "AGENTS.md",
-        "GUIDE.md",
+        "CLAUDE.md",
         "INDEX.md",
         "LICENSE",
         "README.md",
-        "ROADMAP.md",
         ".gitignore",
         ".claudeignore",
         force=True,

@@ -247,6 +247,10 @@ class SetHarnessGoalDeployAwValidationTest(unittest.TestCase):
 
         control_state_text = (output_root / ".aw" / "control-state.md").read_text(encoding="utf-8")
         self.assertIn("- repo_analysis: repo/analysis.md", control_state_text)
+        self.assertIn("- repo_scope: active", control_state_text)
+        self.assertIn("- worktrack_scope: closed", control_state_text)
+        self.assertIn("- latest_observed_checkpoint:", control_state_text)
+        self.assertIn("- last_doc_catch_up_checkpoint:", control_state_text)
 
     def test_repo_analysis_baseline_ref_stays_placeholder_when_only_branch_is_known(self) -> None:
         output_root = Path(self.temp_dir.name)
