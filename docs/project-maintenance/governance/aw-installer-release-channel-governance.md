@@ -15,12 +15,12 @@ last_verified: 2026-05-06
 
 ## 当前 registry 事实
 
-2026-05-06 已核对 npm registry：
+2026-05-07 已核对 npm registry：
 
 - `latest` -> `4.4.0`，`gitHead=2a68869d558bd538d9e9867f94b574caa797fdaf`
-- `next` -> `4.4.1-rc.0`，`gitHead=827efea569b058d91fa593d3d96851f332acd10f`
+- `next` -> `4.4.1-rc.1`，`gitHead=f41599b27220c7c9719fe0ad3c6bb94606197727`
 
-当前 checkout 的 root `package.json` 绑定 `approvedVersion=4.4.1-rc.0`、`approvedGitTag=v4.4.1-rc.0`、`approvedChannel=next`，且该版本已通过 GitHub Release publish workflow 发布到 npm `next`；后续再次 publish 必须使用新的 immutable npm version。
+当前 checkout 的 root `package.json` 绑定 `approvedVersion=4.4.1`、`approvedGitTag=v4.4.1`、`approvedChannel=latest`。`4.4.1` 在发布前 registry 查询为未发布；发布后必须用 registry 查询结果回写 `latest` 事实。
 
 ## Channel 对应关系
 
@@ -30,7 +30,7 @@ last_verified: 2026-05-06
 | `next` | `next` | `alpha` / `beta` / `rc` prerelease |
 | `canary` | `canary` | 含 `canary` 段的 prerelease |
 
-RC 试用 operator-facing selector 必须显式使用 `aw-installer@next`；裸 `aw-installer` 仍按 `latest` 解析。
+stable operator-facing selector 使用默认 `aw-installer`；RC 试用 selector 必须显式使用 `aw-installer@next`。
 
 ## 真实 Publish 准入
 
