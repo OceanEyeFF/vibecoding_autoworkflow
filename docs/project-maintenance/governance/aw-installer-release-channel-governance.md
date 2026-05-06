@@ -18,9 +18,9 @@ last_verified: 2026-05-06
 2026-05-06 已核对 npm registry：
 
 - `latest` -> `4.4.0`，`gitHead=2a68869d558bd538d9e9867f94b574caa797fdaf`
-- `next` -> `4.4.0-rc.0`，`gitHead=0a1a281a75af3937c4c92b18134db08e8e1b2097`
+- `next` -> `4.4.1-rc.0`，`gitHead=827efea569b058d91fa593d3d96851f332acd10f`
 
-当前 checkout 的 root `package.json` 已绑定待发布 candidate `approvedVersion=4.4.1-rc.0`、`approvedGitTag=v4.4.1-rc.0`、`approvedChannel=next`。`4.4.1-rc.0` 仍需经过 pre-publish、merge PR、GitHub Release、publish workflow 与 registry verification 后才可写入 published registry fact；不得复用已发布版本。
+当前 checkout 的 root `package.json` 绑定 `approvedVersion=4.4.1-rc.0`、`approvedGitTag=v4.4.1-rc.0`、`approvedChannel=next`，且该版本已通过 GitHub Release publish workflow 发布到 npm `next`；后续再次 publish 必须使用新的 immutable npm version。
 
 ## Channel 对应关系
 
