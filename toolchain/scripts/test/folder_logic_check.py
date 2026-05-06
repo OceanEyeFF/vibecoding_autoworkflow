@@ -15,6 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 ROOT_ALLOWED_NAMES = {
     "AGENTS.md",
+    "CLAUDE.md",
     "CONTRIBUTING.md",
     "GUIDE.md",
     "INDEX.md",

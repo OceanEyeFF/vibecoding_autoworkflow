@@ -17,8 +17,6 @@ HARNESS_README = "docs/harness/README.md"
 DEFAULT_SCAN_PATHS = [
     "README.md",
     "INDEX.md",
-    "GUIDE.md",
-    "ROADMAP.md",
     "AGENTS.md",
     ".nav/README.md",
     "docs",
@@ -29,8 +27,6 @@ REQUIRED_ENTRY_PATHS = [
     "AGENTS.md",
     "README.md",
     "INDEX.md",
-    "GUIDE.md",
-    "ROADMAP.md",
     "docs/README.md",
     PROJECT_MAINTENANCE_README,
     HARNESS_README,
@@ -75,8 +71,6 @@ AGENTS_CONTRACT_BACKLINK_PATHS = [
     "AGENTS.md",
     "README.md",
     "INDEX.md",
-    "GUIDE.md",
-    "ROADMAP.md",
     "docs/README.md",
     PROJECT_MAINTENANCE_README,
     HARNESS_README,
@@ -92,12 +86,6 @@ ENTRYPOINT_LINK_RULES = {
         "docs/README.md",
     ],
     "INDEX.md": [
-        "docs/README.md",
-    ],
-    "GUIDE.md": [
-        "docs/README.md",
-    ],
-    "ROADMAP.md": [
         "docs/README.md",
     ],
     "docs/README.md": [

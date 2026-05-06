@@ -1,6 +1,10 @@
 # Usage Help
 
-`docs/project-maintenance/usage-help/` 只保存按 backend 聚合的使用帮助：target root 解析、override 参数、验证口径、部署后使用、source 变更后 operator 决策。不再按 `memory-side/` 或 `task-interface/` 拆子目录。
+`docs/project-maintenance/usage-help/` 保存新 operator 推荐使用路径，以及按 backend 聚合的使用帮助：target root 解析、override 参数、验证口径、部署后使用、source 变更后 operator 决策。不再按 `memory-side/` 或 `task-interface/` 拆子目录。
+
+## 推荐入口
+
+- [recommended-usage.md](./recommended-usage.md)：新用户先读，按推荐顺序完成 backend 选择、readiness / install check、Harness 初始化、bounded worktrack 推进、SubAgent 使用、verify/gate/closeout 和审批边界确认。
 
 ## 按 backend 进入
 

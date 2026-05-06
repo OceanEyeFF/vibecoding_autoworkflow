@@ -67,13 +67,7 @@ OUTDATED_PLACEHOLDER_PHRASES = {
         "`research/`：预留给后续准入的最小研究脚本",
     ],
 }
-RETIRED_ENTRYPOINT_REFERENCES = {
-    "GUIDE.md": [
-        "docs/harness/adjacent-systems/memory-side/layer-boundary.md",
-        "docs/harness/adjacent-systems/memory-side/overview.md",
-        "docs/harness/adjacent-systems/memory-side/skill-agent-model.md",
-    ],
-}
+RETIRED_ENTRYPOINT_REFERENCES: dict[str, list[str]] = {}
 CANONICAL_SKILL_GLOBS = [
     "product/*/skills/*/SKILL.md",
 ]
