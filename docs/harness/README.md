@@ -1,6 +1,6 @@
 # Harness
 
-`docs/harness/` 是当前仓库的 Harness-first 文档主线，负责承接 Harness doctrine、scope、artifact、skills catalog 与 workflow families。
+`docs/harness/` 是当前仓库的 Harness-first 文档主线，承接 Harness doctrine、scope、artifact、skills catalog 与 workflow families。
 
 ## 当前分层
 

@@ -7,31 +7,15 @@ last_verified: 2026-05-05
 ---
 # aw-installer Release Standard Flow
 
-> Purpose: define the operator-facing sequence for moving an already approved release candidate through merge PR, GitHub Release, publish workflow, and post-publish verification.
+> Purpose: define the operator-facing sequence for moving an approved release candidate through merge PR, GitHub Release, publish workflow, and post-publish verification.
 
 This page belongs to [Governance](./README.md).
 
-## This Page Manages
-
-- the branch and merge sequence
-- GitHub Release creation requirements
-- publish workflow observation
-- post-publish registry verification and registry `npx` smoke handoff
-
-## This Page Does Not Manage
-
-- pre-publish tuple, packlist, docs freshness, approval lock, and release-readiness evidence: see [aw-installer Pre-Publish Governance](./aw-installer-pre-publish-governance.md)
-- release-channel policy and current registry facts: see [aw-installer Release Channel Governance](./aw-installer-release-channel-governance.md)
-- workflow carrier model and Trusted Publishing shape: see [aw-installer Release Operation Model](./aw-installer-release-operation-model.md)
+Manages branch/merge sequence, GitHub Release creation, publish workflow observation and post-publish verification; does not manage pre-publish readiness (see Pre-Publish Governance), channel policy (see Release Channel Governance) or carrier model (see Release Operation Model).
 
 ## Preconditions
 
-Start this flow only after:
-
-- the candidate has already passed [aw-installer Pre-Publish Governance](./aw-installer-pre-publish-governance.md)
-- the tuple still satisfies [aw-installer Release Channel Governance](./aw-installer-release-channel-governance.md)
-- root `package.json` already contains the exact approved version and approval lock
-- version-specific release notes are ready
+Only start after passing Pre-Publish Governance, tuple still satisfies Channel Governance, root `package.json` has approved version+lock, and release notes are ready.
 
 ## 1. Refresh Local State
 
@@ -43,7 +27,7 @@ gh release view v<package.version> --json tagName,url,isPrerelease,isDraft,name,
 npm view aw-installer@<package.version> version --json
 ```
 
-If the tag or published version already exists, stop and resolve the tuple conflict before continuing.
+If tag or published version exists, stop and resolve conflict before continuing.
 
 ## 2. Push And Open The Merge PR
 
@@ -67,7 +51,7 @@ gh pr view <pr-number> --json number,url,isDraft,mergeable,reviewDecision,state,
 
 ## 3. Merge To `master`
 
-Merge only after the PR is no longer draft, required checks pass, and required review gates are satisfied.
+Merge only after PR is not draft, checks pass, and review gates are satisfied.
 
 ```bash
 gh pr view <pr-number> --json state,mergedAt,mergeCommit,url,baseRefName,headRefName
@@ -79,13 +63,7 @@ The GitHub Release must target the merge commit on `master`.
 
 ## 4. Create The GitHub Release
 
-The tag must exactly match `v<package.version>`, and the body must include:
-
-```text
-aw-installer-publish-approved: v<package.version>
-```
-
-Command shape:
+The tag must exactly match `v<package.version>`, and the body must include `aw-installer-publish-approved: v<package.version>`:
 
 ```bash
 gh release create v<package.version> \

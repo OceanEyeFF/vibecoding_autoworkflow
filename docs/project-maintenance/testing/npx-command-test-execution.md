@@ -7,83 +7,52 @@ last_verified: 2026-05-05
 ---
 # npx Command Test Execution
 
-> Purpose: verify `aw-installer` package and npx command behavior across isolated temporary targets, covering the published registry package, explicit RC selector, and local `.tgz` package smoke. This page does not authorize new npm publish, stable release semantics, external repository mutation, PRs, or issue creation.
+> Purpose: verify `aw-installer` npx/package behavior across isolated temporary targets (registry package, RC selector, local `.tgz` smoke). Does not authorize publish, stable release, repo mutation, PRs, or issue creation.
 
-This page belongs to [Testing Runbooks](./README.md). Release channel rules live in [aw-installer Release Channel Governance](../governance/aw-installer-release-channel-governance.md); publish-readiness and approval rules live in [aw-installer Pre-Publish Governance](../governance/aw-installer-pre-publish-governance.md); deploy entrypoint semantics live in [Distribution Entrypoint Contract](../deploy/distribution-entrypoint-contract.md).
+Release channel -> Channel Governance; publish readiness -> Pre-Publish Governance; deploy semantics -> Entrypoint Contract.
 
 ## Control Signal
 
 - smoke_status: operator-runnable
 - canonical_runner: `toolchain/scripts/test/aw_installer_registry_npx_smoke.js`
 - local_tgz_runner: `toolchain/scripts/test/aw_installer_multi_temp_workdir_smoke.sh`
-- supported_operator_shells:
-  - Windows PowerShell
-  - Linux bash
-  - macOS bash
-- default_package_selector: `aw-installer`
-- rc_pin_selector: `aw-installer@next`
+- supported_operator_shells: Windows PowerShell, Linux bash, macOS bash
+- default_package_selector: `aw-installer`; rc_pin_selector: `aw-installer@next`
 - default_target_count: 3
 - feedback_log_artifact: `aw-installer-npx-run.log`
-- remote_mutation_allowed: false
-- real_npm_publish_allowed: false
+- remote_mutation_allowed: false; real_npm_publish_allowed: false
 
 ## Boundary
 
-The registry smoke uses the published npm registry package. The local `.tgz` smoke packs the current checkout and exercises that package from temporary target repositories. Neither path publishes a new package.
+Registry smoke uses published npm; `.tgz` smoke packs current checkout and exercises from temp targets. Neither publishes.
 
-Allowed:
+允许：从临时 target 运行 npx、pin RC selector、run `.tgz` 命令、clone approved 公开 target、仅临时目录内写 `.agents/skills/`、保留临时证据、附脱敏 log。
 
-- run `npx --package aw-installer -- aw-installer ...` from generated temporary targets.
-- pin the RC stream with `--package aw-installer@next` when reproducing RC-specific results.
-- run local `.tgz` package commands from generated temporary targets.
-- clone approved public target repositories into temporary directories.
-- write `.agents/skills/` only inside generated temporary target workdirs.
-- preserve local evidence under a temporary evidence directory.
-- attach a sanitized `aw-installer-npx-run.log` to feedback.
-
-Not allowed:
-
-- push to `OceanEyeFF/T1.AI` or `OceanEyeFF/novel-agents`.
-- open issues or PRs against those repositories.
-- mutate a non-temporary checkout.
-- treat the registry `latest` alias as stable release approval.
-- store private repo identifiers, credentials, tokens, or sensitive full logs in long-term docs.
+不允许：push、open issue/PR、mutate 非临时 checkout、将 `latest` 视为 stable release 批准、存私有标识/token/完整 log。
 
 ## Cross-Platform Runner
 
-The canonical runner is Node-based so the same smoke logic works under Windows PowerShell, Linux bash, and macOS bash.
-
-Windows PowerShell from the AW source repository root:
-
-```powershell
-node .\toolchain\scripts\test\aw_installer_registry_npx_smoke.js --skip-remote
-node .\toolchain\scripts\test\aw_installer_registry_npx_smoke.js
-```
-
-Linux or macOS bash from the AW source repository root:
+Node-based so same smoke logic runs under Windows PowerShell, Linux bash, and macOS bash:
 
 ```bash
+# Linux/macOS bash
 node toolchain/scripts/test/aw_installer_registry_npx_smoke.js --skip-remote
 node toolchain/scripts/test/aw_installer_registry_npx_smoke.js
-```
 
-The bash compatibility wrapper delegates to the same Node runner:
-
-```bash
+# bash compatibility wrapper
 toolchain/scripts/test/aw_installer_registry_npx_smoke.sh --skip-remote
-```
 
-Use an explicit output directory when you need stable artifact paths:
-
-```bash
+# explicit output directory
 node toolchain/scripts/test/aw_installer_registry_npx_smoke.js --output-dir /tmp/aw-installer-registry-npx-smoke
 ```
 
 ```powershell
+# Windows PowerShell
+node .\toolchain\scripts\test\aw_installer_registry_npx_smoke.js --skip-remote
 node .\toolchain\scripts\test\aw_installer_registry_npx_smoke.js --output-dir "$env:TEMP\aw-installer-registry-npx-smoke"
 ```
 
-Use the RC channel pin only when you need to prove the `next` selector specifically:
+RC channel pin:
 
 ```bash
 node toolchain/scripts/test/aw_installer_registry_npx_smoke.js --package aw-installer@next --skip-remote
@@ -91,45 +60,20 @@ node toolchain/scripts/test/aw_installer_registry_npx_smoke.js --package aw-inst
 
 ## Local Package Smoke
 
-Use the local package smoke when the candidate is not yet published, or when validating the current checkout before a future release approval:
+用于 candidate 未发布时或发布前验证：
 
 ```bash
 toolchain/scripts/test/aw_installer_multi_temp_workdir_smoke.sh
-```
-
-For offline or CI-style local-only checks:
-
-```bash
 toolchain/scripts/test/aw_installer_multi_temp_workdir_smoke.sh --skip-remote
 ```
 
-The local package smoke:
-
-- packs the current checkout into a local `.tgz` through `toolchain/scripts/test/npm_pack_tarball.sh`.
-- pins npm cache, tmp, user config, and HOME under the evidence directory.
-- creates one empty temporary git repo.
-- clones the approved public target repositories into temporary directories unless `--skip-remote` is used.
-- disables push URLs in temporary remote clones before installer commands run.
-- runs help, version, non-interactive TUI guard, diagnose, update dry-run, install, verify, update apply, and final diagnose in each target.
-- checks that planned target paths and final target roots stay inside each target workdir.
-- checks that package source root does not resolve to the source checkout, target repo, or target root.
+Local `.tgz` smoke 经 `npm_pack_tarball.sh` 打包，pins npm cache/tmp/HOME 到证据目录，创建空 git repo + clone approved targets（除非 `--skip-remote`），在每 target 跑 help/version/TUI guard/diagnose/update/install/verify/update apply/final diagnose，验证 paths 在 workdir 内、source root 不解析到 source checkout 或 target repo。
 
 ## Pre-Publish Local Package Smoke
 
-Use the local package smoke as the testing-side evidence for [aw-installer Pre-Publish Governance](../governance/aw-installer-pre-publish-governance.md).
-
-Minimum release-approval expectation:
-
-- run `toolchain/scripts/test/aw_installer_multi_temp_workdir_smoke.sh --skip-remote` before asking for approval
-- run the full matrix when network access and approved remote targets are available
-- preserve evidence for `help`, `version`, non-interactive TUI guard, `diagnose --backend agents --json`, `update --backend agents --json`, `install`, `verify`, `update --yes`, and final diagnose
-- confirm source root resolves to package payload, not the source checkout or target repo
-- confirm each planned path and final target root stays inside its own temporary target workdir
-- add focused Claude or GitHub-source evidence when the candidate explicitly claims those lanes
+作为 [Pre-Publish Governance](../governance/aw-installer-pre-publish-governance.md) 证据。approval 前最少跑 `--skip-remote`，全量在有网络时跑；保留全命令证据；确认 source root 来自 package payload、paths 在 workdir 内；涉及 Claude 或 GitHub-source lane 时补充对应证据。
 
 ## Two-Target Tarball Smoke
-
-When a smaller local package check is enough, use two generated targets:
 
 ```bash
 tmpdir="$(mktemp -d)"
@@ -158,54 +102,25 @@ for target_name in target-alpha target-beta; do
 done
 ```
 
-The Claude commands exercise the package payload through the compatibility lane in temporary target repos. Current checkout/local package Claude lifecycle execution is a Node-owned compatibility lane. The package/runtime `aw-installer` does not ship a Python fallback path; unsupported or unmatched deploy modes should fail explicitly in Node. Python deploy scripts may remain in the repository only as local reference, parity, or governance assets, not package/runtime dependencies.
+Claude commands 在临时 target repo 中通过 Node-owned compatibility lane 执行 package payload。package/runtime `aw-installer` 不包含 Python fallback；Python deploy scripts 仅作 repo-local reference/parity/governance 保留。
 
 ## What The Registry Runner Does
 
-The runner:
-
-- records Node/npm versions, local git branch/ref, `npm view <selector> version`, and `npm dist-tag ls aw-installer`.
-- creates one empty temporary git repo.
-- creates one local existing-work fixture with `README.md`, `package.json`, and `src/index.js` and verifies those files survive install/update unchanged.
-- clones the two approved target repositories into temporary directories unless `--skip-remote` is used.
-- disables push URLs in temporary remote clones before installer commands run.
-- runs help, version, non-interactive TUI guard, diagnose, update dry-run, install, verify, update apply, and final diagnose through npx.
-- pins npm cache, tmp, user config, and HOME/USERPROFILE under the evidence directory.
-- checks that target paths stay inside each temporary target workdir.
-- checks that the package source root is not the AW source checkout and not the target repo.
-- checks that `diagnose` reports `missing-target-root` before install and that `update --json` treats the missing target root as a non-blocking, recoverable issue.
-- writes `summary.tsv`, `report.md`, and one `aw-installer-npx-run.log` per target.
+Record Node/npm 版本、git branch/ref、dist-tags；创建空 git repo + existing-work fixture（`README.md`/`package.json`/`src/index.js`）；clone approved targets（除非 `--skip-remote`）并禁用 push URL；通过 npx 跑全命令集；pin npm cache/tmp/HOME；验证 target paths 在 workdir 内、source root 不在 source checkout 或 target repo、`diagnose` 返回 `missing-target-root` 且 `update --json` 视为 non-blocking；输出 `summary.tsv`/`report.md`/每 target 的 `aw-installer-npx-run.log`。
 
 ## Feedback Log
 
-Each target evidence directory contains:
-
-```text
-evidence/<target-alias>/aw-installer-npx-run.log
-```
-
-The log contains:
-
-- sanitized target alias and target source category.
-- package selector and observed registry version.
-- Node/npm versions and registry dist-tags.
-- each npx command executed.
-- stdout, stderr, and exit status per command.
-
-Before attaching a log to GitHub feedback, remove private paths, private repo names, user names, tokens, credentials, customer names, and any sensitive environment-specific details. Keep enough command output to diagnose the failure or confirm the pass.
+每 target 证据目录含 `evidence/<alias>/aw-installer-npx-run.log`，含脱敏 alias、package selector、Node/npm 版本、dist-tags、每命令 stdout/stderr/exit status。附加到 GitHub 前移除私有路径/名称/token/credential。
 
 ## Pass Criteria
 
-- Local-only mode passes generated temporary target workdirs, including at least one empty target and one existing-work target.
-- Default mode passes the generated empty repo plus temporary clones of the approved target repositories, unless network access is unavailable and the blocker is recorded.
-- Before install, each target demonstrates missing target folder/path recovery: `diagnose` reports `missing-target-root`, and `update --json` does not treat that issue as blocking.
-- Existing-work fixture files are unchanged after install/update.
-- Each final diagnose reports managed installs equal to the selected package or candidate `binding_count`, with 0 conflicts and 0 unrecognized entries.
-- Each dry-run planned target path stays inside its own temporary target workdir.
-- No observed source root resolves inside the AW source checkout.
-- No observed source root resolves inside any temporary target repository or equals a target root.
-- npm state is pinned under the smoke evidence directory.
-- No push, PR, issue, or remote mutation occurs.
-- Each target has an `aw-installer-npx-run.log` suitable for sanitized feedback.
-
-Long-term writeback should copy only sanitized summaries. Do not store private paths, tokens, credentials, private repository names, or full sensitive logs in docs.
+- local-only mode 通过空 target + existing-work target；default mode 再加 approved target clones
+- install 前 `diagnose` 报 `missing-target-root`，`update --json` 视为 non-blocking
+- existing-work fixture 在 install/update 后不变
+- 最终 diagnose：managed installs = binding_count，0 conflicts + 0 unrecognized
+- dry-run planned paths 在各自 workdir 内
+- source root 不在 AW source checkout、不在 target repo、不等同 target root
+- npm state pinned 在 smoke evidence 目录下
+- 无 push/PR/issue/remote mutation
+- 每 target 有可脱敏反馈的 `aw-installer-npx-run.log`
+- 长期回写只复制脱敏摘要，不存私有路径/token/credential

@@ -7,21 +7,17 @@ last_verified: 2026-05-05
 ---
 # aw-installer External Trial Governance
 
-> Purpose: define the target list template and feedback contract for post-RC `aw-installer` external trials.
+> 目的：定义 post-RC `aw-installer` 外部试用的目标列表模板与反馈合同。
 
-This page belongs to [Governance](./README.md).
-
-## Control Signal
+本页属于 [Governance](./README.md)。
 
 - trial_status: planned
-- trial_sources:
-  - programmer-owned repositories
-  - forum volunteer repositories
+- trial_sources: programmer-owned repos + forum volunteer repos
 - future_npm_publish_allowed: false
-- public_recruitment_copy_in_scope: false
-- private_repo_identifiers_allowed_in_long_term_docs: false
-- supported_backend_for_trial: `agents`
-- feedback_decision_goal: decide whether the next main contradiction is adoption, reliability, or documentation
+- public_recruitment_copy: false
+- private_repo_identifiers_in_long_term_docs: false
+- supported_backend: `agents`
+- feedback_decision_goal: determine next main contradiction (adoption/reliability/documentation)
 
 ## Trial Target Categories
 
@@ -31,55 +27,21 @@ This page belongs to [Governance](./README.md).
 | forum volunteer repository | observe cold external operator friction | 2 | store only anonymized aliases and consented facts |
 | intentionally unsupported repository | confirm failure messaging and recovery path | 1 | store only anonymized shape and failure category |
 
-Do not store private repository names, URLs, tokens, logs with secrets, or user handles in long-term docs unless separately approved.
+不在长期文档中存储私有仓库名、URL、token、含 secret 的日志或用户 handle，除非另行批准。
 
 ## Command Feedback Fields
 
-Each trial report should capture:
-
-- target alias
-- target category
-- candidate version/source
-- install command used
-- shell/runtime path
-- sanitized `aw-installer-npx-run.log` when applicable
-- `help`, `version`, `tui` guard, `diagnose`, dry-run `update`, `install`, `verify`, optional `update --yes`
-- operator confusion
-- adoption blocker
-- reuse intent
-- trust concern
-- workflow-fit concern
-- recovery attempted
-- final verdict
+每个 trial 报告应包含：target alias/category、candidate version/source、install 命令、shell/runtime 路径、脱敏 log、命令结果（help/version/tui/diagnose/update/install/verify）、operator confusion、adoption blocker、reuse intent、trust concern、workflow-fit concern、recovery attempted、final verdict。
 
 ## Operator Confusion Taxonomy
 
-- `entrypoint-confusion`
-- `backend-confusion`
-- `target-root-confusion`
-- `update-boundary-confusion`
-- `approval-boundary-confusion`
-- `diagnose-output-confusion`
-- `docs-navigation-confusion`
-- `no-confusion-observed`
+`entrypoint-confusion` / `backend-confusion` / `target-root-confusion` / `update-boundary-confusion` / `approval-boundary-confusion` / `diagnose-output-confusion` / `docs-navigation-confusion` / `no-confusion-observed`
 
 ## Decision Criteria
 
-After the first external trial batch, classify the next main contradiction:
+首批外部试用后归类主要矛盾：install/verify 多目标失败 -> reliability；命令通过但 operator 选不对路 -> documentation；理解 doc 但不采用 -> adoption；失败集中在未支持 repo 形态 -> target compatibility；困惑在 update/publish 预期 -> release-channel communication。
 
-| Evidence pattern | Next main contradiction |
-| --- | --- |
-| installs fail or verify fails on multiple targets | reliability |
-| commands pass but operators cannot choose the right path | documentation |
-| operators understand docs and commands but hesitate to adopt | adoption |
-| failures cluster around unsupported repo shapes | target compatibility |
-| confusion centers on update/publish expectations | release-channel communication |
-
-Minimum threshold:
-
-- at least two programmer-owned targets complete or fail with preserved evidence
-- at least one volunteer or cold-operator trial completes or names a concrete blocker
-- no private identifiers or secrets are required to understand the result
+最低门槛：至少 2 个 programmer-owned target 完成或失败并有证据；至少 1 个 volunteer 完成或命名具体 blocker；不需要 private identifier 即可理解结果。
 
 ## Related Documents
 

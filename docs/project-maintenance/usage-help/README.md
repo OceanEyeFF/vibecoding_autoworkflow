@@ -1,22 +1,6 @@
 # Usage Help
 
-`docs/project-maintenance/usage-help/` 只保存按 backend 聚合的使用帮助。这里不再按 `memory-side/` 或 `task-interface/` 再拆子树；每页只回答这个 backend 自己的 target root 解析、override 参数、验证口径、部署后如何使用，以及 source 变更后的 operator 决策。
-
-这里适合放：
-
-- backend 特有的 target root 解析方式
-- backend 特有的 root override 参数
-- backend 特有的验证口径
-- backend 当前支持边界
-- backend 的 quickstart / copy-paste 使用路径
-- skills / `.aw_template/` source 变更后的 operator 决策
-
-这里不适合放：
-
-- 通用三步 deploy 主流程
-- 通用 source-of-truth 解释
-- drift 诊断正文
-- 发布审批与 publish sequence
+`docs/project-maintenance/usage-help/` 只保存按 backend 聚合的使用帮助：target root 解析、override 参数、验证口径、部署后使用、source 变更后 operator 决策。不再按 `memory-side/` 或 `task-interface/` 拆子目录。
 
 ## 按 backend 进入
 
@@ -27,12 +11,12 @@
 
 ## 和 Deploy 文档的分工
 
-- 通用 deploy 入口：看 [deploy/README.md](../deploy/README.md)
-- destructive reinstall 主流程：看 [deploy-runbook.md](../deploy/deploy-runbook.md)
+- 通用 deploy 入口：[deploy/README.md](../deploy/README.md)
+- destructive reinstall 主流程：[deploy-runbook.md](../deploy/deploy-runbook.md)
 - 外部试用复制粘贴路径：直接看当前 backend 的 usage-help 页面
-- 外部试用反馈模板：看 [trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 与 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)
-- registry npx 验证、反馈日志与多临时 workdir 验证：看 [npx Command Test Execution](../testing/npx-command-test-execution.md)
-- drift、冲突扫描、故障诊断：看 [skill-deployment-maintenance.md](../deploy/skill-deployment-maintenance.md)
-- `add / update / rename / remove`：看当前 backend 的 usage-help 页面
+- 外部试用反馈模板：[trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 与 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)
+- registry npx 验证、反馈日志与多临时 workdir 验证：[npx Command Test Execution](../testing/npx-command-test-execution.md)
+- drift、冲突扫描、故障诊断：[skill-deployment-maintenance.md](../deploy/skill-deployment-maintenance.md)
+- add/update/rename/remove：看当前 backend 的 usage-help 页面
 
-当前 public/near-public trial 的主路径仍是 `agents` backend。Claude Code 现在可安装完整 Harness skill payload，但仍作为 Claude 适配 lane 使用，不替代 `agents` 主路径。
+当前 public/near-public trial 主路径仍是 `agents` backend；Claude Code 可安装完整 Harness skill payload，但仍作为 Claude 适配 lane。
