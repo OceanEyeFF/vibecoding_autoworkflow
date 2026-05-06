@@ -17,7 +17,7 @@ last_verified: 2026-04-30
 
 | 层级 | 根目录对象 | 职责 | 不应承载 |
 |---|---|---|---|
-| Entry Layer | `README.md` `INDEX.md` `GUIDE.md` `ROADMAP.md` `AGENTS.md` | 导航与入口 | 长期规则正文、repo-local 细节 |
+| Entry Layer | `README.md` `INDEX.md` `AGENTS.md` | 导航与入口 | 长期规则正文、repo-local 细节 |
 | Product Layer | `product/` | 业务源码 | 真相正文、运行状态 |
 | Truth Layer | `docs/` | 知识与治理文档 | deploy 结果、mount/state |
 | Toolchain Layer | `toolchain/` | 脚本与评测工具 | 业务源码真相 |

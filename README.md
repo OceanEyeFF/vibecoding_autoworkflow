@@ -130,7 +130,6 @@ Review / Verify / Writeback
 
 `README.md` 负责讲清楚项目目标、当前承接结构和主线入口。
 `INDEX.md` 负责按任务目标把人或 agent 导向正确入口。
-`GUIDE.md` / `ROADMAP.md` 只是兼容入口，不单独定义主线。
 `AGENTS.md` 是 agent-facing 的最小工作规则入口；若冲突，以 `docs/project-maintenance/` 与 `docs/harness/` 为准。
 
 ## 从哪里进入
