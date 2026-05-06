@@ -3562,6 +3562,7 @@ module.exports = {
   collectTargetDirMetadata,
   collectUpdateTargetEntryIssues,
   computePayloadFingerprint,
+  crc32,
   dedupeIssues,
   describeExistingTargetPath,
   diagnosticSummary,

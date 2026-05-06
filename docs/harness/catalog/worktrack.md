@@ -115,7 +115,7 @@ canonical executable source：
 
 ### 5. doc-catch-up-worker-skill
 
-职责：将已验证实现事实追平到正确长期文档层，清理旧路径/数量/命令/流程/边界描述，在 Harness 入口观察和 closeout 前降低后续开发引用过期上下文的风险。版本相关工作中还负责 version fact sync：区分 source version、published version、VCS tracking facts 与 docs freshness，在 harness entry observation、pre-publish readiness、post-publish verification、post-smoke closeout、harness closeout 或 failed publish/rollback 后同步 registry dist-tag、published version、gitHead、tarball、approval lock、selector、git commit/tag/branch 与 SVN revision（如适用）事实。
+职责：将已验证实现事实追平到正确长期文档层，清理旧路径/数量/命令/流程/边界描述，在 Harness 入口观察和 closeout 前降低后续开发引用过期上下文的风险。版本相关工作中还负责 version fact sync：区分 source version、published version、VCS tracking facts 与 docs freshness，在 harness entry observation、pre-publish readiness、post-publish verification、post-smoke closeout、harness closeout 或 failed publish/rollback 后同步 registry dist-tag、published version、gitHead、tarball、approval lock、selector、git commit/tag/branch 与 SVN revision（如适用）事实。追平成功后必须把当前 HEAD 写回 `Harness Control State` 的 `Baseline Traceability.last_doc_catch_up_checkpoint`；字段为空表示从未建立文档追平幂等锚点，不得作为跳过追平的依据。
 
 主要依赖：
 
@@ -125,6 +125,12 @@ canonical executable source：
 - `docs/project-maintenance/`
 - `docs/harness/`
 - 相关入口页和承接层正文
+
+checkpoint writeback:
+
+- `last_doc_catch_up_checkpoint`: doc-catch-up 成功后的 git HEAD；空值表示未执行过文档追平或锚点未知
+- `checkpoint_ref`: 与该 HEAD 对应的 branch/ref 描述
+- `verified_at`: 本次追平验证日期
 
 canonical executable source：
 

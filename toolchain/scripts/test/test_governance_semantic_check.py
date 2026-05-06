@@ -90,7 +90,26 @@ def test_check_outdated_placeholder_phrases_flags_stale_text(tmp_path: Path) -> 
     assert any("toolchain/scripts/README.md" in item for item in report.failures)
 
 
-def test_check_retired_entrypoint_references_has_no_root_compat_sources(tmp_path: Path) -> None:
+def test_check_retired_entrypoint_references_flags_retired_paths(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "AGENTS.md",
+        "旧入口：`docs/harness/adjacent-systems/memory-side/overview.md`\n",
+    )
+    write_doc(tmp_path / "docs/README.md", "current\n")
+    write_doc(tmp_path / "docs/harness/README.md", "current\n")
+    write_doc(tmp_path / "docs/project-maintenance/governance/path-governance-checks.md", "current\n")
+
+    report = SemanticReport()
+    check_retired_entrypoint_references(tmp_path, report)
+
+    assert any("AGENTS.md" in item for item in report.failures)
+
+
+def test_check_retired_entrypoint_references_accepts_current_sources(tmp_path: Path) -> None:
+    write_doc(tmp_path / "AGENTS.md", "current\n")
+    write_doc(tmp_path / "docs/README.md", "current\n")
+    write_doc(tmp_path / "docs/harness/README.md", "current\n")
+
     report = SemanticReport()
     check_retired_entrypoint_references(tmp_path, report)
 
