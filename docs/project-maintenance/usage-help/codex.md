@@ -1,9 +1,9 @@
 ---
 title: "Codex Usage Help"
 status: active
-updated: 2026-05-06
+updated: 2026-05-07
 owner: aw-kernel
-last_verified: 2026-05-06
+last_verified: 2026-05-07
 ---
 # Codex Usage Help
 
