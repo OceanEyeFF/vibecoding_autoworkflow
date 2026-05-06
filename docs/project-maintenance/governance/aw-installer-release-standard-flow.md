@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Release Standard Flow"
 status: active
-updated: 2026-05-05
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-05-05
+last_verified: 2026-05-06
 ---
 # aw-installer Release Standard Flow
 
@@ -89,10 +89,26 @@ gh release view v<package.version> --json tagName,url,isPrerelease,isDraft,name,
 gh run view <run-id> --json databaseId,status,conclusion,url,headSha,displayTitle,event,createdAt,updatedAt
 npm view aw-installer@<package.version> version dist-tags --json
 npm view aw-installer dist-tags --json
+npm view aw-installer@latest version gitHead dist.tarball --json
+npm view aw-installer@next version gitHead dist.tarball --json
 ```
 
 For RC releases on `next`, verify that `next` moved and `latest` stayed unchanged unless this was an explicitly approved stable release.
 
-## 7. Hand Off To Registry Smoke
+## 7. Sync Version Facts
+
+After registry verification and before final release handback, invoke `doc-catch-up-worker-skill` in `version fact sync` mode.
+
+The handoff must include:
+
+- source version facts: root `package.json`, approval lock, CLI `--version`, GitHub Release tag
+- VCS tracking facts: git branch, commit SHA, tag and remote ref; SVN URL/revision/branch path only when the target is an SVN working copy
+- published version facts: npm dist-tags, published versions, `gitHead`, tarball URLs
+- release evidence: GitHub Release view, publish workflow run, registry query output
+- doc update decision: documents updated and documents intentionally left unchanged
+
+At minimum, review [Release Channel Governance](./aw-installer-release-channel-governance.md), [Pre-Publish Governance](./aw-installer-pre-publish-governance.md), [npx Command Test Execution](../testing/npx-command-test-execution.md), backend usage-help pages, and root `README.md`. Update only pages whose facts changed or whose freshness is being verified in this release closeout.
+
+## 8. Hand Off To Registry Smoke
 
 After publish, run registry `npx` smoke through [npx Command Test Execution](../testing/npx-command-test-execution.md).

@@ -1,9 +1,9 @@
 ---
 title: "Worktrack Contract"
 status: active
-updated: 2026-04-27
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-04-27
+last_verified: 2026-05-06
 ---
 # Worktrack Contract
 
@@ -41,4 +41,4 @@ Worktrack Contract 是执行前边界对象：用户讨论、已批准需求、a
 
 Execution Policy 控制本 worktrack 的执行载体选择，不替代 repo 级 Harness Control State 或任务目标/范围/验收标准。标准字段：runtime_dispatch_mode 默认 auto（支持 auto/delegated/current-carrier，与 control-state 的 subagent_dispatch_mode 使用同一组值）；dispatch_mode_source 默认 worktrack-contract；fallback_reason_required 默认 yes。
 
-auto 语义：优先委派 SubAgent，无法安全委派时显式 runtime fallback；delegated：必须委派否则返回 gap/block；current-carrier：显式关闭委派。默认优先级：worktrack-contract-primary 下 runtime_dispatch_mode 优先；仅 global-override 时 control-state 覆盖；contract 未声明时使用 control-state 的 repo 级默认值。
+auto 语义：优先委派 SubAgent，无法安全委派时显式 runtime fallback；delegated：必须委派否则返回 gap/block；current-carrier：显式关闭委派。默认优先级：worktrack-contract-primary 下 runtime_dispatch_mode 优先；仅 global-override 时 control-state 覆盖；contract 未声明时使用 control-state 的 repo 级默认值。control-state 的 `subagent_dispatch_mode_override_scope` 决定是否允许 repo 级 `subagent_dispatch_mode` 覆盖本合同；默认不得跨过 worktrack 合同的权限边界。若因权限边界、运行时缺口或 dispatch package unsafe 不能委派，必须记录 fallback reason。

@@ -1,9 +1,9 @@
 ---
 title: "ROADMAP - 兼容入口"
 status: active
-updated: 2026-03-26
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-05-06
 ---
 # ROADMAP - 兼容入口
 
@@ -15,8 +15,9 @@ last_verified: 2026-03-26
 - 当前根目录边界入口：`docs/project-maintenance/foundations/root-directory-layering.md`
 - 当前路径与文档治理入口：`AGENTS.md`
 - 当前业务源码入口：`product/README.md`
-- 当前部署入口：`toolchain/scripts/deploy/adapter_deploy.py`
-- 当前不维护主线评测入口
+- 当前部署入口：`docs/project-maintenance/deploy/README.md`
+- 当前测试入口：`docs/project-maintenance/testing/README.md`
+- 当前 release / trial 治理入口：`docs/project-maintenance/governance/README.md`
 - `.nav/` 与各 hidden layers 只保留兼容或运行职责，不是主线规则正文
 - 保留本文件的原因：兼容历史链接，避免旧文档直接断链
 - 不要在这里维护实施细节或 repo-local 规则正文

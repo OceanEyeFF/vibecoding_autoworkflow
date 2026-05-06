@@ -1,9 +1,9 @@
 ---
 title: "Harness Skill Catalog / WorktrackScope"
 status: draft
-updated: 2026-04-28
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-04-28
+last_verified: 2026-05-06
 ---
 # WorktrackScope Skill Catalog
 
@@ -13,7 +13,7 @@ last_verified: 2026-04-28
 
 ## 当前原则
 
-WorktrackScope skills 负责局部状态转移闭环，消费 contract/plan/evidence/control state，可派发下游 subagent 但不伪装成”控制平面+执行平面一体”。schedule-worktrack-skill 是当前 selected_next_action 与 dispatch handoff packet 的唯一 authority；dispatch-skills 只消费 scheduling packet 不反向改写 queue。generic-worker-skill 是无专用 skill 时的通用执行载体；doc-catch-up-worker-skill 是 closeout 前推荐使用的文档基线追平载体。freshly seeded 或 autonomous continuation 的首个 execution-facing round，初始 slice 必须先收紧到最小可验证子片段。runtime_dispatch_mode 读取顺序：默认 worktrack-contract-primary 下 contract 的 runtime_dispatch_mode 优先；仅 global-override 时 control-state 覆盖；contract 未声明时使用 control-state 默认值。runtime_dispatch_mode 支持 auto/delegated/current-carrier，默认 auto。
+WorktrackScope skills 负责局部状态转移闭环，消费 contract/plan/evidence/control state，可派发下游 SubAgent 但不伪装成”控制平面+执行平面一体”。schedule-worktrack-skill 是当前 selected_next_action 与 dispatch handoff packet 的唯一 authority；dispatch-skills 只消费 scheduling packet 不反向改写 queue。generic-worker-skill 是无专用 skill 时的通用执行载体；doc-catch-up-worker-skill 是 Harness 入口观察和 closeout 前推荐使用的文档基线追平载体，release / publish / version / VCS tracking 事实变化后也必须承担 version fact sync。freshly seeded 或 autonomous continuation 的首个 execution-facing round，初始 slice 必须先收紧到最小可验证子片段。runtime_dispatch_mode 读取顺序：默认 worktrack-contract-primary 下 contract 的 runtime_dispatch_mode 优先；仅 global-override 时 control-state 覆盖；contract 未声明时使用 control-state 默认值。control-state 的 subagent_dispatch_mode 与 subagent_dispatch_mode_override_scope 只提供 repo 级默认和覆盖边界。runtime_dispatch_mode 支持 auto/delegated/current-carrier，默认 auto；若无法委派需记录 runtime fallback 和 dispatch package unsafe 等边界事实。
 
 ## Catalog
 
@@ -115,11 +115,13 @@ canonical executable source：
 
 ### 5. doc-catch-up-worker-skill
 
-职责：将已验证实现事实追平到正确长期文档层，清理旧路径/数量/命令/流程/边界描述，在 closeout 前降低后续开发引用过期上下文的风险。
+职责：将已验证实现事实追平到正确长期文档层，清理旧路径/数量/命令/流程/边界描述，在 Harness 入口观察和 closeout 前降低后续开发引用过期上下文的风险。版本相关工作中还负责 version fact sync：区分 source version、published version、VCS tracking facts 与 docs freshness，在 harness entry observation、pre-publish readiness、post-publish verification、post-smoke closeout、harness closeout 或 failed publish/rollback 后同步 registry dist-tag、published version、gitHead、tarball、approval lock、selector、git commit/tag/branch 与 SVN revision（如适用）事实。
 
 主要依赖：
 
 - 当前 diff 与验证证据
+- source version facts 与 published version facts
+- VCS tracking facts（git 或 SVN）
 - `docs/project-maintenance/`
 - `docs/harness/`
 - 相关入口页和承接层正文
@@ -131,10 +133,11 @@ canonical executable source：
 当前状态：
 
 - `initial canonical executable skeleton landed`
+- `version fact sync mode landed; harness entry should mark freshness risk, and release closeout should call this skill after registry verification and before final handback`
 
 ### 6. review-evidence-skill
 
-职责：并行分派并综合四路 review SubAgent（static-semantic-review、test-review、project-security-review、complexity-performance-review），汇总 code review/静态检查/结构评估结果，形成 review lane envelope 供 gate 汇总，对低严重度噪声做截断并将重复症状标为可能的上游约束问题。
+职责：并行分派并综合四路 review SubAgent（static-semantic-review、test-review、project-security-review、complexity-performance-review），分别覆盖静态语义解释、测试 review、security review、代码复杂度和性能 review，汇总 code review/静态检查/结构评估结果，形成 review lane envelope 供 gate 汇总，对低严重度噪声做截断并将重复症状标为可能的上游约束问题。
 
 主要依赖：
 

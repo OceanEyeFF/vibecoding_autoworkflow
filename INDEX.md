@@ -1,9 +1,9 @@
 ---
 title: "根目录索引"
 status: active
-updated: 2026-04-30
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-04-30
+last_verified: 2026-05-06
 ---
 # 根目录索引
 
@@ -30,6 +30,10 @@ last_verified: 2026-04-30
 | 改阅读路由或写回规则 | [`AGENTS.md`](./AGENTS.md) / [`review-verify-handbook.md`](./docs/project-maintenance/governance/review-verify-handbook.md) |
 | 改业务源码 | [`product/README.md`](./product/README.md) |
 | 改工具脚本、部署或评测 | [`toolchain/README.md`](./toolchain/README.md) |
+| 使用或排查 `aw-installer` 分发 | [`docs/project-maintenance/deploy/README.md`](./docs/project-maintenance/deploy/README.md) |
+| 查看 Codex / Claude backend 使用差异 | [`docs/project-maintenance/usage-help/README.md`](./docs/project-maintenance/usage-help/README.md) |
+| 运行 npx / package smoke 或部署后行为观察 | [`docs/project-maintenance/testing/README.md`](./docs/project-maintenance/testing/README.md) |
+| 确认 release channel、publish 或外部试用治理 | [`docs/project-maintenance/governance/README.md`](./docs/project-maintenance/governance/README.md) |
 | 看 repo-local runbook | [`docs/project-maintenance/README.md`](./docs/project-maintenance/README.md) |
 | 运行路径治理检查 | [`docs/project-maintenance/governance/path-governance-checks.md`](./docs/project-maintenance/governance/path-governance-checks.md) |
 | 看 agent-facing 最小规则 | [`AGENTS.md`](./AGENTS.md) |

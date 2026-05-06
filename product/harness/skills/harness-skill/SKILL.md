@@ -68,6 +68,7 @@ Harness 作为控制系统，包含以下系统组件：
 
 **示例**：
 - git / diff / branch metadata
+- release/package/VCS version facts（package version、git commit/tag/branch、SVN revision 如适用、registry dist-tag）
 - test results
 - code review results
 - diff impact analysis
@@ -326,8 +327,9 @@ Gate 应汇总**正交校验面**的裁决：
 2. 根据当前 Scope 选择传感器组合：
    - `RepoScope`：读取 `Repo Goal/Charter`、`Repo Snapshot/Status`
    - `WorktrackScope`：读取 `Worktrack Contract`、`Plan/Task Queue`、当前 evidence
-3. 如果标准快照缺失、过期或明显不足，只收集解释缺口所需的最小探查证据
-4. 产出结构化状态估计结果，而不是文字摘要
+3. 启动时执行最小文档 freshness 观察：如果发现本轮涉及 release、deploy、adapter、package、VCS baseline、CLI 版本或 operator-facing docs，且文档版本事实可能落后于代码/registry/VCS 证据，应标记 `doc_catch_up_needed`，并在合适阶段绑定 `doc-catch-up-worker-skill`；这一步只记录风险，不把未验证事实直接写入 docs
+4. 如果标准快照缺失、过期或明显不足，只收集解释缺口所需的最小探查证据
+5. 产出结构化状态估计结果，而不是文字摘要
 
 ### 10.2 算子选择阶段
 
@@ -389,8 +391,9 @@ Gate 应汇总**正交校验面**的裁决：
 1. 根据裁决结果更新 `Harness Control State`
 2. 如果是 `通过` → 进入 `Close` → 然后 `RepoScope.Refresh`
 3. 如果是 `失败/阻塞` → 进入 `Recover`
-4. 如果命中正式停止条件 → 向程序员返回控制权
-5. 不要直接把子代理的返回结果当成状态更新的唯一依据；必须经过 Gate 裁决
+4. 在 Close、handback 或 release/post-smoke 收口前，如果本轮改变了代码版本、package/release 事实、git/SVN baseline、deploy/adapter 行为、验证命令或 operator-facing 文档，必须调用或显式安排 `doc-catch-up-worker-skill`；版本事实场景使用 `version fact sync`，并记录 source version、published version、VCS tracking facts 与未更新文档理由
+5. 如果命中正式停止条件 → 向程序员返回控制权
+6. 不要直接把子代理的返回结果当成状态更新的唯一依据；必须经过 Gate 裁决
 
 ---
 
@@ -513,6 +516,7 @@ Gate 应汇总**正交校验面**的裁决：
 - **不要跳过 Evidence 直接做 Gate 裁决。** 二者必须分开。
 - **不要把三个正交校验面（implementation/validation/policy）压缩成一个笼统判定。**
 - **不要把 `PR 已发出` 当成闭环终点。** 完整的 closeout 是 `merge → refresh repo snapshot → cleanup → return RepoScope`。
+- **不要在缺少文档追平检查时结束涉及版本、release、deploy 或 VCS baseline 的 Harness 轮次。** 如果当前轮次发现 Harness 管理外的更新，或提示词没有按工作流规范提供版本事实，也必须至少记录 freshness risk，并把 `doc-catch-up-worker-skill` 作为后续动作或当前收口动作。
 
 ---
 

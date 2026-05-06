@@ -1,3 +1,10 @@
+---
+title: "Contributing"
+status: active
+updated: 2026-05-06
+owner: aw-kernel
+last_verified: 2026-05-06
+---
 # Contributing
 
 This repository is a repo-side contract layer. Keep contributions narrow, explicit, and aligned to the governance rules.
@@ -13,10 +20,10 @@ This repository is a repo-side contract layer. Keep contributions narrow, explic
 Run these before requesting review:
 
 ```bash
-python toolchain/scripts/test/folder_logic_check.py
-python toolchain/scripts/test/path_governance_check.py
-python toolchain/scripts/test/governance_semantic_check.py
-python -m pytest toolchain/scripts/test/test_folder_logic_check.py toolchain/scripts/test/test_closeout_gate_tools.py toolchain/scripts/test/test_agents_adapter_contract.py
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/folder_logic_check.py
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/path_governance_check.py
+PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_check.py
+PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_folder_logic_check.py toolchain/scripts/test/test_closeout_gate_tools.py toolchain/scripts/test/test_agents_adapter_contract.py
 ```
 
 ## Review Expectations

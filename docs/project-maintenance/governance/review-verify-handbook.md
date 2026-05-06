@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 治理入口"
 status: active
-updated: 2026-05-05
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-05-05
+last_verified: 2026-05-06
 ---
 # Review / Verify 治理入口
 
@@ -31,6 +31,7 @@ last_verified: 2026-05-05
 - AGENTS.md 或执行流程变更需同步本文
 - runbook/usage-help/testing/Harness 长文变更需说明当前页类型（入口/runbook/合同/指导）并清理重复正文
 - deploy/adapter 变更需同步对应 runbook、maintenance 与 usage-help，口径保持 destructive reinstall model
+- package/release/version/VCS baseline 事实变更需调用 `doc-catch-up-worker-skill` 做 version fact sync；pre-publish 只同步 source version facts 与 VCS tracking facts，post-publish registry verification 后才能同步 published version facts
 - docs/harness/、product/harness/skills/ 或 adapters 变更需保持合同层与 executable layer 分工
 - branch/PR/baseline 规则变更需从 `origin/HEAD` 或 Worktrack Contract 的 `baseline_branch` 取值，不写死默认分支名
 - 退役/删除文档域需同步入口页、旧路径引用和治理检查
@@ -46,7 +47,7 @@ last_verified: 2026-05-05
 - skills/templates 分层规则变更：`path_governance_check.py` + `governance_semantic_check.py`
 - branch/PR/baseline 或 hook 变更：`git symbolic-ref` + `bash -n pre-push` + dry-run
 - `.aw_template`/`.aw/` scaffold 变更：`aw_scaffold.py validate` + `test_aw_scaffold.py`
-- closeout/gate/backfill 变更：`closeout_acceptance_gate.py --json` + 对应最小 pytest；closeout 按 `scope_gate -> spec_gate -> static_gate -> cache_gate -> test_gate -> smoke_gate` 收口；`scope_gate` 允许 root `README.md` 与 `product/.aw_template/`；`test_gate` 运行 closeout/folder/path/semantic/adapter 回归 + deploy unittest + npm packlist + publish dry-run + tarball smoke
+- closeout/gate/backfill 变更：`closeout_acceptance_gate.py --json` + 对应最小 pytest；closeout 按 `scope_gate -> spec_gate -> static_gate -> cache_gate -> test_gate -> smoke_gate` 收口；`cache_gate` 扫描 `docs/`、`product/`、`toolchain/` 和 `tools/` 下的 Python / pytest 运行缓存；`scope_gate` 允许 root `README.md` 与 `product/.aw_template/`；`test_gate` 运行 closeout/folder/path/semantic/adapter 回归 + deploy unittest + npm packlist + publish dry-run + tarball smoke
 - deploy mapping/payload contract 变更：`test_agents_adapter_contract.py`；改 gate 链路再补 `closeout_acceptance_gate.py --json`
 - adapter/deploy 变更：`test_agents_adapter_contract.py` + deploy unittest + npm test + smoke + 双端 `npm pack --dry-run --json` + publish dry-run + tarball 全命令 smoke（diagnose/update/install/verify）+ 隔离 target repo full smoke + Python reference deploy/verify
 - Harness runtime 观察或 operator-facing runbook 变更：先跑对应 deploy/adapter 最小验证，再按 [Codex Post-Deploy Behavior Tests](../testing/codex-post-deploy-behavior-tests.md) 做真实观察（不用 mock smoke 替代）

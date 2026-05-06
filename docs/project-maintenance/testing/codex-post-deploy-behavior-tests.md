@@ -49,7 +49,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py ins
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents --agents-root "$TMP_AGENTS_ROOT"
 ```
 
-当前 `agents` install 包含全部 19 个 skills（RepoScope/WorktrackScope/验证/裁决/恢复/收尾/通用执行）；`set-harness-goal-skill` 自带 `.aw/` 初始化资产。
+当前 `agents` install 已包含全部 19 个 skills（RepoScope/WorktrackScope/验证/裁决/恢复/收尾/通用执行）；`set-harness-goal-skill` 自带 `.aw/` 初始化资产。
 
 ## 五、选择观察策略
 

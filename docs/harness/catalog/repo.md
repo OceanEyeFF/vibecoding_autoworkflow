@@ -1,9 +1,9 @@
 ---
 title: "Harness Skill Catalog / RepoScope"
 status: draft
-updated: 2026-04-28
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-04-28
+last_verified: 2026-05-06
 ---
 # RepoScope Skill Catalog
 
@@ -46,7 +46,7 @@ preferred handoff fields：
 
 ### 2. repo-whats-next-skill
 
-职责：基于当前 repo 状态判断下一步演进方向——切入 worktrack、刷新 baseline 或进入 goal change control。保留 recommended_repo_action 字段同时回写 recommended_next_route 供 supervisor 消费。可直接基于 Goal/Charter、Snapshot/Status 与 Control State 完成一轮判定，不要求先有 repo-status-skill 产物。canonical skill 保留完整 RepoScope.deciding 动作空间但 deploy profile 收窄时输出必须反映 active route boundary。Worktrack Contract 只能作为边界证据而非 repo 级任务队列。默认 next-step 偏松时启用 priority reframe/contradiction analysis 模式；完全无更新内容时启用 overview fallback 模式生成候选建议。用 Facts/Inferences/Unknowns、单一 Primary Contradiction、Top Priority Now、Do Not Do 等字段压缩判断。新鲜 Repo Analysis 可作为结构化输入但无此 artifact 时仍需直接判定。recommended_repo_action 必须投影成 recommended_next_route 等字段。overview fallback 可参考 dialectical planning 方法论但必须压缩为候选建议。只返回 candidate_worktracks 与 top_candidate，不创建工作追踪或改变控制状态。这些模式属于 RepoScope 分析模式，不是新 skill。
+职责：基于当前 repo 状态判断下一步演进方向——切入 worktrack、刷新 baseline 或进入 goal change control。保留 recommended_repo_action 字段同时回写 recommended_next_route 供 supervisor 消费。可直接基于 Goal/Charter、Snapshot/Status 与 Control State 完成一轮判定，不要求先有 repo-status-skill 产物。canonical skill 保留完整 RepoScope.deciding 动作空间但 deploy profile 收窄时输出必须反映 active route boundary。Worktrack Contract 只能作为边界证据而非 repo 级任务队列。默认 next-step 偏松时启用 priority reframe/contradiction analysis 模式；完全无更新内容时启用 overview fallback 模式生成候选建议。用 Facts / Inferences / Unknowns、单一 Primary Contradiction、Top Priority Now、Do Not Do 等字段压缩判断。新鲜 Repo Analysis 可作为结构化输入但无此 artifact 时仍需直接判定。recommended_repo_action 必须投影成 recommended_next_route 等字段。overview fallback 可参考 project-dialectic-planning-skill 的 dialectical planning 方法论但必须压缩为候选建议。只返回 candidate_worktracks 与 top_candidate，不创建工作追踪，不改变 Harness 控制状态。这些模式属于 RepoScope 分析模式，不是新 skill。
 
 主要依赖：
 

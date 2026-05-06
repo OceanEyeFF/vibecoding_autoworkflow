@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Pre-Publish Governance"
 status: active
-updated: 2026-05-05
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-05-05
+last_verified: 2026-05-06
 ---
 # aw-installer Pre-Publish Governance
 
@@ -39,7 +39,7 @@ RC lanes 必须用 `aw-installer@next`，不用裸 `aw-installer`。
 npm pack --dry-run --json
 ```
 
-确认 packlist 包含入口点、payload descriptor、canonical skill payload 与 docs，排除状态/缓存/临时证据；root `README.md` 和 governance/testing/usage docs 指向正确选择器；deploy docs 不变成 release policy、testing docs 不变成 approval pages。
+确认 packlist 包含入口点、payload descriptor、canonical skill payload 与 docs，排除状态/缓存/临时证据；root `README.md` 和 governance/testing/usage docs 指向正确选择器；deploy docs 不变成 release policy、testing docs 不变成 approval pages。若 package version、approval lock、selector 或 CLI surface 变化，publish 前先调用 `doc-catch-up-worker-skill` 做 source version docs freshness 检查；此时只能同步 source version facts，不得写入尚未发布的 registry fact。
 
 ## 3. Required Local Preflight Evidence
 

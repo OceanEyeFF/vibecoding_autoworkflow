@@ -1,9 +1,9 @@
 ---
 title: "AutoWorkflow"
 status: active
-updated: 2026-05-04
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-05-04
+last_verified: 2026-05-06
 ---
 # AutoWorkflow
 
@@ -20,7 +20,7 @@ last_verified: 2026-05-04
 
 ## 使用 `aw-installer`
 
-`aw-installer` 是已批准的 unscoped npm package identity，也是当前仓库内分发入口和 CLI bin。当前 npm registry 事实是 `aw-installer@next` 指向 `0.4.3-rc.2`，`aw-installer@latest` 指向 `0.4.0-rc.1`，`latest` 不代表稳定 release approval。当前 checkout 已准备 `4.4.0-rc.0` release candidate；在 GitHub Release publish workflow 成功前，registry `next` 仍不会指向该版本。已发布的 `0.4.3-rc.2` registry artifact 绑定 `gitHead=199af2b2d195542fd5f1621243b041a20e497686`；后续 publish 必须使用新的 immutable npm version。复制粘贴入口见 [`Codex Usage Help`](./docs/project-maintenance/usage-help/codex.md) 和 [`Claude Usage Help`](./docs/project-maintenance/usage-help/claude.md)，release channel 与 publish 边界见 [`aw-installer Release Channel Governance`](./docs/project-maintenance/governance/aw-installer-release-channel-governance.md)，npx/package smoke 见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
+`aw-installer` 是当前仓库的分发入口和 CLI bin。根 README 只保留试用入口和文档分流；registry 事实、release channel、package smoke 与 publish 准入以 project-maintenance 文档为准。
 
 ```bash
 npx aw-installer@next
@@ -38,15 +38,7 @@ npx aw-installer@next update --backend agents --yes
 npx aw-installer@next install --backend agents
 ```
 
-这里的 `aw-installer@next` 是当前已发布 RC 试用选择器；裸 `npx aw-installer` 仍按 npm `latest` 解析到较旧的 rc1。当前 RC 不是稳定 release 批准，稳定版本和未来 publish 仍需单独审批。`diagnose` 和 `verify` 是只读检查；`install` 是显式写入当前 payload 的底层命令；`update` 默认只输出 dry-run plan。推荐写入路径是在确认 plan 后运行 `update --yes`，它会按 `prune --all -> check_paths_exist -> install -> verify` 写入目标仓库的 `.agents/skills`。完整入口合同见 [`Distribution Entrypoint Contract`](./docs/project-maintenance/deploy/distribution-entrypoint-contract.md)，registry npx smoke 与反馈日志见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)。
-
-`aw-installer --help` / `--version` 由 Node wrapper 直接处理，不需要启动 Python；当前 Node-owned 覆盖包括 agents package/local-source `diagnose`、`update` dry-run、`check_paths_exist`、`verify`、clean-target `install`、non-clean planned-path conflict blocking、`prune --all`、`update --yes`，Claude package/local-source `diagnose`、`check_paths_exist`、`verify`、`update` dry-run、`install`、`prune --all`、`update --yes`，以及显式 agents GitHub-source `update` 的 JSON、human 与 `--yes` 路径。`update --backend agents --json` 仍保留 dry-run JSON 字段，包括 `backend`、`source_kind`、`source_ref`、`source_root`、`target_root`、`operation_sequence`、`managed_installs_to_delete`、`planned_target_paths`、`issues` 与 `blocking_issues`。package/runtime `aw-installer` 不再 fallback 到 Python；unsupported / unmatched deploy modes 必须在 Node runtime 中显式失败，而不是转交 Python deploy wrapper。Python deploy scripts 可继续作为 repo-local reference、parity 或 governance assets 留在源码树中，但不属于 package/runtime dependencies。论坛试用应显式使用 `aw-installer@next`，避免裸 `latest` 解析到较旧的 rc1。
-
-`aw-installer update` 默认使用 package 或 checkout 中的 source payload；当前 package/source 合同保留显式 `--source github --github-repo OceanEyeFF/vibecoding_autoworkflow --github-ref <ref-containing-current-payload>`，从 GitHub source archive 读取本次 update 的 source root。`master` 只有在已包含当前 required payload source 时才是有效 ref。`update` 仍不做 channel 解析、自升级、验签或自动回滚。payload provenance 与 update trust boundary 见 [`Payload Provenance And Update Trust Boundary`](./docs/project-maintenance/deploy/payload-provenance-trust-boundary.md)。
-
-### 外部试用路径：目标仓库里运行
-
-当前 RC 试用路径是在目标项目根目录显式运行 `aw-installer@next`：
+当前 public / near-public 主路径仍是 `agents` backend，也就是 Codex 使用的 `.agents/skills/` payload。推荐从目标仓库根目录先做只读观察，再显式 apply：
 
 ```bash
 npx aw-installer@next diagnose --backend agents --json
@@ -55,59 +47,17 @@ npx aw-installer@next update --backend agents --yes
 npx aw-installer@next verify --backend agents
 ```
 
-维护者验证当前 checkout 时仍可使用本地 `.tgz` 或明确 checkout source。复制粘贴流程见 [`Codex Usage Help`](./docs/project-maintenance/usage-help/codex.md) 和 [`Claude Usage Help`](./docs/project-maintenance/usage-help/claude.md)。
+Claude Code 目前是 compatibility lane，使用 `claude` backend 和 `.claude/skills/` payload，不替代 `agents` 主路径。
 
-### 干净目录初始化
+分发相关入口：
 
-如果目标目录是一个新仓库或空工作目录，推荐先建立 git worktree，再从该目录运行 installer：
-
-```bash
-mkdir target-project
-cd target-project
-git init
-
-npx aw-installer@next diagnose --backend agents --json
-npx aw-installer@next update --backend agents
-npx aw-installer@next update --backend agents --yes
-npx aw-installer@next verify --backend agents
-```
-
-这一步只安装 AW skill payload 到目标项目的 `.agents/skills/`。之后在 Codex 中运行 `$set-harness-goal-skill`，再创建 `.aw/` 控制面；不要把 `.aw/` 初始化和 skill payload 安装混成同一个隐式写入步骤。
-
-### 已有工作内容的目录初始化
-
-如果目标仓库已经有代码、文档或进行中的工作，先用只读命令看计划，再由目标 owner 批准写入：
-
-```bash
-npx aw-installer@next diagnose --backend agents --json
-npx aw-installer@next update --backend agents
-```
-
-确认 dry-run 只会写入目标仓库的 `.agents/skills/aw-*` 受管目录后，再运行：
-
-```bash
-npx aw-installer@next update --backend agents --yes
-npx aw-installer@next verify --backend agents
-```
-
-随后让 Codex 初始化 `.aw/` 时，应要求它保留现有源码和文档，把已有仓库事实当作 discovery input，而不是覆盖已确认的项目真相。若目标仓库已经有 `.aw/`，必须先检查现有 control state；未经 operator 确认，不要覆盖 `.aw/goal-charter.md`。
-
-外部试用反馈请走 [`aw-installer External Trial Governance`](./docs/project-maintenance/governance/aw-installer-external-trial-governance.md)、[`trial feedback issue template`](./.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [`bug/blocker issue template`](./.github/ISSUE_TEMPLATE/aw-installer-bug.yml)；registry npx、本地 `.tgz` 和多临时目录 smoke 路径见 [`npx Command Test Execution`](./docs/project-maintenance/testing/npx-command-test-execution.md)，registry npx smoke 会生成每个目标的 `aw-installer-npx-run.log`。
-
-也可以从当前 checkout 打一个本地 `.tgz`，再在目标项目根目录用同一 package 入口试跑：
-
-```bash
-tmpdir="$(mktemp -d)"
-npm pack --json --pack-destination "$tmpdir" > "$tmpdir/pack.json"
-package_file="$(node -e "const fs = require('node:fs'); const payload = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); console.log(payload[0].filename);" "$tmpdir/pack.json")"
-
-cd /path/to/target-project
-AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer diagnose --backend agents --json
-AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents
-AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npm exec --yes --package "$tmpdir/$package_file" -- aw-installer update --backend agents --yes
-```
-
-这条 pre-release 试用路径显式清空 `AW_HARNESS_REPO_ROOT` 与 `AW_HARNESS_TARGET_REPO_ROOT`，因此会从 `.tgz` 包内读取 source payload，并把命令运行时所在的目标项目作为 target repo；写入只发生在该目标项目的 `.agents/skills` 下。如果显式设置这些 override，则以 override 指向的 source/target 边界为准。
+- Codex / `agents` 使用帮助：[`docs/project-maintenance/usage-help/codex.md`](./docs/project-maintenance/usage-help/codex.md)
+- Claude 使用帮助：[`docs/project-maintenance/usage-help/claude.md`](./docs/project-maintenance/usage-help/claude.md)
+- 通用 deploy 主流程：[`docs/project-maintenance/deploy/deploy-runbook.md`](./docs/project-maintenance/deploy/deploy-runbook.md)
+- CLI / TUI 包装层合同：[`docs/project-maintenance/deploy/distribution-entrypoint-contract.md`](./docs/project-maintenance/deploy/distribution-entrypoint-contract.md)
+- source / target / trust boundary：[`docs/project-maintenance/deploy/payload-provenance-trust-boundary.md`](./docs/project-maintenance/deploy/payload-provenance-trust-boundary.md)
+- npx / `.tgz` smoke：[`docs/project-maintenance/testing/npx-command-test-execution.md`](./docs/project-maintenance/testing/npx-command-test-execution.md)
+- release channel 与 publish 准入：[`docs/project-maintenance/governance/aw-installer-release-channel-governance.md`](./docs/project-maintenance/governance/aw-installer-release-channel-governance.md)
 
 ## 我们在构建什么
 

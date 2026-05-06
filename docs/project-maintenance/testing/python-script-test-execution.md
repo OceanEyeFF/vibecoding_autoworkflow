@@ -1,9 +1,9 @@
 ---
 title: "Python Script Test Execution"
 status: active
-updated: 2026-04-28
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-04-28
+last_verified: 2026-05-06
 ---
 # Python Script Test Execution
 
@@ -27,11 +27,11 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
 
 ## Deploy Regression Tests
 
-涉及 `toolchain/scripts/deploy/` 或 wrapper 时：`python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'`；同时影响治理脚本/closeout 测试时补 `python3 -m pytest toolchain/scripts/test -q`。
+涉及 `toolchain/scripts/deploy/` 或 wrapper 时：`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'`；同时影响治理脚本/closeout 测试时补 `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test -q`。
 
 ## Closeout Gate
 
-涉及 closeout/gate/package/doc/adapter 时：`python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`，聚合 scope/spec/static/cache/test/smoke gates 并检查缓存污染。
+涉及 closeout/gate/package/doc/adapter 时：`PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/closeout_acceptance_gate.py --json`，聚合 scope/spec/static/cache/test/smoke gates 并检查缓存污染。
 
 ## Diff Hygiene
 

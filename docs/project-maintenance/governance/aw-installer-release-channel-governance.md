@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Release Channel Governance"
 status: active
-updated: 2026-05-05
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-05-05
+last_verified: 2026-05-06
 ---
 # aw-installer Release Channel Governance
 
@@ -15,7 +15,12 @@ last_verified: 2026-05-05
 
 ## 当前 registry 事实
 
-`next` -> `0.4.3-rc.2`，`latest` -> `0.4.0-rc.1`；本地 candidate 为 `4.4.0-rc.0`，publish 成功前不是 registry artifact。已发布 npm version 不可复用。
+2026-05-06 已核对 npm registry：
+
+- `latest` -> `4.4.0`，`gitHead=2a68869d558bd538d9e9867f94b574caa797fdaf`
+- `next` -> `4.4.0-rc.0`，`gitHead=0a1a281a75af3937c4c92b18134db08e8e1b2097`
+
+当前 checkout 的 root `package.json` 仍绑定 `approvedVersion=4.4.0-rc.0`、`approvedGitTag=v4.4.0-rc.0`、`approvedChannel=next`。后续再次 publish 必须使用新的 immutable npm version，并在显式 release-approval worktrack 中更新 approval lock；不得复用已发布版本。
 
 ## Channel 对应关系
 
