@@ -59,8 +59,11 @@
 ## Baseline Traceability
 
 > 记录最近一次 worktrack 关闭后的已验证基线，供后续续跑时快速定位。
+> `latest_observed_checkpoint` 与 `last_doc_catch_up_checkpoint` 是 git hash 幂等性锚点，用于避免对同一代码基线重复执行 repo-refresh 和 doc-catch-up。harness-skill 启动时通过 git rev-parse HEAD 对比这两个字段决定是否跳过重复刷新。
 
 - last_verified_checkpoint:
+- latest_observed_checkpoint:
+- last_doc_catch_up_checkpoint:
 - checkpoint_type:
 - checkpoint_ref:
 - verified_at:
