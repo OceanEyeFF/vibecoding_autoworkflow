@@ -1,9 +1,9 @@
 ---
 title: "GUIDE - 兼容入口"
 status: active
-updated: 2026-03-26
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-03-26
+last_verified: 2026-05-06
 ---
 # GUIDE - 兼容入口
 
@@ -16,9 +16,8 @@ last_verified: 2026-03-26
 - 当前路径与文档治理入口：`AGENTS.md`
 - 当前工具层入口：`toolchain/toolchain-layering.md`
 - 当前业务源码入口：`product/README.md`
-- 当前边界入口：`docs/harness/adjacent-systems/memory-side/layer-boundary.md`
-- 当前总览入口：`docs/harness/adjacent-systems/memory-side/overview.md`
-- 当前模型入口：`docs/harness/adjacent-systems/memory-side/skill-agent-model.md`
+- Harness artifact 合同入口：`docs/harness/artifact/README.md`
+- Harness Worktrack 合同入口：`docs/harness/artifact/worktrack/contract.md`
 - `.agents/`、`.claude/`、`.autoworkflow/`、`.spec-workflow/`、`.nav/` 默认都不是主线入口
 - 保留本文件的原因：兼容历史链接，避免旧文档直接断链
 - 不要在这里维护主线规则

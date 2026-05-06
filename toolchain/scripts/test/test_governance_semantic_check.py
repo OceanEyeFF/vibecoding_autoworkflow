@@ -19,6 +19,7 @@ from governance_semantic_check import (
     check_path_governance_docs_list_gitignore_entries,
     check_repo_python_commands_are_bytecode_free,
     check_repo_whats_next_overview_fallback_contract,
+    check_retired_entrypoint_references,
     check_review_evidence_four_lane_contract,
     check_review_verify_docs_list_closeout_steps,
     check_root_tool_shims_disable_bytecode,
@@ -87,6 +88,30 @@ def test_check_outdated_placeholder_phrases_flags_stale_text(tmp_path: Path) -> 
     check_outdated_placeholder_phrases(tmp_path, report)
 
     assert any("toolchain/scripts/README.md" in item for item in report.failures)
+
+
+def test_check_retired_entrypoint_references_flags_inline_stale_path(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "GUIDE.md",
+        "当前边界入口：`docs/harness/adjacent-systems/memory-side/layer-boundary.md`\n",
+    )
+
+    report = SemanticReport()
+    check_retired_entrypoint_references(tmp_path, report)
+
+    assert any("GUIDE.md" in item for item in report.failures)
+
+
+def test_check_retired_entrypoint_references_accepts_current_guide(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "GUIDE.md",
+        "Harness artifact 合同入口：`docs/harness/artifact/README.md`\n",
+    )
+
+    report = SemanticReport()
+    check_retired_entrypoint_references(tmp_path, report)
+
+    assert report.failures == []
 
 
 def test_check_append_request_contract_terms_flags_drift(tmp_path: Path) -> None:
