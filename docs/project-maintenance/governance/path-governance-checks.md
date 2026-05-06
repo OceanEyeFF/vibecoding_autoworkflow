@@ -13,7 +13,7 @@ last_verified: 2026-05-06
 
 ## 一、适用范围
 
-本页只覆盖轻量治理检查：markdown 相对链接可达性、关键入口文件存在性、AGENTS.md 回链、主线入口完整性、.gitignore hidden layer 忽略、frontmatter 与 status 语义、status:suspended 误用、承接关系一致性、foundations 影子文件、已退役 placeholder 回流、product/harness/ 最小 executable root 骨架、workflow-families 文档真相定位。不替代人工审阅，不检查所有 anchor 片段。
+本页只覆盖轻量治理检查：markdown 相对链接可达性、关键入口文件存在性、AGENTS.md 回链、主线入口完整性、.gitignore hidden layer 忽略、frontmatter 与 status 语义、status:suspended 误用、承接关系一致性、foundations 影子文件、已退役 placeholder 回流、product/harness/ 最小 executable root 骨架、workflow-families 文档真相定位。不替代人工审阅，不检查所有 anchor 片段。根兼容入口当前只保留 `README.md`、`INDEX.md` 与 `AGENTS.md`；已退役的 `GUIDE.md` 和 `ROADMAP.md` 不再作为必需入口。
 
 ## 二、脚本入口
 
@@ -25,7 +25,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
 
 ## 三、脚本当前会检查什么
 
-1. `folder_logic_check.py` — 根目录 object 是否在 allowlist（`product/`、`docs/`、`toolchain/`、`.codex/`、`.agents/`、`.claude/`、`.aw/`、`.autoworkflow/`、`.spec-workflow/`、`.nav/`、`tools/`、`.pytest_cache/`、入口/基础设施文件）；裸 `.pyc`/`.pyo` 不允许
+1. `folder_logic_check.py` — 根目录 object 是否在 allowlist（`product/`、`docs/`、`toolchain/`、`.codex/`、`.agents/`、`.claude/`、`.aw/`、`.autoworkflow/`、`.spec-workflow/`、`.nav/`、`tools/`、`.pytest_cache/`、入口/基础设施文件，包括 Claude Code 适配入口 `CLAUDE.md`）；裸 `.pyc`/`.pyo` 不允许
 2. `product/`、`docs/`、`toolchain/` 一级子目录合规；错放内容拦截（product 无 runbook/缓存/state，docs 无可执行/缓存，toolchain 无业务源码/mount，tools 无 Python 缓存）
 3. hidden/state/mount 层 tracked 状态受控：`.agents/`、`.claude/` tracked 即失败；`.codex/` 仅 `config.toml`+`rules/repo.rules`；`tools/` 仅显式 compat shim；`.pytest_cache/` tracked 即失败
 4. `.nav/` 仅含 `README.md`、`@docs`、`@skills`；`@docs` 与 `@skills` 是 symlink 且解析到合法目标
