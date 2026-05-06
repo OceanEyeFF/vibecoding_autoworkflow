@@ -23,9 +23,11 @@ last_verified: 2026-05-06
 | `verify` | 严格复验 source 合法性、target root、live install 对齐、conflict/unrecognized/drift | 发现 issue 时非零退出 |
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py diagnose --backend agents --json
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents
+aw-installer diagnose --backend agents --json
+aw-installer verify --backend agents
 ```
+
+repo-local Python reference/parity commands remain available for adapter maintenance and comparison tests, but they are not the package/local operator runtime path.
 
 backend-specific target root override 见 [Codex Usage Help](../usage-help/codex.md) 和 [Claude Usage Help](../usage-help/claude.md)。
 

@@ -17,13 +17,23 @@ last_verified: 2026-05-06
 
 ## 主流程
 
+package/local operator 主路径使用 `aw-installer`：
+
+```bash
+aw-installer prune --all --backend agents
+aw-installer check_paths_exist --backend agents
+aw-installer install --backend agents
+```
+
+repo-local Python reference/parity 命令只用于维护 adapter 兼容性、对照测试或治理检查：
+
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents
 ```
 
-backend-specific target root override 见 [Codex Usage Help](../usage-help/codex.md) 和 [Claude Usage Help](../usage-help/claude.md)。package/local wrapper 必须保持同一 deploy 语义；包装层命令面由 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 管理。
+backend-specific target root override 见 [Codex Usage Help](../usage-help/codex.md) 和 [Claude Usage Help](../usage-help/claude.md)。package/local `aw-installer` 必须保持同一 deploy 语义；包装层命令面由 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 管理。
 
 ## 三步停止线
 

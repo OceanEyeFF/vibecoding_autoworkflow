@@ -23,13 +23,32 @@ function zipHeaderUInt32(value) {
   return buffer;
 }
 
+const testCrc32Table = Uint32Array.from({ length: 256 }, (_, index) => {
+  let value = index;
+  for (let bit = 0; bit < 8; bit += 1) {
+    value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+  }
+  return value >>> 0;
+});
+
+function testCrc32(buffer) {
+  let checksum = 0xffffffff;
+  for (const byte of buffer) {
+    checksum = testCrc32Table[(checksum ^ byte) & 0xff] ^ (checksum >>> 8);
+  }
+  return (checksum ^ 0xffffffff) >>> 0;
+}
+
+assert.equal(testCrc32(Buffer.from("123456789", "ascii")), 0xcbf43926);
+
 function createStoredZip(entries) {
   const localParts = [];
   const centralParts = [];
   let offset = 0;
-  for (const [name, text] of entries) {
+  for (const [name, text, options = {}] of entries) {
     const nameBuffer = Buffer.from(name);
     const dataBuffer = Buffer.from(text);
+    const crc32 = options.crc32 ?? testCrc32(dataBuffer);
     const local = Buffer.concat([
       zipHeaderUInt32(0x04034b50),
       zipHeaderUInt16(20),
@@ -37,7 +56,7 @@ function createStoredZip(entries) {
       zipHeaderUInt16(0),
       zipHeaderUInt16(0),
       zipHeaderUInt16(0),
-      zipHeaderUInt32(0),
+      zipHeaderUInt32(crc32),
       zipHeaderUInt32(dataBuffer.length),
       zipHeaderUInt32(dataBuffer.length),
       zipHeaderUInt16(nameBuffer.length),
@@ -54,7 +73,7 @@ function createStoredZip(entries) {
       zipHeaderUInt16(0),
       zipHeaderUInt16(0),
       zipHeaderUInt16(0),
-      zipHeaderUInt32(0),
+      zipHeaderUInt32(crc32),
       zipHeaderUInt32(dataBuffer.length),
       zipHeaderUInt32(dataBuffer.length),
       zipHeaderUInt16(nameBuffer.length),
@@ -90,6 +109,7 @@ function createDeflatedZip(entries) {
     const nameBuffer = Buffer.from(name);
     const dataBuffer = Buffer.from(text);
     const compressedBuffer = deflateRawSync(dataBuffer);
+    const crc32 = options.crc32 ?? testCrc32(dataBuffer);
     const declaredCompressedSize = options.compressedSize ?? compressedBuffer.length;
     const declaredUncompressedSize = options.uncompressedSize ?? dataBuffer.length;
     const local = Buffer.concat([
@@ -99,7 +119,7 @@ function createDeflatedZip(entries) {
       zipHeaderUInt16(8),
       zipHeaderUInt16(0),
       zipHeaderUInt16(0),
-      zipHeaderUInt32(0),
+      zipHeaderUInt32(crc32),
       zipHeaderUInt32(declaredCompressedSize),
       zipHeaderUInt32(declaredUncompressedSize),
       zipHeaderUInt16(nameBuffer.length),
@@ -116,7 +136,7 @@ function createDeflatedZip(entries) {
       zipHeaderUInt16(8),
       zipHeaderUInt16(0),
       zipHeaderUInt16(0),
-      zipHeaderUInt32(0),
+      zipHeaderUInt32(crc32),
       zipHeaderUInt32(declaredCompressedSize),
       zipHeaderUInt32(declaredUncompressedSize),
       zipHeaderUInt16(nameBuffer.length),
@@ -2936,7 +2956,7 @@ test("aw-installer github source human-readable dry-run is node-owned with mocke
     process.chdir(targetRepo);
 
     const { result, stdout } = await captureConsoleLog(() => withMockedGithubArchive(archiveBuffer, async (requests) => {
-      const status = await installer.runNodeOwnedOrWrapper([
+      const status = await installer.runNodeOwned([
         "update",
         "--backend=agents",
         "--source=github",
@@ -2977,7 +2997,7 @@ test("aw-installer github source yes applies update through Node-owned compositi
     process.chdir(targetRepo);
 
     const { result, stdout } = await captureConsoleLog(() => withMockedGithubArchive(archiveBuffer, async (requests) => {
-      const status = await installer.runNodeOwnedOrWrapper([
+      const status = await installer.runNodeOwned([
         "update",
         "--backend=agents",
         "--source=github",
@@ -3224,6 +3244,14 @@ test("github source archive validation rejects unsafe members and sha mismatch",
         createStoredZip([["C:/repo-master/evil.txt", "bad"]]),
       ),
       /GitHub archive contains unsafe path/,
+    );
+    assert.throws(
+      () => installer.githubSourceRootFromArchiveBuffer(
+        "Owner/repo",
+        "main",
+        createStoredZip([["repo-master/payload.txt", "bad", { crc32: 0 }]]),
+      ),
+      /GitHub source archive entry CRC32 mismatch/,
     );
   } finally {
     if (cleanup !== null) {

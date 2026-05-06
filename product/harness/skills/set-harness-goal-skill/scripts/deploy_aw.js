@@ -38,10 +38,6 @@ function templateSpec(spec) {
   };
 }
 
-function copyAssetSpec(spec) {
-  return spec;
-}
-
 const TEMPLATE_SPECS = {
   "control-state": templateSpec({
     templateId: "control-state",
@@ -413,26 +409,26 @@ const TEMPLATE_SPECS = {
 };
 
 const STATIC_ASSET_SPECS = {
-  "template-readme": copyAssetSpec({
+  "template-readme": {
     assetId: "template-readme",
     sourceRelpath: "assets/template/README.md",
     outputRelpath: "template/README.md",
-  }),
-  "goal-charter-template": copyAssetSpec({
+  },
+  "goal-charter-template": {
     assetId: "goal-charter-template",
     sourceRelpath: "assets/template/goal-charter.template.md",
     outputRelpath: "template/goal-charter.template.md",
-  }),
-  "repo-readme": copyAssetSpec({
+  },
+  "repo-readme": {
     assetId: "repo-readme",
     sourceRelpath: "assets/repo/README.md",
     outputRelpath: "repo/README.md",
-  }),
-  "worktrack-readme": copyAssetSpec({
+  },
+  "worktrack-readme": {
     assetId: "worktrack-readme",
     sourceRelpath: "assets/worktrack/README.md",
     outputRelpath: "worktrack/README.md",
-  }),
+  },
 };
 
 const PROFILE_TEMPLATES = {

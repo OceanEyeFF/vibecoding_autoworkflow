@@ -981,11 +981,11 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertNotIn("pythonCandidates", installer_source)
         self.assertIn("Node-only distribution", installer_source)
         self.assertIn(
-            'await runNodeOwnedOrWrapper(["update", "--backend", "agents"])',
+            'await runNodeOwned(["update", "--backend", "agents"])',
             installer_source,
         )
         self.assertIn(
-            'await runNodeOwnedOrWrapper(["update", "--backend", "agents", "--yes"])',
+            'await runNodeOwned(["update", "--backend", "agents", "--yes"])',
             installer_source,
         )
 

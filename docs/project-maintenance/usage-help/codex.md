@@ -1,9 +1,9 @@
 ---
 title: "Codex Usage Help"
 status: active
-updated: 2026-05-05
+updated: 2026-05-06
 owner: aw-kernel
-last_verified: 2026-05-05
+last_verified: 2026-05-06
 ---
 # Codex Usage Help
 
@@ -66,7 +66,7 @@ aw-installer update --backend agents --yes --agents-root "$PWD/.agents/skills"
 aw-installer verify --backend agents --agents-root "$PWD/.agents/skills"
 ```
 
-`update --backend agents --yes` 构成 destructive reinstall 主流程；部署到默认 repo-local target 时可省略 `--agents-root`；不要把 `--agents-root` 指向敏感目录。外部试用反馈优先使用 [trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)。本地 `diagnose`/`update`/`check_paths_exist`/`verify`/`install`/`prune` 已是 Node-owned 路径；non-clean target `install`、GitHub-source update、Claude backend 等按 Python/reference 边界处理。
+`update --backend agents --yes` 构成 destructive reinstall 主流程；部署到默认 repo-local target 时可省略 `--agents-root`；不要把 `--agents-root` 指向敏感目录。外部试用反馈优先使用 [trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml) 或 [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)。本地 `diagnose`/`update`/`check_paths_exist`/`verify`/`install`/`prune` 已是 Node-owned 路径；selected GitHub-source update 与 selected Claude package/local lifecycle 也由 Node-owned `aw-installer` 路径承接。unsupported variants 在 Node 层失败，不 fallback 到 Python；Python deploy scripts 仅作 repo-local reference/parity/governance tooling。
 
 ## 六、Source 变更后的 operator 决策
 

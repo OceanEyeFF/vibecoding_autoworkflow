@@ -13,12 +13,14 @@ last_verified: 2026-05-06
 
 `claude` 是 Claude Code compatibility lane，不替代 `agents` 主路径。当前 package/local `aw-installer --backend claude` 已承接完整 Harness skill lifecycle。
 
-受管 adapter 路径：
+package/local 受管路径：
 
 ```bash
-AW_HARNESS_TARGET_REPO_ROOT="$TARGET_REPO" PYTHONDONTWRITEBYTECODE=1 python3 "$AW_SOURCE_REPO/toolchain/scripts/deploy/adapter_deploy.py" install --backend claude
-AW_HARNESS_TARGET_REPO_ROOT="$TARGET_REPO" PYTHONDONTWRITEBYTECODE=1 python3 "$AW_SOURCE_REPO/toolchain/scripts/deploy/adapter_deploy.py" verify --backend claude
+AW_HARNESS_TARGET_REPO_ROOT="$TARGET_REPO" aw-installer install --backend claude
+AW_HARNESS_TARGET_REPO_ROOT="$TARGET_REPO" aw-installer verify --backend claude
 ```
+
+`adapter_deploy.py --backend claude` 仍可作为 repo-local reference/parity 入口使用，但不是 package/local operator 主路径。
 
 冷启动 helper：`node product/harness/skills/set-harness-goal-skill/scripts/deploy_aw.js install-claude-skill --deploy-path "$TARGET_REPO"`。然后在目标仓库用 Claude Code `/set-harness-goal-skill` 或 `/aw-set-harness-goal-skill` 初始化 `.aw/`。
 
@@ -39,7 +41,7 @@ AW_HARNESS_TARGET_REPO_ROOT="$TARGET_REPO" PYTHONDONTWRITEBYTECODE=1 python3 "$A
 
 ## 五、当前限制
 
-`adapter_deploy.py --backend claude` 是适配 lane，非 `agents` 替代品；成熟度未到 npm stable/latest/Release/dist-tag/public smoke/release approval。本页只承接 Claude runtime 路径与兼容 payload 差异。
+`claude` 是 compatibility lane，非 `agents` 替代品；package/local lifecycle 已由 Node-owned `aw-installer --backend claude` 承接，但成熟度未到 npm stable/latest/Release/dist-tag/public smoke/release approval。本页只承接 Claude runtime 路径与兼容 payload 差异。
 
 ## 六、当前受控例外
 
