@@ -1,6 +1,6 @@
 {
   "name": "aw-installer",
-  "version": "0.4.5-rc.0",
+  "version": "0.4.5",
   "private": true,
   "description": "Local package scaffold for the AW Harness installer wrapper.",
   "bin": {

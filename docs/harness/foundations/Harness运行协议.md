@@ -1,9 +1,9 @@
 ---
 title: Harness 运行协议
 status: draft
-updated: 2026-05-05
+updated: 2026-05-07
 owner: OceanEye
-last_verified: 2026-05-05
+last_verified: 2026-05-07
 ---
 
 # Harness 运行协议
@@ -153,6 +153,10 @@ merge -> refresh repo snapshot -> cleanup -> return RepoScope
 | `Append Request` | [append-request.md](../artifact/control/append-request.md) |
 
 `Control State` 只保存控制面状态，不承载业务真相。业务真相分别写回 repo / worktrack 正式文档和对应源码层。
+
+每次 Harness 启动都必须先从既有 `.aw/control-state.md` 恢复控制配置，再判断 Scope / Function。最小读取面包括 linked formal documents、approval boundary、continuation authority、handback guard、baseline traceability 和 autonomy ledger。缺失配置只能按 [control-state.md](../artifact/control/control-state.md) 的默认值降级解释，并在本轮输出中暴露 `config_hydration_gaps`；不得因缺失而扩大自动性、绕过审批或忽略上次 handback 边界。
+
+如果 programmer 给出长期权限、自动性或分派策略变更，Harness 必须区分一次性审批和持久配置。一次性审批写入当前 evidence / handoff；持久配置变更写入 `.aw/control-state.md` 的对应 policy / ledger 字段。改变 canonical 字段语义或默认值时，还要同步更新 control-state artifact 合同与初始化模板。
 
 ## 六、连续推进与停止条件
 
