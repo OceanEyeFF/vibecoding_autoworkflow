@@ -15,15 +15,13 @@ last_verified: 2026-05-07
 
 ## 当前 registry 事实
 
-2026-05-07 已核对 git tag 与远程 release-line：
+2026-05-07 已核对 git tag、远程 release-line 与 npm registry：
 
-- `latest` -> `4.4.1`，`gitTag=v4.4.1=363c708`
-- `next` -> `4.4.1-rc.1`，`gitTag=v4.4.1-rc.1=3b6b7f0`
-- 历史 tag 也在仓库中：`v4.4.0=2a68869`、`v4.4.0-rc.0=0a1a281`、`v4.4.1-rc.0=827efea`
+- **版本号纠正**：`4.4.x` 系列（`v4.4.0`、`v4.4.0-rc.0`、`v4.4.1-rc.0`、`v4.4.1-rc.1`、`v4.4.1`）为错误发布的版本号，不进入 semver 主序列
+- npm registry 真实状态：`latest` -> `0.4.0-rc.1`，历史已发布版本 `0.4.0-rc.1` ~ `0.4.3-rc.2`
+- 当前 develop-main 的 root `package.json` 绑定 `approvedVersion=0.4.5-rc.0`、`approvedGitTag=v0.4.5-rc.0`、`approvedChannel=next`，准备发布到 npm `next`
 
-注意：上述 `latest`/`next` 由 release-line 上的 git tag 与 master/develop-main 推导而来，npm registry 的实际 dist-tag 写入由 publish workflow 完成；此页跟随 release commit 同步事实。
-
-当前活跃工程分支 `develop-aw@be787c7` 的 root `package.json` 仍绑定 candidate `approvedVersion=4.4.1-rc.0`、`approvedGitTag=v4.4.1-rc.0`、`approvedChannel=next`，落后于已发布的 4.4.1 stable（位于 origin/master）。develop-aw 上的 approval lock 不可在常规工作中复用，必须先经 release-approval worktrack 与 develop-aw↔release-line 协调。
+注意：npm dist-tag 由 publish workflow 写入，此页跟随 release commit 同步事实。`4.4.x` 相关 git tag 保留作为历史记录，但不在 npm registry 中发布。
 
 ## Channel 对应关系
 
