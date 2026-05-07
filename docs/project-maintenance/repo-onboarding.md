@@ -8,7 +8,7 @@ last_verified: 2026-05-07
 
 # Repository Onboarding
 
-> 本页面向需要理解此仓库内部结构和运行方式的维护者。如果你是外部试用者，先看 [README.md](../README.md)。
+> 本页面向需要理解此仓库内部结构和运行方式的维护者。如果你是外部试用者，先看 [README.md](../../README.md)。
 
 ## 仓库定位
 
@@ -81,14 +81,14 @@ Review / Verify / Writeback
 
 ## 从哪里进入
 
-1. [`docs/README.md`](../docs/README.md)
-2. [`docs/project-maintenance/README.md`](../docs/project-maintenance/README.md)
-3. [`docs/project-maintenance/foundations/root-directory-layering.md`](../docs/project-maintenance/foundations/root-directory-layering.md)
-4. [`AGENTS.md`](../AGENTS.md)
+1. [`docs/README.md`](../README.md)
+2. [`docs/project-maintenance/README.md`](README.md)
+3. [`docs/project-maintenance/foundations/root-directory-layering.md`](foundations/root-directory-layering.md)
+4. [`AGENTS.md`](../../AGENTS.md)
 5. 按任务进入：
-   - Harness 主线与 artifact 合同：[`docs/harness/README.md`](../docs/harness/README.md)
-   - 业务源码：[`product/README.md`](../product/README.md)
-   - 工具层：[`toolchain/README.md`](../toolchain/README.md)
+   - Harness 主线与 artifact 合同：[`docs/harness/README.md`](../harness/README.md)
+   - 业务源码：[`product/README.md`](../../product/README.md)
+   - 工具层：[`toolchain/README.md`](../../toolchain/README.md)
 
 ## 非目标
 
