@@ -638,6 +638,18 @@ function runNodeUpdate(root, args, fakeBin = null) {
   );
 }
 
+function runNodeDiagnose(root, args, fakeBin = null) {
+  return spawnSync(
+    process.execPath,
+    [join(__dirname, "bin", "aw-installer.js"), "diagnose", ...args],
+    {
+      cwd: root,
+      env: checkPathsExistEnv(root, fakeBin),
+      encoding: "utf8",
+    },
+  );
+}
+
 function runAwInstaller(root, args, fakeBin = null) {
   return spawnSync(process.execPath, [join(__dirname, "bin", "aw-installer.js"), ...args], {
     cwd: root,
@@ -3600,6 +3612,280 @@ test("aw-installer update claude recovery hint preserves claude-root override af
     if (existsSync(claudeRoot)) {
       chmodSync(claudeRoot, 0o755);
     }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// --- Bundle backend parser tests ---
+
+test("parseNodeDiagnoseJsonArgs accepts bundle backend", () => {
+  assert.deepEqual(
+    installer.parseNodeDiagnoseJsonArgs(["diagnose", "--backend", "bundle", "--json"]),
+    { backend: "bundle", agentsRoot: undefined },
+  );
+  assert.deepEqual(
+    installer.parseNodeDiagnoseJsonArgs(["diagnose", "--backend=bundle", "--json", "--agents-root=/tmp/agents", "--claude-root=/tmp/claude"]),
+    { backend: "bundle", agentsRoot: "/tmp/agents", claudeRoot: "/tmp/claude" },
+  );
+});
+
+test("parseNodeDiagnoseArgs accepts bundle backend", () => {
+  assert.deepEqual(
+    installer.parseNodeDiagnoseArgs(["diagnose", "--backend", "bundle"]),
+    { backend: "bundle", agentsRoot: undefined },
+  );
+});
+
+test("parseNodeVerifyArgs accepts bundle backend", () => {
+  assert.deepEqual(
+    installer.parseNodeVerifyArgs(["verify", "--backend", "bundle"]),
+    { backend: "bundle", agentsRoot: undefined },
+  );
+});
+
+test("parseNodeInstallArgs accepts bundle backend", () => {
+  assert.deepEqual(
+    installer.parseNodeInstallArgs(["install", "--backend", "bundle"]),
+    { backend: "bundle", agentsRoot: undefined },
+  );
+});
+
+test("parseNodeCheckPathsExistArgs accepts bundle backend", () => {
+  assert.deepEqual(
+    installer.parseNodeCheckPathsExistArgs(["check_paths_exist", "--backend", "bundle"]),
+    { backend: "bundle", agentsRoot: undefined },
+  );
+});
+
+test("parseNodePruneArgs accepts bundle backend", () => {
+  assert.deepEqual(
+    installer.parseNodePruneArgs(["prune", "--all", "--backend", "bundle"]),
+    { backend: "bundle", agentsRoot: undefined },
+  );
+});
+
+test("parseNodeUpdateJsonArgs accepts bundle package JSON dry-run", () => {
+  assert.deepEqual(
+    installer.parseNodeUpdateJsonArgs(["update", "--backend", "bundle", "--json"]),
+    { backend: "bundle", source: "package", agentsRoot: undefined },
+  );
+});
+
+test("parseNodeUpdateDryRunArgs accepts bundle package dry-run", () => {
+  assert.deepEqual(
+    installer.parseNodeUpdateDryRunArgs(["update", "--backend", "bundle"]),
+    { backend: "bundle", source: "package", agentsRoot: undefined },
+  );
+});
+
+test("parseNodeUpdateYesArgs accepts bundle package yes", () => {
+  assert.deepEqual(
+    installer.parseNodeUpdateYesArgs(["update", "--backend", "bundle", "--yes"]),
+    { backend: "bundle", source: "package", agentsRoot: undefined, yes: true },
+  );
+});
+
+test("parseNodeUpdateArgs rejects bundle with github source", () => {
+  assert.equal(
+    installer.parseNodeUpdateJsonArgs(["update", "--backend", "bundle", "--json", "--source", "github"]),
+    null,
+  );
+  assert.equal(
+    installer.parseNodeUpdateDryRunArgs(["update", "--backend", "bundle", "--source", "github"]),
+    null,
+  );
+  assert.equal(
+    installer.parseNodeUpdateYesArgs(["update", "--backend", "bundle", "--yes", "--source", "github"]),
+    null,
+  );
+});
+
+// --- Bundle backend functional tests ---
+
+function seedMinimalBundleSource(root, skillId) {
+  seedMinimalAgentsSource(root, skillId);
+  seedMinimalClaudeSource(root, skillId);
+}
+
+test("aw-installer install bundle installs both backends", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+
+    const completed = runNodeInstall(root, ["--backend=bundle"], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    assert.match(completed.stdout, /\[bundle\] install complete for both backends/);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+
+    const agentsTargetDir = join(root, ".agents", "skills", "aw-demo-skill");
+    const claudeTargetDir = join(root, ".claude", "skills", "demo-skill");
+    assert.equal(existsSync(join(agentsTargetDir, "SKILL.md")), true);
+    assert.equal(existsSync(join(claudeTargetDir, "SKILL.md")), true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer verify bundle verifies both backends", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const install = runNodeInstall(root, ["--backend=bundle"], fakeBin);
+    assert.equal(install.status, 0, install.stderr);
+
+    const completed = runNodeVerify(root, ["--backend=bundle"], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    assert.match(completed.stdout, /\[agents\] ok: target root is ready/);
+    assert.match(completed.stdout, /\[claude\] ok: target root is ready/);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer diagnose bundle diagnoses both backends", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const install = runNodeInstall(root, ["--backend=bundle"], fakeBin);
+    assert.equal(install.status, 0, install.stderr);
+
+    const completed = runNodeDiagnose(root, ["--backend=bundle"], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    assert.match(completed.stdout, /\[agents\] diagnose: 0 issue/);
+    assert.match(completed.stdout, /\[claude\] diagnose: 0 issue/);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer prune --all bundle prunes both backends", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const install = runNodeInstall(root, ["--backend=bundle"], fakeBin);
+    assert.equal(install.status, 0, install.stderr);
+
+    const completed = runNodePrune(root, ["--all", "--backend=bundle"], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    assert.match(completed.stdout, /\[bundle\] prune complete for both backends/);
+    assert.equal(existsSync(join(root, ".agents", "skills", "aw-demo-skill")), false);
+    assert.equal(existsSync(join(root, ".claude", "skills", "demo-skill")), false);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer install bundle partial completion when claude fails", () => {
+  if (process.platform === "win32") {
+    return;
+  }
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  const claudeRoot = join(root, ".claude", "skills");
+  try {
+    seedMinimalAgentsSource(root, "demo-skill");
+    seedMinimalClaudeSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    mkdirSync(claudeRoot, { recursive: true });
+    chmodSync(claudeRoot, 0o555);
+
+    const completed = runNodeInstall(root, ["--backend=bundle"], fakeBin);
+
+    assert.equal(completed.status, 1);
+    assert.match(completed.stderr, /\[bundle\] partial install: agents=ok, claude=failed/);
+    assert.match(completed.stderr, /recovery: run `aw-installer prune --backend claude --all`/);
+    assert.equal(existsSync(join(root, ".agents", "skills", "aw-demo-skill", "SKILL.md")), true);
+  } finally {
+    if (existsSync(claudeRoot)) {
+      chmodSync(claudeRoot, 0o755);
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer check_paths_exist bundle checks both backends", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+
+    const completed = runNodeCheckPathsExist(root, ["--backend=bundle"], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    assert.match(completed.stdout, /\[agents\] ok: no conflicting target paths/);
+    assert.match(completed.stdout, /\[claude\] ok: no conflicting target paths/);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer update bundle dry-run plans both backends", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const install = runNodeInstall(root, ["--backend=bundle"], fakeBin);
+    assert.equal(install.status, 0, install.stderr);
+
+    const completed = runNodeUpdate(root, ["--backend=bundle"], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    assert.match(completed.stdout, /\[agents\] dry-run only/);
+    assert.match(completed.stdout, /\[claude\] dry-run only/);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer update bundle yes applies both backends", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const install = runNodeInstall(root, ["--backend=bundle"], fakeBin);
+    assert.equal(install.status, 0, install.stderr);
+
+    const completed = runNodeUpdate(root, ["--backend=bundle", "--yes"], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    assert.match(completed.stdout, /\[bundle\] update complete for both backends/);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer diagnose json bundle outputs merged json", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const install = runNodeInstall(root, ["--backend=bundle"], fakeBin);
+    assert.equal(install.status, 0, install.stderr);
+
+    const completed = runNodeDiagnose(root, ["--backend=bundle", "--json"], fakeBin);
+
+    assert.equal(completed.status, 0, completed.stderr);
+    const summary = JSON.parse(completed.stdout);
+    assert.equal(summary.bundle, true);
+    assert.ok(summary.backends.agents);
+    assert.ok(summary.backends.claude);
+    assert.equal(summary.backends.agents.backend, "agents");
+    assert.equal(summary.backends.claude.backend, "claude");
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });

@@ -36,6 +36,7 @@ const deployedFileMode = 0o644;
 const deployedDirMode = 0o755;
 const agentsBackend = "agents";
 const claudeBackend = "claude";
+const bundleBackend = "bundle";
 const packageSource = "package";
 const githubSource = "github";
 const defaultGithubRepo = "OceanEyeFF/vibecoding_autoworkflow";
@@ -153,21 +154,21 @@ wrapper. Supported package/runtime deploy modes are handled directly by Node.
 
 commands:
   tui                         open the interactive installer shell
-  diagnose --backend agents|claude
+  diagnose --backend agents|claude|bundle
                               print a read-only deploy status summary
-  verify --backend agents|claude
+  verify --backend agents|claude|bundle
                               run strict read-only deploy verification
-  install --backend agents|claude
+  install --backend agents|claude|bundle
                               install the current source payload
-  update --backend agents|claude
+  update --backend agents|claude|bundle
                               print an update dry-run plan
   update --backend agents --yes
                               apply the explicit update plan
   update --backend agents --source github --github-ref REF
                               update from a GitHub source archive containing current payloads
-  prune --all --backend agents|claude
+  prune --all --backend agents|claude|bundle
                               remove managed installs for the backend
-  check_paths_exist --backend agents|claude
+  check_paths_exist --backend agents|claude|bundle
                               scan write paths before install
 
 options:
@@ -2505,6 +2506,13 @@ function backendAllowed(backend, allowedBackends) {
 }
 
 function parsedBackendRoots(backend, agentsRoot, claudeRoot) {
+  if (backend === bundleBackend) {
+    return {
+      backend,
+      agentsRoot,
+      ...(claudeRoot !== undefined ? { claudeRoot } : {}),
+    };
+  }
   return {
     backend,
     agentsRoot,
@@ -2649,11 +2657,11 @@ function parseNodeUpdateArgs(args) {
 }
 
 function parsedNodeUpdateResult(parsed, includeYes = false) {
-  if (!backendAllowed(parsed.backend, [agentsBackend, claudeBackend])) {
+  if (!backendAllowed(parsed.backend, [agentsBackend, claudeBackend, bundleBackend])) {
     return null;
   }
   if (parsed.source === githubSource) {
-    if (parsed.backend !== agentsBackend) {
+    if (!backendAllowed(parsed.backend, [agentsBackend])) {
       return null;
     }
     return {
@@ -2676,7 +2684,7 @@ function parsedNodeUpdateResult(parsed, includeYes = false) {
   };
 }
 
-function parseNodeBackendRootArgs(args, command, allowedBackends = [agentsBackend]) {
+function parseNodeBackendRootArgs(args, command, allowedBackends = [agentsBackend, bundleBackend]) {
   if (args[0] !== command) {
     return null;
   }
@@ -2743,11 +2751,11 @@ function parseNodeDiagnoseJsonArgs(args) {
     return null;
   }
   const withoutJson = args.filter((arg) => arg !== cliFlags.json);
-  return parseNodeBackendRootArgs(withoutJson, "diagnose", [agentsBackend, claudeBackend]);
+  return parseNodeBackendRootArgs(withoutJson, "diagnose", [agentsBackend, claudeBackend, bundleBackend]);
 }
 
 function parseNodeDiagnoseArgs(args) {
-  return parseNodeBackendRootArgs(args, "diagnose", [agentsBackend, claudeBackend]);
+  return parseNodeBackendRootArgs(args, "diagnose", [agentsBackend, claudeBackend, bundleBackend]);
 }
 
 function parseNodeUpdateJsonArgs(args) {
@@ -2868,7 +2876,7 @@ function parseNodeUnsupportedUpdateJsonYesArgs(args) {
 }
 
 function parseNodeCheckPathsExistArgs(args) {
-  return parseNodeBackendRootArgs(args, "check_paths_exist", [agentsBackend, claudeBackend]);
+  return parseNodeBackendRootArgs(args, "check_paths_exist", [agentsBackend, claudeBackend, bundleBackend]);
 }
 
 function runNodeJson(args, parser, buildSummary, exitStatus) {
@@ -3134,11 +3142,11 @@ function runNodeCheckPathsExist(args) {
 }
 
 function parseNodeVerifyArgs(args) {
-  return parseNodeBackendRootArgs(args, "verify", [agentsBackend, claudeBackend]);
+  return parseNodeBackendRootArgs(args, "verify", [agentsBackend, claudeBackend, bundleBackend]);
 }
 
 function parseNodeInstallArgs(args) {
-  return parseNodeBackendRootArgs(args, "install", [agentsBackend, claudeBackend]);
+  return parseNodeBackendRootArgs(args, "install", [agentsBackend, claudeBackend, bundleBackend]);
 }
 
 function parseNodePruneArgs(args) {
@@ -3199,7 +3207,7 @@ function parseNodePruneArgs(args) {
     }
     return null;
   }
-  if (!hasAll || !backendAllowed(backend, [agentsBackend, claudeBackend])) {
+  if (!hasAll || !backendAllowed(backend, [agentsBackend, claudeBackend, bundleBackend])) {
     return null;
   }
   return { backend, agentsRoot, ...(claudeRoot === undefined ? {} : { claudeRoot }) };
@@ -3348,7 +3356,210 @@ function runNodePrune(args) {
   }
 }
 
+function buildBundleBackendOptions(parsed, backend) {
+  const options = { backend };
+  if (parsed.agentsRoot !== undefined) {
+    options.agentsRoot = parsed.agentsRoot;
+  }
+  if (parsed.claudeRoot !== undefined) {
+    options.claudeRoot = parsed.claudeRoot;
+  }
+  return options;
+}
+
+function buildBundleArgs(command, backend, parsed) {
+  const args = [command, "--backend", backend];
+  if (parsed.agentsRoot !== undefined) {
+    args.push("--agents-root", parsed.agentsRoot);
+  }
+  if (parsed.claudeRoot !== undefined) {
+    args.push("--claude-root", parsed.claudeRoot);
+  }
+  return args;
+}
+
+function printBundlePartialCompletion(command, agentsStatus, claudeStatus) {
+  const agentsResult = agentsStatus === 0 ? "ok" : "failed";
+  const claudeResult = claudeStatus === 0 ? "ok" : "failed";
+  console.error(`[${bundleBackend}] partial ${command}: agents=${agentsResult}, claude=${claudeResult}`);
+}
+
+async function runBundleDiagnoseJson(parsed) {
+  const agentsContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, agentsBackend));
+  const claudeContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, claudeBackend));
+  const agentsSummary = diagnosticSummary(verifyBackend(agentsContext));
+  const claudeSummary = diagnosticSummary(verifyBackend(claudeContext));
+  const bundleSummary = {
+    bundle: true,
+    backends: {
+      [agentsBackend]: agentsSummary,
+      [claudeBackend]: claudeSummary,
+    },
+    total_issues: agentsSummary.issue_count + claudeSummary.issue_count,
+    total_managed: agentsSummary.managed_install_count + claudeSummary.managed_install_count,
+  };
+  console.log(JSON.stringify(sortJsonObjectKeys(bundleSummary), null, 2));
+  return 0;
+}
+
+async function runBundleDiagnose(parsed) {
+  const agentsContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, agentsBackend));
+  const claudeContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, claudeBackend));
+  printDiagnosticSummary({ ...diagnosticSummary(verifyBackend(agentsContext)), backend: agentsBackend });
+  printDiagnosticSummary({ ...diagnosticSummary(verifyBackend(claudeContext)), backend: claudeBackend });
+  return 0;
+}
+
+async function runBundleVerify(parsed) {
+  const agentsContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, agentsBackend));
+  const claudeContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, claudeBackend));
+  const agentsResult = verifyBackend(agentsContext);
+  const claudeResult = verifyBackend(claudeContext);
+  printVerifyResult({ ...agentsResult, backend: agentsBackend });
+  printVerifyResult({ ...claudeResult, backend: claudeBackend });
+  return (agentsResult.issues.length > 0 || claudeResult.issues.length > 0) ? 1 : 0;
+}
+
+async function runBundleCheckPathsExist(parsed) {
+  const agentsArgs = buildBundleArgs("check_paths_exist", agentsBackend, parsed);
+  const claudeArgs = buildBundleArgs("check_paths_exist", claudeBackend, parsed);
+  const agentsStatus = await runNodeOwned(agentsArgs);
+  const claudeStatus = await runNodeOwned(claudeArgs);
+  if (agentsStatus === 0 && claudeStatus === 0) {
+    return 0;
+  }
+  return 1;
+}
+
+async function runBundleInstall(parsed) {
+  const agentsArgs = buildBundleArgs("install", agentsBackend, parsed);
+  const claudeArgs = buildBundleArgs("install", claudeBackend, parsed);
+  const agentsCheckArgs = buildBundleArgs("check_paths_exist", agentsBackend, parsed);
+  const claudeCheckArgs = buildBundleArgs("check_paths_exist", claudeBackend, parsed);
+  const agentsCheckStatus = await runNodeOwned(agentsCheckArgs);
+  const claudeCheckStatus = await runNodeOwned(claudeCheckArgs);
+  if (agentsCheckStatus !== 0 || claudeCheckStatus !== 0) {
+    console.error(`[${bundleBackend}] pre-write check failed; aborting install`);
+    return 1;
+  }
+  const agentsStatus = await runNodeOwned(agentsArgs);
+  const claudeStatus = await runNodeOwned(claudeArgs);
+  if (agentsStatus === 0 && claudeStatus === 0) {
+    console.log(`[${bundleBackend}] install complete for both backends`);
+    return 0;
+  }
+  printBundlePartialCompletion("install", agentsStatus, claudeStatus);
+  if (agentsStatus !== 0) {
+    console.error(`[${bundleBackend}] recovery: run \`aw-installer prune --backend agents --all\` then \`aw-installer install --backend agents\` then \`aw-installer verify --backend agents\``);
+  }
+  if (claudeStatus !== 0) {
+    console.error(`[${bundleBackend}] recovery: run \`aw-installer prune --backend claude --all\` then \`aw-installer install --backend claude\` then \`aw-installer verify --backend claude\``);
+  }
+  return 1;
+}
+
+async function runBundleUpdateJson(parsed) {
+  const agentsArgs = buildBundleArgs("update", agentsBackend, parsed);
+  agentsArgs.push("--json");
+  const claudeArgs = buildBundleArgs("update", claudeBackend, parsed);
+  claudeArgs.push("--json");
+  const agentsStatus = await runNodeOwned(agentsArgs);
+  const claudeStatus = await runNodeOwned(claudeArgs);
+  return (agentsStatus === 0 && claudeStatus === 0) ? 0 : 1;
+}
+
+async function runBundleUpdateDryRun(parsed) {
+  const agentsArgs = buildBundleArgs("update", agentsBackend, parsed);
+  const claudeArgs = buildBundleArgs("update", claudeBackend, parsed);
+  const agentsStatus = await runNodeOwned(agentsArgs);
+  const claudeStatus = await runNodeOwned(claudeArgs);
+  if (agentsStatus === 0 && claudeStatus === 0) {
+    return 0;
+  }
+  printBundlePartialCompletion("update", agentsStatus, claudeStatus);
+  return 1;
+}
+
+async function runBundleUpdateYes(parsed) {
+  const agentsArgs = buildBundleArgs("update", agentsBackend, parsed);
+  agentsArgs.push("--yes");
+  const claudeArgs = buildBundleArgs("update", claudeBackend, parsed);
+  claudeArgs.push("--yes");
+  const agentsStatus = await runNodeOwned(agentsArgs);
+  const claudeStatus = await runNodeOwned(claudeArgs);
+  if (agentsStatus === 0 && claudeStatus === 0) {
+    console.log(`[${bundleBackend}] update complete for both backends`);
+    return 0;
+  }
+  printBundlePartialCompletion("update", agentsStatus, claudeStatus);
+  return 1;
+}
+
+async function runBundlePrune(parsed) {
+  const agentsArgs = buildBundleArgs("prune", agentsBackend, parsed);
+  agentsArgs.push("--all");
+  const claudeArgs = buildBundleArgs("prune", claudeBackend, parsed);
+  claudeArgs.push("--all");
+  const agentsStatus = await runNodeOwned(agentsArgs);
+  if (agentsStatus !== 0) {
+    printBundlePartialCompletion("prune", agentsStatus, 0);
+    return 1;
+  }
+  const claudeStatus = await runNodeOwned(claudeArgs);
+  if (claudeStatus === 0) {
+    console.log(`[${bundleBackend}] prune complete for both backends`);
+    return 0;
+  }
+  printBundlePartialCompletion("prune", agentsStatus, claudeStatus);
+  return 1;
+}
+
+async function runNodeBundle(args) {
+  const diagnoseJson = parseNodeDiagnoseJsonArgs(args);
+  if (diagnoseJson !== null && diagnoseJson.backend === bundleBackend) {
+    return await runBundleDiagnoseJson(diagnoseJson);
+  }
+  const diagnose = parseNodeDiagnoseArgs(args);
+  if (diagnose !== null && diagnose.backend === bundleBackend) {
+    return await runBundleDiagnose(diagnose);
+  }
+  const updateJson = parseNodeUpdateJsonArgs(args);
+  if (updateJson !== null && updateJson.backend === bundleBackend) {
+    return await runBundleUpdateJson(updateJson);
+  }
+  const updateDryRun = parseNodeUpdateDryRunArgs(args);
+  if (updateDryRun !== null && updateDryRun.backend === bundleBackend) {
+    return await runBundleUpdateDryRun(updateDryRun);
+  }
+  const updateYes = parseNodeUpdateYesArgs(args);
+  if (updateYes !== null && updateYes.backend === bundleBackend) {
+    return await runBundleUpdateYes(updateYes);
+  }
+  const checkPaths = parseNodeCheckPathsExistArgs(args);
+  if (checkPaths !== null && checkPaths.backend === bundleBackend) {
+    return await runBundleCheckPathsExist(checkPaths);
+  }
+  const verify = parseNodeVerifyArgs(args);
+  if (verify !== null && verify.backend === bundleBackend) {
+    return await runBundleVerify(verify);
+  }
+  const install = parseNodeInstallArgs(args);
+  if (install !== null && install.backend === bundleBackend) {
+    return await runBundleInstall(install);
+  }
+  const prune = parseNodePruneArgs(args);
+  if (prune !== null && prune.backend === bundleBackend) {
+    return await runBundlePrune(prune);
+  }
+  return null;
+}
+
 async function runNodeOwned(args) {
+  const bundleStatus = await runNodeBundle(args);
+  if (bundleStatus !== null) {
+    return bundleStatus;
+  }
+
   const nodeDiagnoseStatus = runNodeDiagnoseJson(args);
   if (nodeDiagnoseStatus !== null) {
     return nodeDiagnoseStatus;
@@ -3416,10 +3627,10 @@ async function pause(rl) {
   await question(rl, "\nPress Enter to return to the installer menu...");
 }
 
-async function runGuidedUpdateFlow(rl) {
+async function runGuidedUpdateFlow(rl, currentBackend) {
   console.log("\nGuided update flow");
-  console.log("Step 1: Diagnose current agents install.");
-  const diagnoseStatus = await runNodeOwned(["diagnose", "--backend", "agents", "--json"]);
+  console.log(`Step 1: Diagnose current ${currentBackend} install.`);
+  const diagnoseStatus = await runNodeOwned(["diagnose", "--backend", currentBackend, "--json"]);
   if (diagnoseStatus !== 0) {
     console.log("Diagnose failed; update may not succeed as expected.");
     const proceed = (await question(
@@ -3434,7 +3645,7 @@ async function runGuidedUpdateFlow(rl) {
   }
 
   console.log("\nStep 2: Review update dry-run plan.");
-  const dryRunStatus = await runNodeOwned(["update", "--backend", "agents"]);
+  const dryRunStatus = await runNodeOwned(["update", "--backend", currentBackend]);
   if (dryRunStatus !== 0) {
     console.log("Update plan failed; not applying.");
     await pause(rl);
@@ -3447,11 +3658,18 @@ async function runGuidedUpdateFlow(rl) {
   )).trim();
   if (confirmation === "yes") {
     console.log("\nStep 4: Applying update and running strict verify.");
-    await runNodeOwned(["update", "--backend", "agents", "--yes"]);
+    await runNodeOwned(["update", "--backend", currentBackend, "--yes"]);
   } else {
     console.log("Update cancelled.");
   }
   await pause(rl);
+}
+
+const backendCycle = [agentsBackend, claudeBackend, bundleBackend];
+
+function cycleBackend(current) {
+  const index = backendCycle.indexOf(current);
+  return backendCycle[(index + 1) % backendCycle.length];
 }
 
 async function runTui() {
@@ -3465,11 +3683,13 @@ async function runTui() {
     output: process.stdout,
   });
 
+  let currentBackend = agentsBackend;
+
   try {
     while (true) {
       console.log(`
 AW Installer
-Backend: agents
+Backend: ${currentBackend}  (press b to switch: ${backendCycle.join(" / ")})
 
 1. Guided update flow
 2. Diagnose current install
@@ -3480,16 +3700,21 @@ Backend: agents
 `);
       const choice = (await question(rl, "Select an action: ")).trim().toLowerCase();
 
+      if (choice === "b") {
+        currentBackend = cycleBackend(currentBackend);
+        continue;
+      }
+
       if (choice === "1") {
-        await runGuidedUpdateFlow(rl);
+        await runGuidedUpdateFlow(rl, currentBackend);
       } else if (choice === "2") {
-        await runNodeOwned(["diagnose", "--backend", "agents", "--json"]);
+        await runNodeOwned(["diagnose", "--backend", currentBackend, "--json"]);
         await pause(rl);
       } else if (choice === "3") {
-        await runNodeOwned(["verify", "--backend", "agents"]);
+        await runNodeOwned(["verify", "--backend", currentBackend]);
         await pause(rl);
       } else if (choice === "4") {
-        await runNodeOwned(["update", "--backend", "agents"]);
+        await runNodeOwned(["update", "--backend", currentBackend]);
         await pause(rl);
       } else if (choice === "5") {
         printHelp();
