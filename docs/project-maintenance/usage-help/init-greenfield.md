@@ -31,11 +31,10 @@ npx aw-installer verify --backend agents
 
 ## 二、设置项目目标
 
-空项目的关键在于先设置清晰的目标，再开始写代码：
+空项目的关键在于先设置清晰的目标，再开始写代码。以 Codex 为例：
 
-```bash
-# 启动 Harness 目标设置
-npx aw-installer set-harness-goal
+```txt
+$set-harness-goal-skill 当前空仓库期望最终实现一个 [目标描述]。
 ```
 
 目标描述示例：
@@ -48,7 +47,7 @@ npx aw-installer set-harness-goal
 
 目标设定完成后：
 
-1. `/harness-skill` 进入控制回路
+1. `$harness-skill` 进入控制回路
 2. 提出第一个 feature 请求（如"搭建 Express + TypeScript 项目骨架"）
 3. Harness 创建 worktrack contract → plan → dispatch → verify → gate → closeout
 

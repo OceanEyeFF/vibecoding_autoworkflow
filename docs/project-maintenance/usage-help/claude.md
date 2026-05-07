@@ -22,7 +22,7 @@ AW_HARNESS_TARGET_REPO_ROOT="$TARGET_REPO" aw-installer verify --backend claude
 
 `adapter_deploy.py --backend claude` 仍可作为 repo-local reference/parity 入口使用，但不是 package/local operator 主路径。
 
-冷启动 helper：`node product/harness/skills/set-harness-goal-skill/scripts/deploy_aw.js install-claude-skill --deploy-path "$TARGET_REPO"`。然后在目标仓库用 Claude Code `/set-harness-goal-skill` 或 `/aw-set-harness-goal-skill` 初始化 `.aw/`。
+冷启动 helper：`node product/harness/skills/set-harness-goal-skill/scripts/deploy_aw.js install-claude-skill --deploy-path "$TARGET_REPO"`。Coding CLI 内部的 skill 调用示例以 [Recommended Harness Usage](./recommended-usage.md) 的 Codex 口径为准。
 
 ## 二、Backend 标识与常见路径
 

@@ -16,7 +16,7 @@ last_verified: 2026-05-07
 
 如果新需求在当前 Goal Charter 范围内：
 
-- 直接通过 `/harness-skill` 提交追加请求
+- 通过 `$repo-append-request-skill` 提交追加请求
 - 分类为 `new worktrack`，进入常规 worktrack 流程
 - 不需要修改 Goal Charter
 
@@ -43,7 +43,7 @@ last_verified: 2026-05-07
 ```text
 提出请求
   ↓
-/repo-append-request-skill 分类路由
+$repo-append-request-skill 分类路由
   ├─ goal change → repo-change-goal-skill（需审批）
   ├─ new worktrack → init-worktrack-skill
   ├─ scope expansion → 审批 → 更新 contract
@@ -51,24 +51,22 @@ last_verified: 2026-05-07
   └─ design-then-implementation → 两阶段 worktrack
 ```
 
-### 在 Claude Code 中：
+### Coding CLI 示例
 
-1. 提出你的需求
-2. Harness 自动判断分类
-3. 按分类进入对应流程
+以 Codex 为例：
 
-### 在 Codex 中：
+```txt
+$repo-append-request-skill 追加请求：[描述需求]；边界：[希望包含什么，不包含什么]。
+```
 
-1. 使用 `/aw-repo-append-request` 提交追加请求
-2. 阅读路由结果
-3. 按建议路由继续
+Harness 返回分类路由后，按建议路由继续。
 
 ## 三、修改 Goal Charter
 
 当需要修改 Goal Charter 时：
 
 1. **备案当前状态**：确保当前所有活跃 worktrack 已 close 或 checkpoint
-2. **发起目标变更**：使用 `/repo-change-goal-skill`
+2. **发起目标变更**：使用 `$repo-change-goal-skill`
 3. **说明变更内容**：什么变了、为什么变、新目标是什么
 4. **等待审批**：目标变更需要 programmer 授权
 5. **重新进入循环**：变更完成后，系统从 RepoScope.Observe 重新开始
