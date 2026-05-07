@@ -13,6 +13,14 @@
 | `agents` | [codex.md](./codex.md) | 默认 `.agents/skills/`、copy-paste quickstart、source 变更决策、Codex Harness manual run |
 | `claude` | [claude.md](./claude.md) | Claude runtime 路径、copy-paste quickstart、source 变更决策、冷启动 runbook |
 
+## 按初始化场景进入
+
+| 场景 | 文档 |
+|------|------|
+| 已有代码项目初始化 Harness | [init-with-code.md](./init-with-code.md) |
+| 空项目从零开始 | [init-greenfield.md](./init-greenfield.md) |
+| 调整目标 / 追加需求 | [goal-change-guide.md](./goal-change-guide.md) |
+
 ## 和 Deploy 文档的分工
 
 - 通用 deploy 入口：[deploy/README.md](../deploy/README.md)
