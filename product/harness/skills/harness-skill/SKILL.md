@@ -331,19 +331,25 @@ Gate 应汇总**正交校验面**的裁决：
 
 ### 10.1 状态估计阶段
 
-1. 读取 `Harness Control State`，确定当前 `Scope` 和 `Function`
-2. 根据当前 Scope 选择传感器组合：
+1. **现有 `.aw` 配置读取 / 恢复前置**：任何 Harness 轮次启动时，必须先读取既有 `.aw/control-state.md`，恢复控制面配置与上次交接边界，再进入状态估计。
+   - 如果 `.aw/control-state.md` 或 `.aw/goal-charter.md` 缺失，说明 Harness 尚未初始化，应路由到 `SetGoal` / `set-harness-goal-skill`，不得凭当前对话临时假设长期配置。
+   - 必读控制配置段包括 `Linked Formal Documents`、`Approval Boundary`、`Continuation Authority`、`Handback Guard`、`Baseline Traceability` 和 `Autonomy Ledger`。
+   - 缺失字段按 `docs/harness/artifact/control/control-state.md` 的默认值解释，并在状态估计中记录 `config_hydration_gaps`；缺失不能静默扩大权限或自动性。
+   - 本轮用户若给出长期权限、自动性或分派策略变更，必须先判定是一次性审批还是持久配置变更。持久变更只能写入 `.aw/control-state.md` 的对应配置段；若改变 canonical 字段语义或默认值，还必须同步更新 `docs/harness/artifact/control/control-state.md` 与初始化模板。
+   - `.aw/control-state.md` 只保存控制配置、路径指针与控制面记忆，不得写入 Repo 目标、Worktrack 业务真相或未验证结论。
+2. 读取 `Harness Control State`，确定当前 `Scope` 和 `Function`
+3. 根据当前 Scope 选择传感器组合：
    - `RepoScope`：读取 `Repo Goal/Charter`、`Repo Snapshot/Status`
    - `WorktrackScope`：读取 `Worktrack Contract`、`Plan/Task Queue`、当前 evidence
-3. **Git Commit Hash 基线对比（幂等性守卫）**：
+4. **Git Commit Hash 基线对比（幂等性守卫）**：
    - 读取 `.aw/control-state.md` 的 `Baseline Traceability` 段，获取 `latest_observed_checkpoint`（即上次刷新时记录的 git commit hash）
    - 执行 `git rev-parse HEAD` 获取当前 HEAD hash
    - 对比两个 hash：若一致，说明 repo 代码基线自上次刷新后未变化，跳过 `repo-refresh-skill` 绑定，仅在状态估计中标记 `repo_baseline_unchanged: true`
    - 若 hash 不一致（或 `latest_observed_checkpoint` 缺失），说明代码基线已变化，必须在本轮合适阶段绑定 `repo-refresh-skill` 刷新 Repo 级慢变量
    - 此检查确保不会对同一基线重复执行 repo-refresh，避免不必要的刷新开销
-4. **文档 Freshness 基线对比**：如果发现本轮涉及 release、deploy、adapter、package、VCS baseline、CLI 版本或 operator-facing docs，且文档版本事实可能落后于代码/registry/VCS 证据，应标记 `doc_catch_up_needed: true`，并在合适阶段绑定 `doc-catch-up-worker-skill`；如果上次 `doc-catch-up` 执行时的 git hash 与当前 HEAD 一致且无新的文档变更，可跳过重复追平
-5. 如果标准快照缺失、过期或明显不足，只收集解释缺口所需的最小探查证据
-6. 产出结构化状态估计结果，而不是文字摘要
+5. **文档 Freshness 基线对比**：如果发现本轮涉及 release、deploy、adapter、package、VCS baseline、CLI 版本或 operator-facing docs，且文档版本事实可能落后于代码/registry/VCS 证据，应标记 `doc_catch_up_needed: true`，并在合适阶段绑定 `doc-catch-up-worker-skill`；如果上次 `doc-catch-up` 执行时的 git hash 与当前 HEAD 一致且无新的文档变更，可跳过重复追平
+6. 如果标准快照缺失、过期或明显不足，只收集解释缺口所需的最小探查证据
+7. 产出结构化状态估计结果，而不是文字摘要
 
 ### 10.2 算子选择阶段
 
@@ -409,8 +415,9 @@ Gate 应汇总**正交校验面**的裁决：
    - 此 hash 存储确保下次 Harness 轮次启动时能正确判断是否需要重新刷新
 3. 如果是 `失败/阻塞` → 进入 `Recover`
 4. **文档追平收口**：在 Close、handback 或 release/post-smoke 收口前，如果本轮改变了代码版本、package/release 事实、git/SVN baseline、deploy/adapter 行为、验证命令或 operator-facing 文档，必须调用或显式安排 `doc-catch-up-worker-skill`；版本事实场景使用 `version fact sync`，并记录 source version、published version、VCS tracking facts 与未更新文档理由。如果 `doc-catch-up` 成功执行，将当前 git hash 写入 `.aw/control-state.md` 的 `Baseline Traceability.last_doc_catch_up_checkpoint`，作为下次文档 freshness 检查的对比锚点
-5. 如果命中正式停止条件 → 向程序员返回控制权
-6. 不要直接把子代理的返回结果当成状态更新的唯一依据；必须经过 Gate 裁决
+5. **长期权限配置写回**：如果本轮经程序员明确批准了持久权限、自动性或分派策略变更，必须把配置事实写回 `.aw/control-state.md` 的 `Approval Boundary`、`Continuation Authority` 或 `Autonomy Ledger`，并记录审批理由；一次性审批只能写入本轮 evidence / handoff，不得伪装成长期默认配置。
+6. 如果命中正式停止条件 → 向程序员返回控制权
+7. 不要直接把子代理的返回结果当成状态更新的唯一依据；必须经过 Gate 裁决
 
 ### 10.8 Git Commit Hash 幂等性守卫
 
@@ -550,6 +557,8 @@ Close/Refresh 完成 → 状态更新阶段
 - **Function 算子必须在控制面上显性化**为 `Observe → Decide → Dispatch → Verify → Judge → Recover → Close → ChangeGoal` 的控制语义；禁止仅通过技能名称隐式传达当前算子。
 - **Harness 仅负责选择算子、绑定技能和裁决 Gate**；具体代码仓库动作、任务列表内容和执行任务的细节由下游技能的算子实现负责。
 - **SubAgent 使用必须是可开关参数，而不是硬编码行为。** 控制态字段 `subagent_dispatch_mode` 与工作追踪约定字段 `runtime_dispatch_mode` 支持 `auto` / `delegated` / `current-carrier`；控制态字段 `subagent_dispatch_mode_override_scope` 默认是 `worktrack-contract-primary`，只有显式 `global-override` 才是全局覆盖；默认 `auto` 才表示在宿主运行时支持真实 SubAgent 委派且权限边界允许时优先委派。未委派时必须将原因记录为 `runtime fallback`、`permission blocked` 或 `dispatch package unsafe`。
+- **现有 `.aw` 控制配置必须先 hydration 再决策。** Harness 不得忽略上一轮 `.aw/control-state.md` 中的 linked artifact、approval boundary、continuation authority、handback guard、baseline traceability 或 autonomy ledger；缺失字段只能按 artifact 合同默认值降级解释，不能静默扩大权限。
+- **长期权限变更必须写回控制配置。** 程序员授予的持久自动性、分派模式、审批边界或预算变更必须写入 `.aw/control-state.md` 的配置段；若只是本轮一次性批准，必须保留为本轮 evidence / handoff，不得改变长期默认值。
 - **约定后自动工作追踪仅当 `Harness Control State` 明确授予 `约定后自动性：最小委派` 时才可开启**；否则必须保持手动交接模式。
 - **自动继续推进的边界严格等于当前 `Worktrack Contract` 的 scope**；超出 scope 的改动、目标重定义或预算超支必须触发审批门控。
 - **自动切片仅可在当前切片未收束时串接**；一旦切片收束且 `要求自动切片后停止` 为真，必须停止执行并重新交接。
@@ -593,3 +602,5 @@ Inside the result, include at least these fields or equivalents:
 - `stop_conditions_hit`
 - `approval_required`
 - `needs_approval`
+- `config_hydration_gaps`
+- `persistent_authority_updates`

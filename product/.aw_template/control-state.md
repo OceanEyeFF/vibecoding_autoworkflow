@@ -1,6 +1,7 @@
 # Harness Control State
 
 > 这是 `.aw/control-state.md` 的模板来源，用来维护当前 Harness supervisor 的控制面状态，不要把业务真相写进来。
+> 每轮 Harness 启动必须先读取本文件，恢复 linked artifact、审批边界、自动性、交接守卫、基线追溯和预算配置；缺失字段只能按 artifact 合同默认值降级解释，不能扩大权限。
 
 ## Metadata
 
@@ -36,10 +37,13 @@
 
 - needs_programmer_approval:
 - reason:
+- approval_scope:
+- approval_persistence: one-shot
 
 ## Continuation Authority
 
 > `subagent_dispatch_mode` 是使用 SubAgent 的 repo 级默认开关。`subagent_dispatch_mode_override_scope: worktrack-contract-primary` 表示默认让工作追踪内的 `runtime_dispatch_mode` 优先；只有显式改为 `global-override` 时，control-state 才压过 worktrack 合同。`auto` 默认优先委派 SubAgent；`delegated` 要求真实委派；`current-carrier` 明确关闭 SubAgent 委派。若 `auto` 不能安全委派，必须在结果中写明 `runtime fallback`、权限边界阻断或 `dispatch package unsafe`。
+> 用户授予的长期权限、自动性或分派策略变更必须写入本段或 Autonomy Ledger；一次性审批只写入本轮 evidence / handoff，不改变长期默认值。
 
 - post_contract_autonomy: delegated-minimal
 - autonomy_scope: current-goal-only
@@ -48,6 +52,7 @@
 - subagent_dispatch_mode: auto
 - subagent_dispatch_mode_override_scope: worktrack-contract-primary
 - subagent_default_model:
+- persistent_authority_notes:
 
 ## Handback Guard
 
