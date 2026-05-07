@@ -1360,7 +1360,7 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertEqual(completed.stdout, "")
         self.assertIn("realPublishApproval must be approved", completed.stderr)
 
-    def test_root_npm_publish_guard_accepts_current_approved_stable_metadata(self) -> None:
+    def test_root_npm_publish_guard_accepts_current_approved_rc_metadata(self) -> None:
         if shutil.which("node") is None:
             self.skipTest("node is not available")
         package_root = self.source_repo_root
@@ -1370,7 +1370,7 @@ class AdapterDeployTest(unittest.TestCase):
             "AW_INSTALLER_PUBLISH_APPROVED": "1",
             "AW_INSTALLER_RELEASE_GIT_TAG": "v0.4.5-rc.0",
             "CI": "true",
-            "npm_config_tag": "latest",
+            "npm_config_tag": "next",
         }
         env.pop("npm_config_dry_run", None)
         env.pop("AW_INSTALLER_RELEASE_CHANNEL", None)
