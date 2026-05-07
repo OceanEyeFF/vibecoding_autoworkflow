@@ -981,11 +981,11 @@ class AdapterDeployTest(unittest.TestCase):
         self.assertNotIn("pythonCandidates", installer_source)
         self.assertIn("Node-only distribution", installer_source)
         self.assertIn(
-            'await runNodeOwned(["update", "--backend", "agents"])',
+            'await runNodeOwned(["update", "--backend", currentBackend])',
             installer_source,
         )
         self.assertIn(
-            'await runNodeOwned(["update", "--backend", "agents", "--yes"])',
+            'await runNodeOwned(["update", "--backend", currentBackend, "--yes"])',
             installer_source,
         )
 
@@ -2734,7 +2734,7 @@ class AdapterDeployTest(unittest.TestCase):
                 self.assertIn("1. Guided update flow", installer_source)
                 self.assertIn("5. Show CLI help", installer_source)
                 self.assertNotIn("Re-run guided update flow", installer_source)
-                self.assertIn("Step 1: Diagnose current agents install.", installer_source)
+                self.assertIn("Step 1: Diagnose current ${currentBackend} install.", installer_source)
                 self.assertIn("Step 2: Review update dry-run plan.", installer_source)
                 self.assertIn("Step 3: Type yes to apply update via prune --all -> check_paths_exist -> install -> verify", installer_source)
             env = {

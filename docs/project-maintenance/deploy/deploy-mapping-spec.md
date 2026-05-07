@@ -1,9 +1,9 @@
 ---
 title: "Deploy Mapping Spec"
 status: active
-updated: 2026-05-06
+updated: 2026-05-07
 owner: aw-kernel
-last_verified: 2026-05-06
+last_verified: 2026-05-07
 ---
 # Deploy Mapping Spec
 
@@ -34,6 +34,7 @@ last_verified: 2026-05-06
 | --- | --- |
 | `agents` | `aw-{skill_id}` |
 | `claude` | `{skill_id}` |
+| `bundle` | 无独立 target；agents 端 = `aw-{skill_id}` + claude 端 = `{skill_id}` 同时实例化 |
 
 ## 命令读取面
 
