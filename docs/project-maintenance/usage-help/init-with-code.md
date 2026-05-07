@@ -31,7 +31,7 @@ npx aw-installer install --backend agents
 npx aw-installer verify --backend agents
 ```
 
-Claude Code 用户使用 `--backend claude`：
+其他 backend 使用对应 `--backend` 参数；下面不重复展开 Coding CLI 内部 skill 调用示例：
 
 ```bash
 npx aw-installer diagnose --backend claude --json
@@ -41,14 +41,11 @@ npx aw-installer verify --backend claude
 
 ## 二、初始化 Harness 控制面
 
-安装完成后，用 `set-harness-goal-skill` 建立控制面：
+安装完成后，在 Coding CLI 中调用 `set-harness-goal-skill` 建立控制面。以 Codex 为例：
 
-```bash
-# 通过 Harness CLI 初始化
-npx aw-installer set-harness-goal
+```txt
+$set-harness-goal-skill 请根据当前已有代码项目初始化 Harness，并生成可确认的 Goal Charter 草稿。
 ```
-
-或在 Claude Code 中运行 `/set-harness-goal-skill`。
 
 目标描述应包含：
 
@@ -61,7 +58,7 @@ npx aw-installer set-harness-goal
 
 控制面初始化后，Harness 进入 `RepoScope.Observe`。推荐路径：
 
-1. 让 Harness 观察当前状态 → `/harness-skill`
+1. 让 Harness 观察当前状态 → `$harness-skill`
 2. 提出第一项 bounded worktrack 请求
 3. 等待 contract 和 plan 建立后执行
 4. 完成后验证、gate、closeout
