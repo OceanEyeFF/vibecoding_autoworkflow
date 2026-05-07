@@ -1,9 +1,9 @@
 ---
 title: "AutoWorkflow"
 status: active
-updated: 2026-05-06
+updated: 2026-05-07
 owner: aw-kernel
-last_verified: 2026-05-06
+last_verified: 2026-05-07
 ---
 # AutoWorkflow
 
@@ -23,28 +23,28 @@ last_verified: 2026-05-06
 `aw-installer` 是当前仓库的分发入口和 CLI bin。根 README 只保留试用入口和文档分流；registry 事实、release channel、package smoke 与 publish 准入以 project-maintenance 文档为准。
 
 ```bash
-npx aw-installer@next
-npx aw-installer@next tui
+npx aw-installer
+npx aw-installer tui
 ```
 
 交互式终端中，已批准 package entrypoint 可以进入最小 TUI；CI、脚本或非交互环境应使用显式 CLI：
 
 ```bash
-npx aw-installer@next --version
-npx aw-installer@next diagnose --backend agents --json
-npx aw-installer@next verify --backend agents
-npx aw-installer@next update --backend agents
-npx aw-installer@next update --backend agents --yes
-npx aw-installer@next install --backend agents
+npx aw-installer --version
+npx aw-installer diagnose --backend agents --json
+npx aw-installer verify --backend agents
+npx aw-installer update --backend agents
+npx aw-installer update --backend agents --yes
+npx aw-installer install --backend agents
 ```
 
 当前 public / near-public 主路径仍是 `agents` backend，也就是 Codex 使用的 `.agents/skills/` payload。推荐从目标仓库根目录先做只读观察，再显式 apply：
 
 ```bash
-npx aw-installer@next diagnose --backend agents --json
-npx aw-installer@next update --backend agents
-npx aw-installer@next update --backend agents --yes
-npx aw-installer@next verify --backend agents
+npx aw-installer diagnose --backend agents --json
+npx aw-installer update --backend agents
+npx aw-installer update --backend agents --yes
+npx aw-installer verify --backend agents
 ```
 
 Claude Code 目前是 compatibility lane，使用 `claude` backend 和 `.claude/skills/` payload，不替代 `agents` 主路径。

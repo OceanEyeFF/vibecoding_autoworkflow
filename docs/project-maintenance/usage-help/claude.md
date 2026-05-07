@@ -1,9 +1,9 @@
 ---
 title: "Claude Repo-local Usage Help"
 status: active
-updated: 2026-05-06
+updated: 2026-05-07
 owner: aw-kernel
-last_verified: 2026-05-06
+last_verified: 2026-05-07
 ---
 # Claude Repo-local Usage Help
 
@@ -41,7 +41,7 @@ AW_HARNESS_TARGET_REPO_ROOT="$TARGET_REPO" aw-installer verify --backend claude
 
 ## 五、当前限制
 
-`claude` 是 compatibility lane，非 `agents` 替代品；package/local lifecycle 已由 Node-owned `aw-installer --backend claude` 承接，但成熟度未到 npm stable/latest/Release/dist-tag/public smoke/release approval。本页只承接 Claude runtime 路径与兼容 payload 差异。
+`claude` 是 compatibility lane，非 `agents` 替代品；package/local lifecycle 已由 Node-owned `aw-installer --backend claude` 承接，并已通过稳定版发布前的项目级 Claude Code 行为观察。本页只承接 Claude runtime 路径与兼容 payload 差异。
 
 ## 六、当前受控例外
 

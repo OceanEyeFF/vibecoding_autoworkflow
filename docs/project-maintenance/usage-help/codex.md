@@ -1,9 +1,9 @@
 ---
 title: "Codex Usage Help"
 status: active
-updated: 2026-05-06
+updated: 2026-05-07
 owner: aw-kernel
-last_verified: 2026-05-06
+last_verified: 2026-05-07
 ---
 # Codex Usage Help
 
@@ -11,10 +11,10 @@ last_verified: 2026-05-06
 
 ## 一、快速试用路径
 
-public/near-public 主路径仍是 `agents`，推荐 `aw-installer@next`：
+public/stable 主路径仍是 `agents`，推荐默认 `aw-installer` selector：
 
 ```bash
-AW_INSTALLER_PACKAGE="aw-installer@next"
+AW_INSTALLER_PACKAGE="aw-installer"
 AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npx --yes --package "$AW_INSTALLER_PACKAGE" -- aw-installer diagnose --backend agents --json
 AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npx --yes --package "$AW_INSTALLER_PACKAGE" -- aw-installer update --backend agents --yes
 AW_HARNESS_REPO_ROOT="" AW_HARNESS_TARGET_REPO_ROOT="" npx --yes --package "$AW_INSTALLER_PACKAGE" -- aw-installer verify --backend agents

@@ -31,7 +31,7 @@ last_verified: 2026-05-07
 | `next` | `next` | `alpha` / `beta` / `rc` prerelease |
 | `canary` | `canary` | 含 `canary` 段的 prerelease |
 
-RC 试用 operator-facing selector 必须显式使用 `aw-installer@next`；裸 `aw-installer` 仍按 `latest` 解析。
+stable operator-facing selector 使用默认 `aw-installer`；RC 试用 selector 必须显式使用 `aw-installer@next`。
 
 ## 真实 Publish 准入
 
