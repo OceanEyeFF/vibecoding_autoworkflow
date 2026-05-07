@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Release Channel Governance"
 status: active
-updated: 2026-05-06
+updated: 2026-05-07
 owner: aw-kernel
-last_verified: 2026-05-06
+last_verified: 2026-05-07
 ---
 # aw-installer Release Channel Governance
 
@@ -15,12 +15,15 @@ last_verified: 2026-05-06
 
 ## 当前 registry 事实
 
-2026-05-06 已核对 npm registry：
+2026-05-07 已核对 git tag 与远程 release-line：
 
-- `latest` -> `4.4.0`，`gitHead=2a68869d558bd538d9e9867f94b574caa797fdaf`
-- `next` -> `4.4.1-rc.0`，`gitHead=827efea569b058d91fa593d3d96851f332acd10f`
+- `latest` -> `4.4.1`，`gitTag=v4.4.1=363c708`
+- `next` -> `4.4.1-rc.1`，`gitTag=v4.4.1-rc.1=3b6b7f0`
+- 历史 tag 也在仓库中：`v4.4.0=2a68869`、`v4.4.0-rc.0=0a1a281`、`v4.4.1-rc.0=827efea`
 
-当前 checkout 的 root `package.json` 绑定 `approvedVersion=4.4.1-rc.0`、`approvedGitTag=v4.4.1-rc.0`、`approvedChannel=next`，且该版本已通过 GitHub Release publish workflow 发布到 npm `next`；后续再次 publish 必须使用新的 immutable npm version。
+注意：上述 `latest`/`next` 由 release-line 上的 git tag 与 master/develop-main 推导而来，npm registry 的实际 dist-tag 写入由 publish workflow 完成；此页跟随 release commit 同步事实。
+
+当前活跃工程分支 `develop-aw@be787c7` 的 root `package.json` 仍绑定 candidate `approvedVersion=4.4.1-rc.0`、`approvedGitTag=v4.4.1-rc.0`、`approvedChannel=next`，落后于已发布的 4.4.1 stable（位于 origin/master）。develop-aw 上的 approval lock 不可在常规工作中复用，必须先经 release-approval worktrack 与 develop-aw↔release-line 协调。
 
 ## Channel 对应关系
 
