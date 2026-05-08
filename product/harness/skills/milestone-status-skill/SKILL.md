@@ -85,7 +85,7 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 - 输出中的 `release_version_consideration` 是 hint，不是 decision：不得自动触发 release/publish/version bump。
 - `developer_decisions_needed` 中的项目不得由本技能自动判定；它们必须作为显式边界交还给 developer。
 - 如果 `depends_on_milestones` 中的前置 Milestone 未完成，必须标记为 blocked 并在 `developer_decisions_needed` 中列出是否跳过前置依赖的决策。
-- 仅当 `latest_observed_checkpoint` 已存在且其记录的 hash 在当前 git history 中可达时，才可跳过重新计算 progress counter；首次分析或 checkpoint 不可达时必须完整遍历 worktrack backlog 重新统计。
+- 仅当 `latest_observed_checkpoint` 已存在且其 hash 与当前 `git rev-parse HEAD` 一致时，才可跳过重新计算 progress counter；hash 不一致或 checkpoint 缺失时必须完整遍历 worktrack backlog 重新统计。
 
 ## 预期输出
 
