@@ -96,3 +96,7 @@ Harness 会把请求分类为 new worktrack、scope expansion、design-only、de
 ## 许可证
 
 MIT License，以根目录 [LICENSE](./LICENSE) 文件为准。
+
+## 友情链接
+
+LinuxDo[https://linux.do/]
