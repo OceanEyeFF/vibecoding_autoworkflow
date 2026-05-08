@@ -48,7 +48,7 @@ last_verified: 2026-05-08
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | milestone_id | string | 分析的 Milestone |
-| milestone_status | enum | planned / active / completed / blocked |
+| milestone_status | enum | planned / active / completed / superseded |
 | progress | object | total / completed / blocked / deferred / completion_pct |
 | worktrack_list_finished | boolean | 声明的 worktrack 列表是否全部处理 |
 | purpose_achieved | boolean | 目的是否经聚合 evidence 证明达成 |

@@ -62,7 +62,7 @@ PACKAGE_TGZ="/path/to/aw-installer-<version>.tgz"
 )
 ```
 
-只观察 checkout 行为时可用 Python reference（`prune/check_paths_exist/install/verify`）。当前 `claude` install 包含全部 19 个 skills；cold-start helper 以 `scripts/deploy_aw.js` 随 payload 分发。
+只观察 checkout 行为时可用 Python reference（`prune/check_paths_exist/install/verify`）。当前 `claude` install 包含全部 20 个 skills（含 Milestone 观测器）；cold-start helper 以 `scripts/deploy_aw.js` 随 payload 分发。
 
 ## 五、选择观察策略
 
