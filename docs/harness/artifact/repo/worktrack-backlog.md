@@ -23,8 +23,10 @@ last_verified: 2026-05-08
 每个 worktrack 条目至少包含:
 
 - `worktrack_id`: 唯一标识 (如 `WT-20260508-p0-074-milestone-impl`)
-- `status`: `done` / `deferred` / `resolved`
+- `status`: `done` / `deferred` / `blocked` / `resolved`
 - `node_type`: 从 Goal Charter 的 Engineering Node Map 绑定
+
+milestone-status-skill 读取 backlog 时将 `status` 按以下映射转换后参与 progress 计算: `done` → completed, `deferred` → deferred, `blocked` → blocked, `resolved` → completed。因此 status 值 `done` 和 `resolved` 都计入 completed 计数。
 - `scope`: 简要变更说明
 - `merge_commit`: 合并 hash（如有）
 - `validation`: 验证结果摘要
