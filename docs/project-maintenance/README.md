@@ -22,6 +22,7 @@
 
 ## Operator 常见入口
 
+- 新 repo 接入 Harness：先看 [repo-onboarding.md](./repo-onboarding.md)
 - 第一次安装 skill：先看 [deploy/deploy-runbook.md](./deploy/deploy-runbook.md)
 - 已有 mounts 想更新或复验：先看 [deploy/skill-deployment-maintenance.md](./deploy/skill-deployment-maintenance.md)
 - 新增、改名、删除 skill source：先看 [usage-help/README.md](./usage-help/README.md)

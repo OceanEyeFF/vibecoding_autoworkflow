@@ -36,3 +36,7 @@
 ## 不再承接的内容
 
 不再保存一次性 release approval、historical smoke evidence、Codex/Claude 行为测试副本、registry `npx` smoke runbook 副本、以及多页面双主线说明。
+
+## 历史参考
+
+- [deploy-script-governance-inventory.md](./deploy-script-governance-inventory.md) (superseded) — Python deploy 面删除前的盘点与设计边界

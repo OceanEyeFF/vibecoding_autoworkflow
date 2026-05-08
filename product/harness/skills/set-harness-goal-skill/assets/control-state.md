@@ -60,6 +60,9 @@
 - last_stop_reason:
 - last_handback_signature:
 - handback_reaffirmed_rounds: 0
+- stable_handback_threshold: 2
+- handback_lock_active: false
+- last_unlock_signal: N/A
 
 ## Baseline Traceability
 

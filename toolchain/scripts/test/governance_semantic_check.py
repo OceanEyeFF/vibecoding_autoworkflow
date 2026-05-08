@@ -152,6 +152,50 @@ CLOSEOUT_ACCEPTANCE_GATE_STEPS = [
     "test_gate",
     "smoke_gate",
 ]
+ARTIFACT_SKILL_ALIGNMENTS = [
+    {
+        "contract": "docs/harness/artifact/worktrack/contract.md",
+        "skill": "product/harness/skills/init-worktrack-skill/templates/contract.template.md",
+        "label": "contract.md ↔ init-worktrack-skill template",
+        "fields": [
+            "node_type",
+            "baseline_form",
+            "merge_required",
+            "gate_criteria",
+            "if_interrupted_strategy",
+            "runtime_dispatch_mode",
+        ],
+    },
+    {
+        "contract": "docs/harness/artifact/worktrack/gate-evidence.md",
+        "skill": "product/harness/skills/gate-skill/SKILL.md",
+        "label": "gate-evidence.md ↔ gate-skill",
+        "fields": [
+            "verdict",
+            "review_dimensions",
+        ],
+    },
+    {
+        "contract": "docs/harness/artifact/worktrack/plan-task-queue.md",
+        "skill": "product/harness/skills/schedule-worktrack-skill/SKILL.md",
+        "label": "plan-task-queue.md ↔ schedule-worktrack-skill",
+        "fields": [
+            "task_id",
+            "status",
+            "priority",
+            "depends_on",
+            "acceptance",
+        ],
+    },
+]
+ORPHAN_DOC_EXCLUDED_DIRS = [
+    "docs/archive/",
+    "docs/ideas/",
+]
+ORPHAN_REFERENCE_SOURCES = [
+    "CLAUDE.md",
+    "AGENTS.md",
+]
 SUBAGENT_DEFAULT_REQUIRED_TERMS = [
     "默认",
     "SubAgent",
@@ -240,10 +284,14 @@ REPO_PYTHON_COMMAND_RE = re.compile(
 @dataclass
 class SemanticReport:
     failures: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     infos: list[str] = field(default_factory=list)
 
     def add_failure(self, message: str) -> None:
         self.failures.append(message)
+
+    def add_warning(self, message: str) -> None:
+        self.warnings.append(message)
 
     def add_info(self, message: str) -> None:
         self.infos.append(message)
@@ -682,6 +730,133 @@ def check_repo_whats_next_overview_fallback_contract(
     report.add_info(f"checked {checked} repo whats-next overview fallback sources")
 
 
+def _field_name_in_text(field: str, text: str) -> bool:
+    """Check if a field name is referenced in text, with flexible matching."""
+    if field in text:
+        return True
+    if field.lower() in text.lower():
+        return True
+    alt = field.replace("_", " ")
+    if alt.lower() in text.lower():
+        return True
+    return False
+
+
+def check_artifact_skill_alignment(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    for entry in ARTIFACT_SKILL_ALIGNMENTS:
+        contract_path = entry["contract"]
+        skill_path = entry["skill"]
+        label = entry["label"]
+        fields = entry["fields"]
+
+        skill_file = repo_root / skill_path
+        if not skill_file.exists():
+            report.add_failure(f"artifact skill alignment: missing skill file: {skill_path}")
+            continue
+
+        checked += 1
+        skill_text = skill_file.read_text(encoding="utf-8")
+        aligned = 0
+        missing: list[str] = []
+        for field in fields:
+            if _field_name_in_text(field, skill_text):
+                aligned += 1
+            else:
+                missing.append(field)
+
+        if missing:
+            for field in missing:
+                report.add_warning(f"artifact skill alignment: {label}: {contract_path} defines '{field}' but {skill_path} does not reference it (may use Chinese equivalent)")
+        report.add_info(f"  {label}: {aligned}/{len(fields)} fields aligned")
+
+    report.add_info(f"checked {checked} artifact contracts for skill alignment")
+
+
+def _is_readme_or_excluded(rel_path: str) -> bool:
+    """Check if a doc path is a README, in archive/, or in ideas/."""
+    if rel_path.endswith("/README.md"):
+        return True
+    if rel_path == "docs/README.md":
+        return True
+    for excluded_dir in ORPHAN_DOC_EXCLUDED_DIRS:
+        if rel_path.startswith(excluded_dir):
+            return True
+    return False
+
+
+def _collect_docs_referenced_targets(repo_root: Path) -> set[str]:
+    """Collect all relative markdown link targets from reference sources.
+
+    Scans: all docs/**/*.md, CLAUDE.md, AGENTS.md.
+    Returns a set of resolved repo-relative paths.
+    """
+    referenced: set[str] = set()
+
+    # Scan all .md files under docs/
+    docs_dir = repo_root / "docs"
+    if docs_dir.is_dir():
+        for md_file in sorted(docs_dir.rglob("*.md")):
+            try:
+                rel = to_relative_posix(md_file, repo_root)
+            except ValueError:
+                continue
+            try:
+                targets = collect_repo_relative_markdown_links(repo_root, rel)
+            except Exception:
+                continue
+            referenced.update(targets)
+
+    # Scan root reference sources (CLAUDE.md, AGENTS.md)
+    for source in ORPHAN_REFERENCE_SOURCES:
+        source_path = repo_root / source
+        if source_path.is_file():
+            try:
+                targets = collect_repo_relative_markdown_links(repo_root, source)
+            except Exception:
+                continue
+            referenced.update(targets)
+
+    return referenced
+
+
+def check_orphan_docs(repo_root: Path, report: SemanticReport) -> None:
+    # Collect all substantive .md files under docs/
+    docs_dir = repo_root / "docs"
+    if not docs_dir.is_dir():
+        report.add_info("checked 0 docs for orphan status, docs/ directory missing")
+        return
+
+    all_docs: list[str] = []
+    for md_file in sorted(docs_dir.rglob("*.md")):
+        try:
+            rel = to_relative_posix(md_file, repo_root)
+        except ValueError:
+            continue
+        if _is_readme_or_excluded(rel):
+            continue
+        all_docs.append(rel)
+
+    if not all_docs:
+        report.add_info("checked 0 docs for orphan status, no substantive docs found")
+        return
+
+    # Collect all referenced targets from reference sources
+    referenced = _collect_docs_referenced_targets(repo_root)
+
+    # Find orphans: docs not referenced by any source
+    orphans: list[str] = []
+    for doc_rel in all_docs:
+        if doc_rel not in referenced:
+            orphans.append(doc_rel)
+
+    if orphans:
+        report.add_failure(f"{len(orphans)} orphan docs found:")
+        for doc_rel in orphans:
+            report.add_failure(f"  {doc_rel} (0 references)")
+    report.add_info(f"checked {len(all_docs)} docs for orphan status, {len(orphans)} orphans found")
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
@@ -703,10 +878,13 @@ def main() -> int:
     check_subagent_dispatch_default_contract(repo_root, report)
     check_review_evidence_four_lane_contract(repo_root, report)
     check_repo_whats_next_overview_fallback_contract(repo_root, report)
+    check_artifact_skill_alignment(repo_root, report)
+    check_orphan_docs(repo_root, report)
 
     payload = {
         "passed": not report.failures,
         "failures": report.failures,
+        "warnings": report.warnings,
         "infos": report.infos,
     }
 
@@ -715,6 +893,8 @@ def main() -> int:
     else:
         for info in report.infos:
             print(f"info: {info}")
+        for warning in report.warnings:
+            print(f"warn: {warning}")
         if report.failures:
             for failure in report.failures:
                 print(f"failure: {failure}")
