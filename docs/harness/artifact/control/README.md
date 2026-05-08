@@ -7,3 +7,5 @@
 - [append-request.md](./append-request.md)
 - [control-state.md](./control-state.md)
 - [goal-change-request.md](./goal-change-request.md)
+- [milestone.md](./milestone.md)
+- [node-type-registry.md](./node-type-registry.md)

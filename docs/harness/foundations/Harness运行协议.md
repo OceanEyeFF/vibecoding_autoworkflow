@@ -60,6 +60,8 @@ Harness 本体属于控制平面。
 
 如果需要实际执行，Harness 应优先 dispatch 给独立 `SubAgent`、human executor 或明确的通用执行载体；只有宿主运行时缺少稳定分派壳层、权限边界阻断，或任务包不满足安全分派条件时，才允许当前载体回退。回退必须写成 `runtime fallback`、`permission blocked` 或 `dispatch package unsafe`，不能声称已经真实委派了 `SubAgent`。
 
+`Dispatch` 与 `Implement` 的边界：`Dispatch` 属于控制平面——它负责选择载体、打包任务并分派，不直接执行 repo 变更。`Implement` 属于执行平面——它接收 dispatch packet，执行实际编码、review、测试、文档更新等变更动作，并将结构化执行结果与证据返回给控制平面。`Implement` 是 bounded execution 的运行时载体；一次 `Dispatch` 对应一次 `Implement` 往返，`Implement` 完成后控制权回到 `Verify`/`Judge`。控制平面决定"做什么、谁来做、怎么验收"，执行平面完成"实际做并回传结果"。
+
 ## 三、Scope 与状态
 
 ### RepoScope
@@ -93,6 +95,7 @@ Harness 本体属于控制平面。
 - `observing`
 - `scheduling`
 - `dispatching`
+- `implementing`
 - `verifying`
 - `judging`
 - `recovering`
@@ -107,7 +110,8 @@ Harness 本体属于控制平面。
 | `Init` | 建立 branch、baseline、contract 与初始 plan |
 | `Observe` | 读取当前 worktrack artifact、diff、测试和阻塞 |
 | `Decide` | 从 task queue 选择当前下一动作 |
-| `Dispatch` | 选择专用 skill、通用 `SubAgent` 或显式 current-carrier fallback |
+| `Dispatch` | 选择载体、打包任务并分派；覆盖"选择载体 → 打包任务 → 分派 → 等待返回"的委派链路 |
+| `Implement` | 接收分派任务包，执行实际变更，返回结构化执行结果与证据 |
 | `Verify` | 收集 review / test / rule-check 等证据 |
 | `Judge` | 汇总证据形成 gate verdict |
 | `Recover` | 在 fail / blocked / drift 后选择恢复动作 |
@@ -122,6 +126,7 @@ RepoScope.Observe
 -> WorktrackScope.Observe
 -> WorktrackScope.Decide
 -> WorktrackScope.Dispatch
+-> WorktrackScope.Implement
 -> WorktrackScope.Verify
 -> WorktrackScope.Judge
 -> WorktrackScope.Close 或 WorktrackScope.Recover
@@ -177,6 +182,13 @@ merge -> refresh repo snapshot -> cleanup -> return RepoScope
 - "没有专门 skill"不是 stop condition；应进入 fallback execution carrier。
 - runtime dispatch shell 缺位必须报告为 runtime gap，不能伪装成已完成 SubAgent 委派。
 
+当 programmer 明确指示连续执行时，`Worktrack Close` 只是 repo refresh 或 milestone progress update 的状态刷新点，不应默认触发 handback。连续推进只应在以下条件 handback：
+- 命中必要审批（goal change、scope expansion、destructive action 或 authority boundary）
+- 证据缺失/冲突、路由阻塞、运行时缺口或范围阻塞
+- 命中 Milestone 验收边界
+
+`autonomy_budget` 消费规则：每个 autonomous slice 开启时消费 1 个 budget 单位；budget 耗尽后不得自动开启新 slice，必须 handback。`handback guard` 与连续执行的关系：连续执行模式下 handback guard 仍然生效——stable-handback 判定、交接锁激活与 unlock signal 验证逻辑不因连续执行而跳过；连续执行只改变 handback 的默认触发时机，不改变 handback guard 本身的语义。
+
 bounded round handoff 应优先给出：
 
 - `allowed_next_routes`
@@ -186,6 +198,45 @@ bounded round handoff 应优先给出：
 - `approval_required`
 - `approval_scope`
 - `approval_reason`
+
+## 六-A、Handback 与交接锁
+
+Handback 是 Harness 将控制权交还给 programmer 的正式交接动作。它不是默认的 round 结束行为，而是由明确的触发条件驱动。
+
+### 触发条件
+
+Handback 在以下任一条件满足时触发：
+- **审批门控**：需要 programmer 批准的 goal change、scope expansion、destructive action 或 authority boundary
+- **证据门控**：必需 artifact / evidence 缺失、过时或互相冲突，且无法在本轮自动补齐
+- **路由阻塞**：Gate 给出 `soft-fail`、`hard-fail` 或 `blocked`，且当前 Recover 路径无法自动恢复
+- **运行时缺口**：当前 host runtime 没有合法 execution carrier / dispatch shell
+- **约定边界**：下一动作会越过已批准输入、`Worktrack Contract` 或 repo baseline
+- **稳定交接**：同一交接边界在连续无变化轮次中被再次确认（stable-handback）
+
+### stable-handback 定义
+
+stable-handback 指同一交接边界（相同的 `last_stop_reason` 与 `last_handback_signature`）在连续 `handback_reaffirmed_rounds` 轮次中被再次确认。默认阈值 `stable_handback_threshold = 2`，即连续 2 轮无变化确认后触发 stable-handback。
+
+### 交接锁激活语义
+
+一旦 stable-handback 达成，运行时进入 `handoff_state = awaiting-handoff`，`handback_lock_active = true`，所有控制回路阶段（Observe、Decide、Dispatch、Implement、Verify、Judge、Recover、Close）进入被阻断状态。交接锁激活后，Harness 不得自主推进任何阶段，必须等待 programmer 显式解锁。
+
+### unlock signal 定义
+
+解锁信号必须是 programmer 显式发出的新指令或实质性新信息。裸"重试"、"继续工作"或重复文字摘要不构成有效 unlock signal。有效 unlock signal 至少满足以下之一：
+- 新目标或新 scope 声明
+- 对当前阻塞原因的实质性分析或新信息
+- 显式权限授予或策略变更
+- 明确的新任务指令
+
+### handback/re-entry 边界
+
+下一轮对话启动时，Harness 必须从 `last_handback_signature` 恢复 handback 上下文，不得将 handback 误读为 fresh handoff。re-entry 时：
+- 若 `handback_lock_active = true`，必须先验证 unlock signal 有效性，再决定是否解除交接锁
+- 若 `handback_lock_active = false`，按 `handoff_state` 与 `continuation_authority` 决定是续跑还是等待
+- 不得在 lock_active 状态下跳过交接锁验证直接进入新的 worktrack
+
+- `handback_reaffirmed_rounds` 默认阈值 `stable_handback_threshold = 2`，即连续 2 轮无变化确认后触发 stable-handback。该阈值可在 control-state 中配置。
 
 ## 七、Dispatch Contract
 
