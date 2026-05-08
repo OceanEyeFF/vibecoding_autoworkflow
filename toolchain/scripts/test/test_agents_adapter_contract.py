@@ -19,6 +19,7 @@ EXPECTED_AGENTS_SKILLS = {
     "generic-worker-skill",
     "harness-skill",
     "init-worktrack-skill",
+    "milestone-status-skill",
     "recover-worktrack-skill",
     "repo-append-request-skill",
     "repo-change-goal-skill",
