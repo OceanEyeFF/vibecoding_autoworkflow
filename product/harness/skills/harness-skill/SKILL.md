@@ -74,6 +74,7 @@ Harness 作为控制系统，包含以下系统组件：
 - diff impact analysis
 - 文档 freshness 检查
 - `Harness Control State` 中的控制面信号
+- `Milestone` artifact（`.aw/milestone/`）中的聚合进度、验收状态和 handback 边界信号
 
 没有这些，state 只是"自报状态"。
 
