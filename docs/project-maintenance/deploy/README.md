@@ -12,7 +12,7 @@
 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | canonical source/payload/target 映射合同 | operator 执行步骤、release 流程 |
 | [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md) | payload source kind、source/target root、GitHub source trust boundary | release channel、任意 remote update |
 | [existing-code-adoption.md](./existing-code-adoption.md) | 既有代码库接入 Harness 时的 `.aw/repo/discovery-input.md` 生成边界 | artifact 正文、skill workflow 实现 |
-| [template-consumption-spec.md](./template-consumption-spec.md) | legacy `.aw_template/` 的 deploy 边界 | `aw_scaffold.py` 命令面、artifact 合同 |
+| [template-consumption-spec.md](./template-consumption-spec.md) | legacy `.aw_template/` 的 deploy 边界 | scaffold 命令面（已移除）、artifact 合同 |
 
 ## 按问题进入
 

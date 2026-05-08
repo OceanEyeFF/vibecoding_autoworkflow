@@ -3,7 +3,7 @@ title: "aw-installer Release Channel Governance"
 status: active
 updated: 2026-05-07
 owner: aw-kernel
-last_verified: 2026-05-07
+last_verified: 2026-05-08
 ---
 # aw-installer Release Channel Governance
 

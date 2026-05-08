@@ -1,9 +1,9 @@
 ---
 title: Harness 运行协议
-status: draft
-updated: 2026-05-07
+status: active
+updated: 2026-05-08
 owner: OceanEye
-last_verified: 2026-05-07
+last_verified: 2026-05-08
 ---
 
 # Harness 运行协议

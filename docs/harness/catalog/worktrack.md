@@ -1,9 +1,9 @@
 ---
 title: "Harness Skill Catalog / WorktrackScope"
-status: draft
+status: active
 updated: 2026-05-08
 owner: aw-kernel
-last_verified: 2026-05-06
+last_verified: 2026-05-08
 ---
 # WorktrackScope Skill Catalog
 

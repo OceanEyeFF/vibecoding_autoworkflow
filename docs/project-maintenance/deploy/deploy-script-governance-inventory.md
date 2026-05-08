@@ -20,8 +20,8 @@ last_verified: 2026-05-08
 | Class | Paths |
 | --- | --- |
 | removed from package runtime | `toolchain/scripts/deploy/bin/aw-harness-deploy.js` alias、package runtime Python fallback、root package runtime `adapter_deploy.py`/`harness_deploy.py` payload |
-| retain reference | `adapter_deploy.py`、`harness_deploy.py` |
-| retain scaffold | `aw_scaffold.py`、`test_aw_scaffold.py` |
+| removed | `adapter_deploy.py`、`harness_deploy.py`、`test_adapter_deploy.py` |
+| removed | `aw_scaffold.py`、`test_aw_scaffold.py`、`deploy_aw.py` (skill 侧) |
 | retain runtime owner | `bin/aw-installer.js`、`test_aw_installer.js`、`path_safety_policy.json` |
 | retain release/package governance | root `package.json`、deploy package metadata、publish helpers、npm pack/npx smoke helpers、release governance tests |
 | split later | broad adapter parity tests、CLI/TUI integration tests、adapter contract tests、closeout gate checks |
@@ -38,7 +38,7 @@ last_verified: 2026-05-08
 
 ## 停止线
 
-- 不删除 repo-local `adapter_deploy.py`、`harness_deploy.py`、`aw_scaffold.py` 或 Python tests，除非新专项迁移
+- Python deploy 文件（`adapter_deploy.py`、`harness_deploy.py`、`aw_scaffold.py`、`deploy_aw.py` 及相关 test 文件）已随 P0-067 专项迁移删除，`aw-installer` 是当前 deploy runtime 入口（Node-only distribution）
 - 不修改 release approval lock、version、tag、remote、npm dist-tag、GitHub Release 或 publish workflow，除非经 release approval
-- 不把 `aw_scaffold.py` 的 `.aw_template` scaffold 并入 package/runtime Python removal scope
+- 不把 `aw_scaffold.py` 的 `.aw_template` scaffold 并入 package/runtime Python removal scope（已完成）
 - 本页不维护 command surface、source trust、release 或 smoke 的长期规则；由 owner 页承接

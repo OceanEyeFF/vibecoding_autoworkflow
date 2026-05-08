@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from dataclasses import dataclass, field
@@ -236,6 +237,11 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help="Additional file or directory to scan for markdown relative links.",
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit JSON output instead of human-readable text.",
+    )
     return parser.parse_args()
 
 
@@ -434,36 +440,80 @@ def check_gitignore(repo_root: Path, report: CheckReport) -> None:
     report.add_info(f"checked {len(REQUIRED_GITIGNORE_ENTRIES)} .gitignore entries")
 
 
+_INFO_TOTAL_RE = re.compile(r"checked (\d+)")
+
+
+def _build_checks_payload(reports: dict[str, CheckReport]) -> dict:
+    checks: dict[str, dict] = {}
+    for cat, cat_report in reports.items():
+        total = 0
+        for info in cat_report.infos:
+            m = _INFO_TOTAL_RE.match(info)
+            if m:
+                total += int(m.group(1))
+        failed = len(cat_report.failures)
+        checks[cat] = {
+            "passed": total - failed,
+            "failed": failed,
+            "errors": cat_report.failures,
+        }
+    return checks
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
-    report = CheckReport()
+
+    reports = {
+        "relative_links": CheckReport(),
+        "entrypoints": CheckReport(),
+        "frontmatter": CheckReport(),
+    }
 
     scan_paths = DEFAULT_SCAN_PATHS + args.scan_path
-    check_markdown_links(repo_root, report, scan_paths)
-    check_required_entrypoints(repo_root, report)
+    check_markdown_links(repo_root, reports["relative_links"], scan_paths)
+    check_required_entrypoints(repo_root, reports["entrypoints"])
     check_required_backlinks(
         repo_root,
-        report,
+        reports["entrypoints"],
         label="agents-contract",
         target_relative_path=AGENTS_CONTRACT_DOC,
         backlink_paths=AGENTS_CONTRACT_BACKLINK_PATHS,
     )
-    check_docs_frontmatter(repo_root, report)
-    check_required_entrypoint_links(repo_root, report)
-    check_gitignore(repo_root, report)
+    check_docs_frontmatter(repo_root, reports["frontmatter"])
+    check_required_entrypoint_links(repo_root, reports["entrypoints"])
+    check_gitignore(repo_root, reports["entrypoints"])
 
-    for info in report.infos:
-        print(f"info: {info}")
+    all_failures: list[str] = []
+    all_infos: list[str] = []
+    for cat_report in reports.values():
+        all_failures.extend(cat_report.failures)
+        all_infos.extend(cat_report.infos)
 
-    if report.failures:
-        print("governance checks failed:")
-        for failure in report.failures:
-            print(f"- {failure}")
-        return 1
+    checks = _build_checks_payload(reports)
+    total_passed = sum(c["passed"] for c in checks.values())
+    total_failed = sum(c["failed"] for c in checks.values())
 
-    print("governance checks passed")
-    return 0
+    if args.json:
+        payload = {
+            "status": "pass" if not all_failures else "fail",
+            "checks": checks,
+            "summary": (
+                f"{total_passed} passed, {total_failed} failed "
+                f"across {len(checks)} categories"
+            ),
+        }
+        print(json.dumps(payload, indent=2))
+    else:
+        for info in all_infos:
+            print(f"info: {info}")
+        if all_failures:
+            print("governance checks failed:")
+            for failure in all_failures:
+                print(f"- {failure}")
+        else:
+            print("governance checks passed")
+    return 0 if not all_failures else 1
 
 
 if __name__ == "__main__":

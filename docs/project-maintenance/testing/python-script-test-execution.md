@@ -1,9 +1,9 @@
 ---
 title: "Python Script Test Execution"
 status: active
-updated: 2026-05-06
+updated: 2026-05-08
 owner: aw-kernel
-last_verified: 2026-05-06
+last_verified: 2026-05-08
 ---
 # Python Script Test Execution
 
@@ -27,7 +27,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
 
 ## Deploy Regression Tests
 
-涉及 `toolchain/scripts/deploy/` 或 wrapper 时：`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'`；同时影响治理脚本/closeout 测试时补 `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test -q`。
+涉及 `toolchain/scripts/deploy/` 或 wrapper 时：`node toolchain/scripts/deploy/bin/aw-installer.js verify --backend agents`（Python deploy 文件已随 P0-067 移除，Node-only distribution）；同时影响治理脚本/closeout 测试时补 `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test -q`。
 
 ## Closeout Gate
 
@@ -55,7 +55,7 @@ git diff --check
 deploy/adapter/package wrapper 改动：
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
+node toolchain/scripts/deploy/bin/aw-installer.js verify --backend agents
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/folder_logic_check.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/path_governance_check.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_check.py
