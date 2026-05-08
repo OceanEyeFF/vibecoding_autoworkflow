@@ -3889,3 +3889,327 @@ test("aw-installer diagnose json bundle outputs merged json", () => {
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+// --- Bundle dual-root override parser tests ---
+
+test("parseNodeDiagnoseArgs accepts bundle with dual-root override", () => {
+  assert.deepEqual(
+    installer.parseNodeDiagnoseArgs(["diagnose", "--backend", "bundle", "--agents-root", "/tmp/a", "--claude-root", "/tmp/c"]),
+    { backend: "bundle", agentsRoot: "/tmp/a", claudeRoot: "/tmp/c" },
+  );
+});
+
+test("parseNodeVerifyArgs accepts bundle with dual-root override", () => {
+  assert.deepEqual(
+    installer.parseNodeVerifyArgs(["verify", "--backend", "bundle", "--agents-root", "/tmp/a", "--claude-root", "/tmp/c"]),
+    { backend: "bundle", agentsRoot: "/tmp/a", claudeRoot: "/tmp/c" },
+  );
+});
+
+test("parseNodeInstallArgs accepts bundle with dual-root override", () => {
+  assert.deepEqual(
+    installer.parseNodeInstallArgs(["install", "--backend", "bundle", "--agents-root", "/tmp/a", "--claude-root", "/tmp/c"]),
+    { backend: "bundle", agentsRoot: "/tmp/a", claudeRoot: "/tmp/c" },
+  );
+});
+
+test("parseNodeCheckPathsExistArgs accepts bundle with dual-root override", () => {
+  assert.deepEqual(
+    installer.parseNodeCheckPathsExistArgs(["check_paths_exist", "--backend", "bundle", "--agents-root", "/tmp/a", "--claude-root", "/tmp/c"]),
+    { backend: "bundle", agentsRoot: "/tmp/a", claudeRoot: "/tmp/c" },
+  );
+});
+
+test("parseNodePruneArgs accepts bundle with dual-root override", () => {
+  assert.deepEqual(
+    installer.parseNodePruneArgs(["prune", "--all", "--backend", "bundle", "--agents-root", "/tmp/a", "--claude-root", "/tmp/c"]),
+    { backend: "bundle", agentsRoot: "/tmp/a", claudeRoot: "/tmp/c" },
+  );
+});
+
+test("parseNodeUpdateJsonArgs accepts bundle with dual-root override", () => {
+  assert.deepEqual(
+    installer.parseNodeUpdateJsonArgs(["update", "--backend", "bundle", "--json", "--agents-root", "/tmp/a", "--claude-root", "/tmp/c"]),
+    { backend: "bundle", source: "package", agentsRoot: "/tmp/a", claudeRoot: "/tmp/c" },
+  );
+});
+
+test("parseNodeUpdateDryRunArgs accepts bundle with dual-root override", () => {
+  assert.deepEqual(
+    installer.parseNodeUpdateDryRunArgs(["update", "--backend", "bundle", "--agents-root", "/tmp/a", "--claude-root", "/tmp/c"]),
+    { backend: "bundle", source: "package", agentsRoot: "/tmp/a", claudeRoot: "/tmp/c" },
+  );
+});
+
+test("parseNodeUpdateYesArgs accepts bundle with dual-root override", () => {
+  assert.deepEqual(
+    installer.parseNodeUpdateYesArgs(["update", "--backend", "bundle", "--yes", "--agents-root", "/tmp/a", "--claude-root", "/tmp/c"]),
+    { backend: "bundle", source: "package", agentsRoot: "/tmp/a", claudeRoot: "/tmp/c", yes: true },
+  );
+});
+
+// --- Bundle single-root override and unsupported variant tests ---
+
+test("parseNodeInstallArgs accepts bundle with agents-only root override", () => {
+  assert.deepEqual(
+    installer.parseNodeInstallArgs(["install", "--backend", "bundle", "--agents-root", "/tmp/a"]),
+    { backend: "bundle", agentsRoot: "/tmp/a" },
+  );
+});
+
+test("parseNodeCheckPathsExistArgs accepts bundle with claude-only root override", () => {
+  assert.deepEqual(
+    installer.parseNodeCheckPathsExistArgs(["check_paths_exist", "--backend", "bundle", "--claude-root", "/tmp/c"]),
+    { backend: "bundle", agentsRoot: undefined, claudeRoot: "/tmp/c" },
+  );
+});
+
+test("parseNodeUpdateArgs rejects bundle with --json and --yes together", () => {
+  assert.equal(
+    installer.parseNodeUpdateJsonArgs(["update", "--backend", "bundle", "--json", "--yes"]),
+    null,
+  );
+  assert.equal(
+    installer.parseNodeUpdateYesArgs(["update", "--backend", "bundle", "--json", "--yes"]),
+    null,
+  );
+});
+
+test("parseNodePruneArgs rejects bundle when --all is missing", () => {
+  assert.equal(
+    installer.parseNodePruneArgs(["prune", "--backend", "bundle"]),
+    null,
+  );
+});
+
+test("unsupported aw-installer fallback catches bundle invalid combinations", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const commands = [
+      ["prune", "--backend", "bundle"],
+      ["install", "--backend", "bundle", "--json"],
+      ["verify", "--backend", "bundle", "--yes"],
+      ["update", "--backend", "bundle", "--json", "--yes"],
+    ];
+
+    for (const args of commands) {
+      const completed = runAwInstaller(root, args, fakeBin);
+      assert.equal(completed.status, 1, args.join(" "));
+      assert.match(
+        completed.stderr,
+        /unsupported aw-installer command or options for Node-only distribution/,
+        args.join(" "),
+      );
+      assert.equal(completed.stderr.includes("unexpected-python"), false, args.join(" "));
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// --- Bundle dual-root conflict scanning ---
+
+test("aw-installer check_paths_exist bundle merges conflicts from both roots", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+
+    // Create conflicting paths at both target locations
+    const agentsTargetDir = join(root, ".agents", "skills");
+    const claudeTargetDir = join(root, ".claude", "skills");
+    mkdirSync(agentsTargetDir, { recursive: true });
+    mkdirSync(claudeTargetDir, { recursive: true });
+    writeFileSync(join(agentsTargetDir, "aw-demo-skill"), "agents-conflict", "utf8");
+    writeFileSync(join(claudeTargetDir, "demo-skill"), "claude-conflict", "utf8");
+
+    const completed = runNodeCheckPathsExist(root, ["--backend=bundle"], fakeBin);
+
+    assert.equal(completed.status, 1);
+    assert.match(completed.stderr, /conflicting target path/);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer install bundle pre-write all-or-nothing on dual-root conflict", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+
+    // Create conflict at claude target (file where skill dir should go)
+    const claudeTargetDir = join(root, ".claude", "skills");
+    mkdirSync(claudeTargetDir, { recursive: true });
+    writeFileSync(join(claudeTargetDir, "demo-skill"), "claude-conflict", "utf8");
+
+    const completed = runNodeInstall(root, ["--backend=bundle"], fakeBin);
+
+    // pre-write check should abort - both roots zero writes
+    assert.equal(completed.status, 1);
+    assert.match(completed.stderr, /\[bundle\] pre-write check failed; aborting install/);
+
+    // Agents root must have zero side effects
+    const agentsSkillDir = join(root, ".agents", "skills", "aw-demo-skill");
+    assert.equal(existsSync(agentsSkillDir), false);
+
+    // Claude root must also have zero writes (the conflict file remains, no skill dir)
+    const claudeSkillDir = join(root, ".claude", "skills", "demo-skill");
+    const claudeStat = lstatSync(claudeSkillDir);
+    assert.equal(claudeStat.isFile(), true);
+
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// --- Bundle partial completion: install agents-fails counterpart ---
+
+test("aw-installer install bundle partial completion when agents fails", () => {
+  if (process.platform === "win32") {
+    return;
+  }
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  const agentsRoot = join(root, ".agents", "skills");
+  try {
+    seedMinimalAgentsSource(root, "demo-skill");
+    seedMinimalClaudeSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    mkdirSync(agentsRoot, { recursive: true });
+    chmodSync(agentsRoot, 0o555);
+
+    const completed = runNodeInstall(root, ["--backend=bundle"], fakeBin);
+
+    assert.equal(completed.status, 1);
+    assert.match(completed.stderr, /\[bundle\] partial install: agents=failed, claude=ok/);
+    assert.match(completed.stderr, /recovery: run `aw-installer prune --backend agents --all`/);
+    assert.equal(existsSync(join(root, ".claude", "skills", "demo-skill", "SKILL.md")), true);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
+    if (existsSync(agentsRoot)) {
+      chmodSync(agentsRoot, 0o755);
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// --- Bundle partial completion: update --yes ---
+
+test("aw-installer update --yes bundle partial completion when claude fails", () => {
+  if (process.platform === "win32") {
+    return;
+  }
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  const claudeRoot = join(root, ".claude", "skills");
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const install = runNodeInstall(root, ["--backend=bundle"], fakeBin);
+    assert.equal(install.status, 0, install.stderr);
+
+    // Make claude target root read-only to cause prune step to fail during update
+    chmodSync(claudeRoot, 0o555);
+
+    const completed = runNodeUpdate(root, ["--backend", "bundle", "--yes"], fakeBin);
+
+    assert.equal(completed.status, 1);
+    assert.match(completed.stderr, /\[bundle\] partial update: agents=ok, claude=failed/);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
+    if (existsSync(claudeRoot)) {
+      chmodSync(claudeRoot, 0o755);
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// --- Bundle partial completion: prune --all ---
+
+test("aw-installer prune --all bundle partial completion when agents fails", () => {
+  if (process.platform === "win32") {
+    return;
+  }
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  const agentsRoot = join(root, ".agents", "skills");
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const install = runNodeInstall(root, ["--backend=bundle"], fakeBin);
+    assert.equal(install.status, 0, install.stderr);
+
+    // Make agents target root read-only to cause rmSync failure during prune
+    chmodSync(agentsRoot, 0o555);
+
+    const completed = runNodePrune(root, ["--all", "--backend=bundle"], fakeBin);
+
+    assert.equal(completed.status, 1);
+    assert.match(completed.stderr, /\[bundle\] partial prune: agents failed, claude not started/);
+    // Claude root must be untouched
+    assert.equal(existsSync(join(root, ".claude", "skills", "demo-skill", "SKILL.md")), true);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
+    if (existsSync(agentsRoot)) {
+      chmodSync(agentsRoot, 0o755);
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer prune --all bundle partial completion when claude fails", () => {
+  if (process.platform === "win32") {
+    return;
+  }
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  const claudeRoot = join(root, ".claude", "skills");
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const install = runNodeInstall(root, ["--backend=bundle"], fakeBin);
+    assert.equal(install.status, 0, install.stderr);
+
+    // Make claude target root read-only so agents prune succeeds, claude prune fails
+    chmodSync(claudeRoot, 0o555);
+
+    const completed = runNodePrune(root, ["--all", "--backend=bundle"], fakeBin);
+
+    assert.equal(completed.status, 1);
+    assert.match(completed.stderr, /\[bundle\] partial prune: agents ok, claude failed/);
+    // Agents should have been pruned successfully
+    assert.equal(existsSync(join(root, ".agents", "skills", "aw-demo-skill")), false);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
+    if (existsSync(claudeRoot)) {
+      chmodSync(claudeRoot, 0o755);
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// --- Bundle verify collect-then-report on dual-root drift ---
+
+test("aw-installer verify bundle collect-then-report on dual-root drift", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const install = runNodeInstall(root, ["--backend=bundle"], fakeBin);
+    assert.equal(install.status, 0, install.stderr);
+
+    // Mutate both installed SKILL.md files to create drift
+    writeFileSync(join(root, ".agents", "skills", "aw-demo-skill", "SKILL.md"), "# drift-agents\n", "utf8");
+    writeFileSync(join(root, ".claude", "skills", "demo-skill", "SKILL.md"), "# drift-claude\n", "utf8");
+
+    const completed = runNodeVerify(root, ["--backend=bundle"], fakeBin);
+
+    assert.equal(completed.status, 1);
+    assert.match(completed.stdout, /\[agents\] drift:.*issue/);
+    assert.match(completed.stdout, /\[claude\] drift:.*issue/);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

@@ -3378,6 +3378,21 @@ function buildBundleArgs(command, backend, parsed) {
   return args;
 }
 
+// SA-C trust boundary: reject bundle mode when agents and claude target roots
+// resolve to the same physical directory. Both roots must be path-disjoint to
+// prevent cross-backend interference.
+function validateBundleDisjointRoots(parsed) {
+  const agentsContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, agentsBackend));
+  const claudeContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, claudeBackend));
+  if (agentsContext.targetRoot === claudeContext.targetRoot) {
+    throw new Error(
+      `[${bundleBackend}] agents and claude target roots resolve to the same directory: ${agentsContext.targetRoot}. ` +
+        "Use different --agents-root and --claude-root paths, or omit both to use per-backend defaults.",
+    );
+  }
+  return { agentsContext, claudeContext };
+}
+
 function printBundlePartialCompletion(command, agentsStatus, claudeStatus) {
   const agentsResult = agentsStatus === 0 ? "ok" : "failed";
   const claudeResult = claudeStatus === 0 ? "ok" : "failed";
@@ -3385,8 +3400,7 @@ function printBundlePartialCompletion(command, agentsStatus, claudeStatus) {
 }
 
 async function runBundleDiagnoseJson(parsed) {
-  const agentsContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, agentsBackend));
-  const claudeContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, claudeBackend));
+  const { agentsContext, claudeContext } = validateBundleDisjointRoots(parsed);
   const agentsSummary = diagnosticSummary(verifyBackend(agentsContext));
   const claudeSummary = diagnosticSummary(verifyBackend(claudeContext));
   const bundleSummary = {
@@ -3403,16 +3417,14 @@ async function runBundleDiagnoseJson(parsed) {
 }
 
 async function runBundleDiagnose(parsed) {
-  const agentsContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, agentsBackend));
-  const claudeContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, claudeBackend));
+  const { agentsContext, claudeContext } = validateBundleDisjointRoots(parsed);
   printDiagnosticSummary({ ...diagnosticSummary(verifyBackend(agentsContext)), backend: agentsBackend });
   printDiagnosticSummary({ ...diagnosticSummary(verifyBackend(claudeContext)), backend: claudeBackend });
   return 0;
 }
 
 async function runBundleVerify(parsed) {
-  const agentsContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, agentsBackend));
-  const claudeContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, claudeBackend));
+  const { agentsContext, claudeContext } = validateBundleDisjointRoots(parsed);
   const agentsResult = verifyBackend(agentsContext);
   const claudeResult = verifyBackend(claudeContext);
   printVerifyResult({ ...agentsResult, backend: agentsBackend });
@@ -3421,6 +3433,8 @@ async function runBundleVerify(parsed) {
 }
 
 async function runBundleCheckPathsExist(parsed) {
+  // SA-C: fail-closed if roots are not path-disjoint
+  validateBundleDisjointRoots(parsed);
   const agentsArgs = buildBundleArgs("check_paths_exist", agentsBackend, parsed);
   const claudeArgs = buildBundleArgs("check_paths_exist", claudeBackend, parsed);
   const agentsStatus = await runNodeOwned(agentsArgs);
@@ -3432,6 +3446,8 @@ async function runBundleCheckPathsExist(parsed) {
 }
 
 async function runBundleInstall(parsed) {
+  // SA-C: fail-closed if roots are not path-disjoint (pre-write guard)
+  validateBundleDisjointRoots(parsed);
   const agentsArgs = buildBundleArgs("install", agentsBackend, parsed);
   const claudeArgs = buildBundleArgs("install", claudeBackend, parsed);
   const agentsCheckArgs = buildBundleArgs("check_paths_exist", agentsBackend, parsed);
@@ -3459,6 +3475,8 @@ async function runBundleInstall(parsed) {
 }
 
 async function runBundleUpdateJson(parsed) {
+  // SA-C: reject if roots are not path-disjoint
+  validateBundleDisjointRoots(parsed);
   const agentsArgs = buildBundleArgs("update", agentsBackend, parsed);
   agentsArgs.push("--json");
   const claudeArgs = buildBundleArgs("update", claudeBackend, parsed);
@@ -3469,6 +3487,8 @@ async function runBundleUpdateJson(parsed) {
 }
 
 async function runBundleUpdateDryRun(parsed) {
+  // SA-C: reject if roots are not path-disjoint
+  validateBundleDisjointRoots(parsed);
   const agentsArgs = buildBundleArgs("update", agentsBackend, parsed);
   const claudeArgs = buildBundleArgs("update", claudeBackend, parsed);
   const agentsStatus = await runNodeOwned(agentsArgs);
@@ -3481,6 +3501,8 @@ async function runBundleUpdateDryRun(parsed) {
 }
 
 async function runBundleUpdateYes(parsed) {
+  // SA-C: reject if roots are not path-disjoint
+  validateBundleDisjointRoots(parsed);
   const agentsArgs = buildBundleArgs("update", agentsBackend, parsed);
   agentsArgs.push("--yes");
   const claudeArgs = buildBundleArgs("update", claudeBackend, parsed);
@@ -3496,13 +3518,16 @@ async function runBundleUpdateYes(parsed) {
 }
 
 async function runBundlePrune(parsed) {
+  // SA-C: reject if roots are not path-disjoint; prune is ordered agents then claude
+  validateBundleDisjointRoots(parsed);
   const agentsArgs = buildBundleArgs("prune", agentsBackend, parsed);
   agentsArgs.push("--all");
   const claudeArgs = buildBundleArgs("prune", claudeBackend, parsed);
   claudeArgs.push("--all");
   const agentsStatus = await runNodeOwned(agentsArgs);
   if (agentsStatus !== 0) {
-    printBundlePartialCompletion("prune", agentsStatus, 0);
+    // SA-B: first-root failure stops second root; claude was not started
+    console.error(`[${bundleBackend}] partial prune: agents failed, claude not started`);
     return 1;
   }
   const claudeStatus = await runNodeOwned(claudeArgs);
@@ -3510,7 +3535,8 @@ async function runBundlePrune(parsed) {
     console.log(`[${bundleBackend}] prune complete for both backends`);
     return 0;
   }
-  printBundlePartialCompletion("prune", agentsStatus, claudeStatus);
+  // claude ran but failed; agents already completed successfully
+  console.error(`[${bundleBackend}] partial prune: agents ok, claude failed`);
   return 1;
 }
 
