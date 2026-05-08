@@ -1,9 +1,9 @@
 ---
 title: "Review / Verify 治理入口"
 status: active
-updated: 2026-05-06
+updated: 2026-05-08
 owner: aw-kernel
-last_verified: 2026-05-06
+last_verified: 2026-05-08
 ---
 # Review / Verify 治理入口
 
@@ -46,10 +46,10 @@ last_verified: 2026-05-06
 - 根目录/路径/分层/hidden/state 规则变更：`folder_logic_check.py` + `path_governance_check.py` + `governance_semantic_check.py`
 - skills/templates 分层规则变更：`path_governance_check.py` + `governance_semantic_check.py`
 - branch/PR/baseline 或 hook 变更：`git symbolic-ref` + `bash -n pre-push` + dry-run
-- `.aw_template`/`.aw/` scaffold 变更：`aw_scaffold.py validate` + `test_aw_scaffold.py`
-- closeout/gate/backfill 变更：`closeout_acceptance_gate.py --json` + 对应最小 pytest；closeout 按 `scope_gate -> spec_gate -> static_gate -> cache_gate -> test_gate -> smoke_gate` 收口；`cache_gate` 扫描 `docs/`、`product/`、`toolchain/` 和 `tools/` 下的 Python / pytest 运行缓存；`scope_gate` 允许 root `README.md` 与 `product/.aw_template/`；`test_gate` 运行 closeout/folder/path/semantic/adapter 回归 + deploy unittest + npm packlist + publish dry-run + tarball smoke
+- `.aw_template`/`.aw/` scaffold 变更：`path_governance_check.py` + `governance_semantic_check.py`
+- closeout/gate/backfill 变更：`closeout_acceptance_gate.py --json` + 对应最小 pytest；closeout 按 `scope_gate -> spec_gate -> static_gate -> cache_gate -> test_gate -> smoke_gate` 收口；`cache_gate` 扫描 `docs/`、`product/`、`toolchain/` 和 `tools/` 下的 Python / pytest 运行缓存；`scope_gate` 允许 root `README.md` 与 `product/.aw_template/`；`test_gate` 运行 closeout/folder/path/semantic/adapter 回归 + deploy package Node unit tests + npm packlist + publish dry-run + tarball smoke
 - deploy mapping/payload contract 变更：`test_agents_adapter_contract.py`；改 gate 链路再补 `closeout_acceptance_gate.py --json`
-- adapter/deploy 变更：`test_agents_adapter_contract.py` + deploy unittest + npm test + smoke + 双端 `npm pack --dry-run --json` + publish dry-run + tarball 全命令 smoke（diagnose/update/install/verify）+ 隔离 target repo full smoke + Python reference deploy/verify
+- adapter/deploy 变更：`test_agents_adapter_contract.py` + npm test + smoke + 双端 `npm pack --dry-run --json` + publish dry-run + tarball 全命令 smoke（diagnose/update/install/verify）+ 隔离 target repo full smoke
 - Harness runtime 观察或 operator-facing runbook 变更：先跑对应 deploy/adapter 最小验证，再按 [Codex Post-Deploy Behavior Tests](../testing/codex-post-deploy-behavior-tests.md) 做真实观察（不用 mock smoke 替代）
 
 ### 3.1 修复完整性

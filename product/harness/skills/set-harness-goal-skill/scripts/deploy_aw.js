@@ -16,7 +16,6 @@ const SKILL_PACKAGE_EXCLUDED_NAMES = new Set([
   ".pytest_cache",
   "aw.marker",
   "payload.json",
-  "deploy_aw.py",
 ]);
 
 const KEYED_LINE_PATTERN = /^(\s*)- ([a-z0-9_]+):\s*(.*)$/;

@@ -1,19 +1,19 @@
 ---
 title: "Deploy Script Governance Inventory"
-status: draft
-updated: 2026-05-06
+status: superseded
+updated: 2026-05-08
 owner: aw-kernel
-last_verified: 2026-05-06
+last_verified: 2026-05-08
 ---
 # Deploy Script Governance Inventory
 
-> 目的：P0-052 后 deploy script surface 的短盘点，说明哪些 Python deploy 面已退出 package/runtime，哪些仍作为 repo-local reference/parity/governance tooling 保留。本页不授权删除代码、修改 package metadata、发布、改 tag、改 remote 或改 `.aw/` 控制面。
+> 目的：保留 Python deploy 面删除前的盘点和设计边界。本文已被 2026-05-08 的 Node-only deploy 实现取代；当前事实以 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md)、[Deploy Runbook](./deploy-runbook.md) 与代码为准。
 
 合同 owner：wrapper -> [Entrypoint Contract](./distribution-entrypoint-contract.md)；provenance/trust -> [Payload Provenance](./payload-provenance-trust-boundary.md)；mapping -> [Mapping Spec](./deploy-mapping-spec.md)；近代码 -> [toolchain/scripts/deploy/README.md](../../../toolchain/scripts/deploy/README.md)。
 
 ## 当前结论
 
-迁移目标是替换 `aw-installer` package/runtime 路径上的 Python 依赖，非清空仓库中 Python。P0-052 已把 Python fallback、alias、`adapter_deploy.py`/`harness_deploy.py` 移出分发面；`set-harness-goal-skill` 使用 `deploy_aw.js`（`deploy_aw.py` 仅作 reference）。`adapter_deploy.py`、`harness_deploy.py`、`aw_scaffold.py` 及 Python tests 继续作为 repo-local reference/parity/governance tooling 保留。runtime no-Python 结论以 package/local/registry-style 目标执行路径为准。
+本文的迁移 inventory 已完成其决策用途。Python deploy implementation 已删除，`aw-installer` 是当前 deploy runtime 入口（Node-only distribution）；release metadata、version bump、npm publish、tag、dist-tag、GitHub Release 或 remote mutation 仍属于 release boundary，需要新的显式审批和独立 gate。
 
 ## 当前分类
 

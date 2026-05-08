@@ -14,7 +14,6 @@
     "README.md",
     "LICENSE",
     "product/harness/skills",
-    "!product/harness/skills/set-harness-goal-skill/scripts/deploy_aw.py",
     "product/harness/adapters/agents/skills",
     "product/harness/adapters/claude/skills",
     "toolchain/scripts/deploy/README.md",
