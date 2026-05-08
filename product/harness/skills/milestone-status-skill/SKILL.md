@@ -105,7 +105,7 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 
 - `milestone_id`
 - `milestone_title`
-- `milestone_status`：planned / active / completed / blocked
+- `milestone_status`：planned / active / completed / superseded
 - `progress`：
   - `total`：声明的 worktrack 总数
   - `completed`：已完成或等效处理的 worktrack 数
