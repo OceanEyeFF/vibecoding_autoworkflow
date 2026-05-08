@@ -38,7 +38,7 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 1. 确认这是一轮 Milestone 状态分析轮次，不是工作追踪分派、下一步决策或直接执行。
 2. 识别当前活跃 Milestone：从 Harness 控制状态或 repo snapshot 中获取当前 active milestone_id。
 3. 读取 Milestone artifact（`.aw/milestone/{milestone_id}.md`），解析其字段结构（worktrack_list、completion_signals、acceptance_criteria、progress_counter、depends_on_milestones 等）。
-4. 读取 worktrack backlog（`.aw/repo/worktrack-backlog.md`）：若文件不存在（首个 worktrack 尚未 closeout），视为空 backlog（total/completed/blocked/deferred 均为 0），继续正常分析，不触发停止条件。若文件存在，按以下规则处理：backlog 存储的状态值为 `done / deferred / blocked / resolved`，读取时须做归一化映射：`done → completed`、`resolved → completed`、`blocked → blocked`、`deferred → deferred`。映射后按 `worktrack_id` 去重（保留最新条目），以 `completed / blocked / deferred` 三类参与 progress 计算。
+4. 读取 worktrack backlog（`.aw/repo/worktrack-backlog.md`）：若文件不存在（首个 worktrack 尚未 closeout），视为空 backlog（completed/blocked/deferred 均为 0），`total` 仍取自 Milestone artifact 的 `worktrack_list` 长度，继续正常分析，不触发停止条件。若文件存在，按以下规则处理：backlog 存储的状态值为 `done / deferred / blocked / resolved`，读取时须做归一化映射：`done → completed`、`resolved → completed`、`blocked → blocked`、`deferred → deferred`。映射后按 `worktrack_id` 去重（保留最新条目），以 `completed / blocked / deferred` 三类参与 progress 计算。
 5. 读取 gate evidence：先读取 Milestone artifact 的 `aggregated_evidence` 引用列表（包含各 worktrack 的 evidence 路径），逐条读取；若 `aggregated_evidence` 为空，回退读取 `.aw/worktrack/gate-evidence.md` 获取最近关闭 worktrack 的 evidence 记录。聚合所有 evidence 后参与 `purpose_achieved` 判定。
 6. 读取 repo snapshot（`.aw/repo/snapshot-status.md`），获取当前 repo 基准状态和治理信号。
 7. 检查前置 Milestone 依赖：若 `depends_on_milestones` 非空，验证前置 Milestone 是否已完成。

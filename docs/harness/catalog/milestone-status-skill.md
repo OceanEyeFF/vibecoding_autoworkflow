@@ -54,6 +54,8 @@ last_verified: 2026-05-08
 | purpose_achieved | boolean | 目的是否经聚合 evidence 证明达成 |
 | milestone_acceptance_verdict | enum | achieved / not_achieved / blocked / deferred |
 | handback_required | boolean | 是否触发 Milestone 验收边界 |
+| proceed_blockers | array | 阻止推进的因素列表 |
+| milestone_input_checkpoint | string | 本次分析输入指纹，供 harness-skill 写回 control-state 用于幂等性对比 |
 | release_version_consideration | string | 对 version/release 的提示 |
 | developer_decisions_needed | array | 需要 developer 做出的决定 |
 | recommendations | array | 对 RepoScope.Decide 的建议 |
