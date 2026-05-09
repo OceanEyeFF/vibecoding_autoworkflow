@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Pre-Publish Governance"
 status: active
-updated: 2026-05-07
+updated: 2026-05-09
 owner: aw-kernel
-last_verified: 2026-05-07
+last_verified: 2026-05-09
 ---
 # aw-installer Pre-Publish Governance
 
@@ -49,7 +49,7 @@ npm pack --dry-run --json
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/folder_logic_check.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/path_governance_check.py
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_check.py
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
+npm --prefix toolchain/scripts/deploy test --silent
 npm pack --dry-run --json
 npm run publish:dry-run --silent
 git diff --check
