@@ -1,13 +1,15 @@
 ---
 title: "Policy Profiles"
-status: active
-updated: 2026-04-14
+status: superseded
+updated: 2026-05-09
 owner: aw-kernel
-last_verified: 2026-04-14
+last_verified: 2026-05-09
 ---
 # Policy Profiles
 
-> 目的：把可复用的 workflow 经验收敛成 profile / variant，而不是直接把它们当 ontology。
+> **状态：已废弃。** Policy profile 概念已收敛到 `docs/harness/foundations/skill-common-constraints.md` 的 C-1 至 C-7 公共约束，以及 `harness-skill/SKILL.md` 的两层控制律。本文档保留为历史引用。
+
+> 目的（历史）：把可复用的 workflow 经验收敛成 profile / variant，而不是直接把它们当 ontology。
 
 当前处理原则：
 

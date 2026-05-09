@@ -114,8 +114,6 @@ ENTRYPOINT_LINK_RULES = {
         "docs/harness/foundations/Harness运行协议.md",
     ],
     "docs/harness/scope/README.md": [
-        "docs/harness/scope/repo-scope.md",
-        "docs/harness/scope/worktrack-scope.md",
         "docs/harness/scope/state-loop.md",
     ],
     "docs/harness/artifact/README.md": [

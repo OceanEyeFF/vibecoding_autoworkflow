@@ -1,14 +1,61 @@
 ---
 title: "Skills 层 Handback 改进方案"
 status: draft
-updated: 2026-04-24
+updated: 2026-05-09
 owner: aw-kernel
-last_verified: 2026-04-24
+last_verified: 2026-05-09
 ---
 
 # Skills 层 Handback 改进方案
 
 > 目的：解决 WorktrackScope → RepoScope handback 时的三类问题——基线固化缺失、artifact 输出膨胀、Goal 层缺少工程节点类型规划。
+
+---
+
+## 实施状态 (2026-05-09)
+
+### Phase 1（模板层）：已完成
+
+通过 `P0-072 harness-contract-hardening` 实施，对以下模板完成了更新：
+
+- `control-state.md` 模板增加 Baseline Traceability（P1-3）
+- `snapshot-status.md` 模板增加 checkpoint 字段（P1-4）
+- worktrack artifact 模板引入双层结构（P2-5~P2-7）
+- `goal-charter.md` 模板增加 Engineering Node Map（P3-1）
+- `contract.md` 模板增加 Node Type（P3-3）
+- artifact 定义文档同步（P1-5/P1-6/P3-7/P3-8）
+
+### Phase 2（Skill 层）：部分完成
+
+已完成的改动：
+
+- `harness-skill` 结构化输出中增加了 supervisor 字段（section 十六）
+- `standard-fields.md` 已创建（见 `docs/harness/artifact/standard-fields.md`）
+- `skill-common-constraints.md` 已纳入统一的 skill 执行约束（见 `docs/harness/foundations/skill-common-constraints.md`）
+
+尚未完成的 Phase 2 项：
+
+- P1-1: `close-worktrack-skill` 基线固化阶段
+- P1-2: `repo-refresh-skill` 基线验收
+- P3-2: `set-harness-goal-skill` 工程节点分析
+- P3-4: `init-worktrack-skill` 节点类型绑定
+- P3-5: `gate-skill` 类型化判定
+- P3-6: `close-worktrack-skill` 基线固化与类型联动
+- P2-1: `harness-skill` 全局 artifact budget
+- P2-2~P2-4: 各 skill 输出预算约束
+
+### Phase 3：未开始
+
+Phase 3 涉及运行时行为验证、存量 artifact 迁移和全链路联动测试，尚未排期。
+
+---
+
+## 关联文档
+
+- `docs/harness/artifact/standard-fields.md` — 跨 artifact 的标准化字段定义
+- `docs/harness/foundations/skill-common-constraints.md` — 所有 skill 适用的通用约束（输出预算、字段规范、引用格式等）
+- `docs/harness/artifact/repo/goal-charter.md` — Goal Charter artifact 定义
+- `docs/harness/artifact/worktrack/contract.md` — Worktrack Contract artifact 定义
 
 ---
 
