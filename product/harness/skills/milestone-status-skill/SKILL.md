@@ -38,7 +38,7 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 1. 确认这是一轮 Milestone 状态分析轮次，不是工作追踪分派、下一步决策或直接执行。
 2. 识别当前活跃 Milestone：从 Harness 控制状态或 repo snapshot 中获取当前 active milestone_id。
 3. 读取 Milestone artifact（`.aw/milestone/{milestone_id}.md`），解析其字段结构（worktrack_list、completion_signals、acceptance_criteria、progress_counter、depends_on_milestones 等）。
-4. 读取 worktrack backlog（`.aw/repo/worktrack-backlog.md`）：若文件不存在（首个 worktrack 尚未 closeout），视为空 backlog（completed/blocked/deferred 均为 0），`total` 仍取自 Milestone artifact 的 `worktrack_list` 长度，继续正常分析，不触发停止条件。若文件存在，按以下规则处理：backlog 存储的状态值为 `done / deferred / blocked / resolved`，读取时须做归一化映射：`done → completed`、`resolved → completed`、`blocked → blocked`、`deferred → deferred`。映射后按 `worktrack_id` 去重（保留最新条目），以 `completed / blocked / deferred` 三类参与 progress 计算。
+4. 读取 worktrack backlog（`.aw/repo/worktrack-backlog.md`）：若文件不存在（首个 worktrack 尚未 closeout），视为空 backlog（completed/blocked/deferred 均为 0），`total` 仍取自 Milestone artifact 的 `worktrack_list` 长度，继续正常分析，不触发停止条件。若文件存在但无法按 Worktrack Backlog 合同解析为包含 `worktrack_id` 与 `status` 的条目，或出现无法归一化的状态值、损坏 frontmatter / markdown 结构、同一条目缺少必需字段等 present-but-damaged / unparseable 情况，必须命中正式停止条件，不得把损坏 backlog 当成空 backlog，也不得用部分解析结果继续计算。若文件存在且可解析，按以下规则处理：backlog 存储的状态值为 `done / deferred / blocked / resolved`，读取时须做归一化映射：`done → completed`、`resolved → completed`、`blocked → blocked`、`deferred → deferred`。映射后按 `worktrack_id` 去重（保留最新条目），以 `completed / blocked / deferred` 三类参与 progress 计算。
 5. 读取 gate evidence：先读取 Milestone artifact 的 `aggregated_evidence` 引用列表（包含各 worktrack 的 evidence 路径），逐条读取；若 `aggregated_evidence` 为空，回退读取 `.aw/worktrack/gate-evidence.md` 获取最近关闭 worktrack 的 evidence 记录。聚合所有 evidence 后参与 `purpose_achieved` 判定。
 6. 读取 repo snapshot（`.aw/repo/snapshot-status.md`），获取当前 repo 基准状态和治理信号。
 7. 检查前置 Milestone 依赖：若 `depends_on_milestones` 非空，验证前置 Milestone 是否已完成。
@@ -66,12 +66,27 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 
 - 当前无活跃 Milestone（Milestone artifact 不存在或 status 非 active）
 - Milestone artifact 关键字段缺失或损坏，无法执行有效分析
+- Worktrack backlog 文件存在但损坏、不可读或不可按合同解析；包括无法提取 `worktrack_id` / `status`、状态值不在 `done / deferred / blocked / resolved`、frontmatter / markdown 结构损坏，或只能得到部分可信条目的情况
 - Worktrack backlog 与 Milestone 声明的 worktrack_list 之间存在不可自动解决的矛盾
 - 前置 Milestone 依赖未完成，且无法自动判定是否应阻塞当前 Milestone
 - 双重验收检查中 `purpose_achieved` 的判断需要 developer 主观裁定，且无足够的自动判定依据
 - 聚合 evidence 不足以支撑 purpose_achieved 判定，且无法通过限定范围探查补全
 - Milestone 依赖的 artifact 跨域或以当前权限不可访问
 - 观察依据缺失、过期或相互矛盾到足以让 Milestone 验收判定只能靠猜
+
+## `milestone_input_checkpoint` 计算规则
+
+`milestone_input_checkpoint` 是 Milestone Observe 的输入指纹，不是进度计数本身。它必须使用确定性算法生成，供下一轮 Observe 判断是否可以跳过重新计算 progress counter 和 purpose evidence 聚合。
+
+- 哈希类型：使用 SHA-256；输出格式固定为 `sha256:<64 位小写 hex>`。
+- 序列化格式：构造一个 JSON 对象，使用 UTF-8 编码、字典键按字典序排序、紧凑分隔符（无多余空白）序列化后取 SHA-256。所有 repo 内路径必须规范化为 repo-relative POSIX path；不得使用绝对路径。
+- 顶层字段：`schema_version` 固定为 `milestone-input-checkpoint/v1`，并包含 `active_milestone_id`、`milestone_artifact`、`worktrack_backlog`、`gate_evidence`、`repo_snapshot`。
+- `milestone_artifact` 输入字段：artifact path、`milestone_id`、`status`、`worktrack_list`（保持 Milestone 声明顺序）、`completion_signals`、`acceptance_criteria`、`depends_on_milestones`、`aggregated_evidence`。不得纳入由本技能或上游刷新产生的 `progress_counter`、前次 `milestone_input_checkpoint` 或分析时间戳。
+- `worktrack_backlog` 输入字段：backlog path、`state`（`missing` / `present`）、以及按 `worktrack_id` 字典序排列的最新有效条目。文件缺失时写入 `state: missing` 与空 entries；文件存在时必须先完成解析、状态归一化和按 `worktrack_id` 去重，条目字段至少包括 `worktrack_id`、归一化后的 `status`（completed / blocked / deferred）、`node_type`、`scope`、`merge_commit`、`validation`、`intake_route`。backlog 存在但损坏或不可解析时不得生成 partial checkpoint，必须停止并返回 `proceed_blockers`。
+- `gate_evidence` 输入字段：使用 Milestone artifact 的 `aggregated_evidence` 路径列表；若该列表为空，使用 `.aw/worktrack/gate-evidence.md` fallback。证据路径按 repo-relative POSIX path 字典序排列；每个 evidence 只纳入影响 `purpose_achieved` 的关键字段，包括 `worktrack_id`（如有）、`verdict`、review/validation/policy 维度结论、absorbed issues、freshness / missing 状态和后续动作摘要。
+- `repo_snapshot` 输入字段：snapshot path、`baseline_branch`、`last_verified_checkpoint`、`checkpoint_type`、`checkpoint_ref`、当前 active milestone 指针（如有）、治理状态、已知问题与风险标识。不得纳入纯展示性更新时间、文件 mtime 或本轮分析时间。
+- Markdown 解析规范：从 frontmatter、表格、列表和 keyed lines 中提取字段时，字段名应先规范化为小写 snake_case；字符串 trim 首尾空白；列表中本来有业务顺序的字段保持原顺序，其余 map/object 键排序；缺失可选字段用 `null`，不得省略同一 schema 下的键。
+- 重算时机：每次 RepoScope.Observe 至少重新计算该输入指纹；若已存 `milestone_input_checkpoint` 与新指纹一致，且 `latest_observed_checkpoint` 与当前 `git rev-parse HEAD` 一致，才允许跳过 progress counter 和 purpose evidence 的完整重算。任一输入源的存在状态、路径集合、上述纳入字段、active milestone、schema_version 或 stored checkpoint 变化时，都必须完整重算并返回新的 checkpoint。
 
 ## 硬约束
 
@@ -85,7 +100,7 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 - 输出中的 `release_version_consideration` 是 hint，不是 decision：不得自动触发 release/publish/version bump。
 - `developer_decisions_needed` 中的项目不得由本技能自动判定；它们必须作为显式边界交还给 developer。
 - 如果 `depends_on_milestones` 中的前置 Milestone 未完成，必须标记为 blocked 并在 `developer_decisions_needed` 中列出是否跳过前置依赖的决策。
-- 仅当 `milestone_input_checkpoint` 已存在且与当前 Milestone 输入指纹（milestone artifact + worktrack backlog + gate evidence + repo snapshot 的关键字段组合摘要）一致、同时 `latest_observed_checkpoint` 也与当前 `git rev-parse HEAD` 一致时，才可跳过重新计算 progress counter。仅 git HEAD 一致不足以跳过（`.aw/` 下运行时 artifact 不受 git 追溯）；任一 fingerprint 不匹配或缺失时必须完整重算，重算后返回新的 `milestone_input_checkpoint` 供 harness-skill 写入 control-state。
+- 仅当 `milestone_input_checkpoint` 已存在且与按上述算法计算出的当前 Milestone 输入指纹一致、同时 `latest_observed_checkpoint` 也与当前 `git rev-parse HEAD` 一致时，才可跳过重新计算 progress counter。仅 git HEAD 一致不足以跳过（`.aw/` 下运行时 artifact 不受 git 追溯）；任一 fingerprint 不匹配或缺失时必须完整重算，重算后返回新的 `milestone_input_checkpoint` 供 harness-skill 写入 control-state。backlog present-but-damaged / unparseable 时不得产出 partial checkpoint。
 
 ## 预期输出
 
@@ -128,7 +143,7 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 - `proceed_blockers`：阻止推进的因素列表
 - `handoff_signal`：交接信号
 - `requires_developer_decision`：boolean
-- `milestone_input_checkpoint`：本次分析计算出的输入指纹（由 milestone artifact + worktrack backlog + gate evidence + repo snapshot 的关键字段组合），供 harness-skill 写入 control-state 的 `Baseline Traceability.milestone_input_checkpoint`，下一轮 Observe 用于幂等性对比
+- `milestone_input_checkpoint`：本次分析按 `milestone-input-checkpoint/v1` 算法计算出的 `sha256:<hex>` 输入指纹，供 harness-skill 写入 control-state 的 `Baseline Traceability.milestone_input_checkpoint`，下一轮 Observe 用于幂等性对比
 
 ## 资源
 

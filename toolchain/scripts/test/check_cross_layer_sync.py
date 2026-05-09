@@ -4,7 +4,8 @@
 Checks:
   1. artifact contract (docs/harness/artifact/worktrack/contract.md)
      ↔ skill template (product/harness/skills/init-worktrack-skill/templates/contract.template.md)
-  2. goal-charter (.aw/goal-charter.md)
+  2. tracked goal-charter template source
+     (product/harness/skills/set-harness-goal-skill/assets/goal-charter.md)
      ↔ node-type-registry (docs/harness/artifact/control/node-type-registry.md)
   3. control-state contract (docs/harness/artifact/control/control-state.md)
      ↔ set-harness-goal template (product/harness/skills/set-harness-goal-skill/assets/control-state.md)
@@ -28,7 +29,10 @@ CONTRACT_PATH = "docs/harness/artifact/worktrack/contract.md"
 CONTRACT_TEMPLATE_PATH = (
     "product/harness/skills/init-worktrack-skill/templates/contract.template.md"
 )
-CHARTER_PATH = ".aw/goal-charter.md"
+GOAL_CHARTER_SOURCE_PATH = (
+    "product/harness/skills/set-harness-goal-skill/assets/goal-charter.md"
+)
+RUNTIME_CHARTER_PATH = ".aw/goal-charter.md"
 REGISTRY_PATH = "docs/harness/artifact/control/node-type-registry.md"
 CONTROL_STATE_CONTRACT_PATH = "docs/harness/artifact/control/control-state.md"
 CONTROL_STATE_TEMPLATE_PATH = (
@@ -191,7 +195,7 @@ def check_contract_template_alignment(repo_root: Path) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════
-# check 2: goal-charter ↔ node-type-registry consistency
+# check 2: tracked goal-charter source ↔ node-type-registry consistency
 # ═══════════════════════════════════════════════════════════════════════════════════
 
 
@@ -253,15 +257,20 @@ def _extract_registry_node_types(text: str) -> set[str]:
 
 
 def check_charter_registry_consistency(repo_root: Path) -> dict:
-    """Check goal-charter node types exist in the node-type-registry."""
+    """Check tracked goal-charter source node types exist in the registry.
+
+    ``.aw/goal-charter.md`` is an ignored runtime instance. Clean CI checkouts
+    must not require it, and this governance check must not promote runtime
+    state into canonical source truth.
+    """
     errors: list[str] = []
     infos: list[str] = []
 
-    charter_text = _read(repo_root, CHARTER_PATH)
+    charter_text = _read(repo_root, GOAL_CHARTER_SOURCE_PATH)
     registry_text = _read(repo_root, REGISTRY_PATH)
 
     if charter_text is None:
-        errors.append(f"missing charter file: {CHARTER_PATH}")
+        errors.append(f"missing tracked charter source: {GOAL_CHARTER_SOURCE_PATH}")
     if registry_text is None:
         errors.append(f"missing registry file: {REGISTRY_PATH}")
 
@@ -278,7 +287,8 @@ def check_charter_registry_consistency(repo_root: Path) -> dict:
 
     if not charter_types:
         errors.append(
-            f"could not extract any node types from charter ({CHARTER_PATH})"
+            f"could not extract any node types from tracked charter source "
+            f"({GOAL_CHARTER_SOURCE_PATH})"
         )
     if not registry_types:
         errors.append(
@@ -288,16 +298,28 @@ def check_charter_registry_consistency(repo_root: Path) -> dict:
     missing = charter_types - registry_types
     for t in sorted(missing):
         errors.append(
-            f"node type '{t}' referenced in charter ({CHARTER_PATH}) "
+            f"node type '{t}' referenced in tracked charter source "
+            f"({GOAL_CHARTER_SOURCE_PATH}) "
             f"but not defined in registry ({REGISTRY_PATH})"
         )
 
     infos.append(
-        f"charter declares {len(charter_types)} type(s): {', '.join(sorted(charter_types))}"
+        f"tracked charter source declares {len(charter_types)} type(s): "
+        f"{', '.join(sorted(charter_types))}"
     )
     infos.append(
         f"registry defines {len(registry_types)} type(s): {', '.join(sorted(registry_types))}"
     )
+    if (repo_root / RUNTIME_CHARTER_PATH).is_file():
+        infos.append(
+            f"runtime charter instance present but not authoritative for this check: "
+            f"{RUNTIME_CHARTER_PATH}"
+        )
+    else:
+        infos.append(
+            f"runtime charter instance absent; clean CI uses tracked source: "
+            f"{GOAL_CHARTER_SOURCE_PATH}"
+        )
 
     status = "pass" if not errors else "fail"
     return {

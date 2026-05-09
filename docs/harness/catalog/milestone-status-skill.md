@@ -1,9 +1,9 @@
 ---
 title: "Milestone Status Skill"
 status: active
-updated: 2026-05-08
+updated: 2026-05-09
 owner: aw-kernel
-last_verified: 2026-05-08
+last_verified: 2026-05-09
 ---
 
 # Milestone Status Skill
@@ -39,7 +39,7 @@ last_verified: 2026-05-08
 | 输入 | 来源 | 说明 |
 |------|------|------|
 | Milestone artifact | `.aw/milestone/{milestone_id}.md` | 当前 active Milestone |
-| Worktrack backlog | `.aw/repo/worktrack-backlog.md` | 已关闭和待办 worktrack |
+| Worktrack backlog | `.aw/repo/worktrack-backlog.md` | 已关闭和待办 worktrack；缺失视为空 backlog，存在但损坏或不可解析时必须停止 |
 | Gate evidence | `.aw/worktrack/gate-evidence.md` | 最近关闭 worktrack 的 evidence |
 | Repo snapshot | `.aw/repo/snapshot-status.md` | 当前 repo 状态 |
 
@@ -55,10 +55,18 @@ last_verified: 2026-05-08
 | milestone_acceptance_verdict | enum | achieved / not_achieved / blocked / deferred |
 | handback_required | boolean | 是否触发 Milestone 验收边界 |
 | proceed_blockers | array | 阻止推进的因素列表 |
-| milestone_input_checkpoint | string | 本次分析输入指纹，供 harness-skill 写回 control-state 用于幂等性对比 |
+| milestone_input_checkpoint | string | 本次分析输入指纹，格式为 `sha256:<64 位小写 hex>`，供 harness-skill 写回 control-state 用于幂等性对比 |
 | release_version_consideration | string | 对 version/release 的提示 |
 | developer_decisions_needed | array | 需要 developer 做出的决定 |
 | recommendations | array | 对 RepoScope.Decide 的建议 |
+
+## Checkpoint 合同
+
+`milestone_input_checkpoint` 使用 `milestone-input-checkpoint/v1` 算法：从 milestone artifact、worktrack backlog、gate evidence 与 repo snapshot 提取会影响 progress counter 或 `purpose_achieved` 的关键字段，构造键排序的 UTF-8 JSON payload 后计算 SHA-256。路径一律使用 repo-relative POSIX path；缺失的 backlog 以 `state: missing` 和空 entries 表示；存在但损坏、不可读或不可解析的 backlog 不允许产出 partial checkpoint，必须作为 `proceed_blockers` 返回。
+
+纳入字段至少覆盖 milestone 的 `milestone_id`、`status`、`worktrack_list`、`completion_signals`、`acceptance_criteria`、`depends_on_milestones`、`aggregated_evidence`；backlog 中按 `worktrack_id` 去重后的最新有效条目及归一化状态；gate evidence 中的 verdict、review/validation/policy 维度结论、absorbed issues 与 freshness / missing 状态；repo snapshot 中的 baseline/checkpoint/governance/risk 关键信号。不得纳入文件 mtime、分析时间戳、绝对路径、上次 checkpoint 或 progress counter。
+
+每次 RepoScope.Observe 至少重算输入指纹；只有新指纹等于 control-state 中已有的 `milestone_input_checkpoint`，且 `latest_observed_checkpoint` 等于当前 git HEAD 时，才允许跳过 Milestone 进度和 evidence 聚合的完整重算。
 
 ## 调用时机
 

@@ -3384,10 +3384,14 @@ function buildBundleArgs(command, backend, parsed) {
 function validateBundleDisjointRoots(parsed) {
   const agentsContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, agentsBackend));
   const claudeContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, claudeBackend));
-  if (agentsContext.targetRoot === claudeContext.targetRoot) {
+  const rootsOverlap =
+    pathIsRelativeTo(agentsContext.targetRoot, claudeContext.targetRoot) ||
+    pathIsRelativeTo(claudeContext.targetRoot, agentsContext.targetRoot);
+  if (rootsOverlap) {
     throw new Error(
-      `[${bundleBackend}] agents and claude target roots resolve to the same directory: ${agentsContext.targetRoot}. ` +
-        "Use different --agents-root and --claude-root paths, or omit both to use per-backend defaults.",
+      `[${bundleBackend}] agents and claude target roots must be path-disjoint: ` +
+        `agents=${agentsContext.targetRoot}, claude=${claudeContext.targetRoot}. ` +
+        "Use non-overlapping --agents-root and --claude-root paths, or omit both to use per-backend defaults.",
     );
   }
   return { agentsContext, claudeContext };
@@ -3502,7 +3506,15 @@ async function runBundleUpdateDryRun(parsed) {
 
 async function runBundleUpdateYes(parsed) {
   // SA-C: reject if roots are not path-disjoint
-  validateBundleDisjointRoots(parsed);
+  const { agentsContext, claudeContext } = validateBundleDisjointRoots(parsed);
+  const agentsSummary = updatePlanSummary(agentsContext);
+  const claudeSummary = updatePlanSummary(claudeContext);
+  printUpdatePlan(agentsSummary);
+  printUpdatePlan(claudeSummary);
+  if (agentsSummary.blocking_issue_count > 0 || claudeSummary.blocking_issue_count > 0) {
+    console.error(`[${bundleBackend}] pre-write update preflight failed; aborting update`);
+    return 1;
+  }
   const agentsArgs = buildBundleArgs("update", agentsBackend, parsed);
   agentsArgs.push("--yes");
   const claudeArgs = buildBundleArgs("update", claudeBackend, parsed);
@@ -3541,41 +3553,46 @@ async function runBundlePrune(parsed) {
 }
 
 async function runNodeBundle(args) {
-  const diagnoseJson = parseNodeDiagnoseJsonArgs(args);
-  if (diagnoseJson !== null && diagnoseJson.backend === bundleBackend) {
-    return await runBundleDiagnoseJson(diagnoseJson);
-  }
-  const diagnose = parseNodeDiagnoseArgs(args);
-  if (diagnose !== null && diagnose.backend === bundleBackend) {
-    return await runBundleDiagnose(diagnose);
-  }
-  const updateJson = parseNodeUpdateJsonArgs(args);
-  if (updateJson !== null && updateJson.backend === bundleBackend) {
-    return await runBundleUpdateJson(updateJson);
-  }
-  const updateDryRun = parseNodeUpdateDryRunArgs(args);
-  if (updateDryRun !== null && updateDryRun.backend === bundleBackend) {
-    return await runBundleUpdateDryRun(updateDryRun);
-  }
-  const updateYes = parseNodeUpdateYesArgs(args);
-  if (updateYes !== null && updateYes.backend === bundleBackend) {
-    return await runBundleUpdateYes(updateYes);
-  }
-  const checkPaths = parseNodeCheckPathsExistArgs(args);
-  if (checkPaths !== null && checkPaths.backend === bundleBackend) {
-    return await runBundleCheckPathsExist(checkPaths);
-  }
-  const verify = parseNodeVerifyArgs(args);
-  if (verify !== null && verify.backend === bundleBackend) {
-    return await runBundleVerify(verify);
-  }
-  const install = parseNodeInstallArgs(args);
-  if (install !== null && install.backend === bundleBackend) {
-    return await runBundleInstall(install);
-  }
-  const prune = parseNodePruneArgs(args);
-  if (prune !== null && prune.backend === bundleBackend) {
-    return await runBundlePrune(prune);
+  try {
+    const diagnoseJson = parseNodeDiagnoseJsonArgs(args);
+    if (diagnoseJson !== null && diagnoseJson.backend === bundleBackend) {
+      return await runBundleDiagnoseJson(diagnoseJson);
+    }
+    const diagnose = parseNodeDiagnoseArgs(args);
+    if (diagnose !== null && diagnose.backend === bundleBackend) {
+      return await runBundleDiagnose(diagnose);
+    }
+    const updateJson = parseNodeUpdateJsonArgs(args);
+    if (updateJson !== null && updateJson.backend === bundleBackend) {
+      return await runBundleUpdateJson(updateJson);
+    }
+    const updateDryRun = parseNodeUpdateDryRunArgs(args);
+    if (updateDryRun !== null && updateDryRun.backend === bundleBackend) {
+      return await runBundleUpdateDryRun(updateDryRun);
+    }
+    const updateYes = parseNodeUpdateYesArgs(args);
+    if (updateYes !== null && updateYes.backend === bundleBackend) {
+      return await runBundleUpdateYes(updateYes);
+    }
+    const checkPaths = parseNodeCheckPathsExistArgs(args);
+    if (checkPaths !== null && checkPaths.backend === bundleBackend) {
+      return await runBundleCheckPathsExist(checkPaths);
+    }
+    const verify = parseNodeVerifyArgs(args);
+    if (verify !== null && verify.backend === bundleBackend) {
+      return await runBundleVerify(verify);
+    }
+    const install = parseNodeInstallArgs(args);
+    if (install !== null && install.backend === bundleBackend) {
+      return await runBundleInstall(install);
+    }
+    const prune = parseNodePruneArgs(args);
+    if (prune !== null && prune.backend === bundleBackend) {
+      return await runBundlePrune(prune);
+    }
+  } catch (error) {
+    console.error(`error: ${error.message}`);
+    return 1;
   }
   return null;
 }
