@@ -79,6 +79,11 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 `milestone_input_checkpoint` 是 Milestone Observe 的输入指纹，不是进度计数本身。它必须使用确定性算法生成，供下一轮 Observe 判断是否可以跳过重新计算 progress counter 和 purpose evidence 聚合。
 
 - 哈希类型：使用 SHA-256；输出格式固定为 `sha256:<64 位小写 hex>`。
+- **Fallback 策略**：如果运行环境不支持 SHA-256 哈希计算（如 AI 模型无法执行字节级哈希），使用以下 fallback：
+  - 将输入指纹序列化为 JSON 字符串，标注 `hash_algorithm: "none"`
+  - 标记 checkpoint 为 `unverifiable`（`checkpoint_verifiable: false`）
+  - 不跳过 progress counter 和 purpose evidence 的完整重算（`skip_recalculation: false`）
+  - 在 `milestone_input_checkpoint` 字段输出格式为 `unverifiable:<json_string_length>`，并附带完整序列化 JSON 字符串供人工比对
 - 序列化格式：构造一个 JSON 对象，使用 UTF-8 编码、字典键按字典序排序、紧凑分隔符（无多余空白）序列化后取 SHA-256。所有 repo 内路径必须规范化为 repo-relative POSIX path；不得使用绝对路径。
 - 顶层字段：`schema_version` 固定为 `milestone-input-checkpoint/v1`，并包含 `active_milestone_id`、`milestone_artifact`、`worktrack_backlog`、`gate_evidence`、`repo_snapshot`。
 - `milestone_artifact` 输入字段：artifact path、`milestone_id`、`status`、`worktrack_list`（保持 Milestone 声明顺序）、`completion_signals`、`acceptance_criteria`、`depends_on_milestones`、`aggregated_evidence`。不得纳入由本技能或上游刷新产生的 `progress_counter`、前次 `milestone_input_checkpoint` 或分析时间戳。
@@ -90,17 +95,14 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 
 ## 硬约束
 
-- 本技能是 RepoScope.Observe 的传感器/分析器层，负责 Milestone 状态分析；唯一合法行为是读取、计算、报告 Milestone 状态。
-- 唯一合法行为是产出结构化的 Milestone 观测结果；选择下一 Worktrack、初始化 worktrack、修改 version/release 的行为必须标记为超出本技能权限。
-- 对 `.aw/worktrack/*` 的唯一合法行为是将其读取为边界证据；重写 `.aw/worktrack/*` 的行为必须标记为超出本技能权限。
-- 不替代 gate-skill 的 verdict：本技能聚合 gate evidence 用于 Milestone 级判定，但不重新执行 gate 逻辑。
+遵循 [docs/harness/foundations/skill-common-constraints.md] 中定义的公共约束 C-1 至 C-7。
+
 - 不膨胀 harness-skill：harness-skill 继续只做 supervisor，本技能是独立的 Milestone 分析器，由 harness-skill 在需要时调用。
 - Milestone 完成判定必须通过双重验收模型（worktrack_list_finished + purpose_achieved）：两者缺一时不得自动判定 Milestone 完成。
 - Milestone 是 RepoScope 下的聚合观测变量，不是第三 Scope：不得创建独立 Scope、不得创建独立状态转移路径。
-- 输出中的 `release_version_consideration` 是 hint，不是 decision：不得自动触发 release/publish/version bump。
 - `developer_decisions_needed` 中的项目不得由本技能自动判定；它们必须作为显式边界交还给 developer。
 - 如果 `depends_on_milestones` 中的前置 Milestone 未完成，必须标记为 blocked 并在 `developer_decisions_needed` 中列出是否跳过前置依赖的决策。
-- 仅当 `milestone_input_checkpoint` 已存在且与按上述算法计算出的当前 Milestone 输入指纹一致、同时 `latest_observed_checkpoint` 也与当前 `git rev-parse HEAD` 一致时，才可跳过重新计算 progress counter。仅 git HEAD 一致不足以跳过（`.aw/` 下运行时 artifact 不受 git 追溯）；任一 fingerprint 不匹配或缺失时必须完整重算，重算后返回新的 `milestone_input_checkpoint` 供 harness-skill 写入 control-state。backlog present-but-damaged / unparseable 时不得产出 partial checkpoint。
+- 仅当 `milestone_input_checkpoint` 已存在且与当前输入指纹一致、同时 `latest_observed_checkpoint` 与当前 `git rev-parse HEAD` 一致时，才可跳过 progress counter 重算。仅 git HEAD 一致不足以跳过（`.aw/` 下运行时 artifact 不受 git 追溯）；backlog present-but-damaged / unparseable 时不得产出 partial checkpoint。
 
 ## 预期输出
 
