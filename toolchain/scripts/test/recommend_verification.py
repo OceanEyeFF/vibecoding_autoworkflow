@@ -16,130 +16,221 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shlex
 import subprocess
 import sys
 from collections import OrderedDict
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Mapping, Optional, Tuple, TypedDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 # ── Domain → check rules ──────────────────────────────────────────────
 # Each entry maps a path prefix to a list of (label, command) tuples.
-# The "label" is the human-readable check name; "command" is the argv
-# fragment to invoke (relative to REPO_ROOT).
+# The "label" is the human-readable check name; "command" is structured
+# execution metadata. Commands are never run through a shell.
 
 _SCRIPTS = "toolchain/scripts"
 _TEST = f"{_SCRIPTS}/test"
 _DEPLOY = f"{_SCRIPTS}/deploy"
 
-DOMAIN_RULES: List[Tuple[str, List[Tuple[str, str]]]] = [
+
+class CommandSpec(TypedDict, total=False):
+    argv: List[str]
+    env: Dict[str, str]
+    cwd: str
+
+
+CheckRule = Tuple[str, CommandSpec]
+
+
+def _command(
+    argv: List[str],
+    *,
+    env: Optional[Mapping[str, str]] = None,
+    cwd: Optional[str] = None,
+) -> CommandSpec:
+    spec: CommandSpec = {"argv": argv}
+    if env:
+        spec["env"] = dict(env)
+    if cwd:
+        spec["cwd"] = cwd
+    return spec
+
+
+def _python_check(script_path: str, *args: str) -> CommandSpec:
+    return _command(
+        ["python3", script_path, *args],
+        env={"PYTHONDONTWRITEBYTECODE": "1"},
+    )
+
+
+def _python_module(module: str, *args: str) -> CommandSpec:
+    return _command(
+        ["python3", "-m", module, *args],
+        env={"PYTHONDONTWRITEBYTECODE": "1"},
+    )
+
+
+def _node_check(script_path: str, *args: str) -> CommandSpec:
+    return _command(["node", script_path, *args])
+
+
+def _node_test(script_path: str) -> CommandSpec:
+    return _command(["node", "--test", script_path])
+
+
+def _npm_check(*args: str, cwd: Optional[str] = None) -> CommandSpec:
+    return _command(["npm", *args], cwd=cwd)
+
+
+def _display_command(command: CommandSpec) -> str:
+    env = command.get("env", {})
+    env_prefix = [f"{key}={value}" for key, value in sorted(env.items())]
+    return " ".join([*env_prefix, shlex.join(command["argv"])])
+
+
+def _check_entry(check_label: str, command: CommandSpec, reason: str) -> Dict[str, object]:
+    entry: Dict[str, object] = {
+        "check": check_label,
+        "command": _display_command(command),
+        "argv": list(command["argv"]),
+        "reason": reason,
+    }
+    if "env" in command:
+        entry["env"] = dict(command["env"])
+    if "cwd" in command:
+        entry["cwd"] = command["cwd"]
+    return entry
+
+
+_NODE_TEST_AW_INSTALLER: CheckRule = (
+    "node --test test_aw_installer.js",
+    _node_test(f"{_DEPLOY}/test_aw_installer.js"),
+)
+_AW_INSTALLER_VERIFY_BUNDLE: CheckRule = (
+    "aw-installer.js verify --backend bundle",
+    _node_check(f"{_DEPLOY}/bin/aw-installer.js", "verify", "--backend", "bundle"),
+)
+_NPM_PACK_DEPLOY_DRY_RUN: CheckRule = (
+    "npm pack --dry-run in toolchain/scripts/deploy",
+    _npm_check("pack", "--dry-run", cwd=_DEPLOY),
+)
+
+
+DOMAIN_RULES: List[Tuple[str, List[CheckRule]]] = [
     (
         "docs/harness/",
         [
-            ("governance_semantic_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/governance_semantic_check.py"),
-            ("path_governance_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/path_governance_check.py"),
+            ("governance_semantic_check.py", _python_check(f"{_TEST}/governance_semantic_check.py")),
+            ("path_governance_check.py", _python_check(f"{_TEST}/path_governance_check.py")),
         ],
     ),
     (
         "docs/project-maintenance/",
         [
-            ("path_governance_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/path_governance_check.py"),
-            ("governance_semantic_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/governance_semantic_check.py"),
+            ("path_governance_check.py", _python_check(f"{_TEST}/path_governance_check.py")),
+            ("governance_semantic_check.py", _python_check(f"{_TEST}/governance_semantic_check.py")),
         ],
     ),
     (
         f"{_DEPLOY}/bin/aw-installer.js",
         [
-            ("node --test test_aw_installer.js", f"node --test {_DEPLOY}/test_aw_installer.js"),
-            ("closeout_acceptance_gate.py --json", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/closeout_acceptance_gate.py --json"),
-            ("npm pack --dry-run in toolchain/scripts/deploy", f"npm pack --dry-run"),
+            _NODE_TEST_AW_INSTALLER,
+            ("closeout_acceptance_gate.py --json", _python_check(f"{_TEST}/closeout_acceptance_gate.py", "--json")),
+            _AW_INSTALLER_VERIFY_BUNDLE,
+            _NPM_PACK_DEPLOY_DRY_RUN,
         ],
     ),
     (
         f"{_DEPLOY}/test_aw_installer.js",
         [
-            ("node --test test_aw_installer.js", f"node --test {_DEPLOY}/test_aw_installer.js"),
+            _NODE_TEST_AW_INSTALLER,
         ],
     ),
     (
         f"{_TEST}/folder_logic_check.py",
         [
-            ("folder_logic_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/folder_logic_check.py"),
-            ("path_governance_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/path_governance_check.py"),
-            ("governance_semantic_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/governance_semantic_check.py"),
-            (f"pytest {_TEST}/test_folder_logic_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 -m pytest {_TEST}/test_folder_logic_check.py"),
+            ("folder_logic_check.py", _python_check(f"{_TEST}/folder_logic_check.py")),
+            ("path_governance_check.py", _python_check(f"{_TEST}/path_governance_check.py")),
+            ("governance_semantic_check.py", _python_check(f"{_TEST}/governance_semantic_check.py")),
+            (f"pytest {_TEST}/test_folder_logic_check.py", _python_module("pytest", f"{_TEST}/test_folder_logic_check.py")),
         ],
     ),
     (
         f"{_TEST}/path_governance_check.py",
         [
-            ("folder_logic_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/folder_logic_check.py"),
-            ("path_governance_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/path_governance_check.py"),
-            ("governance_semantic_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/governance_semantic_check.py"),
-            (f"pytest {_TEST}/test_path_governance_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 -m pytest {_TEST}/test_path_governance_check.py"),
+            ("folder_logic_check.py", _python_check(f"{_TEST}/folder_logic_check.py")),
+            ("path_governance_check.py", _python_check(f"{_TEST}/path_governance_check.py")),
+            ("governance_semantic_check.py", _python_check(f"{_TEST}/governance_semantic_check.py")),
+            (f"pytest {_TEST}/test_path_governance_check.py", _python_module("pytest", f"{_TEST}/test_path_governance_check.py")),
         ],
     ),
     (
         f"{_TEST}/governance_semantic_check.py",
         [
-            ("folder_logic_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/folder_logic_check.py"),
-            ("path_governance_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/path_governance_check.py"),
-            ("governance_semantic_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/governance_semantic_check.py"),
-            (f"pytest {_TEST}/test_governance_semantic_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 -m pytest {_TEST}/test_governance_semantic_check.py"),
+            ("folder_logic_check.py", _python_check(f"{_TEST}/folder_logic_check.py")),
+            ("path_governance_check.py", _python_check(f"{_TEST}/path_governance_check.py")),
+            ("governance_semantic_check.py", _python_check(f"{_TEST}/governance_semantic_check.py")),
+            (f"pytest {_TEST}/test_governance_semantic_check.py", _python_module("pytest", f"{_TEST}/test_governance_semantic_check.py")),
         ],
     ),
     (
         "product/harness/skills/",
         [
-            ("path_governance_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/path_governance_check.py"),
-            ("governance_semantic_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/governance_semantic_check.py"),
-            ("closeout_acceptance_gate.py --json", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/closeout_acceptance_gate.py --json"),
+            ("path_governance_check.py", _python_check(f"{_TEST}/path_governance_check.py")),
+            ("governance_semantic_check.py", _python_check(f"{_TEST}/governance_semantic_check.py")),
+            ("closeout_acceptance_gate.py --json", _python_check(f"{_TEST}/closeout_acceptance_gate.py", "--json")),
         ],
     ),
     (
         "product/harness/adapters/",
         [
-            ("closeout_acceptance_gate.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/closeout_acceptance_gate.py"),
-            (f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/test_agents_adapter_contract.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/test_agents_adapter_contract.py"),
+            ("closeout_acceptance_gate.py", _python_check(f"{_TEST}/closeout_acceptance_gate.py")),
+            (f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/test_agents_adapter_contract.py", _python_check(f"{_TEST}/test_agents_adapter_contract.py")),
         ],
     ),
     (
         f"{_DEPLOY}/package.json",
         [
-            ("closeout_acceptance_gate.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/closeout_acceptance_gate.py"),
-            ("adapter_deploy.py verify", f"PYTHONDONTWRITEBYTECODE=1 python3 {_DEPLOY}/adapter_deploy.py verify"),
+            ("closeout_acceptance_gate.py", _python_check(f"{_TEST}/closeout_acceptance_gate.py")),
+            _NODE_TEST_AW_INSTALLER,
+            _AW_INSTALLER_VERIFY_BUNDLE,
+            _NPM_PACK_DEPLOY_DRY_RUN,
         ],
     ),
     (
         f"{_DEPLOY}/",
         [
-            ("closeout_acceptance_gate.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/closeout_acceptance_gate.py"),
-            ("adapter_deploy.py verify", f"PYTHONDONTWRITEBYTECODE=1 python3 {_DEPLOY}/adapter_deploy.py verify"),
+            ("closeout_acceptance_gate.py", _python_check(f"{_TEST}/closeout_acceptance_gate.py")),
+            _NODE_TEST_AW_INSTALLER,
+            _AW_INSTALLER_VERIFY_BUNDLE,
+            _NPM_PACK_DEPLOY_DRY_RUN,
         ],
     ),
     (
         ".aw/",
         [
-            ("path_governance_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/path_governance_check.py"),
+            ("path_governance_check.py", _python_check(f"{_TEST}/path_governance_check.py")),
         ],
     ),
     (
         ".claude/",
         [
-            ("path_governance_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/path_governance_check.py"),
+            ("path_governance_check.py", _python_check(f"{_TEST}/path_governance_check.py")),
         ],
     ),
     (
         ".agents/",
         [
-            ("path_governance_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/path_governance_check.py"),
+            ("path_governance_check.py", _python_check(f"{_TEST}/path_governance_check.py")),
         ],
     ),
 ]
 
 # Special rules: exact file matches (checked before prefix matches)
-_EXACT_RULES: Dict[str, List[Tuple[str, str]]] = {}
+_EXACT_RULES: Dict[str, List[CheckRule]] = {}
 
 # Populate exact rules from DOMAIN_RULES for entries that are file paths (no trailing slash, exist as files)
 for prefix, checks in DOMAIN_RULES:
@@ -150,12 +241,12 @@ for prefix, checks in DOMAIN_RULES:
 # ── full-verification set (used when >THRESHOLD domains match) ────────
 _MULTI_DOMAIN_THRESHOLD = 4
 
-FULL_VERIFICATION: List[Tuple[str, str]] = [
-    ("folder_logic_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/folder_logic_check.py"),
-    ("path_governance_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/path_governance_check.py"),
-    ("governance_semantic_check.py", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/governance_semantic_check.py"),
-    ("closeout_acceptance_gate.py --json", f"PYTHONDONTWRITEBYTECODE=1 python3 {_TEST}/closeout_acceptance_gate.py --json"),
-    ("node --test test_aw_installer.js", f"node --test {_DEPLOY}/test_aw_installer.js"),
+FULL_VERIFICATION: List[CheckRule] = [
+    ("folder_logic_check.py", _python_check(f"{_TEST}/folder_logic_check.py")),
+    ("path_governance_check.py", _python_check(f"{_TEST}/path_governance_check.py")),
+    ("governance_semantic_check.py", _python_check(f"{_TEST}/governance_semantic_check.py")),
+    ("closeout_acceptance_gate.py --json", _python_check(f"{_TEST}/closeout_acceptance_gate.py", "--json")),
+    _NODE_TEST_AW_INSTALLER,
 ]
 
 
@@ -203,13 +294,13 @@ def recommend(files: List[str]) -> Dict[str, object]:
     Returns a dict with keys:
     - ``domains``: list of matched domain labels
     - ``domain_files``: dict mapping domain → list of matched files
-    - ``domain_checks``: dict mapping domain → list of (label, command)
-    - ``all_checks``: deduplicated ordered list of (label, command, reason)
+    - ``domain_checks``: dict mapping domain → list of (label, command metadata)
+    - ``all_checks``: deduplicated ordered list with display command, argv/env/cwd, and reason
     - ``files_changed``: total number of changed files
     """
     domain_labels: List[str] = []
     domain_files: Dict[str, List[str]] = OrderedDict()
-    domain_checks: Dict[str, List[Tuple[str, str]]] = OrderedDict()
+    domain_checks: Dict[str, List[CheckRule]] = OrderedDict()
 
     for f in files:
         for prefix, checks in DOMAIN_RULES:
@@ -239,21 +330,21 @@ def recommend(files: List[str]) -> Dict[str, object]:
             dedup_key = check_label
             if dedup_key not in seen_checks:
                 seen_checks.add(dedup_key)
-                all_checks.append({
-                    "check": check_label,
-                    "command": command,
-                    "reason": f"{label} changes",
-                })
+                all_checks.append(_check_entry(
+                    check_label,
+                    command,
+                    f"{label} changes",
+                ))
 
     # If many domains are touched, escalate to full verification
     if len(domain_labels) >= _MULTI_DOMAIN_THRESHOLD:
         all_checks = []
         for check_label, command in FULL_VERIFICATION:
-            all_checks.append({
-                "check": check_label,
-                "command": command,
-                "reason": f"multi-domain diff ({len(domain_labels)} domains)",
-            })
+            all_checks.append(_check_entry(
+                check_label,
+                command,
+                f"multi-domain diff ({len(domain_labels)} domains)",
+            ))
 
     return {
         "domains": domain_labels,
@@ -311,21 +402,30 @@ def run_checks(result: Dict[str, object], cwd: Optional[str] = None) -> int:
     for entry in checks:
         label = entry["check"]
         command = entry["command"]
+        argv = entry["argv"]
         print(f"--- {label} ---")
         print(f"  $ {command}")
 
-        # Handle npm pack --dry-run specially: it needs to run in the deploy dir
         run_cwd = cwd
-        if "npm pack" in command:
-            run_cwd = str(REPO_ROOT / _DEPLOY)
+        command_cwd = entry.get("cwd")
+        if isinstance(command_cwd, str):
+            run_cwd = str(REPO_ROOT / command_cwd)
+
+        env = os.environ.copy()
+        command_env = entry.get("env")
+        if isinstance(command_env, dict):
+            env.update(command_env)
 
         try:
             proc = subprocess.run(
-                command, shell=True, cwd=run_cwd,
-                capture_output=True, text=True,
+                argv,
+                cwd=run_cwd,
+                env=env,
+                capture_output=True,
+                text=True,
             )
         except FileNotFoundError:
-            print(f"  [SKIP] command not found: {command.split()[0]}")
+            print(f"  [SKIP] command not found: {argv[0]}")
             skipped += 1
             print()
             continue

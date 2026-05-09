@@ -14,6 +14,7 @@ from governance_semantic_check import (
     check_canonical_skill_packages_are_minimal,
     check_docs_list_closeout_cache_roots,
     check_foundations_authority_shadows,
+    check_orphan_docs,
     check_manual_runbook_agents_skill_count,
     check_outdated_placeholder_phrases,
     check_path_governance_docs_list_gitignore_entries,
@@ -667,5 +668,21 @@ def test_check_docs_list_closeout_cache_roots_accepts_complete_roots(tmp_path: P
 
     report = SemanticReport()
     check_docs_list_closeout_cache_roots(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_orphan_docs_accepts_canonical_skill_only_reference(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/harness/artifact/repo/goal-charter.md",
+        "# Goal Charter\n",
+    )
+    write_doc(
+        tmp_path / "product/harness/skills/demo-skill/SKILL.md",
+        "[goal charter](../../../../docs/harness/artifact/repo/goal-charter.md)\n",
+    )
+
+    report = SemanticReport()
+    check_orphan_docs(tmp_path, report)
 
     assert report.failures == []

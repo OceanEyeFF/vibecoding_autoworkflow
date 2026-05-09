@@ -3579,6 +3579,36 @@ test("parseNodeUpdateArgs rejects bundle with github source", () => {
   );
 });
 
+test("aw-installer bundle rejects nested target roots", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const parentRoot = join(root, "bundle-target", "skills");
+    const nestedRoot = join(parentRoot, "nested");
+
+    const nestedClaude = runNodeCheckPathsExist(
+      root,
+      ["--backend=bundle", `--agents-root=${parentRoot}`, `--claude-root=${nestedRoot}`],
+      fakeBin,
+    );
+    assert.equal(nestedClaude.status, 1);
+    assert.match(nestedClaude.stderr, /must be path-disjoint/);
+    assert.equal(nestedClaude.stderr.includes("unexpected-python"), false);
+
+    const nestedAgents = runNodeVerify(
+      root,
+      ["--backend=bundle", `--agents-root=${nestedRoot}`, `--claude-root=${parentRoot}`],
+      fakeBin,
+    );
+    assert.equal(nestedAgents.status, 1);
+    assert.match(nestedAgents.stderr, /must be path-disjoint/);
+    assert.equal(nestedAgents.stderr.includes("unexpected-python"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 // --- Bundle backend functional tests ---
 
 function seedMinimalBundleSource(root, skillId) {
@@ -4002,6 +4032,36 @@ test("aw-installer update --yes bundle partial completion when claude fails", ()
     if (existsSync(claudeRoot)) {
       chmodSync(claudeRoot, 0o755);
     }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("aw-installer update --yes bundle preflight aborts before any root is rewritten", () => {
+  const root = mkdtempSync(join(tmpdir(), "aw-installer-test-"));
+  try {
+    seedMinimalBundleSource(root, "demo-skill");
+    const fakeBin = fakePythonBin(root);
+    const install = runNodeInstall(root, ["--backend=bundle"], fakeBin);
+    assert.equal(install.status, 0, install.stderr);
+
+    const agentsSkill = join(root, ".agents", "skills", "aw-demo-skill", "SKILL.md");
+    const claudeSkillDir = join(root, ".claude", "skills", "demo-skill");
+    const agentsDriftText = "# agents-drift-before-bundle-update\n";
+    writeFileSync(agentsSkill, agentsDriftText, "utf8");
+    rmSync(claudeSkillDir, { recursive: true, force: true });
+    mkdirSync(claudeSkillDir, { recursive: true });
+    writeFileSync(join(claudeSkillDir, "foreign.txt"), "unmanaged", "utf8");
+
+    const completed = runNodeUpdate(root, ["--backend=bundle", "--yes"], fakeBin);
+
+    assert.equal(completed.status, 1);
+    assert.match(completed.stderr, /\[bundle\] pre-write update preflight failed; aborting update/);
+    assert.match(completed.stdout, /\[agents\] update plan/);
+    assert.match(completed.stdout, /\[claude\] update plan/);
+    assert.equal(readFileSync(agentsSkill, "utf8"), agentsDriftText);
+    assert.equal(existsSync(join(claudeSkillDir, "foreign.txt")), true);
+    assert.equal(completed.stderr.includes("unexpected-python"), false);
+  } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });

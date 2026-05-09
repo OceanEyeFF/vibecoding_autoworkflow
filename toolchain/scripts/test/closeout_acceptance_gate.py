@@ -1028,6 +1028,62 @@ def run_root_npm_package_tarball_smoke(repo_root: Path, expected_version_output:
                 )
             )
 
+            def validate_bundle_diagnose(
+                diagnose_result: dict,
+                diagnose_failures: list[str],
+            ) -> None:
+                if not diagnose_result["passed"]:
+                    return
+                try:
+                    diagnose_payload = json.loads(diagnose_result["stdout"])
+                except json.JSONDecodeError as error:
+                    diagnose_failures.append(f"invalid root packaged bundle diagnose JSON: {error}")
+                    return
+                if diagnose_payload.get("bundle") is not True:
+                    diagnose_failures.append("root packaged bundle diagnose did not report bundle mode")
+                    return
+                backends = diagnose_payload.get("backends")
+                if not isinstance(backends, dict) or "agents" not in backends or "claude" not in backends:
+                    diagnose_failures.append("root packaged bundle diagnose omitted backend summaries")
+                    return
+                if diagnose_payload.get("total_issues") != 0:
+                    diagnose_failures.append("root packaged bundle diagnose reported issues after install")
+
+            subchecks.append(
+                run_tarball_aw_installer(
+                    package_file,
+                    ["diagnose", "--backend", "bundle", "--json"],
+                    cwd=target_repo,
+                    extra_env=clean_env,
+                    name="root_npm_exec_tarball_diagnose_bundle",
+                    failures=failures,
+                    validate=validate_bundle_diagnose,
+                )
+            )
+
+            def validate_bundle_verify(
+                verify_result: dict,
+                verify_failures: list[str],
+            ) -> None:
+                if not verify_result["passed"]:
+                    return
+                if "[agents] ok" not in verify_result["stdout"]:
+                    verify_failures.append("root packaged bundle verify did not verify agents")
+                if "[claude] ok" not in verify_result["stdout"]:
+                    verify_failures.append("root packaged bundle verify did not verify claude")
+
+            subchecks.append(
+                run_tarball_aw_installer(
+                    package_file,
+                    ["verify", "--backend", "bundle"],
+                    cwd=target_repo,
+                    extra_env=clean_env,
+                    name="root_npm_exec_tarball_verify_bundle",
+                    failures=failures,
+                    validate=validate_bundle_verify,
+                )
+            )
+
             def validate_claude_update_apply(
                 update_apply_result: dict,
                 update_apply_failures: list[str],

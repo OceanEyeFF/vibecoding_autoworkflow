@@ -120,21 +120,28 @@ def successful_npm_command_result(
             return command[command.index("--backend") + 1]
         return "agents"
 
-    def npm_exec_target_root() -> Path:
+    def npm_exec_target_root(backend: str | None = None) -> Path:
+        current_backend = backend or npm_exec_backend()
         target_repo = (
             extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
             if extra_env is not None
             else None
         )
         repo = Path(target_repo) if target_repo else cwd or Path("/tmp/repo")
-        if npm_exec_backend() == "claude":
+        if current_backend == "claude":
             return repo / ".claude" / "skills"
         return repo / ".agents" / "skills"
 
-    def npm_exec_skill_dirs() -> list[Path]:
-        if npm_exec_backend() == "claude":
-            return [npm_exec_target_root() / skill_name for skill_name in CLAUDE_SKILL_DIR_NAMES]
-        return [npm_exec_target_root() / "aw-harness-skill"]
+    def npm_exec_skill_dirs(backend: str | None = None) -> list[Path]:
+        current_backend = backend or npm_exec_backend()
+        if current_backend == "bundle":
+            return [
+                *npm_exec_skill_dirs("agents"),
+                *npm_exec_skill_dirs("claude"),
+            ]
+        if current_backend == "claude":
+            return [npm_exec_target_root("claude") / skill_name for skill_name in CLAUDE_SKILL_DIR_NAMES]
+        return [npm_exec_target_root("agents") / "aw-harness-skill"]
 
     if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
         packed_paths = (
@@ -202,6 +209,36 @@ def successful_npm_command_result(
                 "stdout": "",
                 "stderr": "missing AW_HARNESS_REPO_ROOT",
                 "passed": False,
+            }
+        if npm_exec_backend() == "bundle":
+            return {
+                "command": command,
+                "returncode": 0,
+                "stdout": json.dumps(
+                    {
+                        "bundle": True,
+                        "backends": {
+                            "agents": {
+                                "backend": "agents",
+                                "binding_count": len(npm_exec_skill_dirs("agents")),
+                                "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
+                                "target_root": str(npm_exec_target_root("agents")),
+                                "issue_count": 0,
+                            },
+                            "claude": {
+                                "backend": "claude",
+                                "binding_count": len(npm_exec_skill_dirs("claude")),
+                                "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
+                                "target_root": str(npm_exec_target_root("claude")),
+                                "issue_count": 0,
+                            },
+                        },
+                        "total_issues": 0,
+                        "total_managed": len(npm_exec_skill_dirs("bundle")),
+                    }
+                ),
+                "stderr": "",
+                "passed": True,
             }
         return {
             "command": command,
@@ -281,6 +318,14 @@ def successful_npm_command_result(
         }
     if command[:2] == ["npm", "exec"] and "verify" in command:
         backend = npm_exec_backend()
+        if backend == "bundle":
+            return {
+                "command": command,
+                "returncode": 0,
+                "stdout": "[agents] ok: target root is ready\n[claude] ok: target root is ready\n",
+                "stderr": "",
+                "passed": True,
+            }
         return {
             "command": command,
             "returncode": 0,
@@ -685,6 +730,14 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
         item["name"] == "root_npm_exec_tarball_update_apply_claude"
         for item in root_tarball_smoke["subchecks"]
     )
+    assert any(
+        item["name"] == "root_npm_exec_tarball_diagnose_bundle"
+        for item in root_tarball_smoke["subchecks"]
+    )
+    assert any(
+        item["name"] == "root_npm_exec_tarball_verify_bundle"
+        for item in root_tarball_smoke["subchecks"]
+    )
     assert [item["name"] for item in result["subchecks"][:11]] == [
         "root_package_version_metadata",
         "gate_tool_tests",
@@ -776,6 +829,18 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
     assert any(
         command[:2] == ["npm", "exec"]
         and command[-4:] == ["update", "--backend", "claude", "--yes"]
+        and extra_env == {"AW_HARNESS_REPO_ROOT": "", "AW_HARNESS_TARGET_REPO_ROOT": ""}
+        for command, _, extra_env in calls
+    )
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and command[-4:] == ["diagnose", "--backend", "bundle", "--json"]
+        and extra_env == {"AW_HARNESS_REPO_ROOT": "", "AW_HARNESS_TARGET_REPO_ROOT": ""}
+        for command, _, extra_env in calls
+    )
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and command[-3:] == ["verify", "--backend", "bundle"]
         and extra_env == {"AW_HARNESS_REPO_ROOT": "", "AW_HARNESS_TARGET_REPO_ROOT": ""}
         for command, _, extra_env in calls
     )

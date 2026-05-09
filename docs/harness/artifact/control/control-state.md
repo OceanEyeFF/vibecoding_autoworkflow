@@ -1,9 +1,9 @@
 ---
 title: "Harness Control State"
 status: active
-updated: 2026-05-07
+updated: 2026-05-09
 owner: aw-kernel
-last_verified: 2026-05-07
+last_verified: 2026-05-09
 ---
 # Harness Control State
 
@@ -45,6 +45,6 @@ Milestone 是 RepoScope 下的聚合对象，control-state 应保存 `active_mil
 
 这些字段属于 control memory，不替代 Repo Snapshot/Status、Worktrack Contract 或 Gate Evidence。
 
-此外还应保存 Baseline Traceability，用于 WorktrackScope 关闭后快速定位已验证基线：`last_verified_checkpoint`、`latest_observed_checkpoint`、`last_doc_catch_up_checkpoint`、`checkpoint_type`、`checkpoint_ref`、`verified_at`、`if_no_commit_reason`、`alternative_traceability`。其中 `latest_observed_checkpoint` 与 `last_doc_catch_up_checkpoint` 是 git hash 幂等性锚点，分别记录上次 `repo-refresh-skill` 和 `doc-catch-up-worker-skill` 执行时的 HEAD hash，供 harness-skill 启动时对比跳过重复刷新。`milestone_input_checkpoint` 是 Milestone 输入指纹锚点：由 milestone-status-skill 完成分析后计算（组合 milestone artifact、worktrack backlog、gate evidence、repo snapshot 的关键字段或修改时间戳），供下一轮 Observe 对比判断是否需要重新计算进度；该指纹与 git HEAD 独立，因为 `.aw/` 下运行时 artifact 变化不产生 git commit。空值或缺失表示该锚点尚未建立，必须执行完整状态估计；不得把空值解释为“当前基线无需刷新”。这些字段属于 traceability metadata，不替代 Repo Snapshot/Status。
+此外还应保存 Baseline Traceability，用于 WorktrackScope 关闭后快速定位已验证基线：`last_verified_checkpoint`、`latest_observed_checkpoint`、`last_doc_catch_up_checkpoint`、`checkpoint_type`、`checkpoint_ref`、`verified_at`、`if_no_commit_reason`、`alternative_traceability`。其中 `latest_observed_checkpoint` 与 `last_doc_catch_up_checkpoint` 是 git hash 幂等性锚点，分别记录上次 `repo-refresh-skill` 和 `doc-catch-up-worker-skill` 执行时的 HEAD hash，供 harness-skill 启动时对比跳过重复刷新。`milestone_input_checkpoint` 是 Milestone 输入指纹锚点：由 milestone-status-skill 按 `milestone-input-checkpoint/v1` 计算，格式固定为 `sha256:<64 位小写 hex>`。该算法对 milestone artifact、worktrack backlog、gate evidence、repo snapshot 的已纳入字段构造 UTF-8 JSON payload，使用字典键排序、repo-relative POSIX path、稳定列表顺序和显式 `null` 值后取 SHA-256；不得纳入文件 mtime、分析时间戳、绝对路径、上次 checkpoint 或 progress counter 等易变/派生值。该指纹与 git HEAD 独立，因为 `.aw/` 下运行时 artifact 变化不产生 git commit；下一轮 Observe 只有在 `milestone_input_checkpoint` 与新计算指纹一致，且 `latest_observed_checkpoint` 与当前 `git rev-parse HEAD` 一致时，才可跳过 Milestone 进度重算。空值或缺失表示该锚点尚未建立，必须执行完整状态估计；不得把空值解释为“当前基线无需刷新”。这些字段属于 traceability metadata，不替代 Repo Snapshot/Status。
 
 补充约束：post_contract_autonomy: manual-only 时"继续工作"只能 handback 不得自动开新 worktrack；delegated-minimal 时也只能在 current-goal-only 内消费一次 autonomy budget。WorktrackScope 关闭后即使返回 RepoScope 也不得自动清空 handoff_state。awaiting-handoff 且无新 programmer 决策时只允许复核同一 handback 边界。delegated-minimal 下只有 awaiting-handoff 且 budget > 0 时才能切新 bounded slice，开启后立即消费预算。autonomous slice 结束后应再次 handback，不得默认无限链式续跑。stop_after_autonomous_slice: yes 时 slice 结束后重新写回 awaiting-handoff。stable-handback 是 runtime verdict，control-state 应持久化的是 last_handback_signature 与 reaffirm 计数。`awaiting-handoff` 且 `handback_lock_active = true` 时，只有显式 unlock signal 才能解除交接锁；裸"重试"、"继续工作"或重复文字摘要不构成有效 unlock signal，必须由 programmer 发出新的实质性指令或新信息才能解除。

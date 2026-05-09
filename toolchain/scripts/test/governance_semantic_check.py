@@ -196,6 +196,9 @@ ORPHAN_REFERENCE_SOURCES = [
     "CLAUDE.md",
     "AGENTS.md",
 ]
+ORPHAN_SKILL_REFERENCE_GLOBS = [
+    "product/harness/skills/**/SKILL.md",
+]
 SUBAGENT_DEFAULT_REQUIRED_TERMS = [
     "默认",
     "SubAgent",
@@ -788,7 +791,7 @@ def _is_readme_or_excluded(rel_path: str) -> bool:
 def _collect_docs_referenced_targets(repo_root: Path) -> set[str]:
     """Collect all relative markdown link targets from reference sources.
 
-    Scans: all docs/**/*.md, CLAUDE.md, AGENTS.md.
+    Scans: all docs/**/*.md, root reference sources, and canonical skills.
     Returns a set of resolved repo-relative paths.
     """
     referenced: set[str] = set()
@@ -811,6 +814,22 @@ def _collect_docs_referenced_targets(repo_root: Path) -> set[str]:
     for source in ORPHAN_REFERENCE_SOURCES:
         source_path = repo_root / source
         if source_path.is_file():
+            try:
+                targets = collect_repo_relative_markdown_links(repo_root, source)
+            except Exception:
+                continue
+            referenced.update(targets)
+
+    # Scan canonical skill bodies. A doc referenced only by a canonical skill is
+    # still reachable operator-facing truth and must not be reported as orphaned.
+    for glob_pattern in ORPHAN_SKILL_REFERENCE_GLOBS:
+        for source_path in sorted(repo_root.glob(glob_pattern)):
+            if not source_path.is_file():
+                continue
+            try:
+                source = to_relative_posix(source_path, repo_root)
+            except ValueError:
+                continue
             try:
                 targets = collect_repo_relative_markdown_links(repo_root, source)
             except Exception:
