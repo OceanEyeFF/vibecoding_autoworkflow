@@ -107,3 +107,40 @@ def test_run_checks_uses_argv_env_and_metadata_cwd(monkeypatch: Any) -> None:
     assert calls[0]["text"] is True
     assert calls[1]["argv"] == ["npm", "pack", "--dry-run"]
     assert calls[1]["cwd"] == str(REPO_ROOT / "toolchain/scripts/deploy")
+
+
+def test_full_verification_escalation_with_multi_domain() -> None:
+    changed_files = [
+        "docs/harness/artifact/control/milestone.md",
+        "product/harness/skills/harness-skill/SKILL.md",
+        "toolchain/scripts/test/recommend_verification.py",
+        "toolchain/scripts/deploy/bin/aw-installer.js",
+    ]
+    result = recommend_verification.recommend(changed_files)
+
+    assert len(result["domains"]) >= recommend_verification._MULTI_DOMAIN_THRESHOLD
+    full_labels = {entry[0] for entry in recommend_verification.FULL_VERIFICATION}
+    result_labels = {entry["check"] for entry in result["all_checks"]}
+    assert result_labels == full_labels
+
+
+def test_run_checks_subprocess_failure() -> None:
+    import subprocess
+
+    result = {
+        "all_checks": [
+            recommend_verification._check_entry(
+                "failing_check",
+                recommend_verification._python_check("nonexistent.py"),
+                "test",
+            ),
+        ],
+    }
+    rc = recommend_verification.run_checks(result)
+    assert rc != 0
+
+
+def test_recommend_empty_files() -> None:
+    result = recommend_verification.recommend([])
+    assert result["files_changed"] == 0
+    assert len(result["all_checks"]) == 0

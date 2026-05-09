@@ -194,6 +194,11 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
             "toolchain/scripts/deploy/path_safety_policy.json",
             "--allowed-prefix",
             "toolchain/scripts/deploy/test_aw_installer.js",
+            # TRANSITIONAL: allow deleted Python deploy files through scope gate.
+            # These files were removed in P0-067 (Python cleanup). The allowlist
+            # entries exist only to let the deletion diff pass scope validation.
+            # TODO(P0-067-cleanup): remove these --allowed-prefix entries after
+            # the deletion PR is merged and no future diff references these paths.
             "--allowed-prefix",
             "toolchain/scripts/deploy/adapter_deploy.py",
             "--allowed-prefix",

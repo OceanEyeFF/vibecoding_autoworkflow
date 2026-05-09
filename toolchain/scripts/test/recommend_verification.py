@@ -229,14 +229,21 @@ DOMAIN_RULES: List[Tuple[str, List[CheckRule]]] = [
     ),
 ]
 
-# Special rules: exact file matches (checked before prefix matches)
-_EXACT_RULES: Dict[str, List[CheckRule]] = {}
+# Special rules: exact file matches (checked before prefix matches).
+# Lazily initialized on first access so that import-time filesystem state
+# (e.g. sparse checkouts) does not silently drop exact-match rules.
+_EXACT_RULES_CACHE: Optional[Dict[str, List[CheckRule]]] = None
 
-# Populate exact rules from DOMAIN_RULES for entries that are file paths (no trailing slash, exist as files)
-for prefix, checks in DOMAIN_RULES:
-    full_path = REPO_ROOT / prefix
-    if full_path.is_file():
-        _EXACT_RULES[prefix] = checks
+
+def _get_exact_rules() -> Dict[str, List[CheckRule]]:
+    global _EXACT_RULES_CACHE
+    if _EXACT_RULES_CACHE is None:
+        _EXACT_RULES_CACHE = {}
+        for prefix, checks in DOMAIN_RULES:
+            full_path = REPO_ROOT / prefix
+            if full_path.is_file():
+                _EXACT_RULES_CACHE[prefix] = checks
+    return _EXACT_RULES_CACHE
 
 # ── full-verification set (used when >THRESHOLD domains match) ────────
 _MULTI_DOMAIN_THRESHOLD = 4
@@ -283,7 +290,7 @@ def _prefix_matches(file_path: str, prefix: str) -> bool:
 
 def _matches_domain(file_path: str, domain_prefix: str) -> bool:
     """True if *file_path* falls under *domain_prefix*."""
-    if domain_prefix in _EXACT_RULES:
+    if domain_prefix in _get_exact_rules():
         return file_path == domain_prefix
     return _prefix_matches(file_path, domain_prefix)
 
