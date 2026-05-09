@@ -788,13 +788,16 @@ def _is_readme_or_excluded(rel_path: str) -> bool:
     return False
 
 
-def _collect_docs_referenced_targets(repo_root: Path) -> set[str]:
+def _collect_docs_referenced_targets(repo_root: Path) -> tuple[set[str], list[str]]:
     """Collect all relative markdown link targets from reference sources.
 
     Scans: all docs/**/*.md, root reference sources, and canonical skills.
-    Returns a set of resolved repo-relative paths.
+    Returns a tuple of (referenced targets, substantive doc paths).
+    The second element eliminates the need for a separate rglob in
+    ``check_orphan_docs``.
     """
     referenced: set[str] = set()
+    all_docs: list[str] = []
 
     # Scan all .md files under docs/
     docs_dir = repo_root / "docs"
@@ -804,6 +807,8 @@ def _collect_docs_referenced_targets(repo_root: Path) -> set[str]:
                 rel = to_relative_posix(md_file, repo_root)
             except ValueError:
                 continue
+            if not _is_readme_or_excluded(rel):
+                all_docs.append(rel)
             try:
                 targets = collect_repo_relative_markdown_links(repo_root, rel)
             except Exception:
@@ -836,32 +841,21 @@ def _collect_docs_referenced_targets(repo_root: Path) -> set[str]:
                 continue
             referenced.update(targets)
 
-    return referenced
+    return referenced, all_docs
 
 
 def check_orphan_docs(repo_root: Path, report: SemanticReport) -> None:
-    # Collect all substantive .md files under docs/
     docs_dir = repo_root / "docs"
     if not docs_dir.is_dir():
         report.add_info("checked 0 docs for orphan status, docs/ directory missing")
         return
 
-    all_docs: list[str] = []
-    for md_file in sorted(docs_dir.rglob("*.md")):
-        try:
-            rel = to_relative_posix(md_file, repo_root)
-        except ValueError:
-            continue
-        if _is_readme_or_excluded(rel):
-            continue
-        all_docs.append(rel)
+    # Single traversal: collects both referenced targets and substantive doc paths
+    referenced, all_docs = _collect_docs_referenced_targets(repo_root)
 
     if not all_docs:
         report.add_info("checked 0 docs for orphan status, no substantive docs found")
         return
-
-    # Collect all referenced targets from reference sources
-    referenced = _collect_docs_referenced_targets(repo_root)
 
     # Find orphans: docs not referenced by any source
     orphans: list[str] = []

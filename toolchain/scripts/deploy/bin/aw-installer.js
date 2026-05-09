@@ -270,9 +270,15 @@ function resolveExistingOrLexical(path) {
   return resolve(realpathSync(resolved), ...suffix);
 }
 
-function pathIsRelativeTo(path, parent) {
-  const relativePath = relative(parent, path);
-  return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
+/** Return true when `child` is contained in (or equal to) `parent`.
+ *  Both arguments are resolved with `path.resolve` before comparison.
+ *  Symlinks are NOT dereferenced — callers who need that should pass
+ *  already-resolved paths from {@link resolveTargetRepoRoot}. */
+function isPathContainedIn(child, parent) {
+  const rChild = resolve(child);
+  const rParent = resolve(parent);
+  const rel = relative(rParent, rChild);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
 function pathSafetyPolicy() {
@@ -317,7 +323,7 @@ function validateNotSensitiveRepoRoot(resolved, subject, action) {
     }
   }
   for (const sensitiveRoot of recursiveSensitiveTargetRepoRoots()) {
-    if (resolved === sensitiveRoot || pathIsRelativeTo(resolved, sensitiveRoot)) {
+    if (resolved === sensitiveRoot || isPathContainedIn(resolved, sensitiveRoot)) {
       throw new Error(`${subject} is protected and cannot be ${action}: ${resolved}`);
     }
   }
@@ -337,7 +343,7 @@ function validateTargetRepoRoot(path, sourceRoot) {
     .filter(Boolean)
     .map((candidate) => resolveExistingOrLexical(candidate));
   const uniqueAllowedPrefixes = [...new Set(allowedPrefixes)];
-  if (!uniqueAllowedPrefixes.some((prefix) => resolved === prefix || pathIsRelativeTo(resolved, prefix))) {
+  if (!uniqueAllowedPrefixes.some((prefix) => resolved === prefix || isPathContainedIn(resolved, prefix))) {
     throw new Error(
       `Target repo root ${resolved} is outside allowed paths: ${uniqueAllowedPrefixes.join(", ")}`,
     );
@@ -893,7 +899,7 @@ function safeExtractZipBuffer(buffer, destination, options = {}) {
     for (const entry of zipEntries(buffer)) {
       const relativeName = validateZipMemberPath(entry.name);
       const targetPath = resolve(stagingRoot, relativeName);
-      if (!pathIsRelativeTo(targetPath, stagingRoot)) {
+      if (!isPathContainedIn(targetPath, stagingRoot)) {
         throw new Error(`GitHub archive contains unsafe path: ${entry.name}`);
       }
       if (entry.name.endsWith("/")) {
@@ -3385,8 +3391,8 @@ function validateBundleDisjointRoots(parsed) {
   const agentsContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, agentsBackend));
   const claudeContext = buildNodeBackendContext(buildBundleBackendOptions(parsed, claudeBackend));
   const rootsOverlap =
-    pathIsRelativeTo(agentsContext.targetRoot, claudeContext.targetRoot) ||
-    pathIsRelativeTo(claudeContext.targetRoot, agentsContext.targetRoot);
+    isPathContainedIn(agentsContext.targetRoot, claudeContext.targetRoot) ||
+    isPathContainedIn(claudeContext.targetRoot, agentsContext.targetRoot);
   if (rootsOverlap) {
     throw new Error(
       `[${bundleBackend}] agents and claude target roots must be path-disjoint: ` +
