@@ -3,7 +3,7 @@ title: "Standard Fields Vocabulary"
 status: active
 updated: "2026-05-09"
 owner: "aw-kernel"
-last_verified: "2026-05-09"
+last_verified: "2026-05-10"
 ---
 
 # Standard Fields Vocabulary
