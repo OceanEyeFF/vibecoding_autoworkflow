@@ -74,6 +74,7 @@ Harness 作为控制系统，包含以下系统组件：
 - diff impact analysis
 - 文档 freshness 检查
 - `Harness Control State` 中的控制面信号
+- `Milestone` artifact（`.aw/milestone/`）中的聚合进度、验收状态和 handback 边界信号
 
 没有这些，state 只是"自报状态"。
 
@@ -254,6 +255,8 @@ WorktrackScope 控制回路（局部状态转移）：               Init (init-
 ```
 
 其中 `Close` 绑定到 `close-worktrack-skill`，`Recover` 绑定到 `recover-worktrack-skill`。
+
+`Observe` 阶段的默认绑定为 `repo-status-skill`。当 `repo-status-skill` 输出 `active_milestone` 非空时，Harness 必须在 Observe→Decide 之间追加绑定 `milestone-status-skill`，获取 `milestone_acceptance_verdict`、`proceed_blockers`、`handback_required`、`milestone_input_checkpoint` 等 Milestone 级裁决字段后再进入 `repo-whats-next-skill` 的 Decide 判定。收到 `milestone_input_checkpoint` 后应将其写回 control-state 的 `Baseline Traceability.milestone_input_checkpoint` 供下一轮幂等性对比。若无活跃 Milestone，跳过此额外绑定。
 
 **控制目标**：维护 Repo 的长期基线稳定，判断是否需要进入局部执行。
 

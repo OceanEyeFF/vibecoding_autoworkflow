@@ -72,6 +72,7 @@
 - last_verified_checkpoint:
 - latest_observed_checkpoint:
 - last_doc_catch_up_checkpoint:
+- milestone_input_checkpoint:
 - checkpoint_type:
 - checkpoint_ref:
 - verified_at:
