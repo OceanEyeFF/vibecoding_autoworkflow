@@ -8,3 +8,83 @@ last_verified: 2026-05-06
 # Gate Evidence
 
 为状态转移裁决提供证据。最少应包含 review/validation/policy 三类证据面；review 下四路 SubAgent 并行覆盖状态（static-semantic-review、test-review、project-security-review、complexity-performance-review）；四路含义分别是静态语义解释、测试 review、security review、代码复杂度和性能 review；无法委派四路时记录 fallback 原因；每条证据面的 freshness/缺失状态、残余风险与上游约束信号；gate intake readiness、verdict 和后续动作。
+
+## Verdict 字段定义
+
+Gate 推演结果以 `verdict` 字段记录，必须为以下四种值之一：
+
+| Verdict | 语义 | 推进规则 |
+|---------|------|----------|
+| `pass` | 所有校验面（review/validation/policy）均通过，未发现任何需阻塞的问题 | 允许直接推进至下一状态（dispatching 或 closing） |
+| `soft-fail` | 存在可接受的低严重度问题，不影响核心功能、安全或架构一致性 | 可带条件推进，但必须记录吸收理由、问题清单及后续跟踪计划 |
+| `hard-fail` | 存在不可接受的中/高严重度问题，涉及正确性、安全性、结构性或合同违约 | 必须回退至 verifying 或 implementing 状态，不可强行推进 |
+| `blocked` | 缺失必要证据（如某证据面未完成）或外部依赖未满足，无法做出判定 | 保持当前上下文等待，不得重做；依赖满足后重新 intake |
+
+Verdict 判定流程：
+
+1. 收集三类证据面（review / validation / policy），检查每条证据的 freshness 和缺失状态
+2. 逐面评估是否存在问题及严重度
+3. 汇总所有发现后按上述四种 verdict 做出判定
+4. 记录 verdict、判据摘要、吸收项（如有）和后续动作
+
+## 低严重度吸收规则
+
+### 严重度分级
+
+| 严重度 | 定义 | 示例 | 可吸收 |
+|--------|------|------|--------|
+| 低 | 不影响功能、安全、架构一致性的表面问题 | 拼写错误、格式不一致、非关键文档 freshness 轻微延迟（不超过 3 天） | 是 |
+| 中 | 可能影响可维护性、可读性或局部正确性，但不会导致系统级故障 | 缺少边界注释、非核心路径测试覆盖不足、命名不规范 | 否，触发 hard-fail |
+| 高 | 影响功能正确性、安全性、数据完整性或架构合同 | 逻辑错误、安全漏洞、路径/分层违规、合同未满足 | 否，触发 hard-fail |
+
+### 吸收规则
+
+1. 低严重度问题可在 `soft-fail` verdict 中吸收（即在 soft-fail 下标注问题但允许推进）
+2. 中/高严重度问题**不得吸收**，必须触发 `hard-fail`
+3. 每项吸收必须记录以下字段：
+   - `issue_description`：问题描述
+   - `severity`：严重度评级（low / medium / high）
+   - `absorption_rationale`：吸收理由（为什么可以带条件推进）
+   - `follow_up_plan`：后续跟踪计划（何时、如何修复）
+   - `follow_up_deadline`：跟踪截止时间（可选，但建议给出）
+4. 同一轮 gate 中累计低严重度问题超过 5 项时，应从 `soft-fail` 升级为 `hard-fail`（数量阈值的目的是防止低严重度问题累积到不可管理的程度）
+5. 吸收项必须在下一轮 verify gate 中被重新检查；未在截止时间前修复的吸收项在下一轮自动升级为中严重度
+
+### 吸收记录示例
+
+```yaml
+verdict: soft-fail
+absorbed_issues:
+  - issue_description: "CHANGELOG 未更新本次变更记录"
+    severity: low
+    absorption_rationale: "本次变更为内部重构，对外接口无变化，CHANGELOG 更新可推迟至下一轮"
+    follow_up_plan: "在下一轮 closeout 前补充 CHANGELOG"
+    follow_up_deadline: "2026-05-12"
+  - issue_description: "plan-task-queue.md 中一处任务描述存在拼写错误"
+    severity: low
+    absorption_rationale: "不影响任务理解和执行"
+    follow_up_plan: "下次修改该文件时一并修复"
+```
+
+## review_dimensions 字段
+
+Gate evidence 中的每条 review 证据面应覆盖以下标准维度。每个维度独立评分（pass / soft-fail / hard-fail / blocked）：
+
+| 维度 | 名称 | 含义 | 检查要点 |
+|------|------|------|----------|
+| `correctness` | 正确性 | 代码/文档的正确性，是否实现了声明的目标 | 逻辑无错误、边界条件正确处理、与验收标准一致 |
+| `completeness` | 完整性 | 是否覆盖所有验收标准，无遗漏 | 对照 contract 中的 acceptance criteria 逐项检查 |
+| `consistency` | 一致性 | 与现有架构、模式和约定的协调性 | 命名规范、接口模式、数据流方向与现有设计对齐 |
+| `scope_boundary` | 范围边界 | 是否越出声明范围，引入未授权的变更 | 变更集是否严格限定在 plan 声明的范围内 |
+| `structural_compliance` | 结构性合规 | 路径/分层/治理规则的符合性 | 文件放置于正确目录、遵循分层规则、满足治理基线 |
+
+四个 SubAgent 的 review 覆盖映射：
+
+| SubAgent | 主要覆盖维度 |
+|----------|-------------|
+| static-semantic-review | correctness, consistency, structural_compliance |
+| test-review | correctness, completeness |
+| project-security-review | correctness, scope_boundary, structural_compliance |
+| complexity-performance-review | correctness, consistency |
+
+每个 SubAgent 返回的 review 结果应包含每个维度的评分和具体发现。Gate 汇总时按维度取最严格评分（任一 SubAgent 报告 hard-fail 则该维度 hard-fail）。

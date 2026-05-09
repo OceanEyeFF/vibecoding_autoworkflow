@@ -67,7 +67,6 @@ def test_publish_workflow_runs_pre_publish_validation_gates() -> None:
         "python toolchain/scripts/test/governance_semantic_check.py",
         "python -m pip install --requirement .github/requirements-ci.txt",
         "python -m pytest toolchain/scripts/test",
-        "python -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'",
         "npm --prefix toolchain/scripts/deploy run smoke --silent",
         "npm --prefix toolchain/scripts/deploy test --silent",
         "npm pack --dry-run --json",

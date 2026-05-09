@@ -1,9 +1,9 @@
 ---
 title: "Claude Repo-local Usage Help"
 status: active
-updated: 2026-05-07
+updated: 2026-05-08
 owner: aw-kernel
-last_verified: 2026-05-07
+last_verified: 2026-05-08
 ---
 # Claude Repo-local Usage Help
 
@@ -20,7 +20,7 @@ AW_HARNESS_TARGET_REPO_ROOT="$TARGET_REPO" aw-installer install --backend claude
 AW_HARNESS_TARGET_REPO_ROOT="$TARGET_REPO" aw-installer verify --backend claude
 ```
 
-`adapter_deploy.py --backend claude` 仍可作为 repo-local reference/parity 入口使用，但不是 package/local operator 主路径。
+`adapter_deploy.py` 已随 P0-067 Python cleanup 移除；当前 Claude backend 的 deploy 入口仅 `aw-installer --backend claude`（Node-only distribution）。
 
 冷启动 helper：`node product/harness/skills/set-harness-goal-skill/scripts/deploy_aw.js install-claude-skill --deploy-path "$TARGET_REPO"`。Coding CLI 内部的 skill 调用示例以 [Recommended Harness Usage](./recommended-usage.md) 的 Codex 口径为准。
 

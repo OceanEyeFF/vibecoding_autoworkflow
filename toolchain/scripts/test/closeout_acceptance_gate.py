@@ -26,15 +26,6 @@ except ModuleNotFoundError:
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW_ID = "closeout-governance-task-list-20260402"
-LOCAL_DEPLOY_TARGET_ROOTS = {
-    "agents": REPO_ROOT / ".agents" / "skills",
-    "claude": REPO_ROOT / ".claude" / "skills",
-}
-SUPPORTED_DEPLOY_VERIFY_BACKENDS = ("agents", "claude")
-DEPLOY_VERIFY_ENTRYPOINTS = (
-    ("adapter", "adapter_deploy.py"),
-    ("wrapper", "harness_deploy.py"),
-)
 EXPECTED_NPM_PACKAGE_FILES = {
     "README.md",
     "bin/aw-installer.js",
@@ -69,6 +60,7 @@ ROOT_NPM_REQUIRED_PACKAGE_FILES = {
 ROOT_NPM_FORBIDDEN_PACKAGE_FILES = {
     "toolchain/scripts/deploy/adapter_deploy.py",
     "toolchain/scripts/deploy/harness_deploy.py",
+    "toolchain/scripts/deploy/aw_scaffold.py",
     "toolchain/scripts/deploy/bin/aw-harness-deploy.js",
     "product/harness/skills/set-harness-goal-skill/scripts/deploy_aw.py",
 }
@@ -177,6 +169,8 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
             "--allowed-prefix",
             "AGENTS.md",
             "--allowed-prefix",
+            "CLAUDE.md",
+            "--allowed-prefix",
             "CONTRIBUTING.md",
             "--allowed-prefix",
             ".codex/",
@@ -200,6 +194,21 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
             "toolchain/scripts/deploy/path_safety_policy.json",
             "--allowed-prefix",
             "toolchain/scripts/deploy/test_aw_installer.js",
+            # TRANSITIONAL: allow deleted Python deploy files through scope gate.
+            # These files were removed in P0-067 (Python cleanup). The allowlist
+            # entries exist only to let the deletion diff pass scope validation.
+            # TODO(P0-067-cleanup): remove these --allowed-prefix entries after
+            # the deletion PR is merged and no future diff references these paths.
+            "--allowed-prefix",
+            "toolchain/scripts/deploy/adapter_deploy.py",
+            "--allowed-prefix",
+            "toolchain/scripts/deploy/aw_scaffold.py",
+            "--allowed-prefix",
+            "toolchain/scripts/deploy/harness_deploy.py",
+            "--allowed-prefix",
+            "toolchain/scripts/deploy/test_adapter_deploy.py",
+            "--allowed-prefix",
+            "toolchain/scripts/deploy/test_aw_scaffold.py",
             "--allowed-prefix",
             "package.json",
         ],
@@ -1024,6 +1033,62 @@ def run_root_npm_package_tarball_smoke(repo_root: Path, expected_version_output:
                 )
             )
 
+            def validate_bundle_diagnose(
+                diagnose_result: dict,
+                diagnose_failures: list[str],
+            ) -> None:
+                if not diagnose_result["passed"]:
+                    return
+                try:
+                    diagnose_payload = json.loads(diagnose_result["stdout"])
+                except json.JSONDecodeError as error:
+                    diagnose_failures.append(f"invalid root packaged bundle diagnose JSON: {error}")
+                    return
+                if diagnose_payload.get("bundle") is not True:
+                    diagnose_failures.append("root packaged bundle diagnose did not report bundle mode")
+                    return
+                backends = diagnose_payload.get("backends")
+                if not isinstance(backends, dict) or "agents" not in backends or "claude" not in backends:
+                    diagnose_failures.append("root packaged bundle diagnose omitted backend summaries")
+                    return
+                if diagnose_payload.get("total_issues") != 0:
+                    diagnose_failures.append("root packaged bundle diagnose reported issues after install")
+
+            subchecks.append(
+                run_tarball_aw_installer(
+                    package_file,
+                    ["diagnose", "--backend", "bundle", "--json"],
+                    cwd=target_repo,
+                    extra_env=clean_env,
+                    name="root_npm_exec_tarball_diagnose_bundle",
+                    failures=failures,
+                    validate=validate_bundle_diagnose,
+                )
+            )
+
+            def validate_bundle_verify(
+                verify_result: dict,
+                verify_failures: list[str],
+            ) -> None:
+                if not verify_result["passed"]:
+                    return
+                if "[agents] ok" not in verify_result["stdout"]:
+                    verify_failures.append("root packaged bundle verify did not verify agents")
+                if "[claude] ok" not in verify_result["stdout"]:
+                    verify_failures.append("root packaged bundle verify did not verify claude")
+
+            subchecks.append(
+                run_tarball_aw_installer(
+                    package_file,
+                    ["verify", "--backend", "bundle"],
+                    cwd=target_repo,
+                    extra_env=clean_env,
+                    name="root_npm_exec_tarball_verify_bundle",
+                    failures=failures,
+                    validate=validate_bundle_verify,
+                )
+            )
+
             def validate_claude_update_apply(
                 update_apply_result: dict,
                 update_apply_failures: list[str],
@@ -1105,33 +1170,6 @@ def run_root_npm_package_tarball_smoke(repo_root: Path, expected_version_output:
         "subchecks": subchecks,
     }
 
-def run_local_deploy_verify(repo_root: Path, python: str, backend: str, script_name: str) -> dict:
-    command = [
-        python,
-        str(repo_root / "toolchain" / "scripts" / "deploy" / script_name),
-        "verify",
-        "--backend",
-        backend,
-    ]
-    result = run_command(command, cwd=repo_root)
-    issue_codes = extract_verify_issue_codes(result["stdout"])
-    if (
-        not result["passed"]
-        and issue_codes
-        and all(code == "missing-target-root" for code in issue_codes)
-    ):
-        target_root = repo_root / LOCAL_DEPLOY_TARGET_ROOTS[backend].relative_to(REPO_ROOT)
-        return {
-            **result,
-            "returncode": 0,
-            "passed": True,
-            "skipped": True,
-            "skip_reason": f"missing local deploy target root {target_root}",
-            "raw_returncode": result["returncode"],
-        }
-    return result
-
-
 def run_test_gate_subchecks(repo_root: Path, python: str, version_metadata_check: dict, expected_version_output: str) -> list[tuple[str, dict]]:
     subchecks = [
         ("root_package_version_metadata", version_metadata_check),
@@ -1164,22 +1202,6 @@ def run_test_gate_subchecks(repo_root: Path, python: str, version_metadata_check
             run_command([python, "-m", "pytest", "toolchain/scripts/test/aw_installer_tui"], cwd=repo_root),
         ),
         (
-            "deploy_regression_tests",
-            run_command(
-                [
-                    python,
-                    "-m",
-                    "unittest",
-                    "discover",
-                    "-s",
-                    "toolchain/scripts/deploy",
-                    "-p",
-                    "test_*.py",
-                ],
-                cwd=repo_root,
-            ),
-        ),
-        (
             "deploy_package_unit_tests",
             run_command(["npm", "--prefix", "toolchain/scripts/deploy", "test", "--silent"], cwd=repo_root),
         ),
@@ -1208,14 +1230,6 @@ def run_test_gate_subchecks(repo_root: Path, python: str, version_metadata_check
             run_root_npm_package_tarball_smoke(repo_root, expected_version_output),
         ),
     ]
-    subchecks.extend(
-        (
-            f"deploy_verify_{entrypoint}_{backend}",
-            run_local_deploy_verify(repo_root, python, backend, script_name),
-        )
-        for backend in SUPPORTED_DEPLOY_VERIFY_BACKENDS
-        for entrypoint, script_name in DEPLOY_VERIFY_ENTRYPOINTS
-    )
     return subchecks
 
 

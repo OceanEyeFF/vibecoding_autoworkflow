@@ -11,9 +11,11 @@ from governance_semantic_check import (
     SemanticReport,
     check_append_request_contract_terms,
     check_adapter_wrappers_are_thin,
+    check_artifact_skill_alignment,
     check_canonical_skill_packages_are_minimal,
     check_docs_list_closeout_cache_roots,
     check_foundations_authority_shadows,
+    check_orphan_docs,
     check_manual_runbook_agents_skill_count,
     check_outdated_placeholder_phrases,
     check_path_governance_docs_list_gitignore_entries,
@@ -669,3 +671,72 @@ def test_check_docs_list_closeout_cache_roots_accepts_complete_roots(tmp_path: P
     check_docs_list_closeout_cache_roots(tmp_path, report)
 
     assert report.failures == []
+
+
+def test_check_orphan_docs_accepts_canonical_skill_only_reference(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/harness/artifact/repo/goal-charter.md",
+        "# Goal Charter\n",
+    )
+    write_doc(
+        tmp_path / "product/harness/skills/demo-skill/SKILL.md",
+        "[goal charter](../../../../docs/harness/artifact/repo/goal-charter.md)\n",
+    )
+
+    report = SemanticReport()
+    check_orphan_docs(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_artifact_skill_alignment_all_fields_pass(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "product/harness/skills/gate-skill/SKILL.md",
+        "\n".join([
+            "# Gate Skill",
+            "",
+            "verdict: pass or fail",
+            "review_dimensions: correctness completeness consistency",
+            "",
+        ]) + "\n",
+    )
+    write_doc(
+        tmp_path / "product/harness/skills/init-worktrack-skill/templates/contract.template.md",
+        "\n".join([
+            "# Contract Template",
+            "",
+            "node_type: feature",
+            "baseline_form: commit-on-feature-branch",
+            "merge_required: true",
+            "gate_criteria: standard",
+            "if_interrupted_strategy: stop",
+            "runtime_dispatch_mode: auto",
+            "",
+        ]) + "\n",
+    )
+    write_doc(
+        tmp_path / "product/harness/skills/schedule-worktrack-skill/SKILL.md",
+        "\n".join([
+            "# Schedule Worktrack Skill",
+            "",
+            "task_id: T-001",
+            "status: pending",
+            "priority: high",
+            "depends_on: []",
+            "acceptance: all tests pass",
+            "",
+        ]) + "\n",
+    )
+
+    report = SemanticReport()
+    check_artifact_skill_alignment(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_artifact_skill_alignment_missing_skill_file(tmp_path: Path) -> None:
+    report = SemanticReport()
+    check_artifact_skill_alignment(tmp_path, report)
+
+    assert len(report.failures) > 0
+    assert any("missing skill file" in f for f in report.failures)

@@ -56,9 +56,6 @@ jobs:
       - name: Governance tests
         run: python -m pytest toolchain/scripts/test
 
-      - name: Deploy regression tests
-        run: python -m unittest discover -s toolchain/scripts/deploy -p 'test_*.py'
-
       - name: Deploy package smoke
         run: npm --prefix toolchain/scripts/deploy run smoke --silent
 

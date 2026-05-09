@@ -15,10 +15,9 @@ from scope_gate_check import check_scope, normalize_status_path
 from gate_status_backfill import update_state
 
 
-def test_local_deploy_target_roots_match_supported_verify_backends() -> None:
-    assert set(closeout_acceptance_gate.LOCAL_DEPLOY_TARGET_ROOTS) == set(
-        closeout_acceptance_gate.SUPPORTED_DEPLOY_VERIFY_BACKENDS
-    )
+def test_closeout_gate_does_not_require_python_deploy_reference_entrypoints() -> None:
+    assert not hasattr(closeout_acceptance_gate, "SUPPORTED_DEPLOY_VERIFY_BACKENDS")
+    assert not hasattr(closeout_acceptance_gate, "DEPLOY_VERIFY_ENTRYPOINTS")
 
 
 def test_claude_required_payload_skills_are_discovered_from_payload_descriptors() -> None:
@@ -121,21 +120,28 @@ def successful_npm_command_result(
             return command[command.index("--backend") + 1]
         return "agents"
 
-    def npm_exec_target_root() -> Path:
+    def npm_exec_target_root(backend: str | None = None) -> Path:
+        current_backend = backend or npm_exec_backend()
         target_repo = (
             extra_env.get("AW_HARNESS_TARGET_REPO_ROOT")
             if extra_env is not None
             else None
         )
         repo = Path(target_repo) if target_repo else cwd or Path("/tmp/repo")
-        if npm_exec_backend() == "claude":
+        if current_backend == "claude":
             return repo / ".claude" / "skills"
         return repo / ".agents" / "skills"
 
-    def npm_exec_skill_dirs() -> list[Path]:
-        if npm_exec_backend() == "claude":
-            return [npm_exec_target_root() / skill_name for skill_name in CLAUDE_SKILL_DIR_NAMES]
-        return [npm_exec_target_root() / "aw-harness-skill"]
+    def npm_exec_skill_dirs(backend: str | None = None) -> list[Path]:
+        current_backend = backend or npm_exec_backend()
+        if current_backend == "bundle":
+            return [
+                *npm_exec_skill_dirs("agents"),
+                *npm_exec_skill_dirs("claude"),
+            ]
+        if current_backend == "claude":
+            return [npm_exec_target_root("claude") / skill_name for skill_name in CLAUDE_SKILL_DIR_NAMES]
+        return [npm_exec_target_root("agents") / "aw-harness-skill"]
 
     if command[:4] == ["npm", "pack", "--dry-run", "--json"]:
         packed_paths = (
@@ -203,6 +209,36 @@ def successful_npm_command_result(
                 "stdout": "",
                 "stderr": "missing AW_HARNESS_REPO_ROOT",
                 "passed": False,
+            }
+        if npm_exec_backend() == "bundle":
+            return {
+                "command": command,
+                "returncode": 0,
+                "stdout": json.dumps(
+                    {
+                        "bundle": True,
+                        "backends": {
+                            "agents": {
+                                "backend": "agents",
+                                "binding_count": len(npm_exec_skill_dirs("agents")),
+                                "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
+                                "target_root": str(npm_exec_target_root("agents")),
+                                "issue_count": 0,
+                            },
+                            "claude": {
+                                "backend": "claude",
+                                "binding_count": len(npm_exec_skill_dirs("claude")),
+                                "source_root": extra_env.get("AW_HARNESS_REPO_ROOT") or "/tmp/package-source",
+                                "target_root": str(npm_exec_target_root("claude")),
+                                "issue_count": 0,
+                            },
+                        },
+                        "total_issues": 0,
+                        "total_managed": len(npm_exec_skill_dirs("bundle")),
+                    }
+                ),
+                "stderr": "",
+                "passed": True,
             }
         return {
             "command": command,
@@ -282,6 +318,14 @@ def successful_npm_command_result(
         }
     if command[:2] == ["npm", "exec"] and "verify" in command:
         backend = npm_exec_backend()
+        if backend == "bundle":
+            return {
+                "command": command,
+                "returncode": 0,
+                "stdout": "[agents] ok: target root is ready\n[claude] ok: target root is ready\n",
+                "stderr": "",
+                "passed": True,
+            }
         return {
             "command": command,
             "returncode": 0,
@@ -337,16 +381,11 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "product/harness/skills/harness-skill/SKILL.md",
             "product/harness/adapters/agents/skills/harness-skill/payload.json",
             ".agents/skills/legacy-skill/SKILL.md",
-            "toolchain/scripts/deploy/adapter_deploy.py",
-            "toolchain/scripts/deploy/aw_scaffold.py",
             "toolchain/scripts/deploy/bin/aw-installer.js",
-            "toolchain/scripts/deploy/harness_deploy.py",
             "toolchain/scripts/deploy/package.json",
             "toolchain/scripts/deploy/path_safety_policy.json",
             "toolchain/scripts/deploy/README.md",
-            "toolchain/scripts/deploy/test_adapter_deploy.py",
             "toolchain/scripts/deploy/test_aw_installer.js",
-            "toolchain/scripts/deploy/test_aw_scaffold.py",
             "toolchain/scripts/test/scope_gate_check.py",
             "tools/scope_gate_check.py",
         ],
@@ -367,16 +406,11 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             "product/harness/skills/",
             "product/harness/adapters/",
             ".agents/",
-            "toolchain/scripts/deploy/adapter_deploy.py",
-            "toolchain/scripts/deploy/aw_scaffold.py",
             "toolchain/scripts/deploy/bin/",
-            "toolchain/scripts/deploy/harness_deploy.py",
             "toolchain/scripts/deploy/package.json",
             "toolchain/scripts/deploy/path_safety_policy.json",
             "toolchain/scripts/deploy/README.md",
-            "toolchain/scripts/deploy/test_adapter_deploy.py",
             "toolchain/scripts/deploy/test_aw_installer.js",
-            "toolchain/scripts/deploy/test_aw_scaffold.py",
             "toolchain/scripts/test/",
             "tools/scope_gate_check.py",
         ),
@@ -696,7 +730,15 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
         item["name"] == "root_npm_exec_tarball_update_apply_claude"
         for item in root_tarball_smoke["subchecks"]
     )
-    assert [item["name"] for item in result["subchecks"][:12]] == [
+    assert any(
+        item["name"] == "root_npm_exec_tarball_diagnose_bundle"
+        for item in root_tarball_smoke["subchecks"]
+    )
+    assert any(
+        item["name"] == "root_npm_exec_tarball_verify_bundle"
+        for item in root_tarball_smoke["subchecks"]
+    )
+    assert [item["name"] for item in result["subchecks"][:11]] == [
         "root_package_version_metadata",
         "gate_tool_tests",
         "folder_logic_tests",
@@ -705,7 +747,6 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
         "agents_adapter_contract_tests",
         "aw_installer_cli_tests",
         "aw_installer_tui_tests",
-        "deploy_regression_tests",
         "deploy_package_unit_tests",
         "repo_analysis_contract_check",
         "npm_pack_dry_run_aw_installer",
@@ -716,7 +757,7 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
     assert any(command[-1] == "toolchain/scripts/test/test_agents_adapter_contract.py" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/aw_installer_cli" for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/aw_installer_tui" for command in commands)
-    assert any(command[:4] == [sys.executable, "-m", "unittest", "discover"] for command in commands)
+    assert not any(command[:4] == [sys.executable, "-m", "unittest", "discover"] for command in commands)
     assert any(command == ["npm", "--prefix", "toolchain/scripts/deploy", "test", "--silent"] for command in commands)
     assert any(command[-1] == "toolchain/scripts/test/repo_analysis_contract_check.py" for command in commands)
     assert any(
@@ -791,24 +832,23 @@ def test_run_test_gate_includes_contract_tests(monkeypatch, tmp_path) -> None:
         and extra_env == {"AW_HARNESS_REPO_ROOT": "", "AW_HARNESS_TARGET_REPO_ROOT": ""}
         for command, _, extra_env in calls
     )
-    deploy_verify_commands = [
-        command
-        for command in commands
-        if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]
-    ]
-    assert len(deploy_verify_commands) == 4
-    assert {Path(command[1]).name for command in deploy_verify_commands} == {
-        "adapter_deploy.py",
-        "harness_deploy.py",
-    }
-    assert {tuple(command[-2:]) for command in deploy_verify_commands} == {
-        ("--backend", "agents"),
-        ("--backend", "claude"),
-    }
-    assert all("--target" not in command for command in deploy_verify_commands)
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and command[-4:] == ["diagnose", "--backend", "bundle", "--json"]
+        and extra_env == {"AW_HARNESS_REPO_ROOT": "", "AW_HARNESS_TARGET_REPO_ROOT": ""}
+        for command, _, extra_env in calls
+    )
+    assert any(
+        command[:2] == ["npm", "exec"]
+        and command[-3:] == ["verify", "--backend", "bundle"]
+        and extra_env == {"AW_HARNESS_REPO_ROOT": "", "AW_HARNESS_TARGET_REPO_ROOT": ""}
+        for command, _, extra_env in calls
+    )
+    assert not any("adapter_deploy.py" in command[1] for command in commands if len(command) > 1)
+    assert not any("harness_deploy.py" in command[1] for command in commands if len(command) > 1)
 
 
-def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path) -> None:
+def test_run_test_gate_no_longer_runs_local_python_deploy_verify(monkeypatch, tmp_path) -> None:
     write_root_package_json(tmp_path)
     commands: list[list[str]] = []
 
@@ -841,58 +881,10 @@ def test_run_test_gate_skips_missing_local_deploy_targets(monkeypatch, tmp_path)
     result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
 
     assert result["passed"] is True
-    assert result["status"] == "skipped"
-    deploy_results = {
-        item["name"]: item for item in result["subchecks"] if item["name"].startswith("deploy_verify_")
-    }
-    assert set(deploy_results) == {
-        "deploy_verify_adapter_agents",
-        "deploy_verify_wrapper_agents",
-        "deploy_verify_adapter_claude",
-        "deploy_verify_wrapper_claude",
-    }
-    assert all(item["passed"] is True for item in deploy_results.values())
-    assert all(item["skipped"] is True for item in deploy_results.values())
-    assert any("adapter_deploy.py" in command[1] for command in commands)
-    assert any("harness_deploy.py" in command[1] for command in commands)
-
-
-def test_run_test_gate_checks_broken_local_deploy_target_symlink(monkeypatch, tmp_path) -> None:
-    write_root_package_json(tmp_path)
-    commands: list[list[str]] = []
-    broken_root = tmp_path / ".agents" / "skills"
-    broken_root.parent.mkdir(parents=True)
-    broken_root.symlink_to(tmp_path / "missing-agents-skills")
-
-    def fake_run_command(command: list[str], *, cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
-        commands.append(command)
-        npm_result = successful_npm_command_result(command, extra_env, cwd)
-        if npm_result is not None:
-            return npm_result
-        if "adapter_deploy.py" in command[1] or "harness_deploy.py" in command[1]:
-            return {
-                "command": command,
-                "returncode": 1,
-                "stdout": "broken-target-root-symlink\n",
-                "stderr": "",
-                "passed": False,
-            }
-        return {
-            "command": command,
-            "returncode": 0,
-            "stdout": "",
-            "stderr": "",
-            "passed": True,
-        }
-
-    monkeypatch.setattr(closeout_acceptance_gate, "run_command", fake_run_command)
-
-    result = closeout_acceptance_gate.run_test_gate(tmp_path, sys.executable)
-
-    assert result["passed"] is False
-    assert result["status"] == "failed"
-    assert any("adapter_deploy.py" in command[1] for command in commands)
-    assert any("harness_deploy.py" in command[1] for command in commands)
+    assert result["status"] == "passed"
+    assert not any(item["name"].startswith("deploy_verify_") for item in result["subchecks"])
+    assert not any("adapter_deploy.py" in command[1] for command in commands if len(command) > 1)
+    assert not any("harness_deploy.py" in command[1] for command in commands if len(command) > 1)
 
 
 def test_run_test_gate_fails_on_unexpected_npm_packlist(monkeypatch, tmp_path) -> None:
@@ -902,7 +894,7 @@ def test_run_test_gate_fails_on_unexpected_npm_packlist(monkeypatch, tmp_path) -
             return {
                 "command": command,
                 "returncode": 0,
-                "stdout": npm_pack_stdout({"README.md", "test_adapter_deploy.py"}),
+                "stdout": npm_pack_stdout({"README.md", "adapter_deploy.py"}),
                 "stderr": "",
                 "passed": True,
             }

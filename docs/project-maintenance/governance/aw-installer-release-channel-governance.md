@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Release Channel Governance"
 status: active
-updated: 2026-05-07
+updated: 2026-05-09
 owner: aw-kernel
-last_verified: 2026-05-07
+last_verified: 2026-05-09
 ---
 # aw-installer Release Channel Governance
 
@@ -15,11 +15,23 @@ last_verified: 2026-05-07
 
 ## 当前 registry 事实
 
-2026-05-07 已核对 git tag、远程 release-line 与 npm registry：
+2026-05-09 已核对 npm registry：
 
 - **版本号纠正**：`4.4.x` 系列（`v4.4.0`、`v4.4.0-rc.0`、`v4.4.1-rc.0`、`v4.4.1-rc.1`、`v4.4.1`）为错误发布的版本号，不进入 semver 主序列
-- npm registry 真实状态：`latest` -> `0.4.0-rc.1`，`next` -> `0.4.5-rc.0`，历史已发布版本 `0.4.0-rc.1` ~ `0.4.5-rc.0`
-- 当前 develop-main 的 root `package.json` 绑定 `approvedVersion=0.4.5`、`approvedGitTag=v0.4.5`、`approvedChannel=latest`，准备发布稳定版到 npm `latest`
+- npm registry 真实状态：`latest` -> `0.4.5`，`next` -> `0.4.5-rc.0`，历史已发布版本 `0.4.0-rc.1` ~ `0.4.5`
+- GitHub Release `v0.4.5` 已发布，target commit `c7f9a31a184602c8500038998c41565dce8d4972`；npm `aw-installer@0.4.5` 的 `gitHead` 同为 `c7f9a31a184602c8500038998c41565dce8d4972`
+- npm `aw-installer@0.4.5-rc.0` 的 `gitHead` 为 `b8dcb8ada5a49246b38307a633d737d2df4131dc`
+
+## 当前 source release candidate
+
+2026-05-09，本地 source tuple 已准备为 `v0.5.0-rc.0` 的 `next` channel release candidate：
+
+- root `package.json` version：`0.5.0-rc.0`
+- local scaffold `toolchain/scripts/deploy/package.json` version：`0.5.0-rc.0`
+- approval lock：`approvedVersion=0.5.0-rc.0`、`approvedGitTag=v0.5.0-rc.0`、`approvedChannel=next`
+- GitHub Release 必须使用 prerelease，并在 body 中包含 `aw-installer-publish-approved: v0.5.0-rc.0`
+
+注意：以上仅为 publish 前 source version facts，不代表 `0.5.0-rc.0` 已发布。发布完成并复核 registry 后，才能把 `next` dist-tag 和 published artifact 事实更新到“当前 registry 事实”。
 
 注意：npm dist-tag 由 publish workflow 写入，此页跟随 release commit 同步事实。`4.4.x` 相关 git tag 保留作为历史记录，但不在 npm registry 中发布。
 

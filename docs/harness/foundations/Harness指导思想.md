@@ -1,9 +1,9 @@
 ---
 title: Harness 指导思想
-status: draft
-updated: 2026-05-05
+status: active
+updated: 2026-05-08
 owner: OceanEye
-last_verified: 2026-05-05
+last_verified: 2026-05-08
 ---
 
 # Harness 指导思想

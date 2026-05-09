@@ -1,9 +1,9 @@
 ---
 title: "Template Consumption Spec"
 status: active
-updated: 2026-05-06
+updated: 2026-05-08
 owner: aw-kernel
-last_verified: 2026-05-06
+last_verified: 2026-05-08
 ---
 # Template Consumption Spec
 
@@ -25,7 +25,7 @@ last_verified: 2026-05-06
 
 ## 和 deploy 的关系
 
-`.aw_template/` 不参与 skill 部署包分发，是 legacy `.aw/` scaffold 来源而非 payload descriptor、backend payload 或 target install 设计。`aw_scaffold.py` 命令面由 [`toolchain/scripts/deploy/README.md`](../../../toolchain/scripts/deploy/README.md) 承接。
+`.aw_template/` 不参与 skill 部署包分发，是 legacy `.aw/` scaffold 来源而非 payload descriptor、backend payload 或 target install 设计。`aw_scaffold.py` 已随 P0-067 Python cleanup 移除，不再作为 scaffold 工具。
 
 ## 停止线
 

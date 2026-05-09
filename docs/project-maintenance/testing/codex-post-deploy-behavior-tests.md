@@ -1,9 +1,9 @@
 ---
 title: "Codex Post-Deploy Behavior Tests"
 status: active
-updated: 2026-05-05
+updated: 2026-05-08
 owner: aw-kernel
-last_verified: 2026-05-05
+last_verified: 2026-05-08
 ---
 # Codex Post-Deploy Behavior Tests
 
@@ -43,13 +43,13 @@ printf 'TMP_ROOT=%s\n' "$TMP_ROOT"
 ## 四、安装隔离 agents payload
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents --agents-root "$TMP_AGENTS_ROOT"
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents --agents-root "$TMP_AGENTS_ROOT"
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents --agents-root "$TMP_AGENTS_ROOT"
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py verify --backend agents --agents-root "$TMP_AGENTS_ROOT"
+node toolchain/scripts/deploy/bin/aw-installer.js prune --all --backend agents --agents-root "$TMP_AGENTS_ROOT"
+node toolchain/scripts/deploy/bin/aw-installer.js check_paths_exist --backend agents --agents-root "$TMP_AGENTS_ROOT"
+node toolchain/scripts/deploy/bin/aw-installer.js install --backend agents --agents-root "$TMP_AGENTS_ROOT"
+node toolchain/scripts/deploy/bin/aw-installer.js verify --backend agents --agents-root "$TMP_AGENTS_ROOT"
 ```
 
-当前 `agents` install 已包含全部 19 个 skills（RepoScope/WorktrackScope/验证/裁决/恢复/收尾/通用执行）；`set-harness-goal-skill` 自带 `.aw/` 初始化资产。
+当前 `agents` install 已包含全部 20 个 skills（RepoScope/WorktrackScope/验证/裁决/恢复/收尾/通用执行/Milestone）；`set-harness-goal-skill` 自带 `.aw/` 初始化资产。
 
 ## 五、选择观察策略
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path, PurePosixPath
@@ -11,7 +10,7 @@ from pathlib import Path, PurePosixPath
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ADAPTER_SKILLS_DIR = REPO_ROOT / "product" / "harness" / "adapters" / "agents" / "skills"
 CLAUDE_ADAPTER_SKILLS_DIR = REPO_ROOT / "product" / "harness" / "adapters" / "claude" / "skills"
-ADAPTER_DEPLOY_SCRIPT = REPO_ROOT / "toolchain" / "scripts" / "deploy" / "adapter_deploy.py"
+AW_INSTALLER_SCRIPT = REPO_ROOT / "toolchain" / "scripts" / "deploy" / "bin" / "aw-installer.js"
 EXPECTED_AGENTS_SKILLS = {
     "close-worktrack-skill",
     "dispatch-skills",
@@ -20,6 +19,7 @@ EXPECTED_AGENTS_SKILLS = {
     "generic-worker-skill",
     "harness-skill",
     "init-worktrack-skill",
+    "milestone-status-skill",
     "recover-worktrack-skill",
     "repo-append-request-skill",
     "repo-change-goal-skill",
@@ -199,13 +199,13 @@ class AgentsAdapterContractTest(unittest.TestCase):
         )
         self.assertIn("references/overview-fallback-mode.md", required_payload_files)
 
-    def test_agents_adapter_diagnose_json_reports_missing_root_without_failure(self) -> None:
+    def test_agents_installer_diagnose_json_reports_missing_root_without_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             target_root = Path(temp_dir) / "missing-agents-skills"
             completed = subprocess.run(
                 [
-                    sys.executable,
-                    str(ADAPTER_DEPLOY_SCRIPT),
+                    "node",
+                    str(AW_INSTALLER_SCRIPT),
                     "diagnose",
                     "--backend",
                     "agents",
@@ -232,7 +232,7 @@ class AgentsAdapterContractTest(unittest.TestCase):
         self.assertEqual(summary["issue_codes"], ["missing-target-root"])
         self.assertEqual(summary["issues"][0]["code"], "missing-target-root")
 
-    def test_agents_adapter_diagnose_json_reports_wrong_type_target_as_conflict(self) -> None:
+    def test_agents_installer_diagnose_json_reports_wrong_type_target_as_conflict(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             target_root = Path(temp_dir) / "agents-skills"
             target_root.mkdir()
@@ -240,8 +240,8 @@ class AgentsAdapterContractTest(unittest.TestCase):
 
             completed = subprocess.run(
                 [
-                    sys.executable,
-                    str(ADAPTER_DEPLOY_SCRIPT),
+                    "node",
+                    str(AW_INSTALLER_SCRIPT),
                     "diagnose",
                     "--backend",
                     "agents",

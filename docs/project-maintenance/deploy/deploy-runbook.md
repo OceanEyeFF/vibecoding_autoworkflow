@@ -1,9 +1,9 @@
 ---
 title: "Deploy Runbook"
 status: active
-updated: 2026-05-06
+updated: 2026-05-08
 owner: aw-kernel
-last_verified: 2026-05-06
+last_verified: 2026-05-08
 ---
 # Deploy Runbook
 
@@ -25,13 +25,7 @@ aw-installer check_paths_exist --backend agents
 aw-installer install --backend agents
 ```
 
-repo-local Python reference/parity 命令只用于维护 adapter 兼容性、对照测试或治理检查：
-
-```bash
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py prune --all --backend agents
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py check_paths_exist --backend agents
-PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/deploy/adapter_deploy.py install --backend agents
-```
+Python reference/parity 命令已随 P0-067 Python cleanup 移除。`adapter_deploy.py`、`harness_deploy.py` 等 Python deploy 文件不再存在于 repo 中，当前 deploy runtime 入口仅 `aw-installer`（Node-only distribution）。
 
 backend-specific target root override 见 [Codex Usage Help](../usage-help/codex.md) 和 [Claude Usage Help](../usage-help/claude.md)。package/local `aw-installer` 必须保持同一 deploy 语义；包装层命令面由 [Distribution Entrypoint Contract](./distribution-entrypoint-contract.md) 管理。
 

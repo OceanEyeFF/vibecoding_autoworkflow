@@ -12,7 +12,7 @@
 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | canonical source/payload/target 映射合同 | operator 执行步骤、release 流程 |
 | [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md) | payload source kind、source/target root、GitHub source trust boundary | release channel、任意 remote update |
 | [existing-code-adoption.md](./existing-code-adoption.md) | 既有代码库接入 Harness 时的 `.aw/repo/discovery-input.md` 生成边界 | artifact 正文、skill workflow 实现 |
-| [template-consumption-spec.md](./template-consumption-spec.md) | legacy `.aw_template/` 的 deploy 边界 | `aw_scaffold.py` 命令面、artifact 合同 |
+| [template-consumption-spec.md](./template-consumption-spec.md) | legacy `.aw_template/` 的 deploy 边界 | scaffold 命令面（已移除）、artifact 合同 |
 
 ## 按问题进入
 
@@ -36,3 +36,7 @@
 ## 不再承接的内容
 
 不再保存一次性 release approval、historical smoke evidence、Codex/Claude 行为测试副本、registry `npx` smoke runbook 副本、以及多页面双主线说明。
+
+## 历史参考
+
+- [deploy-script-governance-inventory.md](./deploy-script-governance-inventory.md) (superseded) — Python deploy 面删除前的盘点与设计边界

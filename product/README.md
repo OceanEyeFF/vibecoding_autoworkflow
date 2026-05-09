@@ -18,7 +18,7 @@
 
 - 业务源码只改这里，不直接改 `.claude/` 或 `.agents/`
 - `.claude/` 与 `.agents/` 只作为 repo-local deploy target
-- package/local operator 部署主路径走 `aw-installer`；`toolchain/scripts/deploy/adapter_deploy.py` 只作为 repo-local reference/parity/governance tooling 保留
+- package/local operator 部署主路径走 `aw-installer`（Node-only distribution）
 - 新的 Harness ontology 仍落在 `docs/harness/`
 - 新的 Harness executable source 应进入 `product/harness/`
 - `.aw_template/` 只承接 `.aw/` scaffold templates，不是第四个源码根，也不是 artifact 模板的长期 owner

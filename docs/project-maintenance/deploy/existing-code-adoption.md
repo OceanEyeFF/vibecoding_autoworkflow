@@ -1,9 +1,9 @@
 ---
 title: "Existing Code Project Adoption"
 status: active
-updated: 2026-05-06
+updated: 2026-05-08
 owner: aw-kernel
-last_verified: 2026-05-06
+last_verified: 2026-05-08
 ---
 # Existing Code Project Adoption
 
@@ -34,7 +34,6 @@ node product/harness/skills/set-harness-goal-skill/scripts/deploy_aw.js generate
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_set_harness_goal_deploy_aw_node.py
-PYTHONDONTWRITEBYTECODE=1 python3 -m pytest toolchain/scripts/test/test_set_harness_goal_deploy_aw.py
 ```
 
 改变 discovery artifact、skill asset、baseline branch 解析或 goal overwrite policy 时，必须同步更新 artifact 文档、skill 入口和对应测试。
