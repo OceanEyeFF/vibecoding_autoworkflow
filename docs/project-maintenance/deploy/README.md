@@ -12,7 +12,6 @@
 | [deploy-mapping-spec.md](./deploy-mapping-spec.md) | canonical source/payload/target 映射合同 | operator 执行步骤、release 流程 |
 | [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md) | payload source kind、source/target root、GitHub source trust boundary | release channel、任意 remote update |
 | [existing-code-adoption.md](./existing-code-adoption.md) | 既有代码库接入 Harness 时的 `.aw/repo/discovery-input.md` 生成边界 | artifact 正文、skill workflow 实现 |
-| [template-consumption-spec.md](./template-consumption-spec.md) | legacy `.aw_template/` 的 deploy 边界 | scaffold 命令面（已移除）、artifact 合同 |
 
 ## 按问题进入
 
@@ -24,7 +23,6 @@
 | 确认 package/CLI/TUI 必须保持的语义 | [distribution-entrypoint-contract.md](./distribution-entrypoint-contract.md) |
 | 查看 payload provenance 与 update trust boundary | [payload-provenance-trust-boundary.md](./payload-provenance-trust-boundary.md) |
 | 既有代码库接入 Harness | [existing-code-adoption.md](./existing-code-adoption.md) |
-| 确认 `.aw_template/` 的 deploy 边界 | [template-consumption-spec.md](./template-consumption-spec.md) |
 | 改 skills 或 `.aw_template/` 后的 operator 决策 | [Usage Help](../usage-help/README.md) |
 | package/registry smoke 或部署后行为观察 | [Testing Runbooks](../testing/README.md) |
 | 发布准入、发布顺序或试用治理 | [Governance](../governance/README.md) |
@@ -37,6 +35,14 @@
 
 不再保存一次性 release approval、historical smoke evidence、Codex/Claude 行为测试副本、registry `npx` smoke runbook 副本、以及多页面双主线说明。
 
-## 历史参考
+## 模板消费
 
-- [deploy-script-governance-inventory.md](./deploy-script-governance-inventory.md) (superseded) — Python deploy 面删除前的盘点与设计边界
+`product/.aw_template/` 是 repo-local execution template layer，为 `.aw/` 提供 scaffold 样例，不是 artifact truth、skill deploy source 或 backend payload source。
+
+仅保留 `control-state.md`、`goal-charter.md`、`repo/`、`worktrack/`、`template/` 结构位。`repo/` 与 `worktrack/` 对应 `.aw/repo/` 与 `.aw/worktrack/` 落位；`template/` 用于不直接进入 `.aw/` 的回答流模板。
+
+不应长期归属 `.aw_template/` 的对象：`contract`、`plan-task-queue`、`gate-evidence`、goal change/correction 类回答流。其 artifact truth 由 `docs/harness/artifact/` 定义；可执行模板应由 owning skill 或 `set-harness-goal-skill/assets/` 承担。
+
+`.aw_template/` 不参与 skill 部署包分发，是 legacy `.aw/` scaffold 来源而非 payload descriptor、backend payload 或 target install 设计。`aw_scaffold.py` 已随 P0-067 Python cleanup 移除，不再作为 scaffold 工具。
+
+停止线：需改变 artifact 结构时先改 `docs/harness/artifact/`；需改变 skill 初始化资产时先改 owning skill；需改变 deploy target install 行为时回 deploy mapping/entrypoint/provenance 合同页。

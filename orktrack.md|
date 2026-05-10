@@ -1,0 +1,5 @@
+docs/harness/catalog/README.md 
+docs/harness/workflow-families/repo-evolution/README.md 
+toolchain/scripts/test/governance_semantic_check.py 
+toolchain/scripts/test/path_governance_check.py 
+toolchain/scripts/test/test_governance_semantic_check.py 
