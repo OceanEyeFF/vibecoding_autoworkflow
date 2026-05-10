@@ -66,6 +66,8 @@ Milestone 作为 Pipeline 中的节点，遵循以下规则：
 - `priority` 同值时按 `updated` 时间排序
 - `activation_rules` 非空时，harness 可在满足描述的条件后自动激活；空值表示需 programmer 显式审批
 
+完整 Pipeline 编排规则（upsert 语义、tie-breaker、激活顺序）以 [milestone-backlog.md](../repo/milestone-backlog.md#Pipeline 语义) 为权威源。
+
 ## Latest Override 语义
 
 同一 `milestone_id` 的写入遵循 latest-override：
