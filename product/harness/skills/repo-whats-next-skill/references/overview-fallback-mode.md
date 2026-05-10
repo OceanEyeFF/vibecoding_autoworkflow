@@ -28,7 +28,9 @@
 
 1. 用一句话重述当前 repo 目标和当前阶段。
 2. 区分 `Facts / Inferences / Unknowns`。
-3. 从以下维度快速扫描 repo 基本面：
+3. 从以下维度快速扫描 repo 基本面（优先按 Milestone 分组）：
+   - 当前 active milestone 的剩余 worktrack（优先完成）
+   - Pipeline 中下一个 planned milestone 的可激活条件
    - 产品/用户价值
    - Harness 控制闭环
    - deploy / installer / release
@@ -45,7 +47,8 @@
    - `acceptance_hint`
    - `risk`
    - `first_small_slice`
-6. 从候选中只推荐一个 `top_candidate`，并解释为什么它比其他候选更适合下一轮。
+5b. 候选 worktrack 应优先从 active milestone 的 `worktrack_list` 派生；若无 active milestone，从 pipeline 中下一个可激活的 planned milestone 派生。每个候选关联 `target_milestone_id`（如有）。
+6. 从候选中只推荐一个 `top_candidate`。优先选择能推进当前 active milestone 完成的 worktrack；若无 active milestone，优先选择能激活 pipeline 中最高优先级 milestone 的 worktrack。
 7. 将推荐折回正常 `代码仓库下一步判定`：通常是 `进入工作追踪` 或 `保持并观察`，而不是直接执行。
 
 ## 输出字段

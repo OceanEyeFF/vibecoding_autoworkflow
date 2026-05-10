@@ -35,6 +35,7 @@
 - 如果证据太弱，建议 `保持并观察` 并附上最小缺失信息
 - 如果确实需要目标变更，就路由到 `目标变更控制`
 - 如果应当开始执行，就建议进入 `工作追踪范围`；不要在这里直接开干
+- **Milestone Pipeline 优先级**：当多个 planned milestone 可激活时，优先完成当前 active milestone 的剩余 worktrack；当 active milestone blocked 但下一 planned milestone ready 时，矛盾升级为"是否跳过当前 milestone"
 - 不要输出冗长的战略报告
 
 ## 回映到主决策约定的输出映射
