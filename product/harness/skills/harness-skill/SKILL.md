@@ -556,6 +556,10 @@ Close/Refresh 完成 → 状态更新阶段
 
 ## 十五、硬约束
 
+遵循 [docs/harness/foundations/skill-common-constraints.md] 中定义的公共约束 C-1 至 C-7。
+
+本技能特有约束：
+
 - **Harness 输出只能是控制决策结构体**（Scope/Function/Route/Verdict/Evidence 引用）；代码块和直接执行指令禁止出现在 Harness 输出中。
 - **Function 算子必须在控制面上显性化**为 `Observe → Decide → Dispatch → Verify → Judge → Recover → Close → ChangeGoal` 的控制语义；禁止仅通过技能名称隐式传达当前算子。
 - **Harness 仅负责选择算子、绑定技能和裁决 Gate**；具体代码仓库动作、任务列表内容和执行任务的细节由下游技能的算子实现负责。
@@ -573,10 +577,11 @@ Close/Refresh 完成 → 状态更新阶段
 - **相邻系统的引用仅当本轮证据确实消费了其输出时才可包含**；否则 `adjacent_system_referenced` 必须为 `false`。
 - **Control State 仅保存控制面位置信息**（Scope/Function/Route）；业务真相必须保存在 `Repo` 与 `Worktrack` 的正式文档中，禁止写入 Control State。
 - **git hash 一致仅授权跳过重复刷新和重复文档追平**；首次验证和 Gate 裁决在任何情况下都不可跳过。
+- **git hash 一致仅授权跳过重复刷新和重复文档追平**；首次验证和 Gate 裁决在任何情况下都不可跳过。
 
 ---
 
-## 十五、资源
+## 十六、资源
 
 使用当前 `Harness Control State`、当前 Scope 所需的正式产物，以及下游技能的结构化输出作为本轮的权威依据。
 
@@ -589,7 +594,7 @@ Close/Refresh 完成 → 状态更新阶段
 
 ---
 
-## 十六、结构化输出字段约定
+## 十七、结构化输出字段约定
 
 Inside the result, include at least these fields or equivalents:
 

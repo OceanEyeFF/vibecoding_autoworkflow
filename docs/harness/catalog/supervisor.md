@@ -7,9 +7,9 @@ last_verified: 2026-05-07
 ---
 # Supervisor Skill Catalog
 
-> 目的：固定顶层 Harness supervisor skill 的职责与当前承接位。
+> 目的：固定顶层 Harness supervisor skill 的职责与承接位。
 
-## 当前 canonical skill
+## Canonical skill
 
 ### harness-skill
 
@@ -46,6 +46,6 @@ preferred continuation fields：
 - `needs_approval`
 - `approval_to_apply`
 
-这些旧字段仍可保留为兼容投影，但不应再成为新的 canonical 读口。
+这些旧字段保留为兼容投影，不作为新的 canonical 读口。
 
-说明：这是当前唯一已落地的 Harness canonical skill；其余 skills 仍停留在 catalog target 层。contract-boundary 后是否允许再开一段 bounded slice 应由 control-state 的 Continuation Authority 策略位控制，不靠 human 每轮重复写长 prompt。bare "继续工作"不应天然清除 handback lock；无新批准/新状态/新 policy 时 supervisor 应稳定停在 handback/awaiting-handoff。
+这是唯一已落地的 Harness canonical skill；其余 skills 仍停留在 catalog target 层。contract-boundary 后是否允许再开一段 bounded slice 应由 control-state 的 Continuation Authority 策略位控制，不靠 human 每轮重复写长 prompt。bare "继续工作"不应天然清除 handback lock；无新批准/新状态/新 policy 时 supervisor 应稳定停在 handback/awaiting-handoff。

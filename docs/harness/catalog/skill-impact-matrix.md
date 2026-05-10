@@ -10,7 +10,7 @@ last_verified: 2026-05-08
 
 > 本轮 Harness 合同补强（WT-20260508-harness-contract-hardening）对 canonical skills 的影响分析。
 >
-> 本轮仅修改 `docs/harness/` 合同层，**未修改** `product/harness/skills/` 中的 skill 实现。本 Matrix 记录后续实现阶段每个 skill 需要同步的内容。
+> 本轮修改范围为 `docs/harness/` 合同层。`product/harness/skills/` 中的 skill 实现不在本次变更范围内。本 Matrix 记录后续实现阶段每个 skill 需要同步的内容。
 
 ## 本轮变更概述
 
@@ -43,7 +43,7 @@ T1-T5 在 `docs/harness/` 合同层完成了以下变更：
 
 ### 1. harness-skill（控制面入口）
 
-**当前状态**：已体现大部分本轮合同概念（Dispatch/Implement 边界在二节、Handback 在十一节与十五节、Milestone 在输出字段中），但缺少对新正式 artifact 的显式引用。
+**当前状态**：已体现大部分本轮合同概念（Dispatch/Implement 边界在二节、Handback 在十一节与十五节、Milestone 在输出字段中）。缺少对新正式 artifact 的显式引用。
 
 **需同步的具体内容**：
 

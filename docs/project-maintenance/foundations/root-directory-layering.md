@@ -7,11 +7,11 @@ last_verified: 2026-05-06
 ---
 # 根目录分层
 
-> 目的：固定根目录分层与例外白名单，避免业务源码、文档真相、工具脚本、运行状态再次混层。
+> 目的：固定根目录分层与例外白名单，防止业务源码、文档真相、工具脚本、运行状态混层。
 
 ## 一、正式内容区
 
-根目录只认三块正式内容区：`product/`（业务代码）、`docs/`（文档真相）、`toolchain/`（脚本/评测/测试/打包/部署）。
+根目录三块正式内容区：`product/`（业务代码）、`docs/`（文档真相）、`toolchain/`（脚本/评测/测试/打包/部署）。
 
 ## 二、根目录层级模型
 
@@ -34,7 +34,7 @@ last_verified: 2026-05-06
 
 ### 0. Repo-local deploy targets
 
-`.agents/skills/`、`.claude/skills/` 只承接 repo-local deploy 结果与 operator runtime 挂载；必须 ignored，不得入库；不是 canonical truth 或业务源码根；fresh checkout 不应携带其镜像；需要分发或回归验证的 skill 内容必须从 `product/`、`toolchain/` 或正式文档入口承接。
+`.agents/skills/`、`.claude/skills/` 只承接 repo-local deploy 结果与 operator runtime 挂载；必须 ignored，不得入库；非 canonical truth 或业务源码根；fresh checkout 不携带其镜像；需要分发或回归验证的 skill 内容从 `product/`、`toolchain/` 或正式文档入口承接。
 
 ### 1. `tools/`
 
@@ -46,27 +46,27 @@ Repo-local execution config。允许 tracked：`.codex/config.toml`、`.codex/ru
 
 ### 3. `.nav/`
 
-只允许 `README.md`、`@docs`、`@skills`；`@docs` 与 `@skills` 必须是 symlink，分别解析到 `docs/` 和 `product/harness/skills/`。
+只允许 `README.md`、`@docs`、`@skills`；`@docs` 与 `@skills` 是 symlink，分别解析到 `docs/` 和 `product/harness/skills/`。
 
 ### 4. `.pytest_cache/`
 
-可存在于根目录，但不得有 tracked 内容。
+可存在于根目录，不得有 tracked 内容。
 
 ### 5. `.aw/`
 
-Repo-local Harness runtime control-plane state，可被治理检查识别为合法根目录对象但必须保持 ignored。其中运行合同、队列和 evidence 只用于当前控制回路，不替代 `docs/`、`product/`、`toolchain/` 中的正式真相与源码。
+Repo-local Harness runtime control-plane state，可被治理检查识别为合法根目录对象但必须保持 ignored。运行合同、队列和 evidence 只用于控制回路，不替代 `docs/`、`product/`、`toolchain/` 中的正式真相与源码。
 
 ### 6. `package.json`
 
-只承接 `aw-installer` 的 npm/npx 分发包络元数据，可从根目录打包 `product/` 中的 canonical Harness payload 和 `toolchain/scripts/deploy/` 中的 wrapper 工具，但不得把业务源码真相迁出 `product/`。发布动作由 deploy/release 合同控制。
+只承接 `aw-installer` 的 npm/npx 分发包络元数据，可从根目录打包 `product/` 中的 canonical Harness payload 和 `toolchain/scripts/deploy/` 中的 wrapper 工具，不得把业务源码真相迁出 `product/`。发布动作由 deploy/release 合同控制。
 
 ## 四、新增根目录对象规则
 
-新增前回答：是业务代码、仓库真相文档、辅助工具、本地挂载点/运行状态、还是兼容导航/基础设施？只有能稳定落在某一层才应放到根目录。
+新增前回答：是业务代码、仓库真相文档、辅助工具、本地挂载点/运行状态、还是兼容导航/基础设施？只有稳定落在某一层才应放到根目录。
 
 ## 五、文档域补充
 
-`docs/` 当前一级文档域：`project-maintenance/`、`harness/`（Harness-first 主线）。`product/` 当前一级源码根：`harness/`；`product/` 下允许 `.aw_template/`（repo-local execution template layer, 非 artifact 模板长期 owner）。
+`docs/` 一级文档域：`project-maintenance/`、`harness/`。`product/` 一级源码根：`harness/`；`product/` 下允许 `.aw_template/`（repo-local execution template layer，非 artifact 模板长期 owner）。
 
 ## 六、相关文档
 

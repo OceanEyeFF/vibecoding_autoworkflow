@@ -36,8 +36,8 @@ description: 当 Harness 处于 WorktrackScope.initializing，且需要一轮限
 4. 如果该分支无法安全创建，返回一个被阻塞的初始化结果，而不是静默复用另一条分支。
 5. 记录这个 `工作追踪` 用来比较的基准引用，并把 `baseline_branch` 写入 `Worktrack Contract`：
    - 优先从当前已批准输入读取明确的 `baseline_branch`
-   - 否则从 `origin/HEAD` 动态解析 baseline branch
-   - 当前仓库已验证解析值为 `origin/HEAD -> master`；baseline branch 的唯一合法来源是 `origin/HEAD` 动态解析，技能必须通过解析获取，写死默认分支名的行为禁止发生
+   - 否则从 `origin/HEAD` 动态解析 baseline branch（执行 `git remote show origin | grep 'HEAD branch' | awk '{print $NF}'`）
+   - baseline branch 的唯一合法来源是 `origin/HEAD` 动态解析，技能必须通过解析获取，写死默认分支名的行为禁止发生
    - 若 baseline branch 无法确认，初始化必须阻断，而不是猜测 PR target 或 merge target
 6. 构建或刷新一份 `工作追踪约定`；有需要时，让草稿与 `templates/contract.template.md` 对齐。
    - **从 Goal Charter 的 Engineering Node Map 中确定本 worktrack 的节点类型**
@@ -52,19 +52,18 @@ description: 当 Harness 处于 WorktrackScope.initializing，且需要一轮限
 
 ## 硬约束
 
-- 本技能是控制回路的初始化层；负责建立工作追踪的初始状态。状态估计、算子选择或动作执行的行为禁止出现在本技能的输出中——这些属于 Observe/Decide/Dispatch 阶段的职责。
-- 本技能唯一合法的操作范围是初始化：创建分支、固定基准、构建约定、播种队列、打包调度交接。实现、验证或关卡判定的启动必须由对应的控制回路算子完成，禁止从本技能发起。
+遵循 [docs/harness/foundations/skill-common-constraints.md] 中定义的公共约束 C-1 至 C-7。
+
+本技能特有约束：
+
 - 初始化完成的判定条件是分支、基准、约定与初始计划全部明确存在。仅完成分支创建不能被视为初始化完成。
 - 工作追踪初始化的合法输出必须是新创建的限定范围分支。复用已存在的实现分支不能被视为成功的工作追踪初始化；应返回被阻塞的初始化结果。
 - 播种初始任务列表是调度阶段的种子输入。选出用于执行的当前下一步动作是调度阶段的职责，二者不可等同。
 - 本技能唯一合法的分派相关输出是面向调度阶段的种子输出。创建新的权威分派包的行为必须返回 blocked——该职责属于 `dispatch-skills`。
 - 本技能的输出只能包含调度交接包。`执行者交接包` 的行为禁止替代调度交接包出现在本技能的输出中。
 - 当代码仓库状态含糊不清时，唯一合法行为是返回一个被阻塞的初始化结果。猜测分支、基准或范围的行为必须被阻断。
-- 唯一合法的范围边界是已批准的工作追踪目标、排除目标与当前代码仓库基准。超出此边界的行为必须被阻断。
 - baseline branch 的唯一合法来源是 `Worktrack Contract.baseline_branch`。当前分支名不能作为 baseline branch 的来源。PR target、merge target 与后续 checkpoint 判定必须来自 `Worktrack Contract.baseline_branch`。
 - 仅当预期下一状态与所需审批已显式暴露后，`Harness 控制状态` 的变更才合法；否则必须保持当前控制状态不变并暴露阻断原因。
-- 对上游 `任务约定` 真相的唯一合法操作是作为输入边界消费。改写上游 `任务约定` 真相的行为必须被阻断。
-- 当限定范围交接包已经足够时，唯一合法的传递内容是限定范围交接包。传递完整代码仓库上下文的行为必须被阻断。
 - 仅当宿主运行时真的能发起分派时，声称回退式 `子代理` 已就绪才合法；否则必须显式暴露运行时缺口或权限阻塞。
 
 ## 预期输出

@@ -2,7 +2,7 @@
 
 `product/.aw_template/` 是 repo-local execution template layer（本地执行模板层）。
 
-这里存放的是 `.aw/` 运行目录的模板来源，用来在 deploy 后或初始化时生成 `.aw/` 目录结构，以及少量直接属于 Harness 运行管理面的文档；它不是 canonical truth（规范真相），也不是新的源码根。具体边界见 [docs/project-maintenance/deploy/template-consumption-spec.md](../../docs/project-maintenance/deploy/template-consumption-spec.md)。
+这里存放的是 `.aw/` 运行目录的模板来源，用来在 deploy 后或初始化时生成 `.aw/` 目录结构，以及少量直接属于 Harness 运行管理面的文档；它不是 canonical truth（规范真相），也不是新的源码根。具体边界见 [Deploy Runbooks / 模板消费](../../docs/project-maintenance/deploy/README.md#模板消费)。
 
 当前入口：
 

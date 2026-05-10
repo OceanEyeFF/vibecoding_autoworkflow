@@ -105,6 +105,8 @@ ENTRYPOINT_LINK_RULES = {
         "docs/harness/catalog/supervisor.md",
         "docs/harness/catalog/repo.md",
         "docs/harness/catalog/worktrack.md",
+        "docs/harness/catalog/milestone-status-skill.md",
+        "docs/harness/catalog/skill-impact-matrix.md",
         "docs/harness/foundations/Harness指导思想.md",
         "docs/harness/foundations/Harness运行协议.md",
         "product/harness/skills/README.md",
@@ -112,10 +114,9 @@ ENTRYPOINT_LINK_RULES = {
     "docs/harness/foundations/README.md": [
         "docs/harness/foundations/Harness指导思想.md",
         "docs/harness/foundations/Harness运行协议.md",
+        "docs/harness/foundations/skill-common-constraints.md",
     ],
     "docs/harness/scope/README.md": [
-        "docs/harness/scope/repo-scope.md",
-        "docs/harness/scope/worktrack-scope.md",
         "docs/harness/scope/state-loop.md",
     ],
     "docs/harness/artifact/README.md": [
@@ -124,17 +125,24 @@ ENTRYPOINT_LINK_RULES = {
         "docs/harness/artifact/control/README.md",
     ],
     "docs/harness/artifact/repo/README.md": [
+        "docs/harness/artifact/repo/discovery-input.md",
         "docs/harness/artifact/repo/goal-charter.md",
+        "docs/harness/artifact/repo/repo-analysis.md",
         "docs/harness/artifact/repo/snapshot-status.md",
+        "docs/harness/artifact/repo/worktrack-backlog.md",
     ],
     "docs/harness/artifact/worktrack/README.md": [
         "docs/harness/artifact/worktrack/contract.md",
         "docs/harness/artifact/worktrack/plan-task-queue.md",
         "docs/harness/artifact/worktrack/gate-evidence.md",
+        "docs/harness/artifact/worktrack/dispatch-packet.md",
     ],
     "docs/harness/artifact/control/README.md": [
+        "docs/harness/artifact/control/append-request.md",
         "docs/harness/artifact/control/control-state.md",
         "docs/harness/artifact/control/goal-change-request.md",
+        "docs/harness/artifact/control/milestone.md",
+        "docs/harness/artifact/control/node-type-registry.md",
     ],
     "docs/harness/workflow-families/README.md": [
         "docs/harness/workflow-families/repo-evolution/README.md",
@@ -159,10 +167,15 @@ ENTRYPOINT_LINK_RULES = {
         "docs/project-maintenance/governance/review-verify-handbook.md",
         "docs/project-maintenance/governance/path-governance-checks.md",
         "docs/project-maintenance/governance/branch-pr-governance.md",
+        "docs/project-maintenance/governance/global-language-style.md",
     ],
     "docs/project-maintenance/deploy/README.md": [
         "docs/project-maintenance/deploy/deploy-runbook.md",
         "docs/project-maintenance/deploy/skill-deployment-maintenance.md",
+        "docs/project-maintenance/deploy/deploy-mapping-spec.md",
+        "docs/project-maintenance/deploy/distribution-entrypoint-contract.md",
+        "docs/project-maintenance/deploy/existing-code-adoption.md",
+        "docs/project-maintenance/deploy/payload-provenance-trust-boundary.md",
     ],
     "docs/project-maintenance/testing/README.md": [
         "docs/project-maintenance/testing/python-script-test-execution.md",

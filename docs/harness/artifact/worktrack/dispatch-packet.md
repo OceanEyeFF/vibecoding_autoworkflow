@@ -12,7 +12,7 @@ last_verified: 2026-05-08
 
 ## 概述
 
-Dispatch Packet Schema 定义了 Harness 中任务分派链路的三层 packet 格式。三个 packet 分别由调度方、分派方和执行方在不同阶段产出和消费，形成完整的分派闭环：
+Dispatch Packet Schema 定义了 Harness 任务分派链路的三层 packet 格式。由调度方、分派方和执行方在不同阶段产出和消费，形成完整的分派闭环：
 
 - **Dispatch Task Brief**：调度阶段产出（schedule-worktrack-skill），告诉 dispatch-skills"要分派什么"
 - **Dispatch Info Packet**：dispatch-skills 产出，告诉 SubAgent/执行载体"怎么执行"
@@ -35,7 +35,7 @@ dispatch-skills → gate-skill / review-evidence-skill
 
 ## Dispatch Task Brief
 
-调度阶段产出，告诉 dispatch-skills"要分派什么"。由 schedule-worktrack-skill 生成。
+调度阶段产出，告诉 dispatch-skills"要分派什么"。由 `schedule-worktrack-skill` 生成。
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
@@ -67,7 +67,7 @@ dispatch-skills → gate-skill / review-evidence-skill
 
 ## Dispatch Info Packet
 
-分派阶段产出，告诉执行载体"怎么执行"。由 dispatch-skills 生成。
+分派阶段产出，告诉执行载体"怎么执行"。由 `dispatch-skills` 生成。
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|

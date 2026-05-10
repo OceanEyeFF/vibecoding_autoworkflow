@@ -37,7 +37,7 @@ npm 侧配置 provider=GitHub Actions, org=repo owner, repo=本仓库, workflow=
 
 ## Approval Boundary
 
-本页只选操作模型，不授权改 version、publish、改 Trusted Publisher 设置或绕过 release-approval worktrack。
+本页选择操作模型，不授权改 version、publish、改 Trusted Publisher 设置或绕过 release-approval worktrack。
 
 ## Fallback
 

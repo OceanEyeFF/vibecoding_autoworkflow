@@ -1,16 +1,16 @@
 # Project Maintenance
 
-`docs/project-maintenance/` 只承接当前仓库的 operator-facing 维护文档：结构真相、治理入口、deploy runbook，以及按 backend 聚合的 repo-local usage help。不承载 deployable skill 合同正文，不回退旧 `docs/operations/*` 分叉结构。
+`docs/project-maintenance/` 承接 operator-facing 维护文档：结构真相、治理入口、部署 runbook，以及按 backend 聚合的 repo-local usage help。
 
-`project-maintenance/` 不长期承载 `suspended` 文档；暂停中的共享 runbook 应转为 `superseded`，非共享草稿移出 `docs/`。
+`project-maintenance/` 不长期承载 `suspended` 文档；暂停中的共享 runbook 转为 `superseded`，非共享草稿移出。
 
 ## 当前入口分层
 
 1. `foundations/` — 根目录、truth boundary 与分层规则
 2. `governance/` — review/verify/gate 与路径治理检查
 3. `deploy/` — destructive reinstall 主流程、drift/conflict/unrecognized 维护、已有项目接入
-4. `testing/` — Python 脚本/治理检查/closeout gate 命令、registry npx/本地 `.tgz` smoke、Codex/Claude 行为测试
-5. `usage-help/` — `agents`、`claude` 的 backend 差异、部署后使用和 source 变更后的 operator 决策
+4. `testing/` — Python 脚本/治理检查/closeout gate 命令、registry `npx`/本地 `.tgz` smoke、Codex/Claude 行为测试
+5. `usage-help/` — `agents`、`claude` 的 backend 差异、安装后使用和 source 变更后的 operator 决策
 
 ## 从这里怎么进
 
@@ -22,11 +22,11 @@
 
 ## Operator 常见入口
 
-- 新 repo 接入 Harness：先看 [repo-onboarding.md](./repo-onboarding.md)
-- 第一次安装 skill：先看 [deploy/deploy-runbook.md](./deploy/deploy-runbook.md)
-- 已有 mounts 想更新或复验：先看 [deploy/skill-deployment-maintenance.md](./deploy/skill-deployment-maintenance.md)
-- 新增、改名、删除 skill source：先看 [usage-help/README.md](./usage-help/README.md)
-- 运行治理检查、npx smoke 或行为测试：先看 [testing/README.md](./testing/README.md)
-- 确认 `agents`/`claude` 差异：先看 [usage-help/README.md](./usage-help/README.md)
+- 新 repo 接入 Harness：[repo-onboarding.md](./repo-onboarding.md)
+- 安装 skill：[deploy/deploy-runbook.md](./deploy/deploy-runbook.md)
+- 已有 mounts 想更新或复验：[deploy/skill-deployment-maintenance.md](./deploy/skill-deployment-maintenance.md)
+- 新增/改名/删除 skill source：[usage-help/README.md](./usage-help/README.md)
+- 运行治理检查、`npx` smoke 或行为测试：[testing/README.md](./testing/README.md)
+- 确认 `agents`/`claude` 差异：[usage-help/README.md](./usage-help/README.md)
 
-AI 默认阅读顺序以 [AGENTS.md](../../AGENTS.md) 为准。本页只做入口导航，不重复主线合同。
+AI 默认阅读顺序以 [AGENTS.md](../../AGENTS.md) 为准。本页只做入口导航。

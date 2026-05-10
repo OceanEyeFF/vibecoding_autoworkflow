@@ -7,7 +7,7 @@ last_verified: 2026-05-06
 ---
 # Skill Deployment 维护流
 
-> 目的：提供 deploy target 的只读诊断与恢复分流入口，只管理"先观察什么、怎么判断、何时转回三步重装"。
+> 目的：提供 deploy target 的只读诊断与恢复分流入口，管理"先观察什么、怎么判断、何时转回三步重装"。
 
 首次安装/重装见 [Deploy Runbook](./deploy-runbook.md)；合同见 [Deploy Mapping Spec](./deploy-mapping-spec.md)。
 

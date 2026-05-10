@@ -11,7 +11,7 @@ last_verified: 2026-05-06
 
 本页属于 [Governance](./README.md)。
 
-Manages branch/merge sequence, GitHub Release creation, publish workflow observation and post-publish verification; does not manage pre-publish readiness (see Pre-Publish Governance), channel policy (see Release Channel Governance) or carrier model (see Release Operation Model).
+Manages branch/merge sequence, GitHub Release creation, publish workflow observation and post-publish verification. For pre-publish readiness see Pre-Publish Governance, for channel policy see Release Channel Governance, for carrier model see Release Operation Model.
 
 ## Preconditions
 

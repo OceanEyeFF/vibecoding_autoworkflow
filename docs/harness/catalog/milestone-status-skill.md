@@ -12,8 +12,8 @@ last_verified: 2026-05-09
 
 ## 定位
 
-- Scope: RepoScope
-- Function: 作为 RepoScope.Observe 的 sensor/analyzer
+- Scope: `RepoScope`
+- Function: 作为 `RepoScope.Observe` 的 sensor/analyzer
 - 输入: Milestone artifact + 已关闭/待办 worktrack + 聚合 evidence
 - 输出: milestone progress + acceptance verdict + handback_required + release/version consideration hint + developer decision boundary
 
@@ -70,6 +70,6 @@ last_verified: 2026-05-09
 
 ## 调用时机
 
-- RepoScope.Observe 阶段（harness-skill 在状态估计时调用）
+- `RepoScope.Observe` 阶段（harness-skill 在状态估计时调用）
 - Worktrack closeout 后（repo-refresh 完成后检查 Milestone 进度）
 - programmer 显式请求 Milestone 状态检查

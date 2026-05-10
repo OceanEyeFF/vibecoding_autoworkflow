@@ -11,7 +11,7 @@ last_verified: 2026-05-09
 
 本页属于 [Governance](./README.md)。
 
-管理 candidate tuple readiness、packlist/docs freshness、preflight 证据、approval lock；不管理发布序列、channel 策略、smoke 执行。
+管理 candidate tuple readiness、packlist/docs freshness、preflight 证据、approval lock。不管理发布序列、channel 策略、smoke 执行。
 
 ## Stop Rule
 

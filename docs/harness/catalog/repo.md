@@ -9,11 +9,11 @@ last_verified: 2026-05-08
 
 > 目的：固定 `RepoScope` 下直接面向 `Codex` 的 Harness skills catalog。
 
-这里不再先定义一层中间 operator 名称，再把它翻译成 skill。对当前项目而言，`Codex` 最终消费的就是 skills 本身。
+`Codex` 直接消费 skills 本身，不经过中间 operator 名称转译。
 
-## 当前原则
+## 原则
 
-RepoScope skills 负责长期基线的观察、判断、目标变更和 repo 状态刷新，不直接承担编码执行。repo-status-skill 对应 RepoScope.observing，repo-whats-next-skill 对应 RepoScope.deciding；repo-status-skill 是顺手调用的稳定观测包而非强制前置。repo-whats-next-skill 必须能在无 repo-status-skill 产物时直接基于 repo truth 完成判断。三者都不负责 worktrack 级文档维护。structured handoff 优先使用 recommended_next_route 与 canonical approval 字段。RepoScope 内可挂载有界分析模式但不应为分析框架新增 skill 数量。Repo Analysis 可喂给 repo-whats-next-skill 但不能替代 Goal/Charter 或 Snapshot/Status。append-feature 与 append-design 由同一 skill 分类，不拆分。需要实际改动系统状态时由 supervisor 决定是否切入 WorktrackScope。
+`RepoScope` skills 负责长期基线的观察、判断、目标变更和 repo 状态刷新，不承担编码执行。repo-status-skill 对应 `RepoScope` observing，repo-whats-next-skill 对应 `RepoScope` deciding。repo-status-skill 是顺手调用的稳定观测包，非强制前置。repo-whats-next-skill 须能在无 repo-status-skill 产物时直接基于 repo truth 完成判断。三者都不负责 worktrack 级文档维护。structured handoff 优先使用 `recommended_next_route` 与 canonical approval 字段。`RepoScope` 内可挂载有界分析模式但不应为分析框架新增 skill 数量。Repo Analysis 可喂给 repo-whats-next-skill 但不能替代 Goal/Charter 或 Snapshot/Status。append-feature 与 append-design 由同一 skill 分类，不拆分。需要改动系统状态时由 supervisor 决定是否切入 `WorktrackScope`。
 
 ## Catalog
 
