@@ -18,18 +18,19 @@ last_verified: 2026-05-10
 2026-05-10 已核对 npm registry：
 
 - **版本号纠正**：`4.4.x` 系列（`v4.4.0`、`v4.4.0-rc.0`、`v4.4.1-rc.0`、`v4.4.1-rc.1`、`v4.4.1`）为错误发布的版本号，不进入 semver 主序列
-- npm registry 真实状态：`latest` -> `0.4.5`，`next` -> `0.5.0-rc.0`，历史已发布版本 `0.4.0-rc.1` ~ `0.5.0-rc.0`
+- npm registry 真实状态：`latest` -> `0.4.5`，`next` -> `0.5.0-rc.1`，历史已发布版本 `0.4.0-rc.1` ~ `0.5.0-rc.1`
 - GitHub Release `v0.4.5` 已发布，target commit `c7f9a31a184602c8500038998c41565dce8d4972`；npm `aw-installer@0.4.5` 的 `gitHead` 同为 `c7f9a31a184602c8500038998c41565dce8d4972`
 - GitHub Release `v0.5.0-rc.0` 已发布，target commit `c7683fc9767cb66b123fb4ba493ea539791392d7`；npm `aw-installer@0.5.0-rc.0` 的 `gitHead` 同为 `c7683fc9767cb66b123fb4ba493ea539791392d7`
+- GitHub Release `v0.5.0-rc.1` 已发布，target commit `f7728bb9c0f463376a85585e18812f931087531b`；npm `aw-installer@0.5.0-rc.1` 的 `gitHead` 同为 `f7728bb9c0f463376a85585e18812f931087531b`
 
 ## 当前 source release tuple
 
-2026-05-10，本地 source tuple 已准备为 `v0.5.0-rc.1` 的 `next` channel release candidate；尚未写入 npm registry 或 GitHub Release：
+2026-05-10，本地 source tuple 已发布为 `v0.5.0-rc.1` 的 `next` channel release：
 
 - root `package.json` version：`0.5.0-rc.1`
 - local scaffold `toolchain/scripts/deploy/package.json` version：`0.5.0-rc.1`
 - approval lock：`approvedVersion=0.5.0-rc.1`、`approvedGitTag=v0.5.0-rc.1`、`approvedChannel=next`
-- pre-publish availability：npm `aw-installer@0.5.0-rc.1`、GitHub Release `v0.5.0-rc.1` 与远端 tag `v0.5.0-rc.1` 均未存在
+- GitHub Release 使用 prerelease，publish workflow run `25624193311` 已成功
 
 注意：`0.5.0-rc.1` 是 prerelease，不改变 stable selector；默认 `aw-installer` 仍解析到 `latest` 的 `0.4.5`，RC 试用必须显式使用 `aw-installer@next`。
 
