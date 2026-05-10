@@ -1,9 +1,9 @@
 ---
 title: "Branch / PR 治理规则"
 status: active
-updated: 2026-04-26
+updated: 2026-05-11
 owner: aw-kernel
-last_verified: 2026-04-26
+last_verified: 2026-05-11
 ---
 # Branch / PR 治理规则
 
@@ -30,9 +30,18 @@ Decision time: 2026-04-25
 
 变更必须通过 PR 提交，target 来自 Worktrack Contract 的 `baseline_branch`（合同缺失时用 `origin/HEAD` 解析后补齐或阻断收尾）；PR 必须包含变更摘要、验证结果与风险说明，默认遵循 `.github/pull_request_template.md`。
 
+`develop-main -> master` release PR 只承接已完成 candidate 的合并，不在 PR 合并后继续改 candidate tuple。发布型 PR 打开或更新前必须确认：
+
+- root `package.json`、`toolchain/scripts/deploy/package.json`、approval lock、CLI `--version` 和 PR 标题/正文中的版本一致
+- `v<package.version>` tag 不存在，npm registry 中 `aw-installer@<package.version>` 不存在
+- RC PR 明确使用 `next` channel；stable PR 明确使用 `latest` channel
+- PR head SHA 与本地 release-readiness 验证所用 SHA 一致
+
 ## 四、Review 规则
 
 `CODEOWNERS` 生效时至少需要对应 owner review；参考 `docs/project-maintenance/governance/review-verify-handbook.md`。
+
+GitHub 不允许 PR author approve 自己的 PR；repo owner/admin 身份不改变这一点。若 branch protection 要求 review，必须使用另一位有权限的 reviewer，或由 owner/admin 通过明确的 ruleset bypass/merge 操作处理。可以 self-merge 不代表可以 self-approve；两者在 release handoff 中必须分开记录。
 
 ## 五、CI 最小检查链
 
@@ -55,9 +64,15 @@ hook 通过 `origin/HEAD` 动态解析 baseline（当前解析为 `origin/master
 
 - 若需跳过上述检查，须在 PR 中说明原因并获得显式批准。
 - 禁止为"过关"降低检查标准或替换证据。
+- release PR 若使用 owner/admin bypass 合并，PR 评论或 release handoff 必须记录：bypass 原因、已通过检查、review 不可用原因、后续发布是否继续。
 
-## 九、相关文档
+## 九、发布后分支同步
+
+发布后若 `doc-catch-up-worker-skill` 写回 registry facts，应通过单独的 docs PR 合入 `master`，不要修改已发布 tag target。该 docs PR 合并后，把 `develop-main` fast-forward 到 `origin/master` 并推回远端，使下一轮开发基线与发布后文档事实一致。
+
+## 十、相关文档
 
 - `AGENTS.md`
 - `docs/project-maintenance/governance/review-verify-handbook.md`
 - `docs/project-maintenance/governance/path-governance-checks.md`
+- `docs/project-maintenance/governance/aw-installer-release-standard-flow.md`
