@@ -419,8 +419,23 @@ Gate 应汇总**正交校验面**的裁决：
 3. 如果是 `失败/阻塞` → 进入 `Recover`
 4. **文档追平收口**：在 Close、handback 或 release/post-smoke 收口前，如果本轮改变了代码版本、package/release 事实、git/SVN baseline、deploy/adapter 行为、验证命令或 operator-facing 文档，必须调用或显式安排 `doc-catch-up-worker-skill`；版本事实场景使用 `version fact sync`，并记录 source version、published version、VCS tracking facts 与未更新文档理由。如果 `doc-catch-up` 成功执行，将当前 git hash 写入 `.aw/control-state.md` 的 `Baseline Traceability.last_doc_catch_up_checkpoint`，作为下次文档 freshness 检查的对比锚点
 5. **长期权限配置写回**：如果本轮经程序员明确批准了持久权限、自动性或分派策略变更，必须把配置事实写回 `.aw/control-state.md` 的 `Approval Boundary`、`Continuation Authority` 或 `Autonomy Ledger`，并记录审批理由；一次性审批只能写入本轮 evidence / handoff，不得伪装成长期默认配置。
-6. 如果命中正式停止条件 → 向程序员返回控制权
-7. 不要直接把子代理的返回结果当成状态更新的唯一依据；必须经过 Gate 裁决
+6. **Milestone 状态写回**：收到 `milestone-status-skill` 输出后，`harness-skill` 必须执行以下写回动作：
+   - **Milestone Artifact 更新**（`.aw/milestone/{milestone_id}.md`）：
+     - 将 `progress_counter` 更新为 milestone-status-skill 计算的值（total/completed/blocked/deferred）
+     - 若 `milestone_acceptance_verdict == "achieved"` 且双重验收通过：将 `status` 从 `active` 更新为 `completed`
+     - 更新 `updated` 时间戳
+     - 不修改 `progress_counter` 以外的派生字段
+   - **Control State 更新**：
+     - 写入 `milestone_input_checkpoint` 到 `Baseline Traceability`
+     - 若 milestone 状态变更（active→completed）：更新 `milestone_status` 和 `milestone_pipeline_summary`
+   - **Pipeline 推进**（仅在 milestone achieved 后）：
+     - 读取 `milestone-status-skill` 输出的 `pipeline_advancement`
+     - 若存在符合条件的下一 planned milestone：更新其 status 为 `active`，更新 control-state 的 `active_milestone`
+     - 若不存在：清空 control-state 的 `active_milestone`
+   - **Milestone Backlog 更新**：将上述 status 变更同步 upsert 到 `.aw/repo/milestone-backlog.md`
+   - 不得跳过 milestone progress writeback；不得在 `milestone_acceptance_verdict` 未达成时变更 milestone status
+7. 如果命中正式停止条件 → 向程序员返回控制权
+8. 不要直接把子代理的返回结果当成状态更新的唯一依据；必须经过 Gate 裁决
 
 ### 10.8 Git Commit Hash 幂等性守卫
 

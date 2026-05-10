@@ -12,6 +12,14 @@
 - 约定状态：N/A
 - 负责人：N/A
 - 更新时间：N/A
+- milestone_id：N/A
+
+## Milestone Binding
+
+> 若此 worktrack 属于活跃 Milestone，在此引用绑定。
+
+- milestone_id: N/A
+- derived_from_milestone: N/A
 
 ## Node Type
 
