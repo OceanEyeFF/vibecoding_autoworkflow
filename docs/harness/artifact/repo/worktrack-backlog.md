@@ -1,9 +1,9 @@
 ---
 title: "Worktrack Backlog"
 status: active
-updated: 2026-05-08
+updated: 2026-05-10
 owner: aw-kernel
-last_verified: 2026-05-08
+last_verified: 2026-05-10
 ---
 
 # Worktrack Backlog
@@ -23,6 +23,7 @@ last_verified: 2026-05-08
 每个 worktrack 条目至少包含:
 
 - `worktrack_id`: 唯一标识 (如 `WT-20260508-p0-074-milestone-impl`)
+- `milestone_id`: 所属 Milestone ID（optional，无绑定时为 null）
 - `status`: `done` / `deferred` / `blocked` / `resolved`
 - `node_type`: 从 Goal Charter 的 Engineering Node Map 绑定
 - `scope`: 简要变更说明
@@ -30,7 +31,7 @@ last_verified: 2026-05-08
 - `validation`: 验证结果摘要
 - `intake_route`: 追加请求来源
 
-`milestone-status-skill` 读取 backlog 时将 `status` 按以下映射转换后参与 progress 计算：`done`/`resolved` -> completed，`deferred` -> deferred，`blocked` -> blocked。
+`milestone-status-skill` 读取 backlog 时先按 `milestone_id` 过滤（匹配当前 active milestone），再将 `status` 按以下映射转换后参与 progress 计算：`done`/`resolved` -> completed，`deferred` -> deferred，`blocked` -> blocked。
 
 ## 与正式 artifact 的关系
 

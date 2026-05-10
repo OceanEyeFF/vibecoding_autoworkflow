@@ -1,9 +1,9 @@
 ---
 title: "Milestone Status Skill"
 status: active
-updated: 2026-05-09
+updated: 2026-05-10
 owner: aw-kernel
-last_verified: 2026-05-09
+last_verified: 2026-05-10
 ---
 
 # Milestone Status Skill
@@ -39,7 +39,8 @@ last_verified: 2026-05-09
 | 输入 | 来源 | 说明 |
 |------|------|------|
 | Milestone artifact | `.aw/milestone/{milestone_id}.md` | 当前 active Milestone |
-| Worktrack backlog | `.aw/repo/worktrack-backlog.md` | 已关闭和待办 worktrack；缺失视为空 backlog，存在但损坏或不可解析时必须停止 |
+| Milestone backlog | `.aw/repo/milestone-backlog.md` | Pipeline 全集，获取前置依赖状态和下一个候选 milestone |
+| Worktrack backlog | `.aw/repo/worktrack-backlog.md` | 已关闭和待办 worktrack；按 milestone_id 过滤；缺失视为空 backlog，存在但损坏或不可解析时必须停止 |
 | Gate evidence | `.aw/worktrack/gate-evidence.md` | 最近关闭 worktrack 的 evidence |
 | Repo snapshot | `.aw/repo/snapshot-status.md` | 当前 repo 状态 |
 
@@ -59,6 +60,8 @@ last_verified: 2026-05-09
 | release_version_consideration | string | 对 version/release 的提示 |
 | developer_decisions_needed | array | 需要 developer 做出的决定 |
 | recommendations | array | 对 RepoScope.Decide 的建议 |
+| pipeline_advancement | string | 若当前 milestone achieved，推荐激活的下一个 milestone_id |
+| pipeline_state | object | Pipeline 快照（planned/active/completed/superseded 计数） |
 
 ## Checkpoint 合同
 
@@ -72,4 +75,5 @@ last_verified: 2026-05-09
 
 - `RepoScope.Observe` 阶段（harness-skill 在状态估计时调用）
 - Worktrack closeout 后（repo-refresh 完成后检查 Milestone 进度）
+- Milestone 验收边界触发时（判定 handback 或 pipeline 推进）
 - programmer 显式请求 Milestone 状态检查
