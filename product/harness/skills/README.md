@@ -15,6 +15,7 @@
   - [repo-append-request-skill/](./repo-append-request-skill/) — 追加请求分类与路由
   - [repo-change-goal-skill/](./repo-change-goal-skill/) — 修改 Repo 目标
   - [repo-refresh-skill/](./repo-refresh-skill/) — 代码仓库刷新
+- [init-milestone-skill/](./init-milestone-skill/) — Milestone 初始化/注册到 Pipeline
 - [milestone-status-skill/](./milestone-status-skill/) — Milestone 状态观测/验收分析器
 - 已落地的 `WorktrackScope` 技能骨架：
   - [init-worktrack-skill/](./init-worktrack-skill/) — 初始化工作追踪

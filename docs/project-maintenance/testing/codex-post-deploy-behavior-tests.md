@@ -1,9 +1,9 @@
 ---
 title: "Codex Post-Deploy Behavior Tests"
 status: active
-updated: 2026-05-08
+updated: 2026-05-10
 owner: aw-kernel
-last_verified: 2026-05-08
+last_verified: 2026-05-10
 ---
 # Codex Post-Deploy Behavior Tests
 
@@ -49,7 +49,7 @@ node toolchain/scripts/deploy/bin/aw-installer.js install --backend agents --age
 node toolchain/scripts/deploy/bin/aw-installer.js verify --backend agents --agents-root "$TMP_AGENTS_ROOT"
 ```
 
-当前 `agents` install 已包含全部 20 个 skills（RepoScope/WorktrackScope/验证/裁决/恢复/收尾/通用执行/Milestone）；`set-harness-goal-skill` 自带 `.aw/` 初始化资产。
+当前 `agents` install 已包含全部 21 个 skills（RepoScope/WorktrackScope/验证/裁决/恢复/收尾/通用执行/Milestone）；`set-harness-goal-skill` 自带 `.aw/` 初始化资产。
 
 ## 五、选择观察策略
 
