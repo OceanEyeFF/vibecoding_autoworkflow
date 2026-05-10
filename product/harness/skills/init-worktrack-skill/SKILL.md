@@ -43,6 +43,11 @@ description: 当 Harness 处于 WorktrackScope.initializing，且需要一轮限
    - **从 Goal Charter 的 Engineering Node Map 中确定本 worktrack 的节点类型**
    - **根据节点类型填充 contract 中的类型化字段**：baseline_branch、baseline_form、merge_required、gate_criteria、if_interrupted_strategy
    - 如果 Goal Charter 未定义 Engineering Node Map，标记为缺失风险并在初始化结果中暴露
+   - **Milestone 绑定**（若传入 `target_milestone_id`）：
+     - 验证 `target_milestone_id` 在 milestone-backlog 中存在且 status 为 `active`
+     - 验证通过后将 `milestone_id` 写入 Worktrack Contract
+     - 标记 `derived_from_milestone: true`（若 worktrack 来自 milestone 的 `worktrack_list`）
+     - 若 milestone 不存在或非 active：标记为阻塞并停止，不得静默忽略绑定
 7. 使用显式队列项播种一份初始 `计划/任务队列`，而不是只写自由文本任务说明。
 8. 产出一份 `调度交接包`，告诉 `调度工作追踪技能` 已播种了什么、还有哪些内容需要调度判断，以及此前轮次是否已存在兼容的下游包。
 9. 产出一份固定格式的 `工作追踪初始化结果`。
@@ -65,6 +70,8 @@ description: 当 Harness 处于 WorktrackScope.initializing，且需要一轮限
 - baseline branch 的唯一合法来源是 `Worktrack Contract.baseline_branch`。当前分支名不能作为 baseline branch 的来源。PR target、merge target 与后续 checkpoint 判定必须来自 `Worktrack Contract.baseline_branch`。
 - 仅当预期下一状态与所需审批已显式暴露后，`Harness 控制状态` 的变更才合法；否则必须保持当前控制状态不变并暴露阻断原因。
 - 仅当宿主运行时真的能发起分派时，声称回退式 `子代理` 已就绪才合法；否则必须显式暴露运行时缺口或权限阻塞。
+- 若传入 `target_milestone_id`，必须验证其存在于 milestone-backlog 且为 `active`；引用不存在或非 active 的 milestone 必须返回 blocked。
+- milestone 绑定信息（`milestone_id`、`derived_from_milestone`）必须写入 Worktrack Contract，供 `repo-refresh-skill` 在 closeout 时写入 worktrack-backlog。
 
 ## 预期输出
 

@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Release Channel Governance"
 status: active
-updated: 2026-05-10
+updated: 2026-05-11
 owner: aw-kernel
-last_verified: 2026-05-10
+last_verified: 2026-05-11
 ---
 # aw-installer Release Channel Governance
 
@@ -15,7 +15,7 @@ last_verified: 2026-05-10
 
 ## 当前 registry 事实
 
-2026-05-10 已核对 npm registry：
+2026-05-11 已核对 npm registry：
 
 - **版本号纠正**：`4.4.x` 系列（`v4.4.0`、`v4.4.0-rc.0`、`v4.4.1-rc.0`、`v4.4.1-rc.1`、`v4.4.1`）为错误发布的版本号，不进入 semver 主序列
 - npm registry 真实状态：`latest` -> `0.4.5`，`next` -> `0.5.0-rc.1`，历史已发布版本 `0.4.0-rc.1` ~ `0.5.0-rc.1`
@@ -25,14 +25,14 @@ last_verified: 2026-05-10
 
 ## 当前 source release tuple
 
-2026-05-10，本地 source tuple 已发布为 `v0.5.0-rc.1` 的 `next` channel release：
+2026-05-11，本地 source tuple 已准备为 `v0.5.1-rc.0` 的 `next` channel release candidate；尚未创建 GitHub Release，尚未发布到 npm registry：
 
-- root `package.json` version：`0.5.0-rc.1`
-- local scaffold `toolchain/scripts/deploy/package.json` version：`0.5.0-rc.1`
-- approval lock：`approvedVersion=0.5.0-rc.1`、`approvedGitTag=v0.5.0-rc.1`、`approvedChannel=next`
-- GitHub Release 使用 prerelease，publish workflow run `25624193311` 已成功
+- root `package.json` version：`0.5.1-rc.0`
+- local scaffold `toolchain/scripts/deploy/package.json` version：`0.5.1-rc.0`
+- approval lock：`approvedVersion=0.5.1-rc.0`、`approvedGitTag=v0.5.1-rc.0`、`approvedChannel=next`
+- registry conflict check：`aw-installer@0.5.1-rc.0` 未发布；本地/远端 `v0.5.1-rc.0` tag 未存在
 
-注意：`0.5.0-rc.1` 是 prerelease，不改变 stable selector；默认 `aw-installer` 仍解析到 `latest` 的 `0.4.5`，RC 试用必须显式使用 `aw-installer@next`。
+注意：`0.5.1-rc.0` 是 prerelease，不改变 stable selector；默认 `aw-installer` 仍解析到 `latest` 的 `0.4.5`，RC 试用必须显式使用 `aw-installer@next`。发布完成并完成 registry verification 后，才能把 npm published version fact 从 `0.5.0-rc.1` 前移到 `0.5.1-rc.0`。
 
 npm dist-tag 由 publish workflow 写入，此页跟随 release commit 同步事实。`4.4.x` 相关 git tag 保留作为历史记录，不在 npm registry 中发布。
 

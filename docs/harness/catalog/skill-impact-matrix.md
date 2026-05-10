@@ -1,9 +1,9 @@
 ---
 title: "Skill Impact Matrix"
 status: active
-updated: 2026-05-08
+updated: 2026-05-10
 owner: aw-kernel
-last_verified: 2026-05-08
+last_verified: 2026-05-10
 ---
 
 # Skill Impact Matrix
@@ -200,4 +200,35 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
 
 # 检查 closeout acceptance gate
 PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/closeout_acceptance_gate.py --json
+
+---
+
+## Milestone Pipeline 升级影响（2026-05-10）
+
+Phase 0 + Phase 1 引入了 Milestone Pipeline 机制，对以下 skills 产生实际变更：
+
+| Skill | 实际变更 | 影响等级 |
+|-------|---------|---------|
+| init-milestone-skill | **新建** — RepoScope.Init 算子，milestone 创建/upsert/激活 | new |
+| harness-skill | Milestone 状态写回机制（10.7）+ Pipeline 恢复路径（十二） | medium |
+| milestone-status-skill | `purpose_achieved` 操作化判定 + Writeback 指令 + pipeline_advancement 输出 | medium |
+| repo-whats-next-skill | **重构** — milestone-first 三路分支决策（步骤 12），替代直接 Goal→Worktrack | high |
+| init-worktrack-skill | milestone 绑定验证 + contract 模板新增 Milestone Binding 段 | medium |
+| repo-refresh-skill | worktrack-backlog 写入 milestone_id + milestone-backlog 刷新 | low |
+| repo-status-skill | milestone-backlog sensor 源 + pipeline 观测输出字段 | low |
+
+### 新正式对象
+
+| 对象 | 位置 | 说明 |
+|------|------|------|
+| Milestone Pipeline / Backlog | `docs/harness/artifact/repo/milestone-backlog.md` | Pipeline 运行时 artifact，upsert 语义 |
+| init-milestone-skill | `product/harness/skills/init-milestone-skill/SKILL.md` | RepoScope.Init 算子 |
+| Milestone Backlog runtime | `.aw/repo/milestone-backlog.md` | 运行时实例（gitignore） |
+
+### 概念变更
+
+- Milestone: 从单例 → Pipeline 队列（多个 planned，单个 active）
+- RepoScope.Decide: 从 Goal→Worktrack 直接推理 → milestone-first 推理
+- Worktrack: 从独立创建 → active milestone 派生（携带 milestone_id）
+- Milestone 验收: 增加 `purpose_achieved` 操作化标准（signal/criterion 逐条验证）
 ```

@@ -1,9 +1,9 @@
 ---
 title: Harness 运行协议
 status: active
-updated: 2026-05-08
+updated: 2026-05-10
 owner: OceanEye
-last_verified: 2026-05-08
+last_verified: 2026-05-10
 ---
 
 # Harness 运行协议
@@ -85,6 +85,15 @@ Harness 本体属于控制平面。
 | `ChangeGoal` | 处理外部目标变更请求，禁止常规 `Decide` 移动目标 |
 | `Close / Refresh` | worktrack closeout 后刷新 repo snapshot |
 
+**Milestone Pipeline** 是 RepoScope 下的中短期目标队列：
+
+- 多个 milestone 可同时处于 `planned` 状态，按 `pipeline_priority` 排列
+- 同一时刻仅一个 `active` milestone
+- `active` milestone 的 worktrack 执行完毕后，pipeline 按优先级激活下一个满足前置条件的 `planned` milestone
+- milestone 完成采用双重验收模型：`worktrack_list_finished` AND `purpose_achieved`
+- `milestone-status-skill` 负责进度观测，`harness-skill` 负责状态转移和 pipeline 推进
+- 详细合同见 [milestone.md](../artifact/control/milestone.md) 和 [milestone-backlog.md](../artifact/repo/milestone-backlog.md)
+
 ### WorktrackScope
 
 `WorktrackScope` 管局部状态转移。
@@ -120,9 +129,10 @@ Harness 本体属于控制平面。
 ## 四、最小闭环
 
 ```text
-RepoScope.Observe
--> RepoScope.Decide
--> WorktrackScope.Init
+RepoScope.Observe (含 milestone pipeline 状态)
+-> RepoScope.Decide (milestone-first: 无 active milestone 则建议创建/激活)
+    ├─→ 无 active milestone → RepoScope.Init (init-milestone-skill)
+    └─→ 有 active milestone → WorktrackScope.Init (从 milestone 派生 worktrack)
 -> WorktrackScope.Observe
 -> WorktrackScope.Decide
 -> WorktrackScope.Dispatch
@@ -130,14 +140,16 @@ RepoScope.Observe
 -> WorktrackScope.Verify
 -> WorktrackScope.Judge
 -> WorktrackScope.Close 或 WorktrackScope.Recover
--> RepoScope.Refresh
--> RepoScope.Observe
+-> RepoScope.Refresh (含 milestone progress 写回 + worktrack-backlog 更新)
+-> RepoScope.Observe (含 milestone 双重验收检查)
+    ├─→ milestone achieved → pipeline 推进 (激活下一 planned → active)
+    └─→ milestone 未完成 → 继续当前 milestone 的下一 worktrack
 ```
 
 `PR` 不是闭环终点。完整 closeout：
 
 ```text
-merge -> refresh repo snapshot -> cleanup -> return RepoScope
+merge -> refresh repo snapshot -> update milestone progress -> cleanup -> return RepoScope
 ```
 
 ## 五、正式对象
@@ -151,6 +163,9 @@ merge -> refresh repo snapshot -> cleanup -> return RepoScope
 | `Worktrack Contract` | [contract.md](../artifact/worktrack/contract.md) |
 | `Plan / Task Queue` | [plan-task-queue.md](../artifact/worktrack/plan-task-queue.md) |
 | `Gate Evidence` | [gate-evidence.md](../artifact/worktrack/gate-evidence.md) |
+| `Milestone` | [milestone.md](../artifact/control/milestone.md) |
+| `Milestone Pipeline / Backlog` | [milestone-backlog.md](../artifact/repo/milestone-backlog.md) |
+| `Worktrack Backlog` | [worktrack-backlog.md](../artifact/repo/worktrack-backlog.md) |
 | `Harness Control State` | [control-state.md](../artifact/control/control-state.md) |
 | `Goal Change Request` | [goal-change-request.md](../artifact/control/goal-change-request.md) |
 | `Append Request` | [append-request.md](../artifact/control/append-request.md) |
@@ -183,7 +198,8 @@ merge -> refresh repo snapshot -> cleanup -> return RepoScope
 当 programmer 明确指示连续执行时，`Worktrack Close` 只是 repo refresh 或 milestone progress update 的状态刷新点，不默认触发 handback。连续推进仅在以下条件 handback：
 - 命中必要审批（goal change、scope expansion、destructive action 或 authority boundary）
 - 证据缺失/冲突、路由阻塞、运行时缺口或范围阻塞
-- 命中 Milestone 验收边界
+- 命中 Milestone 验收边界（`milestone_acceptance_verdict == achieved` 或 `blocked`）
+- Pipeline advancement 触发（当前 milestone 完成，自动激活下一 planned milestone）
 
 `autonomy_budget` 消费规则：每个 autonomous slice 开启时消费 1 个 budget 单位。budget 耗尽后不得自动开启新 slice，必须 handback。`handback guard` 与连续执行：连续执行模式下 handback guard 仍然生效。stable-handback 判定、交接锁激活与 unlock signal 验证逻辑不因连续执行跳过。连续执行只改变 handback 的默认触发时机，不改变 handback guard 语义。
 

@@ -18,6 +18,7 @@ EXPECTED_AGENTS_SKILLS = {
     "gate-skill",
     "generic-worker-skill",
     "harness-skill",
+    "init-milestone-skill",
     "init-worktrack-skill",
     "milestone-status-skill",
     "recover-worktrack-skill",
