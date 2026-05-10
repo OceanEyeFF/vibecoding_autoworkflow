@@ -146,9 +146,46 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 - `handoff_signal`：交接信号
 - `requires_developer_decision`：boolean
 - `milestone_input_checkpoint`：本次分析按 `milestone-input-checkpoint/v1` 算法计算出的 `sha256:<hex>` 输入指纹，供 harness-skill 写入 control-state 的 `Baseline Traceability.milestone_input_checkpoint`，下一轮 Observe 用于幂等性对比
+- `pipeline_advancement`：若当前 milestone `achieved`，推荐激活的下一个 milestone_id（从 milestone-backlog 中按 priority 选取满足前置条件的 planned milestone）
+- `pipeline_state`：Pipeline 快照（planned/active/completed/superseded 计数）
+- `writeback_required`：boolean — 是否需要 harness-skill 执行写回
+- `writeback_instructions`：object — 包含 `milestone_artifact_updates`（需更新的 milestone artifact 字段）、`control_state_updates`（需写入 control-state 的字段）、`backlog_updates`（需 upsert 到 milestone-backlog 的条目）、`pipeline_advancement_action`（若有下一 milestone 待激活，包含激活指令）
 
 ## 资源
 
 使用当前活跃 Milestone artifact（`.aw/milestone/{milestone_id}.md`）、当前 worktrack backlog（`.aw/repo/worktrack-backlog.md`）、gate evidence（`.aw/worktrack/gate-evidence.md`）和 repo snapshot（`.aw/repo/snapshot-status.md`）作为主要输入。只有当工作追踪本地产物会实质影响 Milestone 进度计数或目的达成判定时才读取额外的 worktrack 细节文件；仅允许将它们作为辅助边界证据使用，禁止将它们当作 Milestone 真相的替代品。
 
 结果应保持聚焦于 Milestone 级别的聚合分析，而不是扩张成单个 worktrack 的逐条审查或下一 worktrack 的选择规划。输出应可直接作为 `RepoScope.Decide` 和 `harness-skill` continuous execution 流程中的 handback 判断依据。
+
+## `purpose_achieved` 操作化判定
+
+`purpose_achieved` 不得依赖主观判断。按以下步骤逐条验证：
+
+1. **逐 signal 验证**：对 `completion_signals` 中的每一项，从 `aggregated_evidence` 中寻找是否已有对应的肯定 evidence。每项 signal 给出 `satisfied` / `not_satisfied` / `insufficient_evidence`。
+2. **逐 criterion 验证**：对 `acceptance_criteria` 中的每一项，判断是否满足。每项 criterion 给出 `met` / `not_met` / `cannot_determine`。
+3. **计算覆盖率**：`signal_satisfaction_pct` = satisfied 数 / 总 signal 数；`criteria_pass_pct` = met 数 / 总 criteria 数。
+4. **判定规则**：
+   - `purpose_achieved = true` 要求：所有 completion_signals 均为 `satisfied`（100%）**且**所有 acceptance_criteria 均为 `met`（100%）
+   - 任一低于 100% → `purpose_achieved = false`
+   - 若存在 `insufficient_evidence` 或 `cannot_determine` → `purpose_achieved = false`，追加 `developer_decisions_needed` 条目
+5. **记录明细**：在 `aggregated_evidence_summary` 中记录每条 signal/criterion 的判定结果和依据，供 developer 复核。
+
+## Writeback 指令
+
+本技能不直接写入 milestone artifact 或 control-state。产出中包含 `writeback_instructions` 对象，`harness-skill` 在收到本技能输出后**必须**按指令执行以下写回：
+
+- **Milestone Artifact**（`.aw/milestone/{milestone_id}.md`）：
+  - 将 `progress_counter` 更新为本技能计算的当前值
+  - 若 `milestone_acceptance_verdict == "achieved"`：将 `status` 更新为 `completed`
+  - 更新 `updated` 时间戳
+- **Control State**（`.aw/control-state.md`）：
+  - 写入 `milestone_input_checkpoint` 到 `Baseline Traceability`
+  - 更新 `milestone_status`（若发生变化）
+- **Milestone Backlog**（`.aw/repo/milestone-backlog.md`）：
+  - 按 milestone_id upsert，更新 status 和 updated
+- **Pipeline Advancement**（仅在 `milestone_acceptance_verdict == "achieved"` 时）：
+  - 读取本技能输出的 `pipeline_advancement`
+  - 若存在下一候选 milestone：更新其 status 为 `active`，更新 control-state 的 `active_milestone`
+  - 若不存在：清空 control-state 的 `active_milestone`
+
+`harness-skill` 不得跳过以上写回步骤。若本技能输出标记 `writeback_required: false`，可跳过。若标记 `writeback_required: true` 但 `harness-skill` 无法安全执行全部写回（如文件写入失败），必须作为 `proceed_blockers` 返回。

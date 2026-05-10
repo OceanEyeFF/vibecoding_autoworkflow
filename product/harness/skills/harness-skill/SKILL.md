@@ -419,8 +419,23 @@ Gate 应汇总**正交校验面**的裁决：
 3. 如果是 `失败/阻塞` → 进入 `Recover`
 4. **文档追平收口**：在 Close、handback 或 release/post-smoke 收口前，如果本轮改变了代码版本、package/release 事实、git/SVN baseline、deploy/adapter 行为、验证命令或 operator-facing 文档，必须调用或显式安排 `doc-catch-up-worker-skill`；版本事实场景使用 `version fact sync`，并记录 source version、published version、VCS tracking facts 与未更新文档理由。如果 `doc-catch-up` 成功执行，将当前 git hash 写入 `.aw/control-state.md` 的 `Baseline Traceability.last_doc_catch_up_checkpoint`，作为下次文档 freshness 检查的对比锚点
 5. **长期权限配置写回**：如果本轮经程序员明确批准了持久权限、自动性或分派策略变更，必须把配置事实写回 `.aw/control-state.md` 的 `Approval Boundary`、`Continuation Authority` 或 `Autonomy Ledger`，并记录审批理由；一次性审批只能写入本轮 evidence / handoff，不得伪装成长期默认配置。
-6. 如果命中正式停止条件 → 向程序员返回控制权
-7. 不要直接把子代理的返回结果当成状态更新的唯一依据；必须经过 Gate 裁决
+6. **Milestone 状态写回**：收到 `milestone-status-skill` 输出后，`harness-skill` 必须执行以下写回动作：
+   - **Milestone Artifact 更新**（`.aw/milestone/{milestone_id}.md`）：
+     - 将 `progress_counter` 更新为 milestone-status-skill 计算的值（total/completed/blocked/deferred）
+     - 若 `milestone_acceptance_verdict == "achieved"` 且双重验收通过：将 `status` 从 `active` 更新为 `completed`
+     - 更新 `updated` 时间戳
+     - 不修改 `progress_counter` 以外的派生字段
+   - **Control State 更新**：
+     - 写入 `milestone_input_checkpoint` 到 `Baseline Traceability`
+     - 若 milestone 状态变更（active→completed）：更新 `milestone_status` 和 `milestone_pipeline_summary`
+   - **Pipeline 推进**（仅在 milestone achieved 后）：
+     - 读取 `milestone-status-skill` 输出的 `pipeline_advancement`
+     - 若存在符合条件的下一 planned milestone：更新其 status 为 `active`，更新 control-state 的 `active_milestone`
+     - 若不存在：清空 control-state 的 `active_milestone`
+   - **Milestone Backlog 更新**：将上述 status 变更同步 upsert 到 `.aw/repo/milestone-backlog.md`
+   - 不得跳过 milestone progress writeback；不得在 `milestone_acceptance_verdict` 未达成时变更 milestone status
+7. 如果命中正式停止条件 → 向程序员返回控制权
+8. 不要直接把子代理的返回结果当成状态更新的唯一依据；必须经过 Gate 裁决
 
 ### 10.8 Git Commit Hash 幂等性守卫
 
@@ -487,6 +502,19 @@ Close/Refresh 完成 → 状态更新阶段
 | `重新规划` | 当前路径整体不可行 | 必须回到 RepoScope 重新 Decide |
 
 以上恢复策略由 `recover-worktrack-skill` 实现。Gate 裁决为失败或阻塞时，应绑定 `recover-worktrack-skill` 执行恢复动作；恢复成功后的收尾由 `close-worktrack-skill` 负责。`close-worktrack-skill` 同时负责 WorktrackScope 的正常收尾（Gate 通过后的 Close 路径）。
+
+### Milestone Pipeline 恢复
+
+当 Milestone Pipeline 出现不一致时，`harness-skill` 在 Observe 阶段应检测并执行以下恢复动作：
+
+| 恢复动作 | 触发条件 | 操作 |
+|---------|---------|------|
+| `rebuild-pipeline` | milestone-backlog 损坏或与 `.aw/milestone/` 目录不一致 | 重新扫描 `.aw/milestone/` 目录，从 artifact 文件重建 milestone-backlog |
+| `reconcile-active` | control-state `active_milestone` 指向不存在的 milestone | 清空 `active_milestone`，标记 `milestone_pipeline_stale: true`，触发 pipeline 重新评估 |
+| `repair-binding` | worktrack-backlog 中存在 milestone_id 但对应 milestone 不存在 | 标记为 orphan binding，在 milestone-status-skill 输出中暴露，等待 programmer 决策 |
+| `clear-stale-reference` | milestone artifact 文件存在但不在 backlog 中 | 按 artifact 文件重建 backlog 条目（保留原始 created_at/created_by） |
+
+检测到以上任一情况时，`harness-skill` 应标记为 `pipeline_corruption_detected` 并执行相应恢复动作。恢复后重新绑定 `milestone-status-skill` 做完整状态评估。若自动恢复失败（如 artifact 文件本身损坏），必须 handback 等待 programmer 介入。
 
 ---
 
@@ -576,7 +604,6 @@ Close/Refresh 完成 → 状态更新阶段
 - **Evidence、Verdict 和 NextAction 必须在输出中分节独立呈现**；每节仅包含对应类型的内容，禁止将三者合并为一段叙述。
 - **相邻系统的引用仅当本轮证据确实消费了其输出时才可包含**；否则 `adjacent_system_referenced` 必须为 `false`。
 - **Control State 仅保存控制面位置信息**（Scope/Function/Route）；业务真相必须保存在 `Repo` 与 `Worktrack` 的正式文档中，禁止写入 Control State。
-- **git hash 一致仅授权跳过重复刷新和重复文档追平**；首次验证和 Gate 裁决在任何情况下都不可跳过。
 - **git hash 一致仅授权跳过重复刷新和重复文档追平**；首次验证和 Gate 裁决在任何情况下都不可跳过。
 
 ---

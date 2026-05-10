@@ -1,9 +1,9 @@
 ---
 title: "Repo Snapshot / Status"
 status: active
-updated: 2026-05-09
+updated: 2026-05-10
 owner: aw-kernel
-last_verified: 2026-05-09
+last_verified: 2026-05-10
 ---
 
 # Repo Snapshot / Status
@@ -16,6 +16,7 @@ last_verified: 2026-05-09
 - 上游写入: repo-refresh-skill（在 worktrack closeout 后）、harness-skill（首次初始化）、repo-change-goal-skill（Goal Change 后）、milestone-status-skill（Milestone 验收后）
 - 下游消费: repo-status-skill、repo-analysis-skill、repo-whats-next-skill、milestone-status-skill
 - 与 [worktrack-backlog.md](./worktrack-backlog.md) 的区别: Snapshot 是当前快照（一个 repo 仅一个当前状态）；Backlog 是历史列表（所有 worktrack 条目按时间排列）。
+- 与 [milestone-backlog.md](./milestone-backlog.md) 的区别: Snapshot 是当前观测切面；Milestone Backlog 是 pipeline 全集（所有 milestone 条目按优先级排列）。
 
 ## Required Fields
 
@@ -43,7 +44,7 @@ last_verified: 2026-05-09
 | `repo-analysis-skill` | RepoScope.Decide | `baseline_branch`、`baseline_ref`、`mainline_status`、`activity_summary`、`governance_signals`、`known_risks`、`pending_decisions` | 结合 Goal Charter 做阶段性矛盾分析和优先级判断 |
 | `repo-whats-next-skill` | RepoScope.Decide | `baseline_branch`、`baseline_ref`、`mainline_status`、`pending_decisions`、`known_risks` | 无新鲜 Repo Analysis 时，直接基于 Snapshot + Goal 做限定范围判定 |
 | `repo-refresh-skill` | RepoScope.Refresh | 全字段（以写入为主，写入前也会读取当前 snapshot 做 diff） | worktrack closeout 后全量刷新 snapshot |
-| `milestone-status-skill` | RepoScope.Observe | `latest_observed_checkpoint`、`last_verified_checkpoint`、`activity_summary.recent_prs` | 对照 Milestone 的 `worktrack_list` 计算进度 |
+| `milestone-status-skill` | RepoScope.Observe | `latest_observed_checkpoint`、`last_verified_checkpoint`、`activity_summary.recent_prs`、`governance_signals`、`known_risks` | 对照 Milestone 的 `worktrack_list` 计算进度，结合 milestone-backlog 做 pipeline 上下文分析 |
 
 Consumer 读取 Snapshot 时，若 `observed_at` 距今超过合理窗口（默认 24 小时）或 `baseline_ref` 与当前 repo 实际 HEAD 不一致，应标记为 stale 并在输出中暴露过期信号。不得将过期 snapshot 当作当前真相。
 
