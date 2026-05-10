@@ -22,6 +22,8 @@ last_verified: 2026-05-07
 
 ## 场景一：在未初始化 `.aw/` 的仓库使用 Skills
 
+> 摘要：安装 Harness Skills → 初始化 `.aw/` 控制面 → 验证 → 进入观察循环，三步走完即可接收第一个 worktrack。
+
 **识别条件**：目标仓库没有 `.aw/` 目录（或不确定是否已初始化）。
 
 ### 1. 安装 Harness Skills
@@ -69,11 +71,11 @@ ls -la .aw/
 $harness-skill 观察当前仓库状态，准备接收第一个 worktrack 请求。
 ```
 
-Harness 进入 RepoScope.Observe，准备接收第一个 worktrack 请求。
-
 ---
 
 ## 场景二：设置仓库目标
+
+> 摘要：用 `$set-harness-goal-skill` 写目标描述 → 确认 charter → 用 `$repo-append-request-skill` 发起第一个 worktrack。
 
 **识别条件**：`.aw/` 已初始化，但需要定义或重设项目目标。
 
@@ -114,17 +116,17 @@ $set-harness-goal-skill 当前仓库期望最终实现一个 [目标描述]。
 
 ### 4. 发起第一个 Worktrack
 
-在 Coding CLI 中提出第一个任务。以 Codex 为例：
-
 ```txt
 $repo-append-request-skill 我想先做 [第一个功能/任务]，范围是 [具体路径]，不做 [排除事项]。
 ```
 
-Harness 会自动分类并进入 worktrack 流程。
+Harness 自动分类并进入 worktrack 流程。
 
 ---
 
 ## 场景三：变更仓库目标
+
+> 摘要：判断变更类型（追加 / 扩张 / 改目标）→ 走对应 skill（`$repo-append-request-skill` 或 `$repo-change-goal-skill`）→ 审批后继续。
 
 **识别条件**：已有 Goal Charter，项目中途需要追加功能或调整方向。
 
@@ -142,25 +144,17 @@ Harness 会自动分类并进入 worktrack 流程。
 $repo-append-request-skill 提出你的追加请求。
 ```
 
-Harness 自动分类路由：
-- **new worktrack** → 创建新 worktrack 执行
-- **scope expansion** → 需要审批后更新当前 contract
-- **design-only** → 先调研再决定
-- **goal change** → 进入目标变更控制
+Harness 自动分类路由：**new worktrack**（新建执行）/ **scope expansion**（审批后更新 contract）/ **design-only**（先调研）/ **goal change**（目标变更控制）。
 
 ### 3. 变更目标（Goal Change）
 
-需要修改 Goal Charter 时：
-
-1. 确保当前活跃 worktrack 已 checkpoint 或关闭
-2. 提交变更请求：
+修改 Goal Charter 前先确保活跃 worktrack 已 checkpoint 或关闭，然后提交：
 
 ```txt
 $repo-change-goal-skill 新目标：[描述变更后的目标]；变更理由：[为什么需要变]。
 ```
 
-3. 等待 programmer 审批
-4. 变更完成后，系统从 RepoScope.Observe 重新开始
+等待 programmer 审批，变更完成后系统从 RepoScope.Observe 重新开始。
 
 更详细的变更说明见 [goal-change-guide.md](./goal-change-guide.md)。
 
@@ -168,13 +162,13 @@ $repo-change-goal-skill 新目标：[描述变更后的目标]；变更理由：
 
 ## 场景四：完整 Worktrack 闭环
 
+> 摘要：提请求（`$repo-append-request-skill`）→ 加入 Worktrack（`$harness-skill`）→ Harness 自动串行执行各 task → 验证 + Gate 裁决 → closeout 提交。有追加需求先做 scope expansion。
+
 **识别条件**：已有明确的工作项，需要走完整流程：append → init → execute → verify → closeout。
 
 ### 真实对话示例
 
-以下是一个完整的追加请求到 worktrack 闭环的对话流程。
-
-#### 步骤 1：提出追加请求
+**步骤 1-3：提出请求并初始化 Worktrack**
 
 ```txt
 $repo-append-request-skill 简化 README.md 和文档体系。主要考虑：
@@ -183,76 +177,27 @@ $repo-append-request-skill 简化 README.md 和文档体系。主要考虑：
 3. 不要把内部文档放在对外 README
 ```
 
-#### 步骤 2：查看路由结果
-
-Harness 返回分类结果（new worktrack / docs），确认后进入下一阶段。
-
-#### 步骤 3：初始化 Worktrack
+Harness 返回路由分类（new worktrack / docs），确认后：
 
 ```txt
 $harness-skill 把上述任务加入 Worktrack，追加实现。
 ```
 
-Harness 执行 init-worktrack-skill：
-- 创建 worktrack 分支
-- 写入 contract（范围、验收标准、约束）
-- 播种计划队列
+Harness 自动创建分支、写入 contract（范围/验收标准/约束）、播种计划队列。
 
-#### 步骤 4：执行任务
+**步骤 4-6：执行、验证与提交**
 
-Harness 按计划队列的依赖顺序串行执行各任务：
+Harness 按依赖顺序串行执行各 task（如 T1 分析 → T2 创建 → T3 重构 → T4 验证 → T5 closeout）。全部完成后自动验证：对照验收标准、检查 link 有效性、frontmatter 合规、无越界写入。Gate 通过后用户输入"允许提交"即完成 closeout。
 
-```txt
-T1: 分析现有文档体系 → T2: 创建新文档 → T3: 重构 README → T4: 验证 → T5: Closeout
-```
+**步骤 7：Scope Expansion（可选）**
 
-每个任务完成后，Harness 更新任务队列状态，自动串接到下一个任务。
-
-#### 步骤 5：验证与 Gate
-
-全部任务执行完成后，Harness 执行验证：
-
-- 对照验收标准逐一确认
-- 检查 link 有效性
-- 检查 frontmatter 合规
-- 确认无越界写入
-
-Gate 裁决：通过 → 准备 closeout。
-
-#### 步骤 6：提交
-
-```txt
-允许提交
-```
-
-Harness 提交变更到 worktrack 分支，更新控制面状态。
-
-#### 步骤 7：Scope Expansion（可选扩展）
-
-如果在 closeout 前需要追加新任务：
+closeout 前需追加任务时：
 
 ```txt
 $harness-skill 直接把这个任务并入当前的开发 Worktrack，追加实现。
 ```
 
-Harness 执行 scope expansion：
-- 更新 contract 范围
-- 扩展计划队列
-- 执行新任务
-- 二次验证和 closeout
-
-### 典型对话流
-
-```txt
-用户: $repo-append-request-skill [描述请求]
-  → Harness: 分类路由结果
-用户: $harness-skill 把任务加入 Worktrack
-  → Harness: 创建分支、contract、plan，开始执行
-  → Harness: T1 完成 → T2 完成 → ... → Tn 完成
-  → Harness: 验证 → Gate 裁决 → closeout 准备
-用户: 允许提交
-  → Harness: 提交到分支，更新控制态
-```
+Harness 更新 contract 范围、扩展计划队列、执行新任务、二次验证和 closeout。
 
 ### 关键原则
 
@@ -267,19 +212,19 @@ Harness 执行 scope expansion：
 
 ### 安全使用 Harness
 
-1. **先读后写**：`diagnose --json` 先做只读检查，再执行 install/update
-2. **明确边界**：每个 worktrack contract 包含范围内/范围外、验收标准、约束
+1. **先读后写**：`npx aw-installer diagnose --json` 先只读，再 install/update
+2. **明确边界**：每个 worktrack contract 声明范围内外、验收标准、约束
 3. **控制熵增**：不顺手修相邻问题，相邻风险单独提交请求
-4. **验证优先**：文档变更人工对照验收标准；路径/部署变更跑对应脚本
+4. **验证优先**：文档变更对照验收标准；路径/部署变更跑对应检查脚本
 5. **审批边界**：release、publish、远程推送、破坏性操作必须显式授权
 
 ### 安全使用 SubAgent
 
-SubAgent 适合限定范围的实现、审查、测试或文档追平。给 SubAgent 的 prompt 应包含：
+SubAgent 适合限定范围的实现、审查、测试。给 SubAgent 的 prompt 应包含：
 
-- 当前 worktrack 的目标和非目标
+- worktrack 目标和非目标
 - 允许读写的路径
-- 禁止触碰的文件、控制 artifacts 和外部动作
+- 禁止触碰的文件、控制 artifacts、外部动作
 - 期望返回的证据格式
 - 是否允许运行命令
 
