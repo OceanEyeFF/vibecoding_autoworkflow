@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Release Standard Flow"
 status: active
-updated: 2026-05-06
+updated: 2026-05-11
 owner: aw-kernel
-last_verified: 2026-05-06
+last_verified: 2026-05-11
 ---
 # aw-installer Release Standard Flow
 
@@ -17,6 +17,8 @@ Manages branch/merge sequence, GitHub Release creation, publish workflow observa
 
 Only start after passing Pre-Publish Governance, tuple still satisfies Channel Governance, root `package.json` has approved version+lock, and release notes are ready.
 
+For `develop-main -> master` release PRs, confirm the PR title/body version, root package version, local scaffold version, approval lock, CLI `--version`, intended channel, and release marker all describe the same candidate. If they do not, stop before approval or merge, fix the tuple on `develop-main`, rerun preflight, and push the correction to the PR.
+
 ## 1. Refresh Local State
 
 ```bash
@@ -28,6 +30,8 @@ npm view aw-installer@<package.version> version --json
 ```
 
 If tag or published version exists, stop and resolve conflict before continuing.
+
+If npm fails because the default cache path is not writable, retry the registry queries with an explicit cache outside the source tree, for example `NPM_CONFIG_CACHE=/tmp/aw-npm-cache npm view ...`.
 
 ## 2. Push And Open The Merge PR
 
@@ -49,6 +53,8 @@ gh pr checks <pr-number> --watch --interval 10 --fail-fast
 gh pr view <pr-number> --json number,url,isDraft,mergeable,reviewDecision,state,headRefName,baseRefName,headRefOid,statusCheckRollup
 ```
 
+If the authenticated GitHub account is also the PR author, do not attempt to self-approve. GitHub rejects author approvals even for repo owners. Record release readiness as a PR comment, then wait for an external review or an explicit owner/admin merge decision.
+
 ## 3. Merge To `master`
 
 Merge only after PR is not draft, checks pass, and review gates are satisfied.
@@ -60,6 +66,8 @@ git rev-parse origin/master
 ```
 
 The GitHub Release must target the merge commit on `master`.
+
+Do not target the `develop-main` head commit if GitHub created a separate merge commit. Record the PR merge commit SHA and use that exact SHA in the release command.
 
 ## 4. Create The GitHub Release
 
@@ -95,7 +103,17 @@ npm view aw-installer@next version gitHead dist.tarball --json
 
 For RC releases on `next`, verify that `next` moved and `latest` stayed unchanged unless this was an explicitly approved stable release.
 
-## 7. Sync Version Facts
+## 7. Registry Smoke
+
+After publish, run registry `npx` smoke through [npx Command Test Execution](../testing/npx-command-test-execution.md). For RC releases, pin the selector:
+
+```bash
+node toolchain/scripts/test/aw_installer_registry_npx_smoke.js --package aw-installer@next --skip-remote
+```
+
+Use full remote mode when the release window requires cross-target evidence; `--skip-remote` is sufficient for immediate post-publish package/selector verification.
+
+## 8. Sync Version Facts
 
 After registry verification and before final release handback, invoke [doc-catch-up-worker-skill](../../../product/harness/skills/doc-catch-up-worker-skill/SKILL.md) in `version fact sync` mode.
 
@@ -104,11 +122,22 @@ The handoff must include:
 - source version facts: root `package.json`, approval lock, CLI `--version`, GitHub Release tag
 - VCS tracking facts: git branch, commit SHA, tag and remote ref; SVN URL/revision/branch path only when the target is an SVN working copy
 - published version facts: npm dist-tags, published versions, `gitHead`, tarball URLs
-- release evidence: GitHub Release view, publish workflow run, registry query output
+- release evidence: GitHub Release view, publish workflow run, registry query output, registry npx smoke report
 - doc update decision: documents updated and documents intentionally left unchanged
 
 At minimum, review [Release Channel Governance](./aw-installer-release-channel-governance.md), [Pre-Publish Governance](./aw-installer-pre-publish-governance.md), [npx Command Test Execution](../testing/npx-command-test-execution.md), backend usage-help pages, and root `README.md`. Update only pages whose facts changed or whose freshness is being verified in this release closeout.
 
-## 8. Hand Off To Registry Smoke
+Post-publish registry facts must not be written into the release tag target retroactively. Commit docs fact sync on `develop-main`, open a narrow docs PR to `master`, wait for checks, then merge it.
 
-After publish, run registry `npx` smoke through [npx Command Test Execution](../testing/npx-command-test-execution.md).
+## 9. Resync `develop-main`
+
+After the post-publish docs PR is merged, fast-forward `develop-main` to `origin/master` and push it so the next release starts from the published repository truth:
+
+```bash
+git fetch --no-tags origin master develop-main --prune
+git merge --ff-only origin/master
+git push origin develop-main
+git status --short --branch
+```
+
+Final handback must report the release tag, publish workflow run, npm dist-tags, registry smoke result, docs PR, and final `develop-main`/`master` SHAs.

@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Pre-Publish Governance"
 status: active
-updated: 2026-05-09
+updated: 2026-05-11
 owner: aw-kernel
-last_verified: 2026-05-09
+last_verified: 2026-05-11
 ---
 # aw-installer Pre-Publish Governance
 
@@ -16,6 +16,8 @@ last_verified: 2026-05-09
 ## Stop Rule
 
 Tuple 不一致、preflight/smoke 证据缺失、docs 指向错误选择器或旧行为、本地 package smoke 未通过时停止；npm 版本不可变。
+
+发布型 PR 标题、正文、release notes 草稿或 operator handoff 提到的版本，必须与 source tuple 一致；发现不一致时先修 tuple 和 source-version docs，再重新跑 preflight，不进入 approve/merge/release。
 
 ## 1. Candidate Tuple
 
@@ -30,6 +32,8 @@ Before approval, confirm:
 | GitHub Release prerelease flag | matches the semver prerelease state |
 | release body marker | includes `aw-installer-publish-approved: v<package.version>` |
 | approval lock | `approvedVersion`, `approvedGitTag`, and `approvedChannel` match |
+| CLI version | `node toolchain/scripts/deploy/bin/aw-installer.js --version` prints `aw-installer <package.version>` |
+| PR release label | PR title/body version and intended channel match `package.json` |
 
 stable lanes 使用默认 `aw-installer` selector；RC lanes 必须用 `aw-installer@next`，不用裸 `aw-installer`。
 
@@ -57,6 +61,8 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/closeout_acceptance_gat
 ```
 
 证明 candidate surface 与 publish guard，不执行 publish。
+
+在只读 home/cache 环境中运行 npm registry 或 pack 命令时，允许显式 pin cache，例如 `NPM_CONFIG_CACHE=/tmp/aw-npm-cache npm view ...`；这只改变本地缓存位置，不改变发布准入。
 
 ## 4. Local Package Smoke
 
