@@ -18,21 +18,23 @@ last_verified: 2026-05-11
 2026-05-11 已核对 npm registry：
 
 - **版本号纠正**：`4.4.x` 系列（`v4.4.0`、`v4.4.0-rc.0`、`v4.4.1-rc.0`、`v4.4.1-rc.1`、`v4.4.1`）为错误发布的版本号，不进入 semver 主序列
-- npm registry 真实状态：`latest` -> `0.4.5`，`next` -> `0.5.0-rc.1`，历史已发布版本 `0.4.0-rc.1` ~ `0.5.0-rc.1`
+- npm registry 真实状态：`latest` -> `0.4.5`，`next` -> `0.5.1-rc.0`，历史已发布版本 `0.4.0-rc.1` ~ `0.5.1-rc.0`
 - GitHub Release `v0.4.5` 已发布，target commit `c7f9a31a184602c8500038998c41565dce8d4972`；npm `aw-installer@0.4.5` 的 `gitHead` 同为 `c7f9a31a184602c8500038998c41565dce8d4972`
 - GitHub Release `v0.5.0-rc.0` 已发布，target commit `c7683fc9767cb66b123fb4ba493ea539791392d7`；npm `aw-installer@0.5.0-rc.0` 的 `gitHead` 同为 `c7683fc9767cb66b123fb4ba493ea539791392d7`
 - GitHub Release `v0.5.0-rc.1` 已发布，target commit `f7728bb9c0f463376a85585e18812f931087531b`；npm `aw-installer@0.5.0-rc.1` 的 `gitHead` 同为 `f7728bb9c0f463376a85585e18812f931087531b`
+- GitHub Release `v0.5.1-rc.0` 已发布，target commit `039301689a2fb74922fc67edc86b0a194633628a`；npm `aw-installer@0.5.1-rc.0` 的 `gitHead` 同为 `039301689a2fb74922fc67edc86b0a194633628a`
 
 ## 当前 source release tuple
 
-2026-05-11，本地 source tuple 已准备为 `v0.5.1-rc.0` 的 `next` channel release candidate；尚未创建 GitHub Release，尚未发布到 npm registry：
+2026-05-11，本地 source tuple 已发布为 `v0.5.1-rc.0` 的 `next` channel release：
 
 - root `package.json` version：`0.5.1-rc.0`
 - local scaffold `toolchain/scripts/deploy/package.json` version：`0.5.1-rc.0`
 - approval lock：`approvedVersion=0.5.1-rc.0`、`approvedGitTag=v0.5.1-rc.0`、`approvedChannel=next`
-- registry conflict check：`aw-installer@0.5.1-rc.0` 未发布；本地/远端 `v0.5.1-rc.0` tag 未存在
+- GitHub Release 使用 prerelease，target commit `039301689a2fb74922fc67edc86b0a194633628a`，publish workflow run `25634303455` 已成功
+- npm `aw-installer@0.5.1-rc.0` 已发布到 `next` dist-tag，tarball URL：`https://registry.npmjs.org/aw-installer/-/aw-installer-0.5.1-rc.0.tgz`
 
-注意：`0.5.1-rc.0` 是 prerelease，不改变 stable selector；默认 `aw-installer` 仍解析到 `latest` 的 `0.4.5`，RC 试用必须显式使用 `aw-installer@next`。发布完成并完成 registry verification 后，才能把 npm published version fact 从 `0.5.0-rc.1` 前移到 `0.5.1-rc.0`。
+注意：`0.5.1-rc.0` 是 prerelease，不改变 stable selector；默认 `aw-installer` 仍解析到 `latest` 的 `0.4.5`，RC 试用必须显式使用 `aw-installer@next`。
 
 npm dist-tag 由 publish workflow 写入，此页跟随 release commit 同步事实。`4.4.x` 相关 git tag 保留作为历史记录，不在 npm registry 中发布。
 
