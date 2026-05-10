@@ -16,8 +16,8 @@ last_verified: "2026-05-09"
 
 | 标准字段名 | 类型 | 说明 | 适用 Scope |
 |-----------|------|------|-----------|
-| `current_scope` | `RepoScope \| WorktrackScope` | 当前控制范围 | All |
-| `current_function` | `Observe \| Decide \| Init \| Dispatch \| Verify \| Judge \| Recover \| Close \| ChangeGoal \| SetGoal` | 当前控制算子 | All |
+| `current_scope` | `RepoScope \| WorktrackScope` | 控制范围 | All |
+| `current_function` | `Observe \| Decide \| Init \| Dispatch \| Verify \| Judge \| Recover \| Close \| ChangeGoal \| SetGoal` | 控制算子 | All |
 | `repo_scope` | `RepoScope` | Repo 级 scope 标记 | RepoScope Skills |
 | `worktrack_scope` | `active \| initializing \| observing \| scheduling \| dispatching \| verifying \| judging \| recovering \| closing \| none` | Worktrack 级 scope 标记 | WorktrackScope Skills |
 

@@ -7,24 +7,24 @@ last_verified: 2026-05-05
 ---
 # Claude Post-Deploy Behavior Tests
 
-> 目的：固定 Claude Code 部署后真实 Harness 行为观察的最小手动 runbook：临时 repo、隔离 `.claude/skills/`、无交互 `claude --bare -p`、多轮观察。
+> 目的：固定 Claude Code 部署后 Harness 行为观察的最小手动 runbook：临时 repo、隔离 `.claude/skills/`、无交互 `claude --bare -p`、多轮观察。
 
 本页属于 [Testing Runbooks](./README.md)。通用 deploy 主流程见 [Deploy Runbook](../deploy/deploy-runbook.md)，Claude 使用入口见 [Claude Repo-local Usage Help](../usage-help/claude.md)。
 
 ## 一、适用范围
 
-本页只回答如何初始化临时 repo、安装隔离 Claude skill payload、启动无交互 Claude Code 轮次与用 Codex 监督执行链路；不承接 Harness doctrine、skill 单测、automated acceptance、评分或 Claude 产品定位。
+覆盖：初始化临时 repo、安装隔离 Claude skill payload、启动无交互 Claude Code 轮次、用 Codex 监督执行链路。不承接 Harness doctrine、skill 单测、automated acceptance、评分或 Claude 产品定位。
 
 ## 二、固定题目
 
-与 Codex runbook 保持一致：
+与 Codex runbook 一致：
 
 ```text
 Build a CLI Slay the Spire-lite in this temporary repo.
 Reach a full core system with combat, cards, deck, map, and events.
 ```
 
-验收约束：纯终端交互；子系统包括 combat/battle log/cards/deck/map/events；每子系统独立 worktrack，完成后 handback；提供运行入口、README.md、AI 游戏说明；每子系统完成后验证。
+验收约束：纯终端交互；子系统 combat/battle log/cards/deck/map/events；每子系统独立 worktrack，完成后 handback；提供运行入口、`README.md`、AI 游戏说明；每子系统完成后验证。
 
 ## 三、初始化临时 repo
 
@@ -62,7 +62,7 @@ PACKAGE_TGZ="/path/to/aw-installer-<version>.tgz"
 )
 ```
 
-只观察 checkout 行为时可用 Python reference（`prune/check_paths_exist/install/verify`）。当前 `claude` install 包含全部 20 个 skills（含 Milestone 观测器）；cold-start helper 以 `scripts/deploy_aw.js` 随 payload 分发。
+`claude` install 包含全部 20 个 skills（含 Milestone 观测器）；cold-start helper 以 `scripts/deploy_aw.js` 随 payload 分发。
 
 ## 五、选择观察策略
 
@@ -103,7 +103,7 @@ EOF
 HOME="$CLAUDE_TEST_HOME" NPM_CONFIG_CACHE="$NPM_CONFIG_CACHE" claude --bare -p "$(cat "$TMP_RUN_ROOT/round-001/continue.prompt.md")" --cwd "$TMP_REPO" 2>&1 | tee "$TMP_RUN_ROOT/round-001/session.log"
 ```
 
-`round-0xx` 只递增目录名；仅在诊断恢复行为时写长 prompt。
+`round-0xx` 递增目录名；仅在诊断恢复行为时写长 prompt。
 
 ## 八、监督方式
 

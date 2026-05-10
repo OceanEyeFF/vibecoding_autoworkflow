@@ -9,11 +9,11 @@ last_verified: 2026-05-06
 
 > 目的：明确 `aw-installer` 的 payload 来源、命令写入目标、可信 source override 与当前已准入的远程更新能力。
 
-本页只管理 source kind、source/target root 分离与 `update` 远程输入；wrapper 语义、payload 字段、release channel 见相邻文档。
+本页管理 source kind、source/target root 分离与 `update` 远程输入。wrapper 语义、payload 字段、release channel 见相邻文档。
 
 ## 当前允许的 payload 来源
 
-只允许 package-local、checkout-local 与显式 `--source github`；不允许 registry/dist-tag 自动解析 remote payload、任意 HTTP URL、target root 反向生成 source truth、隐式 self-update/自动回滚/增量 patch。`.aw/`、`.agents/`、`.claude/`、`.autoworkflow/` 都不是 package payload。
+只允许 package-local、checkout-local 与显式 `--source github`。不包含 registry/dist-tag 自动解析 remote payload、任意 HTTP URL、target root 反向生成 source truth、隐式 self-update/自动回滚/增量 patch。`.aw/`、`.agents/`、`.claude/`、`.autoworkflow/` 都不是 package payload。
 
 ## Source Root 与 Target Root
 
@@ -45,4 +45,4 @@ aw-installer update --backend agents --source github --github-repo OWNER/REPO --
 
 ## 不承接的能力
 
-当前 `aw-installer` 不实现 channel-based remote update、registry 或 GitHub Release 自动选包、signature provenance chain、自动回滚、target-to-source 反向同步。未来加入须先补独立合同与验证证据，不直接扩展 `update --yes`。
+当前 `aw-installer` 不实现 channel-based remote update、registry 或 GitHub Release 自动选包、signature provenance chain、自动回滚、target-to-source 反向同步。未来加入须先补独立合同与验证证据。

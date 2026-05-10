@@ -26,7 +26,7 @@ Release channel -> Channel Governance; publish readiness -> Pre-Publish Governan
 
 Registry smoke uses published npm; `.tgz` smoke packs current checkout and exercises from temp targets. Neither publishes.
 
-允许：从临时 target 运行 npx、pin RC selector、run `.tgz` 命令、clone approved 公开 target、仅临时目录内写 `.agents/skills/`、保留临时证据、附脱敏 log。
+允许：从临时 target 运行 `npx`、pin RC selector、run `.tgz` 命令、clone approved 公开 target、仅临时目录内写 `.agents/skills/`、保留临时证据、附脱敏 log。
 
 不允许：push、open issue/PR、mutate 非临时 checkout、将 `latest` 视为 stable release 批准、存私有标识/token/完整 log。
 
@@ -102,7 +102,7 @@ for target_name in target-alpha target-beta; do
 done
 ```
 
-Claude commands 在临时 target repo 中通过 Node-owned compatibility lane 执行 package payload。package/runtime `aw-installer` 不包含 Python fallback；Python deploy scripts 仅作 repo-local reference/parity/governance 保留。
+Claude commands 在临时 target repo 中通过 Node-owned compatibility lane 执行 package payload。`aw-installer` 不包含 Python fallback；Python deploy scripts 仅作 repo-local reference/parity/governance。
 
 ## What The Registry Runner Does
 

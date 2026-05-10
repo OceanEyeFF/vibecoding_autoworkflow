@@ -7,11 +7,11 @@ last_verified: 2026-05-08
 ---
 # Deploy Runbook
 
-> 目的：明确首次安装、完整重装和 destructive reinstall 的 operator 主流程。
+> 目的：定义首次安装、完整重装和 destructive reinstall 的 operator 主流程。
 
-本页只管理三步执行路径和停止线；诊断、mapping、wrapper 语义见相邻文档。
+本页管理三步执行路径和停止线。诊断、mapping、wrapper 语义见相邻文档。
 
-## 什么时候看这页
+## 阅读时机
 
 首次安装、按当前 source 完整重装、或只想确认三步主流程时。
 
@@ -33,7 +33,7 @@ backend-specific target root override 见 [Codex Usage Help](../usage-help/codex
 
 | 步骤 | 管什么 | 停止线 |
 | --- | --- | --- |
-| `prune --all` | 只删除当前 backend 可识别、带有效 `aw.marker` 的受管目录 | 无 marker、marker 不可识别、foreign 或用户目录一律不碰 |
+| `prune --all` | 只删除当前 backend 可识别、带有效 `aw.marker` 的受管目录 | 无 marker、marker 不可识别、foreign 或用户目录不碰 |
 | `check_paths_exist` | 基于当前 live bindings 做写入前冲突扫描 | 任一路径已存在就失败；不写业务文件，也不替 operator 判断是否覆盖 |
 | `install --backend <backend>` | 只写当前 source 声明的 live payload | source contract 非法、重复 `target_dir` 或冲突未清理时，写入前失败 |
 

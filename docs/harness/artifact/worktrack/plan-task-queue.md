@@ -7,16 +7,16 @@ last_verified: 2026-04-20
 ---
 # Plan / Task Queue
 
-把 `Worktrack Contract` 展开成可执行子任务序列。
+将 `WorktrackContract` 展开为可执行子任务序列。
 
 最少应包含：
 
 - 子任务列表
 - 执行顺序
 - 依赖关系
-- 当前阻塞
-- 当前下一动作
-- 当前下一动作的稳定标识
+- 阻塞项
+- 下一动作
+- 下一动作的稳定标识
 - 当前 round 的 dispatch handoff packet
 - 验收条件与任务队列的对齐关系
 

@@ -1,6 +1,6 @@
 # Deploy Runbooks
 
-`docs/project-maintenance/deploy/` 只包含 deploy 主路径与部署后维护。发布治理、外部试用治理和 backend 使用说明已逐步迁出。测试执行、本地 `.tgz` smoke、registry `npx` smoke、Codex/Claude 部署后行为观察统一放在 [Testing Runbooks](../testing/README.md)。
+`docs/project-maintenance/deploy/` 包含 deploy 主路径与部署后维护。发布治理、外部试用治理和 backend 使用说明已迁出。测试执行、本地 `.tgz` smoke、registry `npx` smoke、Codex/Claude 部署后行为观察统一放在 [Testing Runbooks](../testing/README.md)。
 
 ## 单一管理原则
 
@@ -29,17 +29,17 @@
 
 ## 当前主线口径
 
-安装主流程、wrapper、mapping、trust boundary 由各自合同页承接；deploy target 不是 source of truth；release/testing/usage help 不在 deploy 下留副本。
+安装主流程、wrapper、mapping、trust boundary 由各自合同页承接。deploy target 不是 source of truth。release/testing/usage help 不在 deploy 下留副本。
 
-## 不再承接的内容
+## 已移除的内容
 
-不再保存一次性 release approval、historical smoke evidence、Codex/Claude 行为测试副本、registry `npx` smoke runbook 副本、以及多页面双主线说明。
+一次性 release approval、historical smoke evidence、Codex/Claude 行为测试副本、registry `npx` smoke runbook 副本、多页面双主线说明。
 
 ## 模板消费
 
-`product/.aw_template/` 是 repo-local execution template layer，为 `.aw/` 提供 scaffold 样例，不是 artifact truth、skill deploy source 或 backend payload source。
+`product/.aw_template/` 是 repo-local execution template layer，为 `.aw/` 提供 scaffold 样例。它不是 artifact truth、skill deploy source 或 backend payload source。
 
-仅保留 `control-state.md`、`goal-charter.md`、`repo/`、`worktrack/`、`template/` 结构位。`repo/` 与 `worktrack/` 对应 `.aw/repo/` 与 `.aw/worktrack/` 落位；`template/` 用于不直接进入 `.aw/` 的回答流模板。
+保留 `control-state.md`、`goal-charter.md`、`repo/`、`worktrack/`、`template/` 结构位。`repo/` 与 `worktrack/` 对应 `.aw/repo/` 与 `.aw/worktrack/` 落位；`template/` 用于不直接进入 `.aw/` 的回答流模板。
 
 不应长期归属 `.aw_template/` 的对象：`contract`、`plan-task-queue`、`gate-evidence`、goal change/correction 类回答流。其 artifact truth 由 `docs/harness/artifact/` 定义；可执行模板应由 owning skill 或 `set-harness-goal-skill/assets/` 承担。
 

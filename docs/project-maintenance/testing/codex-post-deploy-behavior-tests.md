@@ -7,13 +7,13 @@ last_verified: 2026-05-08
 ---
 # Codex Post-Deploy Behavior Tests
 
-> 目的：固定 Codex 部署后真实 Harness 行为观察的最小手动 runbook：临时 repo、隔离 `.agents/skills/`、无交互 `codex exec`、多轮观察。
+> 目的：固定 Codex 部署后 Harness 行为观察的最小手动 runbook：临时 repo、隔离 `.agents/skills/`、无交互 `codex exec`、多轮观察。
 
 本页属于 [Testing Runbooks](./README.md)。通用 deploy 主流程见 [Deploy Runbook](../deploy/deploy-runbook.md)。
 
 ## 一、适用范围
 
-本页只回答如何初始化临时 repo、安装隔离 agents payload、启动无交互 Codex 轮次与监督执行链路；不承接 Harness doctrine、skill 单测、自动化 acceptance matrix 或评分。
+覆盖：初始化临时 repo、安装隔离 agents payload、启动无交互 Codex 轮次、监督执行链路。不承接 Harness doctrine、skill 单测、自动化 acceptance matrix 或评分。
 
 ## 二、固定题目
 
@@ -22,7 +22,7 @@ Build a CLI Slay the Spire-lite in this temporary repo.
 Reach a full core system with combat, cards, deck, map, and events.
 ```
 
-验收约束：纯终端交互；子系统包括 combat/battle log/cards/deck/map/events；每子系统独立 worktrack，完成后 handback；提供运行入口与 `README.md`；repo 内提供 AI 游戏说明；每子系统完成后验证。测试的是 Harness 冷启动与多轮推进，非单个 skill。
+验收约束：纯终端交互；子系统 combat/battle log/cards/deck/map/events；每子系统独立 worktrack，完成后 handback；提供运行入口与 `README.md`；repo 内提供 AI 游戏说明；每子系统完成后验证。测试 Harness 冷启动与多轮推进，非单个 skill。
 
 ## 三、初始化临时 repo
 
@@ -53,7 +53,7 @@ node toolchain/scripts/deploy/bin/aw-installer.js verify --backend agents --agen
 
 ## 五、选择观察策略
 
-`OBSERVATION_PROFILE=strict-handback`（worktrack 完成后停在 handback boundary）或 `continuous-autonomy`（handback 后允许继续消费预算）；两种不混用，`continuous-autonomy` 不删除独立 Worktrack 约束。
+`OBSERVATION_PROFILE=strict-handback`（worktrack 完成后停在 handback boundary）或 `continuous-autonomy`（handback 后继续消费预算）；两种不混用。
 
 ## 六、round-000
 
@@ -91,7 +91,7 @@ EOF
 codex exec --cd "$TMP_REPO" --skip-git-repo-check --output-last-message "$TMP_RUN_ROOT/round-001/final.txt" < "$TMP_RUN_ROOT/round-001/continue.prompt.md" 2>&1 | tee "$TMP_RUN_ROOT/round-001/session.log"
 ```
 
-`round-0xx` 只递增目录名；仅在诊断恢复行为时写长 prompt。
+`round-0xx` 递增目录名；仅在诊断恢复行为时写长 prompt。
 
 ## 八、监督方式
 

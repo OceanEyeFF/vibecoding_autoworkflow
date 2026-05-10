@@ -11,7 +11,7 @@ last_verified: 2026-05-09
 
 本页属于 [Governance](./README.md) 路径簇。
 
-管理 release channel/dist-tag 对应关系、publish 准入条件与当前 registry 事实；不管理 pre-publish tuple/packlist/doc freshness、smoke 执行、发布流程顺序与 wrapper/payload 边界。
+管理 release channel/dist-tag 对应关系、publish 准入条件与当前 registry 事实。不管理 pre-publish tuple/packlist/doc freshness、smoke 执行、发布流程顺序与 wrapper/payload 边界。
 
 ## 当前 registry 事实
 
@@ -33,7 +33,7 @@ last_verified: 2026-05-09
 
 注意：`0.5.0-rc.0` 是 prerelease，不改变 stable selector；默认 `aw-installer` 仍解析到 `latest` 的 `0.4.5`，RC 试用必须显式使用 `aw-installer@next`。
 
-注意：npm dist-tag 由 publish workflow 写入，此页跟随 release commit 同步事实。`4.4.x` 相关 git tag 保留作为历史记录，但不在 npm registry 中发布。
+npm dist-tag 由 publish workflow 写入，此页跟随 release commit 同步事实。`4.4.x` 相关 git tag 保留作为历史记录，不在 npm registry 中发布。
 
 ## Channel 对应关系
 

@@ -21,9 +21,9 @@ Decision time: 2026-04-25
 
 - `baseline branch`：由 `origin/HEAD` 动态解析的远端默认分支（当前为 `origin/HEAD -> master`），是 Worktrack 默认比较基准与 PR target 来源
 - `protected baseline`：被远端保护规则覆盖的 baseline branch，只允许 PR 合并
-- `worktrack branch`：围绕单个 Worktrack 的限定范围工作分支，不得替代或改写 baseline
+- `worktrack branch`：围绕单个 Worktrack 的限定范围工作分支，不替代或改写 baseline
 - `current branch`：当前本地分支，需显式确认角色，不自动等同 baseline 或 worktrack
-- Worktrack Contract 的 `baseline_branch` 是 PR target/merge target/checkpoint 判定的权威字段，不得在技能/hook/runbook 中写死
+- Worktrack Contract 的 `baseline_branch` 是 PR target/merge target/checkpoint 判定的权威字段，不在 skill/hook/runbook 中写死
 - 推荐分支命名：`work/<topic>`、`fix/<topic>`、`docs/<topic>`
 
 ## 三、PR 规则
@@ -40,7 +40,7 @@ PR 阶段必须通过：`folder_logic_check.py` + `path_governance_check.py` + `
 
 ## 六、远端保护规则
 
-必须启用 GitHub Branch Protection Ruleset：仅允许 PR 合并到 protected baseline，必须通过 CI 最小检查链与 `CODEOWNERS` review，禁止 force push 与删除。规则集匹配 `origin/HEAD` 当前 baseline（当前为 `master`）；`origin/HEAD` 迁移时同步更新 ruleset、Worktrack `baseline_branch` 与本文 `last_verified`。
+必须启用 GitHub Branch Protection Ruleset：仅允许 PR 合并到 protected baseline，必须通过 CI 最小检查链与 `CODEOWNERS` review，不允许 force push 与删除。规则集匹配 `origin/HEAD` 当前 baseline（当前为 `master`）；`origin/HEAD` 迁移时同步更新 ruleset、Worktrack `baseline_branch` 与本文 `last_verified`。
 
 ## 七、本地 pre-push hook
 
@@ -54,7 +54,7 @@ hook 通过 `origin/HEAD` 动态解析 baseline（当前解析为 `origin/master
 ## 八、例外与特批
 
 - 若需跳过上述检查，须在 PR 中说明原因并获得显式批准。
-- 不允许为"过关"降低检查标准或替换证据。
+- 禁止为"过关"降低检查标准或替换证据。
 
 ## 九、相关文档
 

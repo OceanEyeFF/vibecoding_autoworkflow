@@ -13,7 +13,7 @@ last_verified: 2026-05-06
 
 ## 一、适用范围
 
-本页只覆盖轻量治理检查：markdown 相对链接可达性、关键入口文件存在性、AGENTS.md 回链、主线入口完整性、.gitignore hidden layer 忽略、frontmatter 与 status 语义、status:suspended 误用、承接关系一致性、foundations 影子文件、已退役 placeholder 回流、product/harness/ 最小 executable root 骨架、workflow-families 文档真相定位。不替代人工审阅，不检查所有 anchor 片段。根兼容入口当前只保留 `README.md`、`INDEX.md` 与 `AGENTS.md`；已退役的 `GUIDE.md` 和 `ROADMAP.md` 不再作为必需入口。
+本页覆盖轻量治理检查：markdown 相对链接可达性、关键入口文件存在性、AGENTS.md 回链、主线入口完整性、.gitignore hidden layer 忽略、frontmatter 与 status 语义、status:suspended 误用、承接关系一致性、foundations 影子文件、已退役 placeholder 回流、product/harness/ 最小 executable root 骨架、workflow-families 文档真相定位。不替代人工审阅，不检查所有 anchor 片段。根兼容入口保留 `README.md`、`INDEX.md` 与 `AGENTS.md`。已退役的 `GUIDE.md` 和 `ROADMAP.md` 不作为必需入口。
 
 ## 二、脚本入口
 
@@ -44,7 +44,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
 
 ## 五、如何理解结果
 
-返回码 `0` 通过；非 `0` 表示违规/坏链/缺失入口/`.gitignore` 回退。失败时脚本列出具体问题；`folder_logic_check.py` 输出 issue code 便于 gate 锁定。
+返回码 `0` 通过；非 `0` 表示违规/坏链/缺失入口/`.gitignore` 回退。失败时脚本列出具体问题。`folder_logic_check.py` 输出 issue code 便于 gate 锁定。
 
 ## 六、当前限制
 

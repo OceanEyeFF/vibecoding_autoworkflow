@@ -9,7 +9,7 @@ last_verified: 2026-05-08
 
 > 目的：定义 destructive reinstall model 下 `canonical source -> backend payload source -> target entry -> verify` 的最小映射合同。
 
-本页只管理映射链路、payload descriptor 最小字段及命令依赖；operator 步骤、wrapper 语义、trust boundary 见相邻文档。
+本页管理映射链路、payload descriptor 最小字段及命令依赖。operator 步骤、wrapper 语义、trust boundary 见相邻文档。
 
 ## 映射链路
 
@@ -64,4 +64,4 @@ bundle 不创建第三条链路；它只是 dispatcher 决定"同时驱动这两
 
 ## 不变量
 
-target entry 与 runtime payload 不是 source of truth；`target_dir` 必须唯一（per-root：在每个 backend 各自的 target root 内唯一，跨根的同名 skill 通过两套独立的 `target_dir` 约定区分）；映射合同只服务 destructive reinstall，不承接 archive/release channel；backend-specific 细节在 adapter 附码说明；聚合 backend (`--backend bundle`) 不放宽 `target_dir` 唯一性条款，唯一性是 per-root 不跨根。
+target entry 与 runtime payload 不是 source of truth。`target_dir` 必须唯一（per-root：在每个 backend 各自的 target root 内唯一，跨根的同名 skill 通过两套独立的 `target_dir` 约定区分）。映射合同只服务 destructive reinstall，不承接 archive/release channel。backend-specific 细节在 adapter 附码说明。聚合 backend (`--backend bundle`) 不放宽 `target_dir` 唯一性条款，唯一性是 per-root 不跨根。

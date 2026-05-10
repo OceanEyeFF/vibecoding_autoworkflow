@@ -8,7 +8,7 @@ last_verified: 2026-05-07
 
 # 初始化 Harness：已有代码项目
 
-> 适用于 target repo 已有代码（正在开发或已存在的项目），需要引入 Harness 控制面来管理后续 AI coding 工作。
+> 适用于 target repo 已有代码（正在开发或已存在），需要引入 Harness 控制面管理后续 AI coding 工作。
 
 ## 前置条件
 
@@ -31,7 +31,7 @@ npx aw-installer install --backend agents
 npx aw-installer verify --backend agents
 ```
 
-其他 backend 使用对应 `--backend` 参数；下面不重复展开 Coding CLI 内部 skill 调用示例：
+其他 backend 使用对应 `--backend` 参数：
 
 ```bash
 npx aw-installer diagnose --backend claude --json
@@ -58,7 +58,7 @@ $set-harness-goal-skill 请根据当前已有代码项目初始化 Harness，并
 
 控制面初始化后，Harness 进入 `RepoScope.Observe`。推荐路径：
 
-1. 让 Harness 观察当前状态 → `$harness-skill`
+1. 让 Harness 观察当前状态 -- `$harness-skill`
 2. 提出第一项 bounded worktrack 请求
 3. 等待 contract 和 plan 建立后执行
 4. 完成后验证、gate、closeout
@@ -67,6 +67,6 @@ $set-harness-goal-skill 请根据当前已有代码项目初始化 Harness，并
 
 ## 四、注意事项
 
-- 已有代码的项目建议先 `diagnose --json` 做只读确认，避免误覆盖已有内容
+- 已有代码的项目先 `diagnose --json` 做只读确认，避免误覆盖
 - 如果 target repo 已有 `.agents/` 或 `.claude/` 目录，`install` 前先 `update --json` 查看 diff
 - Harness 控制面（`.aw/`）是 runtime state，不提交到版本控制；skills（`.agents/skills/` 或 `.claude/skills/`）可按需提交或 gitignore

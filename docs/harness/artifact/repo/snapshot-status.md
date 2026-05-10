@@ -8,14 +8,14 @@ last_verified: 2026-05-09
 
 # Repo Snapshot / Status
 
-> RepoScope 的慢变量观测面。Snapshot/Status 捕获 repo 当前的结构化状态，作为 RepoScope.Observe 的输入和 RepoScope.Refresh 的输出。它不是实时变更日志，而是经 Refresh 算子验证后写入的阶段性状态估计。
+> `RepoScope` 的慢变量观测面。`RepoSnapshot/Status` 捕获 repo 结构化状态，作为 `RepoScope.Observe` 的输入和 `RepoScope.Refresh` 的输出。不替代实时变更日志——是经 Refresh 算子验证后写入的阶段性状态估计。
 
 ## 定位
 
 - Scope: RepoScope
 - 上游写入: repo-refresh-skill（在 worktrack closeout 后）、harness-skill（首次初始化）、repo-change-goal-skill（Goal Change 后）、milestone-status-skill（Milestone 验收后）
 - 下游消费: repo-status-skill、repo-analysis-skill、repo-whats-next-skill、milestone-status-skill
-- 与 [worktrack-backlog.md](./worktrack-backlog.md) 的区别: Snapshot 是当前快照（一个 repo 只有一个当前状态）；Backlog 是历史列表（所有 worktrack 条目按时间排列）
+- 与 [worktrack-backlog.md](./worktrack-backlog.md) 的区别: Snapshot 是当前快照（一个 repo 仅一个当前状态）；Backlog 是历史列表（所有 worktrack 条目按时间排列）。
 
 ## Required Fields
 
@@ -45,7 +45,7 @@ last_verified: 2026-05-09
 | `repo-refresh-skill` | RepoScope.Refresh | 全字段（以写入为主，写入前也会读取当前 snapshot 做 diff） | worktrack closeout 后全量刷新 snapshot |
 | `milestone-status-skill` | RepoScope.Observe | `latest_observed_checkpoint`、`last_verified_checkpoint`、`activity_summary.recent_prs` | 对照 Milestone 的 `worktrack_list` 计算进度 |
 
-Consumer 读取 Snapshot 时，若 `observed_at` 距今超过合理窗口（默认 24 小时）或 `baseline_ref` 与当前 repo 实际 HEAD 不一致，应标记为 stale 并在输出中暴露过期信号，不得将过期 snapshot 当作当前真相使用。
+Consumer 读取 Snapshot 时，若 `observed_at` 距今超过合理窗口（默认 24 小时）或 `baseline_ref` 与当前 repo 实际 HEAD 不一致，应标记为 stale 并在输出中暴露过期信号。不得将过期 snapshot 当作当前真相。
 
 ## Update Triggers
 
