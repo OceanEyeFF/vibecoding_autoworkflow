@@ -16,7 +16,7 @@ last_verified: 2026-05-08
 
 - [supervisor.md](./supervisor.md)：顶层 supervisor 入口
 - [repo.md](./repo.md)：RepoScope 能力入口
-- [init-milestone-skill.md](./init-milestone-skill.md)：Init Milestone Skill，Milestone 初始化/注册算子（待创建 catalog 条目）
+- [init-milestone-skill.md](./init-milestone-skill.md)：Init Milestone Skill，Milestone 初始化/注册算子
 - [milestone-status-skill.md](./milestone-status-skill.md)：Milestone Status Skill，独立 Milestone 分析器
 - [worktrack.md](./worktrack.md)：WorktrackScope 能力入口
 - [skill-impact-matrix.md](./skill-impact-matrix.md)：Skill Impact Matrix，记录 Harness 合同变更对 canonical skills 的影响分析与同步追踪
