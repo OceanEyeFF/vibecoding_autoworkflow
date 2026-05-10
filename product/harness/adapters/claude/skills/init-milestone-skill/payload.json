@@ -15,8 +15,7 @@
   "reference_distribution": "copy-listed-canonical-paths",
   "required_payload_files": [
     "SKILL.md",
-    "payload.json",
-    "aw.marker"
+    "payload.json"
   ],
   "legacy_target_dirs": [
     "aw-init-milestone-skill"

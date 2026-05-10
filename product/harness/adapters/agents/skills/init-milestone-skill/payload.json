@@ -18,7 +18,6 @@
   "reference_distribution": "copy-listed-canonical-paths",
   "required_payload_files": [
     "SKILL.md",
-    "payload.json",
-    "aw.marker"
+    "payload.json"
   ]
 }
