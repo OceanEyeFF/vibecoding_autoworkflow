@@ -18,22 +18,23 @@ last_verified: 2026-05-11
 2026-05-11 已核对 npm registry：
 
 - **版本号纠正**：`4.4.x` 系列（`v4.4.0`、`v4.4.0-rc.0`、`v4.4.1-rc.0`、`v4.4.1-rc.1`、`v4.4.1`）为错误发布的版本号，不进入 semver 主序列
-- npm registry 真实状态：`latest` -> `0.4.5`，`next` -> `0.5.1-rc.1`，历史已发布版本 `0.4.0-rc.1` ~ `0.5.1-rc.1`
+- npm registry 真实状态：`latest` -> `0.4.5`，`next` -> `0.5.1-rc.2`，历史已发布版本 `0.4.0-rc.1` ~ `0.5.1-rc.2`
 - GitHub Release `v0.4.5` 已发布，target commit `c7f9a31a184602c8500038998c41565dce8d4972`；npm `aw-installer@0.4.5` 的 `gitHead` 同为 `c7f9a31a184602c8500038998c41565dce8d4972`
 - GitHub Release `v0.5.0-rc.0` 已发布，target commit `c7683fc9767cb66b123fb4ba493ea539791392d7`；npm `aw-installer@0.5.0-rc.0` 的 `gitHead` 同为 `c7683fc9767cb66b123fb4ba493ea539791392d7`
 - GitHub Release `v0.5.0-rc.1` 已发布，target commit `f7728bb9c0f463376a85585e18812f931087531b`；npm `aw-installer@0.5.0-rc.1` 的 `gitHead` 同为 `f7728bb9c0f463376a85585e18812f931087531b`
 - GitHub Release `v0.5.1-rc.0` 已发布，target commit `039301689a2fb74922fc67edc86b0a194633628a`；npm `aw-installer@0.5.1-rc.0` 的 `gitHead` 同为 `039301689a2fb74922fc67edc86b0a194633628a`
 - GitHub Release `v0.5.1-rc.1` 已发布，target commit `d2b6fd53b69f3f9bdbe10b547872eca942ad723a`；npm `aw-installer@0.5.1-rc.1` 的 `gitHead` 同为 `d2b6fd53b69f3f9bdbe10b547872eca942ad723a`
+- GitHub Release `v0.5.1-rc.2` 已发布，target commit `e5c774eb5763faee8b6c658f02d3b4f59d3ce0c9`；npm `aw-installer@0.5.1-rc.2` 的 `gitHead` 同为 `e5c774eb5763faee8b6c658f02d3b4f59d3ce0c9`
 
 ## 当前 source release tuple
 
-2026-05-11，本地 source tuple 已准备为 `v0.5.1-rc.2` 的 `next` channel candidate；registry published fact 仍以上一已发布版本为准：
+2026-05-11，本地 source tuple 已发布为 `v0.5.1-rc.2` 的 `next` channel release：
 
 - root `package.json` version：`0.5.1-rc.2`
 - local scaffold `toolchain/scripts/deploy/package.json` version：`0.5.1-rc.2`
 - approval lock：`approvedVersion=0.5.1-rc.2`、`approvedGitTag=v0.5.1-rc.2`、`approvedChannel=next`
-- candidate status：pre-publish local candidate，尚未创建 `v0.5.1-rc.2` GitHub Release，尚未写入 npm registry
-- latest published `next` fact：`aw-installer@0.5.1-rc.1`，target commit `d2b6fd53b69f3f9bdbe10b547872eca942ad723a`，tarball URL `https://registry.npmjs.org/aw-installer/-/aw-installer-0.5.1-rc.1.tgz`
+- GitHub Release 使用 prerelease，target commit `e5c774eb5763faee8b6c658f02d3b4f59d3ce0c9`，publish workflow run `25675258482` 已成功
+- npm `aw-installer@0.5.1-rc.2` 已发布到 `next` dist-tag，tarball URL：`https://registry.npmjs.org/aw-installer/-/aw-installer-0.5.1-rc.2.tgz`
 
 注意：`0.5.1-rc.2` 是 prerelease，不改变 stable selector；默认 `aw-installer` 仍解析到 `latest` 的 `0.4.5`，RC 试用必须显式使用 `aw-installer@next`。
 
