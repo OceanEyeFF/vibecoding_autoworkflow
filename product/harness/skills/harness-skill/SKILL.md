@@ -256,7 +256,7 @@ WorktrackScope 控制回路（局部状态转移）：               Init (init-
 
 其中 `Close` 绑定到 `close-worktrack-skill`，`Recover` 绑定到 `recover-worktrack-skill`。
 
-`Observe` 阶段的默认绑定为 `repo-status-skill`。当 `repo-status-skill` 输出 `active_milestone` 非空时，Harness 必须在 Observe→Decide 之间追加绑定 `milestone-status-skill`，获取 `milestone_acceptance_verdict`、`proceed_blockers`、`handback_required`、`milestone_input_checkpoint` 等 Milestone 级裁决字段后再进入 `repo-whats-next-skill` 的 Decide 判定。收到 `milestone_input_checkpoint` 后应将其写回 control-state 的 `Baseline Traceability.milestone_input_checkpoint` 供下一轮幂等性对比。若无活跃 Milestone，跳过此额外绑定。
+`Observe` 阶段的默认绑定为 `repo-status-skill`。当 `repo-status-skill` 输出 `active_milestone` 非空时，Harness 必须在 Observe→Decide 之间追加绑定 `milestone-status-skill`，获取 `milestone_acceptance_verdict`、`milestone_gate_verdict`、`proceed_blockers`、`handback_required`、`milestone_input_checkpoint` 等 Milestone 级裁决字段后再进入 `repo-whats-next-skill` 的 Decide 判定。收到 `milestone_input_checkpoint` 后应将其写回 control-state 的 `Baseline Traceability.milestone_input_checkpoint` 供下一轮幂等性对比。若无活跃 Milestone，跳过此额外绑定。
 
 **控制目标**：维护 Repo 的长期基线稳定，判断是否需要进入局部执行。
 
@@ -315,6 +315,8 @@ Gate 应汇总**正交校验面**的裁决：
 
 最后由汇总 `gate-skill` 生成最终 verdict。
 
+对 milestone 而言，所有 worktrack 各自通过 closeout gate 后，还存在一个独立的 **Milestone Gate**。它是 goal-driven milestone 的 RepoScope 集成验收层，位于“全部 worktrack 关闭”之后、“`purpose_achieved` 判定”之前；必须同时覆盖 black-box、white-box 和 anti-cheat 三类检查。`Milestone Gate` 不能替代 worktrack gate，只能作为上层集成放行条件。只要 `milestone_gate_verdict != "pass"`，Harness 就必须阻断 milestone closeout 并 handback。
+
 ---
 
 ## 九、何时使用
@@ -363,6 +365,7 @@ Gate 应汇总**正交校验面**的裁决：
 
    **关键约束**：`ChangeGoal` 不由常规 Decide 选择。目标变更由外部请求触发，完成后系统重新进入 Observe。
    **work-collection 路由差异**：当 active milestone 为 work-collection 类型时，milestone achieved 后不触发 handback，自动推进 pipeline（标记 superseded → 选择下一 planned milestone 或清空 active_milestone → 继续 Observe）。
+   **milestone brief 约束**：当 `repo-whats-next-skill` 建议 `create` / `activate` / `append_worktracks` 时，Harness 必须先把结构化 `milestone brief` 交给 programmer 确认；未确认前不得绑定 `init-milestone-skill` 去激活 goal-driven milestone，也不得把建议视为已获批自动继续。
 3. 在 `WorktrackScope` 下，评估是否需要：
    - `Init`（初始化局部状态）
    - `Observe`（状态估计）
@@ -423,13 +426,14 @@ Gate 应汇总**正交校验面**的裁决：
 6. **Milestone 状态写回**：收到 `milestone-status-skill` 输出后，`harness-skill` 必须执行以下写回动作（按 `milestone_kind` 分化）：
    - **Milestone Artifact 更新**（`.aw/milestone/{milestone_id}.md`）：
      - 将 `progress_counter` 更新为 milestone-status-skill 计算的值（total/completed/blocked/deferred）
-     - goal-driven 且 `milestone_acceptance_verdict == "achieved"` 且双重验收通过：将 `status` 从 `active` 更新为 `completed`
+     - goal-driven 且 `milestone_acceptance_verdict == "achieved"`、`milestone_gate_verdict == "pass"` 且双重验收通过：将 `status` 从 `active` 更新为 `completed`
      - work-collection 且 `milestone_acceptance_verdict == "achieved"`（worktrack_list_finished == true）：将 `status` 从 `active` 更新为 `completed`，随后自动标记为 `superseded`
      - 更新 `updated` 时间戳
      - 不修改 `progress_counter` 以外的派生字段
    - **Control State 更新**：
      - 写入 `milestone_input_checkpoint` 到 `Baseline Traceability`
      - 若 milestone 状态变更（active→completed）：更新 `milestone_status` 和 `milestone_pipeline_summary`
+     - 若 `completion_signals`、`acceptance_criteria` 或 `completion_threshold_pct` 在本轮被上游修改：必须使旧的 milestone 完成结论失效，并强制重新进入下一轮 `milestone-status-skill` 观察
    - **Pipeline 推进**（仅在 milestone achieved 后，按 `milestone_kind` 分化）：
      - goal-driven：handback 等 programmer 验收，不自动推进
      - work-collection：不触发 handback，自动推进 pipeline
@@ -437,6 +441,7 @@ Gate 应汇总**正交校验面**的裁决：
      - 若存在符合条件的下一 planned milestone：更新其 status 为 `active`，更新 control-state 的 `active_milestone`
      - 若不存在：清空 control-state 的 `active_milestone`
    - **Milestone Backlog 更新**：将上述 status 变更同步 upsert 到 `.aw/repo/milestone-backlog.md`；work-collection milestone 完成时写入 `status: superseded`
+   - 若 `milestone_gate_verdict != "pass"`：不得把 Milestone 标记为完成，不得自动推进 pipeline，必须返回 `handback_required = true` 并暴露阻断原因
    - 不得跳过 milestone progress writeback；不得在 `milestone_acceptance_verdict` 未达成时变更 milestone status
 7. 如果命中正式停止条件 → 向程序员返回控制权
 8. 不要直接把子代理的返回结果当成状态更新的唯一依据；必须经过 Gate 裁决

@@ -40,6 +40,7 @@ last_verified: 2026-05-11
 | `activation_rules` | string | 自动激活条件（optional，harness-inferred）；描述 harness 可自动激活的前提，空值表示仅 manual |
 | `created_by` | enum | `programmer` / `harness` — 创建来源 |
 | `milestone_kind` | enum | `goal-driven` / `work-collection` — milestone 类型，默认 `goal-driven` |
+| `completion_threshold_pct` | integer | goal-driven milestone 的完成阈值百分比，默认 `100`；仅当 `signal_satisfaction_pct` 与 `criteria_pass_pct` 均达到该阈值时，`purpose_achieved == true` |
 
 ## Milestone 类型分化
 
@@ -51,8 +52,9 @@ last_verified: 2026-05-11
 | purpose | programmer 定义，有语义含量 | `"工作集合 {milestone_id}"`（无特异性） |
 | completion_signals | programmer 定义 | 自动生成 = worktrack_list 逐条映射 |
 | acceptance_criteria | programmer 定义 | 空（不适用） |
-| 验收模型 | 双重验收（worktrack_list_finished + purpose_achieved） | 单重验收（仅 worktrack_list_finished） |
-| purpose_achieved 判定 | 逐 signal/criterion 验证，100% 才通过 | 声明跳过，验收下沉到各 worktrack 的 Gate |
+| completion_threshold_pct | programmer 定义，默认 `100` | 声明跳过（不适用） |
+| 验收模型 | 双重验收（worktrack_list_finished + purpose_achieved；`purpose_achieved` 前置 Milestone Gate） | 单重验收（仅 worktrack_list_finished） |
+| purpose_achieved 判定 | 逐 signal/criterion 验证；`signal_satisfaction_pct` 与 `criteria_pass_pct` 均需 `>= completion_threshold_pct` | 声明跳过，验收下沉到各 worktrack 的 Gate |
 | completed 后行为 | handback 等 programmer 验收 | 自动完成，不触发 handback |
 | pipeline 优先级 | 按 priority 字段 | 始终最低，不阻塞 goal-driven milestone |
 | 生命周期 | 完整四态（planned → active → completed → superseded） | 同四态，但 completed 后自动 superseded |
@@ -69,7 +71,7 @@ planned ──→ active ──→ completed
 
 - **planned**: 已创建，尚未激活。等待前置 milestone 完成或 programmer 手动激活。
 - **active**: 当前正在推进，worktrack 执行中。同一时刻仅允许一个 active milestone。
-- **completed**: 目的达成（goal-driven: `purpose_achieved == true` + `worktrack_list_finished == true`；work-collection: `worktrack_list_finished == true`）。验收通过后由 `harness-skill` 执行状态转移。
+- **completed**: 目的达成（goal-driven: `worktrack_list_finished == true`，且 `Milestone Gate == pass`，且 `purpose_achieved == true`；work-collection: `worktrack_list_finished == true`）。验收通过后由 `harness-skill` 执行状态转移。
 - **superseded**: 被更新的 milestone 替换（programmer override），保留历史但不参与激活队列。work-collection milestone 在 completed 后自动标记为 superseded。
 
 ## Pipeline 语义
@@ -83,6 +85,7 @@ Milestone 作为 Pipeline 中的节点，遵循以下规则：
 - work-collection milestone（`milestone_kind == "work-collection"`）的 priority 始终视为最低，不阻塞 goal-driven milestone 的激活
 - `priority` 同值时按 `updated` 时间排序
 - `activation_rules` 非空时，harness 可在满足描述的条件后自动激活；空值表示需 programmer 显式审批
+- goal-driven milestone 在 `planned` → `active` 前，harness 必须先输出结构化激活 brief 并等待 programmer 确认；work-collection milestone 可继续按既有自动激活语义推进
 
 完整 Pipeline 编排规则（upsert 语义、tie-breaker、激活顺序）以 [milestone-backlog.md](../repo/milestone-backlog.md#Pipeline 语义) 为权威源。
 
@@ -94,18 +97,54 @@ Milestone 作为 Pipeline 中的节点，遵循以下规则：
 - programmer 和 harness 均可写入，同时间戳 programmer 优先
 - `superseded` 状态是 override 的一种形式：创建新 milestone 时可标记旧 milestone 为 superseded
 
+## 标准稳定性规则
+
+- 修改 `completion_signals`、`acceptance_criteria` 或 `completion_threshold_pct` 时，视为 milestone 完成合同被改写；harness 必须将此前的 `purpose_achieved` 结论视为失效，并触发 milestone 重新评估。
+- 追加 worktrack 到 `worktrack_list` 不自动触发 milestone 重新评估，前提是 harness 已确认该 worktrack 归属当前 milestone 的 `purpose`/`completion_signals`/`acceptance_criteria`。
+- 若追加的 worktrack 不归属当前 milestone，harness 应建议 programmer 将其归入其他现有 milestone，或创建新的 milestone；不得通过放宽当前 milestone signals/criteria 来静默吸收。
+
+## 激活前规划简报
+
+goal-driven milestone 在激活前，harness 必须向 programmer 输出结构化 brief，最少包含：
+
+- `goal` / `purpose`
+- `completion_signals`
+- `acceptance_criteria`
+- `worktrack_list`
+- `completion_threshold_pct`
+- `depends_on_milestones`
+- `activation_reason`
+- `developer_decision_boundary`
+
+brief 发出后，harness 必须等待 programmer 确认，方可执行 `planned` → `active`。该确认是激活边界，不引入第三 Scope。work-collection milestone 可输出同结构 brief 作为可观察性信息，但不阻塞其自动激活语义。
+
 ## 验收模型
 
 Milestone 验收模型由 `milestone_kind` 决定：
 
 ### goal-driven：双重验收模型
 
-goal-driven milestone 完成判定必须同时满足两个条件：
+goal-driven milestone 完成判定必须满足以下顺序约束：
 
 1. **worktrack_list_finished**: 声明的 worktrack 列表已完成 / 被明确移出 / 阻塞有决策
-2. **purpose_achieved**: Milestone 原始目的是否经聚合 evidence 证明达成
+2. **Milestone Gate**: 所有声明的 worktrack 关闭后，先执行 milestone 级集成验证
+3. **purpose_achieved**: Milestone 原始目的是否经聚合 evidence 证明达成
 
-两者缺一时不得自动判定 Milestone 完成。
+其中：
+
+- `Milestone Gate` 是独立的 milestone 级验证层，最少包含黑盒测试、白盒测试和反作弊检测。
+- `signal_satisfaction_pct` = 已满足的 `completion_signals` 数 / 总 `completion_signals` 数。
+- `criteria_pass_pct` = 已通过的 `acceptance_criteria` 数 / 总 `acceptance_criteria` 数。
+- `purpose_achieved == true` 仅当 `signal_satisfaction_pct >= completion_threshold_pct` 且 `criteria_pass_pct >= completion_threshold_pct`。默认阈值 `completion_threshold_pct = 100`。
+
+任一环节未通过时，不得自动判定 Milestone 完成。
+
+### Milestone Gate 与 Worktrack Gate 的分层关系
+
+- Worktrack Gate 位于 `WorktrackScope`，负责单个 worktrack 的 closeout 裁决。
+- Milestone Gate 位于 `RepoScope` 的 milestone 验收路径中，只在相关 worktrack 全部关闭后运行，验证跨 worktrack 的集成结果。
+- Milestone Gate 不回溯替代 Worktrack Gate；它消费各 worktrack Gate 产出的 evidence，并补充 milestone 级黑盒/白盒/反作弊检查。
+- 该分层仍属于既有 `RepoScope` / `WorktrackScope` 结构，不创建第三 Scope。
 
 ### work-collection：单重验收模型
 
@@ -113,7 +152,7 @@ work-collection milestone 完成判定仅需满足：
 
 1. **worktrack_list_finished**: 声明的 worktrack 列表已完成 / 被明确移出 / 阻塞有决策
 
-`purpose_achieved` 声明跳过（恒为 true）。验收下沉到各 worktrack 的 Gate——每个 worktrack 的 Gate 裁决结果即为其验收证据。Milestone 级不再追加深层语义验证。
+`purpose_achieved` 声明跳过（恒为 true），`completion_threshold_pct` 与 Milestone Gate 均不适用。验收下沉到各 worktrack 的 Gate——每个 worktrack 的 Gate 裁决结果即为其验收证据。Milestone 级不再追加深层语义验证。
 
 ## 与 Worktrack 的关系
 
