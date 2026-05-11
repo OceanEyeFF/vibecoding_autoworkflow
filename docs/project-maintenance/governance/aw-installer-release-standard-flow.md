@@ -15,7 +15,7 @@ Manages branch/merge sequence, GitHub Release creation, publish workflow observa
 
 ## Preconditions
 
-Only start after passing Pre-Publish Governance, tuple still satisfies Channel Governance, root `package.json` has approved version+lock, and release notes are ready.
+Only start after passing Pre-Publish Governance, tuple still satisfies Channel Governance, root `package.json` has approved version+lock, and release notes are ready. If the release requires a version change, complete [Prepare Candidate Version](./aw-installer-pre-publish-governance.md#0-prepare-candidate-version) before opening or updating the release PR.
 
 For `develop-main -> master` release PRs, confirm the PR title/body version, root package version, local scaffold version, approval lock, CLI `--version`, intended channel, and release marker all describe the same candidate. If they do not, stop before approval or merge, fix the tuple on `develop-main`, rerun preflight, and push the correction to the PR.
 

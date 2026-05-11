@@ -1,9 +1,9 @@
 ---
 title: "Milestone Backlog"
 status: active
-updated: 2026-05-10
+updated: 2026-05-11
 owner: aw-kernel
-last_verified: 2026-05-10
+last_verified: 2026-05-11
 ---
 
 # Milestone Backlog
@@ -34,6 +34,7 @@ last_verified: 2026-05-10
 - `updated`: 最后更新时间（ISO 8601）
 - `updated_by`: 最后修改者
 - `activation_rules`: 自动激活条件（optional，harness-inferred）
+- `milestone_kind`: `goal-driven` / `work-collection` — 默认 `goal-driven`
 
 ## Pipeline 语义
 
@@ -55,4 +56,5 @@ last_verified: 2026-05-10
 - 条目按 priority（升序）→ created_at（升序）排列
 - `harness-skill` 在 milestone closeout 或 pipeline advancement 时更新条目 status
 - `superseded` 条目保留原状直到 programmer 手动清理
-- 仅当 `milestone_acceptance_verdict == achieved`（双重验收通过）时，`Harness-skill` 可将 `active` → `completed`
+- work-collection milestone（`milestone_kind == "work-collection"`）在 `completed` 后自动标记为 `superseded`，不阻塞 pipeline
+- 仅当 `milestone_acceptance_verdict == achieved`（goal-driven 双重验收通过；work-collection 单重验收通过）时，`Harness-skill` 可将 `active` → `completed`

@@ -362,6 +362,7 @@ Gate 应汇总**正交校验面**的裁决：
    - `Init`（进入 WorktrackScope）
 
    **关键约束**：`ChangeGoal` 不由常规 Decide 选择。目标变更由外部请求触发，完成后系统重新进入 Observe。
+   **work-collection 路由差异**：当 active milestone 为 work-collection 类型时，milestone achieved 后不触发 handback，自动推进 pipeline（标记 superseded → 选择下一 planned milestone 或清空 active_milestone → 继续 Observe）。
 3. 在 `WorktrackScope` 下，评估是否需要：
    - `Init`（初始化局部状态）
    - `Observe`（状态估计）
@@ -419,20 +420,23 @@ Gate 应汇总**正交校验面**的裁决：
 3. 如果是 `失败/阻塞` → 进入 `Recover`
 4. **文档追平收口**：在 Close、handback 或 release/post-smoke 收口前，如果本轮改变了代码版本、package/release 事实、git/SVN baseline、deploy/adapter 行为、验证命令或 operator-facing 文档，必须调用或显式安排 `doc-catch-up-worker-skill`；版本事实场景使用 `version fact sync`，并记录 source version、published version、VCS tracking facts 与未更新文档理由。如果 `doc-catch-up` 成功执行，将当前 git hash 写入 `.aw/control-state.md` 的 `Baseline Traceability.last_doc_catch_up_checkpoint`，作为下次文档 freshness 检查的对比锚点
 5. **长期权限配置写回**：如果本轮经程序员明确批准了持久权限、自动性或分派策略变更，必须把配置事实写回 `.aw/control-state.md` 的 `Approval Boundary`、`Continuation Authority` 或 `Autonomy Ledger`，并记录审批理由；一次性审批只能写入本轮 evidence / handoff，不得伪装成长期默认配置。
-6. **Milestone 状态写回**：收到 `milestone-status-skill` 输出后，`harness-skill` 必须执行以下写回动作：
+6. **Milestone 状态写回**：收到 `milestone-status-skill` 输出后，`harness-skill` 必须执行以下写回动作（按 `milestone_kind` 分化）：
    - **Milestone Artifact 更新**（`.aw/milestone/{milestone_id}.md`）：
      - 将 `progress_counter` 更新为 milestone-status-skill 计算的值（total/completed/blocked/deferred）
-     - 若 `milestone_acceptance_verdict == "achieved"` 且双重验收通过：将 `status` 从 `active` 更新为 `completed`
+     - goal-driven 且 `milestone_acceptance_verdict == "achieved"` 且双重验收通过：将 `status` 从 `active` 更新为 `completed`
+     - work-collection 且 `milestone_acceptance_verdict == "achieved"`（worktrack_list_finished == true）：将 `status` 从 `active` 更新为 `completed`，随后自动标记为 `superseded`
      - 更新 `updated` 时间戳
      - 不修改 `progress_counter` 以外的派生字段
    - **Control State 更新**：
      - 写入 `milestone_input_checkpoint` 到 `Baseline Traceability`
      - 若 milestone 状态变更（active→completed）：更新 `milestone_status` 和 `milestone_pipeline_summary`
-   - **Pipeline 推进**（仅在 milestone achieved 后）：
+   - **Pipeline 推进**（仅在 milestone achieved 后，按 `milestone_kind` 分化）：
+     - goal-driven：handback 等 programmer 验收，不自动推进
+     - work-collection：不触发 handback，自动推进 pipeline
      - 读取 `milestone-status-skill` 输出的 `pipeline_advancement`
      - 若存在符合条件的下一 planned milestone：更新其 status 为 `active`，更新 control-state 的 `active_milestone`
      - 若不存在：清空 control-state 的 `active_milestone`
-   - **Milestone Backlog 更新**：将上述 status 变更同步 upsert 到 `.aw/repo/milestone-backlog.md`
+   - **Milestone Backlog 更新**：将上述 status 变更同步 upsert 到 `.aw/repo/milestone-backlog.md`；work-collection milestone 完成时写入 `status: superseded`
    - 不得跳过 milestone progress writeback；不得在 `milestone_acceptance_verdict` 未达成时变更 milestone status
 7. 如果命中正式停止条件 → 向程序员返回控制权
 8. 不要直接把子代理的返回结果当成状态更新的唯一依据；必须经过 Gate 裁决
@@ -515,6 +519,15 @@ Close/Refresh 完成 → 状态更新阶段
 | `clear-stale-reference` | milestone artifact 文件存在但不在 backlog 中 | 按 artifact 文件重建 backlog 条目（保留原始 created_at/created_by） |
 
 检测到以上任一情况时，`harness-skill` 应标记为 `pipeline_corruption_detected` 并执行相应恢复动作。恢复后重新绑定 `milestone-status-skill` 做完整状态评估。若自动恢复失败（如 artifact 文件本身损坏），必须 handback 等待 programmer 介入。
+
+### Work-Collection 专属恢复
+
+work-collection milestone（`milestone_kind == "work-collection"`）在以下场景有专属恢复路径：
+
+| 恢复动作 | 触发条件 | 操作 |
+|---------|---------|------|
+| `defer-and-close` | work-collection 内单个 worktrack 阻塞且无法推进 | 将该 worktrack 标记为 deferred，完成剩余 worktrack 后正常关闭 milestone（标记 superseded）；被 defer 的 worktrack 由 programmer 决定重新归入或放弃 |
+| `dissolve-collection` | work-collection 内所有 worktrack 均阻塞或 deferred | 关闭 milestone（标记 superseded），将所有 worktrack 释放为未归属状态，等待 programmer 重新分配 |
 
 ---
 
