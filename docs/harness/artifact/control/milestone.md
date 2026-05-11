@@ -157,6 +157,7 @@ work-collection milestone 完成判定仅需满足：
 ## 与 Worktrack 的关系
 
 - Milestone 引用 Worktrack，不控制 Worktrack 内部状态转移。
+- goal-driven milestone 以逐 worktrack 聚合方式推进：每个 current worktrack 建立独立 branch、contract、plan-task-queue、gate evidence、closeout 和 repo-refresh 追踪，然后将结果汇入 milestone 聚合状态。
 - Worktrack closeout 后，Milestone progress counter 更新。
 - 不替代 `WorktrackContract` 或 `PlanTaskQueue`。
 

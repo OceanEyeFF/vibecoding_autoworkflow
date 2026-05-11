@@ -95,6 +95,7 @@ Harness 本体属于控制平面。
 - goal-driven milestone 在 `planned` → `active` 前，harness 必须先向 programmer 输出结构化 brief（goal / signals / criteria / worktrack list / threshold / dependencies / activation reason）并等待确认；work-collection milestone 维持既有自动激活语义
 - 修改 milestone 的 `completion_signals`、`acceptance_criteria` 或 `completion_threshold_pct` 时，必须重新评估 milestone；仅追加归属当前 milestone 的 worktrack 不触发该重评估
 - `milestone-status-skill` 负责进度观测，`harness-skill` 负责状态转移和 pipeline 推进
+- goal-driven milestone 的执行推进以逐 worktrack 闭环为节奏：当前轮次从 `worktrack_list` 中选择一个 current worktrack，为其建立独立 branch、contract、plan、verify、closeout 与 repo-refresh 追踪；闭环完成后再返回 milestone 上下文继续推进
 - 详细合同见 [milestone.md](../artifact/control/milestone.md) 和 [milestone-backlog.md](../artifact/repo/milestone-backlog.md)
 
 ### WorktrackScope
@@ -149,6 +150,8 @@ RepoScope.Observe (含 milestone pipeline 状态)
     └─→ milestone 未完成 → 继续当前 milestone 的下一 worktrack
 ```
 
+每个 current worktrack 都走自己的完整闭环；milestone 通过这些独立闭环的累计结果形成聚合进度、Milestone Gate 输入和最终完成判定。
+
 `PR` 不是闭环终点。完整 closeout：
 
 ```text
@@ -160,6 +163,7 @@ Milestone 验收分层：
 - Worktrack Gate 属于 `WorktrackScope.Judge`，裁决单个 worktrack 是否允许 closeout。
 - Milestone Gate 属于 `RepoScope.Observe` 的 milestone 集成验证步骤，只在相关 worktrack 全部关闭后执行。
 - Milestone Gate 消费已关闭 worktrack 的 gate evidence，并补充 milestone 级黑盒/白盒/反作弊检查；它不替代 worktrack gate，也不引入第三 Scope。
+- 每个 worktrack 的 closeout record、repo-refresh checkpoint 和 gate evidence 共同构成 milestone 级聚合输入，使逐项执行与 milestone 完成语义保持连续可追踪。
 
 ## 五、正式对象
 

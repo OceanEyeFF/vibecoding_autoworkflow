@@ -74,6 +74,7 @@ last_verified: 2026-05-11
 - work-collection milestone 保持既有自动激活语义；可输出同结构 brief 作为信息提示，但不形成阻塞确认边界。
 - 若本次 upsert 修改了 `completion_signals`、`acceptance_criteria` 或 `completion_threshold_pct`，必须输出 `milestone_reevaluation_required = true`，并要求后续由 `milestone-status-skill` 重新评估 milestone。
 - 若仅向 `worktrack_list` 追加 worktrack，且该 worktrack 已确认归属当前 milestone 的 `purpose`/`signals`/`criteria`，则不触发 milestone 重新评估。
+- 追加进入当前 milestone 的 worktrack 以独立执行单元形式推进：专属 branch、contract、queue、evidence、closeout 和 repo-refresh 追踪由下游 `init-worktrack-skill` / closeout 路径承接。
 - 若追加的 worktrack 不归属当前 milestone，`ownership_review` 必须返回 `suggest_other_milestone` 或 `suggest_new_milestone`；不得通过静默改写当前 milestone 定义来吸收该 worktrack。
 
 ## 调用时机
