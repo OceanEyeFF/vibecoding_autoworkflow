@@ -45,15 +45,25 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 8. 计算 Milestone 进度计数器：
    - 遍历 `worktrack_list`，对照 backlog 统计 total / completed / blocked / deferred 数量
    - 计算 `completion_pct`
-9. 执行双重验收检查：
-   - **worktrack_list_finished**：声明的 worktrack 列表是否全部处理（已完成 / 被明确移出 / 阻塞有决策）
-   - **purpose_achieved**：Milestone 原始目的是否经聚合 evidence 证明达成（对照 `completion_signals` 和 `acceptance_criteria`）
-10. 根据双重验收结果判定 `milestone_acceptance_verdict`：
-    - `achieved`：两者同时满足
-    - `not_achieved`：worktrack 列表未处理完成，或目的未达成
+9. 执行双重验收检查（受 `milestone_kind` 控制）：
+   - 读取 Milestone artifact 的 `milestone_kind` 字段，默认值 `goal-driven`
+   - **goal-driven**：执行完整双重验收
+     - **worktrack_list_finished**：声明的 worktrack 列表是否全部处理（已完成 / 被明确移出 / 阻塞有决策）
+     - **purpose_achieved**：Milestone 原始目的是否经聚合 evidence 证明达成（对照 `completion_signals` 和 `acceptance_criteria`，按 `purpose_achieved 操作化判定` 章节逐条验证）
+   - **work-collection**：执行单重验收
+     - **worktrack_list_finished**：同上
+     - **purpose_achieved**：显式声明跳过（恒为 true）。记录："work-collection milestone，验收下沉到各 worktrack Gate"
+   - `verification_model_used`：`dual`（goal-driven）或 `single`（work-collection）
+10. 根据验收结果判定 `milestone_acceptance_verdict`：
+    - `achieved`：
+      - goal-driven：worktrack_list_finished 且所有 completion_signals 为 satisfied（100%）且所有 acceptance_criteria 为 met（100%）
+      - work-collection：worktrack_list_finished == true
+    - `not_achieved`：worktrack 列表未处理完成，或（goal-driven）目的未达成
     - `blocked`：存在不可推进的阻塞项
     - `deferred`：存在被明确推迟的 worktrack 且不影响目的达成判定
-11. 判断 `handback_required`：当 `milestone_acceptance_verdict` 为 `achieved` 或 `blocked` 时，触发 Milestone 验收边界，handback 为 true。
+11. 判断 `handback_required`：
+    - goal-driven：当 `milestone_acceptance_verdict` 为 `achieved` 或 `blocked` 时，触发 Milestone 验收边界，handback 为 true
+    - work-collection：始终为 false（即使 achieved 也不触发 handback）
 12. 给出 `release_version_consideration` hint：基于 Milestone 目的达成情况和 completion_signals 满足程度，给出对 version bump 或 release 的提示性建议（不接管 decision）。
 13. 明确 `developer_decisions_needed`：列出必须由 developer 做出的决定（如"前置依赖未完成，是否跳过"、"purpose_achieved 存疑，是否手动判定"等）。
 14. 生成 `recommendations`：对 `RepoScope.Decide` 的建议（如"建议 handback 让 developer 验收"、"建议推进到下一 Milestone"、"建议补充 evidence 后重新检查"）。
@@ -98,7 +108,7 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 遵循 [docs/harness/foundations/skill-common-constraints.md] 中定义的公共约束 C-1 至 C-7。
 
 - 不膨胀 harness-skill：harness-skill 继续只做 supervisor，本技能是独立的 Milestone 分析器，由 harness-skill 在需要时调用。
-- Milestone 完成判定必须通过双重验收模型（worktrack_list_finished + purpose_achieved）：两者缺一时不得自动判定 Milestone 完成。
+- Milestone 完成判定必须通过双重验收模型（worktrack_list_finished + purpose_achieved）：goal-driven milestone 两者缺一时不得自动判定完成。work-collection milestone 仅需 worktrack_list_finished，purpose_achieved 声明跳过，验收下沉到各 worktrack Gate。
 - Milestone 是 RepoScope 下的聚合观测变量，不是第三 Scope：不得创建独立 Scope、不得创建独立状态转移路径。
 - `developer_decisions_needed` 中的项目不得由本技能自动判定；它们必须作为显式边界交还给 developer。
 - 如果 `depends_on_milestones` 中的前置 Milestone 未完成，必须标记为 blocked 并在 `developer_decisions_needed` 中列出是否跳过前置依赖的决策。
@@ -122,6 +132,8 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 
 - `milestone_id`
 - `milestone_title`
+- `milestone_kind`：goal-driven / work-collection
+- `verification_model_used`：dual / single
 - `milestone_status`：planned / active / completed / superseded
 - `progress`：
   - `total`：声明的 worktrack 总数

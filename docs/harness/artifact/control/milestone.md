@@ -1,9 +1,9 @@
 ---
 title: "Milestone Artifact"
 status: active
-updated: 2026-05-10
+updated: 2026-05-11
 owner: aw-kernel
-last_verified: 2026-05-10
+last_verified: 2026-05-11
 ---
 
 # Milestone Artifact
@@ -39,6 +39,23 @@ last_verified: 2026-05-10
 | `priority` | integer | Pipeline 中的优先级（数值越小优先级越高） |
 | `activation_rules` | string | 自动激活条件（optional，harness-inferred）；描述 harness 可自动激活的前提，空值表示仅 manual |
 | `created_by` | enum | `programmer` / `harness` — 创建来源 |
+| `milestone_kind` | enum | `goal-driven` / `work-collection` — milestone 类型，默认 `goal-driven` |
+
+## Milestone 类型分化
+
+`milestone_kind` 决定 milestone 的验证模型与生命周期行为：
+
+| 维度 | goal-driven | work-collection |
+|------|------------|----------------|
+| 创建来源 | programmer（或 programmer 确认后的 harness） | harness 自动创建 |
+| purpose | programmer 定义，有语义含量 | `"工作集合 {milestone_id}"`（无特异性） |
+| completion_signals | programmer 定义 | 自动生成 = worktrack_list 逐条映射 |
+| acceptance_criteria | programmer 定义 | 空（不适用） |
+| 验收模型 | 双重验收（worktrack_list_finished + purpose_achieved） | 单重验收（仅 worktrack_list_finished） |
+| purpose_achieved 判定 | 逐 signal/criterion 验证，100% 才通过 | 声明跳过，验收下沉到各 worktrack 的 Gate |
+| completed 后行为 | handback 等 programmer 验收 | 自动完成，不触发 handback |
+| pipeline 优先级 | 按 priority 字段 | 始终最低，不阻塞 goal-driven milestone |
+| 生命周期 | 完整四态（planned → active → completed → superseded） | 同四态，但 completed 后自动 superseded |
 
 ## 生命周期
 
@@ -52,8 +69,8 @@ planned ──→ active ──→ completed
 
 - **planned**: 已创建，尚未激活。等待前置 milestone 完成或 programmer 手动激活。
 - **active**: 当前正在推进，worktrack 执行中。同一时刻仅允许一个 active milestone。
-- **completed**: 目的达成（`purpose_achieved == true`），worktrack 列表全部处理完毕（`worktrack_list_finished == true`）。双重验收通过后由 `harness-skill` 执行状态转移。
-- **superseded**: 被更新的 milestone 替换（programmer override），保留历史但不参与激活队列。
+- **completed**: 目的达成（goal-driven: `purpose_achieved == true` + `worktrack_list_finished == true`；work-collection: `worktrack_list_finished == true`）。验收通过后由 `harness-skill` 执行状态转移。
+- **superseded**: 被更新的 milestone 替换（programmer override），保留历史但不参与激活队列。work-collection milestone 在 completed 后自动标记为 superseded。
 
 ## Pipeline 语义
 
@@ -63,6 +80,7 @@ Milestone 作为 Pipeline 中的节点，遵循以下规则：
 - 同一时刻仅允许一个 `active` milestone
 - `depends_on_milestones` 中的所有前置 milestone 必须为 `completed` 或 `superseded`，当前 milestone 才可激活
 - milestone 完成后（`active` → `completed`），pipeline 按优先级自动选择下一个满足条件的 `planned` milestone 激活
+- work-collection milestone（`milestone_kind == "work-collection"`）的 priority 始终视为最低，不阻塞 goal-driven milestone 的激活
 - `priority` 同值时按 `updated` 时间排序
 - `activation_rules` 非空时，harness 可在满足描述的条件后自动激活；空值表示需 programmer 显式审批
 
@@ -76,14 +94,26 @@ Milestone 作为 Pipeline 中的节点，遵循以下规则：
 - programmer 和 harness 均可写入，同时间戳 programmer 优先
 - `superseded` 状态是 override 的一种形式：创建新 milestone 时可标记旧 milestone 为 superseded
 
-## 双重验收模型
+## 验收模型
 
-Milestone 完成判定必须同时满足两个条件：
+Milestone 验收模型由 `milestone_kind` 决定：
+
+### goal-driven：双重验收模型
+
+goal-driven milestone 完成判定必须同时满足两个条件：
 
 1. **worktrack_list_finished**: 声明的 worktrack 列表已完成 / 被明确移出 / 阻塞有决策
 2. **purpose_achieved**: Milestone 原始目的是否经聚合 evidence 证明达成
 
 两者缺一时不得自动判定 Milestone 完成。
+
+### work-collection：单重验收模型
+
+work-collection milestone 完成判定仅需满足：
+
+1. **worktrack_list_finished**: 声明的 worktrack 列表已完成 / 被明确移出 / 阻塞有决策
+
+`purpose_achieved` 声明跳过（恒为 true）。验收下沉到各 worktrack 的 Gate——每个 worktrack 的 Gate 裁决结果即为其验收证据。Milestone 级不再追加深层语义验证。
 
 ## 与 Worktrack 的关系
 
@@ -100,5 +130,7 @@ Milestone 完成判定必须同时满足两个条件：
 ## 使用约定
 
 - 由 programmer 或 `harness-skill`（`RepoScope.Decide` 阶段）创建。
+  - goal-driven：由 programmer 定义（或 programmer 确认后的 harness 创建），purpose/signals/criteria 由 programmer 提供。
+  - work-collection：由 harness 在无内聚任务场景下自动创建，名称格式 `工作集合 MS-YYYYMMDD-NNN`，priority 最低。
 - 进度由 `milestone-status-skill` 独立分析。
 - 不自动触发 release/publish/version bump。

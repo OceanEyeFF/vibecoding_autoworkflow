@@ -19,7 +19,8 @@
 
 `docs/harness/design/` 承接尚未升格为长期 doctrine、artifact contract 或 workflow family 的 Harness 设计方案与变更分析。
 
-当前入口：[design/skills-handback-improvements.md](./design/skills-handback-improvements.md)：Skills 层 handback 改进方案。
+当前入口：
+- [design/skills-handback-improvements.md](./design/skills-handback-improvements.md)：Skills 层 handback 改进方案
 
 升格规则：
 - 已验证并需要长期承接的 doctrine，升格到 [foundations/README.md](./foundations/README.md)

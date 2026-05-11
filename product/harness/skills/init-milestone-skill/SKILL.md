@@ -28,9 +28,10 @@ description: 当 Harness 处于 RepoScope 且需要创建或注册一个新的 M
 
 - Programmer 显式声明一个新的 milestone 目标
 - Harness 在 `RepoScope.Decide` 阶段推理出需要创建新 milestone 来组织 worktrack
-- `repo-whats-next-skill` 输出 `suggested_milestone_action == "create"` 时
+- `repo-whats-next-skill` 输出 `suggested_milestone_action == "create"` 时（goal-driven 或 work-collection 路径）
 - 需要更新已有 milestone（upsert）——如补充 worktrack_list、调整 priority
 - Pipeline 中没有符合条件的 planned milestone 可激活时
+- 向已有 goal-driven milestone 追加 worktrack 时（触发信号覆盖判定）
 
 ## 工作流
 
@@ -51,24 +52,45 @@ description: 当 Harness 处于 RepoScope 且需要创建或注册一个新的 M
 6. 确定 priority：
    - 输入提供的 priority 直接使用
    - 未提供时自动分配：取当前 pipeline 中最大 priority + 1
-7. 确定激活状态：
-   - 若当前无 active milestone 且 `depends_on_milestones` 全部满足（所有前置为 `completed` 或 `superseded`）：设置为 `active`
+7. 确定 `milestone_kind`：
+   - 若输入来自 programmer 且提供了 `milestone_kind`：直接使用
+   - 若输入来自 programmer 但未提供 `milestone_kind`：默认 `goal-driven`
+   - 若输入来自 harness（work-collection 路径）：`milestone_kind = "work-collection"`
+   - work-collection 路径的自动生成字段：
+     - `title`：`工作集合 MS-YYYYMMDD-NNN`（按创建时间自动编号）
+     - `purpose`：`"工作集合 {milestone_id}"`
+     - `completion_signals`：从 worktrack_list 逐条自动生成（每条映射为一个 signal）
+     - `acceptance_criteria`：空（不适用）
+     - `priority`：最低（取当前 pipeline 最大 priority + 1，确保不阻塞 goal-driven milestone）
+     - `created_by`：`harness`
+8. 追加 worktrack 时的信号覆盖判定（仅当向已有 goal-driven milestone 追加 worktrack 时执行）：
+   a. 读取已有 milestone 的 `completion_signals` 和 `acceptance_criteria`
+   b. 对每个新 worktrack，AI 辅助判定其验收是否被已有 signals 覆盖
+   c. 输出 `coverage_verdict` ∈ {`fully_covered`, `partially_covered`, `not_covered`}
+   d. 分支处理：
+      - `fully_covered`：append + programmer 确认。"新 worktrack [X] 的验收已被已有 signals 覆盖，确认追加？"。标记 `signals_coverage_reviewed = true`
+      - `partially_covered`：提示补充 signals → programmer 确认 → append。建议追加 signal 的自动推导内容。programmer 确认后更新 signals
+      - `not_covered`：拒绝归入。"新 worktrack [X] 与当前 milestone 的 purpose 不匹配。建议：创建新 milestone 或归入 work-collection milestone"
+   e. 关键设计原则：不静默写入。AI 判断是提示，决策权在 programmer
+9. 确定激活状态：
+   - work-collection milestone 创建后直接激活（`status = "active"`）
+   - goal-driven：若当前无 active milestone 且 `depends_on_milestones` 全部满足（所有前置为 `completed` 或 `superseded`）：设置为 `active`
    - 若 `activation_rules` 非空且条件满足：设置为 `active`
    - 否则：设置为 `planned`
    - 同一时刻仅允许一个 `active`：若设置当前 milestone 为 active 且已有 active milestone，先处理旧 active 的过渡（保持原状，标记冲突由 harness-skill 处理）
-8. 创建或更新 milestone artifact：
+10. 创建或更新 milestone artifact：
    - 写入 `.aw/milestone/{milestone_id}.md`
-   - 使用 milestone 模板字段结构（milestone_id、title、purpose、status、worktrack_list、completion_signals、acceptance_criteria、progress_counter、aggregated_evidence、release_version_consideration、developer_decision_boundary、depends_on_milestones、priority、activation_rules、created_by、updated）
+   - 使用 milestone 模板字段结构（milestone_id、title、purpose、status、worktrack_list、completion_signals、acceptance_criteria、progress_counter、aggregated_evidence、release_version_consideration、developer_decision_boundary、depends_on_milestones、priority、activation_rules、created_by、updated、milestone_kind）
    - upsert 时保留已有字段，仅更新变化字段
-9. 写入或更新 milestone-backlog：
+11. 写入或更新 milestone-backlog：
    - 按 milestone_id upsert 到 `.aw/repo/milestone-backlog.md`
    - 若 backlog 文件不存在则创建
-   - 条目包含：milestone_id、title、purpose、status、priority、depends_on_milestones、worktrack_list、created_by、created_at、updated、updated_by、activation_rules
-10. 更新 control-state（若激活状态变化）：
+   - 条目包含：milestone_id、title、purpose、status、priority、depends_on_milestones、worktrack_list、created_by、created_at、updated、updated_by、activation_rules、milestone_kind
+12. 更新 control-state（若激活状态变化）：
    - 若新 milestone 被设为 active：更新 `active_milestone` 和 `milestone_status`
    - 若仅新增 planned milestone：不改变 `active_milestone`，仅更新 `milestone_pipeline_summary`
-11. 产出一份结构化的 Milestone 初始化结果。
-12. 如果没有命中正式停止条件，允许监督器直接进入下一个合法判定。
+13. 产出一份结构化的 Milestone 初始化结果。
+14. 如果没有命中正式停止条件，允许监督器直接进入下一个合法判定。
 
 ## 正式停止条件
 
@@ -112,6 +134,7 @@ description: 当 Harness 处于 RepoScope 且需要创建或注册一个新的 M
 
 - `milestone_id`
 - `milestone_title`
+- `milestone_kind`：goal-driven / work-collection
 - `milestone_status`：planned / active
 - `init_action`：created / upserted
 - `priority`
@@ -123,6 +146,8 @@ description: 当 Harness 处于 RepoScope 且需要创建或注册一个新的 M
 - `backlog_updated`：boolean
 - `control_state_updated`：boolean
 - `override_source`：programmer / harness / none
+- `signals_coverage_reviewed`：boolean — 信号覆盖判定是否已完成 programmer 确认（仅追加 worktrack 时适用）
+- `coverage_verdict`：fully_covered / partially_covered / not_covered / N/A（仅追加 worktrack 时适用）
 - `can_proceed`：boolean
 - `proceed_blockers`：阻止推进的因素列表
 - `recommendations`：对 RepoScope.Decide 的建议
