@@ -9,13 +9,13 @@ description: 当 Harness 处于 RepoScope 且需要创建或注册一个新的 M
 
 把这个技能作为 `Codex` 中 `RepoScope` 下的 Milestone 初始化算子使用。
 
-本技能实现 `RepoScope.Init` 状态转移算子的 Milestone 维度，对应 Harness 控制回路中为 Milestone Pipeline 创建/注册新 milestone 的初始化动作。它是 Pipeline 的**入口算子**：接收 programmer 或 harness 的 milestone 规格，验证唯一性和依赖合法性，按 latest-override 语义写入 milestone artifact 和 milestone-backlog，处理激活规则（同一时刻仅一个 active），并产出结构化的初始化结果供 `RepoScope.Decide` 和 `harness-skill` 消费。
+本技能实现 `RepoScope.Init` 状态转移算子的 Milestone 维度，对应 Harness 控制回路中为 Milestone Pipeline 创建/注册新 milestone 的初始化动作。它是 Pipeline 的**入口算子**：接收 programmer 或 harness 的 milestone 规格，验证唯一性和依赖合法性，先输出结构化 `milestone brief` 等待 programmer 确认，再按 latest-override 语义写入 milestone artifact 和 milestone-backlog，处理激活规则（同一时刻仅一个 active），并产出结构化的初始化结果供 `RepoScope.Decide` 和 `harness-skill` 消费。
 
 它的角色是**初始化 Milestone**，而不是分析 Milestone 状态或驱动 next action。它产出的是经验证、已写入的 Milestone 初始化结果，包括新 milestone 的 artifact 路径、pipeline 位置和激活状态。
 
 它的主要输入是 programmer 或 harness 提供的 milestone 规格：
 
-- Programmer 直接提供的 milestone 规格（title、purpose、worktrack_list、priority、activation_rules 等）
+- Programmer 直接提供的 milestone 规格（title、purpose、worktrack_list、priority、activation_rules、completion_threshold_pct 等）
 - Harness 从 Goal Charter 和 repo snapshot 推理出的 milestone 建议（需经本技能验证后写入）
 - 当前 milestone-backlog（`.aw/repo/milestone-backlog.md`）用于唯一性检查和 pipeline 上下文
 - 当前 control-state（`.aw/control-state.md`）用于 active milestone 状态
@@ -63,34 +63,49 @@ description: 当 Harness 处于 RepoScope 且需要创建或注册一个新的 M
      - `acceptance_criteria`：空（不适用）
      - `priority`：最低（取当前 pipeline 最大 priority + 1，确保不阻塞 goal-driven milestone）
      - `created_by`：`harness`
-8. 追加 worktrack 时的信号覆盖判定（仅当向已有 goal-driven milestone 追加 worktrack 时执行）：
+8. 规范化完成判定字段：
+   - goal-driven milestone：若输入未提供 `completion_threshold_pct`，默认写入 `100`
+   - work-collection milestone：`completion_threshold_pct` 记为 `100` 但不参与完成判定；验收仍下沉到 worktrack gate
+   - 若本轮修改了 `completion_signals`、`acceptance_criteria` 或 `completion_threshold_pct`，标记 `milestone_reevaluation_required = true`
+9. 输出结构化 `milestone brief` 并等待 programmer 确认：
+   - brief 至少包含：`milestone_id`、`title`、`purpose`、`milestone_kind`、`worktrack_list`、`completion_signals`、`acceptance_criteria`、`completion_threshold_pct`、`priority`、`depends_on_milestones`、`activation_intent`、`scope_boundary_note`
+   - 若本轮将 create / upsert / activate 任一 milestone，必须在 `milestone_brief_confirmed == true` 前停止，不得提前写入或激活
+   - 若调用方已携带明确 programmer 确认记录，可直接继续；否则返回 brief 并等待确认
+10. 追加 worktrack 时的信号覆盖判定（仅当向已有 goal-driven milestone 追加 worktrack 时执行）：
    a. 读取已有 milestone 的 `completion_signals` 和 `acceptance_criteria`
    b. 对每个新 worktrack，AI 辅助判定其验收是否被已有 signals 覆盖
    c. 输出 `coverage_verdict` ∈ {`fully_covered`, `partially_covered`, `not_covered`}
    d. 分支处理：
       - `fully_covered`：append + programmer 确认。"新 worktrack [X] 的验收已被已有 signals 覆盖，确认追加？"。标记 `signals_coverage_reviewed = true`
-      - `partially_covered`：提示补充 signals → programmer 确认 → append。建议追加 signal 的自动推导内容。programmer 确认后更新 signals
-      - `not_covered`：拒绝归入。"新 worktrack [X] 与当前 milestone 的 purpose 不匹配。建议：创建新 milestone 或归入 work-collection milestone"
+        追加完成后，该 worktrack 作为当前 milestone 中一个独立执行单元推进，建立自己的 branch、contract、queue、evidence、closeout 和 repo-refresh 追踪。
+      - `partially_covered`：提示补充 signals → programmer 确认 → append。建议追加 signal 的自动推导内容。programmer 确认后更新 signals，并设置 `milestone_reevaluation_required = true`
+        追加完成后，该 worktrack 同样以独立执行单元形式推进，并在新的 milestone 定义下形成清晰的单项追踪。
+      - `not_covered`：拒绝归入。"新 worktrack [X] 与当前 milestone 的 purpose 不匹配。建议：创建新 milestone、归入其他已存在 milestone，或归入 work-collection milestone"
    e. 关键设计原则：不静默写入。AI 判断是提示，决策权在 programmer
-9. 确定激活状态：
+   f. 稳定性规则：
+      - 仅追加 worktrack 且 programmer 已确认其归属当前 milestone，同时 `coverage_verdict == fully_covered` 且未修改 `completion_signals` / `acceptance_criteria` / `completion_threshold_pct` 时，`milestone_reevaluation_required = false`；该 worktrack 直接进入当前 milestone 的独立执行序列
+      - 若 append 导致上述任一字段修改，必须重新评估 milestone；不得沿用旧的 milestone 完成结论
+      - `not_covered` 不得通过“先追加再观察”静默扩大范围，应直接建议其他 milestone 路径
+11. 确定激活状态：
    - work-collection milestone 创建后直接激活（`status = "active"`）
    - goal-driven：若当前无 active milestone 且 `depends_on_milestones` 全部满足（所有前置为 `completed` 或 `superseded`）：设置为 `active`
    - 若 `activation_rules` 非空且条件满足：设置为 `active`
    - 否则：设置为 `planned`
+   - 任一 milestone 的 `active` 判定都要求 `milestone_brief_confirmed == true`
    - 同一时刻仅允许一个 `active`：若设置当前 milestone 为 active 且已有 active milestone，先处理旧 active 的过渡（保持原状，标记冲突由 harness-skill 处理）
-10. 创建或更新 milestone artifact：
+12. 创建或更新 milestone artifact：
    - 写入 `.aw/milestone/{milestone_id}.md`
-   - 使用 milestone 模板字段结构（milestone_id、title、purpose、status、worktrack_list、completion_signals、acceptance_criteria、progress_counter、aggregated_evidence、release_version_consideration、developer_decision_boundary、depends_on_milestones、priority、activation_rules、created_by、updated、milestone_kind）
+   - 使用 milestone 模板字段结构（milestone_id、title、purpose、status、worktrack_list、completion_signals、acceptance_criteria、completion_threshold_pct、progress_counter、aggregated_evidence、release_version_consideration、developer_decision_boundary、depends_on_milestones、priority、activation_rules、created_by、updated、milestone_kind）
    - upsert 时保留已有字段，仅更新变化字段
-11. 写入或更新 milestone-backlog：
+13. 写入或更新 milestone-backlog：
    - 按 milestone_id upsert 到 `.aw/repo/milestone-backlog.md`
    - 若 backlog 文件不存在则创建
    - 条目包含：milestone_id、title、purpose、status、priority、depends_on_milestones、worktrack_list、created_by、created_at、updated、updated_by、activation_rules、milestone_kind
-12. 更新 control-state（若激活状态变化）：
+14. 更新 control-state（若激活状态变化）：
    - 若新 milestone 被设为 active：更新 `active_milestone` 和 `milestone_status`
    - 若仅新增 planned milestone：不改变 `active_milestone`，仅更新 `milestone_pipeline_summary`
-13. 产出一份结构化的 Milestone 初始化结果。
-14. 如果没有命中正式停止条件，允许监督器直接进入下一个合法判定。
+15. 产出一份结构化的 Milestone 初始化结果。
+16. 如果没有命中正式停止条件，允许监督器直接进入下一个合法判定。
 
 ## 正式停止条件
 
@@ -100,6 +115,7 @@ description: 当 Harness 处于 RepoScope 且需要创建或注册一个新的 M
 - `depends_on_milestones` 引用了不存在的 milestone
 - 检测到循环依赖
 - 输入规格缺少 title 或 purpose 等关键字段且无法自动补全
+- 需要创建、upsert 或激活 milestone，但 `milestone_brief_confirmed != true`
 - 当前已有 active milestone 且 programmer 未明确指示替换
 - milestone-backlog 损坏、不可读或不可解析（同上位 milestone-status-skill 的停止条件）
 - 写入 `.aw/milestone/` 或 `.aw/repo/milestone-backlog.md` 失败
@@ -111,9 +127,13 @@ description: 当 Harness 处于 RepoScope 且需要创建或注册一个新的 M
 - 同一时刻仅允许一个 active milestone：设为 active 前必须检查 pipeline 状态
 - latest-override 以 `updated` 时间戳为准；同时间戳 programmer 优先
 - 不得静默覆盖 programmer 创建的 milestone；upsert 时需标记 `override_source` 和 `override_reason`
+- goal-driven milestone 的 `completion_threshold_pct` 默认值为 `100`；调用方未显式提供时必须写出该默认语义，不得隐式使用其他阈值
 - milestone_id 格式不做强制约束，但建议使用 `MS-YYYYMMDD-NNN` 保持可读性
 - 循环依赖检测必须遍历完整 depends_on 链，不得仅检查直接依赖
 - 仅当上游调用方（harness-skill 或 repo-whats-next-skill）明确授权时，才可变更 active milestone
+- `completion_signals`、`acceptance_criteria` 或 `completion_threshold_pct` 任一修改都必须触发 milestone 重新评估标记
+- append worktrack 只有在 programmer 确认其归属当前 milestone，且 `coverage_verdict` 不为 `not_covered` 时才可继续；否则必须建议其他 milestone 路径，避免静默 scope creep
+- 在 create / upsert / activate 之前必须先输出结构化 `milestone brief` 并等待 programmer 确认；brief 不是可选摘要，而是激活前约束边界
 - 本技能不创建 worktrack、不触发 worktrack 初始化、不修改 version/release 状态
 
 ## 预期输出
@@ -135,6 +155,7 @@ description: 当 Harness 处于 RepoScope 且需要创建或注册一个新的 M
 - `milestone_id`
 - `milestone_title`
 - `milestone_kind`：goal-driven / work-collection
+- `completion_threshold_pct`
 - `milestone_status`：planned / active
 - `init_action`：created / upserted
 - `priority`
@@ -146,8 +167,12 @@ description: 当 Harness 处于 RepoScope 且需要创建或注册一个新的 M
 - `backlog_updated`：boolean
 - `control_state_updated`：boolean
 - `override_source`：programmer / harness / none
+- `milestone_brief`：object
+- `milestone_brief_confirmed`：boolean
 - `signals_coverage_reviewed`：boolean — 信号覆盖判定是否已完成 programmer 确认（仅追加 worktrack 时适用）
 - `coverage_verdict`：fully_covered / partially_covered / not_covered / N/A（仅追加 worktrack 时适用）
+- `milestone_reevaluation_required`：boolean
+- `milestone_reevaluation_reason`：string / array
 - `can_proceed`：boolean
 - `proceed_blockers`：阻止推进的因素列表
 - `recommendations`：对 RepoScope.Decide 的建议

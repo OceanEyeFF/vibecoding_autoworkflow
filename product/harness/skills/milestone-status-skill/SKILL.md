@@ -9,7 +9,7 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 
 把这个技能作为 `Codex` 中 `RepoScope` 下的 Milestone 聚合观测/验收分析器使用。
 
-本技能实现 `RepoScope.Observe` 状态的 Milestone 维度传感器算子，对应 Harness 控制回路中状态估计阶段的 Milestone 专项分析。它是控制回路的 **Milestone 传感器/分析器**层：通过读取当前活跃 Milestone artifact、worktrack backlog、gate evidence 和 repo snapshot 等输入，执行 Milestone 级双重验收检查（`worktrack_list_finished` + `purpose_achieved`），产出结构化的 Milestone 进度报告、验收判决和 developer 决策边界。
+本技能实现 `RepoScope.Observe` 状态的 Milestone 维度传感器算子，对应 Harness 控制回路中状态估计阶段的 Milestone 专项分析。它是控制回路的 **Milestone 传感器/分析器**层：通过读取当前活跃 Milestone artifact、worktrack backlog、gate evidence 和 repo snapshot 等输入，执行 Milestone 完成判定链（`worktrack_list_finished` + `Milestone Gate` + `purpose_achieved`；其中正式完成模型仍保持 `worktrack_list_finished + purpose_achieved` 的 dual 验收口径），产出结构化的 Milestone 进度报告、验收判决和 developer 决策边界。
 
 它的角色是**分析 Milestone 状态**，而不是驱动 next action。它产出的是经过聚合计算的 Milestone 观测结果，供 `RepoScope.Decide` 算子（如 repo-whats-next-skill）和 `harness-skill` 的 continuous execution 判断使用。
 
@@ -37,9 +37,9 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 
 1. 确认这是一轮 Milestone 状态分析轮次，不是工作追踪分派、下一步决策或直接执行。
 2. 识别当前活跃 Milestone：从 Harness 控制状态或 repo snapshot 中获取当前 active milestone_id。
-3. 读取 Milestone artifact（`.aw/milestone/{milestone_id}.md`），解析其字段结构（worktrack_list、completion_signals、acceptance_criteria、progress_counter、depends_on_milestones 等）。
+3. 读取 Milestone artifact（`.aw/milestone/{milestone_id}.md`），解析其字段结构（worktrack_list、completion_signals、acceptance_criteria、completion_threshold_pct、progress_counter、depends_on_milestones 等）。若 `completion_threshold_pct` 缺失，按默认值 `100` 解释。
 4. 读取 worktrack backlog（`.aw/repo/worktrack-backlog.md`）：若文件不存在（首个 worktrack 尚未 closeout），视为空 backlog（completed/blocked/deferred 均为 0），`total` 仍取自 Milestone artifact 的 `worktrack_list` 长度，继续正常分析，不触发停止条件。若文件存在但无法按 Worktrack Backlog 合同解析为包含 `worktrack_id` 与 `status` 的条目，或出现无法归一化的状态值、损坏 frontmatter / markdown 结构、同一条目缺少必需字段等 present-but-damaged / unparseable 情况，必须命中正式停止条件，不得把损坏 backlog 当成空 backlog，也不得用部分解析结果继续计算。若文件存在且可解析，按以下规则处理：backlog 存储的状态值为 `done / deferred / blocked / resolved`，读取时须做归一化映射：`done → completed`、`resolved → completed`、`blocked → blocked`、`deferred → deferred`。映射后按 `worktrack_id` 去重（保留最新条目），以 `completed / blocked / deferred` 三类参与 progress 计算。
-5. 读取 gate evidence：先读取 Milestone artifact 的 `aggregated_evidence` 引用列表（包含各 worktrack 的 evidence 路径），逐条读取；若 `aggregated_evidence` 为空，回退读取 `.aw/worktrack/gate-evidence.md` 获取最近关闭 worktrack 的 evidence 记录。聚合所有 evidence 后参与 `purpose_achieved` 判定。
+5. 读取 gate evidence：先读取 Milestone artifact 的 `aggregated_evidence` 引用列表（包含各 worktrack 的 evidence 路径以及可选的 milestone gate evidence 路径），逐条读取；若 `aggregated_evidence` 为空，回退读取 `.aw/worktrack/gate-evidence.md` 获取最近关闭 worktrack 的 evidence 记录。聚合所有 evidence 后参与 `Milestone Gate` 和 `purpose_achieved` 判定。
 6. 读取 repo snapshot（`.aw/repo/snapshot-status.md`），获取当前 repo 基准状态和治理信号。
 7. 检查前置 Milestone 依赖：若 `depends_on_milestones` 非空，验证前置 Milestone 是否已完成。
 8. 计算 Milestone 进度计数器：
@@ -49,20 +49,25 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
    - 读取 Milestone artifact 的 `milestone_kind` 字段，默认值 `goal-driven`
    - **goal-driven**：执行完整双重验收
      - **worktrack_list_finished**：声明的 worktrack 列表是否全部处理（已完成 / 被明确移出 / 阻塞有决策）
-     - **purpose_achieved**：Milestone 原始目的是否经聚合 evidence 证明达成（对照 `completion_signals` 和 `acceptance_criteria`，按 `purpose_achieved 操作化判定` 章节逐条验证）
+     - **Milestone Gate**：仅在 `worktrack_list_finished == true` 后运行的独立集成验证层，位于所有 worktrack closeout 之后、`purpose_achieved` 判定之前。它必须同时检查：
+       - `black-box`：从 milestone 外部视角验证最终用户可见结果和跨 worktrack 集成行为
+       - `white-box`：从内部实现视角验证关键集成路径、接口拼接、状态传递和依赖关系
+       - `anti-cheat`：检查是否存在以 mock/stub、跳过真实验证、伪造 evidence、只验证局部而未验证集成等方式“压过验收”的信号
+       - 判定规则：`Milestone Gate` 必须为 `pass` 才允许进入 `purpose_achieved`；任一 `soft-fail`、`hard-fail`、`blocked` 或命中反作弊信号，均视为 Milestone 级阻断，不得替代或回写为 worktrack gate 通过
+     - **purpose_achieved**：Milestone 原始目的是否经聚合 evidence 证明达成（对照 `completion_signals`、`acceptance_criteria` 和 `completion_threshold_pct`，按 `purpose_achieved 操作化判定` 章节逐条验证）
    - **work-collection**：执行单重验收
      - **worktrack_list_finished**：同上
      - **purpose_achieved**：显式声明跳过（恒为 true）。记录："work-collection milestone，验收下沉到各 worktrack Gate"
    - `verification_model_used`：`dual`（goal-driven）或 `single`（work-collection）
 10. 根据验收结果判定 `milestone_acceptance_verdict`：
     - `achieved`：
-      - goal-driven：worktrack_list_finished 且所有 completion_signals 为 satisfied（100%）且所有 acceptance_criteria 为 met（100%）
+      - goal-driven：worktrack_list_finished 且 `milestone_gate_verdict == "pass"` 且 `signal_satisfaction_pct >= completion_threshold_pct` 且 `criteria_pass_pct >= completion_threshold_pct`
       - work-collection：worktrack_list_finished == true
-    - `not_achieved`：worktrack 列表未处理完成，或（goal-driven）目的未达成
-    - `blocked`：存在不可推进的阻塞项
+    - `not_achieved`：worktrack 列表未处理完成，或（goal-driven）Milestone Gate 已通过但目的未达成
+    - `blocked`：存在不可推进的阻塞项，或 goal-driven 的 `Milestone Gate` 未通过 / 证据不足 / 命中反作弊信号
     - `deferred`：存在被明确推迟的 worktrack 且不影响目的达成判定
 11. 判断 `handback_required`：
-    - goal-driven：当 `milestone_acceptance_verdict` 为 `achieved` 或 `blocked` 时，触发 Milestone 验收边界，handback 为 true
+    - goal-driven：当 `milestone_acceptance_verdict` 为 `achieved` 或 `blocked` 时，触发 Milestone 验收边界，handback 为 true；若 `worktrack_list_finished == true` 但 `purpose_achieved == false`，也应在 `recommendations` 中显式提示 handback 做 milestone 重新评估，避免静默 scope creep
     - work-collection：始终为 false（即使 achieved 也不触发 handback）
 12. 给出 `release_version_consideration` hint：基于 Milestone 目的达成情况和 completion_signals 满足程度，给出对 version bump 或 release 的提示性建议（不接管 decision）。
 13. 明确 `developer_decisions_needed`：列出必须由 developer 做出的决定（如"前置依赖未完成，是否跳过"、"purpose_achieved 存疑，是否手动判定"等）。
@@ -79,6 +84,8 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 - Worktrack backlog 文件存在但损坏、不可读或不可按合同解析；包括无法提取 `worktrack_id` / `status`、状态值不在 `done / deferred / blocked / resolved`、frontmatter / markdown 结构损坏，或只能得到部分可信条目的情况
 - Worktrack backlog 与 Milestone 声明的 worktrack_list 之间存在不可自动解决的矛盾
 - 前置 Milestone 依赖未完成，且无法自动判定是否应阻塞当前 Milestone
+- `Milestone Gate` 所需的 black-box / white-box / anti-cheat 证据缺失、过期或互相冲突，导致无法做出可信集成判定
+- `Milestone Gate` 命中 `soft-fail` / `hard-fail` / `blocked` 或反作弊告警，且当前轮无合法自动恢复路径
 - 双重验收检查中 `purpose_achieved` 的判断需要 developer 主观裁定，且无足够的自动判定依据
 - 聚合 evidence 不足以支撑 purpose_achieved 判定，且无法通过限定范围探查补全
 - Milestone 依赖的 artifact 跨域或以当前权限不可访问
@@ -96,9 +103,9 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
   - 在 `milestone_input_checkpoint` 字段输出格式为 `unverifiable:<json_string_length>`，并附带完整序列化 JSON 字符串供人工比对
 - 序列化格式：构造一个 JSON 对象，使用 UTF-8 编码、字典键按字典序排序、紧凑分隔符（无多余空白）序列化后取 SHA-256。所有 repo 内路径必须规范化为 repo-relative POSIX path；不得使用绝对路径。
 - 顶层字段：`schema_version` 固定为 `milestone-input-checkpoint/v1`，并包含 `active_milestone_id`、`milestone_artifact`、`worktrack_backlog`、`gate_evidence`、`repo_snapshot`。
-- `milestone_artifact` 输入字段：artifact path、`milestone_id`、`status`、`worktrack_list`（保持 Milestone 声明顺序）、`completion_signals`、`acceptance_criteria`、`depends_on_milestones`、`aggregated_evidence`。不得纳入由本技能或上游刷新产生的 `progress_counter`、前次 `milestone_input_checkpoint` 或分析时间戳。
+- `milestone_artifact` 输入字段：artifact path、`milestone_id`、`status`、`worktrack_list`（保持 Milestone 声明顺序）、`completion_signals`、`acceptance_criteria`、`completion_threshold_pct`、`depends_on_milestones`、`aggregated_evidence`。不得纳入由本技能或上游刷新产生的 `progress_counter`、前次 `milestone_input_checkpoint` 或分析时间戳。
 - `worktrack_backlog` 输入字段：backlog path、`state`（`missing` / `present`）、以及按 `worktrack_id` 字典序排列的最新有效条目。文件缺失时写入 `state: missing` 与空 entries；文件存在时必须先完成解析、状态归一化和按 `worktrack_id` 去重，条目字段至少包括 `worktrack_id`、归一化后的 `status`（completed / blocked / deferred）、`node_type`、`scope`、`merge_commit`、`validation`、`intake_route`。backlog 存在但损坏或不可解析时不得生成 partial checkpoint，必须停止并返回 `proceed_blockers`。
-- `gate_evidence` 输入字段：使用 Milestone artifact 的 `aggregated_evidence` 路径列表；若该列表为空，使用 `.aw/worktrack/gate-evidence.md` fallback。证据路径按 repo-relative POSIX path 字典序排列；每个 evidence 只纳入影响 `purpose_achieved` 的关键字段，包括 `worktrack_id`（如有）、`verdict`、review/validation/policy 维度结论、absorbed issues、freshness / missing 状态和后续动作摘要。
+- `gate_evidence` 输入字段：使用 Milestone artifact 的 `aggregated_evidence` 路径列表；若该列表为空，使用 `.aw/worktrack/gate-evidence.md` fallback。证据路径按 repo-relative POSIX path 字典序排列；每个 evidence 只纳入影响 `Milestone Gate` 或 `purpose_achieved` 的关键字段，包括 `worktrack_id`（如有）、`verdict`、review/validation/policy 维度结论、black-box/white-box 集成结论、anti-cheat 结论、absorbed issues、freshness / missing 状态和后续动作摘要。
 - `repo_snapshot` 输入字段：snapshot path、`baseline_branch`、`last_verified_checkpoint`、`checkpoint_type`、`checkpoint_ref`、当前 active milestone 指针（如有）、治理状态、已知问题与风险标识。不得纳入纯展示性更新时间、文件 mtime 或本轮分析时间。
 - Markdown 解析规范：从 frontmatter、表格、列表和 keyed lines 中提取字段时，字段名应先规范化为小写 snake_case；字符串 trim 首尾空白；列表中本来有业务顺序的字段保持原顺序，其余 map/object 键排序；缺失可选字段用 `null`，不得省略同一 schema 下的键。
 - 重算时机：每次 RepoScope.Observe 至少重新计算该输入指纹；若已存 `milestone_input_checkpoint` 与新指纹一致，且 `latest_observed_checkpoint` 与当前 `git rev-parse HEAD` 一致，才允许跳过 progress counter 和 purpose evidence 的完整重算。任一输入源的存在状态、路径集合、上述纳入字段、active milestone、schema_version 或 stored checkpoint 变化时，都必须完整重算并返回新的 checkpoint。
@@ -109,10 +116,13 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 
 - 不膨胀 harness-skill：harness-skill 继续只做 supervisor，本技能是独立的 Milestone 分析器，由 harness-skill 在需要时调用。
 - Milestone 完成判定必须通过双重验收模型（worktrack_list_finished + purpose_achieved）：goal-driven milestone 两者缺一时不得自动判定完成。work-collection milestone 仅需 worktrack_list_finished，purpose_achieved 声明跳过，验收下沉到各 worktrack Gate。
+- `Milestone Gate` 是所有 worktrack 关闭后、`purpose_achieved` 前的独立集成验收层；它不能替代 worktrack gate，也不能把上层集成失败回写成单个 worktrack gate 的通过。
 - Milestone 是 RepoScope 下的聚合观测变量，不是第三 Scope：不得创建独立 Scope、不得创建独立状态转移路径。
 - `developer_decisions_needed` 中的项目不得由本技能自动判定；它们必须作为显式边界交还给 developer。
 - 如果 `depends_on_milestones` 中的前置 Milestone 未完成，必须标记为 blocked 并在 `developer_decisions_needed` 中列出是否跳过前置依赖的决策。
 - 仅当 `milestone_input_checkpoint` 已存在且与当前输入指纹一致、同时 `latest_observed_checkpoint` 与当前 `git rev-parse HEAD` 一致时，才可跳过 progress counter 重算。仅 git HEAD 一致不足以跳过（`.aw/` 下运行时 artifact 不受 git 追溯）；backlog present-but-damaged / unparseable 时不得产出 partial checkpoint。
+- `completion_signals`、`acceptance_criteria` 或 `completion_threshold_pct` 任一发生变化，必须触发完整 milestone 重新评估；不得沿用旧的 `purpose_achieved`、`milestone_gate_verdict` 或 `milestone_input_checkpoint` 直接放行。
+- 仅追加 worktrack 且 programmer 已确认其归属当前 milestone 时，可不因 append 动作本身触发 milestone 重新评估；但若 append 同时修改 `completion_signals`、`acceptance_criteria` 或 `completion_threshold_pct`，仍必须重新评估。
 
 ## 预期输出
 
@@ -133,6 +143,7 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 - `milestone_id`
 - `milestone_title`
 - `milestone_kind`：goal-driven / work-collection
+- `completion_threshold_pct`：integer，默认 `100`
 - `verification_model_used`：dual / single
 - `milestone_status`：planned / active / completed / superseded
 - `progress`：
@@ -142,7 +153,11 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
   - `deferred`：被明确推迟的 worktrack 数
   - `completion_pct`：完成百分比
 - `worktrack_list_finished`：boolean
+- `milestone_gate_verdict`：pass / soft-fail / hard-fail / blocked / skipped
+- `milestone_gate_summary`：black-box / white-box / anti-cheat 的聚合摘要
 - `purpose_achieved`：boolean
+- `signal_satisfaction_pct`：number
+- `criteria_pass_pct`：number
 - `milestone_acceptance_verdict`：achieved / not_achieved / blocked / deferred
 - `handback_required`：boolean
 - `release_version_consideration`：string
@@ -176,11 +191,23 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 1. **逐 signal 验证**：对 `completion_signals` 中的每一项，从 `aggregated_evidence` 中寻找是否已有对应的肯定 evidence。每项 signal 给出 `satisfied` / `not_satisfied` / `insufficient_evidence`。
 2. **逐 criterion 验证**：对 `acceptance_criteria` 中的每一项，判断是否满足。每项 criterion 给出 `met` / `not_met` / `cannot_determine`。
 3. **计算覆盖率**：`signal_satisfaction_pct` = satisfied 数 / 总 signal 数；`criteria_pass_pct` = met 数 / 总 criteria 数。
-4. **判定规则**：
-   - `purpose_achieved = true` 要求：所有 completion_signals 均为 `satisfied`（100%）**且**所有 acceptance_criteria 均为 `met`（100%）
-   - 任一低于 100% → `purpose_achieved = false`
+4. **读取阈值**：`completion_threshold_pct` 缺失时按 `100` 处理。该阈值只影响 goal-driven milestone 的 `purpose_achieved` 判定。
+5. **判定规则**：
+   - `purpose_achieved = true` 要求：`signal_satisfaction_pct >= completion_threshold_pct` **且** `criteria_pass_pct >= completion_threshold_pct`
+   - 任一低于 threshold → `purpose_achieved = false`
    - 若存在 `insufficient_evidence` 或 `cannot_determine` → `purpose_achieved = false`，追加 `developer_decisions_needed` 条目
-5. **记录明细**：在 `aggregated_evidence_summary` 中记录每条 signal/criterion 的判定结果和依据，供 developer 复核。
+   - 若本轮 `Milestone Gate` 未 `pass`，不得把 `purpose_achieved` 视为可用于 closeout 的完成信号
+6. **记录明细**：在 `aggregated_evidence_summary` 中记录每条 signal/criterion 的判定结果、覆盖率、threshold 和依据，供 developer 复核。
+
+## `Milestone Gate` 集成判定
+
+`Milestone Gate` 是 goal-driven milestone 的上层集成验收，不替代各 worktrack 自己的 gate。它只在 `worktrack_list_finished == true` 后生效，用来回答“所有局部 closeout 之后，整体 milestone 是否真的成立”。
+
+1. **black-box**：从 milestone 外部视角检查最终行为、跨 worktrack 集成结果和用户可见产出是否成立。
+2. **white-box**：从内部实现视角检查关键依赖关系、接口契约、状态拼接和系统级回归风险是否成立。
+3. **anti-cheat**：检查是否存在伪造通过的信号，例如只跑局部测试、跳过真实集成路径、以 mock/stub 代替必要验证、复用过期 evidence、或只验证中间态而未验证里程碑目的。
+4. **通过规则**：三类检查均为可信 `pass` 时，`milestone_gate_verdict = "pass"`；只要存在任一 `soft-fail`、`hard-fail`、`blocked` 或反作弊命中，即 `milestone_gate_verdict != "pass"`。
+5. **阻断语义**：`milestone_gate_verdict != "pass"` 时，必须阻断 milestone closeout，返回 `milestone_acceptance_verdict = "blocked"`，设置 `handback_required = true`，并把修复/回退/重新验证要求交还给 developer 或上游 supervisor。
 
 ## Writeback 指令
 
@@ -188,7 +215,7 @@ description: 当 Harness 处于 RepoScope 且需要分析当前活跃 Milestone 
 
 - **Milestone Artifact**（`.aw/milestone/{milestone_id}.md`）：
   - 将 `progress_counter` 更新为本技能计算的当前值
-  - 若 `milestone_acceptance_verdict == "achieved"`：将 `status` 更新为 `completed`
+  - 仅当 `milestone_acceptance_verdict == "achieved"` 且 `milestone_gate_verdict == "pass"` 时：将 `status` 更新为 `completed`
   - 更新 `updated` 时间戳
 - **Control State**（`.aw/control-state.md`）：
   - 写入 `milestone_input_checkpoint` 到 `Baseline Traceability`

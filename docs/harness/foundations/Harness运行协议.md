@@ -1,9 +1,9 @@
 ---
 title: Harness 运行协议
 status: active
-updated: 2026-05-10
+updated: 2026-05-11
 owner: OceanEye
-last_verified: 2026-05-10
+last_verified: 2026-05-11
 ---
 
 # Harness 运行协议
@@ -89,9 +89,13 @@ Harness 本体属于控制平面。
 
 - 多个 milestone 可同时处于 `planned` 状态，按 `pipeline_priority` 排列
 - 同一时刻仅一个 `active` milestone
-- `active` milestone 的 worktrack 执行完毕后，pipeline 按优先级激活下一个满足前置条件的 `planned` milestone
-- milestone 完成采用双重验收模型：`worktrack_list_finished` AND `purpose_achieved`
+- 当前 `active` milestone 完成后，pipeline 按优先级激活下一个满足前置条件的 `planned` milestone
+- goal-driven milestone 完成采用双重验收模型：`worktrack_list_finished` AND `purpose_achieved`；其中 `purpose_achieved` 前置独立 `Milestone Gate`
+- `Milestone Gate` 位于所有相关 worktrack 关闭后、`purpose_achieved` 检查前，最少包含黑盒测试、白盒测试和反作弊检测
+- goal-driven milestone 在 `planned` → `active` 前，harness 必须先向 programmer 输出结构化 brief（goal / signals / criteria / worktrack list / threshold / dependencies / activation reason）并等待确认；work-collection milestone 维持既有自动激活语义
+- 修改 milestone 的 `completion_signals`、`acceptance_criteria` 或 `completion_threshold_pct` 时，必须重新评估 milestone；仅追加归属当前 milestone 的 worktrack 不触发该重评估
 - `milestone-status-skill` 负责进度观测，`harness-skill` 负责状态转移和 pipeline 推进
+- goal-driven milestone 的执行推进以逐 worktrack 闭环为节奏：当前轮次从 `worktrack_list` 中选择一个 current worktrack，为其建立独立 branch、contract、plan、verify、closeout 与 repo-refresh 追踪；闭环完成后再返回 milestone 上下文继续推进
 - 详细合同见 [milestone.md](../artifact/control/milestone.md) 和 [milestone-backlog.md](../artifact/repo/milestone-backlog.md)
 
 ### WorktrackScope
@@ -141,16 +145,25 @@ RepoScope.Observe (含 milestone pipeline 状态)
 -> WorktrackScope.Judge
 -> WorktrackScope.Close 或 WorktrackScope.Recover
 -> RepoScope.Refresh (含 milestone progress 写回 + worktrack-backlog 更新)
--> RepoScope.Observe (含 milestone 双重验收检查)
+-> RepoScope.Observe (goal-driven: worktrack 全部关闭后先执行 Milestone Gate，再做 purpose_achieved 检查)
     ├─→ milestone achieved → pipeline 推进 (激活下一 planned → active)
     └─→ milestone 未完成 → 继续当前 milestone 的下一 worktrack
 ```
+
+每个 current worktrack 都走自己的完整闭环；milestone 通过这些独立闭环的累计结果形成聚合进度、Milestone Gate 输入和最终完成判定。
 
 `PR` 不是闭环终点。完整 closeout：
 
 ```text
 merge -> refresh repo snapshot -> update milestone progress -> cleanup -> return RepoScope
 ```
+
+Milestone 验收分层：
+
+- Worktrack Gate 属于 `WorktrackScope.Judge`，裁决单个 worktrack 是否允许 closeout。
+- Milestone Gate 属于 `RepoScope.Observe` 的 milestone 集成验证步骤，只在相关 worktrack 全部关闭后执行。
+- Milestone Gate 消费已关闭 worktrack 的 gate evidence，并补充 milestone 级黑盒/白盒/反作弊检查；它不替代 worktrack gate，也不引入第三 Scope。
+- 每个 worktrack 的 closeout record、repo-refresh checkpoint 和 gate evidence 共同构成 milestone 级聚合输入，使逐项执行与 milestone 完成语义保持连续可追踪。
 
 ## 五、正式对象
 
@@ -183,6 +196,7 @@ merge -> refresh repo snapshot -> update milestone progress -> cleanup -> return
 最小 stop conditions：
 
 - 需要 programmer 批准的 goal change、scope expansion、destructive action 或 authority boundary
+- goal-driven milestone 激活前的结构化 brief 需要 programmer 确认
 - 必需 artifact / evidence 缺失、过时或互相冲突
 - `Gate` 给出 `soft-fail`、`hard-fail` 或 `blocked`
 - host runtime 没有合法 execution carrier / dispatch shell
@@ -197,6 +211,7 @@ merge -> refresh repo snapshot -> update milestone progress -> cleanup -> return
 
 当 programmer 明确指示连续执行时，`Worktrack Close` 只是 repo refresh 或 milestone progress update 的状态刷新点，不默认触发 handback。连续推进仅在以下条件 handback：
 - 命中必要审批（goal change、scope expansion、destructive action 或 authority boundary）
+- 命中 goal-driven milestone 激活简报确认边界
 - 证据缺失/冲突、路由阻塞、运行时缺口或范围阻塞
 - 命中 Milestone 验收边界（`milestone_acceptance_verdict == achieved` 或 `blocked`）
 - Pipeline advancement 触发（当前 milestone 完成，自动激活下一 planned milestone）

@@ -27,15 +27,15 @@ last_verified: 2026-05-11
 
 ## 当前 source release tuple
 
-2026-05-11，本地 source tuple 已发布为 `v0.5.1-rc.1` 的 `next` channel release：
+2026-05-11，本地 source tuple 已准备为 `v0.5.1-rc.2` 的 `next` channel candidate；registry published fact 仍以上一已发布版本为准：
 
-- root `package.json` version：`0.5.1-rc.1`
-- local scaffold `toolchain/scripts/deploy/package.json` version：`0.5.1-rc.1`
-- approval lock：`approvedVersion=0.5.1-rc.1`、`approvedGitTag=v0.5.1-rc.1`、`approvedChannel=next`
-- GitHub Release 使用 prerelease，target commit `d2b6fd53b69f3f9bdbe10b547872eca942ad723a`，publish workflow run `25665284177` 已成功
-- npm `aw-installer@0.5.1-rc.1` 已发布到 `next` dist-tag，tarball URL：`https://registry.npmjs.org/aw-installer/-/aw-installer-0.5.1-rc.1.tgz`
+- root `package.json` version：`0.5.1-rc.2`
+- local scaffold `toolchain/scripts/deploy/package.json` version：`0.5.1-rc.2`
+- approval lock：`approvedVersion=0.5.1-rc.2`、`approvedGitTag=v0.5.1-rc.2`、`approvedChannel=next`
+- candidate status：pre-publish local candidate，尚未创建 `v0.5.1-rc.2` GitHub Release，尚未写入 npm registry
+- latest published `next` fact：`aw-installer@0.5.1-rc.1`，target commit `d2b6fd53b69f3f9bdbe10b547872eca942ad723a`，tarball URL `https://registry.npmjs.org/aw-installer/-/aw-installer-0.5.1-rc.1.tgz`
 
-注意：`0.5.1-rc.1` 是 prerelease，不改变 stable selector；默认 `aw-installer` 仍解析到 `latest` 的 `0.4.5`，RC 试用必须显式使用 `aw-installer@next`。
+注意：`0.5.1-rc.2` 是 prerelease，不改变 stable selector；默认 `aw-installer` 仍解析到 `latest` 的 `0.4.5`，RC 试用必须显式使用 `aw-installer@next`。
 
 npm dist-tag 由 publish workflow 写入，此页跟随 release commit 同步事实。`4.4.x` 相关 git tag 保留作为历史记录，不在 npm registry 中发布。
 
