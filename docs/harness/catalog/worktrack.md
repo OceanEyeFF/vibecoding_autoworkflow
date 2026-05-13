@@ -76,7 +76,7 @@ preferred scheduling fields：
 
 ### 3. dispatch-skills
 
-职责：接收 Worktrack 的下一任务，校验 scheduling handoff packet，拒收 oversized packet 退回 schedule-worktrack-skill。优先选择专门 skill 或 subagent；无专门 skill 时 fallback 到 generic-worker-skill；文档追平优先绑定 doc-catch-up-worker-skill。按 runtime_dispatch_mode 选择载体：auto 优先委派否则显式 fallback；delegated 必须委派否则返回 gap/block；current-carrier 显式关闭委派。跑一轮 bounded execution 并回传 evidence。
+职责：接收 Worktrack 的下一任务，校验 scheduling handoff packet，拒收 oversized packet 退回 schedule-worktrack-skill。优先选择语义匹配的专门 skill；无专门 skill 时 fallback 到 generic-worker-skill 或 current-carrier。文档追平优先绑定 doc-catch-up-worker-skill。按 runtime_dispatch_mode 选择载体：auto 按 Dispatch Decision Policy 选择 SubAgent、专用 skill、generic worker 或 current-carrier；delegated 必须委派否则返回 gap/block；current-carrier 显式关闭委派。跑一轮 bounded execution 并回传 evidence。
 
 主要依赖：
 
@@ -85,7 +85,7 @@ preferred scheduling fields：
 - `Harness Control State`
 - 当前任务相关的最小上下文
 
-dispatch contract：Dispatch Task Brief（task/goal/in_scope/out_of_scope/constraints/acceptance_criteria_for_this_round/atomicity_justification/verification_requirements/done_signal）；Dispatch Info Packet（current_worktrack_state/acceptance_alignment_used/relevant_artifacts/required_context/known_risks/executor_candidates/fallback_reason）；Dispatch Result（selected_executor/selection_reason/fallback_used/dispatch_packet_status/packet_boundedness_verdict/dispatch_contract_gaps/actions_taken/files_touched_or_expected/evidence_collected/open_issues/recommended_next_action）。字段定义和继承规则的权威来源见 [Dispatch Packet Schema](../artifact/worktrack/dispatch-packet.md)。
+dispatch contract：Dispatch Task Brief（task/goal/in_scope/out_of_scope/constraints/acceptance_criteria_for_this_round/atomicity_justification/verification_requirements/done_signal）；Dispatch Info Packet（current_worktrack_state/acceptance_alignment_used/relevant_artifacts/required_context/shared_fact_pack/context_budget/known_risks/executor_candidates/fallback_reason）；Dispatch Result（selected_executor/selection_reason/dispatch_policy_ref/carrier_decision/decision_inputs/fallback_used/dispatch_packet_status/packet_boundedness_verdict/dispatch_contract_gaps/actions_taken/files_touched_or_expected/evidence_collected/open_issues/recommended_next_action）。字段定义和继承规则的权威来源见 [Dispatch Packet Schema](../artifact/worktrack/dispatch-packet.md)。
 
 选择规则：只有专门 skill 对当前 work item 有清晰语义贴合时才优先绑定；否则 fallback 到 generic-worker-skill 且不得扩大 scope 或绕过 verification_requirements。文档追平优先绑定 doc-catch-up-worker-skill。handoff packet 缺失/不完整或已膨胀成多 slices/多队列项时，必须退回 schedule-worktrack-skill。
 
@@ -145,7 +145,7 @@ canonical executable source：
 
 ### 6. review-evidence-skill
 
-职责：并行分派并综合四路 review SubAgent（static-semantic-review、test-review、project-security-review、complexity-performance-review），分别覆盖静态语义解释、测试 review、security review、代码复杂度和性能 review，汇总 code review/静态检查/结构评估结果，形成 review lane envelope 供 gate 汇总，对低严重度噪声做截断并将重复症状标为可能的上游约束问题。
+职责：按 `review_profile` 选择并行 review SubAgent lanes，而不是所有改动固定四路执行。`light` 只跑 `static-semantic-review`；`standard` 增加 `test-review`；`risky` 增加 `project-security-review`；`deep` 使用四路 review（static-semantic-review、test-review、project-security-review、complexity-performance-review），分别覆盖静态语义解释、测试 review、security review、代码复杂度和性能 review。运行时无法委派所选 lanes 时记录 fallback，汇总 code review/静态检查/结构评估结果，形成 review lane envelope 供 gate 汇总，对低严重度噪声做截断并将重复症状标为可能的上游约束问题。
 
 主要依赖：
 
@@ -162,6 +162,11 @@ canonical executable source：
 preferred review-lane fields：
 
 - `lane_id`
+- `review_profile`
+- `light`
+- `standard`
+- `risky`
+- `deep`
 - `review_subagent_lanes`
 - `static-semantic-review`
 - `test-review`

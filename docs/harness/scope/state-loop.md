@@ -1,9 +1,9 @@
 ---
 title: "Harness 状态闭环"
 status: active
-updated: 2026-04-14
+updated: 2026-05-13
 owner: aw-kernel
-last_verified: 2026-04-14
+last_verified: 2026-05-13
 ---
 # Harness 状态闭环
 
@@ -20,9 +20,9 @@ WorktrackScope 下的合法状态共 11 个：
 | `initializing` | Worktrack 刚创建，baseline 尚未建立 | 创建上下文，初始化 task queue 骨架 |
 | `observing` | 观测当前 repo 状态，收集分析信息 | 执行 RepoScope 观测，生成快照 |
 | `scheduling` | 制定任务队列与执行计划 | 展开 Contract 为 task queue、依赖图、覆盖矩阵 |
-| `dispatching` | 将任务分派给 SubAgent | 生成 dispatch handoff，标记 in_progress |
-| `implementing` | SubAgent 执行具体任务 | 执行变更（代码/文档），记录产出物 |
-| `verifying` | 收集验证证据（测试/检查/review） | 运行四路 review SubAgent，收集三类 evidence 面 |
+| `dispatching` | 按 Dispatch Decision Policy 选择执行载体 | 生成 dispatch handoff，标记 in_progress |
+| `implementing` | 选定执行载体执行具体任务 | 执行变更（代码/文档），记录产出物 |
+| `verifying` | 收集验证证据（测试/检查/review） | 按 review_profile 选择 review lanes，收集三类 evidence 面 |
 | `judging` | 对 evidence 进行 gate verdict | 汇总 review 结果，按维度评分，输出 verdict |
 | `recovering` | 处理 hard-fail 或异常后恢复 | 分析失败原因，修复问题，重新排队 |
 | `closing` | 执行 PR/merge/cleanup | 创建 PR、合并、回写状态到 RepoScope |
@@ -38,7 +38,7 @@ WorktrackScope 下的合法状态共 11 个：
 | **initializing** | - | baseline 快照完成 | - | - | - | - | - | - | - | 初始化失败或外部依赖缺失 | - |
 | **observing** | - | - | 观测完成且无歧义 | - | - | - | - | - | - | 观测数据不可用 | - |
 | **scheduling** | - | Contract 变更需重观测 | - | task queue 非空且无阻塞项 | - | - | - | - | - | 依赖信息不足无法生成队列 | - |
-| **dispatching** | - | - | dispatch 超时或无可用 task | - | SubAgent 已领取 handoff packet | - | - | - | - | 无可用 SubAgent | - |
+| **dispatching** | - | - | dispatch 超时或无可用 task | - | 执行载体已领取 handoff packet | - | - | - | - | 无可用执行载体 | - |
 | **implementing** | - | - | - | - | - | 所有 task 完成或触发 early-verify | 所有 task 完成 | 需中断实施回退 | - | 外部阻塞 | - |
 | **verifying** | - | - | - | - | evidence 不足需补充实施 | - | 所有 evidence 面收集完毕 | 验证过程发现严重问题 | - | 缺少必要验证工具 | - |
 | **judging** | - | - | - | soft-fail 带条件推进 | hard-fail | hard-fail 需重验证 | pass | hard-fail | pass 或 soft-fail | evidence 不完整 | - |
@@ -57,7 +57,7 @@ WorktrackScope 下的合法状态共 11 个：
 |----------|------|
 | 外部依赖不可用 | API 宕机、外部工具链不可用 |
 | 人工审批等待 | human reviewer 未响应 |
-| 资源不可用 | 无可用 SubAgent、token 配额耗尽 |
+| 资源不可用 | 无可用执行载体、token 配额耗尽 |
 | 证据缺失 | judging 阶段关键 evidence 面未生成 |
 | 环境异常 | 文件系统只读、权限不足 |
 

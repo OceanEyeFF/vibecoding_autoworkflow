@@ -1,0 +1,68 @@
+---
+title: "Dispatch Decision Policy"
+status: active
+updated: 2026-05-13
+owner: aw-kernel
+last_verified: 2026-05-13
+---
+
+# Dispatch Decision Policy
+
+> 定义 `dispatch_mode: auto` 如何在 SubAgent、专用 skill、generic worker 和 current-carrier 之间选择执行载体。字段合同见 [dispatch-packet.md](../artifact/worktrack/dispatch-packet.md)。
+
+## Policy Goal
+
+`auto` 不是"能委派就委派"。`auto` 表示调度与分派阶段必须根据任务耦合度、上下文共享需求、风险面、可验证性和运行时权限选择执行载体。
+
+选择执行载体时保持两个目标：
+
+- 避免控制器吸收执行平面工作
+- 避免为强共享状态、连续编码或单模块重构制造无价值的上下文分裂
+
+## Carrier Selection Matrix
+
+| 任务类型 | 默认执行载体 | 说明 |
+| --- | --- | --- |
+| 小范围连续编码 | `current-carrier` | 共享状态强、切换成本高，保持单一执行上下文 |
+| 单模块 bugfix | `current-carrier` 或 `one-shot worker` | 能清楚打包且边界窄时可委派，否则当前载体执行 |
+| 多文件强一致性重构 | `current-carrier + review SubAgent` | 实现保持一致上下文，审查可委派 |
+| 多源搜索 / 调研 | `SubAgent fanout` | 输入可分片、输出可汇总，适合并行 |
+| repo analysis | `SubAgent` 可用 | 适合独立读取和结构化回传 |
+| code review | 按 `review_profile` 选择 SubAgent lanes | 由 Gate Evidence 的风险档位决定 |
+| debug log 提取 | `log-extract worker` 或 current-carrier fallback | 原始日志不直接进入主上下文，先产出 Debug Evidence 摘要 |
+| 文档追平 | `doc-catch-up-worker-skill` | 已验证事实写回长期文档层 |
+| 大范围实现 | 先 `split-worktrack` | 不通过单次 dispatch 吞入大批次 |
+
+## Decision Inputs
+
+`auto` 分派必须显式考虑：
+
+- `task_coupling`: `low | medium | high`
+- `state_sharing_need`: `low | medium | high`
+- `parallel_value`: `low | medium | high`
+- `risk_profile`: `low | medium | high`
+- `context_budget_fit`: `yes | no`
+- `runtime_supports_subagent`: `yes | no`
+- `permission_allows_delegation`: `yes | no`
+
+## Decision Rules
+
+1. `state_sharing_need: high` 且 `parallel_value` 不高时，默认选择 `current-carrier`。
+2. `parallel_value: high` 且任务可拆成独立输入/输出时，优先选择 `SubAgent` 或 fanout。
+3. `risk_profile: high` 时，实现可保持当前载体，但 review/test/policy evidence 应按风险选择独立验证 lane。
+4. `context_budget_fit: no` 时不得强行分派，应返回调度阶段拆分或收紧上下文。
+5. `runtime_supports_subagent: no` 或 `permission_allows_delegation: no` 时，若任务仍可安全执行，可 `current-carrier` fallback，并记录 `runtime fallback` 或 `permission blocked`。
+6. `delegated` 模式不走 policy 降级；无法真实委派时返回 gap/block。
+7. `current-carrier` 模式显式关闭委派，不再重新评估 SubAgent。
+
+## Required Output
+
+每次 `auto` 选择执行载体时，dispatch result 必须说明：
+
+- `dispatch_policy_ref`
+- `carrier_decision`
+- `decision_inputs`
+- `selection_reason`
+- `fallback_reason`（如有）
+
+省略选择理由或把 current-carrier fallback 伪装成真实 SubAgent 委派的行为必须返回 blocked。
