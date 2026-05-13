@@ -11,29 +11,30 @@
 - `.agents/`、`.claude/` 只是 deploy target，不是源码层。
 - 如果一个新目录说不清 owner 和层级，不要直接加到根目录。
 
-## Read First
+## Default Boot
 
-1. `docs/README.md`
-2. `docs/project-maintenance/README.md`
-3. `docs/project-maintenance/foundations/README.md`
-4. `docs/project-maintenance/foundations/root-directory-layering.md`
-5. `docs/project-maintenance/governance/review-verify-handbook.md`
-6. `toolchain/toolchain-layering.md`
-7. `docs/harness/README.md`
-8. `docs/harness/foundations/Harness指导思想.md`
-9. `docs/harness/foundations/Harness运行协议.md`
-10. `docs/harness/artifact/worktrack/contract.md`
-11. `docs/harness/artifact/worktrack/plan-task-queue.md`
-12. `docs/harness/artifact/worktrack/gate-evidence.md`
+默认启动只读最小路由面：
+
+1. `AGENTS.md`
+2. `INDEX.md`
+3. 根据 `INDEX.md` 选择当前任务对应的一个局部入口
+
+仅当任务命中对应边界时才扩读承接层文档：
+
+- 根目录分层、一级目录、hidden/state/mount 层或 `.nav/` 规则变化：扩读 `docs/project-maintenance/foundations/README.md`、`docs/project-maintenance/foundations/root-directory-layering.md` 和相关治理检查说明。
+- `AGENTS.md`、review/verify 流程或退出标准变化：扩读 `docs/project-maintenance/governance/review-verify-handbook.md`。
+- deployment / adapter 行为变化：扩读 `docs/project-maintenance/deploy/` 的相关入口与 `toolchain/README.md`。
+- Harness doctrine、workflow family、artifact 合同或 canonical skill 入口路径变化：扩读 `docs/harness/README.md`、局部 artifact/skill 入口和对应 governance 检查。
+- Worktrack 执行、调度、证据或关卡变化：扩读对应 `docs/harness/artifact/worktrack/` 局部合同，不默认预读全量 worktrack artifact。
 
 ## Route Contract
 
 - `read_next`：
-  - `docs/harness/foundations/README.md`
-  - `docs/harness/scope/README.md`
-  - `docs/harness/artifact/README.md`
+  - `INDEX.md`
   - 按任务进入 `product/`、`docs/` 或 `toolchain/` 的局部入口页
+  - 只在命中治理、分层、Harness artifact、dispatch / gate / closeout 策略时扩读对应 foundations / governance / artifact 文档
 - `do_not_read_yet`：
+  - `.aw/`（运行 Harness 控制回路时可读取当前 control state 与必要 runtime artifact）
   - `.agents/`
   - `.claude/`
   - `.autoworkflow/`

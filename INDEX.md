@@ -9,9 +9,13 @@ last_verified: 2026-05-06
 
 > 用来按任务目标快速定位当前主线入口。项目定位看 [`README.md`](./README.md)，任务分流看本页。
 
-## 先看哪些基础合同
+## 默认启动
 
-| 目的 | 入口 |
+Agent 默认只读 [`AGENTS.md`](./AGENTS.md)、本页，以及当前任务命中的一个局部入口。下列基础合同只在任务需要时扩读，不作为默认预加载清单。
+
+## 按需扩读基础合同
+
+| 触发条件 | 入口 |
 |------|------|
 | 建立 docs 模块边界 | [`docs/README.md`](./docs/README.md) |
 | 进入项目维护主线 | [`docs/project-maintenance/README.md`](./docs/project-maintenance/README.md) |
@@ -43,6 +47,7 @@ last_verified: 2026-05-06
 - `product/`：业务代码唯一源码根
 - `docs/`：文档真相与知识主线
 - `toolchain/`：脚本、部署、测试、评测工具
+- `.aw/`：runtime control-plane state，只有运行 Harness 控制回路时按需读取
 - `.agents/`、`.claude/`：repo-local mount / deploy target
 - `.autoworkflow/`、`.spec-workflow/`：repo-local state / config
 - `.nav/`：compatibility navigation
@@ -52,6 +57,7 @@ last_verified: 2026-05-06
 
 - `.agents/`
 - `.claude/`
+- `.aw/`（除非当前任务是 Harness control state hydration / runtime artifact 读写）
 - `.autoworkflow/`
 - `.spec-workflow/`
 - `.nav/`
