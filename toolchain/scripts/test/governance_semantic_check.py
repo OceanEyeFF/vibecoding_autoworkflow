@@ -133,14 +133,16 @@ SUBAGENT_DEFAULT_CONTRACT_PATHS = [
     "product/harness/skills/dispatch-skills/SKILL.md",
     "product/harness/skills/set-harness-goal-skill/SKILL.md",
     "product/harness/skills/set-harness-goal-skill/assets/control-state.md",
-    "product/harness/skills/set-harness-goal-skill/assets/worktrack/contract.md",
-    "product/harness/skills/init-worktrack-skill/templates/contract.template.md",
     "product/.aw_template/control-state.md",
-    "product/.aw_template/worktrack/contract.md",
     "docs/harness/artifact/control/control-state.md",
     "docs/harness/artifact/worktrack/contract.md",
     "docs/harness/foundations/Harness运行协议.md",
     "docs/harness/catalog/worktrack.md",
+]
+EXECUTION_POLICY_TEMPLATE_REFERENCE_PATHS = [
+    "product/harness/skills/set-harness-goal-skill/assets/worktrack/contract.md",
+    "product/harness/skills/init-worktrack-skill/templates/contract.template.md",
+    "product/.aw_template/worktrack/contract.md",
 ]
 AGENTS_ADAPTER_SKILLS_DIR = "product/harness/adapters/agents/skills"
 MANUAL_RUNBOOK_AGENTS_SKILL_COUNT_RE = re.compile(
@@ -216,6 +218,19 @@ SUBAGENT_DEFAULT_REQUIRED_TERMS = [
     "current-carrier",
     "runtime fallback",
     "dispatch package unsafe",
+]
+EXECUTION_POLICY_TEMPLATE_REQUIRED_TERMS = [
+    "Execution Policy canonical semantics are not repeated here",
+    "execution_policy_contract_ref",
+    "docs/harness/artifact/worktrack/contract.md#execution-policy",
+    "runtime_dispatch_mode",
+    "dispatch_mode_source",
+    "allowed_values",
+    "fallback_reason_required",
+]
+EXECUTION_POLICY_TEMPLATE_FORBIDDEN_PHRASES = [
+    "控制本 worktrack 的执行载体选择。`auto` 按 Dispatch Decision Policy",
+    "默认 scaffold 中 `.aw/control-state.md` 的 `subagent_dispatch_mode_override_scope",
 ]
 DISPATCH_CONTEXT_CONTRACT_PATHS = [
     "docs/harness/artifact/worktrack/dispatch-packet.md",
@@ -811,6 +826,23 @@ def check_subagent_dispatch_default_contract(repo_root: Path, report: SemanticRe
             if term not in text:
                 report.add_failure(
                     f"SubAgent default contract missing required term {term!r}: {relative_path}"
+                )
+    for relative_path in EXECUTION_POLICY_TEMPLATE_REFERENCE_PATHS:
+        path = repo_root / relative_path
+        if not path.exists():
+            report.add_failure(f"missing execution policy template reference source: {relative_path}")
+            continue
+        checked += 1
+        text = path.read_text(encoding="utf-8")
+        for term in EXECUTION_POLICY_TEMPLATE_REQUIRED_TERMS:
+            if term not in text:
+                report.add_failure(
+                    f"execution policy template missing canonical reference term {term!r}: {relative_path}"
+                )
+        for phrase in EXECUTION_POLICY_TEMPLATE_FORBIDDEN_PHRASES:
+            if phrase in text:
+                report.add_failure(
+                    f"execution policy template duplicates canonical prose: {relative_path}"
                 )
     report.add_info(f"checked {checked} SubAgent default dispatch contract sources")
 

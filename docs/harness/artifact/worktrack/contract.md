@@ -39,6 +39,8 @@ last_verified: 2026-05-06
 
 ## Execution Policy
 
+本节是 Worktrack Contract 的 Execution Policy canonical text。模板文件只能引用本节并保留字段清单，不应复制本节语义正文。
+
 Execution Policy 控制本 worktrack 的执行载体选择，不替代 `ControlState` 或任务目标/范围/验收标准。
 
 - `runtime_dispatch_mode`: 默认 `auto`（支持 `auto`/`delegated`/`current-carrier`，与 `control-state` 的 `subagent_dispatch_mode` 同组值）。

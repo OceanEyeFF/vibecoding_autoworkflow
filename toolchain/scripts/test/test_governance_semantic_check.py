@@ -204,10 +204,7 @@ def test_check_subagent_dispatch_default_contract_flags_missing_term(tmp_path: P
         "product/harness/skills/dispatch-skills/SKILL.md",
         "product/harness/skills/set-harness-goal-skill/SKILL.md",
         "product/harness/skills/set-harness-goal-skill/assets/control-state.md",
-        "product/harness/skills/set-harness-goal-skill/assets/worktrack/contract.md",
-        "product/harness/skills/init-worktrack-skill/templates/contract.template.md",
         "product/.aw_template/control-state.md",
-        "product/.aw_template/worktrack/contract.md",
         "docs/harness/artifact/control/control-state.md",
         "docs/harness/artifact/worktrack/contract.md",
         "docs/harness/foundations/Harness运行协议.md",
@@ -217,11 +214,59 @@ def test_check_subagent_dispatch_default_contract_flags_missing_term(tmp_path: P
             tmp_path / relative_path,
             "默认\nSubAgent\n权限边界\nDispatch Decision Policy\nsubagent_dispatch_mode\nsubagent_dispatch_mode_override_scope\nworktrack-contract-primary\nglobal-override\nruntime_dispatch_mode\nauto\ndelegated\ncurrent-carrier\nruntime fallback\n",
         )
+    for relative_path in (
+        "product/harness/skills/set-harness-goal-skill/assets/worktrack/contract.md",
+        "product/harness/skills/init-worktrack-skill/templates/contract.template.md",
+        "product/.aw_template/worktrack/contract.md",
+    ):
+        write_doc(
+            tmp_path / relative_path,
+            "Execution Policy canonical semantics are not repeated here\n"
+            "execution_policy_contract_ref\n"
+            "docs/harness/artifact/worktrack/contract.md#execution-policy\n"
+            "runtime_dispatch_mode\ndispatch_mode_source\nallowed_values\nfallback_reason_required\n",
+        )
 
     report = SemanticReport()
     check_subagent_dispatch_default_contract(tmp_path, report)
 
     assert any("dispatch package unsafe" in item for item in report.failures)
+
+
+def test_check_subagent_dispatch_default_contract_flags_template_prose_duplication(tmp_path: Path) -> None:
+    for relative_path in (
+        "product/harness/skills/harness-skill/SKILL.md",
+        "product/harness/skills/dispatch-skills/SKILL.md",
+        "product/harness/skills/set-harness-goal-skill/SKILL.md",
+        "product/harness/skills/set-harness-goal-skill/assets/control-state.md",
+        "product/.aw_template/control-state.md",
+        "docs/harness/artifact/control/control-state.md",
+        "docs/harness/artifact/worktrack/contract.md",
+        "docs/harness/foundations/Harness运行协议.md",
+        "docs/harness/catalog/worktrack.md",
+    ):
+        write_doc(
+            tmp_path / relative_path,
+            "默认\nSubAgent\n权限边界\nDispatch Decision Policy\nsubagent_dispatch_mode\nsubagent_dispatch_mode_override_scope\nworktrack-contract-primary\nglobal-override\nruntime_dispatch_mode\nauto\ndelegated\ncurrent-carrier\nruntime fallback\ndispatch package unsafe\n",
+        )
+    for relative_path in (
+        "product/harness/skills/set-harness-goal-skill/assets/worktrack/contract.md",
+        "product/harness/skills/init-worktrack-skill/templates/contract.template.md",
+        "product/.aw_template/worktrack/contract.md",
+    ):
+        write_doc(
+            tmp_path / relative_path,
+            "Execution Policy canonical semantics are not repeated here\n"
+            "execution_policy_contract_ref\n"
+            "docs/harness/artifact/worktrack/contract.md#execution-policy\n"
+            "runtime_dispatch_mode\ndispatch_mode_source\nallowed_values\nfallback_reason_required\n"
+            "控制本 worktrack 的执行载体选择。`auto` 按 Dispatch Decision Policy\n",
+        )
+
+    report = SemanticReport()
+    check_subagent_dispatch_default_contract(tmp_path, report)
+
+    assert any("duplicates canonical prose" in item for item in report.failures)
 
 
 def test_check_dispatch_context_contract_flags_missing_budget_term(tmp_path: Path) -> None:
