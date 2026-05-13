@@ -13,14 +13,21 @@ description: 当 Harness 处于工作追踪范围.验证中，且需要一轮限
 
 这个技能会使用专用 `通用高能力模型` `子代理` 执行一轮限定范围审查证据，打包本轮最小审查上下文，收集代码审查与结构风险信号，并返回一个供后续关卡综合使用的标准化审查维度封套。
 
-当宿主运行时支持真实 SubAgent 委派且当前权限边界允许时，调用本技能后应并行启动四个审查 SubAgent，而不是只跑一个泛化 review：
+本技能按 `review_profile` 选择审查 lanes，而不是所有变更固定四路。`review_profile` 的权威定义见 `docs/harness/artifact/worktrack/gate-evidence.md`：
+
+- `light`：`static-semantic-review`
+- `standard`：`static-semantic-review` + `test-review`
+- `risky`：`static-semantic-review` + `test-review` + `project-security-review`
+- `deep`：四路完整覆盖
+
+四个可用审查 SubAgent lanes 为：
 
 - `static-semantic-review`：静态语义解释 review，解释 diff 的真实语义、状态转移、边界语义和 operator-facing 行为变化。
 - `test-review`：测试 review，审查验收覆盖、回归覆盖、测试可信度、验证命令与缺失测试风险。
 - `project-security-review`：符合项目情景的 security review，结合本仓库 deploy / adapter / Harness 权限边界，审查凭据、发布、路径、外部输入、破坏性动作和安全默认值。
 - `complexity-performance-review`：代码复杂度和性能 review，审查复杂度、重复工作、I/O、缓存、资源使用、跨平台成本和可维护性风险。
 
-如果运行时不能真实并行委派，必须显式记录 `runtime fallback`、`permission blocked` 或 `dispatch package unsafe`，并在同一份审查证据中保留四个 lane 的覆盖状态；唯一合法行为是在当前载体内完成四路 lane 的覆盖并显式记录 fallback 原因；把当前载体内的串行分析伪装成已创建四个 SubAgent 的行为必须显式暴露为 `runtime fallback`。
+如果运行时不能真实并行委派，必须显式记录 `runtime fallback`、`permission blocked` 或 `dispatch package unsafe`，并在同一份审查证据中保留所选 lanes 的覆盖状态；唯一合法行为是在当前载体内完成所选 lane 的覆盖并显式记录 fallback 原因；把当前载体内的串行分析伪装成已创建 SubAgent 的行为必须显式暴露为 `runtime fallback`。
 
 它会在最终 `通过/软失败/硬失败/阻塞` 关卡判定之前停止，并应用噪声控制边界，避免低严重度的审查残留持续膨胀为新的伪阻塞项。
 
@@ -40,15 +47,16 @@ description: 当 Harness 处于工作追踪范围.验证中，且需要一轮限
 
 1. 确认这是一轮限定范围审查证据，而不是最终关卡判定、调度或执行分派。
 2. 载入本轮所需的最小 `工作追踪范围` 产物和当前审查输入。
-3. 为限定范围的四路 review 构建同源但 lane-specific 的 `审查证据任务简报` 和 `审查证据信息包`。
-4. 若运行时支持真实委派且权限边界允许，则并行分派四个审查 SubAgent：`static-semantic-review`、`test-review`、`project-security-review`、`complexity-performance-review`；否则记录明确 fallback 原因，并用同一四路 lane 结构在当前载体内完成覆盖。
-5. 在综合之前，先归类当前审查输入与四路 review 输出的时效性：
+3. 读取或推导 `review_profile`，并记录选择理由。若缺失，按变更类型保守选择：docs-only 小修 `light`，普通 skill/docs/test 修改 `standard`，dispatch/authority/path safety `risky`，control-state/gate/installer/publish/destructive action `deep`。
+4. 为所选 review lanes 构建同源但 lane-specific 的 `审查证据任务简报` 和 `审查证据信息包`。
+5. 若运行时支持真实委派且权限边界允许，则并行分派所选审查 SubAgent；否则记录明确 fallback 原因，并用同一 lane 结构在当前载体内完成覆盖。
+6. 在综合之前，先归类当前审查输入与所选 review 输出的时效性：
    - `新鲜`
    - `复用但新鲜`
    - `混合`
    - `过期`
    - `未知`
-6. 只收集并综合审查维度：
+7. 只收集并综合审查维度：
    - 差异与变更摘要审查信号
    - 结构或架构审查信号
    - 现有代码审查评论或内联发现
@@ -58,12 +66,12 @@ description: 当 Harness 处于工作追踪范围.验证中，且需要一轮限
    - 代码安全 review 信号，包括权限边界、注入面、敏感数据、外部输入和破坏性动作风险
    - 代码质量 review 信号，包括可维护性、可读性、错误处理、恢复路径和 operator-facing 语义
    - 测试 review 信号，包括验收覆盖、回归覆盖、验证可信度和缺失测试风险
-7. 在打包结果前应用审查分诊：
+8. 在打包结果前应用审查分诊：
    - 让可执行发现聚焦于验收、验证可信度、约定完整性、恢复路径风险，或面向操作员的语义漂移
    - 让低严重度残留作为代表性项目加 `残留风险`，而不是一个无限制的动作队列
    - 把重复或边界驱动的症状标记为 `可能存在上游约束问题`
-8. 将四路 SubAgent 输出综合成一份 `审查证据报告`，并附带一份供关卡接收使用的审查维度封套。
-9. 在输出最终关卡判定结果前停止。
+9. 将所选 lane 输出综合成一份 `审查证据报告`，并附带一份供关卡接收使用的审查维度封套。
+10. 在输出最终关卡判定结果前停止。
 
 ## 审查分诊规则
 
@@ -99,7 +107,9 @@ description: 当 Harness 处于工作追踪范围.验证中，且需要一轮限
 
 - `输入产物`
 - `时效性`
-- `四路 SubAgent lane`
+- `review_profile`
+- `selected_review_lanes`
+- `四路 SubAgent lane`（仅 `deep` 或需要完整覆盖时）
 - `当前工作追踪状态`
 - `工作追踪约定摘要`
 - `节点策略`
@@ -116,7 +126,9 @@ description: 当 Harness 处于工作追踪范围.验证中，且需要一轮限
 
 - `维度编号`
 - `证据轮次`
-- `四路 SubAgent 覆盖`
+- `review_profile`
+- `selected_review_lanes`
+- `四路 SubAgent 覆盖`（仅 `deep` 或需要完整覆盖时）
 - `四路 SubAgent 输出摘要`
 - `输入产物`
 - `时效性`
@@ -135,9 +147,9 @@ description: 当 Harness 处于工作追踪范围.验证中，且需要一轮限
 - `后续动作`
 - `已准备好进入关卡`
 
-### 四路 SubAgent lanes
+### Review lanes
 
-每次 review evidence 轮次应明确记录四路 lane 的执行状态、输入范围、输出摘要、发现和缺失证据：
+每次 review evidence 轮次应明确记录所选 lane 的执行状态、输入范围、输出摘要、发现和缺失证据；`deep` profile 必须保留四路 lane：
 
 - `static-semantic-review`
   - 关注：diff 语义、状态转移、隐式行为变化、边界语义、operator-facing 语义。
@@ -156,8 +168,9 @@ description: 当 Harness 处于工作追踪范围.验证中，且需要一轮限
 
 遵循 [docs/harness/foundations/skill-common-constraints.md] 中定义的公共约束 C-1 至 C-7。
 
-- 当运行时支持真实 SubAgent 委派且权限边界允许时，必须并行分派四个 review SubAgent；唯一合法行为是并行四路 SubAgent 分派；降级成单个泛化 review 的行为必须显式暴露为 `runtime fallback`。
-- 四个 review lane 必须分别保留输入范围、输出摘要、覆盖状态和缺失证据；唯一合法行为是四路 lane 各自保留可追溯的独立记录；把四路结果压成无法追溯的一段综合意见的行为必须显式暴露并标记为覆盖不足。
+- 必须先确定 `review_profile`，再选择 review lanes；不得对低风险小改默认强制四路 review。
+- 当 `review_profile: deep` 且运行时支持真实 SubAgent 委派、权限边界允许时，必须并行分派四个 review SubAgent；降级成单个泛化 review 的行为必须显式暴露为 `runtime fallback`。
+- 所选 review lane 必须分别保留输入范围、输出摘要、覆盖状态和缺失证据；把结果压成无法追溯的一段综合意见的行为必须显式暴露并标记为覆盖不足。
 - 审查证据至少应显式覆盖五类 review 面：代码性能、Repo 架构、代码安全、代码质量、测试。若某一类不适用于当前 docs-only 或 policy-only 变更，应写明 `不适用` 与理由，而不是静默省略。
 - 输出只能分别呈现原始发现、综合后的审查判定与后续动作三个独立段落；把三者混成一段模糊摘要的行为禁止出现在审查证据的输出中。
 - 仅当低严重度发现已经实质威胁验收、恢复、面向操作员的语义或约定完整性时，将其扩展成新的 `后续动作` 才合法；否则必须将其折叠进 `残留风险`。
@@ -182,6 +195,8 @@ description: 当 Harness 处于工作追踪范围.验证中，且需要一轮限
 结果中至少应包含以下字段或等价表达：
 
 - `子代理模型`
+- `review_profile`
+- `selected_review_lanes`
 - `四路 SubAgent 覆盖`
 - `static-semantic-review`
 - `test-review`

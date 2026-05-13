@@ -54,7 +54,7 @@ Harness 的运行基于一条完整的控制回路：
 
 **关键约束**：下游技能的轮次是本地控制步骤，不是隐式停止信号。Harness 应消费下游结构化输出持续推进，直到真正命中正式停止条件。
 
-**执行载体偏好**：当实现、审查或验证任务可以被打包成边界清楚、信息充分、权限安全的单轮任务时，Harness 默认应优先通过真实 `SubAgent` 执行，而不是让控制器自己完成执行平面工作。只有在运行时缺少稳定分派壳层、权限边界禁止委派，或任务包不满足安全分派条件时，才允许当前载体回退执行；回退原因必须显式记录。
+**执行载体选择**：当实现、审查或验证任务进入执行平面时，Harness 必须按 Dispatch Decision Policy 选择真实 `SubAgent`、专用 skill、通用执行载体、human executor 或明确的 current-carrier。`auto` 不表示"能委派就委派"；它表示根据任务耦合度、共享状态需求、并行价值、风险、权限边界和上下文预算选择载体。当前载体执行不是隐式失败，但必须显式记录 `carrier_decision`、`decision_inputs` 和回退原因。
 
 ---
 
@@ -392,7 +392,7 @@ Gate 应汇总**正交校验面**的裁决：
 1. 为选定的 Skill 构建限定范围任务简报和信息包
 2. 读取执行载体开关：先看 `.aw/control-state.md` 的 `subagent_dispatch_mode_override_scope`。默认 `worktrack-contract-primary` 表示当前 `Worktrack Contract` 的 `runtime_dispatch_mode` 优先；只有显式 `global-override` 才让 `.aw/control-state.md` 的 `subagent_dispatch_mode` 压过 worktrack。若 worktrack 未声明，再使用 control-state 作为 repo 级默认值，最终默认值为 `auto`
 3. `runtime_dispatch_mode` / `subagent_dispatch_mode` 支持 `auto` / `delegated` / `current-carrier`
-4. `auto` 表示宿主运行时提供真实的子代理分派壳层且权限边界允许时，默认使用委派式 SubAgent；运行时没有稳定分派壳层、权限边界禁止委派，或任务包不满足安全分派条件时，必须显式 fallback
+4. `auto` 表示按 `docs/harness/foundations/dispatch-decision-policy.md` 选择 SubAgent、专用 skill、generic worker 或 current-carrier；运行时没有稳定分派壳层、权限边界禁止委派，或任务包不满足安全分派条件时，必须显式 fallback
 5. `delegated` 表示必须真实创建委派载体；如果无法委派，应返回运行时缺口或权限阻塞，而不是自动改为当前载体执行
 6. `current-carrier` 表示本轮显式关闭 SubAgent 委派，允许当前载体在同一份限定范围约定内执行
 7. 发生当前载体运行时回退时，必须显式记录回退原因、未委派原因和保持的任务/信息边界
@@ -613,7 +613,7 @@ work-collection milestone（`milestone_kind == "work-collection"`）在以下场
 - **Harness 输出只能是控制决策结构体**（Scope/Function/Route/Verdict/Evidence 引用）；代码块和直接执行指令禁止出现在 Harness 输出中。
 - **Function 算子必须在控制面上显性化**为 `Observe → Decide → Dispatch → Verify → Judge → Recover → Close → ChangeGoal` 的控制语义；禁止仅通过技能名称隐式传达当前算子。
 - **Harness 仅负责选择算子、绑定技能和裁决 Gate**；具体代码仓库动作、任务列表内容和执行任务的细节由下游技能的算子实现负责。
-- **SubAgent 使用必须是可开关参数，而不是硬编码行为。** 控制态字段 `subagent_dispatch_mode` 与工作追踪约定字段 `runtime_dispatch_mode` 支持 `auto` / `delegated` / `current-carrier`；控制态字段 `subagent_dispatch_mode_override_scope` 默认是 `worktrack-contract-primary`，只有显式 `global-override` 才是全局覆盖；默认 `auto` 才表示在宿主运行时支持真实 SubAgent 委派且权限边界允许时优先委派。未委派时必须将原因记录为 `runtime fallback`、`permission blocked` 或 `dispatch package unsafe`。
+- **SubAgent 使用必须是可开关参数，而不是硬编码行为。** 控制态字段 `subagent_dispatch_mode` 与工作追踪约定字段 `runtime_dispatch_mode` 支持 `auto` / `delegated` / `current-carrier`；控制态字段 `subagent_dispatch_mode_override_scope` 默认是 `worktrack-contract-primary`，只有显式 `global-override` 才是全局覆盖；默认 `auto` 表示按 Dispatch Decision Policy 选择载体，不得把运行时支持 SubAgent 单独当成默认委派理由。未委派时必须将原因记录为 `runtime fallback`、`permission blocked` 或 `dispatch package unsafe`。
 - **现有 `.aw` 控制配置必须先 hydration 再决策。** Harness 不得忽略上一轮 `.aw/control-state.md` 中的 linked artifact、approval boundary、continuation authority、handback guard、baseline traceability 或 autonomy ledger；缺失字段只能按 artifact 合同默认值降级解释，不能静默扩大权限。
 - **长期权限变更必须写回控制配置。** 程序员授予的持久自动性、分派模式、审批边界或预算变更必须写入 `.aw/control-state.md` 的配置段；若只是本轮一次性批准，必须保留为本轮 evidence / handoff，不得改变长期默认值。
 - **约定后自动工作追踪仅当 `Harness Control State` 明确授予 `约定后自动性：最小委派` 时才可开启**；否则必须保持手动交接模式。

@@ -14,7 +14,11 @@ from governance_semantic_check import (
     check_adapter_wrappers_are_thin,
     check_artifact_skill_alignment,
     check_canonical_skill_packages_are_minimal,
+    check_closeout_record_contract,
+    check_debug_evidence_contract,
+    check_decision_traceability_contract,
     check_docs_list_closeout_cache_roots,
+    check_dispatch_context_contract,
     check_foundations_authority_shadows,
     check_orphan_docs,
     check_manual_runbook_agents_skill_count,
@@ -55,10 +59,17 @@ def test_check_required_handoffs_flags_missing_link(tmp_path: Path) -> None:
     write_doc(tmp_path / "docs/harness/README.md", "")
     write_doc(tmp_path / "docs/harness/foundations/README.md", "")
     write_doc(tmp_path / "docs/harness/artifact/README.md", "")
-    write_doc(tmp_path / "docs/harness/artifact/worktrack/README.md", "")
+    write_doc(
+        tmp_path / "docs/harness/artifact/worktrack/README.md",
+        "[contract](./contract.md)\n"
+        "[queue](./plan-task-queue.md)\n"
+        "[gate](./gate-evidence.md)\n"
+        "[debug](./debug-evidence.md)\n",
+    )
     write_doc(tmp_path / "docs/harness/artifact/worktrack/contract.md", "")
     write_doc(tmp_path / "docs/harness/artifact/worktrack/plan-task-queue.md", "")
     write_doc(tmp_path / "docs/harness/artifact/worktrack/gate-evidence.md", "")
+    write_doc(tmp_path / "docs/harness/artifact/worktrack/debug-evidence.md", "")
     write_doc(tmp_path / "docs/harness/workflow-families/README.md", "")
     write_doc(tmp_path / "toolchain/scripts/README.md", "# scripts\n")
 
@@ -204,13 +215,31 @@ def test_check_subagent_dispatch_default_contract_flags_missing_term(tmp_path: P
     ):
         write_doc(
             tmp_path / relative_path,
-            "默认\nSubAgent\n权限边界\nsubagent_dispatch_mode\nsubagent_dispatch_mode_override_scope\nworktrack-contract-primary\nglobal-override\nruntime_dispatch_mode\nauto\ndelegated\ncurrent-carrier\nruntime fallback\n",
+            "默认\nSubAgent\n权限边界\nDispatch Decision Policy\nsubagent_dispatch_mode\nsubagent_dispatch_mode_override_scope\nworktrack-contract-primary\nglobal-override\nruntime_dispatch_mode\nauto\ndelegated\ncurrent-carrier\nruntime fallback\n",
         )
 
     report = SemanticReport()
     check_subagent_dispatch_default_contract(tmp_path, report)
 
     assert any("dispatch package unsafe" in item for item in report.failures)
+
+
+def test_check_dispatch_context_contract_flags_missing_budget_term(tmp_path: Path) -> None:
+    for relative_path in (
+        "docs/harness/artifact/worktrack/dispatch-packet.md",
+        "product/harness/skills/dispatch-skills/SKILL.md",
+        "product/harness/skills/schedule-worktrack-skill/SKILL.md",
+        "product/harness/skills/generic-worker-skill/SKILL.md",
+    ):
+        write_doc(
+            tmp_path / relative_path,
+            "shared_fact_pack\ncontext_budget\nmust_read\nmay_read\n",
+        )
+
+    report = SemanticReport()
+    check_dispatch_context_contract(tmp_path, report)
+
+    assert any("do_not_read" in item for item in report.failures)
 
 
 def test_check_review_evidence_four_lane_contract_flags_missing_lane(tmp_path: Path) -> None:
@@ -222,13 +251,60 @@ def test_check_review_evidence_four_lane_contract_flags_missing_lane(tmp_path: P
     ):
         write_doc(
             tmp_path / relative_path,
-            "并行\nSubAgent\nfallback\nstatic-semantic-review\ntest-review\nproject-security-review\n静态语义解释\n测试 review\nsecurity review\n代码复杂度和性能 review\n",
+            "review_profile\nlight\nstandard\nrisky\ndeep\n并行\nSubAgent\nfallback\nstatic-semantic-review\ntest-review\nproject-security-review\n静态语义解释\n测试 review\nsecurity review\n代码复杂度和性能 review\n",
         )
 
     report = SemanticReport()
     check_review_evidence_four_lane_contract(tmp_path, report)
 
     assert any("complexity-performance-review" in item for item in report.failures)
+
+
+def test_check_debug_evidence_contract_flags_missing_field(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/harness/artifact/worktrack/debug-evidence.md",
+        "source_logs\nsymptom\nreproduction_steps\nobserved_error\n"
+        "root_cause_hypothesis\nconfirmed_facts\ndiscarded_hypotheses\n"
+        "remaining_unknowns\nRaw Log Boundary\n",
+    )
+
+    report = SemanticReport()
+    check_debug_evidence_contract(tmp_path, report)
+
+    assert any("next_debug_action" in item for item in report.failures)
+
+
+def test_check_decision_traceability_contract_flags_missing_decision_refs(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "docs/harness/artifact/repo/decision-log.md",
+        "decision_id\ndate\nstatus\naccepted\nsuperseded\nrejected\ncontext\n"
+        "decision\nalternatives_considered\nwhy_not_chosen\nconsequences\n"
+        "affected_artifacts\nrelated_worktracks\nrelated_commits\nsupersedes\n",
+    )
+    write_doc(
+        tmp_path / "docs/harness/artifact/repo/worktrack-backlog.md",
+        "worktrack_id\nstatus\nvalidation\n",
+    )
+
+    report = SemanticReport()
+    check_decision_traceability_contract(tmp_path, report)
+
+    assert any("decision_refs" in item for item in report.failures)
+
+
+def test_check_closeout_record_contract_flags_missing_field(tmp_path: Path) -> None:
+    closeout_terms = (
+        "closeout_record\nworktrack_id\nbranch\nbase_ref\nhead_ref\nmerge_commit\npr\n"
+        "files_changed\nacceptance_result\ngate_verdict\nevidence_refs\ndecision_refs\n"
+        "docs_updated\nsnapshot_refreshed\nbacklog_updated\ncleanup_done\nremaining_risks\n"
+    )
+    write_doc(tmp_path / "docs/harness/artifact/worktrack/README.md", closeout_terms)
+    write_doc(tmp_path / "product/harness/skills/close-worktrack-skill/SKILL.md", closeout_terms)
+
+    report = SemanticReport()
+    check_closeout_record_contract(tmp_path, report)
+
+    assert any("next_repo_scope_action" in item for item in report.failures)
 
 
 def test_check_repo_whats_next_overview_fallback_contract_flags_missing_term(tmp_path: Path) -> None:

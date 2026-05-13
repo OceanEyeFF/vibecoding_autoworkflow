@@ -9,13 +9,15 @@
 - updated:
 - gate_round:
 - required_evidence_lanes:
+- review_profile:
 
 ## Review Lane
 
-> 四路 review 覆盖：运行时支持真实委派时应并行分派四个 SubAgent；无法委派时记录 fallback。lane ids 为 `static-semantic-review`（静态语义解释）、`test-review`（测试 review）、`project-security-review`（security review）、`complexity-performance-review`（代码复杂度和性能 review）。
+> review_profile 驱动 review lane 选择：`light` / `standard` / `risky` / `deep`。review lanes 支持并行 `SubAgent` 执行；`deep` 使用四路 review 覆盖；运行时无法委派所选 lanes 时记录 fallback。lane ids 为 `static-semantic-review`（静态语义解释）、`test-review`（测试 review）、`project-security-review`（security review）、`complexity-performance-review`（代码复杂度和性能 review）。
 
 ### Control Signal
 - review_subagent_lanes:
+- review_profile:
 - four_lane_dispatch_status:
 - confidence:
 - ready_for_gate:

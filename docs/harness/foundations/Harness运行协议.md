@@ -58,7 +58,7 @@ Harness 本体属于控制平面。
 - 文档更新
 - merge / cleanup / rollback
 
-需实际执行时，Harness 优先 dispatch 给独立 `SubAgent`、human executor 或明确的通用执行载体。仅当宿主运行时缺少稳定分派壳层、权限边界阻断，或任务包不满足安全分派条件时，允许当前载体回退。回退标记为 `runtime fallback`、`permission blocked` 或 `dispatch package unsafe`。
+需实际执行时，Harness 先按 [Dispatch Decision Policy](./dispatch-decision-policy.md) 判断执行载体，再 dispatch 给独立 `SubAgent`、human executor、专用 skill、通用执行载体或明确的 current-carrier。`auto` 不表示"能委派就委派"；它表示根据任务耦合度、共享状态需求、并行价值、风险、权限边界和上下文预算选择载体。回退标记为 `runtime fallback`、`permission blocked` 或 `dispatch package unsafe`。
 
 `Dispatch` 与 `Implement` 的边界：`Dispatch` 属控制平面——选择载体、打包任务并分派，不直接执行 repo 变更。`Implement` 属执行平面——接收 dispatch packet，执行编码、review、测试、文档更新等变更动作，返回结构化执行结果与证据。`Implement` 是 bounded execution 的运行时载体。一次 `Dispatch` 对应一次 `Implement` 往返，`Implement` 完成后控制权回到 `Verify`/`Judge`。控制平面决定"做什么、谁来做、怎么验收"；执行平面完成"实际做并回传结果"。
 
@@ -273,7 +273,7 @@ stable-handback 指同一交接边界（相同的 `last_stop_reason` 与 `last_h
 
 | 模式 | 语义 |
 | --- | --- |
-| `auto` | 宿主支持真实 SubAgent 且权限边界允许时默认委派，否则标记 `runtime fallback` |
+| `auto` | 按 Dispatch Decision Policy 选择 SubAgent、专用 skill、generic worker 或 current-carrier；无法安全委派时标记 fallback |
 | `delegated` | 必须真实委派。无法委派时返回运行时缺口或权限阻塞 |
 | `current-carrier` | 显式关闭 SubAgent 委派，由当前载体执行同一份 bounded contract |
 
@@ -283,6 +283,8 @@ stable-handback 指同一交接边界（相同的 `last_stop_reason` 与 `last_h
 - scope / non-goals / acceptance
 - 允许读取的 artifact 和代码入口
 - 禁止扩展的边界
+- shared fact pack
+- context budget
 - 预期输出
 - evidence 回传格式
 - rollback / recovery hint
