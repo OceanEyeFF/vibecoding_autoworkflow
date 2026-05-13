@@ -28,7 +28,7 @@ last_verified: 2026-05-11
 ### 2. 规则同步
 
 - root/partition/path/hidden-layer 变更需同步 foundations、关键入口页和治理检查
-- AGENTS.md 或执行流程变更需同步本文
+- AGENTS.md、INDEX.md、默认启动阅读路径或执行流程变更需同步本文，并保持 `AGENTS.md -> INDEX.md -> 当前任务局部入口` 的轻量路由主线
 - runbook/usage-help/testing/Harness 长文变更需说明当前页类型（入口/runbook/合同/指导）并清理重复正文
 - deploy/adapter 变更需同步对应 runbook、maintenance 与 usage-help，口径保持 destructive reinstall model
 - package/release/version/VCS baseline 事实变更需调用 `doc-catch-up-worker-skill` 做 version fact sync；pre-publish 只同步 source version facts 与 VCS tracking facts，post-publish registry verification 后才能同步 published version facts
@@ -45,6 +45,7 @@ last_verified: 2026-05-11
 按改动面选择最小验证集；所有 Python 命令默认使用 `PYTHONDONTWRITEBYTECODE=1 python3 ...`。
 
 - 根目录/路径/分层/hidden/state 规则变更：`folder_logic_check.py` + `path_governance_check.py` + `governance_semantic_check.py`
+- 默认阅读路径或 route contract 变更：`path_governance_check.py` + `governance_semantic_check.py`，确认 `AGENTS.md` 未恢复成固定长 Read First 清单
 - skills/templates 分层规则变更：`path_governance_check.py` + `governance_semantic_check.py`
 - branch/PR/baseline 或 hook 变更：`git symbolic-ref` + `bash -n pre-push` + dry-run
 - `.aw_template`/`.aw/` scaffold 变更：`path_governance_check.py` + `governance_semantic_check.py`

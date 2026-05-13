@@ -79,14 +79,13 @@ Review / Verify / Writeback
 
 ## 从哪里进入
 
-1. [`docs/README.md`](../README.md)
-2. [`docs/project-maintenance/README.md`](README.md)
-3. [`docs/project-maintenance/foundations/root-directory-layering.md`](foundations/root-directory-layering.md)
-4. [`AGENTS.md`](../../AGENTS.md)
-5. 按任务进入：
+1. [`AGENTS.md`](../../AGENTS.md)
+2. [`INDEX.md`](../../INDEX.md)
+3. 按任务进入：
    - Harness 主线与 artifact 合同：[`docs/harness/README.md`](../harness/README.md)
    - 业务源码：[`product/README.md`](../../product/README.md)
    - 工具层：[`toolchain/README.md`](../../toolchain/README.md)
+4. 仅当任务命中分层、治理或 Harness artifact 边界时，再扩读 [`docs/README.md`](../README.md)、[`docs/project-maintenance/README.md`](README.md) 或 [`root-directory-layering.md`](foundations/root-directory-layering.md)。
 
 ## 非目标
 

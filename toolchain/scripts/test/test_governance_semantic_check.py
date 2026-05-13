@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from governance_semantic_check import (
     SemanticReport,
+    check_agents_route_slimming_contract,
     check_append_request_contract_terms,
     check_adapter_wrappers_are_thin,
     check_artifact_skill_alignment,
@@ -114,6 +115,50 @@ def test_check_retired_entrypoint_references_accepts_current_sources(tmp_path: P
 
     report = SemanticReport()
     check_retired_entrypoint_references(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_check_agents_route_slimming_contract_flags_fixed_read_first(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "AGENTS.md",
+        "\n".join(
+            [
+                "# AGENTS.md",
+                "## Read First",
+                "1. `docs/README.md`",
+                "## Route Contract",
+                "- `do_not_read_yet`: `.agents/`",
+            ]
+        )
+        + "\n",
+    )
+
+    report = SemanticReport()
+    check_agents_route_slimming_contract(tmp_path, report)
+
+    assert any("Read First" in item for item in report.failures)
+    assert any("Default Boot" in item for item in report.failures)
+
+
+def test_check_agents_route_slimming_contract_accepts_default_boot(tmp_path: Path) -> None:
+    write_doc(
+        tmp_path / "AGENTS.md",
+        "\n".join(
+            [
+                "# AGENTS.md",
+                "## Default Boot",
+                "默认启动只读 `AGENTS.md`、`INDEX.md` 和当前任务对应的一个局部入口。",
+                "仅当任务命中对应边界时才扩读承接层文档。",
+                "## Route Contract",
+                "- `do_not_read_yet`: `.aw/`, `.agents/`, `.claude/`",
+            ]
+        )
+        + "\n",
+    )
+
+    report = SemanticReport()
+    check_agents_route_slimming_contract(tmp_path, report)
 
     assert report.failures == []
 

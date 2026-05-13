@@ -276,6 +276,18 @@ BYTECODE_FREE_COMMAND_EXCLUDED_PATTERNS = (
         r"codex-harness-manual-run-continuous-\d{4}-\d{2}-\d{2}\.md"
     ),
 )
+AGENTS_ROUTE_CONTRACT_PATH = "AGENTS.md"
+AGENTS_ROUTE_REQUIRED_TERMS = [
+    "## Default Boot",
+    "INDEX.md",
+    "当前任务对应的一个局部入口",
+    "仅当任务命中对应边界时才扩读",
+    "do_not_read_yet",
+    ".aw/",
+]
+AGENTS_ROUTE_FORBIDDEN_TERMS = [
+    "## Read First",
+]
 REPO_PYTHON_COMMAND_RE = re.compile(
     r"\bpython(?:3)?\s+(?:"
     r"-m\s+(?:pytest|unittest)\b|"
@@ -584,6 +596,28 @@ def check_root_tool_shims_disable_bytecode(repo_root: Path, report: SemanticRepo
     report.add_info(f"checked {checked} root tool shims for bytecode guard ordering")
 
 
+def check_agents_route_slimming_contract(repo_root: Path, report: SemanticReport) -> None:
+    agents_path = repo_root / AGENTS_ROUTE_CONTRACT_PATH
+    if not agents_path.exists():
+        report.add_failure(f"missing AGENTS route contract: {AGENTS_ROUTE_CONTRACT_PATH}")
+        return
+
+    text = agents_path.read_text(encoding="utf-8")
+    for term in AGENTS_ROUTE_REQUIRED_TERMS:
+        if term not in text:
+            report.add_failure(
+                f"AGENTS route slimming contract missing required term {term!r}: "
+                f"{AGENTS_ROUTE_CONTRACT_PATH}"
+            )
+    for term in AGENTS_ROUTE_FORBIDDEN_TERMS:
+        if term in text:
+            report.add_failure(
+                f"AGENTS route slimming contract still has fixed preload heading {term!r}: "
+                f"{AGENTS_ROUTE_CONTRACT_PATH}"
+            )
+    report.add_info("checked AGENTS route slimming contract")
+
+
 def check_path_governance_docs_list_gitignore_entries(repo_root: Path, report: SemanticReport) -> None:
     doc_path = repo_root / PATH_GOVERNANCE_CHECKS_DOC
     if not doc_path.exists():
@@ -884,6 +918,7 @@ def main() -> int:
     check_append_request_contract_terms(repo_root, report)
     check_repo_python_commands_are_bytecode_free(repo_root, report)
     check_root_tool_shims_disable_bytecode(repo_root, report)
+    check_agents_route_slimming_contract(repo_root, report)
     check_path_governance_docs_list_gitignore_entries(repo_root, report)
     check_review_verify_docs_list_closeout_steps(repo_root, report)
     check_docs_list_closeout_cache_roots(repo_root, report)
