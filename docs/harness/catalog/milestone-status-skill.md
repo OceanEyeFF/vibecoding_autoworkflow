@@ -1,9 +1,9 @@
 ---
 title: "Milestone Status Skill"
 status: active
-updated: 2026-05-11
+updated: 2026-05-14
 owner: aw-kernel
-last_verified: 2026-05-11
+last_verified: 2026-05-14
 ---
 
 # Milestone Status Skill
@@ -16,6 +16,10 @@ last_verified: 2026-05-11
 - Function: 作为 `RepoScope.Observe` 的 sensor/analyzer
 - 输入: Milestone artifact + 已关闭/待办 worktrack + 聚合 evidence
 - 输出: milestone progress + acceptance verdict + handback_required + release/version consideration hint + developer decision boundary
+
+canonical executable source：
+
+- [../../../product/harness/skills/milestone-status-skill/SKILL.md](../../../product/harness/skills/milestone-status-skill/SKILL.md)
 
 ## 职责
 
