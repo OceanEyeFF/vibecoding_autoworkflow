@@ -47,7 +47,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
 `docs/book.md` 是全量阅读顺序和路径维护入口，不是规则正文的替代品。对 `docs/` 下 markdown 文件执行新增、移动、重命名、删除或 owner 迁移时，必须同步维护三层关系：
 
 1. 最近章节 `README.md`：保持局部入口、owner 和迁移说明正确。
-2. `docs/book.md`：保持 Full Reading Order 中有直接有序链接；除 `docs/book.md` 自身外，当前 `docs/**/*.md` 都必须在这里出现。
+2. `docs/book.md`：保持 Full Reading Order 中有直接有序链接；除 `docs/book.md` 自身外，当前 docs markdown 文件都必须在这里出现，反引号中的路径也必须指向当前存在的路径。
 3. 旧路径引用：同步修复或替换正文、入口页和治理文档里的旧链接。
 
 如果一个文档只是从最近章节 README 间接可达，但没有出现在 `docs/book.md` 的显式阅读顺序中，`path_governance_check.py` 必须失败。这条规则保证读者拿到 `docs/book.md` 后可以按顺序逐个点开文档，而不是靠搜索或目录遍历补全阅读路线。

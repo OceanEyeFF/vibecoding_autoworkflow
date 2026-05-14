@@ -64,7 +64,7 @@
 ## Root Rules
 
 - `product/` 是业务代码唯一源码根。
-- `docs/` 是文档层，内部再分 `project-maintenance / harness / analysis / ideas / archive`。
+- 当前 `docs/` 是文档层，内部为 `book.md / project-maintenance / harness`。
 - `docs/harness/` 是 Harness-first 文档主线。
 - `toolchain/` 只放脚本、评测、测试、打包、部署工具。
 - `.autoworkflow/`、`.spec-workflow/` 只属于 repo-local state layer。
