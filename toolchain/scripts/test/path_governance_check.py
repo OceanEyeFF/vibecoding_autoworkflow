@@ -29,6 +29,7 @@ REQUIRED_ENTRY_PATHS = [
     "README.md",
     "INDEX.md",
     "docs/README.md",
+    "docs/book.md",
     PROJECT_MAINTENANCE_README,
     HARNESS_README,
     "docs/harness/foundations/README.md",
@@ -73,6 +74,7 @@ AGENTS_CONTRACT_BACKLINK_PATHS = [
     "README.md",
     "INDEX.md",
     "docs/README.md",
+    "docs/book.md",
     PROJECT_MAINTENANCE_README,
     HARNESS_README,
     "docs/project-maintenance/foundations/README.md",
@@ -88,8 +90,10 @@ ENTRYPOINT_LINK_RULES = {
     ],
     "INDEX.md": [
         "docs/README.md",
+        "docs/book.md",
     ],
     "docs/README.md": [
+        "docs/book.md",
         PROJECT_MAINTENANCE_README,
         HARNESS_README,
     ],

@@ -167,6 +167,8 @@ def run_scope_gate(repo_root: Path, python: str) -> dict:
             "--allowed-prefix",
             "docs/README.md",
             "--allowed-prefix",
+            "docs/book.md",
+            "--allowed-prefix",
             "AGENTS.md",
             "--allowed-prefix",
             "CLAUDE.md",

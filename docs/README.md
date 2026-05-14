@@ -2,6 +2,8 @@
 
 `docs/` 承载文档真相与仓库操作说明。
 
+文档手册与章节顺序见 [book.md](./book.md)。本页只做 `docs/` 入口导航，不重复定义 book spine。
+
 ## 核心定位
 
 - 构建 `Codex-first` 的 AI coding harness 平台，作为 repo-side contract layer 分发到多个项目
@@ -11,23 +13,18 @@
 
 ## 当前结构
 
+- [book.md](./book.md)：`docs/` canonical book-style spine，说明章节顺序、边界与新增文档放置规则
 - [project-maintenance/README.md](./project-maintenance/README.md)：项目维护、治理、部署与 backend usage
 - [harness/README.md](./harness/README.md)：Harness 主线 doctrine、scope、artifact、catalog 与 workflow families
 
 ## 阅读顺序
 
-以 [AGENTS.md](../AGENTS.md) 为唯一权威。本页只做 `docs/` 模块入口。
+Agent boot 以 [AGENTS.md](../AGENTS.md) 为权威；`docs/` 的书式阅读顺序以 [book.md](./book.md) 为入口。
 
 ## 文档治理规则
 
-- `project-maintenance/` 承接 operator-facing 维护；`harness/` 承接 Harness-first 主线
-- `docs/` 下除 `README.md` 外正文文档必须保持 `title/status/updated/owner/last_verified` frontmatter
-- `docs/` 不长期承载 `suspended`/scratch 文档；暂停共享文档转为 `superseded`，非共享草稿移出
-- 新增正文文档后更新最近 `README.md` 入口，不留孤儿文档
-- 研究结论准入主线后，同步升格到 `project-maintenance/`、`harness/`、`toolchain/` 或 `product/` 的承接位
+章节边界与新增文档放置判断见 [book.md](./book.md)。Agent 默认启动、frontmatter 与写回约束仍以 [AGENTS.md](../AGENTS.md) 为准。
 
 ## AI 默认路径
 
-- 读 `project-maintenance/` 与 `harness/` 入口确认任务类型
-- repo-local workflow 步骤进 `project-maintenance/`
-- Harness doctrine、artifact、catalog 或 workflow family 进 `harness/`
+先读 [AGENTS.md](../AGENTS.md) 和 [../INDEX.md](../INDEX.md)；需要进入 `docs/` 时，再读 [book.md](./book.md) 与最近章节入口。
