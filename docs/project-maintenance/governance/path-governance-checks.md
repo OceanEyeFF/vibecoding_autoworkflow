@@ -52,6 +52,8 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
 
 如果一个文档只是从最近章节 README 间接可达，但没有出现在 `docs/book.md` 的显式阅读顺序中，`path_governance_check.py` 必须失败。这条规则保证读者拿到 `docs/book.md` 后可以按顺序逐个点开文档，而不是靠搜索或目录遍历补全阅读路线。
 
+`docs/book.md` 和章节入口只描述当前版本中已经存在的文档拓扑、owner 和维护规则。只为未来迁移、后续 Worktrack 或尚未落地重构切片服务的计划，不应作为 `docs/` 长期 truth surface 保留；这类后续动作应留在 Harness runtime/backlog 记录中，等实际内容存在后再同步进 book 和最近章节入口。
+
 ## 六、如何理解结果
 
 返回码 `0` 通过；非 `0` 表示违规/坏链/缺失入口/`.gitignore` 回退。失败时脚本列出具体问题。`folder_logic_check.py` 输出 issue code 便于 gate 锁定。
