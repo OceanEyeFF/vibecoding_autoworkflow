@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from path_governance_check import (
     CheckReport,
+    check_docs_book_reachability,
     check_gitignore,
     check_required_backlinks,
     check_required_entrypoint_links,
@@ -69,6 +70,135 @@ def test_docs_book_missing_link_is_flagged(tmp_path: Path) -> None:
 
     assert "entrypoint missing document link: INDEX.md -> docs/book.md" in report.failures
     assert "entrypoint missing document link: docs/README.md -> docs/book.md" in report.failures
+
+
+def test_docs_book_reachability_accepts_docs_linked_from_chapter_entrypoint(
+    tmp_path: Path,
+) -> None:
+    write_file(
+        tmp_path / "docs/book.md",
+        """---
+title: Docs Book
+status: active
+updated: 2026-05-14
+owner: test
+last_verified: 2026-05-14
+---
+# Docs Book
+
+[Project](./project-maintenance/README.md)
+""",
+    )
+    write_file(
+        tmp_path / "docs/project-maintenance/README.md",
+        "[Governance](./governance/README.md)\n",
+    )
+    write_file(
+        tmp_path / "docs/project-maintenance/governance/README.md",
+        "[Policy](./policy.md)\n",
+    )
+    write_file(
+        tmp_path / "docs/project-maintenance/governance/policy.md",
+        """---
+title: Policy
+status: active
+updated: 2026-05-14
+owner: test
+last_verified: 2026-05-14
+---
+# Policy
+""",
+    )
+
+    report = CheckReport()
+    check_docs_book_reachability(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_docs_book_reachability_resolves_directory_anchor_and_extensionless_links(
+    tmp_path: Path,
+) -> None:
+    write_file(
+        tmp_path / "docs/book.md",
+        """---
+title: Docs Book
+status: active
+updated: 2026-05-14
+owner: test
+last_verified: 2026-05-14
+---
+# Docs Book
+
+[Project](./project-maintenance/#entry)
+""",
+    )
+    write_file(
+        tmp_path / "docs/project-maintenance/README.md",
+        "[Governance](./governance/)\n",
+    )
+    write_file(
+        tmp_path / "docs/project-maintenance/governance/README.md",
+        "[Policy](./policy#scope)\n[External](https://example.com)\n[Local anchor](#local)\n",
+    )
+    write_file(
+        tmp_path / "docs/project-maintenance/governance/policy.md",
+        """---
+title: Policy
+status: active
+updated: 2026-05-14
+owner: test
+last_verified: 2026-05-14
+---
+# Policy
+""",
+    )
+
+    report = CheckReport()
+    check_docs_book_reachability(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_docs_book_reachability_flags_unreachable_substantive_doc(
+    tmp_path: Path,
+) -> None:
+    write_file(
+        tmp_path / "docs/book.md",
+        """---
+title: Docs Book
+status: active
+updated: 2026-05-14
+owner: test
+last_verified: 2026-05-14
+---
+# Docs Book
+
+[Project](./project-maintenance/README.md)
+""",
+    )
+    write_file(tmp_path / "docs/project-maintenance/README.md", "# Project\n")
+    write_file(
+        tmp_path / "docs/project-maintenance/governance/orphan.md",
+        """---
+title: Orphan
+status: active
+updated: 2026-05-14
+owner: test
+last_verified: 2026-05-14
+---
+# Orphan
+""",
+    )
+
+    report = CheckReport()
+    check_docs_book_reachability(tmp_path, report)
+
+    assert report.failures == [
+        "docs doc not reachable from book spine: "
+        "docs/project-maintenance/governance/orphan.md "
+        "(link it from docs/book.md or the nearest chapter entrypoint)"
+    ]
 
 
 def test_check_gitignore_accepts_required_cache_entries(tmp_path: Path) -> None:
