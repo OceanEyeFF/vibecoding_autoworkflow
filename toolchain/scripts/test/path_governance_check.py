@@ -13,6 +13,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 AGENTS_CONTRACT_DOC = "AGENTS.md"
+DOCS_BOOK = "docs/book.md"
 PROJECT_MAINTENANCE_README = "docs/project-maintenance/README.md"
 HARNESS_README = "docs/harness/README.md"
 DEFAULT_SCAN_PATHS = [
@@ -305,6 +306,14 @@ def resolve_markdown_target(markdown_file: Path, repo_root: Path, target: str) -
     return (markdown_file.parent / target).resolve()
 
 
+def is_relative_to(path: Path, parent: Path) -> bool:
+    try:
+        path.relative_to(parent)
+    except ValueError:
+        return False
+    return True
+
+
 def to_relative_posix(path: Path, repo_root: Path) -> str:
     return path.relative_to(repo_root).as_posix()
 
@@ -379,6 +388,70 @@ def parse_frontmatter(text: str) -> dict[str, str] | None:
 def iter_substantive_docs(repo_root: Path) -> list[Path]:
     docs_root = repo_root / "docs"
     return sorted(path for path in docs_root.rglob("*.md") if path.name != "README.md")
+
+
+def docs_markdown_target_node(repo_root: Path, resolved_target: Path) -> Path | None:
+    docs_root = (repo_root / "docs").resolve()
+    if not is_relative_to(resolved_target, docs_root):
+        return None
+
+    if resolved_target.is_dir():
+        readme = resolved_target / "README.md"
+        if readme.exists():
+            return readme.resolve()
+        return None
+
+    if resolved_target.suffix == ".md" and resolved_target.exists():
+        return resolved_target.resolve()
+
+    markdown_candidate = resolved_target.with_suffix(".md")
+    if markdown_candidate.exists():
+        return markdown_candidate.resolve()
+
+    return None
+
+
+def reachable_docs_from_book_spine(repo_root: Path) -> set[Path]:
+    book_path = (repo_root / DOCS_BOOK).resolve()
+    if not book_path.exists():
+        return set()
+
+    reachable: set[Path] = set()
+    pending = [book_path]
+    while pending:
+        markdown_file = pending.pop()
+        if markdown_file in reachable:
+            continue
+        reachable.add(markdown_file)
+
+        text = markdown_file.read_text(encoding="utf-8")
+        for target in iter_relative_markdown_targets(text):
+            resolved = resolve_markdown_target(markdown_file, repo_root, target)
+            next_node = docs_markdown_target_node(repo_root, resolved)
+            if next_node is not None and next_node not in reachable:
+                pending.append(next_node)
+
+    return reachable
+
+
+def check_docs_book_reachability(repo_root: Path, report: CheckReport) -> None:
+    book_path = repo_root / DOCS_BOOK
+    docs_files = iter_substantive_docs(repo_root)
+    if not book_path.exists():
+        report.add_failure(f"missing docs book spine: {DOCS_BOOK}")
+        report.add_info(f"checked {len(docs_files)} docs book-spine reachability targets")
+        return
+
+    reachable = reachable_docs_from_book_spine(repo_root)
+    for doc_path in docs_files:
+        if doc_path.resolve() not in reachable:
+            relative_path = to_relative_posix(doc_path, repo_root)
+            report.add_failure(
+                "docs doc not reachable from book spine: "
+                f"{relative_path} (link it from {DOCS_BOOK} or the nearest chapter entrypoint)"
+            )
+
+    report.add_info(f"checked {len(docs_files)} docs book-spine reachability targets")
 
 
 def expected_statuses(relative_path: str) -> set[str] | None:
@@ -485,6 +558,7 @@ def main() -> int:
         "relative_links": CheckReport(),
         "entrypoints": CheckReport(),
         "frontmatter": CheckReport(),
+        "book_spine": CheckReport(),
     }
 
     scan_paths = DEFAULT_SCAN_PATHS + args.scan_path
@@ -498,6 +572,7 @@ def main() -> int:
         backlink_paths=AGENTS_CONTRACT_BACKLINK_PATHS,
     )
     check_docs_frontmatter(repo_root, reports["frontmatter"])
+    check_docs_book_reachability(repo_root, reports["book_spine"])
     check_required_entrypoint_links(repo_root, reports["entrypoints"])
     check_gitignore(repo_root, reports["entrypoints"])
 
