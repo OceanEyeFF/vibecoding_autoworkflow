@@ -29,7 +29,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
 2. `product/`、`docs/`、`toolchain/` 一级子目录合规；错放内容拦截（product 无 runbook/缓存/state，docs 无可执行/缓存，toolchain 无业务源码/mount，tools 无 Python 缓存）
 3. hidden/state/mount 层 tracked 状态受控：`.agents/`、`.claude/` tracked 即失败；`.codex/` 仅 `config.toml`+`rules/repo.rules`；`tools/` 仅显式 compat shim；`.pytest_cache/` tracked 即失败
 4. `.nav/` 仅含 `README.md`、`@docs`、`@skills`；`@docs` 与 `@skills` 是 symlink 且解析到合法目标
-5. `path_governance_check.py` — 根入口、`docs/book.md` 与主线入口存在且 markdown 相对链接可达；所有 `docs/` 下非 `README.md` 正文必须能从 `docs/book.md` 沿相对 markdown 链接到达，新增正文需挂到 book spine 或最近章节入口；除 `docs/book.md` 自身外的所有 `docs/**/*.md` 必须在 `docs/book.md` 的显式阅读顺序中有直接链接；`AGENTS.md` 被关键入口页引用；scope gate 中不带 `/` 的允许项按精确文件路径匹配，带 `/` 的允许项才按目录前缀匹配
+5. `path_governance_check.py` — 根入口、`docs/book.md` 与主线入口存在且 markdown 相对链接可达；所有 `docs/` 下非 `README.md` 正文必须能从 `docs/book.md` 沿相对 markdown 链接到达，新增正文需挂到 book spine 或最近章节入口；除 `docs/book.md` 自身外的所有 `docs/**/*.md` 必须在 `docs/book.md` 的显式阅读顺序中有直接链接；`docs/book.md` 反引号中的具体路径必须指向当前 checkout 中存在的路径；`AGENTS.md` 被关键入口页引用；scope gate 中不带 `/` 的允许项按精确文件路径匹配，带 `/` 的允许项才按目录前缀匹配
 6. `docs/harness/README.md` 及子入口存在，继续链接 foundations/scope/artifact/Skills/workflow-families
 7. `docs/` 正文保留 frontmatter；`project-maintenance/` 与 `harness/` status 匹配语义；无 `status:suspended` 误用
 8. `.gitignore` 忽略 `.aw/`、`.agents/`、`.claude/`、`.autoworkflow/`、`.spec-workflow/`、`**/__pycache__/`、`.pytest_cache/`、`*.pyc`、`*.pyo`

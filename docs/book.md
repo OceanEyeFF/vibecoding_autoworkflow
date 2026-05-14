@@ -156,8 +156,9 @@ Harness 子章节放置规则：
 1. 先确定 owner 章节和最近 `README.md`，避免把新正文直接散落在目录里。
 2. 更新最近章节 `README.md` 的局部入口或迁移说明。
 3. 更新本页的 Full Reading Order，确保除 `docs/book.md` 自身外的每个当前 docs markdown 文件都有直接有序链接。
-4. 修复旧路径引用；若旧入口仍有读者价值，写清迁移目标。
-5. 运行 `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/path_governance_check.py`，确认 book reachability 和 explicit reading-order coverage 均通过。
-6. 若变更影响 review/verify、路径治理或 closeout 规则，同步更新 `docs/project-maintenance/governance/` 的对应文档。
+4. 检查本页正文中的反引号路径：只保留当前 checkout 中真实存在的路径；不要用不存在目录表达预留章节，也不要创建空目录或占位文档来让旧表述成立。
+5. 修复旧路径引用；若旧入口仍有读者价值，写清迁移目标。
+6. 运行 `PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/path_governance_check.py`，确认 book reachability、explicit reading-order coverage 和 inline path coverage 均通过。
+7. 若变更影响 review/verify、路径治理或 closeout 规则，同步更新 `docs/project-maintenance/governance/` 的对应文档。
 
 删除或重命名文档时，不只删除文件；必须同步删除或替换本页、最近 README、相关正文和治理文档中的旧链接。
