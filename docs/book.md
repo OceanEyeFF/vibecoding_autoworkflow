@@ -1,9 +1,9 @@
 ---
 title: "Docs Book Spine"
 status: active
-updated: 2026-05-14
+updated: 2026-05-15
 owner: aw-kernel
-last_verified: 2026-05-14
+last_verified: 2026-05-15
 ---
 # Docs Book Spine
 
@@ -133,6 +133,8 @@ Harness 子章节放置规则：
 ## Grouping And Relationships
 
 - `README.md` 是局部章节入口，只解释该目录的定位和最近路线；不要在 README 中复制完整规则正文。
+- 整理章节 `README.md` 时，先写清本文目的，再用一层 `路径 | 功能/何时读取` 表路由到最近 owner；删除服务于 repo 历史、跨层表达或表意不明的迁移段落，把长期规则正文下沉到对应 owner 文档。
+- 章节入口里的 executable/source handoff 只保留必要链接；若需要同时指向实现层 root 和具体 source，说明它们是下游实现入口，不要把它们写成 doctrine、artifact 或 workflow owner。
 - `docs/book.md` 是当前版本的全量书目和阅读顺序，必须直接链接 `docs/` 下除自身外的每个当前 markdown 文件。
 - 承接文档保存规则正文；book 只写章节边界、顺序、分组关系和维护规则。
 - docs truth surface 只描述当前已经存在的文档拓扑、owner 和维护规则；未来迁移计划、后续 Worktrack seed 或尚未落地的重构切片不得作为长期 docs 正文保留。
