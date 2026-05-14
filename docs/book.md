@@ -7,9 +7,9 @@ last_verified: 2026-05-14
 ---
 # Docs Book Spine
 
-`docs/book.md` 是 `docs/` 的 canonical book-style spine：它定义完整阅读顺序、章节边界、文档分组关系和路径维护规则。`docs/README.md` 只做入口导航；具体规则正文仍以对应章节内的承接文档为准。
+`docs/book.md` 是 `docs/` 的 canonical book-style spine：它定义当前版本中实际存在的完整阅读顺序、章节边界、文档分组关系和路径维护规则。`docs/README.md` 只做入口导航；具体规则正文仍以对应章节内的承接文档为准。
 
-Owner：`aw-kernel`。边界：只覆盖 `docs/` 的文档分层与阅读路线，不替代 `AGENTS.md` 的 agent boot 规则，不承接 `product/` 源码合同或 `toolchain/` 脚本合同。
+Owner：`aw-kernel`。边界：只覆盖当前 `docs/` 文档分层与阅读路线，不替代 `AGENTS.md` 的 agent boot 规则，不承接 `product/` 源码合同或 `toolchain/` 脚本合同，不把未来迁移计划或后续 Worktrack seed 写成 docs truth。
 
 ## How To Read
 
@@ -32,34 +32,33 @@ Owner：`aw-kernel`。边界：只覆盖 `docs/` 的文档分层与阅读路线�
 4. [project-maintenance/governance/README.md](./project-maintenance/governance/README.md)
 5. [project-maintenance/governance/review-verify-handbook.md](./project-maintenance/governance/review-verify-handbook.md)
 6. [project-maintenance/governance/path-governance-checks.md](./project-maintenance/governance/path-governance-checks.md)
-7. [project-maintenance/governance/docs-ordered-restructure-plan.md](./project-maintenance/governance/docs-ordered-restructure-plan.md)
-8. [project-maintenance/governance/global-language-style.md](./project-maintenance/governance/global-language-style.md)
-9. [project-maintenance/governance/branch-pr-governance.md](./project-maintenance/governance/branch-pr-governance.md)
-10. [project-maintenance/governance/aw-installer-release-operation-model.md](./project-maintenance/governance/aw-installer-release-operation-model.md)
-11. [project-maintenance/governance/aw-installer-release-channel-governance.md](./project-maintenance/governance/aw-installer-release-channel-governance.md)
-12. [project-maintenance/governance/aw-installer-release-standard-flow.md](./project-maintenance/governance/aw-installer-release-standard-flow.md)
-13. [project-maintenance/governance/aw-installer-pre-publish-governance.md](./project-maintenance/governance/aw-installer-pre-publish-governance.md)
-14. [project-maintenance/governance/aw-installer-external-trial-governance.md](./project-maintenance/governance/aw-installer-external-trial-governance.md)
-15. [project-maintenance/deploy/README.md](./project-maintenance/deploy/README.md)
-16. [project-maintenance/deploy/distribution-entrypoint-contract.md](./project-maintenance/deploy/distribution-entrypoint-contract.md)
-17. [project-maintenance/deploy/deploy-mapping-spec.md](./project-maintenance/deploy/deploy-mapping-spec.md)
-18. [project-maintenance/deploy/deploy-runbook.md](./project-maintenance/deploy/deploy-runbook.md)
-19. [project-maintenance/deploy/skill-deployment-maintenance.md](./project-maintenance/deploy/skill-deployment-maintenance.md)
-20. [project-maintenance/deploy/payload-provenance-trust-boundary.md](./project-maintenance/deploy/payload-provenance-trust-boundary.md)
-21. [project-maintenance/deploy/existing-code-adoption.md](./project-maintenance/deploy/existing-code-adoption.md)
-22. [project-maintenance/testing/README.md](./project-maintenance/testing/README.md)
-23. [project-maintenance/testing/python-script-test-execution.md](./project-maintenance/testing/python-script-test-execution.md)
-24. [project-maintenance/testing/npx-command-test-execution.md](./project-maintenance/testing/npx-command-test-execution.md)
-25. [project-maintenance/testing/codex-post-deploy-behavior-tests.md](./project-maintenance/testing/codex-post-deploy-behavior-tests.md)
-26. [project-maintenance/testing/claude-post-deploy-behavior-tests.md](./project-maintenance/testing/claude-post-deploy-behavior-tests.md)
-27. [project-maintenance/usage-help/README.md](./project-maintenance/usage-help/README.md)
-28. [project-maintenance/usage-help/recommended-usage.md](./project-maintenance/usage-help/recommended-usage.md)
-29. [project-maintenance/usage-help/init-greenfield.md](./project-maintenance/usage-help/init-greenfield.md)
-30. [project-maintenance/usage-help/init-with-code.md](./project-maintenance/usage-help/init-with-code.md)
-31. [project-maintenance/usage-help/goal-change-guide.md](./project-maintenance/usage-help/goal-change-guide.md)
-32. [project-maintenance/usage-help/codex.md](./project-maintenance/usage-help/codex.md)
-33. [project-maintenance/usage-help/claude.md](./project-maintenance/usage-help/claude.md)
-34. [project-maintenance/repo-onboarding.md](./project-maintenance/repo-onboarding.md)
+7. [project-maintenance/governance/global-language-style.md](./project-maintenance/governance/global-language-style.md)
+8. [project-maintenance/governance/branch-pr-governance.md](./project-maintenance/governance/branch-pr-governance.md)
+9. [project-maintenance/governance/aw-installer-release-operation-model.md](./project-maintenance/governance/aw-installer-release-operation-model.md)
+10. [project-maintenance/governance/aw-installer-release-channel-governance.md](./project-maintenance/governance/aw-installer-release-channel-governance.md)
+11. [project-maintenance/governance/aw-installer-release-standard-flow.md](./project-maintenance/governance/aw-installer-release-standard-flow.md)
+12. [project-maintenance/governance/aw-installer-pre-publish-governance.md](./project-maintenance/governance/aw-installer-pre-publish-governance.md)
+13. [project-maintenance/governance/aw-installer-external-trial-governance.md](./project-maintenance/governance/aw-installer-external-trial-governance.md)
+14. [project-maintenance/deploy/README.md](./project-maintenance/deploy/README.md)
+15. [project-maintenance/deploy/distribution-entrypoint-contract.md](./project-maintenance/deploy/distribution-entrypoint-contract.md)
+16. [project-maintenance/deploy/deploy-mapping-spec.md](./project-maintenance/deploy/deploy-mapping-spec.md)
+17. [project-maintenance/deploy/deploy-runbook.md](./project-maintenance/deploy/deploy-runbook.md)
+18. [project-maintenance/deploy/skill-deployment-maintenance.md](./project-maintenance/deploy/skill-deployment-maintenance.md)
+19. [project-maintenance/deploy/payload-provenance-trust-boundary.md](./project-maintenance/deploy/payload-provenance-trust-boundary.md)
+20. [project-maintenance/deploy/existing-code-adoption.md](./project-maintenance/deploy/existing-code-adoption.md)
+21. [project-maintenance/testing/README.md](./project-maintenance/testing/README.md)
+22. [project-maintenance/testing/python-script-test-execution.md](./project-maintenance/testing/python-script-test-execution.md)
+23. [project-maintenance/testing/npx-command-test-execution.md](./project-maintenance/testing/npx-command-test-execution.md)
+24. [project-maintenance/testing/codex-post-deploy-behavior-tests.md](./project-maintenance/testing/codex-post-deploy-behavior-tests.md)
+25. [project-maintenance/testing/claude-post-deploy-behavior-tests.md](./project-maintenance/testing/claude-post-deploy-behavior-tests.md)
+26. [project-maintenance/usage-help/README.md](./project-maintenance/usage-help/README.md)
+27. [project-maintenance/usage-help/recommended-usage.md](./project-maintenance/usage-help/recommended-usage.md)
+28. [project-maintenance/usage-help/init-greenfield.md](./project-maintenance/usage-help/init-greenfield.md)
+29. [project-maintenance/usage-help/init-with-code.md](./project-maintenance/usage-help/init-with-code.md)
+30. [project-maintenance/usage-help/goal-change-guide.md](./project-maintenance/usage-help/goal-change-guide.md)
+31. [project-maintenance/usage-help/codex.md](./project-maintenance/usage-help/codex.md)
+32. [project-maintenance/usage-help/claude.md](./project-maintenance/usage-help/claude.md)
+33. [project-maintenance/repo-onboarding.md](./project-maintenance/repo-onboarding.md)
 
 ### 2. Harness
 
@@ -110,15 +109,15 @@ Owner：`aw-kernel`。边界：只覆盖 `docs/` 的文档分层与阅读路线�
 
 ### 3. Analysis
 
-`docs/analysis/` is reserved for admitted analysis that is not yet stable truth. There are no current markdown entries in this chapter.
+`docs/analysis/` 当前没有 markdown 条目。
 
 ### 4. Ideas
 
-`docs/ideas/` is reserved for uncommitted ideas and early drafts. There are no current markdown entries in this chapter.
+`docs/ideas/` 当前没有 markdown 条目。
 
 ### 5. Archive
 
-`docs/archive/` is reserved for superseded historical context. There are no current markdown entries in this chapter.
+`docs/archive/` 当前没有 markdown 条目。
 
 ## Chapter Boundaries
 
@@ -164,8 +163,9 @@ Harness 子章节放置规则：
 ## Grouping And Relationships
 
 - `README.md` 是局部章节入口，只解释该目录的定位和最近路线；不要在 README 中复制完整规则正文。
-- `docs/book.md` 是全量书目和阅读顺序，必须直接链接当前 `docs/**/*.md` 中除自身外的每个 markdown 文件。
+- `docs/book.md` 是当前版本的全量书目和阅读顺序，必须直接链接当前 `docs/**/*.md` 中除自身外的每个 markdown 文件。
 - 承接文档保存规则正文；book 只写章节边界、顺序、分组关系和维护规则。
+- docs truth surface 只描述当前已经存在的文档拓扑、owner 和维护规则；未来迁移计划、后续 Worktrack seed 或尚未落地的重构切片不得作为长期 docs 正文保留。
 - 一个主题只能有一个稳定主线 owner。若两个章节都需要引用同一主题，非 owner 章节只链接到 owner，不复制正文。
 - 跨章节依赖要在相关文档中用相对链接表达，不能只依靠文件路径相邻或读者搜索。
 

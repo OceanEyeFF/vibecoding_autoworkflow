@@ -12,7 +12,7 @@
   - [artifact/worktrack/dispatch-packet.md](./artifact/worktrack/dispatch-packet.md)：Dispatch Packet Schema，统一 `schedule-worktrack-skill -> dispatch-skills -> SubAgent` 链路的 Task Brief / Info Packet / Result 三层字段定义
 - [catalog/README.md](./catalog/README.md)：`Codex` 语境下直接可消费的 Harness skill inventory，只记录 skill 入口、职责摘要、控制层级、状态和 canonical executable source
   - [catalog/milestone-status-skill.md](./catalog/milestone-status-skill.md)：Milestone Status Skill，独立 Milestone 分析器，RepoScope 下的聚合观测/验收分析器
-  - [catalog/skill-impact-matrix.md](./catalog/skill-impact-matrix.md)：Skill Impact Matrix，历史同步分析，当前留在 catalog 下仅作为待迁移清单；目标承接位见 [catalog/README.md](./catalog/README.md)
+  - [catalog/skill-impact-matrix.md](./catalog/skill-impact-matrix.md)：Skill Impact Matrix，历史同步分析与同步追踪记录；不是 skill inventory 正文
 - [workflow-families/README.md](./workflow-families/README.md)：可复用 workflow family、route pattern 与 policy profile
 
 ## 阅读边界
@@ -41,7 +41,7 @@
 ## 当前主张
 
 - `Harness` 升为一级认知与文档域
-- 当前不再保留旧的 `function/` 与 `governance/` 噪声拆分；相关层将在后续按新 ontology 重做
+- 当前不再保留旧的 `function/` 与 `governance/` 噪声拆分；Harness 主线由 foundations、scope、artifact、catalog、workflow-families 和 design 承接
 - `memory-side`、`task-interface` 与 `docs/harness/adjacent-systems/` 已退役；已批准输入收束进 Worktrack artifact，路由与写回规则由 `AGENTS.md` 和项目维护治理承接
 - 在 `Codex` 语境下，Harness 直接以 skill inventory 表达，不再维持一层独立的 `function -> skill` 转译目录
 - Harness executable source 进入 [../../product/harness/skills/README.md](../../product/harness/skills/README.md)，但 doctrine、runtime protocol、artifact contract 与 workflow policy 仍以上游文档真相为准
