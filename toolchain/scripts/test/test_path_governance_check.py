@@ -86,7 +86,11 @@ last_verified: 2026-05-14
 ---
 # Docs Book
 
+## Full Reading Order
+
 [Project](./project-maintenance/README.md)
+[Governance](./project-maintenance/governance/README.md)
+[Policy](./project-maintenance/governance/policy.md)
 """,
     )
     write_file(
@@ -130,7 +134,11 @@ last_verified: 2026-05-14
 ---
 # Docs Book
 
+## Full Reading Order
+
 [Project](./project-maintenance/#entry)
+[Governance](./project-maintenance/governance/)
+[Policy](./project-maintenance/governance/policy#scope)
 """,
     )
     write_file(
@@ -160,6 +168,111 @@ last_verified: 2026-05-14
     assert report.failures == []
 
 
+def test_docs_book_explicit_order_flags_doc_only_reached_indirectly(
+    tmp_path: Path,
+) -> None:
+    write_file(
+        tmp_path / "docs/book.md",
+        """---
+title: Docs Book
+status: active
+updated: 2026-05-14
+owner: test
+last_verified: 2026-05-14
+---
+# Docs Book
+
+## Full Reading Order
+
+[Project](./project-maintenance/README.md)
+""",
+    )
+    write_file(
+        tmp_path / "docs/project-maintenance/README.md",
+        "[Governance](./governance/README.md)\n",
+    )
+    write_file(
+        tmp_path / "docs/project-maintenance/governance/README.md",
+        "[Policy](./policy.md)\n",
+    )
+    write_file(
+        tmp_path / "docs/project-maintenance/governance/policy.md",
+        """---
+title: Policy
+status: active
+updated: 2026-05-14
+owner: test
+last_verified: 2026-05-14
+---
+# Policy
+""",
+    )
+
+    report = CheckReport()
+    check_docs_book_reachability(tmp_path, report)
+
+    assert (
+        "docs doc missing from explicit book reading order: "
+        "docs/project-maintenance/governance/policy.md "
+        "(add it as a direct ordered link in docs/book.md)"
+    ) in report.failures
+
+
+def test_docs_book_explicit_order_ignores_links_outside_full_reading_order(
+    tmp_path: Path,
+) -> None:
+    write_file(
+        tmp_path / "docs/book.md",
+        """---
+title: Docs Book
+status: active
+updated: 2026-05-14
+owner: test
+last_verified: 2026-05-14
+---
+# Docs Book
+
+## Full Reading Order
+
+[Project](./project-maintenance/README.md)
+[Governance](./project-maintenance/governance/README.md)
+
+## Placement Checklist
+
+[Policy](./project-maintenance/governance/policy.md)
+""",
+    )
+    write_file(
+        tmp_path / "docs/project-maintenance/README.md",
+        "[Governance](./governance/README.md)\n",
+    )
+    write_file(
+        tmp_path / "docs/project-maintenance/governance/README.md",
+        "[Policy](./policy.md)\n",
+    )
+    write_file(
+        tmp_path / "docs/project-maintenance/governance/policy.md",
+        """---
+title: Policy
+status: active
+updated: 2026-05-14
+owner: test
+last_verified: 2026-05-14
+---
+# Policy
+""",
+    )
+
+    report = CheckReport()
+    check_docs_book_reachability(tmp_path, report)
+
+    assert (
+        "docs doc missing from explicit book reading order: "
+        "docs/project-maintenance/governance/policy.md "
+        "(add it as a direct ordered link in docs/book.md)"
+    ) in report.failures
+
+
 def test_docs_book_reachability_flags_unreachable_substantive_doc(
     tmp_path: Path,
 ) -> None:
@@ -173,6 +286,8 @@ owner: test
 last_verified: 2026-05-14
 ---
 # Docs Book
+
+## Full Reading Order
 
 [Project](./project-maintenance/README.md)
 """,
@@ -194,11 +309,16 @@ last_verified: 2026-05-14
     report = CheckReport()
     check_docs_book_reachability(tmp_path, report)
 
-    assert report.failures == [
+    assert (
         "docs doc not reachable from book spine: "
         "docs/project-maintenance/governance/orphan.md "
         "(link it from docs/book.md or the nearest chapter entrypoint)"
-    ]
+    ) in report.failures
+    assert (
+        "docs doc missing from explicit book reading order: "
+        "docs/project-maintenance/governance/orphan.md "
+        "(add it as a direct ordered link in docs/book.md)"
+    ) in report.failures
 
 
 def test_check_gitignore_accepts_required_cache_entries(tmp_path: Path) -> None:
