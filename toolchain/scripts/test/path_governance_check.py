@@ -224,6 +224,7 @@ STATUS_RULES = [
     ("docs/harness/", {"active", "draft", "superseded"}),
 ]
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+INLINE_CODE_RE = re.compile(r"`([^`\n]+)`")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MARKDOWN_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
@@ -497,6 +498,61 @@ def docs_book_explicit_order_targets(repo_root: Path) -> set[Path]:
     return explicit_targets
 
 
+def is_docs_book_inline_path_token(token: str) -> bool:
+    if not token:
+        return False
+    if any(marker in token for marker in ("*", "?", "[", "]", "{", "}", "|", "\n")):
+        return False
+    if token.startswith(("#", "http://", "https://", "mailto:", "tel:")):
+        return False
+    if " " in token:
+        return False
+    return token.endswith("/") or "/" in token or token.endswith(".md")
+
+
+def resolve_docs_book_inline_path(repo_root: Path, token: str) -> Path:
+    cleaned = token.strip()
+    if cleaned.startswith("/"):
+        return repo_root / cleaned.lstrip("/")
+    if cleaned.startswith(("../", "./")):
+        return (repo_root / "docs" / cleaned).resolve()
+    if cleaned.startswith(
+        (
+            ".",
+            "docs/",
+            "product/",
+            "toolchain/",
+            "tools/",
+            "AGENTS.md",
+            "INDEX.md",
+            "README.md",
+        )
+    ):
+        return repo_root / cleaned.rstrip("/")
+    return repo_root / "docs" / cleaned.rstrip("/")
+
+
+def check_docs_book_inline_paths(repo_root: Path, report: CheckReport) -> None:
+    book_path = repo_root / DOCS_BOOK
+    if not book_path.exists():
+        report.add_info("checked 0 docs book inline path references")
+        return
+
+    checked_paths = 0
+    text = book_path.read_text(encoding="utf-8")
+    for match in INLINE_CODE_RE.findall(text):
+        token = match.strip()
+        if not is_docs_book_inline_path_token(token):
+            continue
+        checked_paths += 1
+        resolved = resolve_docs_book_inline_path(repo_root, token)
+        if not resolved.exists():
+            report.add_failure(
+                f"docs book references missing current path: {token}"
+            )
+    report.add_info(f"checked {checked_paths} docs book inline path references")
+
+
 def check_docs_book_reachability(repo_root: Path, report: CheckReport) -> None:
     book_path = repo_root / DOCS_BOOK
     docs_files = iter_substantive_docs(repo_root)
@@ -656,6 +712,7 @@ def main() -> int:
     )
     check_docs_frontmatter(repo_root, reports["frontmatter"])
     check_docs_book_reachability(repo_root, reports["book_spine"])
+    check_docs_book_inline_paths(repo_root, reports["book_spine"])
     check_required_entrypoint_links(repo_root, reports["entrypoints"])
     check_gitignore(repo_root, reports["entrypoints"])
 

@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from path_governance_check import (
     CheckReport,
+    check_docs_book_inline_paths,
     check_docs_book_reachability,
     check_gitignore,
     check_required_backlinks,
@@ -319,6 +320,56 @@ last_verified: 2026-05-14
         "docs/project-maintenance/governance/orphan.md "
         "(add it as a direct ordered link in docs/book.md)"
     ) in report.failures
+
+
+def test_docs_book_inline_paths_flags_missing_current_path(tmp_path: Path) -> None:
+    write_file(
+        tmp_path / "docs/book.md",
+        """---
+title: Docs Book
+status: active
+updated: 2026-05-14
+owner: test
+last_verified: 2026-05-14
+---
+# Docs Book
+
+`docs/missing/` should not be listed as current.
+""",
+    )
+
+    report = CheckReport()
+    check_docs_book_inline_paths(tmp_path, report)
+
+    assert "docs book references missing current path: docs/missing/" in report.failures
+
+
+def test_docs_book_inline_paths_accepts_current_root_and_docs_paths(
+    tmp_path: Path,
+) -> None:
+    write_file(tmp_path / "AGENTS.md", "# Agents\n")
+    write_file(tmp_path / "docs/README.md", "# Docs\n")
+    write_file(tmp_path / "docs/project-maintenance/README.md", "# Project\n")
+    write_file(
+        tmp_path / "docs/book.md",
+        """---
+title: Docs Book
+status: active
+updated: 2026-05-14
+owner: test
+last_verified: 2026-05-14
+---
+# Docs Book
+
+`AGENTS.md`, `docs/README.md`, and `project-maintenance/` exist.
+`docs/**/*.md` is a glob pattern, not a concrete path reference.
+""",
+    )
+
+    report = CheckReport()
+    check_docs_book_inline_paths(tmp_path, report)
+
+    assert report.failures == []
 
 
 def test_check_gitignore_accepts_required_cache_entries(tmp_path: Path) -> None:
