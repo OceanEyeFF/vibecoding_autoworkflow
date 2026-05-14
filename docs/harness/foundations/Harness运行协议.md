@@ -1,14 +1,16 @@
 ---
 title: Harness 运行协议
 status: active
-updated: 2026-05-11
+updated: 2026-05-14
 owner: OceanEye
-last_verified: 2026-05-11
+last_verified: 2026-05-14
 ---
 
 # Harness 运行协议
 
 > 目的：固定 Harness 如何从状态估计推进到执行、验证、裁决和状态更新。Doctrine 边界见 [Harness指导思想.md](./Harness指导思想.md)；正式对象字段见 [artifact/](../artifact/README.md)。
+
+> Split plan：本文件仍是 runtime protocol 的当前入口和权威正文；拆章计划见 [runtime-protocol-chapter-plan.md](./runtime-protocol-chapter-plan.md)。迁移完成前，不把 runtime 细节写入 [Harness指导思想.md](./Harness指导思想.md)，也不把 artifact fields、catalog inventory、workflow policy、design analysis 或 executable skill source 混入本文件。
 
 ## 一、协议总定义
 
