@@ -1,12 +1,14 @@
 ---
 title: "Skill Impact Matrix"
 status: active
-updated: 2026-05-11
+updated: 2026-05-14
 owner: aw-kernel
-last_verified: 2026-05-11
+last_verified: 2026-05-14
 ---
 
 # Skill Impact Matrix
+
+> Catalog boundary：本文件不是 skill inventory 正文，而是历史 Harness 合同变更对 canonical skills 的影响分析与同步追踪。当前留在 `docs/harness/catalog/` 下仅作为待迁移清单；目标 owner 是 `docs/harness/design/`，或在后续同步完成后拆分回对应 artifact / workflow / product skill 变更任务。可执行源仍以 [../../../product/harness/skills/README.md](../../../product/harness/skills/README.md) 为准。
 
 > 本轮 Harness 合同补强（WT-20260508-harness-contract-hardening）对 canonical skills 的影响分析。
 >
