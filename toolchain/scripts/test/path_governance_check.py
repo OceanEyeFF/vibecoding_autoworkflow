@@ -225,6 +225,7 @@ STATUS_RULES = [
 ]
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+MARKDOWN_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
 
 @dataclass
@@ -298,6 +299,39 @@ def iter_relative_markdown_targets(text: str) -> list[str]:
             continue
         targets.append(path_part)
     return targets
+
+
+def normalize_heading_text(text: str) -> str:
+    return re.sub(r"\s+", " ", text.strip().lower())
+
+
+def markdown_section_text(text: str, heading: str) -> str | None:
+    target_heading = normalize_heading_text(heading)
+    lines = text.splitlines()
+    section_start: int | None = None
+    section_level: int | None = None
+
+    for index, line in enumerate(lines):
+        match = MARKDOWN_HEADING_RE.match(line.strip())
+        if match is None:
+            continue
+        heading_text = normalize_heading_text(match.group(2).rstrip("#").strip())
+        if heading_text == target_heading:
+            section_start = index + 1
+            section_level = len(match.group(1))
+            break
+
+    if section_start is None or section_level is None:
+        return None
+
+    section_end = len(lines)
+    for index in range(section_start, len(lines)):
+        match = MARKDOWN_HEADING_RE.match(lines[index].strip())
+        if match is not None and len(match.group(1)) <= section_level:
+            section_end = index
+            break
+
+    return "\n".join(lines[section_start:section_end])
 
 
 def resolve_markdown_target(markdown_file: Path, repo_root: Path, target: str) -> Path:
@@ -390,6 +424,16 @@ def iter_substantive_docs(repo_root: Path) -> list[Path]:
     return sorted(path for path in docs_root.rglob("*.md") if path.name != "README.md")
 
 
+def iter_docs_reading_order_docs(repo_root: Path) -> list[Path]:
+    docs_root = repo_root / "docs"
+    book_path = (repo_root / DOCS_BOOK).resolve()
+    return sorted(
+        path
+        for path in docs_root.rglob("*.md")
+        if path.resolve() != book_path
+    )
+
+
 def docs_markdown_target_node(repo_root: Path, resolved_target: Path) -> Path | None:
     docs_root = (repo_root / "docs").resolve()
     if not is_relative_to(resolved_target, docs_root):
@@ -434,13 +478,40 @@ def reachable_docs_from_book_spine(repo_root: Path) -> set[Path]:
     return reachable
 
 
+def docs_book_explicit_order_targets(repo_root: Path) -> set[Path]:
+    book_path = (repo_root / DOCS_BOOK).resolve()
+    if not book_path.exists():
+        return set()
+
+    explicit_targets: set[Path] = set()
+    text = book_path.read_text(encoding="utf-8")
+    full_reading_order = markdown_section_text(text, "Full Reading Order")
+    if full_reading_order is None:
+        return set()
+
+    for target in iter_relative_markdown_targets(full_reading_order):
+        resolved = resolve_markdown_target(book_path, repo_root, target)
+        target_node = docs_markdown_target_node(repo_root, resolved)
+        if target_node is not None and target_node != book_path:
+            explicit_targets.add(target_node)
+    return explicit_targets
+
+
 def check_docs_book_reachability(repo_root: Path, report: CheckReport) -> None:
     book_path = repo_root / DOCS_BOOK
     docs_files = iter_substantive_docs(repo_root)
+    explicit_order_files = iter_docs_reading_order_docs(repo_root)
     if not book_path.exists():
         report.add_failure(f"missing docs book spine: {DOCS_BOOK}")
         report.add_info(f"checked {len(docs_files)} docs book-spine reachability targets")
+        report.add_info(
+            f"checked {len(explicit_order_files)} docs explicit reading-order targets"
+        )
         return
+
+    book_text = book_path.read_text(encoding="utf-8")
+    if markdown_section_text(book_text, "Full Reading Order") is None:
+        report.add_failure(f"missing docs book Full Reading Order section: {DOCS_BOOK}")
 
     reachable = reachable_docs_from_book_spine(repo_root)
     for doc_path in docs_files:
@@ -451,7 +522,19 @@ def check_docs_book_reachability(repo_root: Path, report: CheckReport) -> None:
                 f"{relative_path} (link it from {DOCS_BOOK} or the nearest chapter entrypoint)"
             )
 
+    explicit_targets = docs_book_explicit_order_targets(repo_root)
+    for doc_path in explicit_order_files:
+        if doc_path.resolve() not in explicit_targets:
+            relative_path = to_relative_posix(doc_path, repo_root)
+            report.add_failure(
+                "docs doc missing from explicit book reading order: "
+                f"{relative_path} (add it as a direct ordered link in {DOCS_BOOK})"
+            )
+
     report.add_info(f"checked {len(docs_files)} docs book-spine reachability targets")
+    report.add_info(
+        f"checked {len(explicit_order_files)} docs explicit reading-order targets"
+    )
 
 
 def expected_statuses(relative_path: str) -> set[str] | None:

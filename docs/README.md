@@ -2,7 +2,7 @@
 
 `docs/` 承载文档真相与仓库操作说明。
 
-文档手册与章节顺序见 [book.md](./book.md)。本页只做 `docs/` 入口导航，不重复定义 book spine。
+完整 docs 阅读顺序、章节边界和路径维护规则见 [book.md](./book.md)。本页只做 `docs/` 入口导航，不重复定义 book spine。
 
 ## 核心定位
 
@@ -13,17 +13,17 @@
 
 ## 当前结构
 
-- [book.md](./book.md)：`docs/` canonical book-style spine，说明章节顺序、边界与新增文档放置规则
+- [book.md](./book.md)：`docs/` canonical book-style spine，说明完整阅读顺序、章节边界、分组关系与路径维护规则
 - [project-maintenance/README.md](./project-maintenance/README.md)：项目维护、治理、部署与 backend usage
 - [harness/README.md](./harness/README.md)：Harness 主线 doctrine、scope、artifact、catalog 与 workflow families
 
 ## 阅读顺序
 
-Agent boot 以 [AGENTS.md](../AGENTS.md) 为权威；`docs/` 的书式阅读顺序以 [book.md](./book.md) 为入口。
+Agent boot 以 [AGENTS.md](../AGENTS.md) 为权威；`docs/` 的全量书式阅读顺序以 [book.md](./book.md) 为入口。
 
 ## 文档治理规则
 
-章节边界与新增文档放置判断见 [book.md](./book.md)。Agent 默认启动、frontmatter 与写回约束仍以 [AGENTS.md](../AGENTS.md) 为准。
+章节边界、新增/移动/删除文档的路径维护规则与 full reading order 见 [book.md](./book.md)。Agent 默认启动、frontmatter 与写回约束仍以 [AGENTS.md](../AGENTS.md) 为准。
 
 ## AI 默认路径
 
