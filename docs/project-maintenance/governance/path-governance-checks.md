@@ -1,9 +1,9 @@
 ---
 title: "路径与文档治理检查运行说明"
 status: active
-updated: 2026-05-06
+updated: 2026-05-14
 owner: aw-kernel
-last_verified: 2026-05-06
+last_verified: 2026-05-14
 ---
 # 路径与文档治理检查运行说明
 
@@ -13,7 +13,7 @@ last_verified: 2026-05-06
 
 ## 一、适用范围
 
-本页覆盖轻量治理检查：markdown 相对链接可达性、关键入口文件存在性、AGENTS.md 回链、主线入口完整性、.gitignore hidden layer 忽略、frontmatter 与 status 语义、status:suspended 误用、承接关系一致性、foundations 影子文件、已退役 placeholder 回流、product/harness/ 最小 executable root 骨架、workflow-families 文档真相定位。不替代人工审阅，不检查所有 anchor 片段。根兼容入口保留 `README.md`、`INDEX.md` 与 `AGENTS.md`。已退役的 `GUIDE.md` 和 `ROADMAP.md` 不作为必需入口。
+本页覆盖轻量治理检查：markdown 相对链接可达性、关键入口文件存在性、AGENTS.md 回链、主线入口完整性、.gitignore hidden layer 忽略、frontmatter 与 status 语义、status:suspended 误用、承接关系一致性、foundations 影子文件、已退役 placeholder 回流、product/harness/ 最小 executable root 骨架、workflow-families 文档真相定位。不替代人工审阅，不检查所有 anchor 片段。根兼容入口保留 `README.md`、`INDEX.md` 与 `AGENTS.md`；`docs/book.md` 是 `docs/` 书式章节 spine，并作为受控 docs 一级入口。已退役的 `GUIDE.md` 和 `ROADMAP.md` 不作为必需入口。
 
 ## 二、脚本入口
 
@@ -29,7 +29,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
 2. `product/`、`docs/`、`toolchain/` 一级子目录合规；错放内容拦截（product 无 runbook/缓存/state，docs 无可执行/缓存，toolchain 无业务源码/mount，tools 无 Python 缓存）
 3. hidden/state/mount 层 tracked 状态受控：`.agents/`、`.claude/` tracked 即失败；`.codex/` 仅 `config.toml`+`rules/repo.rules`；`tools/` 仅显式 compat shim；`.pytest_cache/` tracked 即失败
 4. `.nav/` 仅含 `README.md`、`@docs`、`@skills`；`@docs` 与 `@skills` 是 symlink 且解析到合法目标
-5. `path_governance_check.py` — 根入口与主线入口存在且 markdown 相对链接可达；`AGENTS.md` 被关键入口页引用
+5. `path_governance_check.py` — 根入口、`docs/book.md` 与主线入口存在且 markdown 相对链接可达；`AGENTS.md` 被关键入口页引用；scope gate 中不带 `/` 的允许项按精确文件路径匹配，带 `/` 的允许项才按目录前缀匹配
 6. `docs/harness/README.md` 及子入口存在，继续链接 foundations/scope/artifact/Skills/workflow-families
 7. `docs/` 正文保留 frontmatter；`project-maintenance/` 与 `harness/` status 匹配语义；无 `status:suspended` 误用
 8. `.gitignore` 忽略 `.aw/`、`.agents/`、`.claude/`、`.autoworkflow/`、`.spec-workflow/`、`**/__pycache__/`、`.pytest_cache/`、`*.pyc`、`*.pyo`

@@ -263,6 +263,18 @@ def test_harness_partition_is_allowed_under_product_and_docs(tmp_path: Path) -> 
     assert "docs/harness" not in issue_paths(report)
 
 
+def test_docs_book_chapters_are_allowed_under_docs(tmp_path: Path) -> None:
+    repo_root = create_valid_repo(tmp_path)
+    for chapter in ("analysis", "ideas", "archive"):
+        write_file(repo_root / f"docs/{chapter}/README.md", f"# {chapter}\n")
+
+    report = run_checks(repo_root)
+
+    assert "FL003" not in issue_codes(report)
+    for chapter in ("analysis", "ideas", "archive"):
+        assert f"docs/{chapter}" not in issue_paths(report)
+
+
 def test_misplaced_content_patterns_fail(tmp_path: Path) -> None:
     repo_root = create_valid_repo(tmp_path)
     write_file(repo_root / "product/runbook.md", "# runbook\n")

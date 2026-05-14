@@ -111,12 +111,18 @@ def normalize_status_path(path: str) -> str:
         return path
 
 
+def is_allowed_path(path: str, allowed_path: str) -> bool:
+    if allowed_path.endswith("/"):
+        return path == allowed_path.rstrip("/") or path.startswith(allowed_path)
+    return path == allowed_path
+
+
 def check_scope(changed_files: list[str], allowed_prefixes: tuple[str, ...]) -> ScopeGateResult:
     violations: list[str] = []
     for path in changed_files:
         if path.startswith(".git"):
             continue
-        if any(path.startswith(prefix) for prefix in allowed_prefixes):
+        if any(is_allowed_path(path, prefix) for prefix in allowed_prefixes):
             continue
         violations.append(path)
     return ScopeGateResult(passed=not violations, changed_files=changed_files, violations=violations)
