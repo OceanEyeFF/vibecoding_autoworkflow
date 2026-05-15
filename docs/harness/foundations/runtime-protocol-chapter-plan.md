@@ -38,7 +38,7 @@ last_verified: 2026-05-14
 
 - runtime protocol 的总定义和阅读入口
 - 当前有效的完整协议正文，直到对应小章被验证接管
-- 到 doctrine、artifact contracts、catalog inventory、workflow policy、design analysis 和 executable skill surfaces 的 owner links
+- 到 doctrine、artifact contracts、catalog inventory、workflow policy 和 executable skill surfaces 的 owner links
 - 对已拆小章的短摘要和权威链接
 
 迁移完成后，`Harness运行协议.md` 应降为 runtime protocol index，只保留入口、章节摘要、全局不变量和 owner boundary。
@@ -53,7 +53,7 @@ last_verified: 2026-05-14
 | Formal object fields and schemas | [../artifact/README.md](../artifact/README.md) |
 | Skill inventory, Scope/Function mapping and executable source links | [../catalog/README.md](../catalog/README.md) |
 | Reusable workflow family policy and route patterns | [../workflow-families/README.md](../workflow-families/README.md) |
-| Unpromoted design analysis or migration comparison | [../design/](../design/) |
+| Unpromoted proposal or migration comparison | Keep in Harness runtime/backlog until promoted into a stable owner |
 | Canonical executable skill source | [../../../product/harness/skills/README.md](../../../product/harness/skills/README.md) |
 | Project maintenance governance and review/verify rules | [../../project-maintenance/governance/review-verify-handbook.md](../../project-maintenance/governance/review-verify-handbook.md) |
 
@@ -64,5 +64,5 @@ A future physical split is acceptable only when:
 - `Harness指导思想.md` remains doctrine-only.
 - `Harness运行协议.md` still gives a clear runtime entry and does not become a second artifact catalog.
 - Each new runtime chapter has frontmatter and one clear owner boundary.
-- Links from foundations navigation make doctrine, runtime protocol, artifact contracts, catalog inventory, workflow policy, design analysis and executable skill surfaces distinguishable.
+- Links from foundations navigation make doctrine, runtime protocol, artifact contracts, catalog inventory, workflow policy and executable skill surfaces distinguishable.
 - No migrated chapter changes artifact field semantics without updating the corresponding artifact contract.

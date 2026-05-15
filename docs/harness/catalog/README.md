@@ -18,7 +18,7 @@ Catalog 条目只允许承接：
 - 上游 doctrine、runtime protocol、artifact contract、workflow policy 的反向链接或极短摘要
 - canonical executable source 链接，权威入口为 [../../../product/harness/skills/README.md](../../../product/harness/skills/README.md)
 
-Catalog 不承接 doctrine 正文、runtime protocol、artifact contract、workflow family policy、设计分析、执行源或部署规则。
+Catalog 不承接 doctrine 正文、runtime protocol、artifact contract、workflow family policy、方案分析、执行源或部署规则。
 
 入口：
 
