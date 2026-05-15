@@ -20,5 +20,6 @@
 | Artifact contracts / 正式对象字段 | [../artifact/README.md](../artifact/README.md) |
 | Catalog inventory / skill 清单 | [../catalog/README.md](../catalog/README.md) |
 | Workflow policy / workflow family | [../workflow-families/README.md](../workflow-families/README.md) |
-| Design analysis / 未升格方案分析 | [../design/](../design/) |
 | Executable skill surfaces / 可执行技能源 | [../../../product/harness/skills/README.md](../../../product/harness/skills/README.md) |
+
+未升格的方案分析、迁移比较或实现前设计不作为当前 docs truth 层长期保留；先留在 Harness runtime/backlog 或工作追踪证据中，等内容验证后再升格到对应 owner。

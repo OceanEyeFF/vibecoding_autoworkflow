@@ -1,19 +1,18 @@
 # Harness
 
-`docs/harness/` 是当前仓库的 Harness-first 文档主线，承接 Harness doctrine、runtime protocol、scope、artifact contracts、skill inventory、workflow family policy 与设计分析。
+`docs/harness/` 是当前仓库的 Harness-first 文档主线，承接 Harness doctrine、runtime protocol、scope、artifact contracts、skill inventory 与 workflow family policy。
 
-本文只做 Harness 文档域入口导航：帮助读者选择最近 owner 和下一跳路径，不承载 doctrine、runtime protocol、artifact contract、workflow policy、设计正文或历史迁移规则。
+本文只做 Harness 文档域入口导航：帮助读者选择最近 owner 和下一跳路径，不承载 doctrine、runtime protocol、artifact contract、workflow policy 或历史迁移规则。
 
 ## 当前分层
 
-| 路径 | 功能 |
-| --- | --- |
-| [foundations/README.md](./foundations/README.md) | Harness 指导思想、运行协议、跨 skill 公共约束和执行载体选择策略 |
-| [scope/README.md](./scope/README.md) | `RepoScope`、`WorktrackScope` 与两层状态闭环 |
-| [artifact/README.md](./artifact/README.md) | Repo / Worktrack / Control 正式对象合同与标准字段 |
-| [catalog/README.md](./catalog/README.md) | Codex 语境下的 skill inventory、控制层级映射和 skill 影响矩阵 |
-| [workflow-families/README.md](./workflow-families/README.md) | 可复用 workflow family、route pattern 与 policy profile |
-| `design/` | 尚未升格为 doctrine、artifact contract 或 workflow family 的 Harness 设计方案与变更分析 |
+| 层 | 路径 | 功能 |
+| --- | --- | --- |
+| 思路层 | [foundations/README.md](./foundations/README.md) | 说明 Harness 为什么这样运行，以及运行时共同遵守的原则 |
+| 架构层 | [scope/README.md](./scope/README.md) | 说明 `RepoScope`、`WorktrackScope` 与两层状态闭环 |
+| 架构层 | [artifact/README.md](./artifact/README.md) | 说明 Repo / Worktrack / Control 正式对象和字段 |
+| 架构层 | [workflow-families/README.md](./workflow-families/README.md) | 说明多个 worktrack 如何组成稳定流程 |
+| 实现映射层 | [catalog/README.md](./catalog/README.md) | 说明这些结构在 Codex skill 体系里对应哪些入口 |
 
 ## 阅读边界
 
@@ -24,7 +23,6 @@
 | `artifact/` | 查运行时对象字段、证据、队列、control state、milestone 或 worktrack 合同 |
 | `catalog/` | 查有哪些 skill、每个 skill 的职责摘要、控制层级和状态 |
 | `workflow-families/` | 查一组 worktrack 如何组成可复用流程或 policy profile |
-| `design/` | 查尚未升格的方案比较、影响分析或迁移设计 |
 
 完整 docs 阅读顺序、章节边界和路径维护规则见 [../book.md](../book.md)。Agent boot 与 route contract 见 [../../AGENTS.md](../../AGENTS.md)。
 
@@ -38,8 +36,9 @@
 | Artifact contracts / 正式对象字段 | [artifact/README.md](./artifact/README.md) |
 | Skill inventory / skill 清单 | [catalog/README.md](./catalog/README.md) |
 | Workflow policy / workflow family | [workflow-families/README.md](./workflow-families/README.md) |
-| Design analysis / 未升格方案分析 | `design/` |
 | Executable root / 实现层入口 | [../../product/harness/README.md](../../product/harness/README.md) |
 | Executable skill source / 可执行技能源 | [../../product/harness/skills/README.md](../../product/harness/skills/README.md) |
 
-`catalog/` 不承接 doctrine、runtime protocol、artifact contract、workflow policy、设计分析或 executable source。若 catalog 页面为了定位 skill 而引用这些内容，只能作为摘要和反向链接；权威正文仍在对应 owner。
+未升格的方案分析、迁移比较或实现前设计不作为当前 docs truth 层长期保留；先留在 Harness runtime/backlog 或工作追踪证据中，等内容验证后再升格到对应 owner。
+
+`catalog/` 不承接 doctrine、runtime protocol、artifact contract、workflow policy、方案分析或 executable source。若 catalog 页面为了定位 skill 而引用这些内容，只能作为摘要和反向链接；权威正文仍在对应 owner。
