@@ -13,7 +13,7 @@ last_verified: 2026-05-14
 
 ## 一、适用范围
 
-本页覆盖轻量治理检查：markdown 相对链接可达性、关键入口文件存在性、AGENTS.md 回链、主线入口完整性、`docs/book.md` spine 可达性与显式阅读顺序覆盖、.gitignore hidden layer 忽略、frontmatter 与 status 语义、status:suspended 误用、承接关系一致性、foundations 影子文件、已退役 placeholder 回流、product/harness/ 最小 executable root 骨架、workflow-families 文档真相定位。不替代人工审阅，不检查所有 anchor 片段。根兼容入口保留 `README.md`、`INDEX.md` 与 `AGENTS.md`；`docs/book.md` 是 `docs/` 书式章节 spine、全量阅读顺序和路径维护入口，并作为受控 docs 一级入口。已退役的 `GUIDE.md` 和 `ROADMAP.md` 不作为必需入口。
+本页覆盖轻量治理检查：markdown 相对链接可达性、关键入口文件存在性、AGENTS.md 回链、主线入口完整性、`docs/book.md` spine 可达性与显式阅读顺序覆盖、superseded 文档历史引用边界、.gitignore hidden layer 忽略、frontmatter 与 status 语义、status:suspended 误用、承接关系一致性、foundations 影子文件、已退役 placeholder 回流、product/harness/ 最小 executable root 骨架、workflow-families 文档真相定位。不替代人工审阅，不检查所有 anchor 片段。根兼容入口保留 `README.md`、`INDEX.md` 与 `AGENTS.md`；`docs/book.md` 是 `docs/` 书式章节 spine、全量阅读顺序和路径维护入口，并作为受控 docs 一级入口。已退役的 `GUIDE.md` 和 `ROADMAP.md` 不作为必需入口。
 
 ## 二、脚本入口
 
@@ -29,7 +29,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
 2. `product/`、`docs/`、`toolchain/` 一级子目录合规；错放内容拦截（product 无 runbook/缓存/state，docs 无可执行/缓存，toolchain 无业务源码/mount，tools 无 Python 缓存）
 3. hidden/state/mount 层 tracked 状态受控：`.agents/`、`.claude/` tracked 即失败；`.codex/` 仅 `config.toml`+`rules/repo.rules`；`tools/` 仅显式 compat shim；`.pytest_cache/` tracked 即失败
 4. `.nav/` 仅含 `README.md`、`@docs`、`@skills`；`@docs` 与 `@skills` 是 symlink 且解析到合法目标
-5. `path_governance_check.py` — 根入口、`docs/book.md` 与主线入口存在且 markdown 相对链接可达；所有 `docs/` 下非 `README.md` 正文必须能从 `docs/book.md` 沿相对 markdown 链接到达，新增正文需挂到 book spine 或最近章节入口；除 `docs/book.md` 自身外的所有 `docs/**/*.md` 必须在 `docs/book.md` 的显式阅读顺序中有直接链接；`docs/book.md` 反引号中的具体路径必须指向当前 checkout 中存在的路径；`AGENTS.md` 被关键入口页引用；scope gate 中不带 `/` 的允许项按精确文件路径匹配，带 `/` 的允许项才按目录前缀匹配
+5. `path_governance_check.py` — 根入口、`docs/book.md` 与主线入口存在且 markdown 相对链接可达；所有 `docs/` 下非 `README.md` 正文必须能从 `docs/book.md` 沿相对 markdown 链接到达，新增正文需挂到 book spine 或最近章节入口；除 `docs/book.md` 自身外的所有 `docs/**/*.md` 必须在 `docs/book.md` 的显式阅读顺序中有直接链接；`docs/book.md` 反引号中的具体路径必须指向当前 checkout 中存在的路径；`docs/book.md` 或章节 `README.md` 链接 `status: superseded` 文档时必须位于 `Retained Historical References` / `Historical References` 章节；`AGENTS.md` 被关键入口页引用；scope gate 中不带 `/` 的允许项按精确文件路径匹配，带 `/` 的允许项才按目录前缀匹配
 6. `docs/harness/README.md` 及子入口存在，继续链接 foundations/scope/artifact/Skills/workflow-families
 7. `docs/` 正文保留 frontmatter；`project-maintenance/` 与 `harness/` status 匹配语义；无 `status:suspended` 误用
 8. `.gitignore` 忽略 `.aw/`、`.agents/`、`.claude/`、`.autoworkflow/`、`.spec-workflow/`、`**/__pycache__/`、`.pytest_cache/`、`*.pyc`、`*.pyo`
@@ -53,6 +53,8 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/governance_semantic_che
 如果一个文档只是从最近章节 README 间接可达，但没有出现在 `docs/book.md` 的显式阅读顺序中，`path_governance_check.py` 必须失败。这条规则保证读者拿到 `docs/book.md` 后可以按顺序逐个点开文档，而不是靠搜索或目录遍历补全阅读路线。
 
 `docs/book.md` 和章节入口只描述当前版本中已经存在的文档拓扑、owner 和维护规则。只为未来迁移、后续 Worktrack 或尚未落地重构切片服务的计划，不应作为 `docs/` 长期 truth surface 保留；这类后续动作应留在 Harness runtime/backlog 记录中，等实际内容存在后再同步进 book 和最近章节入口。
+
+`status: superseded` 文档可以保留在 `docs/` 中作为历史引用，但不能作为当前 truth owner 或主线阅读步骤。`docs/book.md` 和章节 `README.md` 若需要链接它们，必须放在 `Retained Historical References` 或 `Historical References` 章节下，并在周边文字说明当前 owner 或接管路径。若 superseded 文档不再需要历史追溯，应移出 `docs/` 或删除；大批量删除仍需单独审批。
 
 ## 六、如何理解结果
 

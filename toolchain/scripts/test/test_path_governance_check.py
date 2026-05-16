@@ -9,6 +9,7 @@ from path_governance_check import (
     CheckReport,
     check_docs_book_inline_paths,
     check_docs_book_reachability,
+    check_superseded_doc_routes,
     check_gitignore,
     check_required_backlinks,
     check_required_entrypoint_links,
@@ -370,6 +371,121 @@ last_verified: 2026-05-14
     check_docs_book_inline_paths(tmp_path, report)
 
     assert report.failures == []
+
+
+def test_superseded_doc_routes_accept_retained_historical_section(
+    tmp_path: Path,
+) -> None:
+    write_file(
+        tmp_path / "docs/book.md",
+        """---
+title: Docs Book
+status: active
+updated: 2026-05-16
+owner: test
+last_verified: 2026-05-16
+---
+# Docs Book
+
+## Full Reading Order
+
+[Current](./harness/current.md)
+
+## Retained Historical References
+
+[Old](./harness/old.md)
+""",
+    )
+    write_file(
+        tmp_path / "docs/harness/README.md",
+        """# Harness
+
+## Retained Historical References
+
+[Old](./old.md)
+""",
+    )
+    write_file(
+        tmp_path / "docs/harness/current.md",
+        """---
+title: Current
+status: active
+updated: 2026-05-16
+owner: test
+last_verified: 2026-05-16
+---
+# Current
+""",
+    )
+    write_file(
+        tmp_path / "docs/harness/old.md",
+        """---
+title: Old
+status: superseded
+updated: 2026-05-16
+owner: test
+last_verified: 2026-05-16
+---
+# Old
+""",
+    )
+
+    report = CheckReport()
+    check_superseded_doc_routes(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_superseded_doc_routes_flag_current_route_link(
+    tmp_path: Path,
+) -> None:
+    write_file(
+        tmp_path / "docs/book.md",
+        """---
+title: Docs Book
+status: active
+updated: 2026-05-16
+owner: test
+last_verified: 2026-05-16
+---
+# Docs Book
+
+## Full Reading Order
+
+[Old](./harness/old.md)
+""",
+    )
+    write_file(
+        tmp_path / "docs/harness/README.md",
+        """# Harness
+
+[Old](./old.md)
+""",
+    )
+    write_file(
+        tmp_path / "docs/harness/old.md",
+        """---
+title: Old
+status: superseded
+updated: 2026-05-16
+owner: test
+last_verified: 2026-05-16
+---
+# Old
+""",
+    )
+
+    report = CheckReport()
+    check_superseded_doc_routes(tmp_path, report)
+
+    assert (
+        "superseded doc linked outside retained historical references: "
+        "docs/book.md -> docs/harness/old.md"
+    ) in report.failures
+    assert (
+        "superseded doc linked outside retained historical references: "
+        "docs/harness/README.md -> docs/harness/old.md"
+    ) in report.failures
 
 
 def test_check_gitignore_accepts_required_cache_entries(tmp_path: Path) -> None:
