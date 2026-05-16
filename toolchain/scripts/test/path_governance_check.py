@@ -227,6 +227,10 @@ MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 INLINE_CODE_RE = re.compile(r"`([^`\n]+)`")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MARKDOWN_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
+HISTORICAL_REFERENCE_HEADINGS = {
+    "retained historical references",
+    "historical references",
+}
 
 
 @dataclass
@@ -302,6 +306,29 @@ def iter_relative_markdown_targets(text: str) -> list[str]:
     return targets
 
 
+def normalize_markdown_target(raw_target: str) -> str | None:
+    target = raw_target.strip()
+    if target.startswith("<") and target.endswith(">"):
+        target = target[1:-1].strip()
+    if not target:
+        return None
+    if target.startswith(("#", "http://", "https://", "mailto:", "tel:")):
+        return None
+    if "://" in target:
+        return None
+    path_part = target.split("#", 1)[0].strip()
+    return path_part or None
+
+
+def iter_relative_markdown_target_matches(text: str) -> list[tuple[str, int]]:
+    targets: list[tuple[str, int]] = []
+    for match in MARKDOWN_LINK_RE.finditer(text):
+        target = normalize_markdown_target(match.group(1))
+        if target is not None:
+            targets.append((target, match.start()))
+    return targets
+
+
 def normalize_heading_text(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip().lower())
 
@@ -335,6 +362,39 @@ def markdown_section_text(text: str, heading: str) -> str | None:
     return "\n".join(lines[section_start:section_end])
 
 
+def is_within_named_heading_section(
+    text: str,
+    char_offset: int,
+    allowed_headings: set[str],
+) -> bool:
+    lines = text.splitlines(keepends=True)
+    line_starts: list[int] = []
+    current_offset = 0
+    for line in lines:
+        line_starts.append(current_offset)
+        current_offset += len(line)
+
+    for index, line in enumerate(lines):
+        match = MARKDOWN_HEADING_RE.match(line.strip())
+        if match is None:
+            continue
+        heading_text = normalize_heading_text(match.group(2).rstrip("#").strip())
+        if heading_text not in allowed_headings:
+            continue
+
+        heading_level = len(match.group(1))
+        section_start = line_starts[index] + len(line)
+        section_end = len(text)
+        for next_index in range(index + 1, len(lines)):
+            next_match = MARKDOWN_HEADING_RE.match(lines[next_index].strip())
+            if next_match is not None and len(next_match.group(1)) <= heading_level:
+                section_end = line_starts[next_index]
+                break
+        if section_start <= char_offset < section_end:
+            return True
+    return False
+
+
 def resolve_markdown_target(markdown_file: Path, repo_root: Path, target: str) -> Path:
     if target.startswith("/"):
         return (repo_root / target.lstrip("/")).resolve()
@@ -351,6 +411,18 @@ def is_relative_to(path: Path, parent: Path) -> bool:
 
 def to_relative_posix(path: Path, repo_root: Path) -> str:
     return path.relative_to(repo_root).as_posix()
+
+
+def docs_status_by_path(repo_root: Path) -> dict[Path, str]:
+    statuses: dict[Path, str] = {}
+    for doc_path in iter_substantive_docs(repo_root):
+        frontmatter = parse_frontmatter(doc_path.read_text(encoding="utf-8"))
+        if frontmatter is None:
+            continue
+        status = frontmatter.get("status", "").strip()
+        if status:
+            statuses[doc_path.resolve()] = status
+    return statuses
 
 
 def check_markdown_links(repo_root: Path, report: CheckReport, scan_paths: list[str]) -> None:
@@ -553,6 +625,44 @@ def check_docs_book_inline_paths(repo_root: Path, report: CheckReport) -> None:
     report.add_info(f"checked {checked_paths} docs book inline path references")
 
 
+def check_superseded_doc_routes(repo_root: Path, report: CheckReport) -> None:
+    statuses = docs_status_by_path(repo_root)
+    superseded_docs = {
+        path for path, status in statuses.items() if status == "superseded"
+    }
+    if not superseded_docs:
+        report.add_info("checked 0 superseded docs route references")
+        return
+
+    docs_root = repo_root / "docs"
+    route_docs = sorted(
+        path
+        for path in docs_root.rglob("*.md")
+        if path.name == "README.md" or path == repo_root / DOCS_BOOK
+    )
+    checked_links = 0
+    for route_doc in route_docs:
+        text = route_doc.read_text(encoding="utf-8")
+        for target, offset in iter_relative_markdown_target_matches(text):
+            resolved = resolve_markdown_target(route_doc, repo_root, target)
+            target_node = docs_markdown_target_node(repo_root, resolved)
+            if target_node is None or target_node not in superseded_docs:
+                continue
+            checked_links += 1
+            if not is_within_named_heading_section(
+                text,
+                offset,
+                HISTORICAL_REFERENCE_HEADINGS,
+            ):
+                report.add_failure(
+                    "superseded doc linked outside retained historical references: "
+                    f"{to_relative_posix(route_doc, repo_root)} -> "
+                    f"{to_relative_posix(target_node, repo_root)}"
+                )
+
+    report.add_info(f"checked {checked_links} superseded docs route references")
+
+
 def check_docs_book_reachability(repo_root: Path, report: CheckReport) -> None:
     book_path = repo_root / DOCS_BOOK
     docs_files = iter_substantive_docs(repo_root)
@@ -713,6 +823,7 @@ def main() -> int:
     check_docs_frontmatter(repo_root, reports["frontmatter"])
     check_docs_book_reachability(repo_root, reports["book_spine"])
     check_docs_book_inline_paths(repo_root, reports["book_spine"])
+    check_superseded_doc_routes(repo_root, reports["book_spine"])
     check_required_entrypoint_links(repo_root, reports["entrypoints"])
     check_gitignore(repo_root, reports["entrypoints"])
 
