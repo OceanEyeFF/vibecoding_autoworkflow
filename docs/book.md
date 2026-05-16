@@ -1,9 +1,9 @@
 ---
 title: "Docs Book Spine"
 status: active
-updated: 2026-05-15
+updated: 2026-05-16
 owner: aw-kernel
-last_verified: 2026-05-15
+last_verified: 2026-05-16
 ---
 # Docs Book Spine
 
@@ -14,7 +14,7 @@ Owner：`aw-kernel`。边界：只覆盖当前 `docs/` 文档分层与阅读路�
 ## How To Read
 
 1. 先读 [docs/README.md](./README.md) 确认 `docs/` 的入口定位。
-2. 回到本页，按 [Full Reading Order](#full-reading-order) 从上到下阅读。每个链接都是当前书目中的一个节点。
+2. 回到本页，按 [Full Reading Order](#full-reading-order) 从上到下阅读。Active 条目是当前主线；Retained Historical References 只为路径覆盖和历史追溯保留，不作为当前 truth owner。
 3. 需要执行任务时，停在最近章节入口，不要继续扩读不相关章节。
 4. 新增、移动、删除或重命名文档时，先按 [Docs Path Maintenance](#docs-path-maintenance) 同步本页、最近章节入口和旧路径引用。
 
@@ -66,45 +66,54 @@ Owner：`aw-kernel`。边界：只覆盖当前 `docs/` 文档分层与阅读路�
 2. [harness/foundations/README.md](./harness/foundations/README.md)
 3. [harness/foundations/Harness指导思想.md](./harness/foundations/Harness指导思想.md)
 4. [harness/foundations/Harness运行协议.md](./harness/foundations/Harness运行协议.md)
-5. [harness/foundations/runtime-protocol-chapter-plan.md](./harness/foundations/runtime-protocol-chapter-plan.md)
-6. [harness/foundations/dispatch-decision-policy.md](./harness/foundations/dispatch-decision-policy.md)
-7. [harness/foundations/skill-common-constraints.md](./harness/foundations/skill-common-constraints.md)
-8. [harness/scope/README.md](./harness/scope/README.md)
-9. [harness/scope/state-loop.md](./harness/scope/state-loop.md)
-10. [harness/artifact/README.md](./harness/artifact/README.md)
-11. [harness/artifact/standard-fields.md](./harness/artifact/standard-fields.md)
-12. [harness/artifact/repo/README.md](./harness/artifact/repo/README.md)
-13. [harness/artifact/repo/discovery-input.md](./harness/artifact/repo/discovery-input.md)
-14. [harness/artifact/repo/goal-charter.md](./harness/artifact/repo/goal-charter.md)
-15. [harness/artifact/repo/repo-analysis.md](./harness/artifact/repo/repo-analysis.md)
-16. [harness/artifact/repo/snapshot-status.md](./harness/artifact/repo/snapshot-status.md)
-17. [harness/artifact/repo/worktrack-backlog.md](./harness/artifact/repo/worktrack-backlog.md)
-18. [harness/artifact/repo/milestone-backlog.md](./harness/artifact/repo/milestone-backlog.md)
-19. [harness/artifact/repo/decision-log.md](./harness/artifact/repo/decision-log.md)
-20. [harness/artifact/worktrack/README.md](./harness/artifact/worktrack/README.md)
-21. [harness/artifact/worktrack/contract.md](./harness/artifact/worktrack/contract.md)
-22. [harness/artifact/worktrack/plan-task-queue.md](./harness/artifact/worktrack/plan-task-queue.md)
-23. [harness/artifact/worktrack/dispatch-packet.md](./harness/artifact/worktrack/dispatch-packet.md)
-24. [harness/artifact/worktrack/gate-evidence.md](./harness/artifact/worktrack/gate-evidence.md)
-25. [harness/artifact/worktrack/debug-evidence.md](./harness/artifact/worktrack/debug-evidence.md)
-26. [harness/artifact/control/README.md](./harness/artifact/control/README.md)
-27. [harness/artifact/control/control-state.md](./harness/artifact/control/control-state.md)
-28. [harness/artifact/control/milestone.md](./harness/artifact/control/milestone.md)
-29. [harness/artifact/control/append-request.md](./harness/artifact/control/append-request.md)
-30. [harness/artifact/control/goal-change-request.md](./harness/artifact/control/goal-change-request.md)
-31. [harness/artifact/control/node-type-registry.md](./harness/artifact/control/node-type-registry.md)
-32. [harness/catalog/README.md](./harness/catalog/README.md)
-33. [harness/catalog/supervisor.md](./harness/catalog/supervisor.md)
-34. [harness/catalog/repo.md](./harness/catalog/repo.md)
-35. [harness/catalog/worktrack.md](./harness/catalog/worktrack.md)
-36. [harness/catalog/init-milestone-skill.md](./harness/catalog/init-milestone-skill.md)
-37. [harness/catalog/milestone-status-skill.md](./harness/catalog/milestone-status-skill.md)
-38. [harness/catalog/skill-impact-matrix.md](./harness/catalog/skill-impact-matrix.md)
-39. [harness/workflow-families/README.md](./harness/workflow-families/README.md)
-40. [harness/workflow-families/repo-evolution/README.md](./harness/workflow-families/repo-evolution/README.md)
-41. [harness/workflow-families/repo-evolution/standard-worktrack.md](./harness/workflow-families/repo-evolution/standard-worktrack.md)
-42. [harness/workflow-families/repo-evolution/append-request-routing.md](./harness/workflow-families/repo-evolution/append-request-routing.md)
-43. [harness/workflow-families/repo-evolution/policy-profiles.md](./harness/workflow-families/repo-evolution/policy-profiles.md)
+5. [harness/foundations/runtime-control-loop.md](./harness/foundations/runtime-control-loop.md)
+6. [harness/foundations/runtime-dispatch-contract.md](./harness/foundations/runtime-dispatch-contract.md)
+7. [harness/foundations/runtime-evidence-gate-recovery.md](./harness/foundations/runtime-evidence-gate-recovery.md)
+8. [harness/foundations/runtime-closeout-refresh.md](./harness/foundations/runtime-closeout-refresh.md)
+9. [harness/foundations/runtime-state-hydration.md](./harness/foundations/runtime-state-hydration.md)
+10. [harness/foundations/dispatch-decision-policy.md](./harness/foundations/dispatch-decision-policy.md)
+11. [harness/foundations/skill-common-constraints.md](./harness/foundations/skill-common-constraints.md)
+12. [harness/scope/README.md](./harness/scope/README.md)
+13. [harness/scope/state-loop.md](./harness/scope/state-loop.md)
+14. [harness/artifact/README.md](./harness/artifact/README.md)
+15. [harness/artifact/standard-fields.md](./harness/artifact/standard-fields.md)
+16. [harness/artifact/repo/README.md](./harness/artifact/repo/README.md)
+17. [harness/artifact/repo/discovery-input.md](./harness/artifact/repo/discovery-input.md)
+18. [harness/artifact/repo/goal-charter.md](./harness/artifact/repo/goal-charter.md)
+19. [harness/artifact/repo/repo-analysis.md](./harness/artifact/repo/repo-analysis.md)
+20. [harness/artifact/repo/snapshot-status.md](./harness/artifact/repo/snapshot-status.md)
+21. [harness/artifact/repo/worktrack-backlog.md](./harness/artifact/repo/worktrack-backlog.md)
+22. [harness/artifact/repo/milestone-backlog.md](./harness/artifact/repo/milestone-backlog.md)
+23. [harness/artifact/repo/decision-log.md](./harness/artifact/repo/decision-log.md)
+24. [harness/artifact/worktrack/README.md](./harness/artifact/worktrack/README.md)
+25. [harness/artifact/worktrack/contract.md](./harness/artifact/worktrack/contract.md)
+26. [harness/artifact/worktrack/plan-task-queue.md](./harness/artifact/worktrack/plan-task-queue.md)
+27. [harness/artifact/worktrack/dispatch-packet.md](./harness/artifact/worktrack/dispatch-packet.md)
+28. [harness/artifact/worktrack/gate-evidence.md](./harness/artifact/worktrack/gate-evidence.md)
+29. [harness/artifact/worktrack/debug-evidence.md](./harness/artifact/worktrack/debug-evidence.md)
+30. [harness/artifact/control/README.md](./harness/artifact/control/README.md)
+31. [harness/artifact/control/control-state.md](./harness/artifact/control/control-state.md)
+32. [harness/artifact/control/milestone.md](./harness/artifact/control/milestone.md)
+33. [harness/artifact/control/append-request.md](./harness/artifact/control/append-request.md)
+34. [harness/artifact/control/goal-change-request.md](./harness/artifact/control/goal-change-request.md)
+35. [harness/artifact/control/node-type-registry.md](./harness/artifact/control/node-type-registry.md)
+36. [harness/catalog/README.md](./harness/catalog/README.md)
+37. [harness/catalog/supervisor.md](./harness/catalog/supervisor.md)
+38. [harness/catalog/repo.md](./harness/catalog/repo.md)
+39. [harness/catalog/worktrack.md](./harness/catalog/worktrack.md)
+40. [harness/catalog/init-milestone-skill.md](./harness/catalog/init-milestone-skill.md)
+41. [harness/catalog/milestone-status-skill.md](./harness/catalog/milestone-status-skill.md)
+42. [harness/catalog/skill-impact-matrix.md](./harness/catalog/skill-impact-matrix.md)
+43. [harness/workflow-families/README.md](./harness/workflow-families/README.md)
+44. [harness/workflow-families/repo-evolution/README.md](./harness/workflow-families/repo-evolution/README.md)
+45. [harness/workflow-families/repo-evolution/append-request-routing.md](./harness/workflow-families/repo-evolution/append-request-routing.md)
+
+### Retained Historical References
+
+These links are kept for explicit reading-order coverage and historical traceability only. They are `status: superseded` and do not act as current Harness truth owners.
+
+1. [harness/workflow-families/repo-evolution/standard-worktrack.md](./harness/workflow-families/repo-evolution/standard-worktrack.md)
+2. [harness/workflow-families/repo-evolution/policy-profiles.md](./harness/workflow-families/repo-evolution/policy-profiles.md)
 
 ## Chapter Boundaries
 
@@ -120,10 +129,10 @@ Owner：`aw-kernel`。边界：只覆盖当前 `docs/` 文档分层与阅读路�
 
 Harness 子章节放置规则：
 
-- 思路层：`harness/foundations/` 说明 Harness 指导思想、运行协议、跨 skill 公共约束和执行载体选择策略。
+- 思路层：`harness/foundations/` 说明 Harness 指导思想、runtime protocol、跨 skill 公共约束和执行载体选择策略。
 - 架构层：`harness/scope/` 说明 `RepoScope`、`WorktrackScope` 与状态闭环。
 - 架构层：`harness/artifact/` 说明 Harness 正式对象合同，包括 repo/worktrack/control artifact 与标准字段。
-- 架构层：`harness/workflow-families/` 说明可复用流程族、policy profile 和标准 worktrack 路线。
+- 架构层：`harness/workflow-families/` 说明可复用 workflow family policy；superseded historical references 不作为当前主线 owner。
 - 实现映射层：`harness/catalog/` 说明 Codex skill catalog、控制层级映射和 skill 影响矩阵；可执行源仍归 `product/harness/skills/`。
 
 新文档属于这里，当它回答的是“Harness 如何思考、调度、记录证据、判定、交接或沉淀 workflow”。未验证的方案先留在 runtime/backlog 或工作追踪证据中；已验证并需要长期承接的内容，应升格到对应 foundations、scope、artifact、workflow-families 或 catalog owner。
