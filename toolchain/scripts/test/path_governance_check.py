@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import posixpath
 import re
 import sys
 from dataclasses import dataclass, field
@@ -16,6 +17,9 @@ AGENTS_CONTRACT_DOC = "AGENTS.md"
 DOCS_BOOK = "docs/book.md"
 PROJECT_MAINTENANCE_README = "docs/project-maintenance/README.md"
 HARNESS_README = "docs/harness/README.md"
+SKILL_SOURCE_ROOT = "product/harness/skills"
+SKILL_SOURCE_README = "product/harness/skills/README.md"
+SKILL_CATALOG_README = "docs/harness/catalog/README.md"
 DEFAULT_SCAN_PATHS = [
     "README.md",
     "INDEX.md",
@@ -231,6 +235,10 @@ HISTORICAL_REFERENCE_HEADINGS = {
     "retained historical references",
     "historical references",
 }
+DEPLOY_TARGET_PREFIXES = (
+    ".agents/",
+    ".claude/",
+)
 
 
 @dataclass
@@ -663,6 +671,149 @@ def check_superseded_doc_routes(repo_root: Path, report: CheckReport) -> None:
     report.add_info(f"checked {checked_links} superseded docs route references")
 
 
+def canonical_skill_source_dirs(repo_root: Path) -> list[Path]:
+    skills_root = repo_root / SKILL_SOURCE_ROOT
+    if not skills_root.exists():
+        return []
+    return sorted(
+        path.resolve()
+        for path in skills_root.iterdir()
+        if path.is_dir() and (path / "SKILL.md").exists()
+    )
+
+
+def split_markdown_table_row(line: str) -> list[str] | None:
+    stripped = line.strip()
+    if not stripped.startswith("|") or "|" not in stripped[1:]:
+        return None
+    return [cell.strip() for cell in stripped.strip("|").split("|")]
+
+
+def resolved_markdown_targets_in_table_column(
+    repo_root: Path,
+    markdown_file: Path,
+    heading: str,
+    column_index: int,
+) -> set[Path]:
+    text = markdown_file.read_text(encoding="utf-8")
+    section = markdown_section_text(text, heading)
+    if section is None:
+        return set()
+
+    targets: set[Path] = set()
+    for line in section.splitlines():
+        cells = split_markdown_table_row(line)
+        if cells is None or column_index >= len(cells):
+            continue
+        for target in iter_relative_markdown_targets(cells[column_index]):
+            targets.add(resolve_markdown_target(markdown_file, repo_root, target))
+    return targets
+
+
+def markdown_target_relative_to_repo(
+    repo_root: Path,
+    markdown_file: Path,
+    target: str,
+) -> str | None:
+    if target.startswith("/"):
+        return posixpath.normpath(target.lstrip("/"))
+    try:
+        base = markdown_file.parent.relative_to(repo_root).as_posix()
+    except ValueError:
+        return None
+    return posixpath.normpath(posixpath.join(base, target))
+
+
+def deploy_target_links_in_section(
+    repo_root: Path,
+    markdown_file: Path,
+    heading: str,
+) -> set[str]:
+    text = markdown_file.read_text(encoding="utf-8")
+    section = markdown_section_text(text, heading)
+    if section is None:
+        return set()
+
+    deploy_targets: set[str] = set()
+    for target in iter_relative_markdown_targets(section):
+        relative = markdown_target_relative_to_repo(repo_root, markdown_file, target)
+        if relative is None:
+            continue
+        normalized = relative.rstrip("/") + "/"
+        if normalized.startswith(DEPLOY_TARGET_PREFIXES):
+            deploy_targets.add(relative.rstrip("/"))
+    return deploy_targets
+
+
+def check_skill_source_traceability(repo_root: Path, report: CheckReport) -> None:
+    skill_dirs = canonical_skill_source_dirs(repo_root)
+    if not skill_dirs:
+        report.add_info("checked 0 canonical skill source traceability entries")
+        return
+
+    source_readme = repo_root / SKILL_SOURCE_README
+    catalog_readme = repo_root / SKILL_CATALOG_README
+    if not source_readme.exists():
+        report.add_failure(f"missing skill source README: {SKILL_SOURCE_README}")
+        report.add_info(f"checked {len(skill_dirs)} canonical skill source traceability entries")
+        return
+    if not catalog_readme.exists():
+        report.add_failure(f"missing skill catalog README: {SKILL_CATALOG_README}")
+        report.add_info(f"checked {len(skill_dirs)} canonical skill source traceability entries")
+        return
+
+    source_owner_targets = resolved_markdown_targets_in_table_column(
+        repo_root,
+        source_readme,
+        "Docs Owner Traceability",
+        0,
+    )
+    catalog_source_targets = resolved_markdown_targets_in_table_column(
+        repo_root,
+        catalog_readme,
+        "Canonical Source Traceability",
+        1,
+    )
+
+    if not source_owner_targets:
+        report.add_failure(
+            f"missing Docs Owner Traceability section or links: {SKILL_SOURCE_README}"
+        )
+    if not catalog_source_targets:
+        report.add_failure(
+            f"missing Canonical Source Traceability section or links: {SKILL_CATALOG_README}"
+        )
+
+    deploy_targets = deploy_target_links_in_section(
+        repo_root,
+        source_readme,
+        "Docs Owner Traceability",
+    ) | deploy_target_links_in_section(
+        repo_root,
+        catalog_readme,
+        "Canonical Source Traceability",
+    )
+    for target in sorted(deploy_targets):
+        report.add_failure(
+            "skill traceability points to deploy target instead of canonical source/docs: "
+            f"{target}"
+        )
+
+    for skill_dir in skill_dirs:
+        if skill_dir not in source_owner_targets:
+            report.add_failure(
+                "skill source missing docs owner traceability: "
+                f"{to_relative_posix(skill_dir, repo_root)}"
+            )
+        if skill_dir not in catalog_source_targets:
+            report.add_failure(
+                "catalog traceability missing canonical skill source: "
+                f"{to_relative_posix(skill_dir, repo_root)}"
+            )
+
+    report.add_info(f"checked {len(skill_dirs)} canonical skill source traceability entries")
+
+
 def check_docs_book_reachability(repo_root: Path, report: CheckReport) -> None:
     book_path = repo_root / DOCS_BOOK
     docs_files = iter_substantive_docs(repo_root)
@@ -824,6 +975,7 @@ def main() -> int:
     check_docs_book_reachability(repo_root, reports["book_spine"])
     check_docs_book_inline_paths(repo_root, reports["book_spine"])
     check_superseded_doc_routes(repo_root, reports["book_spine"])
+    check_skill_source_traceability(repo_root, reports["book_spine"])
     check_required_entrypoint_links(repo_root, reports["entrypoints"])
     check_gitignore(repo_root, reports["entrypoints"])
 

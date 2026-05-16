@@ -10,6 +10,7 @@ from path_governance_check import (
     check_docs_book_inline_paths,
     check_docs_book_reachability,
     check_superseded_doc_routes,
+    check_skill_source_traceability,
     check_gitignore,
     check_required_backlinks,
     check_required_entrypoint_links,
@@ -485,6 +486,201 @@ last_verified: 2026-05-16
     assert (
         "superseded doc linked outside retained historical references: "
         "docs/harness/README.md -> docs/harness/old.md"
+    ) in report.failures
+
+
+def test_skill_source_traceability_accepts_bidirectional_mapping(
+    tmp_path: Path,
+) -> None:
+    write_file(tmp_path / "product/harness/skills/alpha-skill/SKILL.md", "# Alpha\n")
+    write_file(tmp_path / "product/harness/skills/beta-skill/SKILL.md", "# Beta\n")
+    write_file(
+        tmp_path / "product/harness/skills/README.md",
+        """# Skills
+
+## Docs Owner Traceability
+
+| Canonical source | Docs/catalog owner |
+|------------------|--------------------|
+| [alpha-skill/](./alpha-skill/) | [docs/harness/catalog/repo.md](../../../docs/harness/catalog/repo.md) |
+| [beta-skill/](./beta-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
+""",
+    )
+    write_file(
+        tmp_path / "docs/harness/catalog/README.md",
+        """# Catalog
+
+## Canonical Source Traceability
+
+| Catalog surface | Canonical executable source |
+|-----------------|-----------------------------|
+| [repo.md](./repo.md) | [alpha-skill](../../../product/harness/skills/alpha-skill/) |
+| [worktrack.md](./worktrack.md) | [beta-skill](../../../product/harness/skills/beta-skill/) |
+""",
+    )
+    write_file(tmp_path / "docs/harness/catalog/repo.md", "# Repo\n")
+    write_file(tmp_path / "docs/harness/catalog/worktrack.md", "# Worktrack\n")
+
+    report = CheckReport()
+    check_skill_source_traceability(tmp_path, report)
+
+    assert report.failures == []
+
+
+def test_skill_source_traceability_flags_missing_source_backlink(
+    tmp_path: Path,
+) -> None:
+    write_file(tmp_path / "product/harness/skills/alpha-skill/SKILL.md", "# Alpha\n")
+    write_file(tmp_path / "product/harness/skills/beta-skill/SKILL.md", "# Beta\n")
+    write_file(
+        tmp_path / "product/harness/skills/README.md",
+        """# Skills
+
+## Docs Owner Traceability
+
+| Canonical source | Docs/catalog owner |
+|------------------|--------------------|
+| [alpha-skill/](./alpha-skill/) | [docs/harness/catalog/repo.md](../../../docs/harness/catalog/repo.md) |
+""",
+    )
+    write_file(
+        tmp_path / "docs/harness/catalog/README.md",
+        """# Catalog
+
+## Canonical Source Traceability
+
+| Catalog surface | Canonical executable source |
+|-----------------|-----------------------------|
+| [repo.md](./repo.md) | [alpha-skill](../../../product/harness/skills/alpha-skill/) |
+| [worktrack.md](./worktrack.md) | [beta-skill](../../../product/harness/skills/beta-skill/) |
+""",
+    )
+    write_file(tmp_path / "docs/harness/catalog/repo.md", "# Repo\n")
+    write_file(tmp_path / "docs/harness/catalog/worktrack.md", "# Worktrack\n")
+
+    report = CheckReport()
+    check_skill_source_traceability(tmp_path, report)
+
+    assert (
+        "skill source missing docs owner traceability: "
+        "product/harness/skills/beta-skill"
+    ) in report.failures
+
+
+def test_skill_source_traceability_flags_missing_catalog_mapping(
+    tmp_path: Path,
+) -> None:
+    write_file(tmp_path / "product/harness/skills/alpha-skill/SKILL.md", "# Alpha\n")
+    write_file(
+        tmp_path / "product/harness/skills/README.md",
+        """# Skills
+
+## Docs Owner Traceability
+
+| Canonical source | Docs/catalog owner |
+|------------------|--------------------|
+| [alpha-skill/](./alpha-skill/) | [docs/harness/catalog/repo.md](../../../docs/harness/catalog/repo.md) |
+""",
+    )
+    write_file(
+        tmp_path / "docs/harness/catalog/README.md",
+        """# Catalog
+
+## Canonical Source Traceability
+
+| Catalog surface | Canonical executable source |
+|-----------------|-----------------------------|
+""",
+    )
+    write_file(tmp_path / "docs/harness/catalog/repo.md", "# Repo\n")
+
+    report = CheckReport()
+    check_skill_source_traceability(tmp_path, report)
+
+    assert (
+        "catalog traceability missing canonical skill source: "
+        "product/harness/skills/alpha-skill"
+    ) in report.failures
+
+
+def test_skill_source_traceability_rejects_skill_links_in_wrong_columns(
+    tmp_path: Path,
+) -> None:
+    write_file(tmp_path / "product/harness/skills/alpha-skill/SKILL.md", "# Alpha\n")
+    write_file(
+        tmp_path / "product/harness/skills/README.md",
+        """# Skills
+
+## Docs Owner Traceability
+
+| Canonical source | Docs/catalog owner |
+|------------------|--------------------|
+| [docs owner](../../../docs/harness/catalog/repo.md) | [alpha-skill/](./alpha-skill/) |
+""",
+    )
+    write_file(
+        tmp_path / "docs/harness/catalog/README.md",
+        """# Catalog
+
+## Canonical Source Traceability
+
+| Catalog surface | Canonical executable source |
+|-----------------|-----------------------------|
+| [alpha-skill](../../../product/harness/skills/alpha-skill/) | [repo.md](./repo.md) |
+""",
+    )
+    write_file(tmp_path / "docs/harness/catalog/repo.md", "# Repo\n")
+
+    report = CheckReport()
+    check_skill_source_traceability(tmp_path, report)
+
+    assert (
+        "skill source missing docs owner traceability: "
+        "product/harness/skills/alpha-skill"
+    ) in report.failures
+    assert (
+        "catalog traceability missing canonical skill source: "
+        "product/harness/skills/alpha-skill"
+    ) in report.failures
+
+
+def test_skill_source_traceability_flags_deploy_target_links(
+    tmp_path: Path,
+) -> None:
+    write_file(tmp_path / "product/harness/skills/alpha-skill/SKILL.md", "# Alpha\n")
+    write_file(
+        tmp_path / "product/harness/skills/README.md",
+        """# Skills
+
+## Docs Owner Traceability
+
+| Canonical source | Docs/catalog owner |
+|------------------|--------------------|
+| [alpha-skill/](./alpha-skill/) | [deploy copy](../../../.claude/skills/alpha-skill/) |
+""",
+    )
+    write_file(
+        tmp_path / "docs/harness/catalog/README.md",
+        """# Catalog
+
+## Canonical Source Traceability
+
+| Catalog surface | Canonical executable source |
+|-----------------|-----------------------------|
+| [deploy copy](../../../.agents/skills/alpha-skill/) | [alpha-skill](../../../product/harness/skills/alpha-skill/) |
+""",
+    )
+
+    report = CheckReport()
+    check_skill_source_traceability(tmp_path, report)
+
+    assert (
+        "skill traceability points to deploy target instead of canonical source/docs: "
+        ".agents/skills/alpha-skill"
+    ) in report.failures
+    assert (
+        "skill traceability points to deploy target instead of canonical source/docs: "
+        ".claude/skills/alpha-skill"
     ) in report.failures
 
 
