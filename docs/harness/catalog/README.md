@@ -1,7 +1,7 @@
 ---
 title: Harness Skill Catalog
 status: active
-updated: 2026-05-14
+updated: 2026-05-16
 owner: aw-kernel
 last_verified: 2026-05-14
 ---
@@ -44,3 +44,15 @@ Catalog 不承接 doctrine 正文、runtime protocol、artifact contract、workf
 | `skill-impact-matrix.md` | 历史合同变更对 skill 的影响分析与同步追踪记录 | 当前文件本身是历史分析记录；skill inventory 正文仍以本 catalog 的 skill 条目为准 |
 
 新增 catalog 页面时，若正文超过 inventory surface，需要先确认目标 owner；不能把分析、policy 或协议正文长期沉淀在 `catalog/`。
+
+## Canonical Source Traceability
+
+| Catalog surface | Canonical executable source |
+|-----------------|-----------------------------|
+| [supervisor.md](./supervisor.md) | [harness-skill](../../../product/harness/skills/harness-skill/) |
+| [repo.md](./repo.md) | [set-harness-goal-skill](../../../product/harness/skills/set-harness-goal-skill/), [repo-status-skill](../../../product/harness/skills/repo-status-skill/), [repo-whats-next-skill](../../../product/harness/skills/repo-whats-next-skill/), [repo-append-request-skill](../../../product/harness/skills/repo-append-request-skill/), [repo-change-goal-skill](../../../product/harness/skills/repo-change-goal-skill/), [repo-refresh-skill](../../../product/harness/skills/repo-refresh-skill/) |
+| [init-milestone-skill.md](./init-milestone-skill.md) | [init-milestone-skill](../../../product/harness/skills/init-milestone-skill/) |
+| [milestone-status-skill.md](./milestone-status-skill.md) | [milestone-status-skill](../../../product/harness/skills/milestone-status-skill/) |
+| [worktrack.md](./worktrack.md) | [worktrack-status-skill](../../../product/harness/skills/worktrack-status-skill/), [init-worktrack-skill](../../../product/harness/skills/init-worktrack-skill/), [schedule-worktrack-skill](../../../product/harness/skills/schedule-worktrack-skill/), [dispatch-skills](../../../product/harness/skills/dispatch-skills/), [generic-worker-skill](../../../product/harness/skills/generic-worker-skill/), [doc-catch-up-worker-skill](../../../product/harness/skills/doc-catch-up-worker-skill/), [review-evidence-skill](../../../product/harness/skills/review-evidence-skill/), [test-evidence-skill](../../../product/harness/skills/test-evidence-skill/), [rule-check-skill](../../../product/harness/skills/rule-check-skill/), [gate-skill](../../../product/harness/skills/gate-skill/), [recover-worktrack-skill](../../../product/harness/skills/recover-worktrack-skill/), [close-worktrack-skill](../../../product/harness/skills/close-worktrack-skill/) |
+
+Deploy targets such as `.agents/` or `.claude/` may consume these sources after deployment, but they are not canonical source locations.

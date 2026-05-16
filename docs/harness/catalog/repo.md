@@ -1,7 +1,7 @@
 ---
 title: "Harness Skill Catalog / RepoScope"
 status: active
-updated: 2026-05-08
+updated: 2026-05-16
 owner: aw-kernel
 last_verified: 2026-05-08
 ---
@@ -16,6 +16,24 @@ last_verified: 2026-05-08
 `RepoScope` skills 负责长期基线的观察、判断、目标变更和 repo 状态刷新，不承担编码执行。repo-status-skill 对应 `RepoScope` observing，repo-whats-next-skill 对应 `RepoScope` deciding。repo-status-skill 是顺手调用的稳定观测包，非强制前置。repo-whats-next-skill 须能在无 repo-status-skill 产物时直接基于 repo truth 完成判断。三者都不负责 worktrack 级文档维护。structured handoff 优先使用 `recommended_next_route` 与 canonical approval 字段。`RepoScope` 内可挂载有界分析模式但不应为分析框架新增 skill 数量。Repo Analysis 可喂给 repo-whats-next-skill 但不能替代 Goal/Charter 或 Snapshot/Status。append-feature 与 append-design 由同一 skill 分类，不拆分。需要改动系统状态时由 supervisor 决定是否切入 `WorktrackScope`。
 
 ## Catalog
+
+### 0. set-harness-goal-skill
+
+职责：当 Harness 尚未初始化或 `.aw/goal-charter.md` 缺失时，将 programmer 的自然语言目标转化为 Repo Goal/Charter、Engineering Node Map 和初始控制面组件。它是 `RepoScope.SetGoal` 的初始化参考信号入口，不属于常规循环中的目标变更路径。
+
+主要依赖：
+
+- Programmer goal input
+- Repo structure
+- Harness Control State 初始化模板
+
+canonical executable source：
+
+- [../../../product/harness/skills/set-harness-goal-skill/SKILL.md](../../../product/harness/skills/set-harness-goal-skill/SKILL.md)
+
+当前状态：
+
+- `initial canonical executable skeleton landed`
 
 ### 1. repo-status-skill
 

@@ -1,7 +1,7 @@
 ---
 title: "Harness Skill Catalog / WorktrackScope"
 status: active
-updated: 2026-05-08
+updated: 2026-05-16
 owner: aw-kernel
 last_verified: 2026-05-08
 ---
@@ -18,6 +18,25 @@ last_verified: 2026-05-08
 Worktrack Contract 的 `node_type` 字段合法值来自 [Node Type Registry](../artifact/control/node-type-registry.md)，Contract 中的 `baseline_form`、`merge_required`、`gate_criteria`、`if_interrupted_strategy` 从 Registry 继承默认值并可在 Contract 中显式覆盖；gate-skill 根据 `node_type` 查找对应 `gate_criteria` 确定需要收集的证据面。
 
 ## Catalog
+
+### 0. worktrack-status-skill
+
+职责：在 `WorktrackScope.Observe` 阶段读取当前 Worktrack Contract、Plan / Task Queue、Gate Evidence 与相关控制态，形成结构化工作追踪状态估计。它只做状态观察，不选择下一任务、不执行实现、不裁决 Gate。
+
+主要依赖：
+
+- `Worktrack Contract`
+- `Plan / Task Queue`
+- `Gate Evidence`
+- `Harness Control State`
+
+canonical executable source：
+
+- [../../../product/harness/skills/worktrack-status-skill/SKILL.md](../../../product/harness/skills/worktrack-status-skill/SKILL.md)
+
+当前状态：
+
+- `initial canonical executable skeleton landed`
 
 ### 1. init-worktrack-skill
 
