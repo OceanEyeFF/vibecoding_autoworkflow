@@ -32,7 +32,7 @@ last_verified: 2026-05-14
 - runbook/usage-help/testing/Harness 长文变更需说明当前页类型（入口/runbook/合同/指导）并清理重复正文
 - 新增、移动、重命名、删除或改为 `status: superseded` 的 `docs/` markdown 文档必须维护 `docs/book.md` spine：先更新最近章节 `README.md`，再更新 `docs/book.md` 的 Full Reading Order，确认除 `docs/book.md` 自身外的所有 `docs/**/*.md` 都有直接有序链接，最后修复旧路径引用，并检查 `docs/book.md` markdown 链接与反引号 inline path 都指向当前 checkout 真实存在的 docs 路径或 owner 边界；superseded 文档只能通过显式 historical references 区块暴露，并应说明当前 owner 或接管路径
 - deploy/adapter 变更需同步对应 runbook、maintenance 与 usage-help，口径保持 destructive reinstall model
-- package/release/version/VCS baseline 事实变更需调用 `doc-catch-up-worker-skill` 做 version fact sync；pre-publish 只同步 source version facts 与 VCS tracking facts，post-publish registry verification 后才能同步 published version facts
+- package/release/version/VCS baseline 事实变更需调用 `doc-catch-up-worker-skill` 做 version fact sync；pre-publish 只同步 source version facts 与 VCS tracking facts，post-publish registry verification 后才能同步 published version facts；canonical skill source baseline 由 repo snapshot 的 `source_baselines.product_harness_skills` 和 control-state Baseline Traceability 承接，长期 docs 不手写分散 git hash
 - docs/harness/、product/harness/skills/ 或 adapters 变更需保持合同层与 executable layer 分工
 - branch/PR/baseline 规则变更需从 `origin/HEAD` 或 Worktrack Contract 的 `baseline_branch` 取值，不写死默认分支名
 - release PR review 必须区分 self-merge 与 self-approval；GitHub 不允许 PR author approve 自己的 PR，owner/admin bypass 需在 PR 或 release handoff 中记录

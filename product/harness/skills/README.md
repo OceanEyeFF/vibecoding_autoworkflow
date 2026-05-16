@@ -82,3 +82,15 @@
 | [close-worktrack-skill/](./close-worktrack-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
 
 This table is the source-side backlink to the docs/catalog owner surface. Keep it synchronized when adding, renaming, retiring, or moving canonical skill source. Do not replace these links with deploy target paths.
+
+## Source Baseline Versioning
+
+The current verified git checkpoint for this source root is recorded by Harness runtime artifacts, not by per-skill prose in this README:
+
+- checkpoint runtime owner: `.aw/repo/snapshot-status.md`
+- idempotency runtime owner: `.aw/control-state.md`
+- closeout evidence runtime owner: `.aw/worktrack/closeout-record.md`
+- checkpoint contract: [docs/harness/artifact/repo/snapshot-status.md](../../../docs/harness/artifact/repo/snapshot-status.md)
+- idempotency contract: [docs/harness/artifact/control/control-state.md](../../../docs/harness/artifact/control/control-state.md)
+
+When canonical skill source or this source index changes, closeout records the verified git HEAD and repo refresh updates the source baseline summary. Keep long-term docs linked to source roots and docs owners; do not scatter manual commit hashes through individual skill descriptions.

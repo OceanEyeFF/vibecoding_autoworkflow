@@ -1,7 +1,7 @@
 ---
 title: "Harness Control State"
 status: active
-updated: 2026-05-10
+updated: 2026-05-16
 owner: aw-kernel
 last_verified: 2026-05-10
 ---
@@ -52,6 +52,19 @@ Milestone 是 `RepoScope` 下的聚合对象，control-state 应在 Linked Forma
 此外应保存 Baseline Traceability，用于 `WorktrackScope` 关闭后快速定位已验证基线：`last_verified_checkpoint`、`latest_observed_checkpoint`、`last_doc_catch_up_checkpoint`、`checkpoint_type`、`checkpoint_ref`、`verified_at`、`if_no_commit_reason`、`alternative_traceability`。
 
 其中 `latest_observed_checkpoint` 与 `last_doc_catch_up_checkpoint` 是 git hash 幂等性锚点，分别记录 `repo-refresh-skill` 和 `doc-catch-up-worker-skill` 上次执行时的 HEAD hash，供 `harness-skill` 启动时对比以跳过重复刷新。
+
+## Skill Source Baseline Traceability
+
+Canonical skill source version facts are owned by repo-level checkpoint artifacts, not by scattered prose hash mentions in catalog pages. For `product/harness/skills/`, the stable relation is:
+
+- canonical source root: `product/harness/skills/`
+- docs/catalog owner: `docs/harness/catalog/`
+- current source checkpoint owner: `.aw/repo/snapshot-status.md` after `repo-refresh-skill`
+- current control-plane idempotency owner: `.aw/control-state.md` `Baseline Traceability`
+
+When a verified worktrack changes canonical skill source, source-side skill indexes, or docs/source traceability, closeout records the evidence and merge commit in its closeout record, then `repo-refresh-skill` writes the refreshed git HEAD to `latest_observed_checkpoint` and `checkpoint_ref`. If the same change also updates operator-facing docs or version facts, `doc-catch-up-worker-skill` records the HEAD as `last_doc_catch_up_checkpoint`.
+
+Long-term docs should link to the source root or catalog owner, not embed one-off commit hashes for each skill. If a commit hash is needed for an audit handoff, keep it in runtime artifacts such as closeout records, repo snapshot, or release/version evidence. Deploy targets remain consumers of the source baseline and must not become the baseline owner.
 
 `milestone_input_checkpoint` 是 Milestone 输入指纹锚点，由 `milestone-status-skill` 按 `milestone-input-checkpoint/v1` 计算（格式 `sha256:<64 位小写 hex>`）。算法对 milestone artifact、worktrack backlog、gate evidence、repo snapshot 的已纳入字段取 SHA-256，使用字典键排序、repo-relative POSIX path、稳定列表顺序和显式 `null` 值。不得纳入文件 mtime、时间戳、绝对路径、上次 checkpoint 或 progress counter 等易变/派生值。该指纹与 git HEAD 独立（`.aw/` 下 artifact 变化不产生 git commit）。下一轮 `Observe` 仅当 `milestone_input_checkpoint` 与新指纹一致且 `latest_observed_checkpoint` 与 `git rev-parse HEAD` 一致时，才可跳过 Milestone 进度重算。
 
