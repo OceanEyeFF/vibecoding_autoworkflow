@@ -7,7 +7,7 @@ last_verified: 2026-05-09
 ---
 # Standard Worktrack
 
-> **状态：已废弃。** 标准 worktrack 闭环的权威定义已迁移至 [Harness运行协议.md](../../foundations/Harness运行协议.md) 第 IV 节，以及 `harness-skill/SKILL.md` 的两层控制律（第七节）。本文档保留为历史引用。
+> **状态：已废弃。** 标准 worktrack 闭环的权威定义已迁移至 [Harness运行协议.md](../../foundations/Harness运行协议.md)、[runtime-control-loop.md](../../foundations/runtime-control-loop.md)，以及 `harness-skill/SKILL.md` 的两层控制律（第七节）。本文档保留为历史引用。
 >
 > 完整状态闭环：`RepoScope.SetGoal -> Observe -> Decide -> WorktrackScope.Init -> Observe -> Decide -> Dispatch -> Verify -> Judge -> Close/Recover -> RepoScope.Refresh -> Observe`
 

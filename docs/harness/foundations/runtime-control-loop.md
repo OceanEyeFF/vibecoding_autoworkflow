@@ -1,0 +1,76 @@
+---
+title: Harness Runtime Control Loop
+status: active
+updated: 2026-05-16
+owner: aw-kernel
+last_verified: 2026-05-16
+---
+
+# Harness Runtime Control Loop
+
+> 目的：固定 Harness 从状态估计到下一合法算子的运行主循环。状态矩阵细节见 [scope/state-loop.md](../scope/state-loop.md)；正式对象字段见 [artifact/](../artifact/README.md)。
+
+## Control Chain
+
+Harness 的最小控制链：
+
+```text
+state estimate
+-> choose operator
+-> bind skill or execution carrier
+-> package task/info
+-> dispatch
+-> collect evidence
+-> judge
+-> update control state
+```
+
+单个 skill 的 bounded round 只限制本轮局部动作。未命中正式 stop condition 时，控制器继续推进到下一合法状态转移。
+
+## Scope Owners
+
+`RepoScope` 管 repo 长期参考信号与慢变量；`WorktrackScope` 管局部状态转移。两层 Scope 的状态定义、状态矩阵和异常路径由 [scope/state-loop.md](../scope/state-loop.md) 承接。本页只保留 runtime 主循环和连续推进规则。
+
+Milestone Pipeline 是 RepoScope 下的中短期目标队列：多个 milestone 可处于 `planned`，同一时刻仅一个 `active`。goal-driven milestone 完成采用 `worktrack_list_finished AND purpose_achieved`，其中 `purpose_achieved` 前置独立 Milestone Gate。详细字段见 [milestone.md](../artifact/control/milestone.md) 和 [milestone-backlog.md](../artifact/repo/milestone-backlog.md)。
+
+## Normal Loop
+
+```text
+RepoScope.Observe
+-> RepoScope.Decide
+-> WorktrackScope.Init
+-> WorktrackScope.Observe
+-> WorktrackScope.Decide
+-> WorktrackScope.Dispatch
+-> WorktrackScope.Implement
+-> WorktrackScope.Verify
+-> WorktrackScope.Judge
+-> WorktrackScope.Close 或 WorktrackScope.Recover
+-> RepoScope.Refresh
+-> RepoScope.Observe
+```
+
+有 active milestone 时，每个 current worktrack 都走自己的完整闭环；milestone 通过这些独立闭环的累计结果形成聚合进度、Milestone Gate 输入和最终完成判定。
+
+## Continuous Execution
+
+默认语义是连续推进，而不是每完成一个 skill round 就自动 handback。
+
+当 programmer 明确指示连续执行时，`Worktrack Close` 只是 repo refresh 或 milestone progress update 的状态刷新点，不默认触发 handback。连续推进仍受当前 `Worktrack Contract`、authority boundary、autonomy budget 和 stop conditions 约束。
+
+`autonomy_budget` 每开启一个 autonomous slice 消费 1 个单位。budget 耗尽后不得自动开启新 slice，必须 handback。
+
+## Stop Conditions
+
+最小 stop conditions：
+
+- 需要 programmer 批准的 goal change、scope expansion、destructive action 或 authority boundary
+- goal-driven milestone 激活前的结构化 brief 需要 programmer 确认
+- 必需 artifact / evidence 缺失、过时或互相冲突
+- `Gate` 给出 `soft-fail`、`hard-fail` 或 `blocked`
+- host runtime 没有合法 execution carrier / dispatch shell
+- 下一动作越过已批准输入、`Worktrack Contract` 或 repo baseline
+- 同一交接边界在连续无变化轮次中再次被确认
+- Milestone 验收边界命中：`milestone_acceptance_verdict == achieved` 或 `blocked`
+
+"skill 已返回结构化结果"不构成 stop condition。无专门 skill 时进入 fallback execution carrier；runtime dispatch shell 缺位报告为 `runtime gap`。

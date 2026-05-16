@@ -8,7 +8,7 @@
 
 | 层 | 路径 | 功能 |
 | --- | --- | --- |
-| 思路层 | [foundations/README.md](./foundations/README.md) | 说明 Harness 为什么这样运行，以及运行时共同遵守的原则 |
+| 思路层 | [foundations/README.md](./foundations/README.md) | 说明 Harness 为什么这样运行、运行时共同遵守的原则，以及控制面如何选择载体和推进状态 |
 | 架构层 | [scope/README.md](./scope/README.md) | 说明 `RepoScope`、`WorktrackScope` 与两层状态闭环 |
 | 架构层 | [artifact/README.md](./artifact/README.md) | 说明 Repo / Worktrack / Control 正式对象和字段 |
 | 架构层 | [workflow-families/README.md](./workflow-families/README.md) | 说明多个 worktrack 如何组成稳定流程 |
@@ -18,7 +18,7 @@
 
 | 路径 | 何时读取 |
 | --- | --- |
-| `foundations/` | 查 Harness 为什么这样运行、运行时怎样停顿/交接/继续 |
+| `foundations/` | 查 Harness 为什么这样运行、runtime protocol、停顿/交接/继续、dispatch 载体选择和跨 skill 约束 |
 | `scope/` | 查 RepoScope、WorktrackScope 或 scope 间状态转移 |
 | `artifact/` | 查运行时对象字段、证据、队列、control state、milestone 或 worktrack 合同 |
 | `catalog/` | 查有哪些 skill、每个 skill 的职责摘要、控制层级和状态 |
