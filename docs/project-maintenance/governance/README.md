@@ -22,13 +22,11 @@ last_verified: 2026-05-17
 
 ### 发布治理
 
+aw-installer 发布治理已归入子目录，入口见 [aw-installer/README.md](./aw-installer/README.md)。
+
 | 文档 | 只管理什么 | 不再管理什么 |
 | --- | --- | --- |
-| [aw-installer-release-operation-model.md](./aw-installer-release-operation-model.md) | 已选择的发布操作模型（GitHub Release + npm Trusted Publishing） | 具体发布步骤、准入规则 |
-| [aw-installer-release-channel-governance.md](./aw-installer-release-channel-governance.md) | npm 发布渠道准入规则与当前 registry 事实 | 发布操作模型选择、pre-publish 检查清单 |
-| [aw-installer-release-standard-flow.md](./aw-installer-release-standard-flow.md) | 已批准候选版本从 PR 合并到发布后验证的完整流程 | 准入规则定义、外部试用反馈 |
-| [aw-installer-pre-publish-governance.md](./aw-installer-pre-publish-governance.md) | 发布前必须满足的最小就绪边界 | 发布流程步骤、channel 准入 |
-| [aw-installer-external-trial-governance.md](./aw-installer-external-trial-governance.md) | 外部试用的目标列表模板与反馈契约 | 发布流程、pre-publish 检查 |
+| [aw-installer/README.md](./aw-installer/README.md) | aw-installer 发布操作模型、渠道准入、发布流程、pre-publish 就绪边界、外部试用治理 | 具体发布执行步骤（见子文件） |
 
 ## 按场景进入
 
@@ -38,11 +36,11 @@ last_verified: 2026-05-17
 | 新增/移动/删除文档后跑治理检查 | [path-governance-checks.md](./path-governance-checks.md) |
 | 创建分支或 PR 前确认规则 | [branch-pr-governance.md](./branch-pr-governance.md) |
 | 统一 AI 输出风格与判断收口 | [global-language-style.md](./global-language-style.md) |
-| 确认当前发布模型与注册渠道 | [aw-installer-release-operation-model.md](./aw-installer-release-operation-model.md) |
-| 发布前检查就绪状态 | [aw-installer-pre-publish-governance.md](./aw-installer-pre-publish-governance.md) |
-| 执行候选版本发布流程 | [aw-installer-release-standard-flow.md](./aw-installer-release-standard-flow.md) |
-| 查看或更新 npm 发布渠道准入规则 | [aw-installer-release-channel-governance.md](./aw-installer-release-channel-governance.md) |
-| 管理外部试用目标与反馈 | [aw-installer-external-trial-governance.md](./aw-installer-external-trial-governance.md) |
+| 确认当前发布模型与注册渠道 | [aw-installer/aw-installer-release-operation-model.md](./aw-installer/aw-installer-release-operation-model.md) |
+| 发布前检查就绪状态 | [aw-installer/aw-installer-pre-publish-governance.md](./aw-installer/aw-installer-pre-publish-governance.md) |
+| 执行候选版本发布流程 | [aw-installer/aw-installer-release-standard-flow.md](./aw-installer/aw-installer-release-standard-flow.md) |
+| 查看或更新 npm 发布渠道准入规则 | [aw-installer/aw-installer-release-channel-governance.md](./aw-installer/aw-installer-release-channel-governance.md) |
+| 管理外部试用目标与反馈 | [aw-installer/aw-installer-external-trial-governance.md](./aw-installer/aw-installer-external-trial-governance.md) |
 | 部署相关治理 | [../deploy/README.md](../deploy/README.md) |
 | 测试执行与 smoke | [../testing/README.md](../testing/README.md) |
 
