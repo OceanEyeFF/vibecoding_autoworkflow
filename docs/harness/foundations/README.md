@@ -24,7 +24,7 @@
 | --- | --- |
 | Doctrine / 指导思想 | [Harness指导思想.md](./Harness指导思想.md) |
 | Runtime protocol / 运行协议 | [Harness运行协议.md](./Harness运行协议.md) |
-| Scope state matrices / 状态矩阵 | [../scope/state-loop.md](../scope/state-loop.md) |
+| Scope docs / 状态管理 | [../scope/README.md](../scope/README.md) |
 | Artifact contracts / 正式对象字段 | [../artifact/README.md](../artifact/README.md) |
 | Catalog inventory / skill 清单 | [../catalog/README.md](../catalog/README.md) |
 | Workflow policy / workflow family | [../workflow-families/README.md](../workflow-families/README.md) |

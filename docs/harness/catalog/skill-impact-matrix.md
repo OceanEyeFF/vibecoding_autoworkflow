@@ -22,7 +22,7 @@ T1-T5 在 `docs/harness/` 合同层完成了以下变更：
 |------|------|------|
 | T1 | 运行协议 + control-state | 新增 Dispatch/Implement 边界定义、Handback 与交接锁（六-A）、Handback Guard 字段 |
 | T2 | node-type-registry + worktrack + README | 创建 Node Type Registry，定义 7 种节点类型的默认规则（baseline_form / merge_required / gate_criteria / if_interrupted_strategy） |
-| T3 | gate-evidence + plan-task-queue + state-loop | 规范化 verdict/review_dimensions 字段、任务队列字段规范、状态转移矩阵 |
+| T3 | gate-evidence + plan-task-queue + worktrack-scope | 规范化 verdict/review_dimensions 字段、任务队列字段规范、状态转移矩阵 |
 | T4 | dispatch-packet + worktrack + README | 创建 Dispatch Packet Schema，统一 Task Brief / Info Packet / Result 三层字段定义 |
 | T5 | milestone + milestone-status-skill + control-state + README | 创建 Milestone Artifact 与 Milestone Status Skill catalog 入口 |
 

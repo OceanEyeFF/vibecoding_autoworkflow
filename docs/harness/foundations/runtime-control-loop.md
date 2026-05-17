@@ -8,7 +8,7 @@ last_verified: 2026-05-16
 
 # Harness Runtime Control Loop
 
-> 目的：固定 Harness 从状态估计到下一合法算子的运行主循环。状态矩阵细节见 [scope/state-loop.md](../scope/state-loop.md)；正式对象字段见 [artifact/](../artifact/README.md)。
+> 目的：固定 Harness 从状态估计到下一合法算子的运行主循环。WorktrackScope 状态矩阵细节见 [scope/worktrack-scope.md](../scope/worktrack-scope.md)；RepoScope 管理文档见 [scope/repo-scope.md](../scope/repo-scope.md)；正式对象字段见 [artifact/](../artifact/README.md)。
 
 ## Control Chain
 
@@ -29,7 +29,7 @@ state estimate
 
 ## Scope Owners
 
-`RepoScope` 管 repo 长期参考信号与慢变量；`WorktrackScope` 管局部状态转移。两层 Scope 的状态定义、状态矩阵和异常路径由 [scope/state-loop.md](../scope/state-loop.md) 承接。本页只保留 runtime 主循环和连续推进规则。
+`RepoScope` 管 repo 长期参考信号与慢变量；`WorktrackScope` 管局部状态转移。RepoScope 管理文档见 [scope/repo-scope.md](../scope/repo-scope.md)；WorktrackScope 的状态定义、状态矩阵和异常路径由 [scope/worktrack-scope.md](../scope/worktrack-scope.md) 承接。本页只保留 runtime 主循环和连续推进规则。
 
 Milestone Pipeline 是 RepoScope 下的中短期目标队列：多个 milestone 可处于 `planned`，同一时刻仅一个 `active`。goal-driven milestone 完成采用 `worktrack_list_finished AND purpose_achieved`，其中 `purpose_achieved` 前置独立 Milestone Gate。详细字段见 [milestone.md](../artifact/control/milestone.md) 和 [milestone-backlog.md](../artifact/repo/milestone-backlog.md)。
 

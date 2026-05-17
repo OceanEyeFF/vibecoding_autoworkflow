@@ -126,7 +126,8 @@ ENTRYPOINT_LINK_RULES = {
         "docs/harness/foundations/skill-common-constraints.md",
     ],
     "docs/harness/scope/README.md": [
-        "docs/harness/scope/state-loop.md",
+        "docs/harness/scope/repo-scope.md",
+        "docs/harness/scope/worktrack-scope.md",
     ],
     "docs/harness/artifact/README.md": [
         "docs/harness/artifact/repo/README.md",

@@ -48,7 +48,7 @@ Harness 是 repo 演进的分层闭环控制协议。它不直接替代执行器
 | 主题 | Owner |
 | --- | --- |
 | Doctrine / why Harness exists | [Harness指导思想.md](./Harness指导思想.md) |
-| Scope state matrices | [../scope/state-loop.md](../scope/state-loop.md) |
+| Scope state matrices | [../scope/README.md](../scope/README.md) |
 | Formal object fields and schemas | [../artifact/README.md](../artifact/README.md) |
 | Dispatch carrier policy | [dispatch-decision-policy.md](./dispatch-decision-policy.md) |
 | Cross-skill common constraints | [skill-common-constraints.md](./skill-common-constraints.md) |
