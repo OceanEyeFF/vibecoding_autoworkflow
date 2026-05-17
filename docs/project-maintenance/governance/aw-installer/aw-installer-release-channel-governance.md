@@ -1,9 +1,9 @@
 ---
 title: "aw-installer Release Channel Governance"
 status: active
-updated: 2026-05-13
+updated: 2026-05-17
 owner: aw-kernel
-last_verified: 2026-05-13
+last_verified: 2026-05-17
 ---
 # aw-installer Release Channel Governance
 
@@ -15,7 +15,7 @@ last_verified: 2026-05-13
 
 ## 当前 registry 事实
 
-2026-05-13 已核对 npm registry：
+2026-05-17 已核对 npm registry：
 
 - **版本号纠正**：`4.4.x` 系列（`v4.4.0`、`v4.4.0-rc.0`、`v4.4.1-rc.0`、`v4.4.1-rc.1`、`v4.4.1`）为错误发布的版本号，不进入 semver 主序列
 - npm registry 真实状态：`latest` -> `0.5.1`，`next` -> `0.5.1-rc.2`，历史已发布版本 `0.4.0-rc.1` ~ `0.5.1`
@@ -29,15 +29,15 @@ last_verified: 2026-05-13
 
 ## 当前 source release tuple
 
-2026-05-13，本地 source tuple 已发布为 `v0.5.1` 的 `latest` channel stable release：
+2026-05-17，本地 source tuple 已准备为 `v0.5.2-rc.0` 的 `next` channel release candidate：
 
-- root `package.json` version：`0.5.1`
-- local scaffold `toolchain/scripts/deploy/package.json` version：`0.5.1`
-- approval lock：`approvedVersion=0.5.1`、`approvedGitTag=v0.5.1`、`approvedChannel=latest`
-- GitHub Release 使用 stable release（非 prerelease），target commit `8215db89dbc7a75e14a8570d7745781de7a78d47`，publish workflow run `25749692613` 已成功
-- npm `aw-installer@0.5.1` 已发布到 `latest` dist-tag，tarball URL：`https://registry.npmjs.org/aw-installer/-/aw-installer-0.5.1.tgz`
+- root `package.json` version：`0.5.2-rc.0`
+- local scaffold `toolchain/scripts/deploy/package.json` version：`0.5.2-rc.0`
+- approval lock：`approvedVersion=0.5.2-rc.0`、`approvedGitTag=v0.5.2-rc.0`、`approvedChannel=next`
+- GitHub Release 尚未创建；`v0.5.2-rc.0` tag 尚不存在
+- npm `aw-installer@0.5.2-rc.0` 尚未发布；publish 前必须保持 RC selector 为 `aw-installer@next`
 
-注意：`0.5.1` 是 stable release；默认 `aw-installer` selector 解析到 `latest` 的 `0.5.1`。`next` 仍保留 `0.5.1-rc.2` 作为 prerelease channel 事实。
+注意：`0.5.2-rc.0` 是待发布 prerelease candidate，不改变 stable selector；默认 `aw-installer` 仍解析到 `latest` 的 `0.5.1`。发布完成前，`next` 仍保留 `0.5.1-rc.2` 作为 registry prerelease channel 事实。
 
 npm dist-tag 由 publish workflow 写入，此页跟随 release commit 同步事实。`4.4.x` 相关 git tag 保留作为历史记录，不在 npm registry 中发布。
 
