@@ -1,9 +1,9 @@
 ---
 title: "Init Milestone Skill"
 status: active
-updated: 2026-05-11
+updated: 2026-05-14
 owner: aw-kernel
-last_verified: 2026-05-11
+last_verified: 2026-05-14
 ---
 
 # Init Milestone Skill
@@ -16,6 +16,10 @@ last_verified: 2026-05-11
 - Function: 作为 `RepoScope.Init` 的 Milestone 初始化算子
 - 输入: programmer 或 harness 提供的 milestone 规格 + milestone-backlog + control-state
 - 输出: 结构化 Milestone 初始化结果（milestone_id、status、pipeline_position、writeback 信息）
+
+canonical executable source：
+
+- [../../../../product/harness/skills/init-milestone-skill/SKILL.md](../../../../product/harness/skills/init-milestone-skill/SKILL.md)
 
 ## 职责
 

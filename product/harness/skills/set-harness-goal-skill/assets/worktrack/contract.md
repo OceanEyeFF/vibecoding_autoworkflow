@@ -26,8 +26,9 @@
 
 ## Execution Policy
 
-> 控制本 worktrack 的执行载体选择。`auto` 默认优先委派 SubAgent；`delegated` 强制要求真实委派；`current-carrier` 明确选择当前载体执行。默认 scaffold 中 `.aw/control-state.md` 的 `subagent_dispatch_mode_override_scope: worktrack-contract-primary` 会让本字段优先生效；只有 control-state 显式改为 `global-override` 时，`subagent_dispatch_mode` 才作为上层覆盖。若因权限边界、运行时缺口或 `dispatch package unsafe` 不能委派，必须记录 `runtime fallback`。
+> Execution Policy canonical semantics are not repeated here. Use `execution_policy_contract_ref` as the authority reference.
 
+- execution_policy_contract_ref: docs/harness/artifact/worktrack/contract.md#execution-policy
 - runtime_dispatch_mode: auto
 - dispatch_mode_source: worktrack-contract
 - allowed_values: auto / delegated / current-carrier

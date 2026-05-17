@@ -25,6 +25,7 @@ REQUIRED_TEMPLATE_PATHS = [
     "docs/harness/artifact/worktrack/contract.md",
     "docs/harness/artifact/worktrack/plan-task-queue.md",
     "docs/harness/artifact/worktrack/gate-evidence.md",
+    "docs/harness/artifact/worktrack/debug-evidence.md",
 ]
 REQUIRED_HANDOFF_LINKS = {
     "product/README.md": [
@@ -48,6 +49,7 @@ REQUIRED_HANDOFF_LINKS = {
         "docs/harness/artifact/worktrack/contract.md",
         "docs/harness/artifact/worktrack/plan-task-queue.md",
         "docs/harness/artifact/worktrack/gate-evidence.md",
+        "docs/harness/artifact/worktrack/debug-evidence.md",
     ],
 }
 FOUNDATIONS_AUTHORITY_STEMS = [
@@ -131,14 +133,16 @@ SUBAGENT_DEFAULT_CONTRACT_PATHS = [
     "product/harness/skills/dispatch-skills/SKILL.md",
     "product/harness/skills/set-harness-goal-skill/SKILL.md",
     "product/harness/skills/set-harness-goal-skill/assets/control-state.md",
-    "product/harness/skills/set-harness-goal-skill/assets/worktrack/contract.md",
-    "product/harness/skills/init-worktrack-skill/templates/contract.template.md",
     "product/.aw_template/control-state.md",
-    "product/.aw_template/worktrack/contract.md",
     "docs/harness/artifact/control/control-state.md",
     "docs/harness/artifact/worktrack/contract.md",
     "docs/harness/foundations/Harness运行协议.md",
     "docs/harness/catalog/worktrack.md",
+]
+EXECUTION_POLICY_TEMPLATE_REFERENCE_PATHS = [
+    "product/harness/skills/set-harness-goal-skill/assets/worktrack/contract.md",
+    "product/harness/skills/init-worktrack-skill/templates/contract.template.md",
+    "product/.aw_template/worktrack/contract.md",
 ]
 AGENTS_ADAPTER_SKILLS_DIR = "product/harness/adapters/agents/skills"
 MANUAL_RUNBOOK_AGENTS_SKILL_COUNT_RE = re.compile(
@@ -203,6 +207,7 @@ SUBAGENT_DEFAULT_REQUIRED_TERMS = [
     "默认",
     "SubAgent",
     "权限边界",
+    "Dispatch Decision Policy",
     "subagent_dispatch_mode",
     "subagent_dispatch_mode_override_scope",
     "worktrack-contract-primary",
@@ -214,6 +219,32 @@ SUBAGENT_DEFAULT_REQUIRED_TERMS = [
     "runtime fallback",
     "dispatch package unsafe",
 ]
+EXECUTION_POLICY_TEMPLATE_REQUIRED_TERMS = [
+    "Execution Policy canonical semantics are not repeated here",
+    "execution_policy_contract_ref",
+    "docs/harness/artifact/worktrack/contract.md#execution-policy",
+    "runtime_dispatch_mode",
+    "dispatch_mode_source",
+    "allowed_values",
+    "fallback_reason_required",
+]
+EXECUTION_POLICY_TEMPLATE_FORBIDDEN_PHRASES = [
+    "控制本 worktrack 的执行载体选择。`auto` 按 Dispatch Decision Policy",
+    "默认 scaffold 中 `.aw/control-state.md` 的 `subagent_dispatch_mode_override_scope",
+]
+DISPATCH_CONTEXT_CONTRACT_PATHS = [
+    "docs/harness/artifact/worktrack/dispatch-packet.md",
+    "product/harness/skills/dispatch-skills/SKILL.md",
+    "product/harness/skills/schedule-worktrack-skill/SKILL.md",
+    "product/harness/skills/generic-worker-skill/SKILL.md",
+]
+DISPATCH_CONTEXT_REQUIRED_TERMS = [
+    "shared_fact_pack",
+    "context_budget",
+    "must_read",
+    "may_read",
+    "do_not_read",
+]
 REVIEW_EVIDENCE_FOUR_LANE_CONTRACT_PATHS = [
     "product/harness/skills/review-evidence-skill/SKILL.md",
     "docs/harness/catalog/worktrack.md",
@@ -221,6 +252,11 @@ REVIEW_EVIDENCE_FOUR_LANE_CONTRACT_PATHS = [
     "docs/harness/artifact/worktrack/gate-evidence.md",
 ]
 REVIEW_EVIDENCE_FOUR_LANE_REQUIRED_TERMS = [
+    "review_profile",
+    "light",
+    "standard",
+    "risky",
+    "deep",
     "并行",
     "SubAgent",
     "fallback",
@@ -232,6 +268,69 @@ REVIEW_EVIDENCE_FOUR_LANE_REQUIRED_TERMS = [
     "测试 review",
     "security review",
     "代码复杂度和性能 review",
+]
+DEBUG_EVIDENCE_CONTRACT_PATHS = [
+    "docs/harness/artifact/worktrack/debug-evidence.md",
+]
+DEBUG_EVIDENCE_REQUIRED_TERMS = [
+    "source_logs",
+    "symptom",
+    "reproduction_steps",
+    "observed_error",
+    "root_cause_hypothesis",
+    "confirmed_facts",
+    "discarded_hypotheses",
+    "remaining_unknowns",
+    "next_debug_action",
+    "Raw Log Boundary",
+]
+DECISION_TRACEABILITY_CONTRACT_PATHS = [
+    "docs/harness/artifact/repo/decision-log.md",
+    "docs/harness/artifact/repo/worktrack-backlog.md",
+]
+DECISION_LOG_REQUIRED_TERMS = [
+    "decision_id",
+    "date",
+    "status",
+    "accepted",
+    "superseded",
+    "rejected",
+    "context",
+    "decision",
+    "alternatives_considered",
+    "why_not_chosen",
+    "consequences",
+    "affected_artifacts",
+    "related_worktracks",
+    "related_commits",
+    "supersedes",
+]
+WORKTRACK_BACKLOG_TRACEABILITY_REQUIRED_TERMS = [
+    "decision_refs",
+]
+CLOSEOUT_RECORD_CONTRACT_PATHS = [
+    "docs/harness/artifact/worktrack/README.md",
+    "product/harness/skills/close-worktrack-skill/SKILL.md",
+]
+CLOSEOUT_RECORD_REQUIRED_TERMS = [
+    "closeout_record",
+    "worktrack_id",
+    "branch",
+    "base_ref",
+    "head_ref",
+    "merge_commit",
+    "pr",
+    "files_changed",
+    "acceptance_result",
+    "gate_verdict",
+    "evidence_refs",
+    "decision_refs",
+    "docs_updated",
+    "snapshot_refreshed",
+    "backlog_updated",
+    "cleanup_done",
+    "remaining_risks",
+    "next_repo_scope_action",
 ]
 REPO_WHATS_NEXT_OVERVIEW_FALLBACK_CONTRACT_PATHS = [
     "product/harness/skills/repo-whats-next-skill/SKILL.md",
@@ -276,6 +375,18 @@ BYTECODE_FREE_COMMAND_EXCLUDED_PATTERNS = (
         r"codex-harness-manual-run-continuous-\d{4}-\d{2}-\d{2}\.md"
     ),
 )
+AGENTS_ROUTE_CONTRACT_PATH = "AGENTS.md"
+AGENTS_ROUTE_REQUIRED_TERMS = [
+    "## Default Boot",
+    "INDEX.md",
+    "当前任务对应的一个局部入口",
+    "仅当任务命中对应边界时才扩读",
+    "do_not_read_yet",
+    ".aw/",
+]
+AGENTS_ROUTE_FORBIDDEN_TERMS = [
+    "## Read First",
+]
 REPO_PYTHON_COMMAND_RE = re.compile(
     r"\bpython(?:3)?\s+(?:"
     r"-m\s+(?:pytest|unittest)\b|"
@@ -584,6 +695,28 @@ def check_root_tool_shims_disable_bytecode(repo_root: Path, report: SemanticRepo
     report.add_info(f"checked {checked} root tool shims for bytecode guard ordering")
 
 
+def check_agents_route_slimming_contract(repo_root: Path, report: SemanticReport) -> None:
+    agents_path = repo_root / AGENTS_ROUTE_CONTRACT_PATH
+    if not agents_path.exists():
+        report.add_failure(f"missing AGENTS route contract: {AGENTS_ROUTE_CONTRACT_PATH}")
+        return
+
+    text = agents_path.read_text(encoding="utf-8")
+    for term in AGENTS_ROUTE_REQUIRED_TERMS:
+        if term not in text:
+            report.add_failure(
+                f"AGENTS route slimming contract missing required term {term!r}: "
+                f"{AGENTS_ROUTE_CONTRACT_PATH}"
+            )
+    for term in AGENTS_ROUTE_FORBIDDEN_TERMS:
+        if term in text:
+            report.add_failure(
+                f"AGENTS route slimming contract still has fixed preload heading {term!r}: "
+                f"{AGENTS_ROUTE_CONTRACT_PATH}"
+            )
+    report.add_info("checked AGENTS route slimming contract")
+
+
 def check_path_governance_docs_list_gitignore_entries(repo_root: Path, report: SemanticReport) -> None:
     doc_path = repo_root / PATH_GOVERNANCE_CHECKS_DOC
     if not doc_path.exists():
@@ -694,7 +827,41 @@ def check_subagent_dispatch_default_contract(repo_root: Path, report: SemanticRe
                 report.add_failure(
                     f"SubAgent default contract missing required term {term!r}: {relative_path}"
                 )
+    for relative_path in EXECUTION_POLICY_TEMPLATE_REFERENCE_PATHS:
+        path = repo_root / relative_path
+        if not path.exists():
+            report.add_failure(f"missing execution policy template reference source: {relative_path}")
+            continue
+        checked += 1
+        text = path.read_text(encoding="utf-8")
+        for term in EXECUTION_POLICY_TEMPLATE_REQUIRED_TERMS:
+            if term not in text:
+                report.add_failure(
+                    f"execution policy template missing canonical reference term {term!r}: {relative_path}"
+                )
+        for phrase in EXECUTION_POLICY_TEMPLATE_FORBIDDEN_PHRASES:
+            if phrase in text:
+                report.add_failure(
+                    f"execution policy template duplicates canonical prose: {relative_path}"
+                )
     report.add_info(f"checked {checked} SubAgent default dispatch contract sources")
+
+
+def check_dispatch_context_contract(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    for relative_path in DISPATCH_CONTEXT_CONTRACT_PATHS:
+        path = repo_root / relative_path
+        if not path.exists():
+            report.add_failure(f"missing dispatch context contract source: {relative_path}")
+            continue
+        checked += 1
+        text = path.read_text(encoding="utf-8")
+        for term in DISPATCH_CONTEXT_REQUIRED_TERMS:
+            if term not in text:
+                report.add_failure(
+                    f"dispatch context contract missing required term {term!r}: {relative_path}"
+                )
+    report.add_info(f"checked {checked} dispatch context contract sources")
 
 
 def check_review_evidence_four_lane_contract(repo_root: Path, report: SemanticReport) -> None:
@@ -712,6 +879,74 @@ def check_review_evidence_four_lane_contract(repo_root: Path, report: SemanticRe
                     f"review evidence four-lane contract missing required term {term!r}: {relative_path}"
                 )
     report.add_info(f"checked {checked} review evidence four-lane contract sources")
+
+
+def check_debug_evidence_contract(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    for relative_path in DEBUG_EVIDENCE_CONTRACT_PATHS:
+        path = repo_root / relative_path
+        if not path.exists():
+            report.add_failure(f"missing debug evidence contract source: {relative_path}")
+            continue
+        checked += 1
+        text = path.read_text(encoding="utf-8")
+        for term in DEBUG_EVIDENCE_REQUIRED_TERMS:
+            if term not in text:
+                report.add_failure(
+                    f"debug evidence contract missing required term {term!r}: {relative_path}"
+                )
+    report.add_info(f"checked {checked} debug evidence contract sources")
+
+
+def check_decision_traceability_contract(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    decision_log_path = repo_root / DECISION_TRACEABILITY_CONTRACT_PATHS[0]
+    if not decision_log_path.exists():
+        report.add_failure(
+            f"missing decision traceability contract source: {DECISION_TRACEABILITY_CONTRACT_PATHS[0]}"
+        )
+    else:
+        checked += 1
+        text = decision_log_path.read_text(encoding="utf-8")
+        for term in DECISION_LOG_REQUIRED_TERMS:
+            if term not in text:
+                report.add_failure(
+                    f"decision log contract missing required term {term!r}: "
+                    f"{DECISION_TRACEABILITY_CONTRACT_PATHS[0]}"
+                )
+
+    backlog_path = repo_root / DECISION_TRACEABILITY_CONTRACT_PATHS[1]
+    if not backlog_path.exists():
+        report.add_failure(
+            f"missing decision traceability contract source: {DECISION_TRACEABILITY_CONTRACT_PATHS[1]}"
+        )
+    else:
+        checked += 1
+        text = backlog_path.read_text(encoding="utf-8")
+        for term in WORKTRACK_BACKLOG_TRACEABILITY_REQUIRED_TERMS:
+            if term not in text:
+                report.add_failure(
+                    f"worktrack backlog traceability missing required term {term!r}: "
+                    f"{DECISION_TRACEABILITY_CONTRACT_PATHS[1]}"
+                )
+    report.add_info(f"checked {checked} decision traceability contract sources")
+
+
+def check_closeout_record_contract(repo_root: Path, report: SemanticReport) -> None:
+    checked = 0
+    for relative_path in CLOSEOUT_RECORD_CONTRACT_PATHS:
+        path = repo_root / relative_path
+        if not path.exists():
+            report.add_failure(f"missing closeout record contract source: {relative_path}")
+            continue
+        checked += 1
+        text = path.read_text(encoding="utf-8")
+        for term in CLOSEOUT_RECORD_REQUIRED_TERMS:
+            if term not in text:
+                report.add_failure(
+                    f"closeout record contract missing required term {term!r}: {relative_path}"
+                )
+    report.add_info(f"checked {checked} closeout record contract sources")
 
 
 def check_repo_whats_next_overview_fallback_contract(
@@ -884,12 +1119,17 @@ def main() -> int:
     check_append_request_contract_terms(repo_root, report)
     check_repo_python_commands_are_bytecode_free(repo_root, report)
     check_root_tool_shims_disable_bytecode(repo_root, report)
+    check_agents_route_slimming_contract(repo_root, report)
     check_path_governance_docs_list_gitignore_entries(repo_root, report)
     check_review_verify_docs_list_closeout_steps(repo_root, report)
     check_docs_list_closeout_cache_roots(repo_root, report)
     check_manual_runbook_agents_skill_count(repo_root, report)
     check_subagent_dispatch_default_contract(repo_root, report)
+    check_dispatch_context_contract(repo_root, report)
     check_review_evidence_four_lane_contract(repo_root, report)
+    check_debug_evidence_contract(repo_root, report)
+    check_decision_traceability_contract(repo_root, report)
+    check_closeout_record_contract(repo_root, report)
     check_repo_whats_next_overview_fallback_contract(repo_root, report)
     check_artifact_skill_alignment(repo_root, report)
     check_orphan_docs(repo_root, report)

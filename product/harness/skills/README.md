@@ -10,6 +10,7 @@
   - [generic-worker-skill/](./generic-worker-skill/) — 接收限定范围 Prompt 的通用执行 worker
   - [doc-catch-up-worker-skill/](./doc-catch-up-worker-skill/) — 将已验证实现事实追平到正确文档层
 - 已落地的 `RepoScope` 技能骨架：
+  - [set-harness-goal-skill/](./set-harness-goal-skill/) — 初始化 Repo Goal/Charter 与控制面参考信号
   - [repo-status-skill/](./repo-status-skill/) — 代码仓库状态观察
   - [repo-whats-next-skill/](./repo-whats-next-skill/) — 代码仓库下一步判断
   - [repo-append-request-skill/](./repo-append-request-skill/) — 追加请求分类与路由
@@ -18,6 +19,7 @@
 - [init-milestone-skill/](./init-milestone-skill/) — Milestone 初始化/注册到 Pipeline
 - [milestone-status-skill/](./milestone-status-skill/) — Milestone 状态观测/验收分析器
 - 已落地的 `WorktrackScope` 技能骨架：
+  - [worktrack-status-skill/](./worktrack-status-skill/) — 工作追踪状态观察
   - [init-worktrack-skill/](./init-worktrack-skill/) — 初始化工作追踪
   - [schedule-worktrack-skill/](./schedule-worktrack-skill/) — 调度工作追踪
   - [review-evidence-skill/](./review-evidence-skill/) — 审查证据
@@ -52,3 +54,43 @@
 - 教义长文正文
 - 后端包装器
 - 代码仓库本地挂载结果
+
+## Docs Owner Traceability
+
+| Canonical source | Docs/catalog owner |
+|------------------|--------------------|
+| [harness-skill/](./harness-skill/) | [docs/harness/catalog/supervisor.md](../../../docs/harness/catalog/supervisor.md) |
+| [set-harness-goal-skill/](./set-harness-goal-skill/) | [docs/harness/catalog/repo.md](../../../docs/harness/catalog/repo.md) |
+| [repo-status-skill/](./repo-status-skill/) | [docs/harness/catalog/repo.md](../../../docs/harness/catalog/repo.md) |
+| [repo-whats-next-skill/](./repo-whats-next-skill/) | [docs/harness/catalog/repo.md](../../../docs/harness/catalog/repo.md) |
+| [repo-append-request-skill/](./repo-append-request-skill/) | [docs/harness/catalog/repo.md](../../../docs/harness/catalog/repo.md) |
+| [repo-change-goal-skill/](./repo-change-goal-skill/) | [docs/harness/catalog/repo.md](../../../docs/harness/catalog/repo.md) |
+| [repo-refresh-skill/](./repo-refresh-skill/) | [docs/harness/catalog/repo.md](../../../docs/harness/catalog/repo.md) |
+| [init-milestone-skill/](./init-milestone-skill/) | [docs/harness/catalog/milestone/init-milestone-skill.md](../../../docs/harness/catalog/milestone/init-milestone-skill.md) |
+| [milestone-status-skill/](./milestone-status-skill/) | [docs/harness/catalog/milestone/milestone-status-skill.md](../../../docs/harness/catalog/milestone/milestone-status-skill.md) |
+| [worktrack-status-skill/](./worktrack-status-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
+| [init-worktrack-skill/](./init-worktrack-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
+| [schedule-worktrack-skill/](./schedule-worktrack-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
+| [dispatch-skills/](./dispatch-skills/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
+| [generic-worker-skill/](./generic-worker-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
+| [doc-catch-up-worker-skill/](./doc-catch-up-worker-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
+| [review-evidence-skill/](./review-evidence-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
+| [test-evidence-skill/](./test-evidence-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
+| [rule-check-skill/](./rule-check-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
+| [gate-skill/](./gate-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
+| [recover-worktrack-skill/](./recover-worktrack-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
+| [close-worktrack-skill/](./close-worktrack-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
+
+This table is the source-side backlink to the docs/catalog owner surface. Keep it synchronized when adding, renaming, retiring, or moving canonical skill source. Do not replace these links with deploy target paths.
+
+## Source Baseline Versioning
+
+The current verified git checkpoint for this source root is recorded by Harness runtime artifacts, not by per-skill prose in this README:
+
+- checkpoint runtime owner: `.aw/repo/snapshot-status.md`
+- idempotency runtime owner: `.aw/control-state.md`
+- closeout evidence runtime owner: `.aw/worktrack/closeout-record.md`
+- checkpoint contract: [docs/harness/artifact/repo/snapshot-status.md](../../../docs/harness/artifact/repo/snapshot-status.md)
+- idempotency contract: [docs/harness/artifact/control/control-state.md](../../../docs/harness/artifact/control/control-state.md)
+
+When canonical skill source or this source index changes, closeout records the verified git HEAD and repo refresh updates the source baseline summary. Keep long-term docs linked to source roots and docs owners; do not scatter manual commit hashes through individual skill descriptions.

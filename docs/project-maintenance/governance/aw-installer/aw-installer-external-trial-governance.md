@@ -46,6 +46,6 @@ last_verified: 2026-05-05
 ## Related Documents
 
 - [aw-installer Release Channel Governance](./aw-installer-release-channel-governance.md)
-- [npx Command Test Execution](../testing/npx-command-test-execution.md)
-- [trial feedback issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml)
-- [bug/blocker issue template](../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)
+- [npx Command Test Execution](../../testing/npx-command-test-execution.md)
+- [trial feedback issue template](../../../../.github/ISSUE_TEMPLATE/aw-installer-trial-feedback.yml)
+- [bug/blocker issue template](../../../../.github/ISSUE_TEMPLATE/aw-installer-bug.yml)

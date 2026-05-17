@@ -1,7 +1,7 @@
 ---
 title: "Dispatch Packet Schema"
 status: active
-updated: 2026-05-08
+updated: 2026-05-13
 owner: aw-kernel
 last_verified: 2026-05-08
 ---
@@ -54,7 +54,7 @@ dispatch-skills → gate-skill / review-evidence-skill
 
 | 值 | 语义 |
 |------|------|
-| `auto` | 优先委派 SubAgent；无法安全委派时显式 runtime fallback |
+| `auto` | 按 [Dispatch Decision Policy](../../foundations/dispatch-decision-policy.md) 选择 SubAgent、专用 skill、generic worker 或 current-carrier；无法安全委派时显式 fallback |
 | `delegated` | 必须委派 SubAgent；无法委派时返回 gap/block |
 | `current-carrier` | 显式关闭委派，由当前 carrier 直接执行 |
 
@@ -82,6 +82,8 @@ dispatch-skills → gate-skill / review-evidence-skill
 | `expected_output_format` | string | 是 | 预期输出格式，明确执行载体应产出的结果形式 |
 | `evidence_format` | string | 是 | evidence 回传格式，规定执行载体如何组织执行证据 |
 | `dispatch_mode` | enum | 是 | 分派模式：`auto` / `delegated` / `current-carrier` |
+| `shared_fact_pack` | object | 是 | 必须共享给执行载体的最小项目事实包，见下方定义 |
+| `context_budget` | object | 是 | 本轮可读取上下文预算，见下方定义 |
 | `recovery_hint` | string | 否 | 失败恢复提示，供执行载体在出错时参考 |
 | `context_files` | string[] | 否 | 需要预加载的上下文文件路径列表（路径引用，非内联全文） |
 
@@ -92,6 +94,52 @@ dispatch-skills → gate-skill / review-evidence-skill
 - `dispatch_mode` 继承 Task Brief 的值，dispatch-skills 不得变更
 - `forbidden_boundaries` 必须在 `non_goals` 的基础上进一步收束，不能比 Task Brief 的约束更宽松
 - `allowed_artifacts` 只能包含在 `scope` 范围内或与任务目标直接相关的文件
+- `shared_fact_pack` 只承载必须共同持有的事实引用，不内联长文档正文
+- `context_budget` 必须与 `allowed_artifacts`、`context_files` 和 `forbidden_boundaries` 一致
+
+### shared_fact_pack 说明
+
+`shared_fact_pack` 固定执行隔离中的共享事实，避免不同执行载体因前提不足做出互相冲突的隐含决策。
+
+最少包含：
+
+```yaml
+shared_fact_pack:
+  repo_goal_ref:
+  repo_snapshot_ref:
+  worktrack_contract_ref:
+  plan_task_queue_ref:
+  current_decision_refs:
+  baseline_ref:
+  invariants:
+  forbidden_assumptions:
+```
+
+### context_budget 说明
+
+`context_budget` 显式限制本轮读取多少上下文：
+
+```yaml
+context_budget:
+  max_files:
+  max_estimated_tokens:
+  must_read:
+    - shared_fact_pack
+    - worktrack_contract
+    - task_acceptance_slice
+  may_read:
+    - local module docs
+    - related source files
+    - previous gate evidence
+  do_not_read:
+    - unrelated historical logs
+    - unrelated worktracks
+    - retired docs
+  stop_after_locating_scope: true
+  expansion_requires_reason: true
+```
+
+如果执行载体需要超过 `context_budget`，必须返回调度或分派阶段请求扩展理由，不得静默读取全仓库上下文。
 
 ### context_files 说明
 
@@ -114,6 +162,9 @@ dispatch-skills → gate-skill / review-evidence-skill
 | `blockers` | string[] | 否 | 阻塞项列表，当 status 为 `blocked` 时必填 |
 | `recommendations` | string[] | 否 | 对下一步的建议 |
 | `dispatch_mode_used` | enum | 是 | 实际使用的分派模式：`auto` / `delegated` / `current-carrier` |
+| `dispatch_policy_ref` | string | 是 | 使用的执行载体选择策略引用，通常为 `docs/harness/foundations/dispatch-decision-policy.md` |
+| `carrier_decision` | string | 是 | 实际载体选择：如 `SubAgent` / `current-carrier` / `doc-catch-up-worker-skill` / `generic-worker-skill` |
+| `decision_inputs` | object | 否 | `auto` 模式下用于选择载体的输入摘要 |
 | `fallback_reason` | string | 否 | 如果发生 fallback，记录原因 |
 | `artifacts_produced` | string[] | 否 | 产出的 artifact 路径列表 |
 

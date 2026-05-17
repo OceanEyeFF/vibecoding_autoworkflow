@@ -105,7 +105,7 @@ For RC releases on `next`, verify that `next` moved and `latest` stayed unchange
 
 ## 7. Registry Smoke
 
-After publish, run registry `npx` smoke through [npx Command Test Execution](../testing/npx-command-test-execution.md). For RC releases, pin the selector:
+After publish, run registry `npx` smoke through [npx Command Test Execution](../../testing/npx-command-test-execution.md). For RC releases, pin the selector:
 
 ```bash
 node toolchain/scripts/test/aw_installer_registry_npx_smoke.js --package aw-installer@next --skip-remote
@@ -115,7 +115,7 @@ Use full remote mode when the release window requires cross-target evidence; `--
 
 ## 8. Sync Version Facts
 
-After registry verification and before final release handback, invoke [doc-catch-up-worker-skill](../../../product/harness/skills/doc-catch-up-worker-skill/SKILL.md) in `version fact sync` mode.
+After registry verification and before final release handback, invoke [doc-catch-up-worker-skill](../../../../product/harness/skills/doc-catch-up-worker-skill/SKILL.md) in `version fact sync` mode.
 
 The handoff must include:
 
@@ -125,7 +125,7 @@ The handoff must include:
 - release evidence: GitHub Release view, publish workflow run, registry query output, registry npx smoke report
 - doc update decision: documents updated and documents intentionally left unchanged
 
-At minimum, review [Release Channel Governance](./aw-installer-release-channel-governance.md), [Pre-Publish Governance](./aw-installer-pre-publish-governance.md), [npx Command Test Execution](../testing/npx-command-test-execution.md), backend usage-help pages, and root `README.md`. Update only pages whose facts changed or whose freshness is being verified in this release closeout.
+At minimum, review [Release Channel Governance](./aw-installer-release-channel-governance.md), [Pre-Publish Governance](./aw-installer-pre-publish-governance.md), [npx Command Test Execution](../../testing/npx-command-test-execution.md), backend usage-help pages, and root `README.md`. Update only pages whose facts changed or whose freshness is being verified in this release closeout.
 
 Post-publish registry facts must not be written into the release tag target retroactively. Commit docs fact sync on `develop-main`, open a narrow docs PR to `master`, wait for checks, then merge it.
 
