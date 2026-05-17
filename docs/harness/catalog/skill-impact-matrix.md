@@ -190,7 +190,7 @@ T1-T5 在 `docs/harness/` 合同层完成了以下变更：
 | set-harness-goal-skill | Goal 设定逻辑不受本轮变更影响 |
 | repo-change-goal-skill | Goal 变更控制逻辑不受本轮变更影响 |
 | repo-append-request-skill | Append request 逻辑不受本轮变更影响 |
-| milestone-status-skill | 本 skill 是 T5 新创建的 catalog 条目；其 contract 已在 `docs/harness/catalog/milestone-status-skill.md` 中定义，无需同步 |
+| milestone-status-skill | 本 skill 是 T5 新创建的 catalog 条目；其 contract 已在 `docs/harness/catalog/milestone/milestone-status-skill.md` 中定义，无需同步 |
 
 ## 验证命令
 
@@ -298,8 +298,8 @@ Work-Collection 设计引入了 `milestone_kind` 字段（`goal-driven` / `work-
 |------|------|---------|
 | `docs/harness/artifact/control/milestone.md` | 新增 `completion_threshold_pct`（默认 `100`）；明确 `signal_satisfaction_pct` 与 `criteria_pass_pct` 均需达到 threshold 才算 `purpose_achieved`；新增 Milestone Gate、稳定性规则与激活前 brief 合同 | high |
 | `docs/harness/foundations/Harness运行协议.md` | 将 Milestone Gate 插入 `worktrack closeout -> purpose_achieved` 之间；新增 goal-driven 激活前确认边界与 milestone 定义改写后的重新评估规则 | high |
-| `docs/harness/catalog/milestone-status-skill.md` | 新增 threshold / Milestone Gate / reevaluation 输出语义与调用时机 | high |
-| `docs/harness/catalog/init-milestone-skill.md` | 新增 activation brief、confirmation_required、ownership review 与 milestone_reevaluation_required 约定 | high |
+| `docs/harness/catalog/milestone/milestone-status-skill.md` | 新增 threshold / Milestone Gate / reevaluation 输出语义与调用时机 | high |
+| `docs/harness/catalog/milestone/init-milestone-skill.md` | 新增 activation brief、confirmation_required、ownership review 与 milestone_reevaluation_required 约定 | high |
 
 ### Skill 变更
 

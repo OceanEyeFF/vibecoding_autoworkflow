@@ -24,8 +24,7 @@ Catalog 不承接 doctrine 正文、runtime protocol、artifact contract、workf
 
 - [supervisor.md](./supervisor.md)：顶层 supervisor 入口
 - [repo.md](./repo.md)：RepoScope 能力入口
-- [init-milestone-skill.md](./init-milestone-skill.md)：Init Milestone Skill，Milestone 初始化/注册算子
-- [milestone-status-skill.md](./milestone-status-skill.md)：Milestone Status Skill，独立 Milestone 分析器
+- [milestone/README.md](./milestone/README.md)：Milestone Skills，Milestone 初始化与状态分析
 - [worktrack.md](./worktrack.md)：WorktrackScope 能力入口
 - [skill-impact-matrix.md](./skill-impact-matrix.md)：Skill Impact Matrix，历史影响分析与同步追踪记录；不是 skill inventory 正文
 
@@ -40,7 +39,7 @@ Catalog 不承接 doctrine 正文、runtime protocol、artifact contract、workf
 | 当前材料 | 当前保留原因 | 当前权威 owner |
 |----------|--------------|----------------|
 | `supervisor.md`、`repo.md`、`worktrack.md` 中的运行策略摘要 | 用于解释 skill 选择和 handoff 字段，不作为独立规则正文 | doctrine / runtime protocol 归 [../foundations/README.md](../foundations/README.md)；正式对象字段归 [../artifact/README.md](../artifact/README.md)；workflow policy 归 [../workflow-families/README.md](../workflow-families/README.md) |
-| `init-milestone-skill.md`、`milestone-status-skill.md` 中的 milestone 行为摘要 | 用于固定两个 milestone skills 的 inventory surface | Milestone artifact 合同归 [../artifact/README.md](../artifact/README.md)；运行协议归 [../foundations/README.md](../foundations/README.md)；executable source 归 [../../../product/harness/skills/README.md](../../../product/harness/skills/README.md) |
+| `milestone/` 中的 milestone 行为摘要 | 用于固定两个 milestone skills 的 inventory surface | Milestone artifact 合同归 [../artifact/README.md](../artifact/README.md)；运行协议归 [../foundations/README.md](../foundations/README.md)；executable source 归 [../../../product/harness/skills/README.md](../../../product/harness/skills/README.md) |
 | `skill-impact-matrix.md` | 历史合同变更对 skill 的影响分析与同步追踪记录 | 当前文件本身是历史分析记录；skill inventory 正文仍以本 catalog 的 skill 条目为准 |
 
 新增 catalog 页面时，若正文超过 inventory surface，需要先确认目标 owner；不能把分析、policy 或协议正文长期沉淀在 `catalog/`。
@@ -51,8 +50,8 @@ Catalog 不承接 doctrine 正文、runtime protocol、artifact contract、workf
 |-----------------|-----------------------------|
 | [supervisor.md](./supervisor.md) | [harness-skill](../../../product/harness/skills/harness-skill/) |
 | [repo.md](./repo.md) | [set-harness-goal-skill](../../../product/harness/skills/set-harness-goal-skill/), [repo-status-skill](../../../product/harness/skills/repo-status-skill/), [repo-whats-next-skill](../../../product/harness/skills/repo-whats-next-skill/), [repo-append-request-skill](../../../product/harness/skills/repo-append-request-skill/), [repo-change-goal-skill](../../../product/harness/skills/repo-change-goal-skill/), [repo-refresh-skill](../../../product/harness/skills/repo-refresh-skill/) |
-| [init-milestone-skill.md](./init-milestone-skill.md) | [init-milestone-skill](../../../product/harness/skills/init-milestone-skill/) |
-| [milestone-status-skill.md](./milestone-status-skill.md) | [milestone-status-skill](../../../product/harness/skills/milestone-status-skill/) |
+| [milestone/init-milestone-skill.md](./milestone/init-milestone-skill.md) | [init-milestone-skill](../../../product/harness/skills/init-milestone-skill/) |
+| [milestone/milestone-status-skill.md](./milestone/milestone-status-skill.md) | [milestone-status-skill](../../../product/harness/skills/milestone-status-skill/) |
 | [worktrack.md](./worktrack.md) | [worktrack-status-skill](../../../product/harness/skills/worktrack-status-skill/), [init-worktrack-skill](../../../product/harness/skills/init-worktrack-skill/), [schedule-worktrack-skill](../../../product/harness/skills/schedule-worktrack-skill/), [dispatch-skills](../../../product/harness/skills/dispatch-skills/), [generic-worker-skill](../../../product/harness/skills/generic-worker-skill/), [doc-catch-up-worker-skill](../../../product/harness/skills/doc-catch-up-worker-skill/), [review-evidence-skill](../../../product/harness/skills/review-evidence-skill/), [test-evidence-skill](../../../product/harness/skills/test-evidence-skill/), [rule-check-skill](../../../product/harness/skills/rule-check-skill/), [gate-skill](../../../product/harness/skills/gate-skill/), [recover-worktrack-skill](../../../product/harness/skills/recover-worktrack-skill/), [close-worktrack-skill](../../../product/harness/skills/close-worktrack-skill/) |
 
 Deploy targets such as `.agents/` or `.claude/` may consume these sources after deployment, but they are not canonical source locations.

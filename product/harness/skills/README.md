@@ -66,8 +66,8 @@
 | [repo-append-request-skill/](./repo-append-request-skill/) | [docs/harness/catalog/repo.md](../../../docs/harness/catalog/repo.md) |
 | [repo-change-goal-skill/](./repo-change-goal-skill/) | [docs/harness/catalog/repo.md](../../../docs/harness/catalog/repo.md) |
 | [repo-refresh-skill/](./repo-refresh-skill/) | [docs/harness/catalog/repo.md](../../../docs/harness/catalog/repo.md) |
-| [init-milestone-skill/](./init-milestone-skill/) | [docs/harness/catalog/init-milestone-skill.md](../../../docs/harness/catalog/init-milestone-skill.md) |
-| [milestone-status-skill/](./milestone-status-skill/) | [docs/harness/catalog/milestone-status-skill.md](../../../docs/harness/catalog/milestone-status-skill.md) |
+| [init-milestone-skill/](./init-milestone-skill/) | [docs/harness/catalog/milestone/init-milestone-skill.md](../../../docs/harness/catalog/milestone/init-milestone-skill.md) |
+| [milestone-status-skill/](./milestone-status-skill/) | [docs/harness/catalog/milestone/milestone-status-skill.md](../../../docs/harness/catalog/milestone/milestone-status-skill.md) |
 | [worktrack-status-skill/](./worktrack-status-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
 | [init-worktrack-skill/](./init-worktrack-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |
 | [schedule-worktrack-skill/](./schedule-worktrack-skill/) | [docs/harness/catalog/worktrack.md](../../../docs/harness/catalog/worktrack.md) |

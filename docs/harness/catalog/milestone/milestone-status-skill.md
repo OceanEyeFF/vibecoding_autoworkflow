@@ -19,7 +19,7 @@ last_verified: 2026-05-14
 
 canonical executable source：
 
-- [../../../product/harness/skills/milestone-status-skill/SKILL.md](../../../product/harness/skills/milestone-status-skill/SKILL.md)
+- [../../../../product/harness/skills/milestone-status-skill/SKILL.md](../../../../product/harness/skills/milestone-status-skill/SKILL.md)
 
 ## 职责
 
