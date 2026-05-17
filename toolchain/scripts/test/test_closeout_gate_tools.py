@@ -369,6 +369,7 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             ".codex/config.toml",
             ".github/workflows/ci.yml",
             "docs/README.md",
+            "docs/book.md",
             "docs/harness/README.md",
             "docs/project-maintenance/README.md",
             "product/README.md",
@@ -396,6 +397,7 @@ def test_check_scope_accepts_allowed_prefixes() -> None:
             ".codex/",
             ".github/",
             "docs/README.md",
+            "docs/book.md",
             ".autoworkflow/closeout/",
             "package.json",
             "docs/project-maintenance/",
@@ -426,6 +428,16 @@ def test_check_scope_accepts_closeout_prefix() -> None:
     )
     assert result.passed is True
     assert result.violations == []
+
+
+def test_check_scope_file_allowance_is_exact() -> None:
+    result = check_scope(
+        ["docs/book.md", "docs/book.md.bak", "docs/book.md/extra.md"],
+        ("docs/book.md",),
+    )
+
+    assert result.passed is False
+    assert result.violations == ["docs/book.md.bak", "docs/book.md/extra.md"]
 
 
 def test_check_scope_flags_disallowed_changes() -> None:
@@ -591,6 +603,7 @@ def test_run_scope_gate_allows_foundations_governance_docs(monkeypatch, tmp_path
     assert "AGENTS.md" in command
     assert "CONTRIBUTING.md" in command
     assert "docs/README.md" in command
+    assert "docs/book.md" in command
     assert ".codex/" in command
     assert ".github/" in command
     assert "docs/project-maintenance/README.md" in command

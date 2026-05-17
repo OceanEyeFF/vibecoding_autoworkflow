@@ -1,7 +1,7 @@
 ---
 title: "Standard Fields Vocabulary"
 status: active
-updated: "2026-05-09"
+updated: "2026-05-16"
 owner: "aw-kernel"
 last_verified: "2026-05-09"
 ---
@@ -75,6 +75,16 @@ last_verified: "2026-05-09"
 | `merge_required` | `boolean` | 是否需要合并 | `init-worktrack-skill`, `close-worktrack-skill` |
 | `gate_criteria` | `string` | 关卡标准 | `init-worktrack-skill`, `schedule-worktrack-skill` |
 | `if_interrupted_strategy` | `string` | 中断处理策略 | `init-worktrack-skill`, `recover-worktrack-skill` |
+
+## Repo Snapshot 专有字段
+
+| 标准字段名 | 类型 | 说明 | 适用 Skill |
+|-----------|------|------|-----------|
+| `source_baselines` | `object` | 已验证 source root 的 checkpoint 摘要，按 source root key 分组 | `repo-refresh-skill`, `repo-status-skill` |
+| `source_root` | `string` | source root 的 repo-relative 路径 | `repo-refresh-skill`, `doc-catch-up-worker-skill` |
+| `docs_owner` | `string` | 对应 docs/catalog owner 路径 | `repo-refresh-skill`, `doc-catch-up-worker-skill` |
+| `git_head` | `string` | 对应 source root 最近 verified checkpoint 的 git HEAD | `repo-refresh-skill`, `doc-catch-up-worker-skill` |
+| `source_change_kind` | `string` | source baseline 变化类型，如 `source-change` / `source-index-change` / `docs-source-traceability-change` | `repo-refresh-skill`, `doc-catch-up-worker-skill` |
 
 ## 字段使用约定
 

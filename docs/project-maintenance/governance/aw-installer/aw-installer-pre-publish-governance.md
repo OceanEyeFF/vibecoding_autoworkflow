@@ -122,7 +122,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 toolchain/scripts/test/closeout_acceptance_gat
 
 ## 4. Local Package Smoke
 
-完成 [npx Command Test Execution](../testing/npx-command-test-execution.md) 定义的 local package smoke；证据要求属于本页，命令矩阵与 pass criteria 属 testing runbook。
+完成 [npx Command Test Execution](../../testing/npx-command-test-execution.md) 定义的 local package smoke；证据要求属于本页，命令矩阵与 pass criteria 属 testing runbook。
 
 ## 5. Approval Lock
 

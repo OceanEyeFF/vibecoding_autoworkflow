@@ -75,4 +75,4 @@ hook 通过 `origin/HEAD` 动态解析 baseline（当前解析为 `origin/master
 - `AGENTS.md`
 - `docs/project-maintenance/governance/review-verify-handbook.md`
 - `docs/project-maintenance/governance/path-governance-checks.md`
-- `docs/project-maintenance/governance/aw-installer-release-standard-flow.md`
+- `docs/project-maintenance/governance/aw-installer/aw-installer-release-standard-flow.md`

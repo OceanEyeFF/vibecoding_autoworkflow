@@ -75,4 +75,4 @@ approval lock 只能在显式 release-approval worktrack 中修改。
 - [aw-installer Release Standard Flow](./aw-installer-release-standard-flow.md)
 - [aw-installer Release Operation Model](./aw-installer-release-operation-model.md)
 - [aw-installer Pre-Publish Governance](./aw-installer-pre-publish-governance.md)
-- [npx Command Test Execution](../testing/npx-command-test-execution.md)
+- [npx Command Test Execution](../../testing/npx-command-test-execution.md)
